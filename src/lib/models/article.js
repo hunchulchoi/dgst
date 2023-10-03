@@ -1,4 +1,6 @@
-import { model, models, Schema } from 'mongoose';
+import pkg from 'mongoose';
+const { Schema, models, model } = pkg;
+
 import "$lib/models/comment.js";
 
 export const articleSchema = new Schema(

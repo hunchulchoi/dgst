@@ -1,4 +1,4 @@
-version: '3.8'
+version: '3.9'
 services:
   mongodb:
     image: mongo
@@ -13,9 +13,24 @@ services:
     environment:
       - MONGO_INITDB_ROOT_USERNAME=root
       - MONGO_INITDB_ROOT_PASSWORD=0719f132057c660a59a19c08af854d71
+  dgst_svelte:
+    image: dgst_svelte
+    container_name: dgst_svelte
+    restart: always
+    build: .
+    networks:
+      - dgst-svelte-net
+    volumes:
+      - /Users/hunchulchoi/dgst-storage-vol/uploads:/dgst/static/uploads
+    ports:
+      - '5173:4173'
+    environment:
+      NODE_ENV: production
+
 
 networks:
   dgst-mongo-net:
+  dgst-svelte-net:
 
 volumes:
   dgst-mongo-vol:
