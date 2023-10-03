@@ -7,6 +7,7 @@
     NavItem,
     NavLink,
     Icon,
+    Button,
     Styles,
     Dropdown,
     DropdownToggle,
@@ -18,29 +19,58 @@
   let isOpen = false;
 
   function handleUpdate(event){
- console.log(event)
     isOpen = event.detail.isOpen;
   }
 
-  console.log($theme)
+  import {signIn, signOut} from "@auth/sveltekit/client";
+  import {page} from "$app/stores";
+
+  const handleGoogleSignIn = ()=>{
+ console.log('handleGoogleSignIn')
+    signIn('google', {callbackUrl: '/'})
+  }
+
+  const handleSignOut = ()=>{
+    signOut();
+  }
+
+  $: colorModeIcon = $theme === 'light'?'sun-fill':$theme === 'dark'?'moon-stars-fill':'circle-half'
+  $: loginButton = `/oauth/btn_google_signin_${$theme}_normal_web.png`
+
+
+  console.log('session', $page.data);
+
 </script>
 
 <Styles theme={$theme}/>
 
-<Navbar expand="md" class="m-1 rounded shadow fs-5 text-secondary" style="background-color: #fafae4">
+<Navbar expand="md" class="m-1 rounded shadow text-dark-emphasis" style="background-color: #fafae4">
   <NavbarBrand href="/" class="p-0">
-    <Image fluid alt="dgst logo" src="/logo/logo_transparent_100.png" class="p-0" style="height: 50px"/>
+    <Image fluid alt="dgst logo" src="/logo/logo_transparent_100.png" class="p-0" style="height: 40px"/>
   </NavbarBrand>
+  <Nav>
+    <NavItem>
+      <NavLink href="/board/free">자유게시판</NavLink>
+    </NavItem>
+  </Nav>
   <NavbarToggler on:click={()=>(isOpen = !isOpen)}/>
   <Collapse {isOpen} navbar expand="md" on:update={handleUpdate}>
     <Nav class="ms-auto" navbar>
+
       <NavItem>
-        <NavLink><Icon name="unlock-fill"/> 로그인</NavLink>
+      {#if $page.data.session?.user.nickname}
+        <Image thumbnail alt="{$page.data.session.user.nickname} 프로필 사진" src="{$page.data.session.user.photo??'/icons/unknown-person-icon-4.jpg'}" class="p-0 rounded" style="max-height: 30px;max-width: 30px"/> {$page.data.session.user.nickname}
+        <Button class="bi bi-door-closed"  size="sm" on:click={signOut}> logout</Button>
+      {:else}
+        <NavLink on:click={handleGoogleSignIn} class="p-0">
+          <Image fluid alt="google계정으로 로그인" src="{loginButton}" class="p-0"/>
+        </NavLink>
+      {/if}
       </NavItem>
      <Dropdown nav inNavbar>
-       <DropdownToggle nav caret></DropdownToggle>
+       <DropdownToggle nav caret><Icon name="{colorModeIcon}"/></DropdownToggle>
        <DropdownMenu end>
-         <DropdownItem><Icon name="circle-half"/> 자동</DropdownItem>
+         <DropdownItem on:click={()=>theme.set('auto')}><Icon name="circle-half"/> 자동</DropdownItem>
          <DropdownItem divider/>
          <DropdownItem on:click={()=>theme.set('light')}><Icon name="sun-fill"/> 밝게</DropdownItem>
          <DropdownItem on:click={()=>theme.set('dark')}><Icon name="moon-stars-fill"/> 어둡게</DropdownItem>
