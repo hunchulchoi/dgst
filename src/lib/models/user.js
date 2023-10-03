@@ -1,4 +1,5 @@
-import mongoose, {Schema, model, models} from "mongoose";
+import pkg from 'mongoose';
+const { Schema, models, model } = pkg;
 
 export const userSchema = new Schema({
   email: {type: String, required: true, unique: true},
