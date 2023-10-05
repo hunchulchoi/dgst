@@ -9,7 +9,7 @@ services:
     volumes:
       - dgst-mongo-vol:/data/db
     ports:
-      - "27017:27017"
+      - '27017:27017'
     environment:
       - MONGO_INITDB_ROOT_USERNAME=root
       - MONGO_INITDB_ROOT_PASSWORD=0719f132057c660a59a19c08af854d71
@@ -26,7 +26,6 @@ services:
       - '5173:4173'
     environment:
       NODE_ENV: production
-
 
 networks:
   dgst-mongo-net:
