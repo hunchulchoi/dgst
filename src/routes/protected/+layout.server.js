@@ -1,8 +1,7 @@
-export const load = async (event) =>{
+export const load = async (event) => {
+	const session = await event.locals.getSession();
 
-    const session = await event.locals.getSession();
+	console.log('session');
 
-    console.log('session');
-
-    return{session}
-}
+	return { session };
+};

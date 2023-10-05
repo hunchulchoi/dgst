@@ -1,255 +1,293 @@
 <script>
+	import {
+		Button,
+		Card,
+		CardBody,
+		CardSubtitle,
+		CardText,
+		Col,
+		Icon,
+		Image,
+		Input,
+		InputGroup,
+		InputGroupText,
+		Row
+	} from 'sveltestrap';
+	import moment from 'moment';
+	import 'moment/locale/ko.js';
+	import { page } from '$app/stores';
+	import { goto } from '$app/navigation';
 
-  import {
-    Button,
-    Card,
-    CardBody,
-    CardSubtitle,
-    CardText,
-    Col,
-    Icon,
-    Image,
-    Input,
-    InputGroup, InputGroupText,
-    Row
-  } from "sveltestrap";
-  import moment from "moment";
-  import 'moment/locale/ko.js'
-  import { page } from "$app/stores";
-  import { goto } from "$app/navigation";
+	moment.locale('ko');
 
-  moment.locale('ko');
+	function comments() {
+		fetch(`/board/${$page.params.boardId}/${$page.params.articleId}/comment`)
+			.then((res) => res.json())
+			.then((d) => (commentData = d));
+	}
 
-  function comments(){
-    fetch(`/board/${$page.params.boardId}/${$page.params.articleId}/comment`)
-            .then(res=>res.json())
-            .then(d=>commentData = d);
-  }
+	function list() {
+		const pageNo = $page.params.pageNo || 1;
 
-  function list(){
+		goto(`/board/${$page.params.boardId}/${pageNo}`);
+	}
 
-    const pageNo = $page.params.pageNo || 1;
+	function preview(event) {
+		previewEl.src = window.URL.createObjectURL(event.target.files[0]);
+		previewEl.style.height = '80px';
+		previewEl.classList.remove('d-none');
+	}
 
-    goto(`/board/${$page.params.boardId}/${pageNo}`)
-  }
+	let commentContent;
+	let commentImage;
+	let previewEl;
 
-  function preview(event){
+	function comment() {
+		if (!commentContent) {
+			alert('내용을 입력하세요');
+			return;
+		}
+		if (commentContent.replace(' ', '').length < 3) {
+			alert('코멘트 내용이 너무 짧습니다.');
+			return;
+		}
 
-    previewEl.src = window.URL.createObjectURL(event.target.files[0]);
-    previewEl.style.height = '80px';
-    previewEl.classList.remove('d-none');
-  }
+		const formData = new FormData();
 
-  let commentContent;
-  let commentImage;
-  let previewEl;
+		formData.append('content', commentContent);
+		if (commentImage) formData.append('image', commentImage[0]);
 
-  function comment() {
+		fetch(`/board/${$page.params.boardId}/${$page.params.articleId}/comment`, {
+			method: 'POST',
+			body: formData
+		})
+			.then(async (res) => {
+				if (res.status !== 201) {
+					const { message } = await res.json();
+					alert(message);
+					return;
+				}
 
-    if(!commentContent){
-        alert('내용을 입력하세요');
-        return;
-    }
-    if(commentContent.replace(' ', '').length < 3){
-      alert('코멘트 내용이 너무 짧습니다.');
-      return;
-    }
+				comments();
+			})
+			.catch((error) => {
+				console.error(error);
+				alert(error.message ?? '저장 중 오류가 발생했습니다.');
+			});
+	}
 
-    const formData = new FormData();
+	function deleteComment(commentId) {
+		if (!confirm('삭제 하시겠습니까?')) return false;
 
-    formData.append('content',commentContent);
-    if(commentImage) formData.append('image',commentImage[0]);
+		fetch(`/board/${$page.params.boardId}/${$page.params.articleId}/comment`, {
+			method: 'DELETE',
+			body: JSON.stringify({ commentId })
+		})
+			.then(async (res) => {
+				if (res.status !== 200) {
+					const { message } = await res.json();
+					alert(message);
+					return;
+				}
 
-    fetch(`/board/${$page.params.boardId}/${$page.params.articleId}/comment`
-        , {
-            method: 'POST',
-            body: formData
-        }
-    ).then(async res => {
-      if(res.status !== 201){
-        const {message} = await res.json();
-        alert(message);
-        return;
-      }
+				list();
+			})
+			.catch((err) => {
+				console.error(err);
+				alert(err.message ?? '삭제 중 오류가 발생했습니다.');
+			});
+	}
 
-      comments();
-    }).catch(error=>{
-      console.error(error);
-      alert(error.message??'저장 중 오류가 발생했습니다.');
-    })
-  }
+	function remove(articleId) {
+		if (!confirm('삭제 하시겠습니까?')) return false;
 
-  function deleteComment(commentId){
+		fetch(`/board/${$page.params.boardId}/${$page.params.articleId}`, {
+			method: 'DELETE',
+			body: JSON.stringify({ articleId })
+		})
+			.then(async (res) => {
+				if (res.status !== 200) {
+					const { message } = await res.json();
+					alert(message);
+					return;
+				}
 
-    if(!confirm('삭제 하시겠습니까?')) return false;
+				list();
+			})
+			.catch((err) => {
+				console.error(err);
+				alert(err.message ?? '삭제 중 오류가 발생했습니다.');
+			});
+	}
 
-    fetch(`/board/${$page.params.boardId}/${$page.params.articleId}/comment`
-            , {
-              method: 'DELETE',
-              body: JSON.stringify({commentId})
-            }
-    ).then(async res => {
-      if(res.status !== 200){
-        const {message} = await res.json();
-        alert(message);
-        return;
-      }
+	function edit(articleId) {
+		goto(`/board/${$page.params.boardId}/write/${articleId}`);
+	}
 
-      list();
-    }).catch(err=>{
-      console.error(err);
-      alert(err.message??'삭제 중 오류가 발생했습니다.');
-    })
-  }
+	function write() {
+		goto(`/board/${$page.params.boardId}/write`);
+	}
 
-  function remove(articleId){
+	export let data;
 
-    if(!confirm('삭제 하시겠습니까?')) return false;
+	$: commentData = data.article.comments;
 
-    fetch(`/board/${$page.params.boardId}/${$page.params.articleId}`
-            , {
-              method: 'DELETE',
-              body: JSON.stringify({articleId})
-            }
-    ).then(async res => {
-      if(res.status !== 200){
-        const {message} = await res.json();
-        alert(message);
-        return;
-      }
-
-      list();
-    }).catch(err=>{
-      console.error(err);
-      alert(err.message??'삭제 중 오류가 발생했습니다.');
-    })
-  }
-
-  function edit(articleId){
-    goto(`/board/${$page.params.boardId}/write/${articleId}`);
-  }
-
-  function write(){
-    goto(`/board/${$page.params.boardId}/write`);
-  }
-
-export let data;
-
-$: commentData = data.article.comments;
-
-$: console.log('commentImage', commentImage)
+	$: console.log('commentImage', commentImage);
 </script>
 
 <svelte:head>
-  <style>
-    .image img{
-      max-width: 100% !important;
-    }
-  </style>
+	<style>
+		.image img {
+			max-width: 100% !important;
+		}
+	</style>
 </svelte:head>
 
 <main class="container my-5">
-  <Row class="mt-4 shadow rounded-4 p-4">
-    <h5>{data.article.title}</h5>
-    <Row class="border-bottom border-secondary-subtle pt-2">
-      <Col md="6">{data.article.nickname} <span class="text-muted">{moment(data.article.createdAt).format('LLLL')}</span></Col>
-      <Col md="6" class="text-end text-muted"><Icon name="eye" class="pe-1"/>{data.article.read} <Icon name="hand-thumbs-up" class="text-success pe-1"/>{data.article.like}</Col>
-    </Row>
-    <Row class="p-3">
-      <CardText style="max-width: 100%;">
-      {@html data.article.content}
-      </CardText>
-    </Row>
-    <Row class="p-3">
-      <!--프로필-->
-      <Card class="p-2">
-        <Row>
-          <Col xs="auto" class="d-flex align-items-center">
-            <Image src="{data.photo}" thumbnail width="100" height="100" alt="프로필 사진" class="card-img-left rounded-2"/>
-          </Col>
-          <Col xs="8" md="9">
-            <CardBody>
-              <CardSubtitle>{data.article.nickname}</CardSubtitle>
-              <CardText class="text-muted pt-2">
-                {data.introduction}
-              </CardText>
-            </CardBody>
+	<Row class="mt-4 shadow rounded-4 p-4">
+		<h5>{data.article.title}</h5>
+		<Row class="border-bottom border-secondary-subtle pt-2">
+			<Col md="6"
+				>{data.article.nickname}
+				<span class="text-muted">{moment(data.article.createdAt).format('LLLL')}</span></Col
+			>
+			<Col md="6" class="text-end text-muted"
+				><Icon name="eye" class="pe-1" />{data.article.read}
+				<Icon name="hand-thumbs-up" class="text-success pe-1" />{data.article.like}</Col
+			>
+		</Row>
+		<Row class="p-3">
+			<CardText style="max-width: 100%;">
+				{@html data.article.content}
+			</CardText>
+		</Row>
+		<Row class="p-3">
+			<!--프로필-->
+			<Card class="p-2">
+				<Row>
+					<Col xs="auto" class="d-flex align-items-center">
+						<Image
+							src={data.photo}
+							thumbnail
+							width="100"
+							height="100"
+							alt="프로필 사진"
+							class="card-img-left rounded-2"
+						/>
+					</Col>
+					<Col xs="8" md="9">
+						<CardBody>
+							<CardSubtitle>{data.article.nickname}</CardSubtitle>
+							<CardText class="text-muted pt-2">
+								{data.introduction}
+							</CardText>
+						</CardBody>
+					</Col>
+				</Row>
+			</Card>
+		</Row>
+		<Row>
+			<!--버튼-->
+			<Col class="text-end pe-3">
+				<Button outline color="danger" on:click={() => remove(data.article._id)}
+					><Icon name="trash" />삭제</Button
+				>
+				<Button outline color="success" on:click={() => edit(data.article._id)}
+					><Icon name="pencil" />수정</Button
+				>
+				<Button outline color="primary" on:click={write}><Icon name="pencil-fill" />글쓰기</Button>
+				<Button outline color="secondary" on:click={list}><Icon name="list" />목록</Button>
+			</Col>
+		</Row>
+		<Row class="my-3 bg-warning-subtle p-3 rounded-3 mb-4">
+			<!--리플-->
+			<Col>
+				<Icon name="chat" /> 의견남기기
+			</Col>
+			<Col class="text-end">
+				<Button outline class="fw-bolder py-0" on:click={comments}
+					><Icon name="arrow-repeat" /></Button
+				>
+			</Col>
+		</Row>
 
-          </Col>
-        </Row>
+		<Row class="mb-5">
+			{#if $page.data.session?.user.nickname}
+				<Row class="border p-4 rounded-4 shadow-sm">
+					<InputGroup class="mb-2">
+						<InputGroupText class="text-success"
+							><Icon name="card-image" class="pe-2" /> 짤 첨부</InputGroupText
+						>
+						<Input
+							type="file"
+							bind:files={commentImage}
+							on:change={preview}
+							muliple="false"
+							accept="image/*"
+							class="m-2"
+						/>
+					</InputGroup>
+					<InputGroup>
+						<img
+							class="img-thumbnail d-none me-2"
+							bind:this={previewEl}
+							alt="리플 이미지 첨부 미리보기"
+						/>
+						<Input
+							type="textarea"
+							bind:value={commentContent}
+							class="border border-gray"
+							style="max-width: 600px"
+						/>
+						<Button color="primary" outline on:click={comment}
+							><Icon name="pencil-fill" /> 등록</Button
+						>
+					</InputGroup>
+				</Row>
+			{/if}
 
-      </Card>
-    </Row>
-    <Row>
-      <!--버튼-->
-      <Col class="text-end pe-3">
-        <Button outline color="danger" on:click={()=>remove(data.article._id)}><Icon name="trash"/>삭제</Button>
-        <Button outline color="success" on:click={()=>edit(data.article._id)}><Icon name="pencil"/>수정</Button>
-        <Button outline color="primary" on:click={write}><Icon name="pencil-fill"/>글쓰기</Button>
-        <Button outline color="secondary" on:click={list}><Icon name="list"/>목록</Button>
-      </Col>
-    </Row>
-    <Row class="my-3 bg-warning-subtle p-3 rounded-3 mb-4">
-      <!--리플-->
-      <Col>
-        <Icon name="chat"/> 의견남기기
-      </Col>
-      <Col class="text-end">
-        <Button outline class="fw-bolder py-0" on:click={comments}><Icon name="arrow-repeat"/></Button>
-      </Col>
-    </Row>
+			{#each commentData as comment}
+				<Row class="p-4 border-bottom border-gray-subtle">
+					<Col xs="auto"><Image thumbnail src={comment.photo} style="height:50px" rounded /></Col>
+					<Col xs="auto" clsss="border-end">
+						{comment.nickname}<br />
+						<span class="text-muted" style="font-size: smaller"
+							>{moment(comment.createdAt).fromNow()}</span
+						>
+					</Col>
+					<Col>
+						<Row>
+							<Col>
+								{#if comment.image}
+									<Row class="pb-3">
+										<Col><Image src={comment.image} alt="리플 짤" style="max-width: 80%;" /></Col>
+									</Row>
+								{/if}
+								{comment.content}
+							</Col>
+						</Row>
 
-    <Row class="mb-5">
-
-    {#if $page.data.session?.user.nickname}
-      <Row class="border p-4 rounded-4 shadow-sm">
-        <InputGroup class="mb-2">
-          <InputGroupText class="text-success"><Icon name="card-image" class="pe-2"/> 짤 첨부</InputGroupText>
-          <Input type="file" bind:files={commentImage} on:change={preview} muliple="false" accept="image/*" class="m-2"/>
-        </InputGroup>
-        <InputGroup>
-          <img class="img-thumbnail d-none me-2" bind:this={previewEl} alt="리플 이미지 첨부 미리보기">
-        <Input type="textarea" bind:value={commentContent} class="border border-gray" style="max-width: 600px"></Input>
-        <Button color="primary" outline on:click={comment}><Icon name="pencil-fill"/> 등록</Button>
-      </InputGroup>
-    </Row>
-    {/if}
-
-    {#each commentData as comment}
-      <Row class="p-4 border-bottom border-gray-subtle">
-        <Col xs="auto"><Image thumbnail src={comment.photo} style="height:50px" rounded/></Col>
-        <Col xs="auto" clsss="border-end">
-          {comment.nickname}<br>
-          <span class="text-muted" style="font-size: smaller">{moment(comment.createdAt).fromNow()}</span>
-        </Col>
-        <Col>
-          <Row>
-            <Col>
-              {#if comment.image}
-                <Row class="pb-3">
-                  <Col><Image src={comment.image} alt="리플 짤" style="max-width: 80%;"/></Col>
-                </Row>
-              {/if}
-              {comment.content}
-            </Col>
-          </Row>
-
-        {#if comment.email === $page.data.session?.user.email}
-          <Row>
-            <Col class="text-end pe-2">
-              <Button on:click={()=>deleteComment(comment._id)} size="sm" outline color="danger"><Icon name="trash"/>삭제</Button>
-              <Button size="sm" outline color="primary" class="d-none"><Icon name="pencil"/>수정</Button>
-            </Col>
-          </Row>
-        {/if}
-
-        </Col>
-      </Row>
-    {/each}
-    </Row>
-  </Row>
+						{#if comment.email === $page.data.session?.user.email}
+							<Row>
+								<Col class="text-end pe-2">
+									<Button
+										on:click={() => deleteComment(comment._id)}
+										size="sm"
+										outline
+										color="danger"><Icon name="trash" />삭제</Button
+									>
+									<Button size="sm" outline color="primary" class="d-none"
+										><Icon name="pencil" />수정</Button
+									>
+								</Col>
+							</Row>
+						{/if}
+					</Col>
+				</Row>
+			{/each}
+		</Row>
+	</Row>
 </main>
 
 <style>
-
 </style>
