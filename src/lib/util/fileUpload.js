@@ -2,15 +2,15 @@ import * as fs from 'fs';
 import { writeFileSync } from 'fs';
 import moment from 'moment';
 
-import {assets} from '$app/paths';
+import {assets, base} from '$app/paths';
 
 import { UPLOAD_PATH } from '$env/static/private';
 import { error } from "@sveltejs/kit";
 
 export async function write(file, preservePath = 'jjal') {
-	console.log('assets', assets, 'preservePath', preservePath, 'file', file);
+	console.log('base', base, 'assets', assets, 'preservePath', preservePath, 'file', file);
 
-	const dir = `/${assets}/${UPLOAD_PATH}/${preservePath.replace('..', '').replace('/', '')}/${moment().format(
+	const dir = `/${base}/${UPLOAD_PATH}/${preservePath.replace('..', '').replace('/', '')}/${moment().format(
 		'YYYY'
 	)}/${moment().format('YYYYMM')}/${moment().format('YYYYMMDD')}`;
 
