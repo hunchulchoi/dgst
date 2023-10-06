@@ -11,11 +11,11 @@ export async function write(file, preservePath = 'jjal') {
 		'YYYY'
 	)}/${moment().format('YYYYMM')}/${moment().format('YYYYMMDD')}`;
 
-	if (!fs.existsSync(`static${dir}`)) {
-		fs.mkdirSync(`static${dir}`, { recursive: true });
+	if (!fs.existsSync(`${dir}`)) {
+		fs.mkdirSync(`${dir}`, { recursive: true });
 	}
 
-	console.log(dir, fs.existsSync(`static${dir}`));
+	console.log(dir, fs.existsSync(`${dir}`));
 
 	const fileName = `${file.name.substring(
 		0,
@@ -24,11 +24,11 @@ export async function write(file, preservePath = 'jjal') {
 		.replace('..', '')
 		.replace('/', '');
 
-	writeFileSync(`static${dir}/${fileName}`, Buffer.from(await file.arrayBuffer()));
+	writeFileSync(`${dir}/${fileName}`, Buffer.from(await file.arrayBuffer()));
 
-	console.log(`${dir}/${file.name}`, fs.existsSync(`static${dir}/${fileName}`));
+	console.log(`${dir}/${file.name}`, fs.existsSync(`${dir}/${fileName}`));
 
-	if (fs.existsSync(`static${dir}/${fileName}`)) return `${dir}/${fileName}`;
+	if (fs.existsSync(`${dir}/${fileName}`)) return `${dir}/${fileName}`;
 
 	return `${dir}/${fileName}`;
 }
