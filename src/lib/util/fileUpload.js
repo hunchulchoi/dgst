@@ -3,6 +3,7 @@ import { writeFileSync } from 'fs';
 import moment from 'moment';
 
 import { UPLOAD_PATH } from '$env/static/private';
+import { error } from "@sveltejs/kit";
 
 export async function write(file, preservePath = 'jjal') {
 	console.log('preservePath', preservePath, 'file', file);
@@ -28,7 +29,6 @@ export async function write(file, preservePath = 'jjal') {
 
 	console.log(`${dir}/${file.name}`, fs.existsSync(`${dir}/${fileName}`));
 
-	if (fs.existsSync(`${dir}/${fileName}`)) return `${dir}/${fileName}`;
-
-	return `${dir}/${fileName}`;
+	if (fs.existsSync(`${dir}/${fileName}`)) return `/${dir}/${fileName}`;
+	else throw error(500, '파일 저장 중에 오류가 발생하였습니다. ㅠㅠ');
 }
