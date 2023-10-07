@@ -40,6 +40,8 @@
 
 		commentImage = webpBlob;
 
+		console.log('webpBlob', webpBlob)
+
 		previewEl.src = window.URL.createObjectURL(webpBlob);
 		previewEl.dataset.filename = event.target.files[0].name;
 		previewEl.style.height = '80px';
