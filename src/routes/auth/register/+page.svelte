@@ -80,11 +80,16 @@
 
 		fetch('/auth/register', { method: 'PATCH', body: formData })
 			.then((res) => {
+
+				console.log('res', res);
+
 				if (res.ok) {
 					alert('등록 되었습니다.');
 					console.log(res);
 
 					goto('/');
+				}else{
+					alert(res.message || '저장 중에 오류가 발생하였습니다.')
 				}
 			})
 			.catch((reason) => {
