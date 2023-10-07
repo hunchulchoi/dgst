@@ -13,8 +13,11 @@
 	} from 'sveltestrap';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
+	import {fade} from "svelte/transition";
+
 	import moment from 'moment';
 	import 'moment/locale/ko.js';
+
 
 	moment.locale('ko');
 
@@ -59,7 +62,7 @@
 					</tr>
 				{:else}
 					{#each data.articles as article}
-						<tr>
+						<tr transition:fade>
 							<th
 								scope="row"
 								style="cursor:pointer"
