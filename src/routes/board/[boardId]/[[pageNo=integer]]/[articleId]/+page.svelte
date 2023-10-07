@@ -62,6 +62,9 @@
 			body: formData
 		})
 			.then(async (res) => {
+
+				console.log('res', res);
+
 				if (res.status !== 201) {
 					const { message } = await res.json();
 					alert(message);
