@@ -5,6 +5,7 @@ import mime from 'mime';
 import {UPLOAD_PATH } from '$env/static/private';
 import { error } from "@sveltejs/kit";
 import path from "path";
+import webp from 'webp-converter';
 
 function safeString(_name, _path){
 	
@@ -38,8 +39,8 @@ export async function write(file, preservePath = 'jjal') {
 	}
 
 	console.debug(UPLOAD_PATH, dir, fs.existsSync(`${UPLOAD_PATH}${dir}`));
-
-	const fileName = `${file.name.substring(
+	
+	let fileName = `${file.name.substring(
 		0,
 		file.name.lastIndexOf('.')
 	).substring(0,10)}_${new Date().getTime()}${file.name.substring(file.name.lastIndexOf('.'))}`
@@ -49,6 +50,19 @@ export async function write(file, preservePath = 'jjal') {
 	fs.writeFileSync(`${UPLOAD_PATH}${dir}/${fileName}`, Buffer.from(await file.arrayBuffer()));
 
 	//console.log(`${UPLOAD_PATH}${dir}/${fileName}`, fs.existsSync(`${UPLOAD_PATH}${dir}/${fileName}`));
+	
+	
+	// 움짤 압축
+	if(file.type === 'image/gif'){
+		
+		console.dir(file);
+		
+		const gwebp = await webp.gwebp(`${UPLOAD_PATH}${dir}/${fileName}`, `${UPLOAD_PATH}${dir}/${fileName}.webp`);
+		
+		fileName = `${fileName}.webp`;
+		
+		console.log('gwebp', gwebp)
+	}
 
 	if (fs.existsSync(`${UPLOAD_PATH}${dir}/${fileName}`)) return `/images${dir}/${fileName}`;
 	else throw error(500, '파일 저장 중에 오류가 발생하였습니다. 쿠훕ㅠㅠ');

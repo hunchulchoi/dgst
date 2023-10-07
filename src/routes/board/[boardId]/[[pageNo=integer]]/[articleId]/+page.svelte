@@ -36,16 +36,48 @@
 
 	async function preview(event) {
 
-		const webpBlob = await srcToWebP(window.URL.createObjectURL(event.target.files[0]));
+		previewEl.src = window.URL.createObjectURL(event.target.files[0]);
 
-		commentImage = webpBlob;
+		console.log(event.target.files[0])
 
-		console.log('webpBlob', webpBlob)
+		previewEl.onload = async (evt) => {
 
-		previewEl.src = window.URL.createObjectURL(webpBlob);
-		previewEl.dataset.filename = event.target.files[0].name;
-		previewEl.style.height = '80px';
-		previewEl.classList.remove('d-none');
+			console.log('evt', evt, evt.target)
+
+			if(event.target.files[0].name.toLowerCase().endsWith('.gif')) {
+
+				commentImage = event.target.files[0];
+
+			}else{
+
+				const _width = previewEl.naturalWidth;
+				const _height = previewEl.naturalHeight;
+
+				console.log(_width)
+				console.log(_height)
+
+				const option = {quality:0.95}
+
+				if(_width>1000){
+					option.width = 1000;
+					option.height = _height/(_width/1000)
+				}
+
+				const webp = await srcToWebP(window.URL.createObjectURL(event.target.files[0]), option);
+
+				commentImage = new File(webp, event.target.files[0].name);
+
+				console.log('webpBlob', commentImage)
+
+			}
+
+			previewEl.style.height = '80px';
+			previewEl.classList.remove('d-none');
+		}
+
+		console.log(222, previewEl.naturalWidth)
+		console.log(222, previewEl.naturalHeight)
+
 	}
 
 	let commentContent;
@@ -65,7 +97,7 @@
 		const formData = new FormData();
 
 		formData.append('content', commentContent);
-		if (commentImage) formData.append('image', new File([commentImage], previewEl.dataset.filename ));
+		if (commentImage) formData.append('image', commentImage);
 
 		fetch(`/board/${$page.params.boardId}/${$page.params.articleId}/comment`, {
 			method: 'POST',
