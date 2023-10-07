@@ -35,7 +35,7 @@ export const load = async ({ params }) => {
 
 	return {
 		article: JSON.parse(JSON.stringify(article)),
-		photo: author.photo,
+		photo: author.photo|| '/icons/unknown-person-icon-4.jpg',
 		introduction: author.introduction
 	};
 };

@@ -37,8 +37,8 @@
 		}
 	</style>
 </svelte:head>
-<main class="container p-4 my-3">
-	<Row class="text-center" style="max-width: 1000px">
+<main class="container p-2 my-1">
+	<Row class="p-3 shadow rounded-4" style="max-width: 1000px">
 		<Row class="border border-secondary-subtle rounded-4 py-5 px-4 shadow">
 			<form
 				method="POST"
