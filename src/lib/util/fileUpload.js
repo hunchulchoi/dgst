@@ -54,7 +54,7 @@ export async function write(file, preservePath = 'jjal') {
 
 	console.log(`${UPLOAD_PATH}${dir}/${fileName}`, fs.existsSync(`${UPLOAD_PATH}${dir}/${fileName}`));
 
-	if (fs.existsSync(`${dir}/${fileName}`)) return `${dir}/${fileName}`;
+	if (fs.existsSync(`images/${dir}/${fileName}`)) return `${dir}/${fileName}`;
 	else throw error(500, '파일 저장 중에 오류가 발생하였습니다. ㅠㅠ');
 }
 
