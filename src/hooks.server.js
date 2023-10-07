@@ -9,7 +9,7 @@ import {
 } from '$env/static/private';
 import { MongoDBAdapter } from '@auth/mongodb-adapter';
 import clientPromise from '$lib/database/clientPromise.js';
-import bcrypt from 'bcrypt';
+import crypto from "crypto";
 
 export const handle = SvelteKitAuth({
 	providers: [
@@ -19,7 +19,7 @@ export const handle = SvelteKitAuth({
 			profile(profile) {
 				return {
 					id: profile.sub,
-					email: bcrypt.hashSync(profile.email, bcrypt.genSaltSync(12)),
+					email: crypto.createHash('sha512').update(profile.email).digest('base64'),
 					nickname: null,
 					introduction: null,
 					photo: null,
