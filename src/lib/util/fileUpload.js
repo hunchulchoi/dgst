@@ -1,5 +1,4 @@
 import * as fs from 'fs';
-import { writeFileSync } from 'fs';
 import moment from 'moment';
 import mime from 'mime';
 
@@ -29,7 +28,7 @@ export async function write(file, preservePath = 'jjal') {
 		throw error(400, {message: '잘못된 요청입니다.'});
 	}
 
-	const dir = `/${preservePath.replace('..', '').replace('/', '')}/${moment().format(
+	const dir = `/${preservePath}/${moment().format(
 		'YYYY'
 	)}/${moment().format('MM')}/${moment().format('DD')}`;
 	
@@ -48,11 +47,11 @@ export async function write(file, preservePath = 'jjal') {
 		.replace('..', '')
 		.replace('/', '');
 
-	writeFileSync(`${UPLOAD_PATH}${dir}/${fileName}`, Buffer.from(await file.arrayBuffer()));
+	fs.writeFileSync(`${UPLOAD_PATH}${dir}/${fileName}`, Buffer.from(await file.arrayBuffer()));
 
 	console.log(`${UPLOAD_PATH}${dir}/${fileName}`, fs.existsSync(`${UPLOAD_PATH}${dir}/${fileName}`));
 
-	if (fs.existsSync(`images/${dir}/${fileName}`)) return `${dir}/${fileName}`;
+	if (fs.existsSync(`${UPLOAD_PATH}${dir}/${fileName}`)) return `images${dir}/${fileName}`;
 	else throw error(500, '파일 저장 중에 오류가 발생하였습니다. ㅠㅠ');
 }
 
