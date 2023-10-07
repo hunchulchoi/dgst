@@ -58,7 +58,7 @@ export const load = async ({ params }) => {
 				(youtube ? '<i class="bi bi-youtube text-danger px-2"></i>' : '');
 		});
 
-		console.log('articles', articles);
+		//console.log('articles', articles);
 
 		return { pageNo, maxPage, articles: JSON.parse(JSON.stringify(articles)) };
 	} catch (error) {
