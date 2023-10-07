@@ -38,9 +38,10 @@
 
 		const webpBlob = await srcToWebP(window.URL.createObjectURL(event.target.files[0]));
 
-		console.log('webpBlob', webpBlob)
+		commentImage = webpBlob;
 
 		previewEl.src = window.URL.createObjectURL(webpBlob);
+		previewEl.dataset.filename = event.target.files[0].name;
 		previewEl.style.height = '80px';
 		previewEl.classList.remove('d-none');
 	}
@@ -62,7 +63,7 @@
 		const formData = new FormData();
 
 		formData.append('content', commentContent);
-		if (commentImage) formData.append('image', commentImage[0]);
+		if (commentImage) formData.append('image', new File([commentImage], previewEl.dataset.filename ));
 
 		fetch(`/board/${$page.params.boardId}/${$page.params.articleId}/comment`, {
 			method: 'POST',
@@ -230,7 +231,6 @@
 						>
 						<Input
 							type="file"
-							bind:files={commentImage}
 							on:change={preview}
 							muliple="false"
 							accept="image/*"
