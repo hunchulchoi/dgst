@@ -6,7 +6,6 @@ import {UPLOAD_PATH } from '$env/static/private';
 import { error } from "@sveltejs/kit";
 import path from "path";
 
-
 function safeString(_name, _path){
 	
 	_name = decodeURIComponent(_name);

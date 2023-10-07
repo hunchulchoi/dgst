@@ -18,6 +18,8 @@
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 
+	import {srcToWebP} from "webp-converter-browser";
+
 	moment.locale('ko');
 
 	function comments() {
@@ -32,8 +34,13 @@
 		goto(`/board/${$page.params.boardId}/${pageNo}`);
 	}
 
-	function preview(event) {
-		previewEl.src = window.URL.createObjectURL(event.target.files[0]);
+	async function preview(event) {
+
+		const webpBlob = await srcToWebP(window.URL.createObjectURL(event.target.files[0]));
+
+		console.log('webpBlob', webpBlob)
+
+		previewEl.src = window.URL.createObjectURL(webpBlob);
 		previewEl.style.height = '80px';
 		previewEl.classList.remove('d-none');
 	}
