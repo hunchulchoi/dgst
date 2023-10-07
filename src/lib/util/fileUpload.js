@@ -49,10 +49,10 @@ export async function write(file, preservePath = 'jjal') {
 
 	fs.writeFileSync(`${UPLOAD_PATH}${dir}/${fileName}`, Buffer.from(await file.arrayBuffer()));
 
-	console.log(`${UPLOAD_PATH}${dir}/${fileName}`, fs.existsSync(`${UPLOAD_PATH}${dir}/${fileName}`));
+	//console.log(`${UPLOAD_PATH}${dir}/${fileName}`, fs.existsSync(`${UPLOAD_PATH}${dir}/${fileName}`));
 
 	if (fs.existsSync(`${UPLOAD_PATH}${dir}/${fileName}`)) return `images${dir}/${fileName}`;
-	else throw error(500, '파일 저장 중에 오류가 발생하였습니다. ㅠㅠ');
+	else throw error(500, '파일 저장 중에 오류가 발생하였습니다. 쿠훕ㅠㅠ');
 }
 
 export async function read(file, preservePath) {
