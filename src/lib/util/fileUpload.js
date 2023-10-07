@@ -18,9 +18,7 @@ function safeString(_name, _path){
 	
 	console.debug(path.normalize(path.join(UPLOAD_PATH, _path, _name)));
 	
-	if(!path.normalize(path.join(UPLOAD_PATH, _path, _name)).startsWith(UPLOAD_PATH)) return false;
-	
-	return true;
+	return path.normalize(path.join(UPLOAD_PATH, _path, _name)).startsWith(UPLOAD_PATH);
 	
 }
 
