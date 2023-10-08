@@ -8,22 +8,24 @@ import path from "path";
 import webp from 'webp-converter';
 
 function safeString(_name, _path){
-	
+
 	_name = decodeURIComponent(_name);
-	
+
 	if(!mime.getType(_name).startsWith('image')) return false;
-	
+
 	_path = decodeURIComponent(_path);
-	
+
 	console.debug(path.normalize(path.join(UPLOAD_PATH, _path, _name)));
-	
+
 	return path.normalize(path.join(UPLOAD_PATH, _path, _name)).startsWith(UPLOAD_PATH);
-	
+
 }
 
 export async function write(file, preservePath = 'jjal') {
 	console.debug('preservePath', preservePath, 'file', file);
-	
+
+	console.dir(file);
+
 	if(!safeString(file.name, preservePath)){
 		throw error(400, {message: '잘못된 요청입니다.'});
 	}
@@ -31,7 +33,7 @@ export async function write(file, preservePath = 'jjal') {
 	const dir = `/${preservePath}/${moment().format(
 		'YYYY'
 	)}/${moment().format('MM')}/${moment().format('DD')}`;
-	
+
 	console.debug('dir', dir)
 
 	if (!fs.existsSync(`${UPLOAD_PATH}${dir}`)) {
@@ -39,7 +41,7 @@ export async function write(file, preservePath = 'jjal') {
 	}
 
 	console.debug(UPLOAD_PATH, dir, fs.existsSync(`${UPLOAD_PATH}${dir}`));
-	
+
 	let fileName = `${file.name.substring(
 		0,
 		file.name.lastIndexOf('.')
@@ -50,17 +52,17 @@ export async function write(file, preservePath = 'jjal') {
 	fs.writeFileSync(`${UPLOAD_PATH}${dir}/${fileName}`, Buffer.from(await file.arrayBuffer()));
 
 	//console.log(`${UPLOAD_PATH}${dir}/${fileName}`, fs.existsSync(`${UPLOAD_PATH}${dir}/${fileName}`));
-	
-	
+
+
 	// 움짤 압축
 	if(file.type === 'image/gif'){
-		
+
 		console.dir(file);
-		
+
 		const gwebp = await webp.gwebp(`${UPLOAD_PATH}${dir}/${fileName}`, `${UPLOAD_PATH}${dir}/${fileName}.webp`);
-		
+
 		fileName = `${fileName}.webp`;
-		
+
 		console.log('gwebp', gwebp)
 	}
 
@@ -69,10 +71,10 @@ export async function write(file, preservePath = 'jjal') {
 }
 
 export async function read(file, preservePath) {
-	
+
 	if(!safeString(file.name, preservePath)){
 		throw error(400, {message: '잘못된 요청입니다.'});
 	}
-	
-	
+
+
 }

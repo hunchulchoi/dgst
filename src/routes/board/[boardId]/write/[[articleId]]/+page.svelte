@@ -1,11 +1,11 @@
 <script>
-	import { Button, Col, FormGroup, Icon, Input, Row } from 'sveltestrap';
-	import CKEditor5 from '$lib/components/CKEditor5.svelte';
-	import { goto } from '$app/navigation';
-	import { page } from '$app/stores';
-	import { enhance } from '$app/forms';
+    import {Button, Col, FormGroup, Icon, Input, Row} from 'sveltestrap';
+    import CKEditor5 from '$lib/components/CKEditor5.svelte';
+    import {goto} from '$app/navigation';
+    import {page} from '$app/stores';
+    import {enhance} from '$app/forms';
 
-	function list() {
+    function list() {
 		if (title || content) {
 			if (!confirm('취소 하시겠습니까? 작성하던 글은 사라집니다.')) return false;
 		}
@@ -38,7 +38,6 @@
 	</style>
 </svelte:head>
 <main class="container p-2 my-1">
-	<Row class="p-3 shadow rounded-4" style="max-width: 1000px">
 		<Row class="border border-secondary-subtle rounded-4 py-5 px-4 shadow">
 			<form
 				method="POST"
@@ -105,5 +104,4 @@
 				</Row>
 			</form>
 		</Row>
-	</Row>
 </main>
