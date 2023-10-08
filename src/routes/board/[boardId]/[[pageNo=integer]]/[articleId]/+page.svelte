@@ -22,7 +22,7 @@
 
     import {srcToWebP} from "webp-converter-browser";
 
-    import {onMount} from "svelte";
+    import Loader from 'svelte-loading-overlay/Loader.svelte';
 
     moment.locale("ko");
 
@@ -44,7 +44,8 @@
         console.log(event.target.files[0]);
 
         previewEl.onload = async (evt) => {
-            console.log("evt", evt, evt.target);
+
+            commentLoading = true;
 
             if (event.target.files[0].name.toLowerCase().endsWith(".gif")) {
                 commentImage = event.target.files[0];
@@ -72,6 +73,8 @@
 
             previewEl.style.height = "80px";
             previewEl.classList.remove("d-none");
+
+            commentLoading = false;
         };
     }
 
@@ -80,8 +83,9 @@
     let commentImage;
     let previewEl;
     let commentImageEl;
+    let commentImageElFiles;
 
-    let commentLoading = true;
+    let commentLoading = false;
 
     function comment() {
         if (!commentContent) {
@@ -92,6 +96,8 @@
             alert("코멘트 내용이 너무 짧습니다.");
             return;
         }
+
+        commentLoading = true;
 
         const formData = new FormData();
 
@@ -106,14 +112,14 @@
                 console.debug("res", res);
 
                 if (res.status !== 201) {
-                    const { message } = await res.json();
+                    const {message} = await res.json();
                     alert(message);
                     return;
                 }
 
                 commentContent = "";
                 commentImage = "";
-                commentImageEl.value = "";
+                commentImageEl.value = '';
                 previewEl.src = "";
                 previewEl.classList.add("d-none");
 
@@ -122,7 +128,7 @@
             .catch((error) => {
                 console.error(error);
                 alert(error.message ?? "저장 중 오류가 발생했습니다.");
-            });
+            }).finally(()=> commentLoading = false);
     }
 
     function deleteComment(commentId) {
@@ -130,11 +136,11 @@
 
         fetch(`/board/${$page.params.boardId}/${$page.params.articleId}/comment`, {
             method: "DELETE",
-            body: JSON.stringify({ commentId })
+            body: JSON.stringify({commentId})
         })
             .then(async (res) => {
                 if (res.status !== 200) {
-                    const { message } = await res.json();
+                    const {message} = await res.json();
                     alert(message);
                     return;
                 }
@@ -152,11 +158,11 @@
 
         fetch(`/board/${$page.params.boardId}/${$page.params.articleId}`, {
             method: "DELETE",
-            body: JSON.stringify({ articleId })
+            body: JSON.stringify({articleId})
         })
             .then(async (res) => {
                 if (res.status !== 200) {
-                    const { message } = await res.json();
+                    const {message} = await res.json();
                     alert(message);
                     return;
                 }
@@ -176,16 +182,6 @@
     function write() {
         goto(`/board/${$page.params.boardId}/write`);
     }
-
-    let Loader;
-
-    onMount(async ()=>{
-
-        if (typeof window !== 'undefined') {
-            Loader = (await import('svelte-loading-overlay')).default;
-            console.log('Loader', Loader);
-        }
-    });
 
     export let data;
 
@@ -210,8 +206,8 @@
                 <span class="text-muted">{moment(data.article.createdAt).format('LLLL')}</span></Col
             >
             <Col class="text-end text-muted" md="6">
-                <Icon class="pe-1" name="eye" />{data.article.read}
-                <Icon class="text-success pe-1" name="hand-thumbs-up" />{data.article.like}</Col
+                <Icon class="pe-1" name="eye"/>{data.article.read}
+                <Icon class="text-success pe-1" name="hand-thumbs-up"/>{data.article.like}</Col
             >
         </Row>
         <Row class="p-3">
@@ -248,19 +244,19 @@
             <!--버튼-->
             <Col class="text-end pe-3">
                 <Button color="danger" on:click={() => remove(data.article._id)} outline>
-                    <Icon name="trash" />
+                    <Icon name="trash"/>
                     삭제
                 </Button>
                 <Button color="success" on:click={() => edit(data.article._id)} outline>
-                    <Icon name="pencil" />
+                    <Icon name="pencil"/>
                     수정
                 </Button>
                 <Button color="primary" on:click={write} outline>
-                    <Icon name="pencil-fill" />
+                    <Icon name="pencil-fill"/>
                     글쓰기
                 </Button>
                 <Button color="secondary" on:click={list} outline>
-                    <Icon name="list" />
+                    <Icon name="list"/>
                     목록
                 </Button>
             </Col>
@@ -268,35 +264,38 @@
         <Row class="my-3 bg-warning-subtle p-3 rounded-3 mb-4">
             <!--리플-->
             <Col>
-                <Icon name="chat" />
+                <Icon name="chat"/>
                 의견남기기
                 <Badge color="primary">{commentData.length}</Badge>
             </Col>
             <Col class="text-end">
                 <Button class="fw-bolder py-0" on:click={comments} outline>
-                    <Icon name="arrow-repeat" />
+                    <Icon name="arrow-repeat"/>
                 </Button>
             </Col>
         </Row>
 
         <Row class="mb-5">
             {#if $page.data.session?.user.nickname}
-                <Row class="border p-2 rounded-4 shadow-sm" bind:this={commentDiv}>
+                <div class="border p-4 rounded-4 shadow-sm" bind:this={commentDiv}>
                     <Loader
-                        bind:active={commentLoading}
+                            bind:active={commentLoading}
+                            container={commentDiv}
+                            component="Dot"
+                            opacity="0.7"
                     />
                     <InputGroup class="mb-2">
                         <InputGroupText class="text-success">
-                            <Icon name="card-image" class="pe-2" />
+                            <Icon name="card-image" class="pe-2"/>
                             짤 첨부
                         </InputGroupText>
-                        <Input
+                        <input
                                 type="file"
-                                bint:this={commentImageEl}
+                                bind:this={commentImageEl}
                                 on:change={preview}
                                 muliple="false"
                                 accept="image/*"
-                                class="m-2"
+                                class="form-control m-2"
                         />
                     </InputGroup>
                     <InputGroup>
@@ -312,21 +311,21 @@
                                 style="max-width: 600px"
                         />
                         <Button color="primary" outline on:click={comment}>
-                            <Icon name="pencil-fill" />
+                            <Icon name="pencil-fill"/>
                             등록
-                            <Spinner color="success" size="sm" class="d-none" />
+                            <Spinner color="success" size="sm" class="d-none"/>
                         </Button>
                     </InputGroup>
-                </Row>
+                </div>
             {/if}
 
             {#each commentData as comment}
                 <Row class="p-4 border-bottom border-gray-subtle">
                     <Col xs="auto">
-                        <Image thumbnail src={comment.photo} style="height:50px" rounded />
+                        <Image thumbnail src={comment.photo} style="height:50px" rounded/>
                     </Col>
                     <Col xs="auto" clsss="border-end">
-                        {comment.nickname}<br />
+                        {comment.nickname}<br/>
                         <span class="text-muted" style="font-size: smaller"
                         >{moment(comment.createdAt).fromNow()}</span
                         >
@@ -337,7 +336,7 @@
                                 {#if comment.image}
                                     <Row class="pb-3">
                                         <Col>
-                                            <Image src={comment.image} alt="리플 짤" style="max-width: 80%;" />
+                                            <Image src={comment.image} alt="리플 짤" style="max-width: 80%;"/>
                                         </Col>
                                     </Row>
                                 {/if}
@@ -354,11 +353,11 @@
                                             outline
                                             color="danger"
                                     >
-                                        <Icon name="trash" />
+                                        <Icon name="trash"/>
                                         삭제
                                     </Button>
                                     <Button size="sm" outline color="primary" class="d-none">
-                                        <Icon name="pencil" />
+                                        <Icon name="pencil"/>
                                         수정
                                     </Button>
                                 </Col>

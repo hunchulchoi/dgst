@@ -42,8 +42,6 @@
 	$: loginButton = `/oauth/btn_google_signin_${
 		$theme === 'light' ? 'ligth' : 'dark'
 	}_normal_web.png`;
-
-	console.log('session', $page.data);
 </script>
 
 <Styles theme={$theme} />
