@@ -14,4 +14,4 @@ export const userSchema = new Schema({
 	last_modified: { type: Date, default: new Date() }
 });
 
-export const User = models.users || model('users', userSchema);
+export const User = models.user || model('user', userSchema);

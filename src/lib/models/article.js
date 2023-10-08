@@ -15,9 +15,9 @@ export const articleSchema = new Schema(
 		like: { type: Number, default: 0 },
 		unlike: { type: Number, default: 0 },
 		modified_email: { type: String },
-		comments: [{ type: Schema.Types.ObjectId, ref: 'comments' }]
+		comments: [{ type: Schema.Types.ObjectId, ref: 'comment' }]
 	},
 	{ timestamps: true }
 );
 
-export const Article = models.ariticles || model('articles', articleSchema);
+export const Article = models.ariticle || model('article', articleSchema);
