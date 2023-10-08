@@ -1,25 +1,13 @@
 <script>
-	import {
-		Badge,
-		Button,
-		Col,
-		Icon,
-		Image,
-		Pagination,
-		PaginationItem,
-		PaginationLink,
-		Row,
-		Table
-	} from 'sveltestrap';
-	import { page } from '$app/stores';
-	import { goto } from '$app/navigation';
-	import {fade} from "svelte/transition";
+    import {Badge, Button, Col, Icon, Pagination, PaginationItem, PaginationLink, Row, Table} from 'sveltestrap';
+    import {page} from '$app/stores';
+    import {goto} from '$app/navigation';
 
-	import moment from 'moment';
-	import 'moment/locale/ko.js';
+    import moment from 'moment';
+    import 'moment/locale/ko.js';
 
 
-	moment.locale('ko');
+    moment.locale('ko');
 
 	function write() {
 		goto(`/board/${$page.params.boardId}/write`);
@@ -62,7 +50,7 @@
 					</tr>
 				{:else}
 					{#each data.articles as article}
-						<tr transition:fade>
+						<tr>
 							<th
 								scope="row"
 								style="cursor:pointer"

@@ -71,6 +71,7 @@ class DgstUploadAdapter {
 		console.log('_sendRequest', file);
 
 		const data = new FormData();
+		
 		data.append('upload', file);
 
 		this.xhr.send(data);
