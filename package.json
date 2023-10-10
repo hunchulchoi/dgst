@@ -13,7 +13,7 @@
 		"format": "prettier --plugin-search-dir . --write .",
 		"test:integration": "playwright test",
 		"test:unit": "vitest",
-        "postinstall": "patch-package"
+		"postinstall": "patch-package"
 	},
 	"devDependencies": {
 		"@playwright/test": "^1.28.1",
@@ -44,9 +44,10 @@
 		"mongodb": "^6.1.0",
 		"mongoose": "^7.5.2",
 		"patch-package": "^8.0.0",
+		"postinstall-postinstall": "^2.1.0",
 		"svelte-loading-overlay": "^0.2.1",
 		"sveltestrap": "^5.11.2",
 		"webp-converter": "^2.3.3",
-        "webp-converter-browser": "^1.0.4"
+		"webp-converter-browser": "^1.0.4"
 	}
 }
