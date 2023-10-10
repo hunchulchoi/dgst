@@ -1,6 +1,6 @@
 import * as fs from 'fs';
-import moment from 'moment';
 import mime from 'mime';
+import {getDate, getMonth, getYear} from "date-fns";
 
 import {UPLOAD_PATH } from '$env/static/private';
 import { error } from "@sveltejs/kit";
@@ -24,17 +24,13 @@ function safeString(_name, _path){
 export async function write(file, preservePath = 'jjal') {
 	console.debug('preservePath', preservePath, 'file', file);
 
-	console.dir(file);
+    const now = new Date();
 
 	if(!safeString(file.name, preservePath)){
 		throw error(400, {message: '잘못된 요청입니다.'});
 	}
 
-	const dir = `/${preservePath}/${moment().format(
-		'YYYY'
-	)}/${moment().format('MM')}/${moment().format('DD')}`;
-
-	console.debug('dir', dir)
+	const dir = `/${preservePath}/${getYear(now)}/${getMonth(now)}/${getDate(now)}`;
 
 	if (!fs.existsSync(`${UPLOAD_PATH}${dir}`)) {
 		fs.mkdirSync(`${UPLOAD_PATH}${dir}`, { recursive: true });
@@ -45,26 +41,16 @@ export async function write(file, preservePath = 'jjal') {
 	let fileName = `${file.name.substring(
 		0,
 		file.name.lastIndexOf('.')
-	).substring(0,10)}_${new Date().getTime()}${file.name.substring(file.name.lastIndexOf('.'))}`
-		.replace('..', '')
-		.replace('/', '');
+	).substring(0,10)}_${now.getTime()}${file.name.substring(file.name.lastIndexOf('.'))}`;
 
 	fs.writeFileSync(`${UPLOAD_PATH}${dir}/${fileName}`, Buffer.from(await file.arrayBuffer()));
 
-	//console.log(`${UPLOAD_PATH}${dir}/${fileName}`, fs.existsSync(`${UPLOAD_PATH}${dir}/${fileName}`));
-
-
 	// 움짤 압축
-	if(file.type === 'image/gif'){
-
-		console.dir(file);
-
+	/*if(file.type === 'image/gif'){
 		const gwebp = await webp.gwebp(`${UPLOAD_PATH}${dir}/${fileName}`, `${UPLOAD_PATH}${dir}/${fileName}.webp`);
-
 		fileName = `${fileName}.webp`;
-
 		console.log('gwebp', gwebp)
-	}
+	}*/
 
 	if (fs.existsSync(`${UPLOAD_PATH}${dir}/${fileName}`)) return `/images${dir}/${fileName}`;
 	else throw error(500, '파일 저장 중에 오류가 발생하였습니다. 쿠훕ㅠㅠ');

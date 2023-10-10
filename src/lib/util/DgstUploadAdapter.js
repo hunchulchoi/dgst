@@ -1,3 +1,5 @@
+import {srcToWebP} from 'webp-converter-browser'
+
 class DgstUploadAdapter {
 	constructor(loader) {
 		this.loader = loader;
@@ -36,7 +38,7 @@ class DgstUploadAdapter {
 		const loader = this.loader;
 		const genericErrorText = '파일 업로드 중 오류가 발생하였습니다.';
 
-		console.log('xhr', xhr);
+		//console.log('xhr', xhr);
 
 		xhr.addEventListener('error', () => reject(genericErrorText));
 		xhr.addEventListener('abort', () => reject('파일 업로드가 취소 되었습니다.'));
@@ -67,12 +69,24 @@ class DgstUploadAdapter {
 	}
 
 	// 데이터를 준비하고 서버에 전송한다.
-	_sendRequest(file) {
+    _sendRequest(file) {
 		console.log('_sendRequest', file);
 
 		const data = new FormData();
-		
-		data.append('upload', file);
+
+        if(file.type !== 'image/gif'){
+
+            console.log('window.URL.createObjectURL(file)', window.URL.createObjectURL(file))
+
+            srcToWebP(window.URL.createObjectURL(file), {width: 1000})
+                .then(webp=>{
+                    console.debug('webp', webp);
+                    data.append('upload', new File([webp], file.name));
+                })
+
+        }else{
+		    data.append('upload', file);
+        }
 
 		this.xhr.send(data);
 	}

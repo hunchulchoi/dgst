@@ -21,7 +21,7 @@ services:
     networks:
       - dgst-svelte-net
     volumes:
-      - /Users/hunchulchoi/dgst-storage-vol/uploads:/dgst/static/uploads
+      - /Users/hunchulchoi/projects/volumes/dgst/uploads:/dgst/static/uploads
     ports:
       - '5173:4173'
     environment:

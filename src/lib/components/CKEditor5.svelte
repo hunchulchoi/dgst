@@ -7,12 +7,14 @@
 	import DgstUploadAdapter from '$lib/util/DgstUploadAdapter.js';
 	//import Uploader from "$lib/util/DgstUploadPlugin.js";
 	import { onMount } from 'svelte';
+
+    import Loader from 'svelte-loading-overlay/Loader.svelte';
+
 	let CKEditor;
 
 	function DgstUploadAdapterPlugin(editor) {
 		//
 		editor.plugins.get('FileRepository').createUploadAdapter = (loader) => {
-			console.log('loader', loader);
 			return new DgstUploadAdapter(loader);
 		};
 	}
@@ -86,10 +88,45 @@
 			.parentElement.insertBefore(editor.ui.view.toolbar.element, editor.ui.getEditableElement());
 
 		editor.plugins.get('FileRepository').createLoader('');
-	}
+
+
+
+        const imageUploadEditing = editor.plugins.get( 'ImageUploadEditing' );
+        //const imageInsert = editor.plugins.get( 'ImageInsert' );
+
+        console.log('imageUploadEditing', imageUploadEditing)
+        console.log('ImageInline', editor.plugins.get( 'ImageInline' ))
+        console.log('ImageInlineEditing', editor.plugins.get( 'ImageInlineEditing' ))
+
+        imageUploadEditing.isEnabled = false;
+        editor.plugins.get( 'ImageInlineEditing' ).isEnabled = false;
+
+        imageUploadEditing.on( 'uploadComplete', ( evt, { data, imageElement } ) => {
+
+            console.log('uploadComplete', evt, 'data', data, 'imageElement', imageElement)
+
+            editor.model.change( writer => {
+                writer.setAttribute( 'someAttribute', 'foo', imageElement );
+            } );
+        } );
+
+        editor.plugins.get('FileRepository').loaders._items[0].on('uploaded', (evt, data)=>{
+            console.log('evt', evt, 'data', data);
+        })
+    }
+
+    let editorDiv;
+    let loadingImage = false;
 </script>
 
 <main>
+    <div bind:this={editorDiv}>
+        <Loader
+                active={loadingImage}
+                container={editorDiv}
+                component="Dot"
+                opacity="0.7"
+        />
 	{#if CKEditor && editor}
 		<svelte:component
 			this={CKEditor}
@@ -99,4 +136,5 @@
 			bind:value={editorData}
 		/>
 	{/if}
+    </div>
 </main>
