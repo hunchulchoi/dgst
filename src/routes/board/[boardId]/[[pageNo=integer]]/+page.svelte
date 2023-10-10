@@ -3,13 +3,10 @@
     import {page} from '$app/stores';
     import {goto} from '$app/navigation';
 
-    import moment from 'moment';
-    import 'moment/locale/ko.js';
+    import { formatDistanceToNow, parseISO } from 'date-fns'
+    import {ko} from "date-fns/locale";
 
-
-    moment.locale('ko');
-
-	function write() {
+    function write() {
 		goto(`/board/${$page.params.boardId}/write`);
 	}
 
@@ -68,7 +65,7 @@
 							<td class="text-muted text-end"
 								><Icon name="hand-thumbs-up" class="text-success pe-1" />{article.like}</td
 							>
-							<td class="text-muted">{moment(article.createdAt).locale('ko-kr').fromNow()}</td>
+							<td class="text-muted">{formatDistanceToNow(parseISO(article.createdAt), {locale: ko, addSuffix: true })}</td>
 						</tr>
 					{/each}
 				{/if}

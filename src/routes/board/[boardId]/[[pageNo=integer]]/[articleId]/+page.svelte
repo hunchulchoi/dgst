@@ -15,16 +15,15 @@
         Row,
         Spinner
     } from "sveltestrap";
-    import moment from "moment";
-    import "moment/locale/ko.js";
     import {page} from "$app/stores";
     import {goto} from "$app/navigation";
 
-    import {srcToWebP} from "webp-converter-browser";
+    import { formatDistanceToNow, parseISO, formatISO9075 } from 'date-fns'
+    import {ko} from "date-fns/locale";
+
+    import {blobToWebP, srcToWebP} from "webp-converter-browser";
 
     import Loader from 'svelte-loading-overlay/Loader.svelte';
-
-    moment.locale("ko");
 
     function comments() {
         fetch(`/board/${$page.params.boardId}/${$page.params.articleId}/comment`)
@@ -51,15 +50,10 @@
                 commentImage = event.target.files[0];
             } else {
                 const _width = previewEl.naturalWidth;
-                const _height = previewEl.naturalHeight;
-
-                const option = {};
 
                 if (_width > 1400) {
-                    option.width = 1000;
-                    option.height = _height / (_width / 1000);
 
-                    const webp = await srcToWebP(window.URL.createObjectURL(event.target.files[0]), option);
+                    const webp = await blobToWebP(event.target.files[0], {width: 1000});
 
                     console.debug("webp", webp);
 
@@ -203,7 +197,7 @@
         <Row class="border-bottom border-secondary-subtle pt-2">
             <Col md="6"
             >{data.article.nickname}
-                <span class="text-muted">{moment(data.article.createdAt).format('LLLL')}</span></Col
+                <span class="text-muted">{formatISO9075(parseISO(data.article.createdAt))}</span></Col
             >
             <Col class="text-end text-muted" md="6">
                 <Icon class="pe-1" name="eye"/>{data.article.read}
@@ -243,6 +237,7 @@
         <Row>
             <!--버튼-->
             <Col class="text-end pe-3">
+                {#if data.article.email === $page.data.session?.user.email}
                 <Button color="danger" on:click={() => remove(data.article._id)} outline>
                     <Icon name="trash"/>
                     삭제
@@ -251,6 +246,7 @@
                     <Icon name="pencil"/>
                     수정
                 </Button>
+                {/if}
                 <Button color="primary" on:click={write} outline>
                     <Icon name="pencil-fill"/>
                     글쓰기
@@ -327,7 +323,7 @@
                     <Col xs="auto" clsss="border-end">
                         {comment.nickname}<br/>
                         <span class="text-muted" style="font-size: smaller"
-                        >{moment(comment.createdAt).fromNow()}</span
+                        >{formatDistanceToNow(parseISO(comment.createdAt), {locale: ko, addSuffix: true })}</span
                         >
                     </Col>
                     <Col>
@@ -366,6 +362,29 @@
                     </Col>
                 </Row>
             {/each}
+        </Row>
+        <Row>
+            <!--버튼-->
+            <Col class="text-end pe-3">
+                {#if data.article.email === $page.data.session?.user.email}
+                    <Button color="danger" on:click={() => remove(data.article._id)} outline>
+                        <Icon name="trash"/>
+                        삭제
+                    </Button>
+                    <Button color="success" on:click={() => edit(data.article._id)} outline>
+                        <Icon name="pencil"/>
+                        수정
+                    </Button>
+                {/if}
+                <Button color="primary" on:click={write} outline>
+                    <Icon name="pencil-fill"/>
+                    글쓰기
+                </Button>
+                <Button color="secondary" on:click={list} outline>
+                    <Icon name="list"/>
+                    목록
+                </Button>
+            </Col>
         </Row>
     </Row>
 </main>
