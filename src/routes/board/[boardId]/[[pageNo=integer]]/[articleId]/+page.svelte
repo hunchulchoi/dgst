@@ -18,7 +18,7 @@
     import {page} from "$app/stores";
     import {goto} from "$app/navigation";
 
-    import { formatDistanceToNow, parseISO, formatISO9075 } from 'date-fns'
+    import { formatDistanceToNowStrict, parseISO, formatISO9075 } from 'date-fns'
     import {ko} from "date-fns/locale";
 
     import {blobToWebP, srcToWebP} from "webp-converter-browser";
@@ -323,7 +323,7 @@
                     <Col xs="auto" clsss="border-end">
                         {comment.nickname}<br/>
                         <span class="text-muted" style="font-size: smaller"
-                        >{formatDistanceToNow(parseISO(comment.createdAt), {locale: ko, addSuffix: true })}</span
+                        >{formatDistanceToNowStrict(parseISO(comment.createdAt), {locale: ko, addSuffix: true })}</span
                         >
                     </Col>
                     <Col>
