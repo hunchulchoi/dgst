@@ -69,23 +69,19 @@ class DgstUploadAdapter {
 	}
 
 	// 데이터를 준비하고 서버에 전송한다.
-    _sendRequest(file) {
+    async _sendRequest(file) {
 		console.log('_sendRequest', file);
 
 		const data = new FormData();
 
         if(file.type !== 'image/gif'){
 
-            console.log('window.URL.createObjectURL(file)', window.URL.createObjectURL(file))
+            const webp = await srcToWebP(window.URL.createObjectURL(file), {width: 1000});
 
-            srcToWebP(window.URL.createObjectURL(file), {width: 1000})
-                .then(webp=>{
-                    console.debug('webp', webp);
-                    data.append('upload', new File([webp], file.name));
-                })
+            data.append('upload', new File([webp], file.name));
 
         }else{
-		    data.append('upload', file);
+            data.append('upload', file);
         }
 
 		this.xhr.send(data);
