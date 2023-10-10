@@ -3,7 +3,7 @@
     import {page} from '$app/stores';
     import {goto} from '$app/navigation';
 
-    import { formatDistanceToNow, parseISO } from 'date-fns'
+    import { formatDistanceToNowStrict, parseISO } from 'date-fns'
     import {ko} from "date-fns/locale";
 
     function write() {
@@ -65,7 +65,7 @@
 							<td class="text-muted text-end"
 								><Icon name="hand-thumbs-up" class="text-success pe-1" />{article.like}</td
 							>
-							<td class="text-muted">{formatDistanceToNow(parseISO(article.createdAt), {locale: ko, addSuffix: true })}</td>
+							<td class="text-muted">{formatDistanceToNowStrict(parseISO(article.createdAt), {locale: ko, addSuffix: true })}</td>
 						</tr>
 					{/each}
 				{/if}
