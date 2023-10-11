@@ -73,7 +73,7 @@
             class="p-0 rounded"
             style="max-height: 30px;max-width: 30px"
           />
-          {$page.data.session.user.nickname}
+            <span class="text-secondary">{$page.data.session.user.nickname}</span>
           <Button class="bi bi-door-closed" size="sm" on:click={handleSignOut}>logout</Button>
         {:else}
           <NavLink on:click={handleGoogleSignIn} class="p-0">
@@ -81,7 +81,7 @@
           </NavLink>
         {/if}
       </NavItem>
-      <Dropdown nav inNavbar>
+      <Dropdown nav inNavbar class="text-muted">
         <DropdownToggle nav caret><Icon name={colorModeIcon} /></DropdownToggle>
         <DropdownMenu end>
           <DropdownItem on:click={() => theme.set('auto')}
