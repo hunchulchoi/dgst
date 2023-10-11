@@ -1,22 +1,12 @@
 <script>
-  import {
-    Badge,
-    Button,
-    Col,
-    Icon,
-    Pagination,
-    PaginationItem,
-    PaginationLink,
-    Row,
-    Table
-  } from 'sveltestrap';
-  import { page } from '$app/stores';
-  import { goto } from '$app/navigation';
+    import {Badge, Button, Col, Icon, Pagination, PaginationItem, PaginationLink, Row} from 'sveltestrap';
+    import {page} from '$app/stores';
+    import {goto} from '$app/navigation';
 
-  import { formatDistanceToNowStrict, parseISO } from 'date-fns';
-  import { ko } from 'date-fns/locale';
+    import {formatDistanceToNowStrict, parseISO} from 'date-fns';
+    import {ko} from 'date-fns/locale';
 
-  function write() {
+    function write() {
     goto(`/board/${$page.params.boardId}/write`);
   }
 
@@ -28,7 +18,7 @@
   export let data;
 </script>
 
-<main class="container py-4 my-4">
+<main class="container py-4 my-md-4">
   <Row class="p-3 shadow rounded-4">
 
         {#if !data.articles.length}
@@ -73,9 +63,9 @@
           <PaginationItem
             ><PaginationLink first href={`/board/${$page.params.boardId}`} /></PaginationItem
           >
-          {#each Array(data.maxPage) as _, i}
+          {#each Array(data.maxPage) as i}
             <PaginationItem
-              active={(!$page.params.pageNo && i === 0) || i + 1 == $page.params.pageNo}
+              active={(!$page.params.pageNo && i === 0) || i + 1 === $page.params.pageNo}
             >
               <PaginationLink href={`/board/${$page.params.boardId}/${i + 1}`}>
                 {i + 1}
