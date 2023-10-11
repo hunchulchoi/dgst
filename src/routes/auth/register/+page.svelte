@@ -1,256 +1,255 @@
 <script>
-	import {
-		Button,
-		Card,
-		CardBody,
-		CardFooter,
-		CardHeader,
-		CardSubtitle,
-		CardText,
-		Col,
-		Form,
-		FormCheck,
-		FormGroup,
-		Icon,
-		Image,
-		Input,
-		InputGroup,
-		InputGroupText,
-		Label,
-		Popover,
-		Row
-	} from 'sveltestrap';
+  import {
+    Button,
+    Card,
+    CardBody,
+    CardFooter,
+    CardHeader,
+    CardSubtitle,
+    CardText,
+    Col,
+    Form,
+    FormCheck,
+    FormGroup,
+    Icon,
+    Image,
+    Input,
+    InputGroup,
+    InputGroupText,
+    Label,
+    Popover,
+    Row
+  } from 'sveltestrap';
 
-	import { PUBLIC_GOOGLE_RECAPTCHA_SITE_KEY } from '$env/static/public';
-	import { page } from '$app/stores';
-	import { goto } from '$app/navigation';
-	import { browser } from '$app/environment';
+  import { PUBLIC_GOOGLE_RECAPTCHA_SITE_KEY } from '$env/static/public';
+  import { page } from '$app/stores';
+  import { goto } from '$app/navigation';
+  import { browser } from '$app/environment';
 
-	console.log('$page.data.session', $page.data);
+  console.log('$page.data.session', $page.data);
 
-	if (!$page.data.session || $page.data.session.nickname) {
-		if (browser) goto('/', { replaceState: true });
-	}
+  if (!$page.data.session || $page.data.session.nickname) {
+    if (browser) goto('/', { replaceState: true });
+  }
 
-	let token = '';
-	function checkRecaptcha() {
-		grecaptcha.ready(function () {
-			grecaptcha
-				.execute(PUBLIC_GOOGLE_RECAPTCHA_SITE_KEY, { action: 'register' })
-				.then(function (_token) {
-					console.debug('token: ' + _token);
-					token = _token;
-					//document.querySelector('#grecaptcha')
-				});
-		});
-	}
+  let token = '';
+  function checkRecaptcha() {
+    grecaptcha.ready(function () {
+      grecaptcha
+        .execute(PUBLIC_GOOGLE_RECAPTCHA_SITE_KEY, { action: 'register' })
+        .then(function (_token) {
+          console.debug('token: ' + _token);
+          token = _token;
+          //document.querySelector('#grecaptcha')
+        });
+    });
+  }
 
-	/**
-	 * 파일 업로드시 미리보기
-	 * @param fileEl {Input} 파일인풋
-	 */
-	function preview(fileEl) {
-		console.log(fileEl);
+  /**
+   * 파일 업로드시 미리보기
+   * @param fileEl {Input} 파일인풋
+   */
+  function preview(fileEl) {
+    console.log(fileEl);
 
-		document.querySelector('#preview').src = window.URL.createObjectURL(fileEl.files[0]);
-		document.querySelector('#introduction').focus();
-	}
+    document.querySelector('#preview').src = window.URL.createObjectURL(fileEl.files[0]);
+    document.querySelector('#introduction').focus();
+  }
 
-	/**
-	 * nickname {string} 닉네임
-	 */
-	let nickname = '';
-	/**
-	 * intro {string} 자기소개
-	 */
-	let introduction = '';
+  /**
+   * nickname {string} 닉네임
+   */
+  let nickname = '';
+  /**
+   * intro {string} 자기소개
+   */
+  let introduction = '';
 
-	let fight = false;
+  let fight = false;
 
-	const doSubmit = () => {
-		// validation
-		doValidate();
-		// recaptcha
-		checkRecaptcha();
+  const doSubmit = () => {
+    // validation
+    doValidate();
+    // recaptcha
+    checkRecaptcha();
 
-		const formData = new FormData();
-		formData.append('nickname', nickname);
-		formData.append('introduction', introduction);
-		formData.append('photo', document.querySelector('#photo').files[0]);
+    const formData = new FormData();
+    formData.append('nickname', nickname);
+    formData.append('introduction', introduction);
+    formData.append('photo', document.querySelector('#photo').files[0]);
 
-		fetch('/auth/register', { method: 'PATCH', body: formData })
-			.then((res) => {
+    fetch('/auth/register', { method: 'PATCH', body: formData })
+      .then((res) => {
+        console.log('res', res);
 
-				console.log('res', res);
+        if (res.ok) {
+          alert('등록 되었습니다.');
+          console.log(res);
 
-				if (res.ok) {
-					alert('등록 되었습니다.');
-					console.log(res);
+          goto('/');
+        } else {
+          alert(res.message || '저장 중에 오류가 발생하였습니다.');
+        }
+      })
+      .catch((reason) => {
+        console.error(reason);
+        alert('저장에 실패했습니다.');
+      });
+  };
 
-					goto('/');
-				}else{
-					alert(res.message || '저장 중에 오류가 발생하였습니다.')
-				}
-			})
-			.catch((reason) => {
-				console.error(reason);
-				alert('저장에 실패했습니다.');
-			});
-	};
+  const doValidate = () => {
+    document.querySelectorAll('.needs-validation').forEach((el) => changeHandler(el));
+  };
 
-	const doValidate = () => {
-		document.querySelectorAll('.needs-validation').forEach((el) => changeHandler(el));
-	};
+  const invalids = { nickname: false, introduction: false };
 
-	const invalids = { nickname: false, introduction: false };
+  const changeHandler = async (target) => {
+    console.debug(target.id);
+    switch (target.id) {
+      case 'nickname':
+        invalids.nickname = !/^.{3,15}$/.test(target.value);
 
-	const changeHandler = async (target) => {
-		console.debug(target.id);
-		switch (target.id) {
-			case 'nickname':
-				invalids.nickname = !/^.{3,15}$/.test(target.value);
+        if (!invalids.nickname) {
+          fetch(`/auth/register/${target.value}`).then((res) => {
+            if (res.status !== 204) {
+              alert('사용중인 아이디 입니다.');
+              invalids.nickname = true;
+            }
+          });
+        }
 
-				if (!invalids.nickname) {
-					fetch(`/auth/register/${target.value}`).then((res) => {
-						if (res.status !== 204) {
-							alert('사용중인 아이디 입니다.');
-							invalids.nickname = true;
-						}
-					});
-				}
+        break;
+      case 'introduction':
+        console.debug(target.value, !!target.value);
+        invalids.introduction = !target.value;
+        break;
+      case 'fight':
+        if (target.checked) doValidate();
+    }
 
-				break;
-			case 'introduction':
-				console.debug(target.value, !!target.value);
-				invalids.introduction = !target.value;
-				break;
-			case 'fight':
-				if (target.checked) doValidate();
-		}
+    console.log(
+      'nickname',
+      nickname,
+      'invalids',
+      invalids.nickname,
+      'introduction',
+      introduction,
+      'invalids',
+      invalids.introduction,
+      'fight',
+      fight
+    );
+  };
 
-		console.log(
-			'nickname',
-			nickname,
-			'invalids',
-			invalids.nickname,
-			'introduction',
-			introduction,
-			'invalids',
-			invalids.introduction,
-			'fight',
-			fight
-		);
-	};
-
-	$: isInvalid = !(
-		nickname &&
-		!invalids.nickname &&
-		introduction &&
-		!invalids.introduction &&
-		fight
-	);
-	$: console.log(isInvalid);
+  $: isInvalid = !(
+    nickname &&
+    !invalids.nickname &&
+    introduction &&
+    !invalids.introduction &&
+    fight
+  );
+  $: console.log(isInvalid);
 </script>
 
 <svelte:head>
-	<script
-		src="https://www.google.com/recaptcha/api.js?render={PUBLIC_GOOGLE_RECAPTCHA_SITE_KEY}"
-	></script>
+  <script
+    src="https://www.google.com/recaptcha/api.js?render={PUBLIC_GOOGLE_RECAPTCHA_SITE_KEY}"
+  ></script>
 </svelte:head>
 
 <Row class="d-flex justify-content-center">
-	<Card outline class="rounded rounded-4 shadow my-4" style="max-width: 500px">
-		<CardHeader class="mt-3 text-center" style="background-color: #fafae4">
-			<Image src="/logo/logo_transparent_120.png" alt="데게실버타운 로고" />
-		</CardHeader>
-		<CardBody>
-			<Row>
-				<Card class="p-2">
-					<Row>
-						<Col xs="4" md="3" class="d-flex align-items-center">
-							<Image
-								id="preview"
-								src="/icons/unknown-person-icon-4.jpg"
-								thumbnail
-								width="100"
-								height="100"
-								alt="프로필 사진"
-								class="card-img-left rounded-2"
-							/>
-						</Col>
-						<Col xs="7" md="8">
-							<CardBody>
-								<CardSubtitle>{nickname}</CardSubtitle>
-								<CardText class="text-muted pt-2">
-									{introduction}
-								</CardText>
-							</CardBody>
-						</Col>
-					</Row>
-				</Card>
-			</Row>
-			<hr />
-			<Row>
-				<Form>
-					<Input type="hidden" name="token" bind:value={token} />
-					<FormGroup floating label="닉네임">
-						<Input
-							id="nickname"
-							on:change={(evt) => changeHandler(evt.target)}
-							bind:value={nickname}
-							bind:invalid={invalids.nickname}
-							feedback="3~15글자 사이 닉네임을 써주세요"
-							class="form-control needs-validation"
-							autofocus
-							maxlength="15"
-						/>
-					</FormGroup>
-					<InputGroup class="mb-3">
-						<InputGroupText><Icon name="image me-2" />사진</InputGroupText>
-						<input
-							id="photo"
-							type="file"
-							on:change={(evt) => preview(evt.target)}
-							class="form-control"
-							accept="image/*"
-						/>
-					</InputGroup>
-					<FormGroup floating label="자기소개">
-						<Input
-							id="introduction"
-							bind:value={introduction}
-							on:change={(evt) => changeHandler(evt.target)}
-							bind:invalid={invalids.introduction}
-							type="textarea"
-							feedback="간단히 뜬구름 잡는 얘기 써주세요^^"
-							class="needs-validation"
-						/>
-					</FormGroup>
-					<FormGroup>
-						<Label>싸우지 않고 사이좋게 지내실 거쥬?</Label>
-						<FormCheck
-							id="fight"
-							type="switch"
-							label="네"
-							bind:checked={fight}
-							on:change={(evt) => changeHandler(evt.target)}
-							feedback="체크 해 주세요"
-							size="lg"
-							class="needs-validation"
-						/>
-						<Popover trigger="hover" placement="top" target="fight">체크해 주세요^^</Popover>
-					</FormGroup>
-					<hr />
-					<div class="text-end">
-						<Button size="lg" on:click={doSubmit} color="success" bind:disabled={isInvalid}>
-							<Icon name="arrow-through-heart-fill pe-2" />가입
-						</Button>
-					</div>
-				</Form>
-			</Row>
-		</CardBody>
-		<CardFooter class="mb-3">
-			<strong>데게실버타운은 개인정보를 수집하고 저장하지 않습니다.</strong>
-		</CardFooter>
-	</Card>
+  <Card outline class="rounded rounded-4 shadow my-4" style="max-width: 500px">
+    <CardHeader class="mt-3 text-center" style="background-color: #fafae4">
+      <Image src="/logo/logo_transparent_120.png" alt="데게실버타운 로고" />
+    </CardHeader>
+    <CardBody>
+      <Row>
+        <Card class="p-2">
+          <Row>
+            <Col xs="4" md="3" class="d-flex align-items-center">
+              <Image
+                id="preview"
+                src="/icons/unknown-person-icon-4.jpg"
+                thumbnail
+                width="100"
+                height="100"
+                alt="프로필 사진"
+                class="card-img-left rounded-2"
+              />
+            </Col>
+            <Col xs="7" md="8">
+              <CardBody>
+                <CardSubtitle>{nickname}</CardSubtitle>
+                <CardText class="text-muted pt-2">
+                  {introduction}
+                </CardText>
+              </CardBody>
+            </Col>
+          </Row>
+        </Card>
+      </Row>
+      <hr />
+      <Row>
+        <Form>
+          <Input type="hidden" name="token" bind:value={token} />
+          <FormGroup floating label="닉네임">
+            <Input
+              id="nickname"
+              on:change={(evt) => changeHandler(evt.target)}
+              bind:value={nickname}
+              bind:invalid={invalids.nickname}
+              feedback="3~15글자 사이 닉네임을 써주세요"
+              class="form-control needs-validation"
+              autofocus
+              maxlength="15"
+            />
+          </FormGroup>
+          <InputGroup class="mb-3">
+            <InputGroupText><Icon name="image me-2" />사진</InputGroupText>
+            <input
+              id="photo"
+              type="file"
+              on:change={(evt) => preview(evt.target)}
+              class="form-control"
+              accept="image/*"
+            />
+          </InputGroup>
+          <FormGroup floating label="자기소개">
+            <Input
+              id="introduction"
+              bind:value={introduction}
+              on:change={(evt) => changeHandler(evt.target)}
+              bind:invalid={invalids.introduction}
+              type="textarea"
+              feedback="간단히 뜬구름 잡는 얘기 써주세요^^"
+              class="needs-validation"
+            />
+          </FormGroup>
+          <FormGroup>
+            <Label>싸우지 않고 사이좋게 지내실 거쥬?</Label>
+            <FormCheck
+              id="fight"
+              type="switch"
+              label="네"
+              bind:checked={fight}
+              on:change={(evt) => changeHandler(evt.target)}
+              feedback="체크 해 주세요"
+              size="lg"
+              class="needs-validation"
+            />
+            <Popover trigger="hover" placement="top" target="fight">체크해 주세요^^</Popover>
+          </FormGroup>
+          <hr />
+          <div class="text-end">
+            <Button size="lg" on:click={doSubmit} color="success" bind:disabled={isInvalid}>
+              <Icon name="arrow-through-heart-fill pe-2" />가입
+            </Button>
+          </div>
+        </Form>
+      </Row>
+    </CardBody>
+    <CardFooter class="mb-3">
+      <strong>데게실버타운은 개인정보를 수집하고 저장하지 않습니다.</strong>
+    </CardFooter>
+  </Card>
 </Row>

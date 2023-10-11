@@ -1,8 +1,8 @@
-export const load = ({url, data})=>{
-    const {pathname} = url;
+export const load = ({ url, data }) => {
+  const { pathname } = url;
 
-    return{
-        pathname,
-        session: data.session
-    }
-}
+  return {
+    pathname,
+    session: data.session
+  };
+};
