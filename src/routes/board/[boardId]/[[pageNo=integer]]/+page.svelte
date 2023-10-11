@@ -29,24 +29,25 @@
           </Row>
         {:else}
           {#each data.articles as article}
-            <Row class="py-3 border-bottom border-secondary-subtle">
-              <div class="text-break link-opacity-hover-50 col-lg-8 col-md-5 col-sm-12 pb-xs-5">
+            <Row class="py-3 border-bottom border-secondary-subtle m-0">
+              <Col lg="8" md="5" xs="12"
+                      class="text-break link-opacity-hover-50 pb-2">
                <a on:click={() => read(article._id)} href="#"
-                  style="cursor: pointer"
-                  class="link-dark link-underline link-underline-opacity-0 link-offset-2 link-underline-opacity-50-hover">
+                  style="cursor: pointer; font-size: 1.1em"
+                  class="link-underline link-underline-opacity-0 link-offset-2 link-underline-opacity-50-hover">
                 {article.title}
                 {@html article.content}
                 {#if article.comments?.length}
                   <Badge color="primary" class="bg-opacity-50">{article.comments.length}</Badge>
                 {/if}
                </a>
-              </div>
-              <Col lg="1" md="3" xs="4" class="text-muted">{article.nickname}</Col>
+              </Col>
+              <Col lg="1" md="3" xs="5" class="text-muted">{article.nickname}</Col>
               <Col lg="1" md="1" xs="1" class="text-muted text-end">{article.read}</Col>
-              <Col lg="1" md="1" xs="3" class="text-muted text-end"
-                ><Icon name="hand-thumbs-up" class="text-success pe-1" />{article.like}</Col
+              <Col lg="1" md="1" xs="2" class="text-muted text-end"
+                ><Icon name="hand-thumbs-up" class="text-success pe-" />{article.like}</Col
               >
-              <Col lg="1" md="2" xs="4" class="text-muted"
+              <Col lg="1" md="2" xs="4" class="text-muted text-end"
                 >{formatDistanceToNowStrict(parseISO(article.createdAt), {
                   locale: ko,
                   addSuffix: true
