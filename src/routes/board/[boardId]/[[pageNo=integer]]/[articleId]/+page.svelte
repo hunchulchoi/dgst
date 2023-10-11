@@ -189,15 +189,15 @@
   </style>
 </svelte:head>
 
-<main class="container my-5">
-  <Row class="mt-4 shadow rounded-4 p-4">
+<main class="container my-md-5">
+  <Row class="mt-4 shadow rounded-4 p-1 m-0">
     <h5>{data.article.title}</h5>
-    <Row class="border-bottom border-secondary-subtle pt-2">
-      <Col md="6"
+    <Row class="border-bottom border-secondary-subtle pt-2 m-0">
+      <Col md="6" xs="8" class="p-0"
         >{data.article.nickname}
-        <span class="text-muted">{formatISO9075(parseISO(data.article.createdAt))}</span></Col
+        <span class="text-muted ps-1" style="font-size: small">{formatISO9075(parseISO(data.article.createdAt))}</span></Col
       >
-      <Col class="text-end text-muted" md="6">
+      <Col class="text-end text-muted" md="6" xs="4" style="font-size: small">
         <Icon class="pe-1" name="eye" />{data.article.read}
         <Icon class="text-success pe-1" name="hand-thumbs-up" />{data.article.like}</Col
       >
@@ -207,7 +207,7 @@
         {@html data.article.content}
       </CardText>
     </Row>
-    <Row class="p-3">
+    <Row class="p-md-3 p-xs-1 mb-3">
       <!--프로필-->
       <Card class="p-2">
         <Row>
@@ -221,7 +221,7 @@
               width="100"
             />
           </Col>
-          <Col md="9" xs="8">
+          <Col md="9" xs="auto">
             <CardBody>
               <CardSubtitle>{data.article.nickname}</CardSubtitle>
               <CardText class="text-muted pt-2">
@@ -234,22 +234,22 @@
     </Row>
     <Row>
       <!--버튼-->
-      <Col class="text-end pe-3">
+      <Col class="text-end pe-md-3 p-xs-0 m-xs-0">
         {#if data.article.email === $page.data.session?.user.email}
-          <Button color="danger" on:click={() => remove(data.article._id)} outline>
+          <Button size="sm" color="danger" on:click={() => remove(data.article._id)} outline>
             <Icon name="trash" />
             삭제
           </Button>
-          <Button color="success" on:click={() => edit(data.article._id)} outline>
+          <Button size="sm" color="success" on:click={() => edit(data.article._id)} outline>
             <Icon name="pencil" />
             수정
           </Button>
         {/if}
-        <Button color="primary" on:click={write} outline>
+        <Button size="sm" color="primary" on:click={write} outline>
           <Icon name="pencil-fill" />
           글쓰기
         </Button>
-        <Button color="secondary" on:click={list} outline>
+        <Button size="sm" color="secondary" on:click={list} outline>
           <Icon name="list" />
           목록
         </Button>
@@ -314,20 +314,20 @@
       {/if}
 
       {#each commentData as comment}
-        <Row class="p-4 border-bottom border-gray-subtle">
+        <Row class="p-3 border-bottom border-gray-subtle">
           <Col xs="auto">
             <Image thumbnail src={comment.photo} style="height:50px" rounded />
           </Col>
           <Col xs="auto" clsss="border-end">
-            {comment.nickname}<br />
-            <span class="text-muted" style="font-size: smaller"
+            {comment.nickname}
+            <span class="text-muted ps-2" style="font-size: smaller"
               >{formatDistanceToNowStrict(parseISO(comment.createdAt), {
                 locale: ko,
                 addSuffix: true
               })}</span
             >
           </Col>
-          <Col>
+          <Col xs="12" md="8">
             <Row>
               <Col>
                 {#if comment.image}
@@ -343,19 +343,17 @@
 
             {#if comment.email === $page.data.session?.user.email}
               <Row>
-                <Col class="text-end pe-2">
+                <Col class="text-end pe-2 m-0">
                   <Button
                     on:click={() => deleteComment(comment._id)}
                     size="sm"
                     outline
-                    color="danger"
+                    color="danger p-0"
                   >
                     <Icon name="trash" />
-                    삭제
                   </Button>
-                  <Button size="sm" outline color="primary" class="d-none">
+                  <Button size="sm" outline color="primary" class="d-none p-0">
                     <Icon name="pencil" />
-                    수정
                   </Button>
                 </Col>
               </Row>
@@ -368,20 +366,20 @@
       <!--버튼-->
       <Col class="text-end pe-3">
         {#if data.article.email === $page.data.session?.user.email}
-          <Button color="danger" on:click={() => remove(data.article._id)} outline>
+          <Button size="sm" color="danger" on:click={() => remove(data.article._id)} outline>
             <Icon name="trash" />
             삭제
           </Button>
-          <Button color="success" on:click={() => edit(data.article._id)} outline>
+          <Button size="sm" color="success" on:click={() => edit(data.article._id)} outline>
             <Icon name="pencil" />
             수정
           </Button>
         {/if}
-        <Button color="primary" on:click={write} outline>
+        <Button size="sm" color="primary" on:click={write} outline>
           <Icon name="pencil-fill" />
           글쓰기
         </Button>
-        <Button color="secondary" on:click={list} outline>
+        <Button size="sm" color="secondary" on:click={list} outline>
           <Icon name="list" />
           목록
         </Button>
