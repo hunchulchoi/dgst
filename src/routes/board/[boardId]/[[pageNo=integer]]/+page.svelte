@@ -30,8 +30,8 @@
         {:else}
           {#each data.articles as article}
             <Row class="py-3 border-bottom border-secondary-subtle">
-              <Col lg="8" md="5" sm="12"
-                class="text-break link-opacity-hover-50 pb-sm-3"
+              <Col lg="8" md="5" xs=12
+                class="text-break link-opacity-hover-50"
               >
                <a on:click={() => read(article._id)} href="#"
                   style="cursor: pointer"
@@ -43,12 +43,12 @@
                 {/if}
                </a>
               </Col>
-              <Col lg="1" md="3" sm="5" class="text-muted">{article.nickname}</Col>
-              <Col md="1" sm="1" class="text-muted text-end">{article.read}</Col>
-              <Col md="1" sm="2" class="text-muted text-end"
+              <Col lg="1" md="3" xs="4" class="text-muted">{article.nickname}</Col>
+              <Col lg="1" md="1" xs="1" class="text-muted text-end">{article.read}</Col>
+              <Col lg="1" md="1" xs="3" class="text-muted text-end"
                 ><Icon name="hand-thumbs-up" class="text-success pe-1" />{article.like}</Col
               >
-              <Col lg="1" md="2" sm="4" class="text-muted"
+              <Col lg="1" md="2" xs="4" class="text-muted"
                 >{formatDistanceToNowStrict(parseISO(article.createdAt), {
                   locale: ko,
                   addSuffix: true
@@ -63,9 +63,9 @@
           <PaginationItem
             ><PaginationLink first href={`/board/${$page.params.boardId}`} /></PaginationItem
           >
-          {#each Array(data.maxPage) as i}
+          {#each Array(data.maxPage) as _, i}
             <PaginationItem
-              active={(!$page.params.pageNo && i === 0) || i + 1 === $page.params.pageNo}
+              active={(!$page.params.pageNo && i === 0) || i + 1 == $page.params.pageNo}
             >
               <PaginationLink href={`/board/${$page.params.boardId}/${i + 1}`}>
                 {i + 1}
