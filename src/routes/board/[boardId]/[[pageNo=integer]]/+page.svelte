@@ -19,7 +19,7 @@
 </script>
 
 <main class="container py-4 my-md-4">
-  <Row class="p-3 shadow rounded-4">
+  <Row class="p-2 shadow rounded-4">
 
         {#if !data.articles.length}
           <Row>
@@ -30,9 +30,7 @@
         {:else}
           {#each data.articles as article}
             <Row class="py-3 border-bottom border-secondary-subtle">
-              <Col lg="8" md="5" xs=12
-                class="text-break link-opacity-hover-50"
-              >
+              <div class="text-break link-opacity-hover-50 col-lg-8 col-md-5 col-sm-12 pb-xs-5">
                <a on:click={() => read(article._id)} href="#"
                   style="cursor: pointer"
                   class="link-dark link-underline link-underline-opacity-0 link-offset-2 link-underline-opacity-50-hover">
@@ -42,7 +40,7 @@
                   <Badge color="primary" class="bg-opacity-50">{article.comments.length}</Badge>
                 {/if}
                </a>
-              </Col>
+              </div>
               <Col lg="1" md="3" xs="4" class="text-muted">{article.nickname}</Col>
               <Col lg="1" md="1" xs="1" class="text-muted text-end">{article.read}</Col>
               <Col lg="1" md="1" xs="3" class="text-muted text-end"
