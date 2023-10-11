@@ -4,13 +4,13 @@ import { onMount } from 'svelte';
 import { browser } from '$app/environment';
 
 export const load = async (event) => {
-	const session = await event.locals.getSession();
+  const session = await event.locals.getSession();
 
-	/*console.debug('======== layout.server load ======');
+  /*console.debug('======== layout.server load ======');
 	console.debug('session', session);
 	console.debug('//======== layout.server load ======');*/
 
-	return {
-		session
-	};
+  return {
+    session
+  };
 };

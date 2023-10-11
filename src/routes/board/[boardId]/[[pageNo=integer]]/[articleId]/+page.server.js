@@ -5,37 +5,37 @@ import { User } from '$lib/models/user.js';
 
 connectDB();
 export const load = async ({ params }) => {
-	console.log('serverLoadEvent', params);
+  console.log('serverLoadEvent', params);
 
-	if (!params.articleId) {
-		throw error(400, { message: '잘못된 접근입니다.' });
-	}
+  if (!params.articleId) {
+    throw error(400, { message: '잘못된 접근입니다.' });
+  }
 
-	const filter = { _id: params.articleId, boardId: params.boardId, state: 'write' };
+  const filter = { _id: params.articleId, boardId: params.boardId, state: 'write' };
 
-	const article = await Article.findOneAndUpdate(
-		filter,
-		{ $inc: { read: 1 } },
-		{ new: true, timestamps: false }
-	)
-		.populate({
-			path: 'comments',
-			match: { state: 'write' },
-			options: { sort: { createdAt: -1 } }
-		})
-		.exec();
+  const article = await Article.findOneAndUpdate(
+    filter,
+    { $inc: { read: 1 } },
+    { new: true, timestamps: false }
+  )
+    .populate({
+      path: 'comments',
+      match: { state: 'write' },
+      options: { sort: { createdAt: -1 } }
+    })
+    .exec();
 
-	console.log('article', article);
+  console.log('article', article);
 
-	if (!article) {
-		throw error(410, { message: '삭제되었거나 존지하지 않는 게시물입니다.' });
-	}
+  if (!article) {
+    throw error(410, { message: '삭제되었거나 존지하지 않는 게시물입니다.' });
+  }
 
-	const author = await User.findOne({ email: article.email }, { photo: 1, introduction: 1 });
+  const author = await User.findOne({ email: article.email }, { photo: 1, introduction: 1 });
 
-	return {
-		article: JSON.parse(JSON.stringify(article)),
-		photo: author.photo|| '/icons/unknown-person-icon-4.jpg',
-		introduction: author.introduction
-	};
+  return {
+    article: JSON.parse(JSON.stringify(article)),
+    photo: author.photo || '/icons/unknown-person-icon-4.jpg',
+    introduction: author.introduction
+  };
 };

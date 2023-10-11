@@ -10,13 +10,13 @@ connectDB();
  * @constructor
  */
 export async function GET({ params }) {
-	const { nickname } = params;
+  const { nickname } = params;
 
-	const found = await User.find({ nickname }).count();
+  const found = await User.find({ nickname }).count();
 
-	console.debug('found', found);
+  console.debug('found', found);
 
-	if (!found) return new Response(null, { status: 204 });
+  if (!found) return new Response(null, { status: 204 });
 
-	return new Response(found, { status: 200 });
+  return new Response(found, { status: 200 });
 }
