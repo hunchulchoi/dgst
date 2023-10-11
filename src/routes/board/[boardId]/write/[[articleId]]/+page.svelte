@@ -38,8 +38,8 @@
     }
   </style>
 </svelte:head>
-<main class="container p-2 my-1">
-  <Row class="border border-secondary-subtle rounded-4 py-5 px-4 shadow">
+<main class="container my-1">
+  <Row class="border border-secondary-subtle rounded-4 py-5 shadow">
     <form
       method="POST"
       use:enhance={({ formElement, formData, action, cancel, submitter }) => {
@@ -77,13 +77,13 @@
       </FormGroup>
       <CKEditor5 bind:editorData={content} />
       <Row class="text-end pe-2 mt-4">
-        <Col md="10" class="text-end">
+        <Col md="10" xs="8" class="text-end">
           <Button color="warning" on:click={list}>
             <Icon name="x-lg" class="pe-2" />
             취소
           </Button>
         </Col>
-        <Col md="2">
+        <Col md="2" xs="4">
           <Button color="primary" role="submit">
             <Icon name="pencil-fill" class="pe-2" />
             저장

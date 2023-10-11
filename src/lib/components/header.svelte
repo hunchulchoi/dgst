@@ -82,7 +82,7 @@
         {/if}
       </NavItem>
       <Dropdown nav inNavbar class="text-muted">
-        <DropdownToggle nav caret><Icon name={colorModeIcon} /></DropdownToggle>
+        <DropdownToggle nav caret><Icon name={colorModeIcon} class="text-primary-subtle" /></DropdownToggle>
         <DropdownMenu end>
           <DropdownItem on:click={() => theme.set('auto')}
             ><Icon name="circle-half" /> 자동</DropdownItem
