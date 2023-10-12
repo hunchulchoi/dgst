@@ -314,7 +314,7 @@
       {/if}
 
       {#each commentData as comment}
-        <Row class="p-3 border-bottom border-gray-subtle">
+        <Row class="p-3 border-bottom border-gray-subtle mx-0">
           <Col xs="auto">
             <Image thumbnail src={comment.photo} style="height:30px" rounded />
           </Col>
