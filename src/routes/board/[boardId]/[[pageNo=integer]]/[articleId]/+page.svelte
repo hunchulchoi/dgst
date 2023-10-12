@@ -203,7 +203,7 @@
       >
     </Row>
     <Row class="py-3 px-1 mx-0">
-      <CardText style="max-width: 100%;" class="text-break">
+      <CardText style="max-width: 100%;" class="text-break px-0">
         {@html data.article.content}
       </CardText>
     </Row>
@@ -314,7 +314,7 @@
       {/if}
 
       {#each commentData as comment}
-        <Row class="p-3 border-bottom border-gray-subtle mx-0">
+        <Row class="py-3 px-1 border-bottom border-gray-subtle mx-0">
           <Col xs="auto">
             <Image thumbnail src={comment.photo} style="height:30px" rounded />
           </Col>
@@ -332,7 +332,7 @@
               <Col class="text-break" style="max-width: 98%">
                 {#if comment.image}
                   <Row class="pb-3 mx-0">
-                    <Col class="ps-2 m-0">
+                    <Col class="p-0 ps-1 m-0">
                       <Image src={comment.image} alt="리플 짤" style="max-width: 100%;" />
                     </Col>
                   </Row>
