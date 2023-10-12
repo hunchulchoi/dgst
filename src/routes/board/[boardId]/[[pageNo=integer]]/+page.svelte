@@ -4,7 +4,7 @@
     import {goto} from '$app/navigation';
 
     import {formatDistanceToNowStrict, parseISO} from 'date-fns';
-    import {ko} from 'date-fns/locale';
+    import {ko} from 'date-fns/locale/ko/index.js';
 
     function write() {
     goto(`/board/${$page.params.boardId}/write`);

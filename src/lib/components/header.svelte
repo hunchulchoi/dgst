@@ -1,21 +1,21 @@
 <script>
-  import {
-    Navbar,
-    NavbarBrand,
-    Image,
-    Nav,
-    NavItem,
-    NavLink,
-    Icon,
-    Button,
-    Styles,
-    Dropdown,
-    DropdownToggle,
-    DropdownItem,
-    Collapse,
-    NavbarToggler,
-    DropdownMenu
-  } from 'sveltestrap';
+    import {
+        Navbar,
+        NavbarBrand,
+        Image,
+        Nav,
+        NavItem,
+        NavLink,
+        Icon,
+        Button,
+        Styles,
+        Dropdown,
+        DropdownToggle,
+        DropdownItem,
+        Collapse,
+        NavbarToggler,
+        DropdownMenu, Row
+    } from 'sveltestrap';
 
   import theme from '$lib/shared/stores/theme.js';
 
@@ -46,7 +46,8 @@
 
 <Styles theme={$theme} />
 
-<Navbar expand="md" class="m-1 rounded shadow text-dark-emphasis" style="background-color: #fafae4">
+<Row class="m-0">
+<Navbar expand="md" class="m-0 rounded shadow text-secondary" style="background-color: #fafae4">
   <NavbarBrand href="/" class="p-0">
     <Image
       fluid
@@ -57,13 +58,13 @@
     />
   </NavbarBrand>
   <Nav>
-    <NavItem>
+    <NavItem class="d-xs-none d-md-inline">
       <NavLink href="/board/free">자유게시판</NavLink>
     </NavItem>
   </Nav>
-  <NavbarToggler on:click={() => (isOpen = !isOpen)} />
+  <NavbarToggler on:click={() => (isOpen = !isOpen)} class="text-bg-secondary bg-opacity-50" />
   <Collapse {isOpen} navbar expand="md" on:update={handleUpdate}>
-    <Nav class="ms-auto" navbar>
+    <Nav class="ms-auto" navbar >
       <NavItem>
         {#if $page.data.session?.user.nickname}
           <Image
@@ -81,8 +82,8 @@
           </NavLink>
         {/if}
       </NavItem>
-      <Dropdown nav inNavbar class="text-muted">
-        <DropdownToggle nav caret><Icon name={colorModeIcon} class="text-primary-subtle" /></DropdownToggle>
+      <Dropdown nav inNavbar class="col-xs-2">
+        <DropdownToggle nav caret class="text-secondary"><Icon name={colorModeIcon} /></DropdownToggle>
         <DropdownMenu end>
           <DropdownItem on:click={() => theme.set('auto')}
             ><Icon name="circle-half" /> 자동</DropdownItem
@@ -99,3 +100,4 @@
     </Nav>
   </Collapse>
 </Navbar>
+</Row>
