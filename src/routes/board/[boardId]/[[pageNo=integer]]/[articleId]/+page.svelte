@@ -84,11 +84,6 @@
       alert('내용을 입력하세요');
       return;
     }
-    if (commentContent.replace(' ', '').length < 3) {
-      alert('코멘트 내용이 너무 짧습니다.');
-      return;
-    }
-
     commentLoading = true;
 
     const formData = new FormData();
@@ -284,10 +279,10 @@
             opacity="0.7"
           />
           <InputGroup class="mb-2">
-            <InputGroupText class="text-success">
+            <!--<InputGroupText class="text-success">
               <Icon name="card-image" class="pe-2" />
               짤 첨부
-            </InputGroupText>
+            </InputGroupText>-->
             <input
               type="file"
               bind:this={commentImageEl}
