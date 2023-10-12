@@ -202,12 +202,12 @@
         <Icon class="text-success pe-1" name="hand-thumbs-up" />{data.article.like}</Col
       >
     </Row>
-    <Row class="p-3">
-      <CardText style="max-width: 100%;">
+    <Row class="p-3 mx-0">
+      <CardText style="max-width: 100%;" class="text-break">
         {@html data.article.content}
       </CardText>
     </Row>
-    <Row class="p-md-3 p-xs-1 mb-3">
+    <Row class="p-md-3 p-xs-1 mb-3 mx-0">
       <!--프로필-->
       <Card class="p-2">
         <Row>
@@ -232,7 +232,7 @@
         </Row>
       </Card>
     </Row>
-    <Row>
+    <Row class="mx-0">
       <!--버튼-->
       <Col class="text-end pe-md-3 p-xs-0 m-xs-0">
         {#if data.article.email === $page.data.session?.user.email}
@@ -255,7 +255,7 @@
         </Button>
       </Col>
     </Row>
-    <Row class="my-3 bg-warning-subtle p-3 rounded-3 mb-4">
+    <Row class="my-3 bg-warning-subtle p-3 rounded-3 mb-4 mx-0">
       <!--리플-->
       <Col>
         <Icon name="chat" />
@@ -269,7 +269,7 @@
       </Col>
     </Row>
 
-    <Row class="mb-5">
+    <Row class="mb-5 mx-0">
       {#if $page.data.session?.user.nickname}
         <div class="border p-4 rounded-4 shadow-sm" bind:this={commentDiv}>
           <Loader
@@ -316,7 +316,7 @@
       {#each commentData as comment}
         <Row class="p-3 border-bottom border-gray-subtle">
           <Col xs="auto">
-            <Image thumbnail src={comment.photo} style="height:50px" rounded />
+            <Image thumbnail src={comment.photo} style="height:30px" rounded />
           </Col>
           <Col xs="auto" clsss="border-end">
             {comment.nickname}
@@ -327,9 +327,9 @@
               })}</span
             >
           </Col>
-          <Col xs="12" md="8">
+          <Col xs="12" md="8" class="mt-xs-1">
             <Row>
-              <Col>
+              <Col class="text-break" style="max-width: 98%">
                 {#if comment.image}
                   <Row class="pb-3">
                     <Col>
@@ -362,7 +362,7 @@
         </Row>
       {/each}
     </Row>
-    <Row>
+    <Row class="mx-0 mb-3">
       <!--버튼-->
       <Col class="text-end pe-3">
         {#if data.article.email === $page.data.session?.user.email}
