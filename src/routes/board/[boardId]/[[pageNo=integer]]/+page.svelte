@@ -29,9 +29,9 @@
           </Row>
         {:else}
           {#each data.articles as article}
-            <Row class="py-3 border-bottom border-secondary-subtle m-0">
+            <Row class="py-2 border-bottom border-secondary-subtle m-0">
               <Col lg="8" md="5" xs="12"
-                      class="text-break link-opacity-hover-50 pb-2">
+                      class="text-break link-opacity-hover-50 pb-1">
                <a on:click={() => read(article._id)} href="#"
                   style="cursor: pointer; font-size: 1.1em"
                   class="link-underline link-underline-opacity-0 link-offset-2 link-underline-opacity-50-hover">
@@ -42,12 +42,12 @@
                 {/if}
                </a>
               </Col>
-              <Col lg="1" md="3" xs="5" class="text-muted">{article.nickname}</Col>
-              <Col lg="1" md="1" xs="1" class="text-muted text-end">{article.read}</Col>
-              <Col lg="1" md="1" xs="2" class="text-muted text-end"
+              <Col lg="1" md="3" xs="5" class="text-muted" style="font-size: small">{article.nickname}</Col>
+              <Col lg="1" md="1" xs="1" class="text-muted text-end" style="font-size: small">{article.read}</Col>
+              <Col lg="1" md="1" xs="2" class="text-muted text-end" style="font-size: small"
                 ><Icon name="hand-thumbs-up" class="text-success pe-" />{article.like}</Col
               >
-              <Col lg="1" md="2" xs="4" class="text-muted text-end"
+              <Col lg="1" md="2" xs="4" class="text-muted text-end" style="font-size: small"
                 >{formatDistanceToNowStrict(parseISO(article.createdAt), {
                   locale: ko,
                   addSuffix: true
