@@ -1,31 +1,31 @@
 <script>
-  import {
-    Badge,
-    Button,
-    Card,
-    CardBody,
-    CardSubtitle,
-    CardText,
-    Col,
-    Icon,
-    Image,
-    Input,
-    InputGroup,
-    InputGroupText,
-    Row,
-    Spinner
-  } from 'sveltestrap';
-  import { page } from '$app/stores';
-  import { goto } from '$app/navigation';
+    import {
+        Badge,
+        Button,
+        Card,
+        CardBody,
+        CardSubtitle,
+        CardText,
+        Col,
+        Icon,
+        Image,
+        Input,
+        InputGroup,
+        InputGroupText,
+        Row,
+        Spinner
+    } from 'sveltestrap';
+    import {page} from '$app/stores';
+    import {goto} from '$app/navigation';
 
-  import { formatDistanceToNowStrict, parseISO, formatISO9075 } from 'date-fns';
-  import { ko } from 'date-fns/locale';
+    import {formatDistanceToNowStrict, formatISO9075, parseISO} from 'date-fns';
+    import ko from 'date-fns/locale/ko/index.js';
 
-  import { blobToWebP, srcToWebP } from 'webp-converter-browser';
+    import {blobToWebP} from 'webp-converter-browser';
 
-  import Loader from 'svelte-loading-overlay/Loader.svelte';
+    import Loader from 'svelte-loading-overlay/Loader.svelte';
 
-  function comments() {
+    function comments() {
     fetch(`/board/${$page.params.boardId}/${$page.params.articleId}/comment`)
       .then((res) => res.json())
       .then((d) => (commentData = d));
