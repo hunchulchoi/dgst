@@ -202,7 +202,7 @@
         <Icon class="text-success pe-1" name="hand-thumbs-up" />{data.article.like}</Col
       >
     </Row>
-    <Row class="p-3 mx-0">
+    <Row class="py-3 px-1 mx-0">
       <CardText style="max-width: 100%;" class="text-break">
         {@html data.article.content}
       </CardText>
@@ -331,9 +331,9 @@
             <Row class="mx-0">
               <Col class="text-break" style="max-width: 98%">
                 {#if comment.image}
-                  <Row class="pb-3">
-                    <Col>
-                      <Image src={comment.image} alt="리플 짤" style="max-width: 95%;" />
+                  <Row class="pb-3 mx-0">
+                    <Col class="ps-2 m-0">
+                      <Image src={comment.image} alt="리플 짤" style="max-width: 100%;" />
                     </Col>
                   </Row>
                 {/if}
