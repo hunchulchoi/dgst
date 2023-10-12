@@ -328,12 +328,12 @@
             >
           </Col>
           <Col xs="12" md="8" class="mt-xs-1">
-            <Row>
+            <Row class="mx-0">
               <Col class="text-break" style="max-width: 98%">
                 {#if comment.image}
                   <Row class="pb-3">
                     <Col>
-                      <Image src={comment.image} alt="리플 짤" style="max-width: 80%;" />
+                      <Image src={comment.image} alt="리플 짤" style="max-width: 95%;" />
                     </Col>
                   </Row>
                 {/if}
