@@ -11,7 +11,9 @@
         Image,
         Input,
         InputGroup,
-        InputGroupText,
+        Modal,
+        ModalBody,
+        ModalHeader,
         Row,
         Spinner
     } from 'sveltestrap';
@@ -81,7 +83,7 @@
 
   function comment() {
     if (!commentContent) {
-      alert('내용을 입력하세요');
+      alert('내용을 입력하세요', 'warning');
       return;
     }
     commentLoading = true;
@@ -176,6 +178,20 @@
         return ((str || '').match(EmojiPattern) || []).length;
     }
 
+    function toast(message, color='primary'){
+
+      toastMessage = message;
+      toastColor = color;
+      toastIsOpen = true;
+
+      console.log('toastMessage', toastMessage, 'toastIsOpen', toastIsOpen, 'toastColor', toastColor);
+    }
+
+  let toastMessage;
+  let toastColor;
+  let toastIsOpen = false;
+  const toggle = () => (toastIsOpen = !toastIsOpen);
+
   export let data;
 
   $: commentData = data.article.comments;
@@ -191,7 +207,11 @@
 
 <main class="container my-md-5">
   <Row class="mt-4 shadow rounded-4 p-1 m-0">
-    <h5>{data.article.title}</h5>
+    <Modal isOpen={toastIsOpen} {toggle}>
+      <ModalHeader {toggle}>dgst.site</ModalHeader>
+      <ModalBody>{toastMessage}</ModalBody>
+    </Modal>
+      <h5>{data.article.title}</h5>
     <Row class="border-bottom border-secondary-subtle pt-2 m-0">
       <Col md="6" xs="8" class="p-0"
         >{data.article.nickname}
@@ -338,7 +358,7 @@
                   </Row>
                 {:else}
                     {#if !/[0-9a-zA-Z가-힣_-]/.test(comment.content) && countEmojis(comment.content) === 1}
-                        <h1>{comment.content}</h1>
+                        <h1 class="display-2">{comment.content}</h1>
                     {:else}
                         {comment.content}
                     {/if}

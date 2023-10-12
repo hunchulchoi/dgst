@@ -72,10 +72,10 @@
     },
     height: 400,
     language: 'ko',
-    allowedContent: true,
     mediaEmbed: {
       previewsInData: true
-    }
+    },
+
   };
 
   function onReady({ detail: editor }) {
