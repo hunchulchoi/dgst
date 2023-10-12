@@ -73,7 +73,7 @@
       <Input type="hidden" name="articleId" value={$page.params.articleId} />
       <Input type="hidden" name="content" bind:value={content} required />
       <FormGroup floating label="제목">
-        <Input id="title" name="title" bind:value={title} required />
+        <Input id="title" name="title" bind:value={title} required autofocus />
       </FormGroup>
       <CKEditor5 bind:editorData={content} />
       <Row class="text-end pe-2 mt-4">
