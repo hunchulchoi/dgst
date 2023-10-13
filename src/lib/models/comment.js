@@ -5,7 +5,7 @@ export const commentSchema = new Schema(
   {
     email: { type: String, required: true },
     nickname: { type: String, required: true },
-    photo: { type: String, trim: true, required: true },
+    photo: { type: String, trim: true},
     boardId: { type: String, trim: true, required: true },
     articleId: { type: String, trim: true, required: true },
     content: { type: String, trim: true },
