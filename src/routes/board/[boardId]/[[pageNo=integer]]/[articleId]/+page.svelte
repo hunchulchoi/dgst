@@ -291,7 +291,7 @@
 
     <Row class="mb-5 mx-0">
       {#if $page.data.session?.user.nickname}
-        <div class="border p-4 rounded-4 shadow-sm" bind:this={commentDiv}>
+        <div class="border p-3 rounded-4 shadow-sm" bind:this={commentDiv}>
           <Loader
             bind:active={commentLoading}
             container={commentDiv}
@@ -334,12 +334,12 @@
       {/if}
 
       {#each commentData as comment}
-        <Row class="py-3 px-1 border-bottom border-gray-subtle mx-0">
+        <Row class="py-3 px-0 border-bottom border-gray-subtle mx-0">
           <Col xs="auto">
             <Image thumbnail src={comment.photo} style="height:30px" rounded />
           </Col>
           <Col xs="auto" clsss="border-end">
-            {comment.nickname}
+            {comment.nickname}<br class="d-none d-md-block">
             <span class="text-muted ps-2" style="font-size: smaller"
               >{formatDistanceToNowStrict(parseISO(comment.createdAt), {
                 locale: ko,
@@ -347,7 +347,7 @@
               })}</span
             >
           </Col>
-          <Col xs="12" md="8" class="mt-xs-1">
+          <Col xs="12" md="8" class="mt-2 mt-md-0 p-0">
             <Row class="mx-0">
               <Col class="text-break" style="max-width: 98%">
                 {#if comment.image}
@@ -358,7 +358,7 @@
                   </Row>
                 {:else}
                     {#if !/[0-9a-zA-Z가-힣_-]/.test(comment.content) && countEmojis(comment.content) === 1}
-                        <h1 class="display-2">{comment.content}</h1>
+                        <h1 class="display-1">{comment.content}</h1>
                     {:else}
                         {comment.content}
                     {/if}
