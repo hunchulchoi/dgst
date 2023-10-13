@@ -14,7 +14,7 @@
         DropdownItem,
         Collapse,
         NavbarToggler,
-        DropdownMenu, Row
+        DropdownMenu, Row, Breadcrumb, BreadcrumbItem
     } from 'sveltestrap';
 
   import theme from '$lib/shared/stores/theme.js';
@@ -57,11 +57,6 @@
       style="height: 40px"
     />
   </NavbarBrand>
-  <Nav>
-    <NavItem class="d-xs-none d-md-inline">
-      <NavLink href="/board/free">자유게시판</NavLink>
-    </NavItem>
-  </Nav>
   <NavbarToggler on:click={() => (isOpen = !isOpen)} class="text-bg-secondary bg-opacity-50" />
   <Collapse {isOpen} navbar expand="md" on:update={handleUpdate}>
     <Nav class="ms-auto" navbar >
@@ -100,4 +95,7 @@
     </Nav>
   </Collapse>
 </Navbar>
+    <Breadcrumb class="pt-2 pb-0 text-bg-light bg-opacity-10">
+        <BreadcrumbItem class="ps-4 pb-0 mb-0"><a href="/board/free">자유게시판</a></BreadcrumbItem>
+    </Breadcrumb>
 </Row>

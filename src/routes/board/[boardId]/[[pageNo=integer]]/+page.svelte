@@ -80,10 +80,10 @@
         </Pagination>
       </Col>
       {#if $page.data.session?.user.nickname}
-        <Col md="2" class="text-end">
-          <Button color="primary" on:click={write}
-            ><Icon name="pencil-fill" class="pe-2" />글쓰기</Button
-          >
+        <Col xs="12" class="d-flex justify-content-end fixed-bottom mb-5 me-5">
+          <Button color="primary" on:click={write}>
+              <Icon name="pencil-fill" class="pe-2 " />글쓰기
+          </Button>
         </Col>
       {/if}
     </Row>
