@@ -40,7 +40,7 @@
   $: colorModeIcon =
     $theme === 'light' ? 'sun-fill' : $theme === 'dark' ? 'moon-stars-fill' : 'circle-half';
   $: loginButton = `/oauth/btn_google_signin_${
-    $theme === 'light' ? 'ligth' : 'dark'
+    $theme === 'light' ? 'light' : 'dark'
   }_normal_web.png`;
 </script>
 
@@ -57,43 +57,40 @@
       style="height: 40px"
     />
   </NavbarBrand>
-  <NavbarToggler on:click={() => (isOpen = !isOpen)} class="text-bg-secondary bg-opacity-50" />
-  <Collapse {isOpen} navbar expand="md" on:update={handleUpdate}>
-    <Nav class="ms-auto" navbar >
-      <NavItem>
-        {#if $page.data.session?.user.nickname}
-          <Image
-            thumbnail
-            alt="{$page.data.session.user.nickname} 프로필 사진"
-            src={$page.data.session.user.photo ?? '/icons/unknown-person-icon-4.jpg'}
-            class="p-0 rounded"
-            style="max-height: 30px;max-width: 30px"
-          />
-            <span class="text-secondary">{$page.data.session.user.nickname}</span>
-          <Button class="bi bi-door-closed" size="sm" on:click={handleSignOut}>logout</Button>
-        {:else}
-          <NavLink on:click={handleGoogleSignIn} class="p-0">
-            <Image fluid alt="google계정으로 로그인" src={loginButton} class="p-0" />
-          </NavLink>
-        {/if}
-      </NavItem>
-      <Dropdown nav inNavbar class="col-xs-2">
-        <DropdownToggle nav caret class="text-secondary"><Icon name={colorModeIcon} /></DropdownToggle>
-        <DropdownMenu end>
-          <DropdownItem on:click={() => theme.set('auto')}
-            ><Icon name="circle-half" /> 자동</DropdownItem
-          >
-          <DropdownItem divider />
-          <DropdownItem on:click={() => theme.set('light')}
-            ><Icon name="sun-fill" /> 밝게</DropdownItem
-          >
-          <DropdownItem on:click={() => theme.set('dark')}
-            ><Icon name="moon-stars-fill" /> 어둡게</DropdownItem
-          >
-        </DropdownMenu>
-      </Dropdown>
-    </Nav>
-  </Collapse>
+  <Nav>
+    <NavItem>
+      {#if $page.data.session?.user.nickname}
+        <Image
+          thumbnail
+          alt="{$page.data.session.user.nickname} 프로필 사진"
+          src={$page.data.session.user.photo ?? '/icons/unknown-person-icon-4.jpg'}
+          class="p-0 rounded"
+          style="max-height: 30px;max-width: 30px"
+        />
+        <span class="text-secondary">{$page.data.session.user.nickname}</span>
+<!--        <Button color="danger" class="bi bi-door-closed" size="sm" on:click={handleSignOut}></Button>-->
+      {:else}
+        <NavLink on:click={handleGoogleSignIn} class="p-0">
+          <Image fluid alt="google계정으로 로그인" src={loginButton} class="p-0" />
+        </NavLink>
+      {/if}
+    </NavItem>
+    <Dropdown nav class="col-xs-2">
+      <DropdownToggle nav caret class="text-secondary"><Icon name={colorModeIcon} /></DropdownToggle>
+      <DropdownMenu end>
+        <DropdownItem on:click={() => theme.set('auto')}
+        ><Icon name="circle-half" /> 자동</DropdownItem
+        >
+        <DropdownItem divider />
+        <DropdownItem on:click={() => theme.set('light')}
+        ><Icon name="sun-fill" /> 밝게</DropdownItem
+        >
+        <DropdownItem on:click={() => theme.set('dark')}
+        ><Icon name="moon-stars-fill" /> 어둡게</DropdownItem
+        >
+      </DropdownMenu>
+    </Dropdown>
+  </Nav>
 </Navbar>
     <Breadcrumb class="pt-2 pb-0 text-bg-light bg-opacity-10">
         <BreadcrumbItem class="ps-4 pb-0 mb-0"><a href="/board/free">자유게시판</a></BreadcrumbItem>
