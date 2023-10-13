@@ -335,9 +335,11 @@
 
       {#each commentData as comment}
         <Row class="py-3 px-0 border-bottom border-gray-subtle mx-0">
+          {#if comment.photo}
           <Col xs="auto">
             <Image thumbnail src={comment.photo} style="height:30px" rounded />
           </Col>
+          {/if}
           <Col xs="auto" clsss="border-end">
             {comment.nickname}<br class="d-none d-md-block">
             <span class="text-muted ps-2" style="font-size: smaller"
