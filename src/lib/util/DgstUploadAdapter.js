@@ -77,7 +77,7 @@ class DgstUploadAdapter {
     if (file.type !== 'image/gif') {
       const webp = await srcToWebP(window.URL.createObjectURL(file), { width: 1000 });
 
-      data.append('upload', new File([webp], file.name + '.webp'));
+      data.append('upload', new File([webp], file.name));
     } else {
       data.append('upload', file);
     }
