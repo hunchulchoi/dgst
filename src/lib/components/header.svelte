@@ -68,14 +68,13 @@
           style="max-height: 30px;max-width: 30px"
         />
         <span class="text-secondary">{$page.data.session.user.nickname}</span>
-<!--        <Button color="danger" class="bi bi-door-closed" size="sm" on:click={handleSignOut}></Button>-->
       {:else}
-        <NavLink on:click={handleGoogleSignIn} class="p-0">
-          <Image fluid alt="google계정으로 로그인" src={loginButton} class="p-0" />
+        <NavLink on:click={handleGoogleSignIn} class="p-0 m-0">
+          <Image alt="google계정으로 로그인" src={loginButton} class="p-0" style="max-width:40vw"/>
         </NavLink>
       {/if}
     </NavItem>
-    <Dropdown nav class="col-xs-2">
+    <Dropdown nav class="col-xs-1">
       <DropdownToggle nav caret class="text-secondary"><Icon name={colorModeIcon} /></DropdownToggle>
       <DropdownMenu end>
         <DropdownItem on:click={() => theme.set('auto')}
@@ -88,6 +87,12 @@
         <DropdownItem on:click={() => theme.set('dark')}
         ><Icon name="moon-stars-fill" /> 어둡게</DropdownItem
         >
+      {#if $page.data.session?.user.nickname}
+          <DropdownItem divider />
+          <DropdownItem on:click={signOut} class="text-bg-danger-subtle"
+          ><Icon name="door-closed" /> 로그아웃</DropdownItem
+          >
+      {/if}
       </DropdownMenu>
     </Dropdown>
   </Nav>

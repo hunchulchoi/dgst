@@ -4,18 +4,20 @@ import { error } from '@sveltejs/kit';
 import { User } from '$lib/models/user.js';
 
 connectDB();
-export const load = async ({ params }) => {
-  console.log('serverLoadEvent', params);
+export const load = async ({ params, locals }) => {
+  //console.log('serverLoadEvent', params);
 
   if (!params.articleId) {
     throw error(400, { message: '잘못된 접근입니다.' });
   }
 
+  const session = await locals.getSession();
+
   const filter = { _id: params.articleId, boardId: params.boardId, state: 'write' };
 
   const article = await Article.findOneAndUpdate(
     filter,
-    { $inc: { read: 1 } },
+    { $addToSet: { reads: session?.user?.email } },
     { new: true, timestamps: false }
   )
     .populate({
@@ -25,7 +27,7 @@ export const load = async ({ params }) => {
     })
     .exec();
 
-  console.log('article', article);
+  //console.log('article', article);
 
   if (!article) {
     throw error(410, { message: '삭제되었거나 존지하지 않는 게시물입니다.' });

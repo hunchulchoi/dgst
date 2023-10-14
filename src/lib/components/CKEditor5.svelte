@@ -46,7 +46,6 @@
         'redo',
         'uploadImage',
         '|',
-        'fontFamily',
         'fontSize',
         'bold',
         'italic',
@@ -66,7 +65,7 @@
         type: 'block'
       },
       upload: {
-        types: ['jpeg', 'jpg', 'gif', 'png']
+        types: ['jpeg', 'jpg', 'gif', 'png', 'webp']
       },
       styles: [{ name: 'side', isDefault: true, modelElements: ['imageBlock'] }]
     },

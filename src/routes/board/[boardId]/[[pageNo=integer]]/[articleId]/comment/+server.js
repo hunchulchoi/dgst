@@ -3,6 +3,8 @@ import { error, json } from '@sveltejs/kit';
 import { Comment } from '$lib/models/comment.js';
 import { Article } from '$lib/models/article.js';
 import { write } from '$lib/util/fileUpload.js';
+import {ar} from "date-fns/locale";
+import {Alarm} from "$lib/models/alarm.js";
 
 connectDB();
 
@@ -83,9 +85,16 @@ export async function POST({ request, params, locals }) {
 
     console.log('inserted', inserted);
 
-    await Article.findByIdAndUpdate(articleId, {
+    const article = await Article.findByIdAndUpdate(articleId, {
       $push: { comments: comment._id }
     });
+
+    // 내글이 아닐때 알림
+    if(article.email !== session.user.email){
+        Alarm.findOneAndUpdate({email: article.email}, {$inc: {}})
+            .then();
+    }
+
   } catch (err) {
     console.error('댓글 저장 실패', err);
     throw error(500, { message: '댓글 저장 중 오류가 발생하였습니다.ㅜㅜ' });
