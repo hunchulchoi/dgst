@@ -45,10 +45,11 @@ export async function write(file, preservePath = 'jjal') {
   // 움짤 압축
   if(file.type === 'image/gif'){
 		const gwebp = await webp.gwebp(`${UPLOAD_PATH}${dir}/${fileName}`, `${UPLOAD_PATH}${dir}/${fileName}.webp`, '-lossy');
-		fileName = `${fileName}.webp`;
-		console.log('gwebp', gwebp)
 
-    //TODO: 파일 삭제
+    fs.unlink(`${UPLOAD_PATH}${dir}/${fileName}`, (err)=> console.error(err))
+
+    fileName = `${fileName}.webp`;
+		console.log('gwebp', gwebp)
 
   //  아이폰은 webp 변환해도 2메가 넘어가는 경우가 있음
   // 서버에서 다시한번 압축
@@ -58,7 +59,7 @@ export async function write(file, preservePath = 'jjal') {
       fileName = `${fileName}.webp`;
       console.log('cwebp', cwebp)
 
-      //TODO: 파일 삭제
+      fs.unlink(`${UPLOAD_PATH}${dir}/${fileName}`, (err)=> console.error(err))
 
     }
 
