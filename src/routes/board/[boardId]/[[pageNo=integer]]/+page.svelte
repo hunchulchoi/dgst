@@ -32,7 +32,7 @@
             <Row class="py-2 border-bottom border-secondary-subtle m-0">
               <Col lg="7" md="5" xs="12"
                       class="text-break link-opacity-hover-50 pb-1">
-               <a on:click={() => read(article._id)} href="#"
+               <a on:click={() => read(article._id)} href="#top"
                   style="cursor: pointer; font-size: 1.1em"
                   class="link-underline link-underline-opacity-0 link-offset-2 link-underline-opacity-50-hover">
                 {article.title}
@@ -80,7 +80,7 @@
         </Pagination>
       </Col>
       {#if $page.data.session?.user.nickname}
-        <Col xs="4" md="3"class="d-flex justify-content-end p-0">
+        <Col xs="4" md="3" class="d-flex justify-content-end p-0">
           <Button class="py-0 px-2" color="primary" on:click={write}>
               <Icon name="pencil-fill" class="pe-2 " />글쓰기
           </Button>
