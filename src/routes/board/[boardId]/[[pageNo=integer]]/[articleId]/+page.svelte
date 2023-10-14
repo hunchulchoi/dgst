@@ -57,7 +57,7 @@
 
           console.debug('webp', webp);
 
-          commentImage = new File([webp], event.target.files[0].name);
+          commentImage = new File([webp], event.target.files[0].name + '.webp');
 
           console.log('webpBlob', commentImage);
         } else {
