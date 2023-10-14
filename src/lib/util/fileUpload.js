@@ -56,11 +56,11 @@ export async function write(file, preservePath = 'jjal') {
 	}else if(file.type !== 'image/webp' && file.size > 1024*1024){
 
       const cwebp = await webp.cwebp(`${UPLOAD_PATH}${dir}/${fileName}`, `${UPLOAD_PATH}${dir}/${fileName}.webp`);
-      fileName = `${fileName}.webp`;
-      console.log('cwebp', cwebp)
 
       fs.unlink(`${UPLOAD_PATH}${dir}/${fileName}`, (err)=> console.error(err))
 
+      fileName = `${fileName}.webp`;
+      console.log('cwebp', cwebp)
     }
 
   if (fs.existsSync(`${UPLOAD_PATH}${dir}/${fileName}`)) return `/images${dir}/${fileName}`;
