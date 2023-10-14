@@ -13,7 +13,7 @@
   export let data;
 </script>
 
-<main class="container py-4 my-md-4">
+<main class="container my-md-2">
   <Row class="p-2 shadow rounded-4">
 
         {#if !data.articles.length}

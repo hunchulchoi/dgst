@@ -21,7 +21,7 @@
 
   import { signIn, signOut } from '@auth/sveltekit/client';
   import { page } from '$app/stores';
-    import {goto} from "$app/navigation";
+  import {goto} from "$app/navigation";
 
   const handleGoogleSignIn = () => {
     console.log('handleGoogleSignIn');
@@ -92,8 +92,21 @@
     </Dropdown>
   </Nav>
 </Navbar>
-    <Breadcrumb class="pt-2 pb-0 text-bg-light bg-opacity-10">
-        <BreadcrumbItem
-          class="ps-4 pb-0 mb-0"><a on:click={free} href='#top'>자유게시판</a></BreadcrumbItem>
-    </Breadcrumb>
+  <Navbar color="secondary-subtle" fixed="true" class="ms-auto pb-0">
+    <Nav tabs>
+      <NavItem>
+        <NavLink on:click={free} active>자유게시판</NavLink>
+      </NavItem>
+      {#if $page.data.session?.user.nickname}
+      <NavItem>
+        <NavLink>
+          알림
+          {#if $page.data.alarms?.length}
+          <span class="ms-1  badge round-fill bg-danger">{$page.data.alarms.length}</span>
+          {/if}
+        </NavLink>
+      </NavItem>
+      {/if}
+    </Nav>
+  </Navbar>
 </Row>
