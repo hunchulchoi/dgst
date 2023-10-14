@@ -52,8 +52,8 @@
       } else {
         const _width = previewEl.naturalWidth;
 
-        if (_width > 1400) {
-          const webp = await blobToWebP(event.target.files[0], { width: 1000 });
+        if (_width > 1600) {
+          const webp = await blobToWebP(event.target.files[0], { width: 1400 });
 
           console.debug('webp', webp);
 
