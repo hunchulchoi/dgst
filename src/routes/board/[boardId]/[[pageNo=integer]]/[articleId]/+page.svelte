@@ -314,9 +314,11 @@
           </InputGroup>
           <InputGroup>
             <img
+              src=""
               class="img-thumbnail d-none me-2"
               bind:this={previewEl}
               alt="리플 이미지 첨부 미리보기"
+              style="max-width: 30px"
             />
             <Input
               type="textarea"
