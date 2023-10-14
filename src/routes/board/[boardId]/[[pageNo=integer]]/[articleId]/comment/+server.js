@@ -3,8 +3,7 @@ import { error, json } from '@sveltejs/kit';
 import { Comment } from '$lib/models/comment.js';
 import { Article } from '$lib/models/article.js';
 import { write } from '$lib/util/fileUpload.js';
-import {ar} from "date-fns/locale";
-import {Alarm} from "$lib/models/alarm.js";
+/*import {Alarm} from "$lib/models/alarm.js";*/
 
 connectDB();
 
@@ -90,10 +89,10 @@ export async function POST({ request, params, locals }) {
     });
 
     // 내글이 아닐때 알림
-    if(article.email !== session.user.email){
+    /*if(article.email !== session.user.email){
         Alarm.findOneAndUpdate({email: article.email}, {$inc: {}})
             .then();
-    }
+    }*/
 
   } catch (err) {
     console.error('댓글 저장 실패', err);
