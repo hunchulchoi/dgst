@@ -57,7 +57,7 @@
           {/each}
         {/if}
     <Row class="mt-3">
-      <Col md="10">
+      <Col xs="8" md="9">
         <Pagination size="md" arialabel="페이지 네이션" class="d-flex justify-content-center">
           <PaginationItem
             ><PaginationLink first href={`/board/${$page.params.boardId}`} /></PaginationItem
@@ -80,8 +80,8 @@
         </Pagination>
       </Col>
       {#if $page.data.session?.user.nickname}
-        <Col xs="12" class="d-flex justify-content-end fixed-bottom mb-5 me-5">
-          <Button color="primary" on:click={write}>
+        <Col xs="4" md="3"class="d-flex justify-content-end p-0">
+          <Button class="py-0 px-2" color="primary" on:click={write}>
               <Icon name="pencil-fill" class="pe-2 " />글쓰기
           </Button>
         </Col>
