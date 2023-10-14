@@ -43,11 +43,19 @@ export async function write(file, preservePath = 'jjal') {
   fs.writeFileSync(`${UPLOAD_PATH}${dir}/${fileName}`, Buffer.from(await file.arrayBuffer()));
 
   // 움짤 압축
-  /*if(file.type === 'image/gif'){
+  if(file.type === 'image/gif'){
 		const gwebp = await webp.gwebp(`${UPLOAD_PATH}${dir}/${fileName}`, `${UPLOAD_PATH}${dir}/${fileName}.webp`);
 		fileName = `${fileName}.webp`;
 		console.log('gwebp', gwebp)
-	}*/
+
+  //  아이폰은 webp 변환해도 2메가 넘어가는 경우가 있음
+  // 서버에서 다시한번 압축
+	}else if(file.size > 1024*1024){
+
+      const cwebp = webp.cwebp(`${UPLOAD_PATH}${dir}/${fileName}`, `${UPLOAD_PATH}${dir}/${fileName}.webp`);
+      fileName = `${fileName}.webp`;
+      console.log('cwebp', cwebp)
+    }
 
   if (fs.existsSync(`${UPLOAD_PATH}${dir}/${fileName}`)) return `/images${dir}/${fileName}`;
   else throw error(500, '파일 저장 중에 오류가 발생하였습니다. 쿠훕ㅠㅠ');
