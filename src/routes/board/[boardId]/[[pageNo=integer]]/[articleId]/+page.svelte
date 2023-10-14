@@ -364,7 +364,7 @@
                 {#if !/[0-9a-zA-Z가-힣_-]/.test(comment.content) && countEmojis(comment.content) === 1}
                     <h1 class="display-1">{comment.content}</h1>
                 {:else}
-                    {comment.content}
+                  <div class="px-2">{comment.content}</div>
                 {/if}
               </Col>
             </Row>
