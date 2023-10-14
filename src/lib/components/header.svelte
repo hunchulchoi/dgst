@@ -19,23 +19,18 @@
 
   import theme from '$lib/shared/stores/theme.js';
 
-  let isOpen = false;
-
-  function handleUpdate(event) {
-    isOpen = event.detail.isOpen;
-  }
-
   import { signIn, signOut } from '@auth/sveltekit/client';
   import { page } from '$app/stores';
+    import {goto} from "$app/navigation";
 
   const handleGoogleSignIn = () => {
     console.log('handleGoogleSignIn');
     signIn('google', { callbackUrl: '/' });
   };
 
-  const handleSignOut = () => {
-    signOut();
-  };
+  function free(){
+    goto(`/board/free/?v=${new Date().getMinutes()}`)
+  }
 
   $: colorModeIcon =
     $theme === 'light' ? 'sun-fill' : $theme === 'dark' ? 'moon-stars-fill' : 'circle-half';
@@ -98,6 +93,7 @@
   </Nav>
 </Navbar>
     <Breadcrumb class="pt-2 pb-0 text-bg-light bg-opacity-10">
-        <BreadcrumbItem class="ps-4 pb-0 mb-0"><a href="/board/free">자유게시판</a></BreadcrumbItem>
+        <BreadcrumbItem
+          class="ps-4 pb-0 mb-0"><a on:click={free} href='#top'>자유게시판</a></BreadcrumbItem>
     </Breadcrumb>
 </Row>
