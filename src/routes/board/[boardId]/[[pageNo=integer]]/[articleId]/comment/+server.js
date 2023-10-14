@@ -133,7 +133,10 @@ export async function DELETE({ request, params, locals }) {
       });
     }
     
-   await Article.updateOne({_id:articleId}, {$pull: {comments: data.commentId}})
+   await Article.updateOne({_id:articleId}
+     , {$pull: {comments: data.commentId}}
+     , {timestamps: false}
+    )
    
   } catch (err) {
     console.error(err);
