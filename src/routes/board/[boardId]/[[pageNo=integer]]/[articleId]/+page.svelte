@@ -47,7 +47,7 @@
     previewEl.onload = async (evt) => {
       commentLoading = true;
 
-      if (event.target.files[0].name.toLowerCase().endsWith('.gif')) {
+      if (event.target.files[0].type.endsWith('.gif') && event.target.files[0].type.endsWith('.webp')) {
         commentImage = event.target.files[0];
       } else {
         const _width = previewEl.naturalWidth;
