@@ -52,7 +52,7 @@ export async function write(file, preservePath = 'jjal') {
 
   //  아이폰은 webp 변환해도 2메가 넘어가는 경우가 있음
   // 서버에서 다시한번 압축
-	}else if(file.size > 1024*1024){
+	}else if(file.type !== 'image/webp' && file.size > 1024*1024){
 
       const cwebp = await webp.cwebp(`${UPLOAD_PATH}${dir}/${fileName}`, `${UPLOAD_PATH}${dir}/${fileName}.webp`);
       fileName = `${fileName}.webp`;
