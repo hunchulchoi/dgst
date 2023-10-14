@@ -37,8 +37,8 @@
                   class="link-underline link-underline-opacity-0 link-offset-2 link-underline-opacity-50-hover">
                 {article.title}
                 {@html article.content}
-                {#if article.comments?.length}
-                  <Badge color="primary" class="bg-opacity-50">{article.comments.length}</Badge>
+                {#if article.comment}
+                  <Badge color="primary" class="bg-opacity-50">{article.comment}</Badge>
                 {/if}
                </a>
               </Col>

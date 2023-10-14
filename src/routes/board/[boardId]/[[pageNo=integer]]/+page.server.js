@@ -28,7 +28,7 @@ export const load = async ({ params }) => {
       pageNo = maxPage;
     }
 
-    console.log(
+    /*console.log(
       'pageNo',
       pageNo,
       'maxPage',
@@ -36,20 +36,18 @@ export const load = async ({ params }) => {
       '(pageNo-1)*pageUnit)',
       (pageNo - 1) * pageUnit,
       pageNo * pageUnit
-    );
+    );*/
 
-    const articles = await Article.find(filter)
+    const articles = await Article.find(filter,
+        {content:1, createdAt:1, nickname:1, title: 1, read:1, like:1, reads:1}
+    )
       .sort({ createdAt: -1 })
       .skip((pageNo - 1) * pageUnit)
       .limit(pageNo * pageUnit)
-      .populate({
-        path: 'comments',
-        match: { state: 'write' },
-        options: { sort: { createdAt: -1 } }
-      })
       .exec();
 
     articles.forEach((article) => {
+        console.log('article', article)
       const image = article.content.includes('<img src=');
       const youtube = article.content.includes('<div data-oembed-url=');
 
