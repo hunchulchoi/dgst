@@ -6,13 +6,14 @@ import '$lib/models/article.js';
 export const alarmSchema = new Schema(
     {
 
-        email: { type: String, required: true, index: true, unique: true },
-        articles:[{
-            articleId:{type: Schema.Types.ObjectId, ref: 'article'},
-            count:{type: Number}
-        }]
+        email: { type: String, required: true, index: true},
+        articleId: { type: String, required: true, index: true},
+        title: { type: String, required: true},
+        comments: [{ type: String, required: true}],
+        comment: { type: String},
+        commentContent: { type: String}
     },
     { timestamps: true }
 );
 
-export const Alarm = models.comment || model('alarm', alarmSchema);
+export const Alarm = models.alarm || model('alarm', alarmSchema);

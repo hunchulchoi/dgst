@@ -3,6 +3,7 @@ export const load = ({ url, data }) => {
 
   return {
     pathname,
-    session: data.session
+    session: data.session,
+    alarms: data.alarms
   };
 };
