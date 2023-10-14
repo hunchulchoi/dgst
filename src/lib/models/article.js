@@ -23,7 +23,6 @@ export const articleSchema = new Schema(
         virtuals:{
             read:{
                 get(){
-                    console.log('read', this.reads)
                     return this.reads?.length || 0;
                 }
             },

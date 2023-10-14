@@ -21,25 +21,15 @@ export const load = async ({ params }) => {
       return { articles: [] };
     }
 
-    const maxPage = parseInt(total / pageUnit) + (total % pageUnit)?1:0;
+    const maxPage = parseInt(total / pageUnit + ((total % pageUnit)?1:0));
 
     //
     if (maxPage < pageNo) {
       pageNo = maxPage;
     }
-
-    /*console.log(
-      'pageNo',
-      pageNo,
-      'maxPage',
-      maxPage,
-      '(pageNo-1)*pageUnit)',
-      (pageNo - 1) * pageUnit,
-      pageNo * pageUnit
-    );*/
-
+    
     const articles = await Article.find(filter,
-        {content:1, createdAt:1, nickname:1, title: 1, read:1, like:1, reads:1}
+        {content:1, createdAt:1, nickname:1, title: 1, read:1, like:1, reads:1, comments: 1, likes:1}
     )
       .sort({ createdAt: -1 })
       .skip((pageNo - 1) * pageUnit)
@@ -47,10 +37,13 @@ export const load = async ({ params }) => {
       .exec();
 
     articles.forEach((article) => {
-        console.log('article', article)
+      delete article.comments;
+      delete article.reads;
+      delete article.likes;
+      
       const image = article.content.includes('<img src=');
       const youtube = article.content.includes('<div data-oembed-url=');
-
+      
       article.content =
         (image ? '<i class="bi bi-card-image text-success px-2"></i>' : '') +
         (youtube ? '<i class="bi bi-youtube text-danger px-2"></i>' : '');
