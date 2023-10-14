@@ -358,12 +358,11 @@
                       <Image src={comment.image} alt="리플 짤" style="max-width: 100%;" />
                     </Col>
                   </Row>
+                {/if}
+                {#if !/[0-9a-zA-Z가-힣_-]/.test(comment.content) && countEmojis(comment.content) === 1}
+                    <h1 class="display-1">{comment.content}</h1>
                 {:else}
-                    {#if !/[0-9a-zA-Z가-힣_-]/.test(comment.content) && countEmojis(comment.content) === 1}
-                        <h1 class="display-1">{comment.content}</h1>
-                    {:else}
-                        {comment.content}
-                    {/if}
+                    {comment.content}
                 {/if}
               </Col>
             </Row>
