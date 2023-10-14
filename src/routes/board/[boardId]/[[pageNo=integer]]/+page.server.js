@@ -21,7 +21,7 @@ export const load = async ({ params }) => {
       return { articles: [] };
     }
 
-    const maxPage = parseInt(total / pageUnit + 1);
+    const maxPage = parseInt(total / pageUnit) + (total % pageUnit)?1:0;
 
     //
     if (maxPage < pageNo) {
