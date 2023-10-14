@@ -44,7 +44,7 @@ export async function write(file, preservePath = 'jjal') {
 
   // 움짤 압축
   if(file.type === 'image/gif'){
-		const gwebp = await webp.gwebp(`${UPLOAD_PATH}${dir}/${fileName}`, `${UPLOAD_PATH}${dir}/${fileName}.webp`);
+		const gwebp = await webp.gwebp(`${UPLOAD_PATH}${dir}/${fileName}`, `${UPLOAD_PATH}${dir}/${fileName}.webp`, '-lossy');
 		fileName = `${fileName}.webp`;
 		console.log('gwebp', gwebp)
 
