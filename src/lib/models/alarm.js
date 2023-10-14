@@ -1,7 +1,7 @@
 import pkg from 'mongoose';
 const { Schema, models, model } = pkg;
 
-import '$lib/models/article.js.js';
+import '$lib/models/article.js';
 
 export const alarmSchema = new Schema(
     {

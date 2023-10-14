@@ -1,7 +1,7 @@
 import pkg from 'mongoose';
 const { Schema, models, model } = pkg;
 
-import '$lib/models/comment.js';
+import '$lib/models/comment';
 
 export const articleSchema = new Schema(
   {
