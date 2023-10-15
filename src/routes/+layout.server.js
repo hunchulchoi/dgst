@@ -10,7 +10,7 @@ export const load = async (event) => {
   let alarms;
   
   // 알림이 있는 지 확인
-  if(session.user?.nickname){
+  if(session?.user?.nickname){
     alarms = await Alarm.find({email: session.user.email})
       .sort({createdAt: 1})
       .select('articleId title email')
