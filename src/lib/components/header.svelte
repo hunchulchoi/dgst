@@ -19,22 +19,20 @@
 
   import {signIn, signOut} from '@auth/sveltekit/client';
   import {page} from '$app/stores';
-  import {goto} from "$app/navigation";
 
   const handleGoogleSignIn = () => {
     console.log('handleGoogleSignIn');
     signIn('google', { callbackUrl: '/' });
   };
 
-  function free(){
-    goto(`/board/free/?v=${new Date().getMinutes()}`)
-  }
-
   $: colorModeIcon =
     $theme === 'light' ? 'sun-fill' : $theme === 'dark' ? 'moon-stars-fill' : 'circle-half';
   $: loginButton = `/oauth/btn_google_signin_${
     $theme === 'light' ? 'light' : 'dark'
   }_normal_web.png`;
+
+  $: alarmCount = $page.data.alarmCount
+  $: console.log('$$ alarmCount', alarmCount)
 </script>
 
 <Styles theme={$theme} />
@@ -100,8 +98,8 @@
       <NavItem>
         <NavLink href="/board/alarm" active={$page.data.pathname.startsWith('/board/alarm')}>
           <Icon name="megaphone" class="text-success me-2"/>알림
-          {#if $page.data.alarmCount}
-          <span class="ms-1  badge round-fill bg-danger">{$page.data.alarmCount}</span>
+          {#if alarmCount}
+          <span class="ms-1  badge round-fill bg-danger">{alarmCount}</span>
           {/if}
         </NavLink>
       </NavItem>
