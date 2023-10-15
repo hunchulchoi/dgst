@@ -29,7 +29,7 @@
             </a>
           </Col>
           <Col lg="1" md="2" xs="4" class="text-muted text-end" style="font-size: small"
-          >{formatDistanceToNowStrict(parseISO(alarm.createdAt), {
+          >{formatDistanceToNowStrict(parseISO(alarm.updatedAt), {
             locale: ko,
             addSuffix: true
           })}</Col
