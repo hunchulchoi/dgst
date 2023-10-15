@@ -99,7 +99,7 @@
       {#if $page.data.session?.user?.nickname}
       <NavItem>
         <NavLink href="/board/alarm" active={$page.data.pathname.startsWith('/board/alarm')}>
-          알림
+          <Icon name="megaphone" class="text-success me-2"/>알림
           {#if $page.data.alarmCount}
           <span class="ms-1  badge round-fill bg-danger">{$page.data.alarmCount}</span>
           {/if}
