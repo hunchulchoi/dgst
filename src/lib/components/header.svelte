@@ -54,7 +54,7 @@
   </NavbarBrand>
   <Nav>
     <NavItem>
-      {#if $page.data.session?.user.nickname}
+      {#if $page.data.session?.user?.nickname}
         <Image
           thumbnail
           alt="{$page.data.session.user.nickname} 프로필 사진"
@@ -97,7 +97,7 @@
       <NavItem>
         <NavLink on:click={free} active>자유게시판</NavLink>
       </NavItem>
-      {#if $page.data.session?.user.nickname}
+      {#if $page.data.session?.user?.nickname}
       <NavItem>
         <NavLink>
           알림
