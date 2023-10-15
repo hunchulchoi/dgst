@@ -1,26 +1,24 @@
 <script>
-    import {
-        Navbar,
-        NavbarBrand,
-        Image,
-        Nav,
-        NavItem,
-        NavLink,
-        Icon,
-        Button,
-        Styles,
-        Dropdown,
-        DropdownToggle,
-        DropdownItem,
-        Collapse,
-        NavbarToggler,
-        DropdownMenu, Row, Breadcrumb, BreadcrumbItem
-    } from 'sveltestrap';
+  import {
+    Dropdown,
+    DropdownItem,
+    DropdownMenu,
+    DropdownToggle,
+    Icon,
+    Image,
+    Nav,
+    Navbar,
+    NavbarBrand,
+    NavItem,
+    NavLink,
+    Row,
+    Styles
+  } from 'sveltestrap';
 
   import theme from '$lib/shared/stores/theme.js';
 
-  import { signIn, signOut } from '@auth/sveltekit/client';
-  import { page } from '$app/stores';
+  import {signIn, signOut} from '@auth/sveltekit/client';
+  import {page} from '$app/stores';
   import {goto} from "$app/navigation";
 
   const handleGoogleSignIn = () => {
@@ -95,14 +93,15 @@
   <Navbar color="secondary-subtle" fixed="true" class="ms-auto pb-0">
     <Nav tabs>
       <NavItem>
-        <NavLink on:click={free} active>자유게시판</NavLink>
+        <NavLink data-sveltekit-reload href="/board/free/" active={$page.data.pathname.startsWith('/board/free')}>자유게시판
+        </NavLink>
       </NavItem>
       {#if $page.data.session?.user?.nickname}
       <NavItem>
-        <NavLink>
+        <NavLink href="/board/alarm" active={$page.data.pathname.startsWith('/board/alarm')}>
           알림
-          {#if $page.data.alarms?.length}
-          <span class="ms-1  badge round-fill bg-danger">{$page.data.alarms.length}</span>
+          {#if $page.data.alarmCount}
+          <span class="ms-1  badge round-fill bg-danger">{$page.data.alarmCount}</span>
           {/if}
         </NavLink>
       </NavItem>

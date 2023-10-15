@@ -85,7 +85,7 @@ export async function POST({ request, params, locals }) {
     // 내글이 아닐때 알림
     if(article.email !== session.user.email){
         const alarm = await Alarm.findOneAndUpdate({email: article.email, articleId: articleId}
-          , {$set:{title: article.title}, $addToSet: {comments: comment._id}}
+          , {$set:{title: article.title, boardId: boardId}, $addToSet: {comments: comment._id}}
           , {upsert: true, new: true}).lean();
     }
 

@@ -1,5 +1,6 @@
 import { error } from '@sveltejs/kit';
 import { Article } from '$lib/models/article.js';
+import {Alarm} from "$lib/models/alarm.js";
 
 export async function DELETE({ request, params, locals }) {
   console.debug('request', params);
@@ -23,7 +24,7 @@ export async function DELETE({ request, params, locals }) {
 
   const data = await request.json();
 
-  console.log(data);
+  console.log('DELETE data', data);
 
   try {
     const update = await Article.findOneAndUpdate(
@@ -39,6 +40,11 @@ export async function DELETE({ request, params, locals }) {
         message: '삭제 되지 않았습니다. 이미 삭제되었거나 권한이 없는 것 같습니다.'
       });
     }
+
+    // 알람 삭제
+    const deleteAlarm = await Alarm.deleteMany({articleId: params.articleId});
+    console.log('delete alarm', deleteAlarm);
+
   } catch (err) {
     console.error(err);
     throw error(err.status, err.body.message ?? '삭제 중에 오류가 발생하였습니다.');
