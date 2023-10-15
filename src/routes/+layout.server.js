@@ -15,10 +15,14 @@ export const load = async (event) => {
       .sort({createdAt: 1})
       .select('articleId title email')
       .exec();
+    
+    alarms = JSON.parse(JSON.stringify(alarms))
   }
+  
+  
 
   return {
     session,
-    alarms: JSON.parse(JSON.stringify(alarms)),
+    alarms ,
   };
 };
