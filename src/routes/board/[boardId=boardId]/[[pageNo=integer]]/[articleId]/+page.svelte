@@ -194,6 +194,10 @@
 
   export let data;
 
+  console.log('+page data', data.alarmCount);
+  console.log('+page $page.data', $page.data.alarmCount);
+
+
   $: commentData = data.article.comments;
 </script>
 
