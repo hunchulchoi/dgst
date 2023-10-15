@@ -14,7 +14,7 @@ export const load = async (event) => {
     alarms = await Alarm.find({email: session.user.email})
       .sort({createdAt: 1})
       .select('articleId title email')
-      .exec();
+      .lean();
     
     alarms = JSON.parse(JSON.stringify(alarms))
   }
