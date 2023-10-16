@@ -81,7 +81,7 @@
       const webp = await blobToWebP(document.querySelector('#photo').files[0], { width: 400 });
       console.debug('webp', webp);
 
-      formData.append('photo', new File([webp], document.querySelector('#photo').files[0].name);
+      formData.append('photo', new File([webp], document.querySelector('#photo').files[0].name));
 
     }
 
