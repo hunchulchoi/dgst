@@ -1,5 +1,5 @@
 <script>
-  import {Badge, Col, Row} from "sveltestrap";
+  import {Badge, Col, Image, Row} from "sveltestrap";
   import {formatDistanceToNowStrict, parseISO} from "date-fns";
   import ko from "date-fns/locale/ko/index.js";
 
@@ -10,8 +10,9 @@
   <Row class="p-2 shadow rounded-4">
 
     {#if !data.alarms?.length }
-      <Row class="mt-2">
-        <Col style="height: 300px" class="fs-2 text-center align-middle">
+      <Row class="mt-2 mx-0">
+        <Image src="/icons/nothing.webp" alt="없어요 그냥 짤"/>
+        <Col style="height: 300px" class="fs-2 text-center mt-5">
           <div>🤦🏻‍♀🤦🏾‍♂ 딱히 알려 드릴게 없네유.</div>
           <div>그런 날도 있는거져 ㅜㅜ</div>
         </Col>
