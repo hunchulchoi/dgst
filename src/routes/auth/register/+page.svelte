@@ -68,7 +68,7 @@
 
   let fight = false;
 
-  const doSubmit = () => {
+  const doSubmit = async () => {
     // validation
     doValidate();
     // recaptcha
