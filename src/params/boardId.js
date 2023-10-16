@@ -4,5 +4,5 @@
  * @returns {boolean}
  */
 export function match(param) {
-  return ['free'].includes(param);
+  return ['free', 'bug'].includes(param);
 }
