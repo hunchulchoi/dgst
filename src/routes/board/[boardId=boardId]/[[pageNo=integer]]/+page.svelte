@@ -52,6 +52,7 @@
             </Row>
           {/each}
         {/if}
+  {#if data.maxPage>1}
     <Row class="mt-3 mx-0">
       <Col xs="12">
         <Pagination size="md" arialabel="페이지 네이션" class="d-flex justify-content-center">
@@ -76,8 +77,9 @@
         </Pagination>
       </Col>
     </Row>
+  {/if}
   {#if $page.data.session?.user.nickname}
-    <Row class="px-0 mx-0 pe-3 pb-4">
+    <Row class="px-0 mx-0 pe-3 pb-4 mt-2">
       <Col class="d-flex justify-content-end p-0">
         <Button class="px-2" color="primary" on:click={write}>
             <Icon name="pencil-fill" class="pe-2 " />글쓰기
