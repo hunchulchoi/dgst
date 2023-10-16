@@ -6,7 +6,7 @@
   export let data;
 </script>
 
-<main class="container my-md-2" style="min-height: 50vh">
+<main class="container my-md-2" style="min-height: 60vh">
   <Row class="p-2 shadow rounded-4">
 
     {#if !data.alarms?.length }

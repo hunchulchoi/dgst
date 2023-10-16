@@ -13,12 +13,12 @@
   export let data;
 </script>
 
-<main class="container my-md-2">
+<main class="container my-md-2" style="min-height: 60vh">
   <Row class="p-2 shadow rounded-4">
 
         {#if !data.articles.length}
-          <Row>
-            <Col style="height: 300px" class="fs-2 text-center align-middle">
+          <Row class="my-5">
+            <Col style="height: 40vh" class="fs-2 text-center align-middle">
               🤦🏻‍♀🤦🏾‍♂ 게시물이 없습니다. 뻘글 하나 쓰고 가세여 ㅜㅜ
             </Col>
           </Row>
@@ -52,8 +52,8 @@
             </Row>
           {/each}
         {/if}
-    <Row class="mt-3">
-      <Col xs="8" md="9">
+    <Row class="mt-3 mx-0">
+      <Col xs="12">
         <Pagination size="md" arialabel="페이지 네이션" class="d-flex justify-content-center">
           <PaginationItem
             ><PaginationLink first href={`/board/${$page.params.boardId}`} /></PaginationItem
@@ -75,14 +75,16 @@
           >
         </Pagination>
       </Col>
-      {#if $page.data.session?.user.nickname}
-        <Col xs="4" md="3" class="d-flex justify-content-end p-0">
-          <Button class="py-0 px-2" color="primary" on:click={write}>
-              <Icon name="pencil-fill" class="pe-2 " />글쓰기
-          </Button>
-        </Col>
-      {/if}
     </Row>
+  {#if $page.data.session?.user.nickname}
+    <Row class="px-0 mx-0 pe-3 pb-4">
+      <Col class="d-flex justify-content-end p-0">
+        <Button class="px-2" color="primary" on:click={write}>
+            <Icon name="pencil-fill" class="pe-2 " />글쓰기
+        </Button>
+      </Col>
+    </Row>
+  {/if}
   </Row>
 </main>
 
