@@ -1,5 +1,6 @@
 <script>
   import {
+    Badge,
     Dropdown,
     DropdownItem,
     DropdownMenu,
@@ -32,7 +33,7 @@
   }_normal_web.png`;
 
   $: alarmCount = $page.data.alarmCount
-  $: console.log('$$ alarmCount', alarmCount)
+  $: console.log('$$ alarmCount',alarmCount, $page.data.alarmCount)
 </script>
 
 <Styles theme={$theme} />
@@ -89,21 +90,27 @@
   </Nav>
 </Navbar>
   <Navbar color="secondary-subtle" fixed="true" class="ms-auto pb-0">
+
     <Nav tabs>
       <NavItem>
-        <NavLink data-sveltekit-reload href="/board/free/" active={$page.data.pathname.startsWith('/board/free')}>자유게시판
+        <NavLink href="/board/free" active={$page.data.pathname.startsWith('/board/free')}>자유게시판
         </NavLink>
       </NavItem>
       {#if $page.data.session?.user?.nickname}
+        <NavItem>
+          <NavLink href="/board/alarm" active={$page.data.pathname.startsWith('/board/alarm')}>
+            <Icon name="megaphone" class="text-success me-2"/>알림
+            {#if alarmCount}
+              <Badge pill color="danger">{alarmCount}</Badge>
+            {/if}
+          </NavLink>
+        </NavItem>
+      {/if}
       <NavItem>
-        <NavLink href="/board/alarm" active={$page.data.pathname.startsWith('/board/alarm')}>
-          <Icon name="megaphone" class="text-success me-2"/>알림
-          {#if alarmCount}
-          <span class="ms-1  badge round-fill bg-danger">{alarmCount}</span>
-          {/if}
+        <NavLink href="/board/bug" active={$page.data.pathname.startsWith('/board/bug')}>
+          <Icon name="bug-fill" class="text-warning me-2"/>버그 신고
         </NavLink>
       </NavItem>
-      {/if}
     </Nav>
   </Navbar>
 </Row>
