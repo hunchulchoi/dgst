@@ -9,10 +9,14 @@ connectDB();
  * @returns {Promise<Response>} status가 200이면 중복, 204면 없음
  * @constructor
  */
-export async function GET({ params }) {
+export async function GET({ params, locals }) {
   const { nickname } = params;
 
-  const found = await User.find({ nickname }).count();
+  const session = await locals.getSession();
+
+  const email = session?.user?.email;
+
+  const found = await User.find({ nickname, email}).count();
 
   console.debug('found', found);
 
