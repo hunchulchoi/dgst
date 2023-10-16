@@ -25,6 +25,7 @@
   import { page } from '$app/stores';
   import { goto } from '$app/navigation';
   import { browser } from '$app/environment';
+  import {blobToWebP} from "webp-converter-browser";
 
   console.log('$page.data.session', $page.data);
 
@@ -74,9 +75,18 @@
     checkRecaptcha();
 
     const formData = new FormData();
+
+    if(document.querySelector('#photo').files){
+
+      const webp = await blobToWebP(document.querySelector('#photo').files[0], { width: 400 });
+      console.debug('webp', webp);
+
+      formData.append('photo', new File([webp], document.querySelector('#photo').files[0].name);
+
+    }
+
     formData.append('nickname', nickname);
     formData.append('introduction', introduction);
-    formData.append('photo', document.querySelector('#photo').files[0]);
 
     fetch('/auth/register', { method: 'PATCH', body: formData })
       .then((res) => {
@@ -104,7 +114,6 @@
   const invalids = { nickname: false, introduction: false };
 
   const changeHandler = async (target) => {
-    console.debug(target.id);
     switch (target.id) {
       case 'nickname':
         invalids.nickname = !/^.{3,15}$/.test(target.value);
@@ -120,25 +129,11 @@
 
         break;
       case 'introduction':
-        console.debug(target.value, !!target.value);
         invalids.introduction = !target.value;
         break;
       case 'fight':
         if (target.checked) doValidate();
     }
-
-    console.log(
-      'nickname',
-      nickname,
-      'invalids',
-      invalids.nickname,
-      'introduction',
-      introduction,
-      'invalids',
-      invalids.introduction,
-      'fight',
-      fight
-    );
   };
 
   $: isInvalid = !(
@@ -148,7 +143,6 @@
     !invalids.introduction &&
     fight
   );
-  $: console.log(isInvalid);
 </script>
 
 <svelte:head>
