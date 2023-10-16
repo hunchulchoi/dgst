@@ -14,7 +14,7 @@
 </script>
 
 <main class="container my-md-2" style="min-height: 50vh">
-  <Row class="p-2 shadow rounded-4 mx-0">
+  <Row class="py-2 shadow rounded-4 mx-0">
 
     {#if $page.data.session?.user.nickname}
       <Row class="px-0 mx-0 pe-3 mt-2 pb-3 border-bottom border-secondary-subtle">
@@ -27,7 +27,7 @@
     {/if}
 
     {#if !data.articles.length}
-      <Row class="my-5">
+      <Row class="my-5 mx-0">
         <Image src="/icons/nothing.webp" alt="없어요 그냥 짤"/>
         <Col style="height: 20vh" class="fs-2 text-center mt-5">
           🤦🏻‍♀🤦🏾‍♂ 게시물이 없습니다. 뻘글 하나 쓰고 가세여 ㅜㅜ
