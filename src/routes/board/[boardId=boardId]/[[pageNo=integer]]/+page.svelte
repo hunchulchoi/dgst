@@ -1,5 +1,5 @@
 <script>
-    import {Badge, Button, Col, Icon, Pagination, PaginationItem, PaginationLink, Row} from 'sveltestrap';
+  import {Badge, Button, Col, Icon, Image, Pagination, PaginationItem, PaginationLink, Row} from 'sveltestrap';
     import {page} from '$app/stores';
     import {goto} from '$app/navigation';
 
@@ -13,12 +13,13 @@
   export let data;
 </script>
 
-<main class="container my-md-2" style="min-height: 60vh">
-  <Row class="p-2 shadow rounded-4">
+<main class="container my-md-2" style="min-height: 50vh">
+  <Row class="p-2 shadow rounded-4 mx-0">
 
         {#if !data.articles.length}
           <Row class="my-5">
-            <Col style="height: 40vh" class="fs-2 text-center align-middle">
+            <Image src="/icons/nothing.webp" alt="없어요 그냥 짤"/>
+            <Col style="height: 20vh" class="fs-2 text-center mt-5">
               🤦🏻‍♀🤦🏾‍♂ 게시물이 없습니다. 뻘글 하나 쓰고 가세여 ㅜㅜ
             </Col>
           </Row>
