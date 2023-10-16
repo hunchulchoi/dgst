@@ -6,6 +6,7 @@ connectDB();
 /**
  * 가입시에 닉네임 중복 검사를 한다.
  * @param params
+ * @param locals
  * @returns {Promise<Response>} status가 200이면 중복, 204면 없음
  * @constructor
  */
