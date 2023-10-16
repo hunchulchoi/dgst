@@ -7,7 +7,7 @@
 </script>
 
 <main class="container my-md-2" style="min-height: 60vh">
-  <Row class="p-2 shadow rounded-4">
+  <Row class="p-2 shadow rounded-4 mx-0">
 
     {#if !data.alarms?.length }
       <Row class="mt-2 mx-0">
