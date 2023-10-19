@@ -25,7 +25,7 @@ export const load = async ({ params, locals }) => {
     .populate({
       path: 'comments',
       match: { state: 'write' },
-      options: { sort: { createdAt: -1 } }
+      options: { sort: { createdAt: 1 } }
     })
     .exec();
 
