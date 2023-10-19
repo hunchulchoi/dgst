@@ -136,5 +136,5 @@ export const handle = SvelteKitAuth({
     strategy: 'jwt'
   },
   secret: NEXTAUTH_SECRET,
-  debug: NODE_ENV === 'development'
+  debug: true,
 });
