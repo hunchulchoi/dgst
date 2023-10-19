@@ -45,6 +45,7 @@
         'undo',
         'redo',
         'uploadImage',
+        'link',
         '|',
         'fontSize',
         'bold',

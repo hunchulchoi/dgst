@@ -19,7 +19,7 @@ function safeString(_name, _path) {
   return path.normalize(path.join(UPLOAD_PATH, _path, _name)).startsWith(UPLOAD_PATH);
 }
 
-export async function write(file, preservePath = 'jjal') {
+export async function write(file, email, preservePath = 'jjal') {
   console.debug('preservePath', preservePath, 'file', file);
 
   const now = new Date();
@@ -36,7 +36,7 @@ export async function write(file, preservePath = 'jjal') {
 
   console.debug(UPLOAD_PATH, dir, fs.existsSync(`${UPLOAD_PATH}${dir}`));
 
-  let fileName = `${file.name
+  let fileName = `${email?.substring(0,8)}_${file.name
     .substring(0, file.name.lastIndexOf('.'))
     .substring(0, 10)}_${now.getTime()}${file.name.substring(file.name.lastIndexOf('.'))}`;
 

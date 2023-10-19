@@ -1,4 +1,4 @@
-import { json } from '@sveltejs/kit';
+import {error, json} from '@sveltejs/kit';
 import connectDB from '$lib/database/mongoosePriomise.js';
 import { write } from '$lib/util/fileUpload.js';
 
@@ -8,6 +8,10 @@ connectDB();
 
 export async function PATCH({ request, locals }) {
   const session = await locals.getSession();
+
+  if(!session || !session.user?.email){
+    throw error(401, { message: '로그인 해 주세요' });
+  }
 
   const formData = await request.formData();
 
@@ -24,7 +28,7 @@ export async function PATCH({ request, locals }) {
   let storeFileName;
 
   if (formData.get('photo')?.size) {
-    storeFileName = await write(formData.get('photo'), 'profiles');
+    storeFileName = await write(formData.get('photo'), session.user.email, 'profiles');
 
     if (!storeFileName) return new Response('파일 저장에 실패 하였습니다.', { status: 500 });
   }
