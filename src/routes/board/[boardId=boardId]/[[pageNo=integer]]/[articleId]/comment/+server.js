@@ -57,7 +57,7 @@ export async function POST({ request, params, locals }) {
   const image = data.get('image');
 
   if (image) {
-    storeFileName = await write(image, 'jjal');
+    storeFileName = await write(image,  session.user.email,'jjal');
   }
 
   try {
@@ -121,18 +121,18 @@ export async function DELETE({ request, params, locals }) {
       { state: 'deleted', modified_email: session.user.email },
       { timestamps: true }
     );
-    
+
     if (!update) {
       throw error(401, {
         message: '삭제 되지 않았습니다. 이미 삭제되었거나 권한이 없는 것 같습니다.'
       });
     }
-    
+
    await Article.updateOne({_id:articleId}
      , {$pull: {comments: data.commentId}}
      , {timestamps: false}
     )
-   
+
   } catch (err) {
     console.error(err);
     throw error(err.status, err.body.message ?? '삭제 중에 오류가 발생하였습니다.');

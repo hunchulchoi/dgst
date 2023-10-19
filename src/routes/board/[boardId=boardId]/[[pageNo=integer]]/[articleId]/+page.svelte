@@ -19,6 +19,7 @@
     } from 'sveltestrap';
     import {page} from '$app/stores';
     import {goto} from '$app/navigation';
+    import {scale} from "svelte/transition";
 
     import {formatDistanceToNowStrict, formatISO9075, parseISO} from 'date-fns';
     import ko from 'date-fns/locale/ko/index.js';
@@ -83,7 +84,7 @@
 
   function comment() {
     if (!commentContent) {
-      alert('내용을 입력하세요', 'warning');
+      alert('내용을 입력하세요');
       return;
     }
     commentLoading = true;
@@ -122,25 +123,27 @@
   }
 
   function deleteComment(commentId) {
-    if (!confirm('삭제 하시겠습니까?')) return false;
+    if (confirm('삭제 하시겠습니까?')){
 
-    fetch(`/board/${$page.params.boardId}/${$page.params.articleId}/comment`, {
-      method: 'DELETE',
-      body: JSON.stringify({ commentId })
-    })
-      .then(async (res) => {
-        if (res.status !== 200) {
-          const { message } = await res.json();
-          alert(message);
-          return;
-        }
-
-        comments();
+      fetch(`/board/${$page.params.boardId}/${$page.params.articleId}/comment`, {
+        method: 'DELETE',
+        body: JSON.stringify({ commentId })
       })
-      .catch((err) => {
-        console.error(err);
-        alert(err.message ?? '삭제 중 오류가 발생했습니다.');
-      });
+        .then(async (res) => {
+          if (res.status !== 200) {
+            const { message } = await res.json();
+            alert(message);
+            return;
+          }
+
+          comments();
+        })
+        .catch((err) => {
+          console.error(err);
+          alert(err.message ?? '삭제 중 오류가 발생했습니다.');
+        });
+    }
+
   }
 
   function remove(articleId) {
@@ -197,6 +200,7 @@
   console.log('+page data', data.alarmCount);
   console.log('+page $page.data', $page.data.alarmCount);
 
+  let visibleReply;
 
   $: commentData = data.article.comments;
 </script>
@@ -373,25 +377,83 @@
               </Col>
             </Row>
 
-            {#if comment.email === $page.data.session?.user.email}
+            {#if $page.data.session?.user.nickname}
               <Row>
                 <Col class="text-end pe-2 m-0">
+                  <Button
+                          on:click={() => visibleReply = comment._id}
+                          size="sm"
+                          outline
+                          color="info p-1"
+                  >
+                    <Icon name="chat-square-dots" /> 답글
+                  </Button>
+            {#if comment.email === $page.data.session?.user.email}
                   <Button
                     on:click={() => deleteComment(comment._id)}
                     size="sm"
                     outline
-                    color="danger p-0"
+                    color="danger p-1"
                   >
-                    <Icon name="trash" />
+                    <Icon name="trash" /> 삭제
                   </Button>
                   <Button size="sm" outline color="primary" class="d-none p-0">
-                    <Icon name="pencil" />
+                    <Icon name="pencil" /> 수정
                   </Button>
+            {/if}
                 </Col>
               </Row>
-            {/if}
+              {/if}
           </Col>
         </Row>
+
+        <!-- 대댓글 -->
+        {#if visibleReply === comment._id}
+        <div transition:scale class="mt-2 mx-0 border-bottom border-secondary-subtle bg-secondary bg-opacity-10">
+          <div class="border p-3 mb-2 rounded-4 shadow-sm" bind:this={commentDiv}>
+            <Loader
+                    bind:active={commentLoading}
+                    container={commentDiv}
+                    component="Dot"
+                    opacity="0.7"
+            />
+            <InputGroup class="mb-2">
+              <!--<InputGroupText class="text-success">
+                <Icon name="card-image" class="pe-2" />
+                짤 첨부
+              </InputGroupText>-->
+              <input
+                      type="file"
+                      bind:this={commentImageEl}
+                      on:change={preview}
+                      muliple="false"
+                      accept="image/*"
+                      class="form-control m-2"
+              />
+            </InputGroup>
+            <InputGroup>
+              <img
+                      src=""
+                      class="img-thumbnail d-none me-2"
+                      bind:this={previewEl}
+                      alt="리플 이미지 첨부 미리보기"
+                      style="max-width: 30px"
+              />
+              <Input
+                      type="textarea"
+                      bind:value={commentContent}
+                      class="border border-gray"
+                      style="max-width: 600px"
+              />
+              <Button color="primary" outline on:click={comment}>
+                <Icon name="pencil-fill" />
+                등록
+                <Spinner color="success" size="sm" class="d-none" />
+              </Button>
+            </InputGroup>
+          </div>
+        </div>
+        {/if}
       {/each}
     </Row>
     <Row class="mx-0 mb-3">
