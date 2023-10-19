@@ -76,12 +76,20 @@
 
     const formData = new FormData();
 
-    if(document.querySelector('#photo').files){
+    let files = document.querySelector('#photo').files;
 
-      const webp = await blobToWebP(document.querySelector('#photo').files[0], { width: 400 });
-      console.debug('webp', webp);
+    if(files){
 
-      formData.append('photo', new File([webp], document.querySelector('#photo').files[0].name));
+      if(files[0].type.endsWith('.gif') || files[0].type.endsWith('.webp')){
+
+        formData.append('photo', files[0]);
+
+      }else{
+        const webp = await blobToWebP(files[0], { width: 400 });
+
+        console.debug('webp', webp);
+        formData.append('photo', new File([webp], files[0].name));
+      }
 
     }
 
