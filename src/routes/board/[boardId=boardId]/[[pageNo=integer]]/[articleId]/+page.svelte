@@ -384,7 +384,7 @@
                           on:click={() => visibleReply = comment._id}
                           size="sm"
                           outline
-                          color="info p-1"
+                          color="info p-1 d-none"
                   >
                     <Icon name="chat-square-dots" /> 답글
                   </Button>
