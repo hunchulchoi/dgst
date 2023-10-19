@@ -38,9 +38,9 @@ export const handle = SvelteKitAuth({
   },
   callbacks: {
     jwt(params) {
-      //console.debug('=======auth callback jwt====');
-      //console.debug('params', params);
-      //console.debug('=======//auth callback jwt====');
+      console.debug('=======auth callback jwt====');
+      console.debug('params', params);
+      console.debug('=======//auth callback jwt====');
 
       if (params.user) {
         params.token.nickname = params.user.nickname;
@@ -66,9 +66,9 @@ export const handle = SvelteKitAuth({
       return false;
     },
     async session(params) {
-      //console.debug('=======auth callback session====');
-      //console.debug('params', params);
-      //console.debug('=======//auth callback session====');
+      console.debug('=======auth callback session====');
+      console.debug('params', params);
+      console.debug('=======//auth callback session====');
 
       if (params.token.nickname) {
         params.session.user.nickname = params.token.nickname;
@@ -79,24 +79,24 @@ export const handle = SvelteKitAuth({
       return params.session;
     },
     async updateUser(params) {
-      // console.debug('=======auth callback updateUser====');
-      // console.debug('params', params);
-      // console.debug('=======//auth callback updateUser====');
+      console.debug('=======auth callback updateUser====');
+      console.debug('params', params);
+      console.debug('=======//auth callback updateUser====');
     },
     async createUser(params) {
-      // console.debug('=======auth callback createUser====');
-      // console.debug('params', params);
-      // console.debug('=======//auth callback createUser====');
+      console.debug('=======auth callback createUser====');
+      console.debug('params', params);
+      console.debug('=======//auth callback createUser====');
     },
     async linkAccount(params) {
-      // console.debug('=======auth callback linkAccount====');
-      // console.debug('params', params);
-      // console.debug('=======//auth callback linkAccount====');
+      console.debug('=======auth callback linkAccount====');
+      console.debug('params', params);
+      console.debug('=======//auth callback linkAccount====');
     },
     async redirect(params) {
-      // console.debug('=======auth callback redirect====');
-      // console.debug('params', params);
-      // console.debug('=======//auth callback redirect====');
+      console.debug('=======auth callback redirect====');
+      console.debug('params', params);
+      console.debug('=======//auth callback redirect====');
 
       return params.url;
       //return '/auth/register';
@@ -104,32 +104,32 @@ export const handle = SvelteKitAuth({
   },
   events: {
     async signIn(message) {
-      // console.debug('=======auth event signIn====');
-      // console.debug('message', message);
-      // console.debug('=======//auth event signIn====');
+      console.debug('=======auth event signIn====');
+      console.debug('message', message);
+      console.debug('=======//auth event signIn====');
     },
     async signOut(message) {
-      // console.log('auth event signOut====', message);
+      console.log('auth event signOut====', message);
     },
     async createUser(message) {
-      // console.debug('=======auth event createUser====');
-      // console.debug('message', message);
-      // console.debug('=======//auth event createUser====');
+      console.debug('=======auth event createUser====');
+      console.debug('message', message);
+      console.debug('=======//auth event createUser====');
     },
     async updateUser(message) {
-      // console.debug('=======auth event updateUser====');
-      // console.debug('message', message);
-      // console.debug('=======//auth event updateUser====');
+      console.debug('=======auth event updateUser====');
+      console.debug('message', message);
+      console.debug('=======//auth event updateUser====');
     },
     async linkAccount(message) {
-      // console.debug('=======auth event linkAccount====');
-      // console.debug('message', message);
-      // console.debug('=======//auth event linkAccount====');
+      console.debug('=======auth event linkAccount====');
+      console.debug('message', message);
+      console.debug('=======//auth event linkAccount====');
     },
     async session(message) {
-      // console.debug('=======auth event session====');
-      // console.debug('message', message);
-      // console.debug('=======//auth event session====');
+      console.debug('=======auth event session====');
+      console.debug('message', message);
+      console.debug('=======//auth event session====');
     }
   },
   session: {
