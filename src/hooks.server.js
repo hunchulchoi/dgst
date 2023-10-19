@@ -19,7 +19,7 @@ export const handle = SvelteKitAuth({
       profile(profile) {
         return {
           id: profile.sub,
-          email: crypto.createHash('sha512').update(profile.email).digest('base64'),
+          email: crypto.createHash('sha512').update(profile.email).digest('base64url'),
           nickname: null,
           introduction: null,
           photo: null,
