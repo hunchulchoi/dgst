@@ -97,7 +97,7 @@
 
     <Nav tabs>
       <NavItem>
-        <NavLink on:click={free} active={$page.data.pathname.startsWith('/board/free')}>자유게시판
+        <NavLink href="#top" on:click={free} active={$page.data.pathname.startsWith('/board/free')}>자유게시판
         </NavLink>
       </NavItem>
       {#if $page.data.session?.user?.nickname}
