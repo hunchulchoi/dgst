@@ -1,5 +1,6 @@
 <svelte:head>
   <script async src="//www.instagram.com/embed.js"></script>
+  <script async src="//www.tiktok.com/embed.js"></script>
 </svelte:head>
 
 <script>
@@ -131,6 +132,29 @@
                      <div class="text-danger fw-bold p-3"><i class="bi bi-info-circle-fill pe-2"></i>인스타그램 릴 로딩이 오래동안 안되면 페이지를 새로고침 하세요</div>`
             );
           },
+        },
+        {
+          name: 'tiktok',
+          url: /^tiktok\.com\/(.*)\/video\/(.*)(?:\?(.*))?/,
+          html: match=>{
+            console.log('match', match)
+            const id = match[ 1 ];
+            const vid = match[ 2 ];
+
+            console.log('id', id)
+
+            return (
+               `<blockquote class="tiktok-embed"
+                cite="https://www.tiktok.com/${id}/video/${vid}"
+                data-video-id="${vid}"
+                data-embed-from="oembed" style="max-width: 605px;min-width: 325px;" >
+                  <section>
+                    <a target="_blank" title="${id}" href="https://www.tiktok.com/${id}?refer=embed">${id}</a>
+                  </section>
+                </blockquote>`
+            );
+
+          }
         }
       ],
       previewsInData: true
