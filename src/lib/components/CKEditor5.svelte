@@ -78,7 +78,7 @@
       extraProviders:[
         {
           name: 'youtube shorts',
-          url:/^youtube\.com\/shorts\/([\w-]+)(?:\?start=(\d+))?/,
+          url:/^youtube\.com\/shorts\/([\w-]+)(?:\/\?start=(\d+))?/,
           html: match=>{
             const id = match[ 1 ];
             const time = match[ 2 ];
@@ -110,7 +110,6 @@
             );
           },
         }
-
       ],
       previewsInData: true
     },
