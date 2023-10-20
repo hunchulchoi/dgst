@@ -89,7 +89,7 @@
     }
     commentLoading = true;
 
-    const formData = new a();
+    const formData = new FormData();
 
     formData.append('content', commentContent);
     if (commentImage) formData.append('image', commentImage);
