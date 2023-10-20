@@ -20,6 +20,7 @@
 
   import {signIn, signOut} from '@auth/sveltekit/client';
   import {page} from '$app/stores';
+  import {goto} from "$app/navigation";
 
   const handleGoogleSignIn = () => {
     console.log('handleGoogleSignIn');
@@ -27,7 +28,7 @@
   };
 
   function free(){
-    goto(`/board/free/?v=${new Date().getMinutes()}`)
+    goto(`/board/free/?v=${new Date().getSeconds()}`)
   }
 
   $: colorModeIcon =
@@ -97,7 +98,7 @@
 
     <Nav tabs>
       <NavItem>
-        <NavLink href="#top" on:click={free} active={$page.data.pathname.startsWith('/board/free')}>자유게시판
+        <NavLink on:click={free} active={$page.data.pathname.startsWith('/board/free')}>자유게시판
         </NavLink>
       </NavItem>
       {#if $page.data.session?.user?.nickname}
