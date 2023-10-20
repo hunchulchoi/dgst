@@ -1,0 +1,41 @@
+diff --git a/node_modules/@ckeditor/ckeditor5-engine/src/view/renderer.js b/node_modules/@ckeditor/ckeditor5-engine/src/view/renderer.js
+index 1991e0d..1ad6a34 100644
+--- a/node_modules/@ckeditor/ckeditor5-engine/src/view/renderer.js
++++ b/node_modules/@ckeditor/ckeditor5-engine/src/view/renderer.js
+@@ -478,6 +478,9 @@ export default class Renderer extends ObservableMixin() {
+      */
+     _updateChildren(viewElement, options) {
+         const domElement = this.domConverter.mapViewToDom(viewElement);
++
++console.log('_updateChildren', viewElement, options);
++
+         if (!domElement) {
+             // If there is no `domElement` it means that it was already removed from DOM.
+             // There is no need to process it. It will be processed when re-inserted.
+@@ -539,6 +542,8 @@ export default class Renderer extends ObservableMixin() {
+         }
+         i = 0;
+         for (const action of actions) {
++console.log('_updateChildren action:', action, 'this.isComposing', this.isComposing)
++
+             if (action === 'insert') {
+                 // @if CK_DEBUG_TYPING // if ( ( window as any ).logCKETyping ) {
+                 // @if CK_DEBUG_TYPING // 	console.info( '%c[Renderer]%c Insert node',
+@@ -555,6 +560,7 @@ export default class Renderer extends ObservableMixin() {
+                 // @if CK_DEBUG_TYPING // 		'color: green;font-weight: bold', ''
+                 // @if CK_DEBUG_TYPING // 	);
+                 // @if CK_DEBUG_TYPING // }
++
+                 updateTextNode(actualDomChildren[i], expectedDomChildren[i].data);
+                 i++;
+                 // @if CK_DEBUG_TYPING // if ( ( window as any ).logCKETyping ) {
+@@ -619,6 +625,9 @@ export default class Renderer extends ObservableMixin() {
+         let expectedSlice = [];
+         const counter = { equal: 0, insert: 0, delete: 0 };
+         for (const action of actions) {
++
++console.log('findUpdateActions action:', action, 'this.isComposing', this.isComposing)
++
+             if (action === 'insert') {
+                 expectedSlice.push(expectedDom[counter.equal + counter.insert]);
+             }
