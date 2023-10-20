@@ -26,6 +26,10 @@
     signIn('google', { callbackUrl: '/' });
   };
 
+  function free(){
+    goto(`/board/free/?v=${new Date().getMinutes()}`)
+  }
+
   $: colorModeIcon =
     $theme === 'light' ? 'sun-fill' : $theme === 'dark' ? 'moon-stars-fill' : 'circle-half';
   $: loginButton = `/oauth/btn_google_signin_${
@@ -93,7 +97,7 @@
 
     <Nav tabs>
       <NavItem>
-        <NavLink data-sveltekit-reload href="/board/free/" active={$page.data.pathname.startsWith('/board/free')}>자유게시판
+        <NavLink on:click={free} active={$page.data.pathname.startsWith('/board/free')}>자유게시판
         </NavLink>
       </NavItem>
       {#if $page.data.session?.user?.nickname}
