@@ -93,12 +93,12 @@
 
     <Nav tabs>
       <NavItem>
-        <NavLink href="/board/free" active={$page.data.pathname.startsWith('/board/free')}>자유게시판
+        <NavLink data-sveltekit-reload href="/board/free/" active={$page.data.pathname.startsWith('/board/free')}>자유게시판
         </NavLink>
       </NavItem>
       {#if $page.data.session?.user?.nickname}
         <NavItem>
-          <NavLink href="/board/alarm" active={$page.data.pathname.startsWith('/board/alarm')}>
+          <NavLink data-sveltekit-reload href="/board/alarm" active={$page.data.pathname.startsWith('/board/alarm')}>
             <Icon name="megaphone" class="text-success me-2"/>알림
             {#if alarmCount}
               <Badge pill color="danger">{alarmCount}</Badge>
