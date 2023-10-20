@@ -81,13 +81,32 @@
           url:/^youtube\.com\/shorts\/([\w-]+)(?:\?start=(\d+))?/,
           html: match=>{
             const id = match[ 1 ];
+            const time = match[ 2 ];
+
             return (
                     '<div style="position: relative; padding-bottom: 100%; height: 0; padding-bottom: 56.2493%;">' +
-                    `<iframe src="https://www.youtube.com/embed/${ id }" ` +
+                    `<iframe src="https://www.youtube.com/embed/${ id }${ time ? `?start=${ time }` : '' }" ` +
                     'style="position: absolute; width: 100%; height: 100%; top: 0; left: 0;" ' +
                     'frameborder="0" allow="autoplay; encrypted-media" allowfullscreen>' +
                     '</iframe>' +
                     '</div>'
+            );
+          },
+        },
+        {
+          name: 'instagram reel',
+          url: /^instagram\.com\/reel\/([\w-]+)(?:\?igshid=(\d+))?/,
+          html: match=>{
+            const id = match[ 1 ];
+            const time = match[ 2 ];
+
+            return (
+                    `<blockquote class="instagram-media"
+                      data-instgrm-captioned
+                      data-instgrm-permalink="//www.instagram.com/reel/${id}/?utm_source=ig_embed&amp;utm_campaign=loading"
+                      data-instgrm-version="14"
+                      style=" background:#FFF; border:0; border-radius:3px; box-shadow:0 0 1px 0 rgba(0,0,0,0.5),0 1px 10px 0 rgba(0,0,0,0.15); margin: 1px; max-width:540px; min-width:326px; padding:0; width:99.375%; width:-webkit-calc(100% - 2px); width:calc(100% - 2px);">
+                     </blockquote>`
             );
           },
         }
@@ -136,6 +155,10 @@
   let editorDiv;
   let loadingImage = false;
 </script>
+
+<svelte:head>
+  <script async src="http://www.instagram.com/embed.js"></script>
+</svelte:head>
 
 <main>
   <div bind:this={editorDiv}>
