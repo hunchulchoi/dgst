@@ -82,17 +82,18 @@
 
   let commentLoading = false;
 
-  function comment() {
+  function comment(parentCommentId) {
     if (!commentContent) {
       alert('내용을 입력하세요');
       return;
     }
     commentLoading = true;
 
-    const formData = new FormData();
+    const formData = new a();
 
     formData.append('content', commentContent);
     if (commentImage) formData.append('image', commentImage);
+    if (parentCommentId) formData.append('parentCommentId', parentCommentId);
 
     fetch(`/board/${$page.params.boardId}/${$page.params.articleId}/comment`, {
       method: 'POST',
