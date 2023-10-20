@@ -156,7 +156,7 @@
 </script>
 
 <svelte:head>
-  <script async src="http://www.instagram.com/embed.js"></script>
+  <script async src="//www.instagram.com/embed.js"></script>
 </svelte:head>
 
 <main>

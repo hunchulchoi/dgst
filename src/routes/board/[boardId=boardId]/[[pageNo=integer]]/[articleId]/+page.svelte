@@ -212,6 +212,8 @@
       max-width: 100% !important;
     }
   </style>
+
+  <script async src="//www.instagram.com/embed.js"></script>
 </svelte:head>
 
 <main class="container my-md-5">
