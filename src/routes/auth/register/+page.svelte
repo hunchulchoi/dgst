@@ -101,7 +101,7 @@
         console.log('res', res);
 
         if (res.ok) {
-          alert('등록 되었습니다.');
+          alert('등록 되었습니다.\n다시 로그인 해주세요.');
           console.log(res);
 
           goto('/');
