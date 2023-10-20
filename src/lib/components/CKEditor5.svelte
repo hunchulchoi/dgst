@@ -46,6 +46,7 @@
         'redo',
         'uploadImage',
         'link',
+        'mediaEmbed',
         '|',
         'fontSize',
         'bold',
@@ -70,12 +71,32 @@
       },
       styles: [{ name: 'side', isDefault: true, modelElements: ['imageBlock'] }]
     },
-    height: 400,
-    language: 'ko',
-    mediaEmbed: {
+    link:{
+      addTargetToExternalLinks: true,
+    },
+    mediaEmbed:{
+      extraProviders:[
+        {
+          name: 'youtube shorts',
+          url:/^youtube\.com\/shorts\/([\w-]+)(?:\?start=(\d+))?/,
+          html: match=>{
+            const id = match[ 1 ];
+            return (
+                    '<div style="position: relative; padding-bottom: 100%; height: 0; padding-bottom: 56.2493%;">' +
+                    `<iframe src="https://www.youtube.com/embed/${ id }" ` +
+                    'style="position: absolute; width: 100%; height: 100%; top: 0; left: 0;" ' +
+                    'frameborder="0" allow="autoplay; encrypted-media" allowfullscreen>' +
+                    '</iframe>' +
+                    '</div>'
+            );
+          },
+        }
+
+      ],
       previewsInData: true
     },
-
+    height: 400,
+    language: 'ko',
   };
 
   function onReady({ detail: editor }) {
