@@ -1,3 +1,13 @@
+<svelte:head>
+  <script async src="//www.instagram.com/embed.js"></script>
+  <style>
+
+    .image img {
+      max-width: 100% !important;
+    }
+  </style>
+</svelte:head>
+
 <script>
     import {
         Badge,
@@ -205,16 +215,6 @@
 
   $: commentData = data.article.comments;
 </script>
-
-<svelte:head>
-  <style>
-    .image img {
-      max-width: 100% !important;
-    }
-  </style>
-
-  <script async src="//www.instagram.com/embed.js"></script>
-</svelte:head>
 
 <main class="container my-md-5">
   <Row class="mt-4 shadow rounded-4 p-1 m-0">
