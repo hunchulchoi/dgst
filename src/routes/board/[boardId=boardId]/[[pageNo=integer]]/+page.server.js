@@ -11,7 +11,7 @@ export const load = async ({ params }) => {
   let pageNo = params.pageNo || 1;
 
   try {
-    const filter = { boardId: params.boardId, state: 'write' };
+    const filter = { boardId: params.boardId, state: 'write', createdAt: {$gt: new Date(new Date()-1000*60*60*24*3)} };
 
     const total = await Article.countDocuments(filter);
 
