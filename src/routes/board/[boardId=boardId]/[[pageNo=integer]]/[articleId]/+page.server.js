@@ -15,7 +15,7 @@ export const load = async ({ params, locals }) => {
 
   const session = await locals.getSession();
 
-  const filter = { _id: params.articleId, boardId: params.boardId, state: 'write' };
+  const filter = { _id: params.articleId, boardId: params.boardId, state: 'write', createdAt: {$gt: new Date(new Date()-1000*60*60*24*3)} };
 
   const projection = {email:1, nickname:1, title:1, content:1, reads:1,  likes:1, createdAt:1, read:1, like:1}
 
