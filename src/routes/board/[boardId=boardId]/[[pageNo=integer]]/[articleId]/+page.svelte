@@ -51,18 +51,18 @@
     goto(`/board/${$page.params.boardId}/${pageNo}`);
   }
 
-  async function preview(event) {
-    previewEl.src = window.URL.createObjectURL(event.target.files[0]);
+  async function preview(event, el) {
+    el.src = window.URL.createObjectURL(event.target.files[0]);
 
     console.log(event.target.files[0]);
 
-    previewEl.onload = async (evt) => {
+    el.onload = async (evt) => {
       commentLoading = true;
 
       if (event.target.files[0].type.endsWith('.gif') && event.target.files[0].type.endsWith('.webp')) {
         commentImage = event.target.files[0];
       } else {
-        const _width = previewEl.naturalWidth;
+        const _width = el.naturalWidth;
 
         if (_width > 1600) {
           const webp = await blobToWebP(event.target.files[0], { width: 1400 });
@@ -77,8 +77,8 @@
         }
       }
 
-      previewEl.style.height = '80px';
-      previewEl.classList.remove('d-none');
+      el.style.height = '80px';
+      el.classList.remove('d-none');
 
       commentLoading = false;
     };
@@ -87,7 +87,6 @@
 
   let reCommentDiv;
   let reCommentContent;
-  let reCommentImage;
   let rePreviewEl;
   let reCommentImageEl;
 
@@ -96,7 +95,6 @@
   let commentImage;
   let previewEl;
   let commentImageEl;
-  let commentImageElFiles;
 
   let commentLoading = false;
 
@@ -119,7 +117,7 @@
     }else{
       formData.append('content', reCommentContent);
       formData.append('parentCommentId', parentCommentId);
-      if (reCommentImage) formData.append('image', reCommentImage);
+      if (commentImage) formData.append('image', commentImage);
     }
 
     fetch(`/board/${$page.params.boardId}/${$page.params.articleId}/comment`, {
@@ -143,7 +141,6 @@
 
         visibleReply = '';
         reCommentContent = '';
-        reCommentImage = '';
         if(parentCommentId){
           reCommentImageEl.value = '';
           rePreviewEl.src = '';
@@ -343,7 +340,7 @@
             <input
               type="file"
               bind:this={commentImageEl}
-              on:change={preview}
+              on:change={(evt)=>preview(evt, previewEl)}
               muliple="false"
               accept="image/*"
               class="form-control m-2"
@@ -459,7 +456,7 @@
               <input
                       type="file"
                       bind:this={reCommentImageEl}
-                      on:change={preview}
+                      on:change={(evt)=>preview(evt, rePreviewEl)}
                       muliple="false"
                       accept="image/*"
                       class="form-control m-2"

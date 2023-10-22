@@ -27,7 +27,7 @@
                href={`/board/${alarm.boardId}/${alarm.articleId}`}
                style="cursor: pointer; font-size: 1.1em"
                class="link-underline link-underline-opacity-0 link-offset-2 link-underline-opacity-50-hover">
-              <Icon name="chat-fill" class="text-success"></Icon> {alarm.commentContent}
+              <Icon name="chat-square-dots" class="text-info"></Icon> {alarm.commentContent}
               <Badge color="danger" class="bg-opacity-50">{alarm.commentCount}</Badge>
             </a>
           </Col>
