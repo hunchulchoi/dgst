@@ -265,7 +265,7 @@
       <!--프로필-->
       <Card class="p-2">
         <Row>
-          <Col class="d-flex align-items-center" xs="auto">
+          <Col class="d-flex align-items-center" xs="4">
             <Image
               alt="프로필 사진"
               class="card-img-left rounded-2"
