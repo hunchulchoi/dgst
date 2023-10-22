@@ -275,7 +275,7 @@
               width="100"
             />
           </Col>
-          <Col xs="9">
+          <Col xs="8">
             <CardBody>
               <CardSubtitle>{data.article.nickname}</CardSubtitle>
               <CardText class="text-muted pt-2 text-break">
