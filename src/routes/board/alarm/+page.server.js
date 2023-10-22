@@ -14,7 +14,7 @@ export const load = async ({locals})=>{
   }
 
   let alarms = await Alarm.find({email: session.user.email})
-    .select('boardId articleId title comments updatedAt')
+    .select('boardId articleId title comments updatedAt comment commentContent')
       .sort({updatedAt: -1})
     .limit(30);
 

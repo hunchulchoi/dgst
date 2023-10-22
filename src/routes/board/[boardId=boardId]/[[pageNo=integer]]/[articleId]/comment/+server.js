@@ -112,6 +112,8 @@ export async function POST({ request, params, locals }) {
           , {$set:{title: article.title, boardId: boardId, comment: parentComment.id, commentContent: parentComment.content}
             , $addToSet: {comments: comment._id}}
           , {upsert: true, new: true}).lean();
+        
+        console.log('alarm', alarm);
       }
     }
 
