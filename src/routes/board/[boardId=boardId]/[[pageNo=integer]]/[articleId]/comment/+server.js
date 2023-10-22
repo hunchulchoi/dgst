@@ -104,6 +104,16 @@ export async function POST({ request, params, locals }) {
           , {$set:{title: article.title, boardId: boardId}, $addToSet: {comments: comment._id}}
           , {upsert: true, new: true}).lean();
     }
+    
+    // 내 댓글이 아닐때 알림
+    if(parentComment){
+      if(parentComment.email !== session.user.email){
+        const alarm = await Alarm.findOneAndUpdate({email: parentComment.email, articleId: articleId, comment: parentComment.id}
+          , {$set:{title: article.title, boardId: boardId, comment: parentComment.id, commentContent: parentComment.content}
+            , $addToSet: {comments: comment._id}}
+          , {upsert: true, new: true}).lean();
+      }
+    }
 
   } catch (err) {
     console.error('댓글 저장 실패', err);

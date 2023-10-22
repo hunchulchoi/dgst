@@ -20,6 +20,7 @@
     {:else}
       {#each data.alarms as alarm}
         <Row class="py-2 border-bottom border-secondary-subtle m-0">
+          {#if alarm.comment}
           <Col lg="7" md="5" xs="12"
                class="text-break link-opacity-hover-50 pb-1">
             <a data-sveltekit-preload-data="tap"
@@ -34,8 +35,24 @@
           >{formatDistanceToNowStrict(parseISO(alarm.updatedAt), {
             locale: ko,
             addSuffix: true
-          })}</Col
-          >
+          })}</Col>
+          {:else}
+            <Col lg="7" md="5" xs="12"
+                 class="text-break link-opacity-hover-50 pb-1">
+              <a data-sveltekit-preload-data="tap"
+                 href={`/board/${alarm.boardId}/${alarm.articleId}`}
+                 style="cursor: pointer; font-size: 1.1em"
+                 class="link-underline link-underline-opacity-0 link-offset-2 link-underline-opacity-50-hover">
+                {alarm.commentContent}
+                <Badge color="danger" class="bg-opacity-50">{alarm.commentCount}</Badge>
+              </a>
+            </Col>
+            <Col lg="1" md="2" xs="4" class="text-muted text-end" style="font-size: small"
+            >{formatDistanceToNowStrict(parseISO(alarm.updatedAt), {
+              locale: ko,
+              addSuffix: true
+            })}</Col>
+          {/if}
         </Row>
       {/each}
     {/if}
