@@ -278,7 +278,7 @@
           <Col md="9" xs="auto">
             <CardBody>
               <CardSubtitle>{data.article.nickname}</CardSubtitle>
-              <CardText class="text-muted pt-2">
+              <CardText class="text-muted pt-2 text-break">
                 {data.introduction}
               </CardText>
             </CardBody>
