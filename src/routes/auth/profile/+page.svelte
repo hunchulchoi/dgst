@@ -26,6 +26,7 @@
   import { goto } from '$app/navigation';
   import { browser } from '$app/environment';
   import {blobToWebP} from "webp-converter-browser";
+  import {signout} from "@auth/core/lib/routes/index.js";
 
   console.log('$page.data.session', $page.data);
 
@@ -104,7 +105,8 @@
         console.log('res', res);
 
         if (res.ok) {
-          alert('등록 되었습니다.\n다시 로그인 해주세요.');
+          alert('변경 되었습니다.\n다시 로그인 해주세요.');
+          signout();
           console.log(res);
 
           goto('/');
