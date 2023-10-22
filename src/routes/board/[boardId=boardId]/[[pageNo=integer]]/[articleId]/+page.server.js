@@ -37,7 +37,8 @@ export const load = async ({ params, locals }) => {
   article.comments = commentTree;
 
   if (!article) {
-    throw error(410, { message: '삭제되었거나 존지하지 않는 게시물입니다.' });
+    throw error(410, { message: `삭제되었거나 존지하지 않는 게시물입니다.
+    게시물은 72시간만 조회 가능합니다.` });
   }
 
   const author = await User.findOne({ email: article.email }, { photo: 1, introduction: 1 }).lean();
