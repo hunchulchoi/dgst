@@ -84,6 +84,13 @@
     };
   }
 
+
+  let reCommentDiv;
+  let reCommentContent;
+  let reCommentImage;
+  let rePreviewEl;
+  let reCommentImageEl;
+
   let commentDiv;
   let commentContent;
   let commentImage;
@@ -93,8 +100,12 @@
 
   let commentLoading = false;
 
-  function comment(parentCommentId) {
-    if (!commentContent) {
+  function writeComment(parentCommentId) {
+
+    console.log(commentContent, parentCommentId, reCommentContent)
+
+
+    if ((!parentCommentId &&!commentContent) || (parentCommentId &&  !reCommentContent)){
       alert('내용을 입력하세요');
       return;
     }
@@ -102,9 +113,14 @@
 
     const formData = new FormData();
 
-    formData.append('content', commentContent);
-    if (commentImage) formData.append('image', commentImage);
-    if (parentCommentId) formData.append('parentCommentId', parentCommentId);
+    if(!parentCommentId){
+      formData.append('content', commentContent);
+      if (commentImage) formData.append('image', commentImage);
+    }else{
+      formData.append('content', reCommentContent);
+      formData.append('parentCommentId', parentCommentId);
+      if (reCommentImage) formData.append('image', reCommentImage);
+    }
 
     fetch(`/board/${$page.params.boardId}/${$page.params.articleId}/comment`, {
       method: 'POST',
@@ -124,6 +140,15 @@
         commentImageEl.value = '';
         previewEl.src = '';
         previewEl.classList.add('d-none');
+
+        visibleReply = '';
+        reCommentContent = '';
+        reCommentImage = '';
+        if(parentCommentId){
+          reCommentImageEl.value = '';
+          rePreviewEl.src = '';
+          rePreviewEl.classList.add('d-none');
+        }
 
         comments();
       })
@@ -338,7 +363,7 @@
               class="border border-gray"
               style="max-width: 600px"
             />
-            <Button color="primary" outline on:click={comment}>
+            <Button color="primary" outline on:click={()=>writeComment()}>
               <Icon name="pencil-fill" />
               등록
               <Spinner color="success" size="sm" class="d-none" />
@@ -349,6 +374,14 @@
 
       {#each commentData as comment}
         <Row class="py-3 px-0 border-bottom border-gray-subtle mx-0">
+          {#if comment.parentCommentNickname}
+            <Row>
+              <Col xs="auto" style="font-size: small">
+                <Icon name="arrow-return-right"></Icon>
+                <span class="text-bg-secondary p-1 rounded-2">@{comment.parentCommentNickname}</span>
+              </Col>
+            </Row>
+          {/if}
           {#if comment.photo}
           <Col xs="auto">
             <Image thumbnail src={comment.photo} style="height:30px" rounded />
@@ -388,7 +421,7 @@
                           on:click={() => visibleReply = comment._id}
                           size="sm"
                           outline
-                          color="info p-1 d-none"
+                          color="info p-1"
                   >
                     <Icon name="chat-square-dots" /> 답글
                   </Button>
@@ -414,21 +447,18 @@
         <!-- 대댓글 -->
         {#if visibleReply === comment._id}
         <div transition:scale class="mt-2 mx-0 border-bottom border-secondary-subtle bg-secondary bg-opacity-10">
-          <div class="border p-3 mb-2 rounded-4 shadow-sm" bind:this={commentDiv}>
+          <div class="border p-3 mb-2 rounded-4 shadow-sm" bind:this={reCommentDiv}>
             <Loader
                     bind:active={commentLoading}
-                    container={commentDiv}
+                    container={reCommentDiv}
                     component="Dot"
                     opacity="0.7"
             />
             <InputGroup class="mb-2">
-              <!--<InputGroupText class="text-success">
-                <Icon name="card-image" class="pe-2" />
-                짤 첨부
-              </InputGroupText>-->
+
               <input
                       type="file"
-                      bind:this={commentImageEl}
+                      bind:this={reCommentImageEl}
                       on:change={preview}
                       muliple="false"
                       accept="image/*"
@@ -439,17 +469,17 @@
               <img
                       src=""
                       class="img-thumbnail d-none me-2"
-                      bind:this={previewEl}
+                      bind:this={rePreviewEl}
                       alt="리플 이미지 첨부 미리보기"
                       style="max-width: 30px"
               />
               <Input
                       type="textarea"
-                      bind:value={commentContent}
+                      bind:value={reCommentContent}
                       class="border border-gray"
                       style="max-width: 600px"
               />
-              <Button color="primary" outline on:click={comment}>
+              <Button color="primary" outline on:click={()=>writeComment(comment._id)}>
                 <Icon name="pencil-fill" />
                 등록
                 <Spinner color="success" size="sm" class="d-none" />

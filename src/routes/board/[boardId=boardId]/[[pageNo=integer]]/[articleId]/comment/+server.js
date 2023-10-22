@@ -4,6 +4,7 @@ import { Comment } from '$lib/models/comment.js';
 import { Article } from '$lib/models/article.js';
 import { write } from '$lib/util/fileUpload.js';
 import {Alarm} from "$lib/models/alarm.js";
+import convertToTree from '$lib/util/tree.js';
 
 connectDB();
 
@@ -20,16 +21,18 @@ export async function GET({ params }) {
 
   try {
     comments = await Comment.find(
-      { articleId: params.articleId, boardId: params.boardId, state: 'write' },
-      { _id: 1, photo: 1, nickname: 1, createdAt: 1, image: 1, email: 1, content: 1 }
-    ).sort({ createdAt: -1 });
-
+      { articleId: params.articleId, boardId: params.boardId },
+      { _id: 1, photo: 1, nickname: 1, createdAt: 1, image: 1, email: 1, content: 1, depth:1, parentCommentId: 1, parentCommentNickname: 1 , state:1}
+    ).sort('createdAt');
+    
   } catch (err) {
     console.error('댓글 목록 실패', err);
     throw error(500, { message: '데이터를 가져오는 중에 오류가 발생하였습니다.ㅜㅜ' });
   }
+  
+  console.log('comments', comments)
 
-  return json(comments);
+  return json(convertToTree(comments));
 }
 
 export async function POST({ request, params, locals }) {
@@ -59,6 +62,16 @@ export async function POST({ request, params, locals }) {
   if (image) {
     storeFileName = await write(image,  session.user.email,'jjal');
   }
+  
+  const parentCommentId = data.get('parentCommentId');
+  
+  let parentComment;
+  
+  if(parentCommentId) {
+    parentComment = await Comment.findById(parentCommentId);
+  }
+  
+  console.log('parentComment', parentComment);
 
   try {
     const comment = new Comment({
@@ -67,7 +80,10 @@ export async function POST({ request, params, locals }) {
       photo: session.user.photo,
       boardId,
       articleId: articleId,
-      content: data.get('content')
+      content: data.get('content'),
+      parentCommentId,
+      depth: parentComment?.depth +1 || 1,
+      parentCommentNickname: parentComment?.nickname
     });
 
     if (storeFileName) comment.image = storeFileName;
@@ -128,10 +144,17 @@ export async function DELETE({ request, params, locals }) {
       });
     }
 
+    //게시글 리플 목록에서 삭제
    await Article.updateOne({_id:articleId}
      , {$pull: {comments: data.commentId}}
      , {timestamps: false}
     )
+
+    // TODO: 알림 삭제
+    /*Alarm.updateMany(
+        {articleId, comments: data.commentId },
+        {$pull: {comments: data.commentId}})
+        .then(a=>a.comments.isEmpty())*/
 
   } catch (err) {
     console.error(err);

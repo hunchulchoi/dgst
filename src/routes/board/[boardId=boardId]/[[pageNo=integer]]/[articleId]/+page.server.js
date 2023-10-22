@@ -3,6 +3,8 @@ import { Article } from '$lib/models/article.js';
 import { error } from '@sveltejs/kit';
 import { User } from '$lib/models/user.js';
 import {Alarm} from "$lib/models/alarm.js";
+import {Comment} from "$lib/models/comment.js";
+import convertToTree from '$lib/util/tree.js';
 
 connectDB();
 export const load = async ({ params, locals }) => {
@@ -15,21 +17,24 @@ export const load = async ({ params, locals }) => {
 
   const filter = { _id: params.articleId, boardId: params.boardId, state: 'write' };
 
-  const projection = {email:1, nickname:1, title:1, content:1, reads:1, comments:1, likes:1, createdAt:1, read:1, like:1}
+  const projection = {email:1, nickname:1, title:1, content:1, reads:1,  likes:1, createdAt:1, read:1, like:1}
 
   const article = await Article.findOneAndUpdate(
     filter,
     { $addToSet: { reads: session?.user?.email } },
     { new: true, timestamps: false, projection }
-  )
-    .populate({
-      path: 'comments',
-      match: { state: 'write' },
-      options: { sort: { createdAt: 1 } }
-    })
-    .exec();
+  );
+  
+  const comments = await Comment.find({articleId: params.articleId})
+    .sort('createdAt');
+  
+  console.log('comments', comments)
+  
+  const commentTree = convertToTree(comments, 'id', 'parentCommentId', 'childComments')
 
-  //console.log('article', article);
+  console.log('commentTree', commentTree);
+  
+  article.comments = commentTree;
 
   if (!article) {
     throw error(410, { message: '삭제되었거나 존지하지 않는 게시물입니다.' });

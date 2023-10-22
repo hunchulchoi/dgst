@@ -8,14 +8,22 @@ export const commentSchema = new Schema(
     photo: { type: String, trim: true},
     boardId: { type: String, trim: true, required: true },
     articleId: { type: String, trim: true, required: true, index: true },
+    parentCommentId: { type: String, trim: true, index: true},
+    parentCommentNickname: { type: String, trim: true},
+    depth: {type: Number, default: 1},
     content: { type: String, trim: true },
     image: { type: String },
     state: { type: String, default: 'write' },
-    like: { type: Number, default: 0 },
-    unlike: { type: Number, default: 0 },
-    modified_email: { type: String }
+    likes: [{ type: String }],
+    unlikes: [{ type: String}],
+    modified_email: { type: String },
+
   },
-  { timestamps: true }
-);
+    {
+        toJSON: { virtuals: true},
+        toObject: { virtuals: true},
+        timestamps: true,
+    }
+)
 
 export const Comment = models.comment || model('comment', commentSchema);
