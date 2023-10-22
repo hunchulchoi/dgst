@@ -1,5 +1,5 @@
 <script>
-  import {Badge, Col, Image, Row} from "sveltestrap";
+  import {Badge, Col, Icon, Image, Row} from "sveltestrap";
   import {formatDistanceToNowStrict, parseISO} from "date-fns";
   import ko from "date-fns/locale/ko/index.js";
 
@@ -27,7 +27,7 @@
                href={`/board/${alarm.boardId}/${alarm.articleId}`}
                style="cursor: pointer; font-size: 1.1em"
                class="link-underline link-underline-opacity-0 link-offset-2 link-underline-opacity-50-hover">
-              {alarm.title}
+              <Icon name="chat-fill" class="text-success"></Icon> {alarm.commentContent}
               <Badge color="danger" class="bg-opacity-50">{alarm.commentCount}</Badge>
             </a>
           </Col>
@@ -43,7 +43,7 @@
                  href={`/board/${alarm.boardId}/${alarm.articleId}`}
                  style="cursor: pointer; font-size: 1.1em"
                  class="link-underline link-underline-opacity-0 link-offset-2 link-underline-opacity-50-hover">
-                {alarm.commentContent}
+                {alarm.title}
                 <Badge color="danger" class="bg-opacity-50">{alarm.commentCount}</Badge>
               </a>
             </Col>
