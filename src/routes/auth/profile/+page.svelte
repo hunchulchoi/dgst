@@ -29,7 +29,7 @@
 
   console.log('$page.data.session', $page.data);
 
-  if (!$page.data.session || $page.data.session.nickname) {
+  if (!$page.data.session) {
     if (browser) goto('/', { replaceState: true });
   }
 
@@ -57,16 +57,16 @@
     document.querySelector('#introduction').focus();
   }
 
+  export let data;
+
   /**
    * nickname {string} 닉네임
    */
-  let nickname = '';
+  let nickname = data.profile.nickname;
   /**
    * intro {string} 자기소개
    */
-  let introduction = '';
-
-  let fight = false;
+  let introduction = data.profile.introduction;
 
   const doSubmit = async () => {
     // validation
@@ -78,7 +78,10 @@
 
     let files = document.querySelector('#photo').files;
 
-    if(files){
+
+    console.log('files:', files)
+
+    if(files && files.length){
 
       if(files[0].type.endsWith('.gif') || files[0].type.endsWith('.webp')){
 
@@ -96,7 +99,7 @@
     formData.append('nickname', nickname);
     formData.append('introduction', introduction);
 
-    fetch('/auth/register', { method: 'PATCH', body: formData })
+    fetch('/auth/profile', { method: 'PATCH', body: formData })
       .then((res) => {
         console.log('res', res);
 
@@ -138,9 +141,6 @@
         break;
       case 'introduction':
         invalids.introduction = !target.value;
-        break;
-      case 'fight':
-        if (target.checked) doValidate();
     }
   };
 
@@ -148,9 +148,10 @@
     nickname &&
     !invalids.nickname &&
     introduction &&
-    !invalids.introduction &&
-    fight
+    !invalids.introduction
   );
+
+
 </script>
 
 <svelte:head>
@@ -171,7 +172,7 @@
             <Col xs="4" md="3" class="d-flex align-items-center">
               <Image
                 id="preview"
-                src="/icons/unknown-person-icon-4.jpg"
+                src={data.profile.photo || '/icons/unknown-person-icon-4.jpg'}
                 thumbnail
                 width="100"
                 height="100"
@@ -227,24 +228,10 @@
               class="needs-validation"
             />
           </FormGroup>
-          <FormGroup>
-            <Label>싸우지 않고 사이좋게 지내실 거쥬?</Label>
-            <FormCheck
-              id="fight"
-              type="switch"
-              label="네"
-              bind:checked={fight}
-              on:change={(evt) => changeHandler(evt.target)}
-              feedback="체크 해 주세요"
-              size="lg"
-              class="needs-validation"
-            />
-            <Popover trigger="hover" placement="top" target="fight">체크해 주세요^^</Popover>
-          </FormGroup>
           <hr />
           <div class="text-end">
             <Button size="lg" on:click={doSubmit} color="success" bind:disabled={isInvalid}>
-              <Icon name="arrow-through-heart-fill pe-2" />가입
+              <Icon name="arrow-through-heart-fill pe-2" />수정
             </Button>
           </div>
         </Form>
