@@ -372,13 +372,13 @@
       {#each commentData as comment}
         <Row class="py-3 px-0 border-bottom border-gray-subtle mx-0">
           {#if comment.parentCommentNickname}
-            <Row>
-              <Col xs="auto" style="font-size: small">
-                <Icon name="arrow-return-right"></Icon>
-                <span class="text-bg-secondary p-1 rounded-2">@{comment.parentCommentNickname}</span>
+            <Row class="mb-1">
+              <Col xs="auto">
+                <Icon name="arrow-return-right" class="text-success"></Icon>
+                <span class="text-bg-secondary p-1 rounded-2" style="font-size: small">@{comment.parentCommentNickname}</span>
               </Col>
             </Row>
-            <Col xs="auto" class="ms-1"></Col>
+            <Col xs="auto">&nbsp;</Col>
           {/if}
           {#if comment.photo}
           <Col xs="auto">
