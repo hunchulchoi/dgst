@@ -26,7 +26,7 @@
   import { goto } from '$app/navigation';
   import { browser } from '$app/environment';
   import {blobToWebP} from "webp-converter-browser";
-  import {signout} from "@auth/core/lib/routes/index.js";
+  import {signOut} from '@auth/sveltekit/client';
 
   console.log('$page.data.session', $page.data);
 
@@ -106,7 +106,7 @@
 
         if (res.ok) {
           alert('변경 되었습니다.\n다시 로그인 해주세요.');
-          signout();
+          signOut();
           console.log(res);
 
           goto('/');
