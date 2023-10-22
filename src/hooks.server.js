@@ -79,9 +79,9 @@ export const handle = SvelteKitAuth({
       return params.session;
     },
     async updateUser(params) {
-      /*console.debug('=======auth callback updateUser====');
+      console.debug('=======auth callback updateUser====');
       console.debug('params', params);
-      console.debug('=======//auth callback updateUser====');*/
+      console.debug('=======//auth callback updateUser====');
     },
     async createUser(params) {
       /*console.debug('=======auth callback createUser====');

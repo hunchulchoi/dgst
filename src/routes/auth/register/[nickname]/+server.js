@@ -16,8 +16,12 @@ export async function GET({ params, locals }) {
   const session = await locals.getSession();
 
   const email = session?.user?.email;
+  
+  const filter = {nickname};
+  
+  if(email) filter.email = {$ne: email};
 
-  const found = await User.find({ nickname, email}).count();
+  const found = await User.find(filter).count();
 
   console.debug('found', found);
 

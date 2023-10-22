@@ -35,13 +35,12 @@ export async function PATCH({ request, locals }) {
 
   const filter = {
     email: session.user.email,
-    state: 'signup'
+    state: {$ne: 'banned'}
   };
 
   const update = {
     nickname: formData.get('nickname'),
     introduction: formData.get('introduction'),
-    photo: storeFileName,
     state: 'registered',
     last_modified: new Date()
   };
