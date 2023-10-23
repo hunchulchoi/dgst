@@ -20,11 +20,11 @@ export const handle = SvelteKitAuth({
         return {
           id: profile.sub,
           email: crypto.createHash('sha512').update(profile.email).digest('base64url'),
-          nickname: null,
-          introduction: null,
-          photo: null,
+          nickname: profile.name,
+          introduction: '우리 자기',
+          photo: profile.image,
           grade: 'user',
-          state: 'signup',
+          state: 'registered',
           created_at: new Date(),
           latest_login_at: new Date(),
           latest_modified_at: new Date()
@@ -34,7 +34,7 @@ export const handle = SvelteKitAuth({
   ],
   adapter: MongoDBAdapter(clientPromise, { databaseName: DB_NAME }),
   pages: {
-    newUser: '/auth/register'
+    newUser: '/auth/profile'
   },
   callbacks: {
     jwt(params) {
