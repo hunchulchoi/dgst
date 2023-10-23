@@ -39,6 +39,16 @@
 
     import Loader from 'svelte-loading-overlay/Loader.svelte';
 
+    function enableCommentLink(content){
+
+      const regex = /(http|https):\/\/(\w+:{0,1}\w*@)?(\S+)(:[0-9]+)?(\/|\/([\w#!:.?+=&%@!\-\/]))?/
+
+      const link = content.match(regex);
+
+      if(link) return link[0];
+
+    }
+
     function comments() {
     fetch(`/board/${$page.params.boardId}/${$page.params.articleId}/comment`)
       .then((res) => res.json())
@@ -406,8 +416,8 @@
                 {/if}
                 {#if !/[0-9a-zA-Z가-힣_-]/.test(comment.content) && countEmojis(comment.content) === 1}
                     <h1 class="display-1">{comment.content}</h1>
-                {:else}
-                  <div class="px-2">{comment.content}</div>
+                {:else}                  
+                  <div class="px-2">{comment.content}</div>                  
                 {/if}
               </Col>
             </Row>
