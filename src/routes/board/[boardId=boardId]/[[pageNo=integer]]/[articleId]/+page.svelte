@@ -392,11 +392,11 @@
           {/if}
           {#if comment.photo}
           <Col xs="auto">
-            <Image thumbnail src={comment.photo} style="height:30px" rounded />
+            <Image thumbnail src={comment.photo} style="height:50px" rounded />
           </Col>
           {/if}
           <Col xs="auto" clsss="border-end">
-            {comment.nickname}<br class="d-none d-md-block">
+            {comment.nickname}<br>
             <span class="text-muted ps-2" style="font-size: smaller"
               >{formatDistanceToNowStrict(parseISO(comment.createdAt), {
                 locale: ko,
@@ -416,8 +416,8 @@
                 {/if}
                 {#if !/[0-9a-zA-Z가-힣_-]/.test(comment.content) && countEmojis(comment.content) === 1}
                     <h1 class="display-1">{comment.content}</h1>
-                {:else}                  
-                  <div class="px-2">{comment.content}</div>                  
+                {:else}
+                  <div class="px-2">{comment.content}</div>
                 {/if}
               </Col>
             </Row>
