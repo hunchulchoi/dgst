@@ -34,9 +34,15 @@ export const load = async ({ params }) => {
       .sort({ createdAt: -1 })
       .skip((pageNo - 1) * pageUnit)
       .limit(pageUnit)
+      .populate({path: 'comments', select: 'createdAt'})
       .exec();
-
-    articles.forEach((article) => {
+    
+    const jsonArticles = JSON.parse(JSON.stringify(articles));
+    
+    jsonArticles.forEach((article) => {
+      
+      article.isNewComment = Math.max(...article.comments.map(a=>new Date(a.createdAt))) > new Date() - 30*60*1000;
+      
       delete article.comments;
       delete article.reads;
       delete article.likes;
@@ -49,9 +55,8 @@ export const load = async ({ params }) => {
         (youtube ? '<i class="bi bi-youtube text-danger px-2"></i>' : '');
     });
 
-    //console.log('articles', articles);
-
-    return { pageNo, maxPage, articles: JSON.parse(JSON.stringify(articles)) };
+    return { pageNo, maxPage, articles: jsonArticles };
+    
   } catch (error) {
     console.error('[[pageNo=integer]]', error);
     throw error(500, '목록을 가져오는 중에 오류가 발생하였습니다.');

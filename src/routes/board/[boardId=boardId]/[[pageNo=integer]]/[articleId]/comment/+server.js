@@ -30,7 +30,7 @@ export async function GET({ params }) {
     throw error(500, { message: '데이터를 가져오는 중에 오류가 발생하였습니다.ㅜㅜ' });
   }
   
-  console.log('comments', comments)
+  //console.log('comments', comments)
 
   return json(convertToTree(comments));
 }

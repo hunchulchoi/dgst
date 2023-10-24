@@ -45,7 +45,11 @@
             {article.title}
             {@html article.content}
             {#if article.comment}
-              <Badge color="primary" class="bg-opacity-50">{article.comment}</Badge>
+              {#if article.isNewComment}
+                <Badge color="warning" class="bg-opacity-50">{article.comment}</Badge>
+              {:else}
+                <Badge color="primary" class="bg-opacity-50">{article.comment}</Badge>
+              {/if}
             {/if}
            </a>
           </Col>
