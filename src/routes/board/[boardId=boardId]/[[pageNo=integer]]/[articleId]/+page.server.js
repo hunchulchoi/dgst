@@ -28,11 +28,11 @@ export const load = async ({ params, locals }) => {
   const comments = await Comment.find({articleId: params.articleId})
     .sort('createdAt');
   
-  console.log('comments', comments)
+  //console.log('comments', comments)
   
   const commentTree = convertToTree(comments, 'id', 'parentCommentId', 'childComments')
 
-  console.log('commentTree', commentTree);
+  //console.log('commentTree', commentTree);
   
   article.comments = commentTree;
 
