@@ -33,7 +33,7 @@ export const load = async ({ params }) => {
     )
       .sort({ createdAt: -1 })
       .skip((pageNo - 1) * pageUnit)
-      .limit(pageNo * pageUnit)
+      .limit(pageUnit)
       .exec();
 
     articles.forEach((article) => {
