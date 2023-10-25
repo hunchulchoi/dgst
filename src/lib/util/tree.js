@@ -1,7 +1,7 @@
 export default function convertToTree(array){
   
   const filtered = array.filter(el=> el.state === 'write'
-    || (el.state!=='write' && !array.find(eel=>eel.parentCommentId === el.id)))
+    || (el.state!=='write' && array.find(eel=>eel.parentCommentId === el.id)))
   
   const cloned = filtered.filter(el=>el.depth===1)
   
