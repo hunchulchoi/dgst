@@ -39,6 +39,8 @@ export async function write(file, email, preservePath = 'jjal') {
   let fileName = `${email?.substring(0,8)}_${file.name
     .substring(0, file.name.lastIndexOf('.'))
     .substring(0, 10)}_${now.getTime()}${file.name.substring(file.name.lastIndexOf('.'))}`;
+  
+  fileName = fileName.replaceAll(' ', '_');
 
   fs.writeFileSync(`${UPLOAD_PATH}${dir}/${fileName}`, Buffer.from(await file.arrayBuffer()));
 
