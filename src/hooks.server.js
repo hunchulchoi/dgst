@@ -1,12 +1,13 @@
 import { SvelteKitAuth } from '@auth/sveltekit';
 import GoogleProvider from '@auth/core/providers/google';
+import Credentials from '@auth/core/providers/credentials';
 import {
   NEXTAUTH_SECRET,
   GOOGLE_CLIENT_ID,
   GOOGLE_CLIENT_SECRET,
   NODE_ENV,
   DB_NAME
-} from '$env/static/private';
+} from '$env/static/private'
 import { MongoDBAdapter } from '@auth/mongodb-adapter';
 import clientPromise from '$lib/database/clientPromise.js';
 import crypto from 'crypto';
@@ -30,7 +31,49 @@ export const handle = SvelteKitAuth({
           latest_modified_at: new Date()
         };
       }
+    }),
+    Credentials({
+      id: 'email-password-credential',
+      name: 'Credentials',
+      type: 'credentials',
+      credentials:{
+        email: {label: 'Email', type: 'email', placeholder: '이메일 입력하세요'},
+        password: {label: 'Password', type: 'password',}
+      },
+      async authorize(credentials){
+        console.log('authorization', credentials)
+        
+        const {email, password} = credentials;
+      
+        const encEmail = crypto.createHash('sha512').update(email).digest('base64url');
+        const encPwd = crypto.createHash('sha512').update(password).digest('base64url');
+        
+        const result = {profile:{email_verified: true}};
+      
+        const user = clientPromise.then(db=> {
+          
+          console.log('db', db)
+          console.log('db', db.db('dgstdb'))
+          console.log('db', db.db('dgstdb').collection('users'))
+          
+          return db.db('dgstdb').collection('users').findOne({email: encEmail, ccd: encPwd}, {
+            id: 1,
+            email: 1,
+            nickname: 1,
+            introduction: 1,
+            photo: 1,
+            state: 1
+          })
+        }).then(u=>u);
+        
+        result.user = user;
+        
+        return result;
+        
+      }
     })
+    
+    
   ],
   adapter: MongoDBAdapter(clientPromise, { databaseName: DB_NAME }),
   pages: {
@@ -51,13 +94,15 @@ export const handle = SvelteKitAuth({
       return params.token;
     },
     async signIn(params) {
-      /*console.debug('=======auth callback signIn====');
+      console.debug('=======auth callback signIn====');
       console.debug('params', params);
-      console.debug('=======//auth callback signIn====');*/
+      console.debug('=======//auth callback signIn====');
+      
+      
 
       if (params.profile.email_verified) {
         if (params.user) {
-          if (params.user.status !== 'blocked') {
+          if (params.user.state !== 'blocked') {
             return true;
           }
         } else return true;
