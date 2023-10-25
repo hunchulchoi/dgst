@@ -1,19 +1,23 @@
 export default function convertToTree(array){
   
-  const zombie = array.filter(el=>el.state!=='write' && !array.find(eel=>eel.parentCommentId === el.id));
+  const filtered = array.filter(el=> el.state === 'write'
+    || (el.state!=='write' && !array.find(eel=>eel.parentCommentId === el.id)))
   
-  console.log('zombie', zombie );
+  const cloned = filtered.filter(el=>el.depth===1)
   
-  const cloned = array.filter(el=>el.depth===1)
+  filtered.map(el=>{
+    if(el.state!=='write'){
+      el.content = '삭제 되었습니다.';
+      delete el.image;
+    }
+  });
   
-  array.map(el=>el.content =el.state!=='write'?'삭제 되었습니다.':el.content);
-  
-  const maxDepth = Math.max(...array.map(e=>e.depth));
+  const maxDepth = Math.max(...filtered.map(e=>e.depth));
   
   for(let i=2; i<=maxDepth; i++){
-    const filterd = array.filter(el=>el.depth===i).reverse();
+    const depth = array.filter(el=>el.depth===i).reverse();
     
-    filterd.forEach(el=>{
+    depth.forEach(el=>{
       const parentId = el.parentCommentId;
       const parent = cloned.findIndex(p=>p.id === parentId);
       
