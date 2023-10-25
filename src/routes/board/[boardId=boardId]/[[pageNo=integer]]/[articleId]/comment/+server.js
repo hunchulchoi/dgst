@@ -71,7 +71,7 @@ export async function POST({ request, params, locals }) {
     parentComment = await Comment.findById(parentCommentId);
   }
   
-  console.log('parentComment', parentComment);
+  //console.log('parentComment', parentComment);
 
   try {
     const comment = new Comment({
@@ -88,11 +88,11 @@ export async function POST({ request, params, locals }) {
 
     if (storeFileName) comment.image = storeFileName;
 
-    console.log(comment);
+    //console.log(comment);
 
     const inserted = await comment.save();
 
-    console.log('inserted', inserted);
+    //console.log('inserted', inserted);
 
     const article = await Article.findByIdAndUpdate(articleId, {
       $push: { comments: comment._id }
@@ -113,7 +113,7 @@ export async function POST({ request, params, locals }) {
             , $addToSet: {comments: comment._id}}
           , {upsert: true, new: true}).lean();
         
-        console.log('alarm', alarm);
+        //console.log('alarm', alarm);
       }
     }
 
