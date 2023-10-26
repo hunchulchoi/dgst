@@ -31,6 +31,8 @@ export const load = async ({ params }) => {
     let startNo = 1;
     let endNo = maxPage>7?7:maxPage;
     
+    console.log('1 pageNo', pageNo, 'maxPage', maxPage, 'start', startNo, 'end', endNo);
+    
     if(maxPage > 7) {
       if((pageNo - 3) > 0){
         startNo = pageNo - 3;
@@ -44,7 +46,7 @@ export const load = async ({ params }) => {
       
     }
     
-    console.log('pageNo', pageNo, 'maxPage', maxPage, 'start', startNo, 'end', endNo);
+    console.log('2 pageNo', pageNo, 'maxPage', maxPage, 'start', startNo, 'end', endNo);
     
 
     const articles = await Article.find(filter,
