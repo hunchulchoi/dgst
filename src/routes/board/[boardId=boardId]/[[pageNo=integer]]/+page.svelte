@@ -70,8 +70,6 @@
     {#if data.maxPage>1}
       <Row class="mt-3 mx-0">
         <Col xs="12">
-
-          start:{data.startNo}, end:{data.endNo}, pageNo:{$page.params.pageNo}
           <Pagination size="md" arialabel="페이지 네이션" class="d-flex justify-content-center">
             <PaginationItem
               ><PaginationLink first href={`/board/${$page.params.boardId}`} /></PaginationItem
