@@ -76,10 +76,10 @@ export const handle = SvelteKitAuth({
   },
   callbacks: {
     jwt(params) {
-       console.debug('=======auth callback jwt====');
+       /*console.debug('=======auth callback jwt====');
        console.debug('params', params);
        console.debug('=======//auth callback jwt====');
-
+*/
       if (params.user) {
         params.token.nickname = params.user.nickname;
         params.token.introduction = params.user.introduction;
