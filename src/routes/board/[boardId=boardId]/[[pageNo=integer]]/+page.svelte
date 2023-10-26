@@ -76,10 +76,10 @@
             >
             {#each Array((data.end - data.start)) as _, i}
               <PaginationItem
-                active={(!$page.params.pageNo && (i-data.start) === 0) || (i + data.start) == $page.params.pageNo}
+                active={(!$page.params.pageNo && (i-data.start) === 0) || (i + 1 + data.start) == $page.params.pageNo}
               >
                 <PaginationLink href={`/board/${$page.params.boardId}/${i + data.start}`}>
-                  {i + data.start}
+                  {i},{data.start},{$page.params.pageNo},{i + data.start}
                 </PaginationLink>
               </PaginationItem>
             {/each}
