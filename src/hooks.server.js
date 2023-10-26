@@ -48,27 +48,22 @@ export const handle = SvelteKitAuth({
         const encEmail = crypto.createHash('sha512').update(email).digest('base64url');
         const encPwd = crypto.createHash('sha512').update(password).digest('base64url');
         
-        const result = {profile:{email_verified: true}};
-      
-        const user = clientPromise.then(db=> {
-          
-          console.log('db', db)
-          console.log('db', db.db('dgstdb'))
-          console.log('db', db.db('dgstdb').collection('users'))
-          
-          return db.db('dgstdb').collection('users').findOne({email: encEmail, ccd: encPwd}, {
-            id: 1,
-            email: 1,
-            nickname: 1,
-            introduction: 1,
-            photo: 1,
-            state: 1
-          })
-        }).then(u=>u);
+        console.log('encEmail', encEmail)
+        console.log('encPwd', encPwd)
         
-        result.user = user;
+        const user = await clientPromise.then(db=>
+          db.db(DB_NAME)
+            .collection('users')
+            .findOne({email: encEmail.toLowerCase(), ccd: encPwd}, {
+                  id: 1,
+                  email: 1,
+                  nickname: 1,
+                  introduction: 1,
+                  photo: 1,
+                  state: 1
+                }))
         
-        return result;
+        return user;
         
       }
     })
@@ -81,9 +76,9 @@ export const handle = SvelteKitAuth({
   },
   callbacks: {
     jwt(params) {
-      // console.debug('=======auth callback jwt====');
-      // console.debug('params', params);
-      // console.debug('=======//auth callback jwt====');
+       console.debug('=======auth callback jwt====');
+       console.debug('params', params);
+       console.debug('=======//auth callback jwt====');
 
       if (params.user) {
         params.token.nickname = params.user.nickname;
@@ -98,8 +93,8 @@ export const handle = SvelteKitAuth({
       console.debug('params', params);
       console.debug('=======//auth callback signIn====');
       
+      if(!params.profile && params.user) return true;
       
-
       if (params.profile.email_verified) {
         if (params.user) {
           if (params.user.state !== 'blocked') {

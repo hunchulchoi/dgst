@@ -74,12 +74,12 @@
             <PaginationItem
               ><PaginationLink first href={`/board/${$page.params.boardId}`} /></PaginationItem
             >
-            {#each Array(data.maxPage) as _, i}
+            {#each Array((data.end - data.start)) as _, i}
               <PaginationItem
-                active={(!$page.params.pageNo && i === 0) || i + 1 == $page.params.pageNo}
+                active={(!$page.params.pageNo && (i-data.start) === 0) || (i + data.start) == $page.params.pageNo}
               >
-                <PaginationLink href={`/board/${$page.params.boardId}/${i + 1}`}>
-                  {i + 1}
+                <PaginationLink href={`/board/${$page.params.boardId}/${i + data.start}`}>
+                  {i + data.start}
                 </PaginationLink>
               </PaginationItem>
             {/each}
