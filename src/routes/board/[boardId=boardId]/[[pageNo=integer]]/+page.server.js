@@ -28,23 +28,23 @@ export const load = async ({ params }) => {
       pageNo = maxPage;
     }
     
-    let start = 1;
-    let end = maxPage>7?7:maxPage;
+    let startNo = 1;
+    let endNo = maxPage>7?7:maxPage;
     
     if(maxPage > 7) {
       if((pageNo - 3) > 0){
-        start = pageNo - 3;
-        end = start + 6;
+        startNo = pageNo - 3;
+        endNo = startNo + 6;
       }
       
       if((pageNo +3) > maxPage){
-        end = maxPage;
-        start = end - 6;
+        endNo = maxPage;
+        startNo = endNo - 6;
       }
       
     }
     
-    console.log('pageNo', pageNo, 'maxPage', maxPage, 'start', start, 'end', end);
+    console.log('pageNo', pageNo, 'maxPage', maxPage, 'start', startNo, 'end', endNo);
     
 
     const articles = await Article.find(filter,
@@ -74,7 +74,7 @@ export const load = async ({ params }) => {
         (youtube ? '<i class="bi bi-youtube text-danger px-2"></i>' : '');
     });
 
-    return { pageNo, maxPage, start, end, articles: jsonArticles };
+    return { pageNo, maxPage, startNo, endNo, articles: jsonArticles };
     
   } catch (error) {
     console.error('[[pageNo=integer]]', error);

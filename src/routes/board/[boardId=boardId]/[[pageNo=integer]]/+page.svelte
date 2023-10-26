@@ -71,17 +71,17 @@
       <Row class="mt-3 mx-0">
         <Col xs="12">
 
-          start:{data.start}, end:{data.end}, pageNo:{$page.params.pageNo}
+          start:{data.startNo}, end:{data.endNo}, pageNo:{$page.params.pageNo}
           <Pagination size="md" arialabel="페이지 네이션" class="d-flex justify-content-center">
             <PaginationItem
               ><PaginationLink first href={`/board/${$page.params.boardId}`} /></PaginationItem
             >
-            {#each Array((data.end - data.start +1)) as _, i}
+            {#each Array((data.endNo - data.startNo +1)) as _, i}
               <PaginationItem
-                active={(!$page.params.pageNo && (data.start -i) === 1) || (i + data.start) == $page.params.pageNo}
+                active={(!$page.params.pageNo && (data.startNo -i) === 1) || (i + data.startNo) == $page.params.pageNo}
               >
-                <PaginationLink href={`/board/${$page.params.boardId}/${i + data.start}`}>
-                  {i + data.start}
+                <PaginationLink href={`/board/${$page.params.boardId}/${i + data.startNo}`}>
+                  {i + data.startNo}
                 </PaginationLink>
               </PaginationItem>
             {/each}
