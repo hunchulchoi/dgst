@@ -32,8 +32,14 @@ export const load = async ({ params }) => {
     let end = maxPage;
     
     if(maxPage > 7) {
-      if(pageNo > (maxPage -3)){
-        end = pageNo + 3;
+      if((pageNo - 3) > 0){
+        start = pageNo - 3;
+        end = start + 6;
+      }
+      
+      if(pageNo +3 < maxPage){
+        end = maxPage;
+        start = end - 6;
       }
       
       start = end - 6;
