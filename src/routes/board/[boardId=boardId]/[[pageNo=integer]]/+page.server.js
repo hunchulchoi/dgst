@@ -27,6 +27,18 @@ export const load = async ({ params }) => {
     if (maxPage < pageNo) {
       pageNo = maxPage;
     }
+    
+    let start = 1;
+    let end = maxPage;
+    
+    if(maxPage > 7) {
+      if(pageNo > (maxPage -3)){
+        end = pageNo + 3;
+      }
+      
+      start = end - 6;
+    }
+    
 
     const articles = await Article.find(filter,
         {content:1, createdAt:1, nickname:1, title: 1, read:1, like:1, reads:1, comments: 1, likes:1}
@@ -55,7 +67,7 @@ export const load = async ({ params }) => {
         (youtube ? '<i class="bi bi-youtube text-danger px-2"></i>' : '');
     });
 
-    return { pageNo, maxPage, articles: jsonArticles };
+    return { pageNo, maxPage, start, end, articles: jsonArticles };
     
   } catch (error) {
     console.error('[[pageNo=integer]]', error);
