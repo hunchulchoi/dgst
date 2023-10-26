@@ -76,7 +76,7 @@
             <PaginationItem
               ><PaginationLink first href={`/board/${$page.params.boardId}`} /></PaginationItem
             >
-            {#each Array((data.end - data.start)) as _, i}
+            {#each Array((data.end - data.start +1)) as _, i}
               <PaginationItem
                 active={(!$page.params.pageNo && (data.start -i) === 1) || (i + data.start) == $page.params.pageNo}
               >
