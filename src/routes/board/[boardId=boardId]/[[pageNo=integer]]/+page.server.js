@@ -31,28 +31,19 @@ export const load = async ({ params }) => {
     let startNo = 1;
     let endNo = maxPage>7?7:maxPage;
     
-    console.log('1 pageNo', pageNo, 'maxPage', maxPage, 'start', startNo, 'end', endNo);
-    
     if(maxPage > 7) {
       if((pageNo - 3) > 0){
         startNo = pageNo - 3;
         endNo = startNo + 6;
       }
       
-      console.log('2 pageNo', pageNo, 'maxPage', maxPage, 'start', startNo, 'end', endNo);
-      
       if((pageNo +3) > maxPage){
         endNo = maxPage;
         startNo = endNo - 6;
       }
       
-      console.log('4 pageNo', pageNo, 'maxPage', maxPage, 'start', startNo, 'end', endNo);
-      
     }
     
-    console.log('4 pageNo', pageNo, 'maxPage', maxPage, 'start', startNo, 'end', endNo);
-    
-
     const articles = await Article.find(filter,
         {content:1, createdAt:1, nickname:1, title: 1, read:1, like:1, reads:1, comments: 1, likes:1}
     )
