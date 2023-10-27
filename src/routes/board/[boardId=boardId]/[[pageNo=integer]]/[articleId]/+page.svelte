@@ -275,7 +275,7 @@
       <!--프로필-->
       <Card class="p-2">
         <Row class="g-1">
-          <Col xs="4">
+          <Col xs="auto">
             <Image
               alt="프로필 사진"
               class="card-img-left rounded-start"
@@ -285,8 +285,8 @@
               width="110"
             />
           </Col>
-          <Col xs="8">
-            <CardBody class="px-0">
+          <Col xs="auto">
+            <CardBody class="px-2">
               <CardSubtitle>{data.article.nickname}</CardSubtitle>
               <CardText class="text-muted pt-2 text-break">
                 {data.introduction}
@@ -392,19 +392,19 @@
           {/if}
           {#if comment.photo}
           <Col xs="auto">
-						<Card class="p-1">
+						<Card class="p-1 border-0">
 							<Row class="g-1">
 								<Col xs="auto">
 									<Image
 										alt="프로필 사진"
 										class="card-img-left rounded-start"
-										style="max-height: 50px"
+										style="max-height: 40px"
 										src={comment.photo}
 										fluid
 									/>
 								</Col>
 								<Col xs="auto">
-									<CardBody class="px-1">
+									<CardBody class="px-1 py-1 border-0">
 										<CardSubtitle>{comment.nickname}</CardSubtitle>
 										<CardText class="text-muted text-break" style="font-size:smaller">
 											{formatDistanceToNowStrict(parseISO(comment.createdAt), {
