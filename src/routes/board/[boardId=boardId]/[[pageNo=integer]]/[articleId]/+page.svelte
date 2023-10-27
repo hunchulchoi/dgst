@@ -388,7 +388,7 @@
                 <span class="text-bg-secondary p-1 rounded-2" style="font-size: small">@{comment.parentCommentNickname}</span>
               </Col>
             </Row>
-            <Col xs="auto">&nbsp;</Col>
+            <!--<Col xs="auto">&nbsp;</Col>-->
           {/if}
           {#if comment.photo}
           <Col xs="auto">
