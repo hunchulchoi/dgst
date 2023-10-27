@@ -449,6 +449,20 @@
             {#if $page.data.session?.user.nickname}
               <Row>
                 <Col class="text-end pe-2 m-0">
+									{#if comment.email === $page.data.session?.user.email}
+										<Button
+											on:click={() => deleteComment(comment._id)}
+											size="sm"
+											outline
+											color="danger p-1"
+										>
+											<Icon name="trash" /> 삭제
+										</Button>
+										<Button size="sm" outline color="primary" class="d-none p-0">
+											<Icon name="pencil" /> 수정
+										</Button>
+									{/if}
+
                   <Button
                           on:click={() => visibleReply = comment._id}
                           size="sm"
@@ -457,19 +471,6 @@
                   >
                     <Icon name="chat-square-dots" /> 답글
                   </Button>
-            {#if comment.email === $page.data.session?.user.email}
-                  <Button
-                    on:click={() => deleteComment(comment._id)}
-                    size="sm"
-                    outline
-                    color="danger p-1"
-                  >
-                    <Icon name="trash" /> 삭제
-                  </Button>
-                  <Button size="sm" outline color="primary" class="d-none p-0">
-                    <Icon name="pencil" /> 수정
-                  </Button>
-            {/if}
                 </Col>
               </Row>
               {/if}
