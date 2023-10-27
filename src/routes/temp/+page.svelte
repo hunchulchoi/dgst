@@ -2,8 +2,7 @@
 
 import { page } from "$app/stores";
 import { Col, Pagination, PaginationItem, PaginationLink, Row } from "sveltestrap";
-import { Article } from "$lib/models/article.js";
-
+/*
 const total = 260;
 const pageUnit = 30;
 
@@ -31,7 +30,7 @@ if(maxPage > 7) {
     startNo = endNo - 6;
   }
 
-}
+}*/
 </script>
 
 <Row class="mt-3 mx-0">
