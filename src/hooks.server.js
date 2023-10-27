@@ -52,7 +52,7 @@ export const handle = SvelteKitAuth({
         console.log('encEmail', encEmail)
         console.log('encPwd', encPwd)
         
-        if(email === '충청도'){
+        if(email === 'ccd@dgst.site'){
           const user = await clientPromise.then(db=>
             db.db(DB_NAME)
               .collection('users')
