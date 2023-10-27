@@ -392,21 +392,21 @@
           {/if}
           {#if comment.photo}
           <Col xs="auto">
-						<Card class="p-2">
+						<Card class="p-1">
 							<Row class="g-1">
-								<Col xs="4">
+								<Col xs="auto">
 									<Image
 										alt="프로필 사진"
 										class="card-img-left rounded-start"
-										height="50"
+										style="max-height: 50px"
 										src={comment.photo}
 										fluid
 									/>
 								</Col>
-								<Col xs="8">
-									<CardBody class="px-0">
+								<Col xs="auto">
+									<CardBody class="px-1">
 										<CardSubtitle>{comment.nickname}</CardSubtitle>
-										<CardText class="text-muted pt-2 text-break">
+										<CardText class="text-muted text-break" style="font-size:smaller">
 											{formatDistanceToNowStrict(parseISO(comment.createdAt), {
                         locale: ko,
                         addSuffix: true
