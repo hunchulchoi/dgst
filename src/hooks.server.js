@@ -6,11 +6,14 @@ import {
   GOOGLE_CLIENT_ID,
   GOOGLE_CLIENT_SECRET,
   NODE_ENV,
-  DB_NAME
+  DB_NAME,
+  VIP_EMAIL,
+  VIP_FAKE_EMAIL
 } from '$env/static/private'
 import { MongoDBAdapter } from '@auth/mongodb-adapter';
 import clientPromise from '$lib/database/clientPromise.js';
 import crypto from 'crypto';
+import {error} from "@sveltejs/kit";
 
 export const handle = SvelteKitAuth({
   providers: [
@@ -41,29 +44,31 @@ export const handle = SvelteKitAuth({
         password: {label: 'Password', type: 'password',}
       },
       async authorize(credentials){
-        console.log('authorization', credentials)
-        
         const {email, password} = credentials;
       
-        const encEmail = crypto.createHash('sha512').update(email).digest('base64url');
         const encPwd = crypto.createHash('sha512').update(password).digest('base64url');
         
-        console.log('encEmail', encEmail)
-        console.log('encPwd', encPwd)
-        
-        const user = await clientPromise.then(db=>
-          db.db(DB_NAME)
-            .collection('users')
-            .findOne({email: encEmail.toLowerCase(), ccd: encPwd}, {
-                  id: 1,
-                  email: 1,
-                  nickname: 1,
-                  introduction: 1,
-                  photo: 1,
-                  state: 1
-                }))
-        
-        return user;
+        if(email === VIP_FAKE_EMAIL){
+          const user = await clientPromise.then(db=>
+            db.db(DB_NAME)
+              .collection('users')
+              .findOne({email: VIP_EMAIL , ccd: encPwd}, {
+                id: 1,
+                email: 1,
+                nickname: 1,
+                introduction: 1,
+                photo: 1,
+                state: 1
+              }))
+          
+          if(!user) console.error('ㅊㅊㄷ 로그인 실패', email, encPwd);
+          
+          return user;
+          
+        }else {
+          console.error('ㅊㅊㄷ 로그인 실패', email, encPwd);
+          throw error(405);
+        }
         
       }
     })

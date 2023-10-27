@@ -274,19 +274,18 @@
     <Row class="p-md-3 p-xs-1 mb-3 mx-0">
       <!--프로필-->
       <Card class="p-2">
-        <Row>
-          <Col class="d-flex align-items-center" xs="4">
+        <Row class="g-1">
+          <Col xs="auto">
             <Image
               alt="프로필 사진"
-              class="card-img-left rounded-2"
-              height="100"
+              class="card-img-left rounded-start"
               src={data.photo}
-              thumbnail
-              width="100"
+              fluid
+							style="max-height: 100px;max-width:100%"
             />
           </Col>
-          <Col xs="8">
-            <CardBody class="px-0">
+          <Col xs="auto">
+            <CardBody class="px-2">
               <CardSubtitle>{data.article.nickname}</CardSubtitle>
               <CardText class="text-muted pt-2 text-break">
                 {data.introduction}
@@ -392,18 +391,42 @@
           {/if}
           {#if comment.photo}
           <Col xs="auto">
-            <Image thumbnail src={comment.photo} style="height:50px" rounded />
+						<Card class="p-1 border-0">
+							<Row class="g-1 mx-0">
+								<Col xs="auto">
+									<Image
+										alt="프로필 사진"
+										class="card-img-left rounded-start"
+										style="max-height: 40px"
+										src={comment.photo}
+										fluid
+									/>
+								</Col>
+								<Col xs="auto">
+									<CardBody class="px-1 py-1 border-0">
+										<CardSubtitle>{comment.nickname}</CardSubtitle>
+										<CardText class="text-muted text-break" style="font-size:smaller">
+											{formatDistanceToNowStrict(parseISO(comment.createdAt), {
+                        locale: ko,
+                        addSuffix: true
+                      })}
+										</CardText>
+									</CardBody>
+								</Col>
+							</Row>
+						</Card>
           </Col>
-          {/if}
-          <Col xs="auto" clsss="border-end">
-            {comment.nickname}<br>
-            <span class="text-muted ps-2" style="font-size: smaller"
-              >{formatDistanceToNowStrict(parseISO(comment.createdAt), {
+					{:else}
+						<Col xs="auto" clsss="border-end">
+							{comment.nickname}
+							<span class="text-muted ps-2" style="font-size: smaller"
+							>{formatDistanceToNowStrict(parseISO(comment.createdAt), {
                 locale: ko,
                 addSuffix: true
               })}</span
-            >
-          </Col>
+							>
+						</Col>
+          {/if}
           <Col xs="12" md="8" class="mt-2 mt-md-0 p-0">
             <Row class="mx-0">
               <Col class="text-break" style="max-width: 98%">
@@ -417,14 +440,32 @@
                 {#if !/[0-9a-zA-Z가-힣_-]/.test(comment.content) && countEmojis(comment.content) === 1}
                     <h1 class="display-1">{comment.content}</h1>
                 {:else}
-                  <div class="px-2">{comment.content}</div>
+									{#if comment.state!=='write'}
+										<div class="px-2 text-muted"><em>{comment.content}</em></div>
+									{:else}
+                  	<div class="px-2">{comment.content}</div>
+									{/if}
                 {/if}
               </Col>
             </Row>
 
-            {#if $page.data.session?.user.nickname}
+            {#if $page.data.session?.user.nickname && comment.state==='write'}
               <Row>
                 <Col class="text-end pe-2 m-0">
+									{#if comment.email === $page.data.session?.user.email}
+										<Button
+											on:click={() => deleteComment(comment._id)}
+											size="sm"
+											outline
+											color="danger p-1"
+										>
+											<Icon name="trash" /> 삭제
+										</Button>
+										<Button size="sm" outline color="primary" class="d-none p-0">
+											<Icon name="pencil" /> 수정
+										</Button>
+									{/if}
+
                   <Button
                           on:click={() => visibleReply = comment._id}
                           size="sm"
@@ -433,19 +474,6 @@
                   >
                     <Icon name="chat-square-dots" /> 답글
                   </Button>
-            {#if comment.email === $page.data.session?.user.email}
-                  <Button
-                    on:click={() => deleteComment(comment._id)}
-                    size="sm"
-                    outline
-                    color="danger p-1"
-                  >
-                    <Icon name="trash" /> 삭제
-                  </Button>
-                  <Button size="sm" outline color="primary" class="d-none p-0">
-                    <Icon name="pencil" /> 수정
-                  </Button>
-            {/if}
                 </Col>
               </Row>
               {/if}
