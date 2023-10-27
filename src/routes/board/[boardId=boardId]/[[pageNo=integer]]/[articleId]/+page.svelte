@@ -449,7 +449,7 @@
               </Col>
             </Row>
 
-            {#if $page.data.session?.user.nickname}
+            {#if $page.data.session?.user.nickname && comment.state==='write'}
               <Row>
                 <Col class="text-end pe-2 m-0">
 									{#if comment.email === $page.data.session?.user.email}
