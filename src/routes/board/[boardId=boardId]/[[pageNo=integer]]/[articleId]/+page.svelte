@@ -400,8 +400,7 @@
 										class="card-img-left rounded-start"
 										height="50"
 										src={comment.photo}
-										thumbnail
-										width="50"
+										fluid
 									/>
 								</Col>
 								<Col xs="8">
@@ -417,7 +416,6 @@
 								</Col>
 							</Row>
 						</Card>
-            <Image thumbnail src={comment.photo} style="height:50px" rounded />
           </Col>
 					{:else}
 						<Col xs="auto" clsss="border-end">
