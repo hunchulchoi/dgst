@@ -274,15 +274,15 @@
     <Row class="p-md-3 p-xs-1 mb-3 mx-0">
       <!--프로필-->
       <Card class="p-2">
-        <Row>
-          <Col class="d-flex align-items-center" xs="4">
+        <Row class="g-0">
+          <Col xs="4">
             <Image
               alt="프로필 사진"
-              class="card-img-left rounded-2"
-              height="100"
+              class="card-img-left rounded-start"
+              height="110"
               src={data.photo}
               thumbnail
-              width="100"
+              width="110"
             />
           </Col>
           <Col xs="8">
