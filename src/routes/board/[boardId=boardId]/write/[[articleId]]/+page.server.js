@@ -6,11 +6,11 @@ import connectDB from '$lib/database/mongoosePriomise.js';
 connectDB();
 export const actions = {
   default: async ({ request, params, locals }) => {
-    console.log('write.server default', request);
+    //console.log('write.server default', request);
 
     const session = await locals.getSession();
 
-    console.debug('user', session);
+    //console.debug('user', session);
 
     // 권한 검사
     if (!session.user || !session.user.nickname) {
@@ -19,7 +19,7 @@ export const actions = {
 
     const data = await request.formData();
 
-    console.log(data);
+    //console.log(data);
 
     try {
       if (params.articleId) {
@@ -47,10 +47,10 @@ export const actions = {
           content: data.get('content')
         });
 
-        console.log(article);
+        //console.log(article);
 
         const inserted = await article.save();
-        console.log('inserted', inserted);
+        //console.log('inserted', inserted);
       }
     } catch (error) {
       console.error('게시글 저장 실패', error);
