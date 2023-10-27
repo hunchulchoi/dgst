@@ -281,7 +281,7 @@
               class="card-img-left rounded-start"
               src={data.photo}
               fluid
-							style="max-height: 100px"
+							style="max-height: 100px;max-width:100%"
             />
           </Col>
           <Col xs="auto">
@@ -392,7 +392,7 @@
           {#if comment.photo}
           <Col xs="auto">
 						<Card class="p-1 border-0">
-							<Row class="g-1">
+							<Row class="g-1 mx-0">
 								<Col xs="auto">
 									<Image
 										alt="프로필 사진"
@@ -440,7 +440,11 @@
                 {#if !/[0-9a-zA-Z가-힣_-]/.test(comment.content) && countEmojis(comment.content) === 1}
                     <h1 class="display-1">{comment.content}</h1>
                 {:else}
-                  <div class="px-2">{comment.content}</div>
+									{#if comment.state!=='write'}
+										<div class="px-2"><em>{comment.content}</em></div>
+									{:else}
+                  	<div class="px-2">{comment.content}</div>
+									{/if}
                 {/if}
               </Col>
             </Row>
