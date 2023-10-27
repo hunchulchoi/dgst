@@ -7,11 +7,13 @@ import {
   GOOGLE_CLIENT_SECRET,
   NODE_ENV,
   DB_NAME,
-  VIP_EMAIL
+  VIP_EMAIL,
+  VIP_FAKE_EMAIL
 } from '$env/static/private'
 import { MongoDBAdapter } from '@auth/mongodb-adapter';
 import clientPromise from '$lib/database/clientPromise.js';
 import crypto from 'crypto';
+import {error} from "@sveltejs/kit";
 
 export const handle = SvelteKitAuth({
   providers: [
@@ -42,17 +44,11 @@ export const handle = SvelteKitAuth({
         password: {label: 'Password', type: 'password',}
       },
       async authorize(credentials){
-        console.log('authorization', credentials)
-        
         const {email, password} = credentials;
       
-        const encEmail = crypto.createHash('sha512').update(email).digest('base64url');
         const encPwd = crypto.createHash('sha512').update(password).digest('base64url');
         
-        console.log('encEmail', encEmail)
-        console.log('encPwd', encPwd)
-        
-        if(email === 'ccd@dgst.site'){
+        if(email === VIP_FAKE_EMAIL){
           const user = await clientPromise.then(db=>
             db.db(DB_NAME)
               .collection('users')
@@ -65,7 +61,13 @@ export const handle = SvelteKitAuth({
                 state: 1
               }))
           
+          if(!user) console.error('ㅊㅊㄷ 로그인 실패', email, encPwd);
+          
           return user;
+          
+        }else {
+          console.error('ㅊㅊㄷ 로그인 실패', email, encPwd);
+          throw error(405);
         }
         
       }
