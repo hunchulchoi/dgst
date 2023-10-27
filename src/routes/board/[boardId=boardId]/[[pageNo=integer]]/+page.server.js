@@ -31,22 +31,16 @@ export const load = async ({ params }) => {
     let startNo = 1;
     let endNo = maxPage>7?7:maxPage;
     
-    console.log(1, 'maxPage', maxPage, 'pageNo', pageNo, 'startNo', startNo, 'endNo', endNo)
-    
     if(maxPage > 7) {
       if((pageNo - 3) > 0){
         startNo = pageNo - 3;
         endNo = startNo + 6;
       }
       
-      console.log(2, 'maxPage', maxPage, 'pageNo', pageNo, (pageNo + 3), 'startNo', startNo, 'endNo', endNo)
-      
       if((pageNo +3) > maxPage){
         endNo = maxPage;
         startNo = endNo - 6;
       }
-      
-      console.log(3, 'maxPage', maxPage, 'pageNo', pageNo, 'startNo', startNo, 'endNo', endNo)
     }
     
     
@@ -76,7 +70,6 @@ export const load = async ({ params }) => {
         (image ? '<i class="bi bi-card-image text-success px-2"></i>' : '') +
         (youtube ? '<i class="bi bi-youtube text-danger px-2"></i>' : '');
     });
-    console.log(4, 'maxPage', maxPage, 'pageNo', pageNo, 'startNo', startNo, 'endNo', endNo)
 
     return { pageNo, maxPage, startNo, endNo, articles: jsonArticles };
     
