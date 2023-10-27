@@ -274,7 +274,7 @@
     <Row class="p-md-3 p-xs-1 mb-3 mx-0">
       <!--프로필-->
       <Card class="p-2">
-        <Row class="g-0">
+        <Row class="g-1">
           <Col xs="4">
             <Image
               alt="프로필 사진"
@@ -392,18 +392,44 @@
           {/if}
           {#if comment.photo}
           <Col xs="auto">
+						<Card class="p-2">
+							<Row class="g-1">
+								<Col xs="4">
+									<Image
+										alt="프로필 사진"
+										class="card-img-left rounded-start"
+										height="50"
+										src={comment.photo}
+										thumbnail
+										width="50"
+									/>
+								</Col>
+								<Col xs="8">
+									<CardBody class="px-0">
+										<CardSubtitle>{comment.nickname}</CardSubtitle>
+										<CardText class="text-muted pt-2 text-break">
+											{formatDistanceToNowStrict(parseISO(comment.createdAt), {
+                        locale: ko,
+                        addSuffix: true
+                      })}
+										</CardText>
+									</CardBody>
+								</Col>
+							</Row>
+						</Card>
             <Image thumbnail src={comment.photo} style="height:50px" rounded />
           </Col>
-          {/if}
-          <Col xs="auto" clsss="border-end">
-            {comment.nickname}<br>
-            <span class="text-muted ps-2" style="font-size: smaller"
-              >{formatDistanceToNowStrict(parseISO(comment.createdAt), {
+					{:else}
+						<Col xs="auto" clsss="border-end">
+							{comment.nickname}
+							<span class="text-muted ps-2" style="font-size: smaller"
+							>{formatDistanceToNowStrict(parseISO(comment.createdAt), {
                 locale: ko,
                 addSuffix: true
               })}</span
-            >
-          </Col>
+							>
+						</Col>
+          {/if}
           <Col xs="12" md="8" class="mt-2 mt-md-0 p-0">
             <Row class="mx-0">
               <Col class="text-break" style="max-width: 98%">
