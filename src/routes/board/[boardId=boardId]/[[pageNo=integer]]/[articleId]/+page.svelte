@@ -441,7 +441,7 @@
                     <h1 class="display-1">{comment.content}</h1>
                 {:else}
 									{#if comment.state!=='write'}
-										<div class="px-2"><em>{comment.content}</em></div>
+										<div class="px-2 text-muted"><em>{comment.content}</em></div>
 									{:else}
                   	<div class="px-2">{comment.content}</div>
 									{/if}
