@@ -8,7 +8,7 @@ export const load = async ({ params }) => {
   // 한페이지에 보여주는 게시물
   const pageUnit = 30;
 
-  let pageNo = params.pageNo || 1;
+  let pageNo = parseInt(params.pageNo || 1)
 
   try {
     const filter = { boardId: params.boardId, state: 'write', createdAt: {$gt: new Date(new Date()-1000*60*60*24*3)} };
@@ -39,7 +39,7 @@ export const load = async ({ params }) => {
         endNo = startNo + 6;
       }
       
-      console.log(2, 'maxPage', maxPage, 'pageNo', pageNo, 'startNo', startNo, 'endNo', endNo)
+      console.log(2, 'maxPage', maxPage, 'pageNo', pageNo, (pageNo + 3), 'startNo', startNo, 'endNo', endNo)
       
       if((pageNo +3) > maxPage){
         endNo = maxPage;
