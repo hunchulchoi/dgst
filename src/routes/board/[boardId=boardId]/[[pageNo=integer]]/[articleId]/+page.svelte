@@ -279,10 +279,9 @@
             <Image
               alt="프로필 사진"
               class="card-img-left rounded-start"
-              height="110"
               src={data.photo}
-              thumbnail
-              width="110"
+              fluid
+							style="max-height: 100px"
             />
           </Col>
           <Col xs="auto">
