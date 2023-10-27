@@ -98,7 +98,7 @@
 
     <Nav tabs>
       <NavItem>
-        <NavLink on:click={free} active={$page.data.pathname.startsWith('/board/free')}>자유게시판
+        <NavLink href="/board/free" data-sveltekit-reload  active={$page.data.pathname.startsWith('/board/free')}>자유게시판
         </NavLink>
       </NavItem>
       {#if $page.data.session?.user?.nickname}
