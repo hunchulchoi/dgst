@@ -1,4 +1,4 @@
-export const load = ({ url, data, setHeaders }) => {
+export const load = ({ url, data}) => {
   const { pathname, search } = url;
 
   console.log('layout alarmCount', data.alarmCount)
