@@ -6,7 +6,8 @@ import {
   GOOGLE_CLIENT_ID,
   GOOGLE_CLIENT_SECRET,
   NODE_ENV,
-  DB_NAME
+  DB_NAME,
+  VIP_EMAIL
 } from '$env/static/private'
 import { MongoDBAdapter } from '@auth/mongodb-adapter';
 import clientPromise from '$lib/database/clientPromise.js';
@@ -51,19 +52,21 @@ export const handle = SvelteKitAuth({
         console.log('encEmail', encEmail)
         console.log('encPwd', encPwd)
         
-        const user = await clientPromise.then(db=>
-          db.db(DB_NAME)
-            .collection('users')
-            .findOne({email: encEmail.toLowerCase(), ccd: encPwd}, {
-                  id: 1,
-                  email: 1,
-                  nickname: 1,
-                  introduction: 1,
-                  photo: 1,
-                  state: 1
-                }))
-        
-        return user;
+        if(email === '충청도'){
+          const user = await clientPromise.then(db=>
+            db.db(DB_NAME)
+              .collection('users')
+              .findOne({email: VIP_EMAIL , ccd: encPwd}, {
+                id: 1,
+                email: 1,
+                nickname: 1,
+                introduction: 1,
+                photo: 1,
+                state: 1
+              }))
+          
+          return user;
+        }
         
       }
     })
