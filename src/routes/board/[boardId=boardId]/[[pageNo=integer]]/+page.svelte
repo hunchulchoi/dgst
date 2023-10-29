@@ -42,23 +42,23 @@
     {:else}
       {#each data.articles as article}
         <Row class="py-2 border-bottom border-secondary-subtle m-0">
-          <Col lg="7" md="5" xs="12"
-                  class="text-break link-opacity-hover-50 pb-1">
-           <a data-sveltekit-preload-data="tap" data-sveltekit-invalidate="all"
-              href={`/board/${$page.params.boardId}/${$page.params.pageNo || 1}/${article._id}`}
-              style="cursor: pointer; font-size: 1.1em"
-              class="link-underline link-underline-opacity-0 link-offset-2 link-underline-opacity-50-hover">
-            {article.title}
-            {@html article.content}
-            {#if article.comment}
-              {#if article.isNewComment}
-                <Badge color="warning" class="bg-opacity-50">{article.comment}</Badge>
-              {:else}
-                <Badge color="primary" class="bg-opacity-50">{article.comment}</Badge>
-              {/if}
-            {/if}
+            <a data-sveltekit-preload-data="tap" data-sveltekit-invalidate="all"
+               href={`/board/${$page.params.boardId}/${$page.params.pageNo || 1}/${article._id}`}
+               style="cursor: pointer; font-size: 1.1em"
+               class="link-underline link-underline-opacity-0 link-offset-2 link-underline-opacity-50-hover">
+              <Col lg="7" md="5" xs="12"
+                      class="text-break link-opacity-hover-50 pb-1">
+                {article.title}
+                {@html article.content}
+                {#if article.comment}
+                  {#if article.isNewComment}
+                    <Badge color="warning" class="bg-opacity-50">{article.comment}</Badge>
+                  {:else}
+                    <Badge color="primary" class="bg-opacity-50">{article.comment}</Badge>
+                  {/if}
+                {/if}
+              </Col>
            </a>
-          </Col>
           <Col lg="2" md="2" xs="5" class="text-muted" style="font-size: small">{article.nickname}</Col>
           <Col lg="1" md="1" xs="1" class="text-muted text-end" style="font-size: small">{article.read}</Col>
           <Col lg="1" md="1" xs="2" class="text-muted text-end" style="font-size: small"

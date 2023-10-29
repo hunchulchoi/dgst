@@ -1,7 +1,5 @@
-export const load = ({ url, data}) => {
+export const load = ({ url, data, }) => {
   const { pathname, search } = url;
-
-  console.log('layout alarmCount', data.alarmCount)
 
   return {
     pathname: `${pathname}${search || ''}`,
