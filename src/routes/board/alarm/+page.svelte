@@ -1,5 +1,5 @@
 <script>
-  import {Badge, Col, Icon, Image, Row} from "sveltestrap";
+    import {Badge, Col, Icon, Image, NavLink, Row} from "sveltestrap";
   import {formatDistanceToNowStrict, parseISO} from "date-fns";
   import ko from "date-fns/locale/ko/index.js";
 
@@ -24,6 +24,7 @@
           <Col lg="7" md="5" xs="12"
                class="text-break link-opacity-hover-50 pb-1">
             <a data-sveltekit-preload-data="tap"
+               data-sveltekit-invalidate="all"
                href={`/board/${alarm.boardId}/${alarm.articleId}`}
                style="cursor: pointer; font-size: 1.1em"
                class="link-underline link-underline-opacity-0 link-offset-2 link-underline-opacity-50-hover">
@@ -40,6 +41,7 @@
             <Col lg="7" md="5" xs="12"
                  class="text-break link-opacity-hover-50 pb-1">
               <a data-sveltekit-preload-data="tap"
+                 data-sveltekit-invalidate="all"
                  href={`/board/${alarm.boardId}/${alarm.articleId}`}
                  style="cursor: pointer; font-size: 1.1em"
                  class="link-underline link-underline-opacity-0 link-offset-2 link-underline-opacity-50-hover">
