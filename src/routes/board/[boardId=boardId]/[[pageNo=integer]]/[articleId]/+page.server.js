@@ -19,6 +19,12 @@ export const load = async ({ params, locals }) => {
 
   const projection = {email:1, nickname:1, title:1, content:1, reads:1,  likes:1, createdAt:1, read:1, like:1}
 
+  // 알람 삭제
+  if(session?.user?.nickname){
+    const deleteAlarm = await Alarm.deleteMany({email: session.user.email, articleId: params.articleId});
+    console.log('delete alarm', deleteAlarm);
+  }
+  
   const article = await Article.findOneAndUpdate(
     filter,
     { $addToSet: { reads: session?.user?.email } },
@@ -44,11 +50,6 @@ export const load = async ({ params, locals }) => {
 
   const author = await User.findOne({ email: article.email }, { photo: 1, introduction: 1 }).lean();
 
-  // 알람 삭제
-  if(session?.user?.nickname){
-    const deleteAlarm = await Alarm.deleteMany({email: session.user.email, articleId: params.articleId});
-    console.log('delete alarm', deleteAlarm);
-  }
 
   return {
     article: JSON.parse(JSON.stringify(article)),

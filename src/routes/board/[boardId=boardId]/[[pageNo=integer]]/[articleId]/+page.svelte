@@ -58,13 +58,11 @@
   function list() {
     const pageNo = $page.params.pageNo || 1;
 
-    goto(`/board/${$page.params.boardId}/${pageNo}`);
+    goto(`/board/${$page.params.boardId}/${pageNo}`, {invalidateAll: true});
   }
 
   async function preview(event, el) {
     el.src = window.URL.createObjectURL(event.target.files[0]);
-
-    console.log(event.target.files[0]);
 
     el.onload = async (evt) => {
       commentLoading = true;
@@ -284,7 +282,7 @@
 							style="max-height: 100px;max-width:100%"
             />
           </Col>
-          <Col xs="7">
+          <Col xs="8">
             <CardBody class="px-2">
               <CardSubtitle>{data.article.nickname}</CardSubtitle>
               <CardText class="text-muted pt-2 text-break">
