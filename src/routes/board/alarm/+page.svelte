@@ -11,11 +11,17 @@
 
     {#if !data.alarms?.length }
       <Row class="mt-2 mx-0">
-        <Image src="/icons/nothing.webp" alt="없어요 그냥 짤" class="mt-2"/>
-        <Col style="height: 20vh" class="fs-2 text-center mt-5">
-          <div>🤦🏻‍♀🤦🏾‍♂ 딱히 알려 드릴게 없네유.</div>
-          <div>그런 날도 있는거져 ㅜㅜ</div>
-        </Col>
+        <Row>
+          <Col class="text-center">
+            <Image src="/icons/nothing.webp" alt="없어요 그냥 짤" class="mt-2" style="width:540px; max-width: 100%"/>
+          </Col>
+        </Row>
+        <Row>
+          <Col style="height: 20vh" class="fs-2 text-center mt-5">
+            <div>🤦🏻‍♀🤦🏾‍♂ 딱히 알려 드릴게 없네유.</div>
+            <div>그런 날도 있는거져 ㅜㅜ</div>
+          </Col>
+        </Row>
       </Row>
     {:else}
       {#each data.alarms as alarm}
