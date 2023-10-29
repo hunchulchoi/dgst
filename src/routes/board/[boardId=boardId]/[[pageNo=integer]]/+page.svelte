@@ -28,10 +28,16 @@
 
     {#if !data.articles.length}
       <Row class="my-5 mx-0">
-        <Image src="/icons/nothing.webp" alt="없어요 그냥 짤"/>
-        <Col style="height: 20vh" class="fs-2 text-center mt-5">
-          🤦🏻‍♀🤦🏾‍♂ 게시물이 없습니다. 뻘글 하나 쓰고 가세여 ㅜㅜ
-        </Col>
+        <Row>
+          <Col class="text-center">
+            <Image src="/icons/nothing.webp" alt="없어요 그냥 짤" class="mt-2" style="width:540px; max-width: 100%"/>
+          </Col>
+        </Row>
+        <Row>
+          <Col style="height: 20vh" class="fs-2 text-center mt-5">
+            🤦🏻‍♀🤦🏾‍♂ 게시물이 없습니다. 뻘글 하나 쓰고 가세여 ㅜㅜ
+          </Col>
+        </Row>
       </Row>
     {:else}
       {#each data.articles as article}
