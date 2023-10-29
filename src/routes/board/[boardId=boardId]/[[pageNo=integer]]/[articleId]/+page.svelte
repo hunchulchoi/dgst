@@ -269,7 +269,7 @@
     <Row class="p-md-3 p-xs-1 mb-3 mx-0">
       <!--프로필-->
       <Card class="p-2">
-        <Row class="g-1">
+        <Row class="g-1 d-flex align-items-center">
           <Col xs="auto">
             <Image
               alt="프로필 사진"
