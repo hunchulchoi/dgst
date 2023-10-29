@@ -1,5 +1,5 @@
 diff --git a/node_modules/@ckeditor/ckeditor5-build-decoupled-document/build/ckeditor.js b/node_modules/@ckeditor/ckeditor5-build-decoupled-document/build/ckeditor.js
-index 1015f82..e12ac5b 100644
+index 1015f82..32eb366 100644
 --- a/node_modules/@ckeditor/ckeditor5-build-decoupled-document/build/ckeditor.js
 +++ b/node_modules/@ckeditor/ckeditor5-build-decoupled-document/build/ckeditor.js
 @@ -1,7 +1,30136 @@
@@ -6562,7 +6562,7 @@ index 1015f82..e12ac5b 100644
 +          const d = new Set;
 +          for (const t of c) "delete" === t ? (d.add(i[l]), ti(i[l])) : "equal" !== t && "update" !== t || l++;
 +          l = 0;
-+          for (const t of c) "insert" === t ? ($o(n, l, s[l]), l++)): "update" === t ?(la(i[l], s[l].data)}, l++) : "equal" === t && (this._markDescendantTextToSync(this.domConverter.domToView(s[l])), l++);
++          for (const t of c) "insert" === t ? ($o(n, l, s[l]), l++): "update" === t ?(la(i[l], s[l].data)}, l++) : "equal" === t && (this._markDescendantTextToSync(this.domConverter.domToView(s[l])), l++);
 +          for (const t of d) t.parentNode || this.domConverter.unbindDomElement(t)
 +        }
 +
