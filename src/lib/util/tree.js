@@ -3,8 +3,6 @@ export default function convertToTree(array){
   const filtered = array.filter(el=> el.state === 'write'
     || (el.state!=='write' && array.find(eel=>eel.parentCommentId === el.id)))
   
-  console.log('1 filtered', filtered)
-  
   const cloned = filtered.filter(el=>el.depth===1)
   
   filtered.map(el=>{
@@ -13,8 +11,6 @@ export default function convertToTree(array){
       delete el.image;
     }
   });
-  
-  console.log('2 filtered', filtered)
   
   const maxDepth = Math.max(...filtered.map(e=>e.depth));
   
@@ -51,8 +47,6 @@ export default function convertToTree(array){
       cloned.splice(i,1);
     }
   }*/
-  
-  console.log('cloned', cloned);
   
   return cloned;
 }
