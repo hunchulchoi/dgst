@@ -279,7 +279,7 @@
 							style="max-height: 100px;max-width:100%"
             />
           </Col>
-          <Col xs="*">
+          <Col>
             <CardBody class="px-2">
               <CardSubtitle>{data.article.nickname}</CardSubtitle>
               <CardText class="text-muted pt-2 text-break">
