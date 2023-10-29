@@ -1,0 +1,15 @@
+diff --git a/node_modules/@ckeditor/ckeditor5-engine/src/view/renderer.js b/node_modules/@ckeditor/ckeditor5-engine/src/view/renderer.js
+index 1991e0d..5b7fdc2 100644
+--- a/node_modules/@ckeditor/ckeditor5-engine/src/view/renderer.js
++++ b/node_modules/@ckeditor/ckeditor5-engine/src/view/renderer.js
+@@ -555,7 +555,9 @@ export default class Renderer extends ObservableMixin() {
+                 // @if CK_DEBUG_TYPING // 		'color: green;font-weight: bold', ''
+                 // @if CK_DEBUG_TYPING // 	);
+                 // @if CK_DEBUG_TYPING // }
+-                updateTextNode(actualDomChildren[i], expectedDomChildren[i].data);
++                if (!this.isComposing){
++                    updateTextNode(actualDomChildren[i], expectedDomChildren[i].data);
++                }
+                 i++;
+                 // @if CK_DEBUG_TYPING // if ( ( window as any ).logCKETyping ) {
+                 // @if CK_DEBUG_TYPING // 	console.groupEnd();
