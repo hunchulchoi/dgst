@@ -294,20 +294,20 @@
       <!--버튼-->
       <Col class="text-end pe-md-3 p-xs-0 m-xs-0">
         {#if data.article.email === $page.data.session?.user.email}
-          <Button size="sm" color="danger" on:click={() => remove(data.article._id)} outline>
+          <Button color="danger" on:click={() => remove(data.article._id)} class="ps-1 pe-2">
             <Icon name="trash" />
             삭제
           </Button>
-          <Button size="sm" color="success" on:click={() => edit(data.article._id)} outline>
+          <Button color="success" on:click={() => edit(data.article._id)} class="ps-1 pe-2">
             <Icon name="pencil" />
             수정
           </Button>
         {/if}
-        <Button size="sm" color="primary" on:click={write} outline>
+        <Button color="primary" on:click={write} class="ps-1 pe-2">
           <Icon name="pencil-fill" />
           글쓰기
         </Button>
-        <Button size="sm" color="secondary" on:click={list} outline>
+        <Button color="secondary" on:click={list} class="ps-1 pe-2">
           <Icon name="list" />
           목록
         </Button>
@@ -422,7 +422,7 @@
 							>
 						</Col>
           {/if}
-          <Col xs="12" md="8" class="mt-2 mt-md-0 p-0">
+          <Col xs="12" md="*" class="mt-2 mt-md-0 p-0">
             <Row class="mx-0">
               <Col class="text-break" style="max-width: 98%">
                 {#if comment.image}
@@ -445,7 +445,7 @@
             </Row>
 
             {#if $page.data.session?.user.nickname && comment.state==='write'}
-              <Row>
+              <Row class="mx-0">
                 <Col class="text-end pe-2 m-0">
 									{#if comment.email === $page.data.session?.user.email}
 										<Button
@@ -523,22 +523,22 @@
     </Row>
     <Row class="mx-0 mb-3">
       <!--버튼-->
-      <Col class="text-end pe-3">
+      <Col class="text-end pe-1">
         {#if data.article.email === $page.data.session?.user.email}
-          <Button size="sm" color="danger" on:click={() => remove(data.article._id)} outline>
+          <Button class="ps-1 pe-2" color="danger" on:click={() => remove(data.article._id)}>
             <Icon name="trash" />
             삭제
           </Button>
-          <Button size="sm" color="success" on:click={() => edit(data.article._id)} outline>
+          <Button  class="ps-1 pe-2" color="success" on:click={() => edit(data.article._id)}>
             <Icon name="pencil" />
             수정
           </Button>
         {/if}
-        <Button size="sm" color="primary" on:click={write} outline>
+        <Button  class="ps-1 pe-2" color="primary" on:click={write}>
           <Icon name="pencil-fill" />
           글쓰기
         </Button>
-        <Button size="sm" color="secondary" on:click={list} outline>
+        <Button  class="ps-1 pe-2" color="secondary" on:click={list}>
           <Icon name="list" />
           목록
         </Button>
