@@ -276,7 +276,7 @@
               class="card-img-left rounded-start"
               src={data.photo}
               fluid
-							style="max-height: 100px;max-width:100%"
+							style="max-height: 100px;max-width:100px"
             />
           </Col>
           <Col>
