@@ -19,7 +19,7 @@ export default function convertToTree(array){
   const maxDepth = Math.max(...filtered.map(e=>e.depth));
   
   for(let i=2; i<=maxDepth; i++){
-    const depth = array.filter(el=>el.depth===i).reverse();
+    const depth = filtered.filter(el=>el.depth===i).reverse();
     
     depth.forEach(el=>{
       const parentId = el.parentCommentId;
