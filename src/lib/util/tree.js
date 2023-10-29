@@ -52,6 +52,8 @@ export default function convertToTree(array){
     }
   }*/
   
+  console.log('cloned', cloned);
+  
   return cloned;
 }
 
