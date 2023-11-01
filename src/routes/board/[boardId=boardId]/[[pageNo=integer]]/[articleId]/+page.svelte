@@ -330,7 +330,7 @@
     <Row class="mb-5 mx-0">
 
       {#each commentData as comment}
-        <Row class="pt-3 pb-2 px-0 border-bottom border-gray-subtle mx-0">
+        <Row class="pt-3 pb-2 px-0 border-bottom border-gray-subtle mx-0" id={comment.id}>
           {#if comment.parentCommentNickname}
             <Row class="mb-1">
               <Col xs="auto">
@@ -401,7 +401,7 @@
             </Row>
 
             {#if $page.data.session?.user.nickname && comment.state==='write'}
-              <Row class="mx-0">
+              <Row class="mx-0" >
                 <Col class="text-end pe-2 m-0">
 									{#if comment.email === $page.data.session?.user.email}
 										<Button
