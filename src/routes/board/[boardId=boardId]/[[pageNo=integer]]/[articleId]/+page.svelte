@@ -58,7 +58,7 @@
   function list() {
     const pageNo = $page.params.pageNo || 1;
 
-    goto(`/board/${$page.params.boardId}/${pageNo}`, {invalidateAll: true});
+    goto(`/board/${$page.params.boardId}/${pageNo}`, {invalidateAll: true, replaceState: true});
   }
 
   async function preview(event, el) {
@@ -328,53 +328,9 @@
     </Row>
 
     <Row class="mb-5 mx-0">
-      {#if $page.data.session?.user.nickname}
-        <div class="border p-3 rounded-4 shadow-sm" bind:this={commentDiv}>
-          <Loader
-            bind:active={commentLoading}
-            container={commentDiv}
-            component="Dot"
-            opacity="0.7"
-          />
-          <InputGroup class="mb-2">
-            <!--<InputGroupText class="text-success">
-              <Icon name="card-image" class="pe-2" />
-              짤 첨부
-            </InputGroupText>-->
-            <input
-              type="file"
-              bind:this={commentImageEl}
-              on:change={(evt)=>preview(evt, previewEl)}
-              muliple="false"
-              accept="image/*"
-              class="form-control m-2"
-            />
-          </InputGroup>
-          <InputGroup>
-            <img
-              src=""
-              class="img-thumbnail d-none me-2"
-              bind:this={previewEl}
-              alt="리플 이미지 첨부 미리보기"
-              style="max-width: 30px"
-            />
-            <Input
-              type="textarea"
-              bind:value={commentContent}
-              class="border border-gray"
-              style="max-width: 600px"
-            />
-            <Button color="primary" outline on:click={()=>writeComment()}>
-              <Icon name="pencil-fill" />
-              등록
-              <Spinner color="success" size="sm" class="d-none" />
-            </Button>
-          </InputGroup>
-        </div>
-      {/if}
 
       {#each commentData as comment}
-        <Row class="py-3 px-0 border-bottom border-gray-subtle mx-0">
+        <Row class="pt-3 pb-2 px-0 border-bottom border-gray-subtle mx-0">
           {#if comment.parentCommentNickname}
             <Row class="mb-1">
               <Col xs="auto">
@@ -520,6 +476,52 @@
         </div>
         {/if}
       {/each}
+
+      {#if $page.data.session?.user.nickname}
+        <div class="border p-3 rounded-4 shadow-sm mt-3" bind:this={commentDiv}>
+          <Loader
+            bind:active={commentLoading}
+            container={commentDiv}
+            component="Dot"
+            opacity="0.7"
+          />
+          <InputGroup class="mb-2">
+            <!--<InputGroupText class="text-success">
+              <Icon name="card-image" class="pe-2" />
+              짤 첨부
+            </InputGroupText>-->
+            <input
+              type="file"
+              bind:this={commentImageEl}
+              on:change={(evt)=>preview(evt, previewEl)}
+              muliple="false"
+              accept="image/*"
+              class="form-control m-2"
+            />
+          </InputGroup>
+          <InputGroup>
+            <img
+              src=""
+              class="img-thumbnail d-none me-2"
+              bind:this={previewEl}
+              alt="리플 이미지 첨부 미리보기"
+              style="max-width: 30px"
+            />
+            <Input
+              type="textarea"
+              bind:value={commentContent}
+              class="border border-gray"
+              style="max-width: 600px"
+            />
+            <Button color="primary" outline on:click={()=>writeComment()}>
+              <Icon name="pencil-fill" />
+              등록
+              <Spinner color="success" size="sm" class="d-none" />
+            </Button>
+          </InputGroup>
+        </div>
+      {/if}
+
     </Row>
     <Row class="mx-0 mb-3">
       <!--버튼-->
