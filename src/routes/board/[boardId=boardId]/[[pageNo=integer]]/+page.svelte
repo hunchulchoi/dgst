@@ -13,6 +13,10 @@
   export let data;
 </script>
 
+<svelte:window on:keyup|preventDefault={(evt)=>{
+  if(evt.ctrlKey && evt.key === 'w') write();
+}}></svelte:window>
+
 <main class="container my-md-2" style="min-height: 50vh">
   <Row class="py-2 shadow rounded-4 mx-0">
 
