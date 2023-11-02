@@ -9,7 +9,7 @@
 <Header />
 
 {#key data.pathname}
-  <div transition:blur={{ amount: 7, duration: 300 }}>
+  <div transition:blur={{ amount: 40, duration: 400 }}>
     <slot />
   </div>
 {/key}

@@ -8,7 +8,7 @@ export const load = async ({ params }) => {
   // 한페이지에 보여주는 게시물
   const pageUnit = 30;
 
-  let pageNo = params.pageNo || 1;
+  let pageNo = parseInt(params.pageNo || 1)
 
   try {
     const filter = { boardId: params.boardId, state: 'write', createdAt: {$gt: new Date(new Date()-1000*60*60*24*3)} };
@@ -41,8 +41,8 @@ export const load = async ({ params }) => {
         endNo = maxPage;
         startNo = endNo - 6;
       }
-      
     }
+    
     
     const articles = await Article.find(filter,
         {content:1, createdAt:1, nickname:1, title: 1, read:1, like:1, reads:1, comments: 1, likes:1}
