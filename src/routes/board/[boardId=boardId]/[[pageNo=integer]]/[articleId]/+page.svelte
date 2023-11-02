@@ -549,8 +549,10 @@
   </Row>
 </main>
 
-<style>
-  .card-text img{
-    max-width: 100%;
-  }
-</style>
+<svelte:head>
+  <style>
+    .card-text img{
+      max-width: 100%;
+    }
+  </style>
+</svelte:head>
