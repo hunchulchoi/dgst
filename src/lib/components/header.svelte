@@ -28,7 +28,7 @@
   };
 
   function free(){
-    goto(`/board/free/?v=${new Date().getSeconds()}`)
+    goto(`/board/free?v=${new Date().getSeconds()}`, {invalidateAll: true, replaceState: true});
   }
 
   $: colorModeIcon =
@@ -37,8 +37,9 @@
     $theme === 'light' ? 'light' : 'dark'
   }_normal_web.png`;
 
-  $: alarmCount = $page.data.alarmCount
-  $: console.log('$$ alarmCount',alarmCount, $page.data.alarmCount)
+  $: alarmCount = $page.data.alarmCount;
+
+  $: console.log('alarmCount:', alarmCount)
 </script>
 
 <Styles theme={$theme} />
@@ -96,14 +97,15 @@
 </Navbar>
   <Navbar color="secondary-subtle" fixed="true" class="ms-auto pb-0">
 
-    <Nav tabs>
+    <Nav tabs data-svelteit-preload-data="false">
       <NavItem>
-        <NavLink href="/board/free" data-sveltekit-reload  active={$page.data.pathname.startsWith('/board/free')}>자유게시판
+        <NavLink on:click={free} active={$page.data.pathname.startsWith('/board/free')}>자유게시판
         </NavLink>
       </NavItem>
       {#if $page.data.session?.user?.nickname}
         <NavItem>
-          <NavLink data-sveltekit-reload href="/board/alarm" active={$page.data.pathname.startsWith('/board/alarm')}>
+          <NavLink href="/board/alarm" data-sveltekit-invalidate="all"
+                   active={$page.data.pathname.startsWith('/board/alarm')}>
             <Icon name="megaphone" class="text-success me-2"/>알림
             {#if alarmCount}
               <Badge pill color="danger">{alarmCount}</Badge>

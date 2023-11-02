@@ -1,5 +1,5 @@
 <script>
-  import {Badge, Col, Icon, Image, Row} from "sveltestrap";
+    import {Badge, Col, Icon, Image, NavLink, Row} from "sveltestrap";
   import {formatDistanceToNowStrict, parseISO} from "date-fns";
   import ko from "date-fns/locale/ko/index.js";
 
@@ -11,11 +11,17 @@
 
     {#if !data.alarms?.length }
       <Row class="mt-2 mx-0">
-        <Image src="/icons/nothing.webp" alt="없어요 그냥 짤" class="mt-2"/>
-        <Col style="height: 20vh" class="fs-2 text-center mt-5">
-          <div>🤦🏻‍♀🤦🏾‍♂ 딱히 알려 드릴게 없네유.</div>
-          <div>그런 날도 있는거져 ㅜㅜ</div>
-        </Col>
+        <Row>
+          <Col class="text-center">
+            <Image src="/icons/nothing.webp" alt="없어요 그냥 짤" class="mt-2" style="width:540px; max-width: 100%"/>
+          </Col>
+        </Row>
+        <Row>
+          <Col style="height: 20vh" class="fs-2 text-center mt-5">
+            <div>🤦🏻‍♀🤦🏾‍♂ 딱히 알려 드릴게 없네유.</div>
+            <div>그런 날도 있는거져 ㅜㅜ</div>
+          </Col>
+        </Row>
       </Row>
     {:else}
       {#each data.alarms as alarm}
@@ -24,7 +30,8 @@
           <Col lg="7" md="5" xs="12"
                class="text-break link-opacity-hover-50 pb-1">
             <a data-sveltekit-preload-data="tap"
-               href={`/board/${alarm.boardId}/${alarm.articleId}`}
+               data-sveltekit-invalidate="all"
+               href={`/board/${alarm.boardId}/${alarm.articleId}/#${alarm.comment}`}
                style="cursor: pointer; font-size: 1.1em"
                class="link-underline link-underline-opacity-0 link-offset-2 link-underline-opacity-50-hover">
               <Icon name="chat-square-dots" class="text-info"></Icon> {alarm.commentContent}
@@ -40,6 +47,7 @@
             <Col lg="7" md="5" xs="12"
                  class="text-break link-opacity-hover-50 pb-1">
               <a data-sveltekit-preload-data="tap"
+                 data-sveltekit-invalidate="all"
                  href={`/board/${alarm.boardId}/${alarm.articleId}`}
                  style="cursor: pointer; font-size: 1.1em"
                  class="link-underline link-underline-opacity-0 link-offset-2 link-underline-opacity-50-hover">

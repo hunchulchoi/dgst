@@ -58,13 +58,11 @@
   function list() {
     const pageNo = $page.params.pageNo || 1;
 
-    goto(`/board/${$page.params.boardId}/${pageNo}`);
+    goto(`/board/${$page.params.boardId}/${pageNo}`, {invalidateAll: true, replaceState: true});
   }
 
   async function preview(event, el) {
     el.src = window.URL.createObjectURL(event.target.files[0]);
-
-    console.log(event.target.files[0]);
 
     el.onload = async (evt) => {
       commentLoading = true;
@@ -241,9 +239,6 @@
 
   export let data;
 
-  console.log('+page data', data.alarmCount);
-  console.log('+page $page.data', $page.data.alarmCount);
-
   let visibleReply;
 
   $: commentData = data.article.comments;
@@ -274,17 +269,17 @@
     <Row class="p-md-3 p-xs-1 mb-3 mx-0">
       <!--프로필-->
       <Card class="p-2">
-        <Row class="g-1">
+        <Row class="g-1 d-flex align-items-center">
           <Col xs="auto">
             <Image
               alt="프로필 사진"
               class="card-img-left rounded-start"
               src={data.photo}
               fluid
-							style="max-height: 100px;max-width:100%"
+							style="max-height: 100px;max-width:100px"
             />
           </Col>
-          <Col xs="auto">
+          <Col>
             <CardBody class="px-2">
               <CardSubtitle>{data.article.nickname}</CardSubtitle>
               <CardText class="text-muted pt-2 text-break">
@@ -299,20 +294,20 @@
       <!--버튼-->
       <Col class="text-end pe-md-3 p-xs-0 m-xs-0">
         {#if data.article.email === $page.data.session?.user.email}
-          <Button size="sm" color="danger" on:click={() => remove(data.article._id)} outline>
+          <Button color="danger" on:click={() => remove(data.article._id)} class="ps-1 pe-2">
             <Icon name="trash" />
             삭제
           </Button>
-          <Button size="sm" color="success" on:click={() => edit(data.article._id)} outline>
+          <Button color="success" on:click={() => edit(data.article._id)} class="ps-1 pe-2">
             <Icon name="pencil" />
             수정
           </Button>
         {/if}
-        <Button size="sm" color="primary" on:click={write} outline>
+        <Button color="primary" on:click={write} class="ps-1 pe-2">
           <Icon name="pencil-fill" />
           글쓰기
         </Button>
-        <Button size="sm" color="secondary" on:click={list} outline>
+        <Button color="secondary" on:click={list} class="ps-1 pe-2">
           <Icon name="list" />
           목록
         </Button>
@@ -333,53 +328,9 @@
     </Row>
 
     <Row class="mb-5 mx-0">
-      {#if $page.data.session?.user.nickname}
-        <div class="border p-3 rounded-4 shadow-sm" bind:this={commentDiv}>
-          <Loader
-            bind:active={commentLoading}
-            container={commentDiv}
-            component="Dot"
-            opacity="0.7"
-          />
-          <InputGroup class="mb-2">
-            <!--<InputGroupText class="text-success">
-              <Icon name="card-image" class="pe-2" />
-              짤 첨부
-            </InputGroupText>-->
-            <input
-              type="file"
-              bind:this={commentImageEl}
-              on:change={(evt)=>preview(evt, previewEl)}
-              muliple="false"
-              accept="image/*"
-              class="form-control m-2"
-            />
-          </InputGroup>
-          <InputGroup>
-            <img
-              src=""
-              class="img-thumbnail d-none me-2"
-              bind:this={previewEl}
-              alt="리플 이미지 첨부 미리보기"
-              style="max-width: 30px"
-            />
-            <Input
-              type="textarea"
-              bind:value={commentContent}
-              class="border border-gray"
-              style="max-width: 600px"
-            />
-            <Button color="primary" outline on:click={()=>writeComment()}>
-              <Icon name="pencil-fill" />
-              등록
-              <Spinner color="success" size="sm" class="d-none" />
-            </Button>
-          </InputGroup>
-        </div>
-      {/if}
 
       {#each commentData as comment}
-        <Row class="py-3 px-0 border-bottom border-gray-subtle mx-0">
+        <Row class="pt-3 pb-2 px-0 border-bottom border-gray-subtle mx-0" id={comment.id}>
           {#if comment.parentCommentNickname}
             <Row class="mb-1">
               <Col xs="auto">
@@ -387,7 +338,7 @@
                 <span class="text-bg-secondary p-1 rounded-2" style="font-size: small">@{comment.parentCommentNickname}</span>
               </Col>
             </Row>
-            <Col xs="auto">&nbsp;</Col>
+            <!--<Col xs="auto">&nbsp;</Col>-->
           {/if}
           {#if comment.photo}
           <Col xs="auto">
@@ -427,7 +378,7 @@
 							>
 						</Col>
           {/if}
-          <Col xs="12" md="8" class="mt-2 mt-md-0 p-0">
+          <Col xs="12" md="*" class="mt-2 mt-md-0 p-0">
             <Row class="mx-0">
               <Col class="text-break" style="max-width: 98%">
                 {#if comment.image}
@@ -450,7 +401,7 @@
             </Row>
 
             {#if $page.data.session?.user.nickname && comment.state==='write'}
-              <Row>
+              <Row class="mx-0" >
                 <Col class="text-end pe-2 m-0">
 									{#if comment.email === $page.data.session?.user.email}
 										<Button
@@ -525,25 +476,71 @@
         </div>
         {/if}
       {/each}
+
+      {#if $page.data.session?.user.nickname}
+        <div class="border p-3 rounded-4 shadow-sm mt-3" bind:this={commentDiv}>
+          <Loader
+            bind:active={commentLoading}
+            container={commentDiv}
+            component="Dot"
+            opacity="0.7"
+          />
+          <InputGroup class="mb-2">
+            <!--<InputGroupText class="text-success">
+              <Icon name="card-image" class="pe-2" />
+              짤 첨부
+            </InputGroupText>-->
+            <input
+              type="file"
+              bind:this={commentImageEl}
+              on:change={(evt)=>preview(evt, previewEl)}
+              muliple="false"
+              accept="image/*"
+              class="form-control m-2"
+            />
+          </InputGroup>
+          <InputGroup>
+            <img
+              src=""
+              class="img-thumbnail d-none me-2"
+              bind:this={previewEl}
+              alt="리플 이미지 첨부 미리보기"
+              style="max-width: 30px"
+            />
+            <Input
+              type="textarea"
+              bind:value={commentContent}
+              class="border border-gray"
+              style="max-width: 600px"
+            />
+            <Button color="primary" outline on:click={()=>writeComment()}>
+              <Icon name="pencil-fill" />
+              등록
+              <Spinner color="success" size="sm" class="d-none" />
+            </Button>
+          </InputGroup>
+        </div>
+      {/if}
+
     </Row>
     <Row class="mx-0 mb-3">
       <!--버튼-->
-      <Col class="text-end pe-3">
+      <Col class="text-end pe-1">
         {#if data.article.email === $page.data.session?.user.email}
-          <Button size="sm" color="danger" on:click={() => remove(data.article._id)} outline>
+          <Button class="ps-1 pe-2" color="danger" on:click={() => remove(data.article._id)}>
             <Icon name="trash" />
             삭제
           </Button>
-          <Button size="sm" color="success" on:click={() => edit(data.article._id)} outline>
+          <Button  class="ps-1 pe-2" color="success" on:click={() => edit(data.article._id)}>
             <Icon name="pencil" />
             수정
           </Button>
         {/if}
-        <Button size="sm" color="primary" on:click={write} outline>
+        <Button  class="ps-1 pe-2" color="primary" on:click={write}>
           <Icon name="pencil-fill" />
           글쓰기
         </Button>
-        <Button size="sm" color="secondary" on:click={list} outline>
+        <Button  class="ps-1 pe-2" color="secondary" on:click={list}>
           <Icon name="list" />
           목록
         </Button>

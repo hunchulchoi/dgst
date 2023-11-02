@@ -49,9 +49,8 @@
       items: [
         'undo',
         'redo',
+          '|',
         'uploadImage',
-        'link',
-        'mediaEmbed',
         '|',
         'fontSize',
         'bold',
