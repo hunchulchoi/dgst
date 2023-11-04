@@ -1,11 +1,15 @@
 <svelte:head>
-  <script async src="//www.instagram.com/embed.js"></script>
+  <script async src="https://www.instagram.com/embed.js"></script>
   <script async src="//www.tiktok.com/embed.js"></script>
   <style>
 
     .image img {
       max-width: 100% !important;
     }
+     .card-text img{
+       max-width: 100%;
+     }
+
   </style>
 </svelte:head>
 
@@ -549,5 +553,3 @@
   </Row>
 </main>
 
-<style>
-</style>
