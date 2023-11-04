@@ -44,7 +44,7 @@
     import Loader from 'svelte-loading-overlay/Loader.svelte';
 
     import {alarmCount} from "$lib/util/store.js";
-    import {viewComment} from "$lib/util/embeder.js";
+
 
 
     function enableCommentLink(content){
@@ -398,7 +398,7 @@
 									{#if comment.state!=='write'}
 										<div class="px-2 text-muted"><em>{comment.content}</em></div>
 									{:else}
-                  	<div class="px-2">{@html viewComment(comment.content)}</div>
+                  	<div class="px-2">{comment.content}</div>
 									{/if}
                 {/if}
               </Col>
