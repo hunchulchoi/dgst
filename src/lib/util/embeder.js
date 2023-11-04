@@ -1,3 +1,5 @@
+import sanitizeHtml from 'sanitize-html';
+
 function youtubeEmbeder(url){
 
   url = url.replace('https://', '').replace('http://', '').replace('www.', '');
@@ -35,6 +37,8 @@ function youtubeEmbeder(url){
 }
 
 export function viewComment(comment){
+
+    comment = sanitizeHtml(comment);
 
   const httpRegexG =
     /https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&\/=]*)/g;

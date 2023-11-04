@@ -399,7 +399,7 @@
 									{#if comment.state!=='write'}
 										<div class="px-2 text-muted"><em>{comment.content}</em></div>
 									{:else}
-                  	<div class="px-2">{@html DOMPurify.sanitize(viewComment(comment.content))}</div>
+                  	<div class="px-2">{@html viewComment(comment.content)}</div>
 									{/if}
                 {/if}
               </Col>
