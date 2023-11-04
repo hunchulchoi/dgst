@@ -2,8 +2,12 @@
     import {Badge, Col, Icon, Image, NavLink, Row} from "sveltestrap";
   import {formatDistanceToNowStrict, parseISO} from "date-fns";
   import ko from "date-fns/locale/ko/index.js";
+    import {alarmCount} from "$lib/util/store.js";
+    import {page} from "$app/stores";
 
   export let data;
+
+  alarmCount.update(alarmCount =>$page.data.alarmCount);
 </script>
 
 <main class="container my-md-2" style="min-height: 60vh">

@@ -4,6 +4,7 @@
   import { blur } from 'svelte/transition';
 
   export let data;
+
 </script>
 
 <Header />
