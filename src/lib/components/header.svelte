@@ -22,6 +22,9 @@
   import {page} from '$app/stores';
   import {goto} from "$app/navigation";
 
+  import {alarmCount} from "$lib/util/store.js";
+  import {fade} from "svelte/transition";
+
   const handleGoogleSignIn = () => {
     console.log('handleGoogleSignIn');
     signIn('google', { callbackUrl: '/' });
@@ -37,9 +40,6 @@
     $theme === 'light' ? 'light' : 'dark'
   }_normal_web.png`;
 
-  $: alarmCount = $page.data.alarmCount;
-
-  $: console.log('alarmCount:', alarmCount)
 </script>
 
 <Styles theme={$theme} />
@@ -107,8 +107,8 @@
           <NavLink href="/board/alarm" data-sveltekit-invalidate="all"
                    active={$page.data.pathname.startsWith('/board/alarm')}>
             <Icon name="megaphone" class="text-success me-2"/>알림
-            {#if alarmCount}
-              <Badge pill color="danger">{alarmCount}</Badge>
+            {#if $alarmCount}
+              <Badge pill color="danger">{$alarmCount}</Badge>
             {/if}
           </NavLink>
         </NavItem>

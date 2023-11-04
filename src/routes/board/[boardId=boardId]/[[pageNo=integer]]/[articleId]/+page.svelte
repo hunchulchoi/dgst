@@ -39,6 +39,10 @@
 
     import Loader from 'svelte-loading-overlay/Loader.svelte';
 
+    import {alarmCount} from "$lib/util/store.js";
+
+
+
     function enableCommentLink(content){
 
       const regex = /(http|https):\/\/(\w+:{0,1}\w*@)?(\S+)(:[0-9]+)?(\/|\/([\w#!:.?+=&%@!\-\/]))?/
@@ -74,12 +78,7 @@
 
         if (_width > 1600) {
           const webp = await blobToWebP(event.target.files[0], { width: 1400 });
-
-          console.debug('webp', webp);
-
           commentImage = new File([webp], event.target.files[0].name);
-
-          console.log('webpBlob', commentImage);
         } else {
           commentImage = event.target.files[0];
         }
@@ -108,8 +107,7 @@
 
   function writeComment(parentCommentId) {
 
-    console.log(commentContent, parentCommentId, reCommentContent)
-
+    //console.log(commentContent, parentCommentId, reCommentContent)
 
     if ((!parentCommentId &&!commentContent) || (parentCommentId &&  !reCommentContent)){
       alert('내용을 입력하세요');
@@ -238,6 +236,8 @@
   const toggle = () => (toastIsOpen = !toastIsOpen);
 
   export let data;
+
+  alarmCount.update(alarmCount =>data.alarmCount);
 
   let visibleReply;
 

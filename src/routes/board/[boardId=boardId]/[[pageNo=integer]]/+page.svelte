@@ -5,12 +5,15 @@
 
     import {formatDistanceToNowStrict, parseISO} from 'date-fns';
     import ko from 'date-fns/locale/ko/index.js';
+  import {alarmCount} from "$lib/util/store.js";
 
     function write() {
     goto(`/board/${$page.params.boardId}/write`);
   }
 
   export let data;
+
+  alarmCount.update(alarmCount =>$page.data.alarmCount);
 </script>
 
 <svelte:window on:keyup|preventDefault={(evt)=>{

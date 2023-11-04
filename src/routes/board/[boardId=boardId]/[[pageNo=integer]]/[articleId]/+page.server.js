@@ -19,10 +19,14 @@ export const load = async ({ params, locals }) => {
 
   const projection = {email:1, nickname:1, title:1, content:1, reads:1,  likes:1, createdAt:1, read:1, like:1}
 
+  let alarmCount = 0;
+  
   // 알람 삭제
   if(session?.user?.nickname){
     const deleteAlarm = await Alarm.deleteMany({email: session.user.email, articleId: params.articleId});
     console.log('delete alarm', deleteAlarm);
+    
+    alarmCount = await Alarm.countDocuments({ email: session.user.email });
   }
   
   const article = await Article.findOneAndUpdate(
@@ -54,6 +58,7 @@ export const load = async ({ params, locals }) => {
   return {
     article: JSON.parse(JSON.stringify(article)),
     photo: author.photo || '/icons/unknown-person-icon-4.jpg',
-    introduction: author.introduction
+    introduction: author.introduction,
+    alarmCount
   };
 };
