@@ -336,9 +336,12 @@
       {#each commentData as comment}
         <Row class="pt-3 pb-2 px-0 border-bottom border-gray-subtle mx-0" id={comment.id}>
           {#if comment.parentCommentNickname}
+            <Row class="mb-1">
               <Col xs="auto">
                 <Icon name="arrow-return-right" class="text-success"></Icon>
+                <span class="text-bg-secondary p-1 rounded-2" style="font-size: small">@{comment.parentCommentNickname}</span>
               </Col>
+            </Row>
             <!--<Col xs="auto">&nbsp;</Col>-->
           {/if}
           {#if comment.photo}
@@ -395,9 +398,6 @@
 									{#if comment.state!=='write'}
 										<div class="px-2 text-muted"><em>{comment.content}</em></div>
 									{:else}
-                    {#if comment.parentCommentNickname}
-                      <span class="text-bg-secondary p-1 rounded-2" style="font-size: small">@{comment.parentCommentNickname}</span>
-                    {/if}
                   	<div class="px-2">{@html viewComment(comment.content)}</div>
 									{/if}
                 {/if}
