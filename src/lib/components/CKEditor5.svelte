@@ -176,9 +176,6 @@
     const imageUploadEditing = editor.plugins.get('ImageUploadEditing');
     //const imageInsert = editor.plugins.get( 'ImageInsert' );
 
-    console.log('imageUploadEditing', imageUploadEditing);
-    console.log('ImageInline', editor.plugins.get('ImageInline'));
-    console.log('ImageInlineEditing', editor.plugins.get('ImageInlineEditing'));
 
     imageUploadEditing.isEnabled = false;
     editor.plugins.get('ImageInlineEditing').isEnabled = false;
