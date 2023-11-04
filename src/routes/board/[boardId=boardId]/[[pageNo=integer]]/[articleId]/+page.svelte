@@ -45,7 +45,6 @@
 
     import {alarmCount} from "$lib/util/store.js";
     import {viewComment} from "$lib/util/embeder.js";
-    import DOMPurify from 'dompurify';
 
 
     function enableCommentLink(content){
@@ -318,7 +317,7 @@
         </Button>
       </Col>
     </Row>
-    <Row class="my-3 bg-warning-subtle p-3 rounded-3 mb-4 mx-0">
+    <Row class="my-3 bg-warning-subtle p-2 rounded-3 mb-4 mx-0">
       <!--리플-->
       <Col>
         <Icon name="chat" />
