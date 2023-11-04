@@ -1,73 +1,89 @@
 <script>
 
-import { page } from "$app/stores";
-import { Col, Pagination, PaginationItem, PaginationLink, Row } from "sveltestrap";
+  import {Col, Row} from "sveltestrap";
 
-const total = 260;
-const pageUnit = 30;
+  const contents = [`안녕하세요
+  https://www.youtube.com/shorts/u9cbnfcTF6g
+  ㅋㅋㅋㅋㅋ`,
+  'ㅋㅋㅋㅋㅋㅋㅋㅋㅋㅋ',
+  `안녕하세요 다음
+  https://www.daum.net
+  ㅋㅋㅋㅋㅋ`
 
-let pageNo = 8;
+  ]
 
+  let matched;
 
-const maxPage = parseInt(total / pageUnit + ((total % pageUnit)?1:0));
+  function youtubeEmbeder(url){
 
-//
-if (maxPage < pageNo) {
-  pageNo = maxPage;
-}
+    url = url.replace('https://', '').replace('http://', '').replace('www.', '');
 
-let startNo = 1;
-let endNo = maxPage>7?7:maxPage;
+    const youtubeUrls =[
+      /^(?:m\.)?youtube\.com\/watch\?v=([\w-]+)(?:&t=(\d+))?/,
+      /^(?:m\.)?youtube\.com\/v\/([\w-]+)(?:\?t=(\d+))?/,
+      /^youtube\.com\/embed\/([\w-]+)(?:\?start=(\d+))?/,
+      /^youtu\.be\/([\w-]+)(?:\?t=(\d+))?/,
+      /^youtube\.com\/shorts\/([\w-]+)(?:\/\?si=([\w-]+))?/
+    ]
 
-console.log(1, 'maxPage', maxPage, 'pageNo', pageNo, 'startNo', startNo, 'endNo', endNo)
+    for(let i=0; i<youtubeUrls.length; i++) {
 
-if(maxPage > 7) {
-  if((pageNo - 3) > 0){
-    startNo = pageNo - 3;
-    endNo = startNo + 6;
+      const _match = url.match(youtubeUrls[i]);
+
+      if(_match){
+        const id = _match[ 1 ];
+        const time = _match[ 2 ];
+
+        return (
+          '<div style="position: relative; padding-bottom: 100%; height: 0; padding-bottom: 56.2493%;">' +
+          `<iframe src="https://www.youtube.com/embed/${ id }${ time ? `?start=${ time }` : '' }" ` +
+          'style="position: absolute; width: 100%; height: 100%; top: 0; left: 0;" ' +
+          'frameborder="0" allow="autoplay; encrypted-media" allowfullscreen>' +
+          '</iframe>' +
+          '</div>'
+        );
+      }
+    }
+
+    return null;
+
   }
 
-  console.log(2, 'maxPage', maxPage, 'pageNo', pageNo, 'startNo', startNo, 'endNo', endNo)
+  function viewComment(comment){
 
-  if((pageNo +3) > maxPage){
-    endNo = maxPage;
-    startNo = endNo - 6;
+    const httpRegexG =
+      /https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&\/=]*)/g;
+
+     const matched = comment.match(httpRegexG);
+
+    if(matched){
+
+      matched.forEach(m=>{
+        let link = youtubeEmbeder(m) || `<a href="${m}" target="_blank">${m}</a>`
+        comment = comment.replace(m, link);
+      })
+    }
+
+    return comment;
   }
 
-  console.log(3, 'maxPage', maxPage, 'pageNo', pageNo, 'startNo', startNo, 'endNo', endNo)
-
-}
-
-console.log(4, 'maxPage', maxPage, 'pageNo', pageNo, 'startNo', startNo, 'endNo', endNo)
-
-const  data = {maxPage, pageNo, startNo, endNo}
 </script>
 
-<Row class="mt-3 mx-0">
-  <div class="text-center my-5 fs-3">
-    maxPage:{data.maxPage}, pageNo:{data.pageNo}, startNo:{data.startNo}, endNo:{data.endNo}
-  </div>
-
-	<Col xs="12">
-		<Pagination size="md" arialabel="페이지 네이션" class="d-flex justify-content-center">
-			<PaginationItem
-			><PaginationLink first href={`/board/${$page.params.boardId}`} /></PaginationItem
-			>
-			{#each Array((data.endNo - data.startNo +1)) as _, i}
-				<PaginationItem
-					active={(!data.pageNo && (data.startNo -i) === 1) || (i + data.startNo) == data.pageNo}
-				>
-					<PaginationLink href={`/board/${$page.params.boardId}/${i + data.startNo}`}>
-            {i}, {i + data.startNo}
-					</PaginationLink>
-				</PaginationItem>
-			{/each}
-			<PaginationItem
-			><PaginationLink
-				last
-				href={`/board/${$page.params.boardId}/${data.maxPage}`}
-			/></PaginationItem
-			>
-		</Pagination>
-	</Col>
-</Row>
+<main>
+  {#each contents as content}
+  <Row>
+    <Col>
+      content:{content}
+    </Col>
+  </Row>
+  <Row>
+    <Col>matched:{matched}</Col>
+  </Row>
+  <Row>
+    <Col>
+      {@html viewComment(content)}
+    </Col>
+  </Row>
+    <hr />
+    {/each}
+</main>
