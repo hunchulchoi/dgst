@@ -48,7 +48,7 @@ export function viewComment(comment){
   if(matched){
 
     matched.forEach(m=>{
-      let link = youtubeEmbeder(m) || `<a href="${m}" target="_blank"><Icon name="arrow-up-right-square-fill" class="text-success"/>${m}</a>`
+      let link = youtubeEmbeder(m) || `<a href="${m}" target="_blank"><em class="text-success bi bi-arrow-up-right-square-fill me-1"></em>${m}</a>`
       comment = comment.replace(m, link);
     })
   }
