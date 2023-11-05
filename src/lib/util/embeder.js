@@ -38,7 +38,10 @@ function youtubeEmbeder(url){
 
 export function viewComment(comment){
 
-    comment = sanitizeHtml(comment);
+  comment = comment.replace(/(?:\r\n|\r|\n)/g, '<br>')
+
+  // 안전 태그
+  comment = sanitizeHtml(comment);
 
   const httpRegexG =
     /https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&\/=]*)/g;
