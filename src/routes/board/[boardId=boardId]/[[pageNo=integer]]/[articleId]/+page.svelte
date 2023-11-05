@@ -47,15 +47,14 @@
   import {alarmCount} from "$lib/util/store.js";
   import {viewComment} from "$lib/util/embeder.js";
 
-
-  function enableCommentLink(content) {
-
-    const regex = /(http|https):\/\/(\w+:{0,1}\w*@)?(\S+)(:[0-9]+)?(\/|\/([\w#!:.?+=&%@!\-\/]))?/
-
-    const link = content.match(regex);
-
-    if (link) return link[0];
-
+  function like(){
+    fetch(`/board/${$page.params.boardId}/${$page.params.articleId}/like`, {method: 'POST'})
+      .then((res) => res.json())
+      .then((d) => {
+        data.article.read = d.read;
+        data.article.like = d.like;
+        data.article.liked = d.liked;
+      });
   }
 
   function comments() {
@@ -309,9 +308,9 @@
             수정
           </Button>
         {/if}
-        <Button color="primary" on:click={write} class="ps-1 pe-2">
-          <Icon name="pencil-fill"/>
-          글쓰기
+        <Button color="primary" on:click|once={like} class="ps-1 pe-2" disabled={data.article.liked}>
+          <Icon name="hand-thumbs-up"/>
+          {data.article.like}
         </Button>
         <Button color="secondary" on:click={list} class="ps-1 pe-2">
           <Icon name="list"/>
@@ -459,7 +458,7 @@
         {#if visibleReply === comment._id}
           <div transition:scale
                class="mt-2 mx-0 border-bottom border-secondary-subtle bg-secondary bg-opacity-25">
-            <div class="border px-0 p-3 mb-2 rounded-4 shadow-sm" bind:this={reCommentDiv}>
+            <div class="border p-3 mb-2 rounded-4 shadow-sm" bind:this={reCommentDiv}>
               <Loader
                 bind:active={commentLoading}
                 container={reCommentDiv}
@@ -503,7 +502,7 @@
       {/each}
 
       {#if $page.data.session?.user.nickname}
-        <div class="border ps-3 pe-0 p-3 rounded-4 shadow-sm mt-3" bind:this={commentDiv}>
+        <div class="border p-3 rounded-4 shadow-sm mt-3" bind:this={commentDiv}>
           <Loader
             bind:active={commentLoading}
             container={commentDiv}
