@@ -1,5 +1,5 @@
 import connectDB from '$lib/database/mongoosePriomise.js';
-import {error} from "@sveltejs/kit";
+import {error, json} from "@sveltejs/kit";
 import {Article} from "$lib/models/article.js";
 
 connectDB();
@@ -41,5 +41,5 @@ export async function POST({ params, locals }) {
   delete articleJson.likes;
   delete articleJson.reads;
   
-  return new Response(articleJson, { status: 200 });
+  return new Response(JSON.stringify(articleJson), { status: 200 });
 }
