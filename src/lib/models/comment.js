@@ -23,6 +23,13 @@ export const commentSchema = new Schema(
         toJSON: { virtuals: true},
         toObject: { virtuals: true},
         timestamps: true,
+        virtuals:{
+          like:{
+            get(){
+              return this.likes?.length || 0;
+            }
+          }
+        }
     }
 )
 

@@ -8,9 +8,10 @@ import convertToTree from '$lib/util/tree.js';
 
 connectDB();
 
-export async function GET({ params }) {
+export async function GET({ params, locals }) {
   const boardId = params.boardId;
   const articleId = params.articleId;
+  
 
   if (!boardId || !articleId) {
     console.error('invalid', params);
@@ -22,7 +23,7 @@ export async function GET({ params }) {
   try {
     comments = await Comment.find(
       { articleId: params.articleId, boardId: params.boardId },
-      { _id: 1, photo: 1, nickname: 1, createdAt: 1, image: 1, email: 1, content: 1, depth:1, parentCommentId: 1, parentCommentNickname: 1 , state:1}
+      { _id: 1, photo: 1, nickname: 1, createdAt: 1, image: 1, email: 1, content: 1, depth:1, parentCommentId: 1, parentCommentNickname: 1 , state:1, likes:1, like:1}
     ).sort('createdAt');
     
   } catch (err) {
@@ -30,9 +31,20 @@ export async function GET({ params }) {
     throw error(500, { message: '데이터를 가져오는 중에 오류가 발생하였습니다.ㅜㅜ' });
   }
   
+  const commentsTree = convertToTree(comments);
+  
+  const session = await locals.getSession();
+  
+  if (session?.user?.nickname) {
+    commentsTree.forEach((comment) => {
+      comment.liked = comment.likes.includes(session.user.email);
+      delete commentsTree.likes;
+    })
+  }
+  
   //console.log('comments', comments)
 
-  return json(convertToTree(comments));
+  return json(commentsTree);
 }
 
 export async function POST({ request, params, locals }) {
