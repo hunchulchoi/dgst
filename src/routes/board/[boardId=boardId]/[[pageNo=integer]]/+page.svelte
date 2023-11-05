@@ -48,7 +48,7 @@
       </Row>
     {:else}
       {#each data.articles as article}
-        <Row class="py-2 border-bottom border-secondary-subtle m-0">
+        <Row class="p-2 border-bottom border-secondary-subtle m-0">
               <Col lg="7" md="5" xs="12"
                       class="text-break link-opacity-hover-50 pb-1 position-relative">
             <a data-sveltekit-preload-data="tap" data-sveltekit-invalidate="all"
