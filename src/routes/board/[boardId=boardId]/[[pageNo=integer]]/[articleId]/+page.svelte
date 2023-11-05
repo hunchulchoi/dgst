@@ -388,7 +388,7 @@
 
           <Col xs="12" md="*" class="mt-2 mt-md-0 p-0">
             <Row class="mx-0">
-              <Col class="text-break" style="max-width: 98%">
+              <Col class="text-break p-0 m-0" style="max-width: 98%">
                 {#if comment.image}
                   <Row class="pb-3 mx-0">
                     <Col class="p-0 ps-1 m-0">
@@ -410,7 +410,8 @@
                     <div class="px-2">
                       {#if comment.parentCommentNickname}
                                             <span class="text-bg-secondary p-1 rounded-2"
-                                                  style="font-size: small">@{comment.parentCommentNickname}</span>
+                                                  style="font-size: small"><span
+                                              class="text-warning">@</span>{comment.parentCommentNickname}</span>
                       {/if}{@html viewComment(comment.content)}</div>
                   {/if}
                 {/if}
