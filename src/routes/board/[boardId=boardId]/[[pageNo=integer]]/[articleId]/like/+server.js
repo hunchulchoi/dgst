@@ -38,8 +38,8 @@ export async function POST({ params, locals }) {
   const articleJson = JSON.parse(JSON.stringify(article));
   articleJson.liked = article.likes.includes(session.user.email)
   
-  delete article.likes;
-  delete article.reads;
+  delete articleJson.likes;
+  delete articleJson.reads;
   
-  return new Response(article, { status: 200 });
+  return new Response(articleJson, { status: 200 });
 }
