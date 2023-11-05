@@ -458,7 +458,7 @@
         <!-- 대댓글 -->
         {#if visibleReply === comment._id}
           <div transition:scale
-               class="mt-2 mx-0 border-bottom border-secondary-subtle bg-secondary bg-opacity-10">
+               class="mt-2 mx-0 border-bottom border-secondary-subtle bg-secondary bg-opacity-25">
             <div class="border px-0 p-3 mb-2 rounded-4 shadow-sm" bind:this={reCommentDiv}>
               <Loader
                 bind:active={commentLoading}
@@ -503,7 +503,7 @@
       {/each}
 
       {#if $page.data.session?.user.nickname}
-        <div class="border p-3 rounded-4 shadow-sm mt-3" bind:this={commentDiv}>
+        <div class="border ps-3 pe-0 p-3 rounded-4 shadow-sm mt-3" bind:this={commentDiv}>
           <Loader
             bind:active={commentLoading}
             container={commentDiv}
@@ -535,7 +535,7 @@
             <Input
               type="textarea"
               bind:value={commentContent}
-              class="border border-gray"
+              class="border border-gray rounded-start-3"
               style="max-width: 600px"
             />
             <Button color="primary" outline on:click={()=>writeComment()}>
