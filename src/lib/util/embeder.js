@@ -19,18 +19,23 @@ function youtubeEmbeder(url){
     if(_match){
       const id = _match[ 1 ];
       const time = _match[ 2 ];
+      
+      const paddingBottom = i===4?'177.777%':'56.2493%';
+      const maxWidth = i===4?'320px':'480px';
+      const maxHeight = i===4?'480px':'320px';
 
       return (
-        '<div style="position: relative; padding-bottom: 100%; height: 0; padding-bottom: 56.2493%;">' +
-        `<iframe src="https://www.youtube.com/embed/${ id }${ time ? `?start=${ time }` : '' }" ` +
-        'style="position: absolute; width: 100%; height: 100%; max-width: 640px; max-height: 480px; top: 0; left:' +
-        ' 0;" ' +
-        'frameborder="0" allow="autoplay; encrypted-media" allowfullscreen>' +
-        '</iframe>' +
-        '</div>'
+        `<div style="position: relative; width: 100%; height: 0; padding-bottom: ${paddingBottom};">
+          <iframe src="https://www.youtube.com/embed/${ id }${ time ? `?start=${ time }` : '' }"
+            style="position: absolute; width: 100%; height: 100%; max-width: ${maxWidth}; max-height: ${maxHeight}; top: 0; left: 0;"
+            frameborder="0" allow="autoplay; encrypted-media" allowfullscreen>
+          </iframe>
+        </div>`
       );
     }
   }
+  
+  
 
   return null;
 
