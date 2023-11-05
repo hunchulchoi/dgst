@@ -459,7 +459,7 @@
         {#if visibleReply === comment._id}
           <div transition:scale
                class="mt-2 mx-0 border-bottom border-secondary-subtle bg-secondary bg-opacity-10">
-            <div class="border p-3 mb-2 rounded-4 shadow-sm" bind:this={reCommentDiv}>
+            <div class="border px-0 p-3 mb-2 rounded-4 shadow-sm" bind:this={reCommentDiv}>
               <Loader
                 bind:active={commentLoading}
                 container={reCommentDiv}
@@ -488,7 +488,7 @@
                 <Input
                   type="textarea"
                   bind:value={reCommentContent}
-                  class="border border-gray"
+                  class="border border-gray rounded-start"
                   style="max-width: 600px"
                 />
                 <Button color="primary" outline on:click={()=>writeComment(comment._id)}>
