@@ -338,7 +338,7 @@
       {#each commentData as comment}
         <Row class="pt-3 pb-2 px-0 border-bottom border-gray-subtle mx-0" id={comment.id}>
           {#if comment.parentCommentNickname}
-            <Col xs="1">
+            <Col xs="auto">
               <Icon name="arrow-return-right" class="text-success"></Icon>
             </Col>
           {/if}
