@@ -398,10 +398,10 @@
 
                 {#if !/[0-9a-zA-Z가-힣_-]/.test(comment.content) && countEmojis(comment.content) === 1}
                   {#if comment.parentCommentNickname}
-                                    <span class="text-bg-secondary p-1 rounded-2"
+                                    <span class="text-bg-secondary p-1 rounded-2 align-top"
                                           style="font-size: small">@{comment.parentCommentNickname}</span>
                   {/if}
-                  <h1 class="display-1">{comment.content}</h1>
+                  <span class="display-1">{comment.content}</span>
                 {:else}
                   {#if comment.state !== 'write'}
                     <div class="px-2 text-muted"><em>{comment.content}</em></div>
