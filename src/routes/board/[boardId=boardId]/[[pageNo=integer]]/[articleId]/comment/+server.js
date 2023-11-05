@@ -31,18 +31,24 @@ export async function GET({ params, locals }) {
     throw error(500, { message: '데이터를 가져오는 중에 오류가 발생하였습니다.ㅜㅜ' });
   }
   
-  const commentsTree = convertToTree(comments);
+  const commentsTree = JSON.parse(JSON.stringify(convertToTree(comments)));
   
   const session = await locals.getSession();
   
   if (session?.user?.nickname) {
-    commentsTree.forEach((comment) => {
-      comment.liked = comment.likes.includes(session.user.email);
-      delete commentsTree.likes;
+    commentsTree.forEach((c) => {
+      
+      console.log(session.user.email, c.likes,c.likes.includes(session.user.email))
+      
+      c.liked = c.likes.includes(session.user.email);
+      delete c.likes;
     })
+    
+    console.log('1 commentsTree', commentsTree)
   }
   
-  //console.log('comments', comments)
+  console.log('session', session)
+  console.log('commentsTree', commentsTree)
 
   return json(commentsTree);
 }
