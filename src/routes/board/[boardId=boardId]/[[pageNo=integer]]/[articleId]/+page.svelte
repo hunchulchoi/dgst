@@ -11,6 +11,10 @@
           max-width: 100%;
       }
 
+      .like :disabled{
+
+      }
+
   </style>
 </svelte:head>
 
@@ -55,6 +59,12 @@
         data.article.like = d.like;
         data.article.liked = d.liked;
       });
+  }
+
+  async function likeComment(commentId){
+
+    await fetch(`/board/${$page.params.boardId}/${$page.params.articleId}/like/${commentId}`, {method: 'POST'});
+    comments();
   }
 
   function comments() {
@@ -308,8 +318,8 @@
             수정
           </Button>
         {/if}
-        <Button color="primary" on:click|once={like} class="ps-1 pe-2" disabled={data.article.liked}>
-          <Icon name="hand-thumbs-up"/>
+        <Button color="primary" on:click|once={like} class="px-3" disabled={data.article.liked}>
+          <Icon name={data.article.liked?"hand-thumbs-up-fill":"hand-thumbs-up"}/>
           {data.article.like}
         </Button>
         <Button color="secondary" on:click={list} class="ps-1 pe-2">
@@ -438,7 +448,17 @@
                       수정
                     </Button>
                   {/if}
-
+                  <Button
+                    on:click|once={() => likeComment(comment.id)}
+                    size="sm"
+                    outline
+                    color="success"
+                    disabled={comment.liked}
+                    class="px-3"
+                  >
+                    <Icon name={comment.liked?"hand-thumbs-up-fill":"hand-thumbs-up"}/>
+                    {comment.like}
+                  </Button>
                   <Button
                     on:click={() => visibleReply = comment._id}
                     size="sm"

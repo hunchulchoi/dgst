@@ -57,6 +57,10 @@ export const load = async ({ params, locals }) => {
   
   if(session?.user?.email) {
     articleJson.liked = article.likes.includes(session.user.email);
+    
+    articleJson.comments.forEach(comment =>{
+      comment.liked = comment.likes.includes(session.user.email)
+    })
   }
   
   delete articleJson.likes;
