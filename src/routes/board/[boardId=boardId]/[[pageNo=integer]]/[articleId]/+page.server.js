@@ -50,13 +50,20 @@ export const load = async ({ params, locals }) => {
   //console.log('commentTree', commentTree);
   
   article.comments = commentTree;
-
-
+  
   const author = await User.findOne({ email: article.email }, { photo: 1, introduction: 1 }).lean();
-
-
+  
+  const articleJson = JSON.parse(JSON.stringify(article));
+  
+  if(session?.user?.email) {
+    articleJson.liked = article.likes.includes(session.user.email);
+  }
+  
+  delete articleJson.likes;
+  delete articleJson.reads;
+  
   return {
-    article: JSON.parse(JSON.stringify(article)),
+    article: articleJson,
     photo: author.photo || '/icons/unknown-person-icon-4.jpg',
     introduction: author.introduction,
     alarmCount
