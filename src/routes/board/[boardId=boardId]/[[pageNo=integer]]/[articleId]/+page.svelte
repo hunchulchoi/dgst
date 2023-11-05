@@ -338,7 +338,7 @@
       {#each commentData as comment}
         <Row class="pt-3 pb-2 px-0 border-bottom border-gray-subtle mx-0" id={comment.id}>
           {#if comment.parentCommentNickname}
-            <Col xs="auto">
+            <Col xs="auto" class="m-0 pe-1">
               <Icon name="arrow-return-right" class="text-success"></Icon>
             </Col>
           {/if}
@@ -348,7 +348,7 @@
 
           {#if comment.photo}
 
-            <Col xs="auto">
+            <Col xs="auto m-0 p-0">
               <Card class="p-0 border-0">
                 <Row class="g-1 mx-0">
                   <Col xs="auto">
