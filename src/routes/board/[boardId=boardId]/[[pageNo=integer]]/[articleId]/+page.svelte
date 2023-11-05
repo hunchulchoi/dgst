@@ -375,7 +375,7 @@
               </Card>
             </Col>
           {:else}
-            <Col xs="auto" clsss="border-end">
+            <Col xs="auto" clsss="border-end p-0">
               {comment.nickname}
               <span class="text-muted ps-2" style="font-size: smaller"
               >{formatDistanceToNowStrict(parseISO(comment.createdAt), {
