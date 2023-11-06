@@ -590,6 +590,50 @@
       </Col>
     </Row>
 
+    <Row class="px-2 mx-0 my-3 border-top border-secondary-subtle">
+    {#each data.articles as article}
+      <Row class="p-2 border-bottom border-secondary-subtle m-0">
+        <Col lg="7" md="5" xs="12"
+             class="text-break link-opacity-hover-50 pb-1 position-relative">
+          <a data-sveltekit-preload-data="tap" data-sveltekit-invalidate="all"
+             href={`/board/${$page.params.boardId}/${$page.params.pageNo || 1}/${article._id}`}
+             style="cursor: pointer; font-size: 1.1em"
+             class="link-underline link-underline-opacity-0 link-offset-2 link-underline-opacity-50-hover stretched-link">
+            {article.title}
+            {@html article.content}
+            {#if article.comment}
+              {#if article.isNewComment}
+                <Badge color="warning" class="bg-opacity-50">{article.comment}</Badge>
+              {:else}
+                <Badge color="primary" class="bg-opacity-50">{article.comment}</Badge>
+              {/if}
+            {/if}
+          </a>
+        </Col>
+        <Col lg="2" md="2" xs="5" class="text-muted" style="font-size: small">{article.nickname}</Col>
+        <Col lg="1" md="1" xs="1" class="text-muted text-end" style="font-size: small">{article.read}</Col>
+        <Col lg="1" md="1" xs="2" class="text-muted text-end" style="font-size: small"
+        ><Icon name="hand-thumbs-up" class="text-success pe-" />{article.like}</Col
+        >
+        <Col lg="1" md="2" xs="4" class="text-muted text-end" style="font-size: small"
+        >{formatDistanceToNowStrict(parseISO(article.createdAt), {
+            locale: ko,
+            addSuffix: true
+        })}</Col
+        >
+      </Row>
+    {/each}
+    {#if $page.data.session?.user.nickname}
+      <Row class="px-0 mx-0 pe-3 pb-4 mt-2">
+        <Col class="d-flex justify-content-end p-0">
+          <Button class="px-2" color="primary" on:click={write}>
+            <Icon name="pencil-fill" class="pe-2 " />글쓰기
+          </Button>
+        </Col>
+      </Row>
+    {/if}
+    </Row>
+
   </Row>
 </main>
 
