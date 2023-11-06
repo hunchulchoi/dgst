@@ -294,7 +294,7 @@
             <CardBody class="px-2">
               <CardSubtitle>{data.article.nickname}</CardSubtitle>
               <CardText class="text-muted pt-2 text-break">
-                {data.introduction}
+                <pre>{data.introduction}</pre>
               </CardText>
             </CardBody>
           </Col>
