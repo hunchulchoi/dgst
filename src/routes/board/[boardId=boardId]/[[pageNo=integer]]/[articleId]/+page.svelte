@@ -597,12 +597,39 @@
 
     {#each data.articles as article}
 
+      {#if article._id === $page.params.articleId}
+        <Row class="p-2 border-bottom border-secondary-subtle m-0 bg-secondary bg-opacity-10">
+          <Col lg="7" md="5" xs="12"
+               class="text-break link-opacity-hover-50 pb-1 position-relative">
+            <Icon name="arrow-right-circle-fill" class="text-danger"/>
+            {article.title}
+            {@html article.content}
+            {#if article.comment}
+              {#if article.isNewComment}
+                <Badge color="warning" class="bg-opacity-50">{article.comment}</Badge>
+              {:else}
+                <Badge color="primary" class="bg-opacity-50">{article.comment}</Badge>
+              {/if}
+            {/if}
+          </Col>
+          <Col lg="2" md="2" xs="5" class="text-muted" style="font-size: small">{article.nickname}</Col>
+          <Col lg="1" md="1" xs="1" class="text-muted text-end" style="font-size: small">{article.read}</Col>
+          <Col lg="1" md="1" xs="2" class="text-muted text-end" style="font-size: small"
+          ><Icon name="hand-thumbs-up" class="text-success pe-" />{article.like}</Col
+          >
+          <Col lg="1" md="2" xs="4" class="text-muted text-end" style="font-size: small"
+          >{formatDistanceToNowStrict(parseISO(article.createdAt), {
+            locale: ko,
+            addSuffix: true
+          })}</Col
+          >
+        </Row>
+
+      {:else}
+
       <Row class="p-2 border-bottom border-secondary-subtle m-0">
         <Col lg="7" md="5" xs="12"
-             class="text-break link-opacity-hover-50 pb-1 position-relative">
-          {#if article._id === $page.params.articleId}
-            <Icon name="arrow-right-circle-fill" class="text-danger"/>
-          {/if}
+        class="text-break link-opacity-hover-50 pb-1 position-relative">
 
           <a data-sveltekit-preload-data="tap" data-sveltekit-invalidate="all"
              href={`/board/${$page.params.boardId}/${$page.params.pageNo || 1}/${article._id}`}
@@ -631,6 +658,7 @@
         })}</Col
         >
       </Row>
+      {/if}
     {/each}
     {#if data.maxPage>1}
       <Row class="mt-3 mx-0">
