@@ -596,9 +596,14 @@
   <Row class="mt-4 shadow rounded-4 p-1 m-0">
 
     {#each data.articles as article}
+
       <Row class="p-2 border-bottom border-secondary-subtle m-0">
         <Col lg="7" md="5" xs="12"
              class="text-break link-opacity-hover-50 pb-1 position-relative">
+          {#if article._id === $page.params.articleId}
+            <Icon name="arrow-right-circle-fill" class="text-danger"/>
+          {/if}
+
           <a data-sveltekit-preload-data="tap" data-sveltekit-invalidate="all"
              href={`/board/${$page.params.boardId}/${$page.params.pageNo || 1}/${article._id}`}
              style="cursor: pointer; font-size: 1.1em"
