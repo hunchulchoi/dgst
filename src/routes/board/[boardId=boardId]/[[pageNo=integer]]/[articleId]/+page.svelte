@@ -404,8 +404,9 @@
 
                 {#if !/[0-9a-zA-Z가-힣_-]/.test(comment.content) && countEmojis(comment.content) === 1}
                   {#if comment.parentCommentNickname}
-                                    <span class="text-bg-secondary p-1 rounded-2 align-top"
-                                          style="font-size: small">@{comment.parentCommentNickname}</span>
+                    <span class="text-bg-secondary p-1 rounded-2 align-top"
+                          style="font-size: small"><span
+                      class="text-warning">@</span>{comment.parentCommentNickname}</span>
                   {/if}
                   <span class="display-1">{comment.content}</span>
                 {:else}
@@ -414,9 +415,9 @@
                   {:else}
                     <div class="px-2">
                       {#if comment.parentCommentNickname}
-                                            <span class="text-bg-secondary p-1 rounded-2"
-                                                  style="font-size: small"><span
-                                              class="text-warning">@</span>{comment.parentCommentNickname}</span>
+                      <span class="text-bg-secondary p-1 rounded-2"
+                            style="font-size: small"><span
+                        class="text-warning">@</span>{comment.parentCommentNickname}</span>
                       {/if}{@html viewComment(comment.content)}</div>
                   {/if}
                 {/if}
@@ -429,43 +430,43 @@
 
               {#if $page.data.session?.user.nickname && comment.state === 'write'}
                 <Row class="mt-2">
-                <Col class="text-end pe-2 m-0">
-                  {#if comment.email === $page.data.session?.user.email}
+                  <Col class="text-end pe-2 m-0">
+                    {#if comment.email === $page.data.session?.user.email}
+                      <Button
+                        on:click={() => deleteComment(comment._id)}
+                        size="sm"
+                        outline
+                        color="danger px-2 py-0"
+                      >
+                        <Icon name="trash"/>
+                        삭제
+                      </Button>
+                      <Button size="sm" outline color="primary" class="d-none p-0">
+                        <Icon name="pencil"/>
+                        수정
+                      </Button>
+                    {/if}
                     <Button
-                      on:click={() => deleteComment(comment._id)}
+                      on:click|once={() => likeComment(comment.id)}
                       size="sm"
                       outline
-                      color="danger p-1"
+                      color="success"
+                      disabled={comment.liked}
+                      class="px-3 py-0"
                     >
-                      <Icon name="trash"/>
-                      삭제
+                      <Icon name={comment.liked?"hand-thumbs-up-fill":"hand-thumbs-up"}/>
+                      {comment.like}
                     </Button>
-                    <Button size="sm" outline color="primary" class="d-none p-0">
-                      <Icon name="pencil"/>
-                      수정
+                    <Button
+                      on:click={() => visibleReply = comment._id}
+                      size="sm"
+                      outline
+                      color="info px-2 py-0"
+                    >
+                      <Icon name="chat-square-dots"/>
+                      답글
                     </Button>
-                  {/if}
-                  <Button
-                    on:click|once={() => likeComment(comment.id)}
-                    size="sm"
-                    outline
-                    color="success"
-                    disabled={comment.liked}
-                    class="px-3"
-                  >
-                    <Icon name={comment.liked?"hand-thumbs-up-fill":"hand-thumbs-up"}/>
-                    {comment.like}
-                  </Button>
-                  <Button
-                    on:click={() => visibleReply = comment._id}
-                    size="sm"
-                    outline
-                    color="info p-1"
-                  >
-                    <Icon name="chat-square-dots"/>
-                    답글
-                  </Button>
-                </Col>
+                  </Col>
                 </Row>
               {/if}
 
@@ -582,12 +583,13 @@
           <Icon name="pencil-fill"/>
           글쓰기
         </Button>
-        <Button class="ps-1 pe-2" color="secondary" on:click={list}>
+        <Button class="ps-1 pe-2 " color="secondary" on:click={list}>
           <Icon name="list"/>
           목록
         </Button>
       </Col>
     </Row>
+
   </Row>
 </main>
 
