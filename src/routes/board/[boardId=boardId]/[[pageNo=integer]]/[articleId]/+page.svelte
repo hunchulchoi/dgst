@@ -293,8 +293,8 @@
           <Col>
             <CardBody class="px-2">
               <CardSubtitle>{data.article.nickname}</CardSubtitle>
-              <CardText class="text-muted pt-2 text-break">
-                <pre>{data.introduction}</pre>
+              <CardText class="text-muted pt-2">
+                <pre style="white-space: pre-line">{data.introduction}</pre>
               </CardText>
             </CardBody>
           </Col>
