@@ -11,10 +11,6 @@
           max-width: 100%;
       }
 
-      .like :disabled{
-
-      }
-
   </style>
 </svelte:head>
 
@@ -70,7 +66,7 @@
   function comments() {
     fetch(`/board/${$page.params.boardId}/${$page.params.articleId}/comment`)
       .then((res) => res.json())
-      .then((d) => (commentData = d));
+      .then((d) => (data.article.comments = d));
   }
 
   function list() {
@@ -432,6 +428,7 @@
             </Row>
 
               {#if $page.data.session?.user.nickname && comment.state === 'write'}
+                <Row class="mt-2">
                 <Col class="text-end pe-2 m-0">
                   {#if comment.email === $page.data.session?.user.email}
                     <Button
@@ -469,6 +466,7 @@
                     답글
                   </Button>
                 </Col>
+                </Row>
               {/if}
 
           </Col>
