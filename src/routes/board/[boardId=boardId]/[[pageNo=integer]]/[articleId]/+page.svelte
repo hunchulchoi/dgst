@@ -601,7 +601,7 @@
         <Row class="p-2 border-bottom border-secondary-subtle m-0 bg-secondary bg-opacity-10">
           <Col lg="7" md="5" xs="12"
                class="text-break link-opacity-hover-50 pb-1 position-relative">
-            <Icon name="arrow-right-circle-fill" class="text-danger"/>
+            <Icon name="arrow-right-circle-fill" class="text-info"/>
             {article.title}
             {@html article.content}
             {#if article.comment}
