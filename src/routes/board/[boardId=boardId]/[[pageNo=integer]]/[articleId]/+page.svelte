@@ -29,7 +29,7 @@
     InputGroup,
     Modal,
     ModalBody,
-    ModalHeader,
+    ModalHeader, Pagination, PaginationItem, PaginationLink,
     Row,
     Spinner
   } from 'sveltestrap';
@@ -627,6 +627,32 @@
         >
       </Row>
     {/each}
+    {#if data.maxPage>1}
+      <Row class="mt-3 mx-0">
+        <Col xs="12">
+          <Pagination size="md" arialabel="페이지 네이션" class="d-flex justify-content-center">
+            <PaginationItem
+            ><PaginationLink first href={`/board/${$page.params.boardId}`} /></PaginationItem
+            >
+            {#each Array((data.endNo - data.startNo +1)) as _, i}
+              <PaginationItem
+                active={(!data.pageNo && (data.startNo -i) === 1) || (i + data.startNo) == data.pageNo}
+              >
+                <PaginationLink href={`/board/${$page.params.boardId}/${i + data.startNo}`}>
+                  {i + data.startNo}
+                </PaginationLink>
+              </PaginationItem>
+            {/each}
+            <PaginationItem
+            ><PaginationLink
+              last
+              href={`/board/${$page.params.boardId}/${data.maxPage}`}
+            /></PaginationItem
+            >
+          </Pagination>
+        </Col>
+      </Row>
+    {/if}
     {#if $page.data.session?.user.nickname}
       <Row class="px-0 mx-0 pe-3 pb-4 mt-2">
         <Col class="d-flex justify-content-end p-0">
