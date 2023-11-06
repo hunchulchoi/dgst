@@ -21,15 +21,16 @@ function youtubeEmbeder(url){
       const time = _match[ 2 ];
       
       const paddingBottom = i===4?'177.777%':'56.2493%';
-      const maxWidth = i===4?'320px':'480px';
-      const maxHeight = i===4?'480px':'320px';
+      const maxWidth = i===4?'400px':'480px';
 
       return (
-        `<div style="position: relative; width: 100%; height: 0; padding-bottom: ${paddingBottom};max-width: ${maxWidth}; max-height: ${maxHeight};">
-          <iframe src="https://www.youtube.com/embed/${ id }${ time ? `?start=${ time }` : '' }"
-            style="position: absolute; width: 100%; height: 100%; max-width: ${maxWidth}; max-height: ${maxHeight}; top: 0; left: 0;"
-            frameborder="0" allow="autoplay; encrypted-media" allowfullscreen>
-          </iframe>
+        `<div style="max-width: ${maxWidth}">
+           <div style="position: relative; width: 100%; height: 0; padding-bottom: ${paddingBottom};">
+            <iframe src="https://www.youtube.com/embed/${ id }${ time ? `?start=${ time }` : '' }"
+              style="position: absolute; width: 100%; height: 100%; top: 0; left: 0;"
+              frameborder="0" allow="autoplay; encrypted-media" allowfullscreen>
+            </iframe>
+          </div>
         </div>`
       );
     }
