@@ -88,11 +88,13 @@
             const si = match[ 2 ];
 
             return (
+                    '<div style="max-width: 460px">'+
                     '<div style="position: relative;width:100%;padding-bottom:177.777%;">' +
                     `<iframe src="https://www.youtube.com/embed/${ id }${ si ? `?si=${ si }` : '' }" ` +
                     'style="position: absolute; width: 100%; height: 100%; top: 0; left: 0;" ' +
                     'frameborder="0" allow="autoplay; encrypted-media" allowfullscreen>' +
                     '</iframe>' +
+                    '</div>'+
                     '</div>'
             );
           },
