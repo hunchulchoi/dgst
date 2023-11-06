@@ -590,7 +590,11 @@
       </Col>
     </Row>
 
-    <Row class="px-2 mx-0 my-3 border-top border-secondary-subtle">
+  </Row>
+
+  <!-- 목록-->
+  <Row class="mt-4 shadow rounded-4 p-1 m-0">
+
     {#each data.articles as article}
       <Row class="p-2 border-bottom border-secondary-subtle m-0">
         <Col lg="7" md="5" xs="12"
@@ -634,6 +638,5 @@
     {/if}
     </Row>
 
-  </Row>
 </main>
 
