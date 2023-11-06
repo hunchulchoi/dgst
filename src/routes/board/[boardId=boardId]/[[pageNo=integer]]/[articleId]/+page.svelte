@@ -598,7 +598,7 @@
     {#each data.articles as article}
 
       {#if article._id === $page.params.articleId}
-        <Row class="p-2 border-bottom border-secondary-subtle m-0 bg-secondary bg-opacity-10">
+        <Row class="p-2 border-bottom border-secondary-subtle m-0 bg-secondary bg-opacity-25">
           <Col lg="7" md="5" xs="12"
                class="text-break link-opacity-hover-50 pb-1 position-relative">
             <Icon name="arrow-right-circle-fill" class="text-info"/>
