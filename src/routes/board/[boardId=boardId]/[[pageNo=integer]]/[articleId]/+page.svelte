@@ -699,3 +699,9 @@
 
 </main>
 
+<style>
+    a:visited{
+        color: var(--bs-gray);
+    }
+</style>
+
