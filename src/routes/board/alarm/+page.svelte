@@ -28,7 +28,7 @@
       {#each data.alarms as alarm}
         <Row class="py-2 border-bottom border-secondary-subtle m-0">
           {#if alarm.comment}
-          <Col lg="7" md="5" xs="12"
+          <Col lg="7" md="5" xs="8"
                class="text-break link-opacity-hover-50 pb-1">
             <a data-sveltekit-preload-data="tap"
                data-sveltekit-invalidate="all"
@@ -36,10 +36,10 @@
                style="cursor: pointer; font-size: 1.1em"
                class="link-underline link-underline-opacity-0 link-offset-2 link-underline-opacity-50-hover">
             {#if alarm.readAt}
-                <span class="text-muted"><em>
-                    <Icon name="chat-square-dots" class="text-info"></Icon> {alarm.commentContent}
+                <span class="text-muted">
+                    <Icon name="chat-square-dots" class="text-info"></Icon> <em>{alarm.commentContent}</em>
                     <Badge color="secondary">{alarm.commentCount}</Badge>
-                </em></span>
+                </span>
             {:else}
               <Icon name="chat-square-dots" class="text-info"></Icon> {alarm.commentContent}
               <Badge color="danger" class="bg-opacity-50">{alarm.commentCount}</Badge>
@@ -52,7 +52,7 @@
             addSuffix: true
           })}</Col>
           {:else}
-            <Col lg="7" md="5" xs="12"
+            <Col lg="7" md="5" xs="8"
                  class="text-break link-opacity-hover-50 pb-1">
               <a data-sveltekit-preload-data="tap"
                  data-sveltekit-invalidate="all"
@@ -60,7 +60,7 @@
                  style="cursor: pointer; font-size: 1.1em"
                  class="link-underline link-underline-opacity-0 link-offset-2 link-underline-opacity-50-hover">
               {#if alarm.readAt}
-                  <span class="text-muted"><em>
+                  <span class="text-muted d-inline-block"><em>
                  {alarm.title}
                   <Badge color="secondary">{alarm.commentCount}</Badge>
                   </em></span>
