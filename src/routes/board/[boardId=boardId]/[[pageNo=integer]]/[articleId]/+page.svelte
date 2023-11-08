@@ -11,6 +11,10 @@
           max-width: 100%;
       }
 
+      figure{
+        max-width: 100% !important;
+      }
+
   </style>
 </svelte:head>
 
