@@ -26,6 +26,8 @@ export async function GET({ params, locals }) {
       { _id: 1, photo: 1, nickname: 1, createdAt: 1, image: 1, email: 1, content: 1, depth:1, parentCommentId: 1, parentCommentNickname: 1 , state:1, likes:1, like:1}
     ).sort('createdAt');
 
+  const session = await locals.getSession();
+
   // 알람 삭제
   if(session?.user?.nickname){
       const deleteAlarm = await Alarm.updateMany({email: session.user.email, articleId: params.articleId}
@@ -40,7 +42,6 @@ export async function GET({ params, locals }) {
 
   const commentsTree = JSON.parse(JSON.stringify(convertToTree(comments)));
 
-  const session = await locals.getSession();
 
   if (session?.user?.nickname) {
     commentsTree.forEach((c) => {
