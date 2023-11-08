@@ -13,7 +13,7 @@ export const load = async ({locals})=>{
     throw error(405, {message: '로그인이 필요합니다.'});
   }
 
-  let alarms = await Alarm.find({email: session.user.email})
+  let alarms = await Alarm.find({email: session.user.email, createdAt: {$gt: new Date(new Date()-1000*60*60*24*3)}})
     .select('boardId articleId title comments updatedAt comment commentContent readAt')
       .sort({updatedAt: -1})
     .limit(30);
