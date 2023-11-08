@@ -26,6 +26,13 @@ export async function GET({ params, locals }) {
       { _id: 1, photo: 1, nickname: 1, createdAt: 1, image: 1, email: 1, content: 1, depth:1, parentCommentId: 1, parentCommentNickname: 1 , state:1, likes:1, like:1}
     ).sort('createdAt');
 
+  // 알람 삭제
+  if(session?.user?.nickname){
+      const deleteAlarm = await Alarm.updateMany({email: session.user.email, articleId: params.articleId}
+          ,{$set:{readAt: new Date()}}, {timestamps: false});
+      console.log('delete alarm', deleteAlarm);
+  }
+
   } catch (err) {
     console.error('댓글 목록 실패', err);
     throw error(500, { message: '데이터를 가져오는 중에 오류가 발생하였습니다.ㅜㅜ' });
@@ -181,12 +188,6 @@ export async function DELETE({ request, params, locals }) {
      , {$pull: {comments: data.commentId}}
      , {timestamps: false}
     )
-
-    // TODO: 알림 삭제
-    /*Alarm.updateMany(
-        {articleId, comments: data.commentId },
-        {$pull: {comments: data.commentId}})
-        .then(a=>a.comments.isEmpty())*/
 
   } catch (err) {
     console.error(err);
