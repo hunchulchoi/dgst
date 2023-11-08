@@ -36,10 +36,10 @@
                style="cursor: pointer; font-size: 1.1em"
                class="link-underline link-underline-opacity-0 link-offset-2 link-underline-opacity-50-hover">
             {#if alarm.readAt}
-                <p class="text-muted"><em>
+                <span class="text-muted"><em>
                     <Icon name="chat-square-dots" class="text-info"></Icon> {alarm.commentContent}
                     <Badge color="secondary">{alarm.commentCount}</Badge>
-                </em></p>
+                </em></span>
             {:else}
               <Icon name="chat-square-dots" class="text-info"></Icon> {alarm.commentContent}
               <Badge color="danger" class="bg-opacity-50">{alarm.commentCount}</Badge>
@@ -60,10 +60,10 @@
                  style="cursor: pointer; font-size: 1.1em"
                  class="link-underline link-underline-opacity-0 link-offset-2 link-underline-opacity-50-hover">
               {#if alarm.readAt}
-                  <p class="text-muted"><em>
+                  <span class="text-muted"><em>
                  {alarm.title}
                   <Badge color="secondary">{alarm.commentCount}</Badge>
-                  </em></p>
+                  </em></span>
               {:else}
                 {alarm.title}
                 <Badge color="danger" class="bg-opacity-50">{alarm.commentCount}</Badge>
