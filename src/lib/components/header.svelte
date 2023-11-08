@@ -105,6 +105,8 @@
       {#if $page.data.session?.user?.nickname}
         <NavItem>
           <NavLink href="/board/alarm" data-sveltekit-invalidate="all"
+                   data-sveltekit-replace
+                   data-sveltekit-preload-data="tap"
                    active={$page.data.pathname.startsWith('/board/alarm')}>
             <Icon name="megaphone" class="text-success me-2"/>알림
             {#if $alarmCount}

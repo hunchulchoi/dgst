@@ -14,15 +14,18 @@ export const load = async ({locals})=>{
   }
 
   let alarms = await Alarm.find({email: session.user.email})
-    .select('boardId articleId title comments updatedAt comment commentContent')
+    .select('boardId articleId title comments updatedAt comment commentContent readAt')
       .sort({updatedAt: -1})
     .limit(30);
 
   console.log('alarms', alarms)
 
-  if(alarms && alarms.length) alarms = JSON.parse(JSON.stringify(alarms));
+
+  if(alarms && alarms.length){
+      alarms = JSON.parse(JSON.stringify(alarms));
+  }
 
   return{
-    alarms
+    alarms,
   }
 }
