@@ -13,7 +13,7 @@ export const load = async (event) => {
 
   // 알림이 있는 지 확인
   if (session?.user?.nickname) {
-    alarmCount = await Alarm.countDocuments({ email: session.user.email });
+    alarmCount = await Alarm.countDocuments({ email: session.user.email, readAt: null, createdAt: {$gt: new Date(new Date()-1000*60*60*24*2)} });
   }
 
   console.log('layout server alarmCount', alarmCount)

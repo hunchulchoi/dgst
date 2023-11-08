@@ -23,10 +23,11 @@ export const load = async ({ params, locals }) => {
 
   // 알람 삭제
   if(session?.user?.nickname){
-    const deleteAlarm = await Alarm.deleteMany({email: session.user.email, articleId: params.articleId});
+    const deleteAlarm = await Alarm.updateMany({email: session.user.email, articleId: params.articleId}
+        ,{$set:{readAt: new Date()}}, {timestamps: false});
     console.log('delete alarm', deleteAlarm);
 
-    alarmCount = await Alarm.countDocuments({ email: session.user.email });
+    alarmCount = await Alarm.countDocuments({ email: session.user.email, readAt: null, createdAt: {$gt: new Date(new Date()-1000*60*60*24*3)} });
   }
 
   const article = await Article.findOneAndUpdate(

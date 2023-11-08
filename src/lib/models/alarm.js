@@ -12,7 +12,10 @@ export const alarmSchema = new Schema(
         title: { type: String, required: true},
         comments: [{ type: String, required: true}],
         comment: { type: String},
-        commentContent: { type: String}
+        commentContent: { type: String},
+        like: {type: Number},
+        readAt: {type: Date}
+
     },
     {
       timestamps: true,

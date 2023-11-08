@@ -2,12 +2,9 @@
     import {Badge, Col, Icon, Image, NavLink, Row} from "sveltestrap";
   import {formatDistanceToNowStrict, parseISO} from "date-fns";
   import ko from "date-fns/locale/ko/index.js";
-    import {alarmCount} from "$lib/util/store.js";
-    import {page} from "$app/stores";
 
   export let data;
 
-  alarmCount.update(alarmCount =>$page.data.alarmCount);
 </script>
 
 <main class="container my-md-2" style="min-height: 60vh">
@@ -38,8 +35,15 @@
                href={`/board/${alarm.boardId}/${alarm.articleId}/#${alarm.comment}`}
                style="cursor: pointer; font-size: 1.1em"
                class="link-underline link-underline-opacity-0 link-offset-2 link-underline-opacity-50-hover">
+            {#if alarm.readAt}
+                <p class="text-muted"><em>
+                    <Icon name="chat-square-dots" class="text-info"></Icon> {alarm.commentContent}
+                    <Badge color="secondary">{alarm.commentCount}</Badge>
+                </em></p>
+            {:else}
               <Icon name="chat-square-dots" class="text-info"></Icon> {alarm.commentContent}
               <Badge color="danger" class="bg-opacity-50">{alarm.commentCount}</Badge>
+            {/if}
             </a>
           </Col>
           <Col lg="1" md="2" xs="4" class="text-muted text-end" style="font-size: small"
@@ -55,8 +59,15 @@
                  href={`/board/${alarm.boardId}/${alarm.articleId}`}
                  style="cursor: pointer; font-size: 1.1em"
                  class="link-underline link-underline-opacity-0 link-offset-2 link-underline-opacity-50-hover">
+              {#if alarm.readAt}
+                  <p class="text-muted"><em>
+                 {alarm.title}
+                  <Badge color="secondary">{alarm.commentCount}</Badge>
+                  </em></p>
+              {:else}
                 {alarm.title}
                 <Badge color="danger" class="bg-opacity-50">{alarm.commentCount}</Badge>
+              {/if}
               </a>
             </Col>
             <Col lg="1" md="2" xs="4" class="text-muted text-end" style="font-size: small"
