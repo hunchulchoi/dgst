@@ -18,8 +18,6 @@ export const load = async ({locals})=>{
       .sort({updatedAt: -1})
     .limit(30);
 
-  console.log('alarms', alarms)
-
 
   if(alarms && alarms.length){
       alarms = JSON.parse(JSON.stringify(alarms));

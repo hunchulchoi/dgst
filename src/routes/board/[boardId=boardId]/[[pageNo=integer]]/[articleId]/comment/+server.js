@@ -53,11 +53,7 @@ export async function GET({ params, locals }) {
       delete c.likes;
     })
 
-    console.log('1 commentsTree', commentsTree)
   }
-
-  console.log('session', session)
-  console.log('commentsTree', commentsTree)
 
   return json(commentsTree);
 }
