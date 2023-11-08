@@ -20,13 +20,14 @@ export async function GET({ params, locals }) {
 
   let comments;
 
+  const session = await locals.getSession();
+
   try {
     comments = await Comment.find(
       { articleId: params.articleId, boardId: params.boardId },
       { _id: 1, photo: 1, nickname: 1, createdAt: 1, image: 1, email: 1, content: 1, depth:1, parentCommentId: 1, parentCommentNickname: 1 , state:1, likes:1, like:1}
     ).sort('createdAt');
 
-  const session = await locals.getSession();
 
   // 알람 삭제
   if(session?.user?.nickname){
