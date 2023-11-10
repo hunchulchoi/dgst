@@ -55,7 +55,8 @@
         'fontSize',
         'bold',
         'italic',
-        'underline'
+        'underline',
+        'strikethrough'
       ]
     },
     simpleUpload: {
