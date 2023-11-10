@@ -7,8 +7,14 @@
     import ko from 'date-fns/locale/ko/index.js';
   import {alarmCount} from "$lib/util/store.js";
 
-    function write() {
+  function write() {
     goto(`/board/${$page.params.boardId}/write`);
+  }
+
+  function gopage(pageNo){
+      console.log(pageNo, `/board/${$page.params.boardId}/${pageNo}?v=${new Date().getSeconds()}`);
+      goto(`/board/${$page.params.boardId}/${pageNo}?v=${new Date().getSeconds()}`
+          , {invalidateAll: true});
   }
 
   export let data;
@@ -85,21 +91,21 @@
         <Col xs="12">
           <Pagination size="md" arialabel="페이지 네이션" class="d-flex justify-content-center">
             <PaginationItem
-              ><PaginationLink first href={`/board/${$page.params.boardId}`} /></PaginationItem
+              ><PaginationLink first href="#top" on:click={gopage} /></PaginationItem
             >
             {#each Array((data.endNo - data.startNo +1)) as _, i}
               <PaginationItem
                 active={(!data.pageNo && (data.startNo -i) === 1) || (i + data.startNo) == data.pageNo}
               >
-                <PaginationLink href={`/board/${$page.params.boardId}/${i + data.startNo}`}>
+                <PaginationLink href="#top" on:click={()=>gopage(i + data.startNo)}>
                   {i + data.startNo}
                 </PaginationLink>
               </PaginationItem>
             {/each}
             <PaginationItem
-              ><PaginationLink
+              ><PaginationLink href="#top"
                 last
-                href={`/board/${$page.params.boardId}/${data.maxPage}`}
+                on:click={()=>gopage(data.maxPage)}
               /></PaginationItem
             >
           </Pagination>

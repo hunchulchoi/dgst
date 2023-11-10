@@ -3,7 +3,6 @@
 
     import { page } from '$app/stores';
 
-    console.log('page', $page)
 </script>
 
 <Card class="m-5 shadow rounded-4" style="max-width: 500px">

@@ -2,8 +2,11 @@
     import {Badge, Col, Icon, Image, NavLink, Row} from "sveltestrap";
   import {formatDistanceToNowStrict, parseISO} from "date-fns";
   import ko from "date-fns/locale/ko/index.js";
+    import {alarmCount} from "$lib/util/store.js";
 
   export let data;
+
+    alarmCount.update(alarmCount => Array.from(data.alarms)?.filter(a=>!a.readAt).length)
 
 </script>
 
