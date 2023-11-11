@@ -89,22 +89,26 @@
   }
 
   async function preview(event, el) {
-    el.src = window.URL.createObjectURL(event.target.files[0]);
+
+    if(event.type == 'paste'){
+
+      if(event.clipboardData.files?.length && event.clipboardData.files[0].type.startsWith('image')){
+        commentImage = event.clipboardData.files[0];
+
+        event.preventDefault();
+      }else return;
+
+    }else commentImage = event.target.files[0];
+
+    el.src = window.URL.createObjectURL(commentImage);
 
     el.onload = async (evt) => {
       commentLoading = true;
 
-      if (event.target.files[0].type.endsWith('.gif') && event.target.files[0].type.endsWith('.webp')) {
-        commentImage = event.target.files[0];
-      } else {
-        const _width = el.naturalWidth;
+      if (!commentImage.type.endsWith('.gif') || !commentImage.type.endsWith('.webp')) {
 
-        if (_width > 1600) {
-          const webp = await blobToWebP(event.target.files[0], {width: 1400});
-          commentImage = new File([webp], event.target.files[0].name);
-        } else {
-          commentImage = event.target.files[0];
-        }
+          const webp = await blobToWebP(commentImage, {width: 1400});
+          commentImage = new File([webp], commentImage.name);
       }
 
       el.style.maxHeight = '50vh';
@@ -572,11 +576,11 @@
               </div>
 
               <InputGroup>
-                <Input
-                  type="textarea"
+                <textarea
                   bind:value={reCommentContent}
-                  class="border border-gray rounded-start"
-                  style="max-width: 600px"
+                  on:paste={(evt)=>preview(evt, rePreviewEl)}
+                  class="form-control border border-gray rounded-start-3"
+                  rows="3"
                 />
                 <Button color="primary" outline on:click={()=>writeComment(comment._id)}>
                   <Icon name="pencil-fill"/>
@@ -618,11 +622,11 @@
           </div>
           <InputGroup>
 
-            <Input
-              type="textarea"
+            <textarea
               bind:value={commentContent}
-              class="border border-gray rounded-start-3"
-              style="max-width: 600px"
+              on:paste={(evt)=>preview(evt, previewEl)}
+              class="form-control border border-gray rounded-start-3"
+              rows="3"
             />
             <Button color="primary" outline on:click={()=>writeComment()} class="z-2">
               <Icon name="pencil-fill"/>
