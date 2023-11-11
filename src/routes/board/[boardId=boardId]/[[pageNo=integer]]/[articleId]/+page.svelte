@@ -313,9 +313,9 @@
   </div>
 
   <Row class="mt-4 shadow rounded-4 p-1 m-0">
-    <Row class="border-bottom border-secondary-subtle pt-2 p- m-0">
+    <Row class="border-bottom border-secondary-subtle pt-2 p-0 m-0">
 
-    <h5>{data.article.title}</h5>
+    <h5 class="ps-0">{data.article.title}</h5>
       <Col md="6" xs="8" class="p-0"
       >{data.article.nickname}
         <span class="text-muted ps-1"
