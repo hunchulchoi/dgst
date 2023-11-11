@@ -92,15 +92,12 @@
 
     if(event.type == 'paste'){
 
-
-        console.log('event.clipboardData.files', event.clipboardData.files)
+        /*console.log('event.clipboardData.files', event.clipboardData.files)
         console.log('event.clipboardData.files[0]', event.clipboardData.files[0])
-        console.log('event.clipboardData.files[0].type', event.clipboardData.files[0].type)
+        console.log('event.clipboardData.files[0].type', event.clipboardData.files[0].type)*/
 
       if(event.clipboardData.files?.length && event.clipboardData.files[0].type.startsWith('image')){
 
-        /*
-        */
         commentImage = event.clipboardData.files[0];
 
         event.preventDefault();

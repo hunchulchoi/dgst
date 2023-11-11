@@ -31,8 +31,8 @@
       {#each data.alarms as alarm}
         <Row class="py-2 border-bottom border-secondary-subtle m-0">
           {#if alarm.comment}
-          <Col lg="7" md="5" xs="8"
-               class="text-break link-opacity-hover-50 pb-1">
+          <Col lg="7" md="5" xs="9"
+               class="text-break link-opacity-hover-50 pb-1 px-0">
             <a data-sveltekit-invalidate="all"
                href={`/board/${alarm.boardId}/${alarm.articleId}?a=cmt${alarm.comment}`}
                style="cursor: pointer; font-size: 1.1em"
@@ -48,7 +48,7 @@
             {/if}
             </a>
           </Col>
-          <Col lg="1" md="2" xs="4" class="text-muted text-end" style="font-size: small"
+          <Col lg="1" md="2" xs="3" class="text-muted text-end px-0" style="font-size: small"
           >{formatDistanceToNowStrict(parseISO(alarm.updatedAt), {
             locale: ko,
             addSuffix: true
