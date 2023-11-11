@@ -33,7 +33,7 @@
     InputGroup,
     Pagination, PaginationItem, PaginationLink,
     Row,
-    Spinner, Toast, ToastBody, ToastHeader
+    Toast, ToastBody, ToastHeader
   } from 'sveltestrap';
   import {page} from '$app/stores';
   import {goto} from '$app/navigation';
@@ -298,12 +298,12 @@
     {dialogText}
   </Dialog>
 
-  <div class="d-flex justify-content-center w-100 z-3">
+  <div class="d-flex justify-content-center w-100">
     <Toast
       autohide
       isOpen={toastIsOpen}
       on:close={() => (toastIsOpen = false)}
-      class="position-fixed top-50"
+      class="position-fixed top-50 z-3"
     >
       <ToastHeader icon={toastColor} {toggle}>dgst.site</ToastHeader>
       <ToastBody>{toastMessage}</ToastBody>
@@ -564,7 +564,6 @@
                 <Button color="primary" outline on:click={()=>writeComment(comment._id)}>
                   <Icon name="pencil-fill"/>
                   등록
-                  <Spinner color="success" size="sm" class="d-none"/>
                 </Button>
               </InputGroup>
             </div>
@@ -608,10 +607,9 @@
               class="border border-gray rounded-start-3"
               style="max-width: 600px"
             />
-            <Button color="primary" outline on:click={()=>writeComment()}>
+            <Button color="primary" outline on:click={()=>writeComment()} class="z-2">
               <Icon name="pencil-fill"/>
               등록
-              <Spinner color="success" size="sm" class="d-none"/>
             </Button>
           </InputGroup>
         </div>
