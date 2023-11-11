@@ -33,9 +33,8 @@
           {#if alarm.comment}
           <Col lg="7" md="5" xs="8"
                class="text-break link-opacity-hover-50 pb-1">
-            <a data-sveltekit-preload-data="tap"
-               data-sveltekit-invalidate="all"
-               href={`/board/${alarm.boardId}/${alarm.articleId}/#${alarm.comment}`}
+            <a data-sveltekit-invalidate="all"
+               href={`/board/${alarm.boardId}/${alarm.articleId}?a=cmt${alarm.comment}`}
                style="cursor: pointer; font-size: 1.1em"
                class="link-underline link-underline-opacity-0 link-offset-2 link-underline-opacity-50-hover">
             {#if alarm.readAt}
