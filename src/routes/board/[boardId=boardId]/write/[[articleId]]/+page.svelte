@@ -57,7 +57,7 @@
         }
 
         return async ({ result, update }) => {
-          console.debug('result', result, 'update', update);
+          //console.debug('result', result, 'update', update);
 
           if (!result.data.success) {
             alert('저장중에 오류가 발생하였습니다.');

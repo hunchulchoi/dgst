@@ -12,7 +12,6 @@
   }
 
   function gopage(pageNo){
-      console.log(pageNo, `/board/${$page.params.boardId}/${pageNo}?v=${new Date().getSeconds()}`);
       goto(`/board/${$page.params.boardId}/${pageNo}?v=${new Date().getSeconds()}`
           , {invalidateAll: true});
   }
