@@ -292,13 +292,13 @@
 
   $: commentData = data.article.comments;
 
-  afterUpdate(async ()=>{
+  onMount(()=>{
 
     const hash = $page.url.searchParams.get('a');
 
     if(hash){
       const el = document.querySelector(`#${hash}`);
-      setTimeout(async ()=> el.scrollIntoView({behavior: 'smooth', block: 'center', inline: 'center'}) , 500)
+      setTimeout(()=> el.scrollIntoView({behavior: 'smooth', block: 'center', inline: 'center'}) , 500)
     }
   })
 
