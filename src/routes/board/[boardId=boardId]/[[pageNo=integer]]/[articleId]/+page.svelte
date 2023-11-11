@@ -31,11 +31,9 @@
     Image,
     Input,
     InputGroup,
-    Modal,
-    ModalBody,
-    ModalHeader, Pagination, PaginationItem, PaginationLink,
+    Pagination, PaginationItem, PaginationLink,
     Row,
-    Spinner
+    Spinner, Toast, ToastBody, ToastHeader
   } from 'sveltestrap';
   import {page} from '$app/stores';
   import {goto} from '$app/navigation';
@@ -50,6 +48,7 @@
 
   import {alarmCount} from "$lib/util/store.js";
   import {viewComment} from "$lib/util/embeder.js";
+  import Dialog from "$lib/components/dialog.svelte";
 
   function gopage(pageNo){
       console.log(pageNo, `/board/${$page.params.boardId}/${pageNo}?v=${new Date().getSeconds()}`);
@@ -130,7 +129,7 @@
     //console.log(commentContent, parentCommentId, reCommentContent)
 
     if ((!parentCommentId && !commentContent) || (parentCommentId && !reCommentContent)) {
-      alert('내용을 입력하세요');
+      toast('내용을 입력하세요', 'warning');
       return;
     }
     commentLoading = true;
@@ -155,7 +154,7 @@
 
         if (res.status !== 201) {
           const {message} = await res.json();
-          alert(message);
+          toast(message);
           return;
         }
 
@@ -173,50 +172,54 @@
           rePreviewEl.classList.add('d-none');
         }
 
+        toast('저장 되었습니다.');
+
         comments();
       })
       .catch((error) => {
         console.error(error);
-        alert(error.message ?? '저장 중 오류가 발생했습니다.');
+        toast(error.message ?? '저장 중 오류가 발생했습니다.', 'danger');
       })
       .finally(() => (commentLoading = false));
   }
 
   function deleteComment(commentId) {
-    if (confirm('삭제 하시겠습니까?')) {
 
-      fetch(`/board/${$page.params.boardId}/${$page.params.articleId}/comment`, {
+    showModal('삭제 하시겠습니까?', ()=>{
+
+        fetch(`/board/${$page.params.boardId}/${$page.params.articleId}/comment`, {
         method: 'DELETE',
         body: JSON.stringify({commentId})
       })
         .then(async (res) => {
           if (res.status !== 200) {
             const {message} = await res.json();
-            alert(message);
+            toast(message);
             return;
           }
+
+          toast(await res.text());
 
           comments();
         })
         .catch((err) => {
           console.error(err);
-          alert(err.message ?? '삭제 중 오류가 발생했습니다.');
+          toast(err.message ?? '삭제 중 오류가 발생했습니다.', 'danger');
         });
-    }
-
+    })
   }
 
   function remove(articleId) {
-    if (!confirm('삭제 하시겠습니까?')) return false;
 
-    fetch(`/board/${$page.params.boardId}/${$page.params.articleId}`, {
+    showModal('삭제 하시겠습니까?', ()=> {
+      fetch(`/board/${$page.params.boardId}/${$page.params.articleId}`, {
       method: 'DELETE',
       body: JSON.stringify({articleId})
     })
       .then(async (res) => {
         if (res.status !== 200) {
           const {message} = await res.json();
-          alert(message);
+          toast(message);
           return;
         }
 
@@ -224,8 +227,9 @@
       })
       .catch((err) => {
         console.error(err);
-        alert(err.message ?? '삭제 중 오류가 발생했습니다.');
+        toast(err.message ?? '삭제 중 오류가 발생했습니다.', 'danger');
       });
+    })
   }
 
   function edit(articleId) {
@@ -241,19 +245,41 @@
     return ((str || '').match(EmojiPattern) || []).length;
   }
 
+  let toastColor = 'primary';
+  let toastMessage = '';
+  let toastIsOpen = false;
+
   function toast(message, color = 'primary') {
 
     toastMessage = message;
     toastColor = color;
-    toastIsOpen = true;
+    toggle()
 
-    console.log('toastMessage', toastMessage, 'toastIsOpen', toastIsOpen, 'toastColor', toastColor);
   }
 
-  let toastMessage;
-  let toastColor;
-  let toastIsOpen = false;
   const toggle = () => (toastIsOpen = !toastIsOpen);
+
+  let dialog;
+  let dialogText;
+
+  function showModal(message, callback){
+
+    console.log('message', callback)
+
+    dialogText = message
+
+    const callbakckFn = function(evt){
+      if (dialog.returnValue === 'true') {
+        callback();
+      }
+
+      dialog.removeEventListener('close', callbakckFn)
+    }
+
+    dialog.addEventListener('close', callbakckFn)
+
+    dialog.showModal();
+  }
 
   export let data;
 
@@ -264,14 +290,30 @@
   $: commentData = data.article.comments;
 </script>
 
+
+
 <main class="container my-md-5">
-  <Row class="mt-4 shadow rounded-4 p-1 m-0">
-    <Modal isOpen={toastIsOpen} {toggle}>
-      <ModalHeader {toggle}>dgst.site</ModalHeader>
-      <ModalBody>{toastMessage}</ModalBody>
-    </Modal>
+
+  <Dialog bind:dialog>
+    {dialogText}
+  </Dialog>
+
+  <div class="d-flex justify-content-center w-100">
+    <Toast
+      autohide
+      isOpen={toastIsOpen}
+      on:close={() => (toastIsOpen = false)}
+      class="position-fixed top-50"
+    >
+      <ToastHeader icon={toastColor} {toggle}>dgst.site</ToastHeader>
+      <ToastBody>{toastMessage}</ToastBody>
+    </Toast>
+  </div>
+
+  <Row class="border-bottom border-secondary-subtle pt-2 m-0">
+
+    <Row class="mt-4 shadow rounded-4 p-1 m-0">
     <h5>{data.article.title}</h5>
-    <Row class="border-bottom border-secondary-subtle pt-2 m-0">
       <Col md="6" xs="8" class="p-0"
       >{data.article.nickname}
         <span class="text-muted ps-1"

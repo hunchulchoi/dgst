@@ -192,5 +192,5 @@ export async function DELETE({ request, params, locals }) {
     throw error(err.status, err.body.message ?? '삭제 중에 오류가 발생하였습니다.');
   }
 
-  return new Response('ok', { status: 200 });
+  return new Response('삭제했습니다.', { status: 200 });
 }
