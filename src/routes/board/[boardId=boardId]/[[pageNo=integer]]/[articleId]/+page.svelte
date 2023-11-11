@@ -94,10 +94,11 @@
 
       if(event.clipboardData.files?.length && event.clipboardData.files[0].type.startsWith('image')){
 
+        /*
         console.log('event.clipboardData.files', event.clipboardData.files)
         console.log('event.clipboardData.files[0]', event.clipboardData.files[0])
         console.log('event.clipboardData.files[0].type', event.clipboardData.files[0].type)
-
+        */
         commentImage = event.clipboardData.files[0];
 
         event.preventDefault();
@@ -110,7 +111,9 @@
     el.onload = async (evt) => {
       commentLoading = true;
 
-      if (!commentImage.type.endsWith('.gif') && !commentImage.type.endsWith('.webp')) {
+      //console.log('commentImage.type', commentImage.type)
+
+      if (!commentImage.type.endsWith('gif') && !commentImage.type.endsWith('webp')) {
 
           const webp = await blobToWebP(commentImage, {width: 1400});
           commentImage = new File([webp], commentImage.name);
