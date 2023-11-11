@@ -247,6 +247,7 @@
 
   let toastColor = 'primary';
   let toastMessage = '';
+  let toastPosition;
   let toastIsOpen = false;
 
   function toast(message, color = 'primary') {
@@ -298,21 +299,22 @@
     {dialogText}
   </Dialog>
 
-  <div class="d-flex justify-content-center w-100">
+  <div class="d-flex justify-content-{toastColor==='primary'?'end':'center'} w-100 p-0 m-0">
     <Toast
       autohide
       isOpen={toastIsOpen}
+      delay={2500}
       on:close={() => (toastIsOpen = false)}
-      class="position-fixed top-50 z-3"
+      class="position-fixed {toastColor==='primary'?'top-0':'bottom-50'} z-3 mt-5"
     >
       <ToastHeader icon={toastColor} {toggle}>dgst.site</ToastHeader>
-      <ToastBody>{toastMessage}</ToastBody>
+      <ToastBody class="bg-light bg-opacity-50 text-dark">{toastMessage}</ToastBody>
     </Toast>
   </div>
 
-  <Row class="border-bottom border-secondary-subtle pt-2 m-0">
+  <Row class="mt-4 shadow rounded-4 p-1 m-0">
+    <Row class="border-bottom border-secondary-subtle pt-2 p- m-0">
 
-    <Row class="mt-4 shadow rounded-4 p-1 m-0">
     <h5>{data.article.title}</h5>
       <Col md="6" xs="8" class="p-0"
       >{data.article.nickname}
@@ -547,7 +549,8 @@
                   class="form-control m-2"
                 />
               </InputGroup>
-              <InputGroup>
+
+              <div>
                 <img
                   src=""
                   class="img-thumbnail d-none me-2"
@@ -555,6 +558,9 @@
                   alt="리플 이미지 첨부 미리보기"
                   style="max-width: 30px"
                 />
+              </div>
+
+              <InputGroup>
                 <Input
                   type="textarea"
                   bind:value={reCommentContent}
