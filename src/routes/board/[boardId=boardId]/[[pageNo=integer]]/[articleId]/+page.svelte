@@ -103,7 +103,7 @@
         }
       }
 
-      el.style.height = '80px';
+      el.style.maxHeight = '50vh';
       el.classList.remove('d-none');
 
       commentLoading = false;
@@ -553,10 +553,10 @@
               <div>
                 <img
                   src=""
-                  class="img-thumbnail d-none me-2"
+                  class="d-none"
                   bind:this={rePreviewEl}
                   alt="리플 이미지 첨부 미리보기"
-                  style="max-width: 30px"
+                  style="max-width: 100%"
                 />
               </div>
 
@@ -586,10 +586,7 @@
             opacity="0.7"
           />
           <InputGroup class="mb-2">
-            <!--<InputGroupText class="text-success">
-              <Icon name="card-image" class="pe-2" />
-              짤 첨부
-            </InputGroupText>-->
+
             <input
               type="file"
               bind:this={commentImageEl}
@@ -599,14 +596,17 @@
               class="form-control m-2"
             />
           </InputGroup>
-          <InputGroup>
+          <div>
             <img
               src=""
               class="img-thumbnail d-none me-2"
               bind:this={previewEl}
               alt="리플 이미지 첨부 미리보기"
-              style="max-width: 30px"
+              style="max-width: 100%"
             />
+          </div>
+          <InputGroup>
+
             <Input
               type="textarea"
               bind:value={commentContent}
