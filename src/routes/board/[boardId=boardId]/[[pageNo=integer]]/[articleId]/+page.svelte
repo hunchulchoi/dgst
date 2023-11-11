@@ -16,6 +16,10 @@
       }
 
   </style>
+
+  <script>
+
+  </script>
 </svelte:head>
 
 <script>
@@ -49,6 +53,7 @@
   import {alarmCount} from "$lib/util/store.js";
   import {viewComment} from "$lib/util/embeder.js";
   import Dialog from "$lib/components/dialog.svelte";
+  import {afterUpdate, onMount} from "svelte";
 
   function gopage(pageNo){
       console.log(pageNo, `/board/${$page.params.boardId}/${pageNo}?v=${new Date().getSeconds()}`);
@@ -289,9 +294,26 @@
   let visibleReply;
 
   $: commentData = data.article.comments;
+
+  afterUpdate(async ()=>{
+
+    const hash = $page.url.searchParams.get('a');
+
+    console.log('afterUpdate', document.readyState, hash, document.querySelector(`#${hash}`))
+
+    if(hash){
+
+      const el = document.querySelector(`#${hash}`);
+      console.log('el', el)
+
+      setTimeout(async ()=> el.scrollIntoView({behavior: 'smooth', block: 'center', inline: 'center'}) , 500)
+
+    }
+  })
+
+  console.log($page, $page.url.searchParams, $page.url.searchParams.get('a'))
+
 </script>
-
-
 
 <main class="container my-md-5">
 
@@ -395,7 +417,7 @@
     <Row class="mb-5 mx-0">
 
       {#each commentData as comment}
-        <Row class="pt-3 pb-2 px-0 border-bottom border-gray-subtle mx-0" id={comment.id}>
+        <Row class="pt-3 pb-2 px-0 border-bottom border-gray-subtle mx-0" id='cmt{comment.id}'>
           {#if comment.parentCommentNickname}
             <Col xs="auto" class="m-0 pe-1">
               <Icon name="arrow-return-right" class="text-success"></Icon>
