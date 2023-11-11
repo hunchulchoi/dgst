@@ -19,7 +19,7 @@
     </CardBody>
     <CardFooter class="d-flex justify-content-end p-3">
       {#if $page.status===500}
-      <Button on:click={()=>invalidate('.')} class="me-2"><Icon name="arrow-repeat" class="pe-1"/> 새로고침</Button>
+      <Button on:click={()=>location.reload()} class="me-2"><Icon name="arrow-repeat" class="pe-1"/> 새로고침</Button>
       {/if}
       <Button on:click={()=>goto('/')} class="me-2"><Icon name="house" class="pe-1"/> Home</Button>
     </CardFooter>
