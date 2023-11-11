@@ -56,7 +56,6 @@
   import {afterUpdate, onMount} from "svelte";
 
   function gopage(pageNo){
-      console.log(pageNo, `/board/${$page.params.boardId}/${pageNo}?v=${new Date().getSeconds()}`);
       goto(`/board/${$page.params.boardId}/${pageNo}?v=${new Date().getSeconds()}`
           , {invalidateAll: true});
   }
@@ -270,8 +269,6 @@
 
   function showModal(message, callback){
 
-    console.log('message', callback)
-
     dialogText = message
 
     const callbakckFn = function(evt){
@@ -299,19 +296,11 @@
 
     const hash = $page.url.searchParams.get('a');
 
-    console.log('afterUpdate', document.readyState, hash, document.querySelector(`#${hash}`))
-
     if(hash){
-
       const el = document.querySelector(`#${hash}`);
-      console.log('el', el)
-
       setTimeout(async ()=> el.scrollIntoView({behavior: 'smooth', block: 'center', inline: 'center'}) , 500)
-
     }
   })
-
-  console.log($page, $page.url.searchParams, $page.url.searchParams.get('a'))
 
 </script>
 
