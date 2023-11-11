@@ -298,7 +298,7 @@
     {dialogText}
   </Dialog>
 
-  <div class="d-flex justify-content-center w-100">
+  <div class="d-flex justify-content-center w-100 z-3">
     <Toast
       autohide
       isOpen={toastIsOpen}
