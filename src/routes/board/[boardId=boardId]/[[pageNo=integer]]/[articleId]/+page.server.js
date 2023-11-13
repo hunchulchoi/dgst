@@ -27,7 +27,7 @@ export const load = async ({ params, locals }) => {
         ,{$set:{readAt: new Date()}}, {timestamps: false});
     console.log('delete alarm', deleteAlarm);
 
-    alarmCount = await Alarm.countDocuments({ email: session.user.email, readAt: null, createdAt: {$gt: new Date(new Date()-1000*60*60*24)} });
+    alarmCount = await Alarm.countDocuments({ email: session.user.email, readAt: null, updatedAt: {$gt: new Date(new Date()-1000*60*60*24)} });
   }
 
   const article = await Article.findOneAndUpdate(
