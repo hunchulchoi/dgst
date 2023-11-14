@@ -743,7 +743,7 @@
             <Col xs="12">
                 <Pagination size="md" arialabel="페이지 네이션" class="d-flex justify-content-center">
                     <PaginationItem
-                    ><PaginationLink first href="#top" on:click={gopage} /></PaginationItem
+                    ><PaginationLink first href="#top" on:click={()=>gopage(1)} /></PaginationItem
                     >
                     {#each Array((data.endNo - data.startNo +1)) as _, i}
                         <PaginationItem
