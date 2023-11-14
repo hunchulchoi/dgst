@@ -305,6 +305,10 @@
 
   onMount(()=>{
 
+    if(data.insta){
+      instrm.Embeds.process();
+    }
+
     const hash = $page.url.searchParams.get('a');
 
     if(hash){
