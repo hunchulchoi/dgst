@@ -18,7 +18,16 @@
   </style>
 
   <script>
+    window.onload = function(){
 
+      /*setTimeout(()=>{
+        console.log("document.querySelector('blockquote.instagram-media')", document.querySelector('iframe.instagram-media'))
+        if(document.querySelector('iframe.instagram-media')){
+          //console.log('data.insta', data.insta)
+          instgrm.Embeds.process();
+        }
+      }, 1000)*/
+    }
   </script>
 </svelte:head>
 
@@ -305,16 +314,15 @@
 
   onMount(()=>{
 
-    console.log('data.insta', data.insta)
-    if(data.insta){
-      instgrm.Embeds.process()
-    }
-
     const hash = $page.url.searchParams.get('a');
 
     if(hash){
       const el = document.querySelector(`#${hash}`);
       setTimeout(()=> el.scrollIntoView({behavior: 'smooth', block: 'center', inline: 'center'}) , 500)
+    }
+
+    if(data.insta){
+      setTimeout(()=>  instgrm.Embeds.process(), 1000)
     }
   })
 
