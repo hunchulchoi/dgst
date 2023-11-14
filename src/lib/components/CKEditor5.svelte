@@ -131,8 +131,7 @@
                               <a href="//www.instagram.com/reel/${id}/?utm_source=ig_embed&amp;utm_campaign=loading" style=" color:#c9c8cd; font-family:Arial,sans-serif; font-size:14px; font-style:normal; font-weight:normal; line-height:17px; text-decoration:none;" target="_blank">공유 게시물</a>
                             </p>
                           </div>
-                     </blockquote>
-                     <div class="text-danger fw-bold p-3"><i class="bi bi-info-circle-fill pe-2"></i>인스타그램 릴 로딩이 오래동안 안되면 페이지를 새로고침 하세요</div>`
+                     </blockquote>`
             );
           },
         },
