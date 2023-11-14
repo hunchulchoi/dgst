@@ -347,11 +347,11 @@
     </Toast>
   </div>
 
-  <Row class="mt-4 shadow rounded-4 p-1 m-0">
+  <Row class="mt-4 shadow rounded-bottom-4 p-1 m-0">
     <Row class="border-bottom border-secondary-subtle pt-2 p-0 m-0">
 
-    <h5 class="ps-0">{data.article.title}</h5>
-      <Col md="6" xs="8" class="p-0"
+    <h5 class="ps-2">{data.article.title}</h5>
+      <Col md="6" xs="8" class="px-2"
       >{data.article.nickname}
         <span class="text-muted ps-1"
               style="font-size: small">{formatISO9075(parseISO(data.article.createdAt))}</span></Col
@@ -361,8 +361,8 @@
         <Icon class="text-success pe-1" name="hand-thumbs-up"/>{data.article.like}</Col
       >
     </Row>
-    <Row class="py-3 px-1 mx-0">
-      <CardText style="max-width: 100%;" class="text-break px-0">
+    <Row class="py-3 px-2 mx-0">
+      <CardText style="max-width: 100%;" class="text-break px-2">
         {@html data.article.content}
       </CardText>
     </Row>
