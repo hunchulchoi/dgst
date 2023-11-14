@@ -55,6 +55,8 @@ export const load = async ({ params, locals }) => {
   const author = await User.findOne({ email: article.email }, { photo: 1, introduction: 1 }).lean();
 
   const articleJson = JSON.parse(JSON.stringify(article));
+  
+  const insta =  articleJson.content.includes('<div data-oembed-url=') && article.content.includes('instagram.com');
 
   if(session?.user?.email) {
     articleJson.liked = article.likes.includes(session.user.email);
@@ -118,7 +120,7 @@ export const load = async ({ params, locals }) => {
       .exec();
 
   const jsonArticles = JSON.parse(JSON.stringify(articles));
-
+  
   jsonArticles.forEach((article) => {
 
       article.isNewComment = Math.max(...article.comments.map(a=>new Date(a.createdAt))) > new Date() - 30*60*1000;
@@ -128,18 +130,21 @@ export const load = async ({ params, locals }) => {
       delete article.likes;
 
       const image = article.content.includes('<img ');
-      const youtube = article.content.includes('<div data-oembed-url=');
+      const youtube = article.content.includes('<div data-oembed-url=') && article.content.includes('youtu');
+      const insta = article.content.includes('<div data-oembed-url=') && article.content.includes('instagram.com');
 
       article.content =
           (image ? '<i class="bi bi-card-image text-success px-2"></i>' : '') +
-          (youtube ? '<i class="bi bi-youtube text-danger px-2"></i>' : '');
+          (youtube ? '<i class="bi bi-youtube text-danger px-2"></i>' : '') +
+          (insta ? '<i class="bi bi-instagram text-warning px-2"></i>' : '');
   });
 
   return {
     article: articleJson,
     photo: author.photo || '/icons/unknown-person-icon-4.jpg',
     introduction: author.introduction,
+    insta,
     alarmCount,
-      pageNo, maxPage, startNo, endNo, articles: jsonArticles
+    pageNo, maxPage, startNo, endNo, articles: jsonArticles
   };
 };
