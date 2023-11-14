@@ -338,7 +338,7 @@
     <Toast
       autohide
       isOpen={toastIsOpen}
-      delay={2500}
+      delay={toastColor==='primary'?1200:2500}
       on:close={() => (toastIsOpen = false)}
       class="position-fixed {toastColor==='primary'?'top-0':'bottom-50'} z-3 mt-5"
     >
