@@ -307,7 +307,7 @@
 
     console.log('data.insta', data.insta)
     if(data.insta){
-      instrm.Embeds.process();
+      instgrm.Embeds.process();
     }
 
     const hash = $page.url.searchParams.get('a');
