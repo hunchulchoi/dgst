@@ -53,6 +53,8 @@
         'uploadImage',
         '|',
         'fontSize',
+        'fontColor',
+        'fontBackgroundColor',
         'bold',
         'italic',
         'underline',
