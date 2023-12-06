@@ -5,7 +5,6 @@
 
       .image img {
           max-width: 100% !important;
-          max-height: 90vh;
       }
 
       .card-text img {
