@@ -253,6 +253,19 @@
             );
 
           }
+        },
+        {
+          name: 'naver tv',
+          url: /^tv\.naver\.com\/v\/([\w-]+)/,
+          html: match=>{
+            const id = match[ 1 ];
+
+            return (
+              `<iframe src='https://tv.naver.com/embed/${id}'
+  frameborder='no' scrolling='no' marginwidth='0' marginheight='0' WIDTH='544' HEIGHT='306' allowfullscreen>
+ </iframe>`
+            );
+          },
         }
       ],
       previewsInData: true
