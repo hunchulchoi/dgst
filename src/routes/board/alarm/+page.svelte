@@ -32,7 +32,7 @@
         <Row class="py-2 border-bottom border-secondary-subtle m-0">
           {#if alarm.comment}
           <Col lg="7" md="5" xs="9"
-               class="text-break link-opacity-hover-50 pb-1 px-0">
+               class="text-break link-opacity-hover-50 pb-1 px-0 position-relative">
             <a data-sveltekit-invalidate="all"
                href={`/board/${alarm.boardId}/${alarm.articleId}?a=cmt${alarm.comment}`}
                style="cursor: pointer; font-size: 1.1em"
