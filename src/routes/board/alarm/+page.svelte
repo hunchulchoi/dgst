@@ -36,7 +36,7 @@
             <a data-sveltekit-invalidate="all"
                href={`/board/${alarm.boardId}/${alarm.articleId}?a=cmt${alarm.comment}`}
                style="cursor: pointer; font-size: 1.1em"
-               class="link-underline link-underline-opacity-0 link-offset-2 link-underline-opacity-50-hover">
+               class="link-underline link-underline-opacity-0 link-offset-2 link-underline-opacity-50-hover stretched-link">
             {#if alarm.readAt}
                 <span class="text-muted">
                     <Icon name="chat-square-dots" class="text-info"></Icon> <em>{alarm.commentContent}</em>
@@ -59,7 +59,7 @@
               <a data-sveltekit-invalidate="all"
                  href={`/board/${alarm.boardId}/${alarm.articleId}`}
                  style="cursor: pointer; font-size: 1.1em"
-                 class="link-underline link-underline-opacity-0 link-offset-2 link-underline-opacity-50-hover">
+                 class="link-underline link-underline-opacity-0 link-offset-2 link-underline-opacity-50-hover stretched-link">
               {#if alarm.readAt}
                   <span class="text-muted d-inline-block"><em>
                  {alarm.title}
