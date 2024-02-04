@@ -42,11 +42,15 @@
     Col,
     Icon,
     Image,
-    Input,
     InputGroup,
-    Pagination, PaginationItem, PaginationLink,
+    Modal,
+    Pagination,
+    PaginationItem,
+    PaginationLink,
     Row,
-    Toast, ToastBody, ToastHeader
+    Toast,
+    ToastBody,
+    ToastHeader
   } from 'sveltestrap';
   import {page} from '$app/stores';
   import {goto} from '$app/navigation';
@@ -62,7 +66,7 @@
   import {alarmCount} from "$lib/util/store.js";
   import {viewComment} from "$lib/util/embeder.js";
   import Dialog from "$lib/components/dialog.svelte";
-  import {afterUpdate, onMount} from "svelte";
+  import {onMount} from "svelte";
 
   function gopage(pageNo){
       goto(`/board/${$page.params.boardId}/${pageNo}?v=${new Date().getSeconds()}`
@@ -304,6 +308,12 @@
     dialog.showModal();
   }
 
+  let commentModalOpen = false;
+  const commentModalToggle = () =>{
+
+    (commentModalOpen = !commentModalOpen);
+  }
+
   export let data;
 
   alarmCount.update(alarmCount => data.alarmCount);
@@ -330,6 +340,17 @@
 
 <main class="container my-md-5">
 
+  <!-- 댓글 수정 modal -->
+  <div class="d-flex justify-content-center align-item-center w-100 p-0 m-0">
+    <Button color="danger" on:click={commentModalToggle}>Open Modal</Button>
+    <Modal body header="Modal title" isOpen={commentModalOpen} fullscreen={true}
+       class="d-flex justify-content-center align-item-start w-100 p-0 m-0 border-danger" style="height: 500px">
+      Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod
+      tempor incididunt ut labore et dolore magna aliqua.
+    </Modal>
+  </div>
+
+
   <Dialog bind:dialog>
     {dialogText}
   </Dialog>
@@ -338,7 +359,7 @@
     <Toast
       autohide
       isOpen={toastIsOpen}
-      delay={toastColor==='primary'?1200:2500}
+      delay={toastColor==='primary'?1000:2500}
       on:close={() => (toastIsOpen = false)}
       class="position-fixed {toastColor==='primary'?'top-0':'bottom-50'} z-3 mt-5"
     >
@@ -483,7 +504,7 @@
           <Col xs="12" md="*" class="mt-2 mt-md-0 p-0">
             <Row class="mx-0">
               <Col class="text-break p-0 m-0" style="max-width: 98%">
-                {#if comment.image}
+                {#if comment.state === 'write' && comment.image}
                   <Row class="pb-3 mx-0">
                     <Col class="p-0 ps-1 m-0">
                       <Image src={comment.image} alt="리플 짤" style="max-width: 100%;"/>
@@ -539,7 +560,7 @@
                       on:click|once={() => likeComment(comment.id)}
                       size="sm"
                       outline
-                      color="success"
+                      color="primary"
                       disabled={comment.liked}
                       class="px-3 py-0"
                     >
@@ -657,6 +678,8 @@
       {/if}
 
     </Row>
+
+
     <Row class="mx-0 mb-3">
       <!--버튼-->
       <Col class="text-end pe-1">
@@ -682,6 +705,9 @@
     </Row>
 
   </Row>
+
+
+
 
   <!-- 목록-->
   <Row class="mt-4 shadow rounded-4 p-1 m-0">
