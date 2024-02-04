@@ -341,14 +341,14 @@
 <main class="container my-md-5">
 
   <!-- 댓글 수정 modal -->
-  <div class="d-flex justify-content-center align-item-center w-100 p-0 m-0">
+ <!-- <div class="d-flex justify-content-center align-item-center w-100 p-0 m-0">
     <Button color="danger" on:click={commentModalToggle}>Open Modal</Button>
     <Modal body header="Modal title" isOpen={commentModalOpen} fullscreen={true}
        class="d-flex justify-content-center align-item-start w-100 p-0 m-0 border-danger" style="height: 500px">
       Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod
       tempor incididunt ut labore et dolore magna aliqua.
     </Modal>
-  </div>
+  </div>-->
 
 
   <Dialog bind:dialog>
