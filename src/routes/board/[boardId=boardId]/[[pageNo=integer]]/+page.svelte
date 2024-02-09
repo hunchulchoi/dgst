@@ -155,6 +155,7 @@
       color: var(--bs-gray);
   }
   .neon {
+      font-family: 'ChosunGs';
       font-size: 2.5em;
       /*font-weight: 700;*/
       color: #fff;
@@ -174,6 +175,13 @@
                   0 0 30px rgba(0, 255, 255, 0.7),
                   0 0 40px rgba(0, 255, 255, 0.7);
       }
+  }
+
+  @font-face {
+      font-family: 'ChosunGs';
+      src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_20-04@1.0/ChosunGs.woff') format('woff');
+      font-weight: normal;
+      font-style: normal;
   }
 
 </style>
