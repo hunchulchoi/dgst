@@ -156,7 +156,7 @@
   }
   .neon {
       font-family: 'ChosunGs';
-      font-size: 2.5em;
+      font-size: 2.2em;
       /*font-weight: 700;*/
       color: #fff;
       text-shadow: 0 0 0.1em rgba(0, 255, 255, 0.7);
