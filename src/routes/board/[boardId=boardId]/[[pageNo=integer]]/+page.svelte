@@ -46,11 +46,10 @@
   <Offcanvas isOpen={$ccd} header="🙇🏽 새해 복마니옹 받으세여 🙇🏻‍ - dgst"
              toggle={()=>ccd.set(false)}
              class="text-center bg-secondary"
+             style="background: rgb(211,209,247);
+background: linear-gradient(90deg, rgba(211,209,247,1) 0%, rgba(150,150,146,1) 70%, rgba(111,112,101,1) 100%);"
              placement="top">
     <div class="neon">🌸<span class="text-danger">경)</span> 🎉진천의 아들 대기업🍾 취직🎊 <span class="text-danger">(축</span>🌼</div>
-
-    <br>
-    <h2 class="pt-5"></h2>
   </Offcanvas>
 
   <Row class="py-2 shadow rounded-4 mx-0">
