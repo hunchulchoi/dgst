@@ -1,11 +1,24 @@
 <script>
-  import {Badge, Button, Col, Icon, Image, Pagination, PaginationItem, PaginationLink, Row} from 'sveltestrap';
+  import {
+    Badge,
+    Button,
+    Col,
+    Icon,
+    Image,
+    Offcanvas,
+    Pagination,
+    PaginationItem,
+    PaginationLink,
+    Row
+  } from 'sveltestrap';
     import {page} from '$app/stores';
     import {goto} from '$app/navigation';
 
     import {formatDistanceToNowStrict, parseISO} from 'date-fns';
     import ko from 'date-fns/locale/ko/index.js';
   import {alarmCount} from "$lib/util/store.js";
+
+  import ccd from '$lib/shared/stores/ccd.js';
 
   function write() {
     goto(`/board/${$page.params.boardId}/write`);
@@ -16,16 +29,25 @@
           , {invalidateAll: true});
   }
 
+
   export let data;
 
   alarmCount.update(alarmCount =>$page.data.alarmCount);
 </script>
 
-<svelte:window on:keyup|preventDefault={(evt)=>{
-  if(evt.ctrlKey && evt.key === 'w') write();
+<svelte:window on:keydown|preventDefault={(evt)=>{
+  console.log(evt.altKey, evt.key)
+  if(evt.altKey && evt.key === 'W') write();
 }}></svelte:window>
 
+
 <main class="container my-md-2" style="min-height: 50vh">
+
+  <Offcanvas isOpen="{$ccd}" backdrop={false} toggle={()=>ccd.set(false)} class="text-center bg-secondary border rounded-3"
+             placement="top">
+    <div class="neon">🌸<span class="text-danger">경)</span> 🎉진천의 아들 대기업🍾 취직🎊 <span class="text-danger">(축</span>🌼</div>
+  </Offcanvas>
+
   <Row class="py-2 shadow rounded-4 mx-0">
 
     {#if $page.data.session?.user.nickname}
@@ -127,4 +149,26 @@
   a:visited{
       color: var(--bs-gray);
   }
+  .neon {
+      font-size: 2.5em;
+      /*font-weight: 700;*/
+      color: #fff;
+      text-shadow: 0 0 0.1em rgba(0, 255, 255, 0.7);
+      animation: neon-flicker 0.1s infinite alternate;
+  }
+  @keyframes neon-flicker {
+      0% {
+          text-shadow:
+                  0 0 10px rgba(0, 255, 255, 0.7),
+                  0 0 20px rgba(0, 255, 255, 0.7),
+                  0 0 30px rgba(0, 255, 255, 0.7);
+      }
+      100% {
+          text-shadow:
+                  0 0 20px rgba(0, 255, 255, 0.7),
+                  0 0 30px rgba(0, 255, 255, 0.7),
+                  0 0 40px rgba(0, 255, 255, 0.7);
+      }
+  }
+
 </style>
