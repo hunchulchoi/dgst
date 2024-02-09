@@ -13,12 +13,14 @@
   } from 'sveltestrap';
     import {page} from '$app/stores';
     import {goto} from '$app/navigation';
+    import {Confetti} from 'svelte-confetti';
 
-    import {formatDistanceToNowStrict, parseISO} from 'date-fns';
+  import {formatDistanceToNowStrict, parseISO} from 'date-fns';
     import ko from 'date-fns/locale/ko/index.js';
   import {alarmCount} from "$lib/util/store.js";
 
   import ccd from '$lib/shared/stores/ccd.js';
+  import { tr } from 'date-fns/locale';
 
   function write() {
     goto(`/board/${$page.params.boardId}/write`);
@@ -45,11 +47,26 @@
 
   <Offcanvas isOpen={$ccd} header="🙇🏽 새해 복마니옹 받으세여 🙇🏻‍ - dgst"
              toggle={()=>ccd.set(false)}
+             fade={true}
              class="text-center bg-secondary text-dark rounded-bottom-4"
              style="background: linear-gradient(90deg, rgba(211,209,247,1) 0%, rgba(150,150,146,1) 70%, rgba(111,112,101,1) 100%);"
              placement="top">
     <div class="neon">🌸<span class="text-danger">경)</span> 🎉진천의 아들 대기업🍾 취직🎊 <span class="text-danger">(축</span>🌼</div>
+    <div style="
+ position: fixed;
+ top: -50px;
+ left: 0;
+ height: 100vh;
+ width: 100vw;
+ display: flex;
+ justify-content: center;
+ overflow: hidden;
+ pointer-events: none;">
+      <Confetti x={[-5, 5]} y={[0, 0.1]} delay={[500, 2000]} infinite duration=5000 amount=200 fallDistance="100vh" />
+    </div>
   </Offcanvas>
+
+
 
   <Row class="py-2 shadow rounded-4 mx-0">
 
@@ -153,7 +170,7 @@
       color: var(--bs-gray);
   }
   .neon {
-      font-family: 'ChosunGs';
+      font-family: 'ChosunGs',serif;
       font-size: 2.2em;
       /*font-weight: 700;*/
       color: #fff;
