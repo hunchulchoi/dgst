@@ -43,9 +43,14 @@
 
 <main class="container my-md-2" style="min-height: 50vh">
 
-  <Offcanvas isOpen="{$ccd}" backdrop={false} toggle={()=>ccd.set(false)} class="text-center bg-secondary border rounded-3"
+  <Offcanvas isOpen={$ccd} header="🙇🏽 새해 복마니옹 받으세여 🙇🏻‍ - dgst"
+             toggle={()=>ccd.set(false)}
+             class="text-center bg-secondary"
              placement="top">
     <div class="neon">🌸<span class="text-danger">경)</span> 🎉진천의 아들 대기업🍾 취직🎊 <span class="text-danger">(축</span>🌼</div>
+
+    <br>
+    <h2 class="pt-5"></h2>
   </Offcanvas>
 
   <Row class="py-2 shadow rounded-4 mx-0">
