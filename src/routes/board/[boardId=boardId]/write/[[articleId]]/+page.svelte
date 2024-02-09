@@ -47,7 +47,7 @@
           return cancel();
         }
 
-        if (title.replace(' ', '').length < 3) {
+        if (title.replace(' ', '').length < 2) {
           alert('제목이 너무 짧습니다.');
           return cancel();
         }
