@@ -45,7 +45,7 @@
 
 <main class="container my-md-2" style="min-height: 50vh">
 
-  <Offcanvas isOpen={$ccd} header="장하다 - dgst"
+  <!--<Offcanvas isOpen={$ccd} header="장하다 - dgst"
              toggle={()=>ccd.set(false)}
              fade={true}
              class="text-center bg-secondary text-dark rounded-bottom-4"
@@ -64,7 +64,7 @@
  pointer-events: none;">
       <Confetti x={[-5, 5]} y={[0, 0.1]} delay={[500, 2000]} infinite duration=5000 amount=200 fallDistance="100vh" />
     </div>
-  </Offcanvas>
+  </Offcanvas>-->
 
 
 
