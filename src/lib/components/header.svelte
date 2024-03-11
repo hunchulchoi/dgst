@@ -18,15 +18,14 @@
 
   import theme from '$lib/shared/stores/theme.js';
 
-  import {signIn, signOut} from '@auth/sveltekit/client';
-  import {page} from '$app/stores';
-  import {goto} from "$app/navigation";
+  import { signIn, signOut } from '@auth/sveltekit/client';
+  import { page } from '$app/stores';
+  import { goto } from '$app/navigation';
 
-  import {alarmCount} from "$lib/util/store.js";
-  import {fade} from "svelte/transition";
+  import { alarmCount } from '$lib/util/store.js';
 
   const handleGoogleSignIn = () => {
-    console.log('handleGoogleSignIn');
+    //console.log('handleGoogleSignIn');
     signIn('google', { callbackUrl: '/' });
   };
 
@@ -116,10 +115,12 @@
         </NavItem>
       {/if}
       <NavItem>
-        <NavLink href="/board/bug" active={$page.data.pathname.startsWith('/board/bug')}>
-          <Icon name="bug-fill" class="text-warning me-2"/>버그 신고
+        <NavLink href="https://namu.wiki/w/성게" target="_blank" active={$page.data.pathname.startsWith('/board/bug')}>
+          <Icon name="badge-ad-fill" class="text-danger me-2"/>성게
         </NavLink>
       </NavItem>
     </Nav>
   </Navbar>
 </Row>
+
+
