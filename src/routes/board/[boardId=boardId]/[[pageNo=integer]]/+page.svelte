@@ -45,13 +45,13 @@
 
 <main class="container my-md-2" style="min-height: 50vh">
 
-  <!--<Offcanvas isOpen={$ccd} header="장하다 - dgst"
+  <Offcanvas isOpen={$ccd} header="장하다 - dgst"
              toggle={()=>ccd.set(false)}
              fade={true}
              class="text-center bg-secondary text-dark rounded-bottom-4"
              style="background: linear-gradient(90deg, rgba(211,209,247,1) 0%, rgba(150,150,146,1) 70%, rgba(111,112,101,1) 100%);"
              placement="top">
-    <div class="neon">🌸<span class="text-danger">경)</span> 🎉대구의 딸🍾 취직🎊 <span class="text-danger">(축</span>🌼</div>
+    <div class="neon">🌸<span class="text-danger">경)</span> 🎉데게의 딸🍾 유이나❤️짱 방한🎊 <span class="text-danger">(축</span>🌼</div>
     <div style="
  position: fixed;
  top: -50px;
@@ -64,7 +64,7 @@
  pointer-events: none;">
       <Confetti x={[-5, 5]} y={[0, 0.1]} delay={[500, 2000]} infinite duration=5000 amount=200 fallDistance="100vh" />
     </div>
-  </Offcanvas>-->
+  </Offcanvas>
 
 
 
