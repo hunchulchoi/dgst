@@ -115,8 +115,8 @@
         </NavItem>
       {/if}
       <NavItem>
-        <NavLink href="https://namu.wiki/w/성게" target="_blank" active={$page.data.pathname.startsWith('/board/bug')}>
-          <Icon name="badge-ad-fill" class="text-danger me-2"/>성게
+        <NavLink href="https://namu.wiki/w/멍게" target="_blank" active={$page.data.pathname.startsWith('/board/bug')}>
+          <Icon name="badge-ad-fill" class="text-danger me-2"/>멍게
         </NavLink>
       </NavItem>
     </Nav>
