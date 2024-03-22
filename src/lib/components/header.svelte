@@ -125,7 +125,7 @@
         </NavLink>
       </NavItem>
       <NavItem>
-        <NavLink href="/game/19935" active={$page.data.pathname.startsWith('/game/19335')}>
+        <NavLink href="/game/19935" active={$page.data.pathname.startsWith('/game/21094')}>
           <Icon name="bi bi-joystick" class="text-info"/>
         </NavLink>
       </NavItem>
