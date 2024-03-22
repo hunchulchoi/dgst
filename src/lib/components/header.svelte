@@ -115,8 +115,18 @@
         </NavItem>
       {/if}
       <NavItem>
-        <NavLink href="/game" active={$page.data.pathname.startsWith('/game')}>
+        <NavLink href="/game/25845" active={$page.data.pathname.startsWith('/game/25845')}>
           <Icon name="bi bi-joystick" class="text-warning me-2"/>
+        </NavLink>
+      </NavItem>
+      <NavItem>
+        <NavLink href="/game/26112" active={$page.data.pathname.startsWith('/game/26112')}>
+          <Icon name="bi bi-joystick" class="text-primary me-2"/>
+        </NavLink>
+      </NavItem>
+      <NavItem>
+        <NavLink href="/game/19935" active={$page.data.pathname.startsWith('/game/19335')}>
+          <Icon name="bi bi-joystick" class="text-info me-2"/>
         </NavLink>
       </NavItem>
     </Nav>
