@@ -115,8 +115,8 @@
         </NavItem>
       {/if}
       <NavItem>
-        <NavLink href="https://namu.wiki/w/멍게" target="_blank" active={$page.data.pathname.startsWith('/board/bug')}>
-          <Icon name="bi bi-joystick" class="text-warning me-2"/>☠️
+        <NavLink href="/game" active={$page.data.pathname.startsWith('/game')}>
+          <Icon name="bi bi-joystick" class="text-warning me-2"/>
         </NavLink>
       </NavItem>
     </Nav>
