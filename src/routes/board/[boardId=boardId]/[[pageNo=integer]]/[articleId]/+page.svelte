@@ -43,35 +43,27 @@
     Icon,
     Image,
     InputGroup,
-    Modal,
-    Pagination,
-    PaginationItem,
-    PaginationLink,
     Row,
     Toast,
     ToastBody,
     ToastHeader
   } from 'sveltestrap';
-  import {page} from '$app/stores';
-  import {goto} from '$app/navigation';
-  import {scale} from "svelte/transition";
+  import { page } from '$app/stores';
+  import { goto } from '$app/navigation';
+  import { scale } from 'svelte/transition';
 
-  import {formatDistanceToNowStrict, formatISO9075, parseISO} from 'date-fns';
+  import { formatDistanceToNowStrict, formatISO9075, parseISO } from 'date-fns';
   import ko from 'date-fns/locale/ko/index.js';
 
-  import {blobToWebP} from 'webp-converter-browser';
+  import { blobToWebP } from 'webp-converter-browser';
 
   import Loader from 'svelte-loading-overlay/Loader.svelte';
 
-  import {alarmCount} from "$lib/util/store.js";
-  import {viewComment} from "$lib/util/embeder.js";
-  import Dialog from "$lib/components/dialog.svelte";
-  import {onMount} from "svelte";
-
-  function gopage(pageNo){
-      goto(`/board/${$page.params.boardId}/${pageNo}?v=${new Date().getSeconds()}`
-          , {invalidateAll: true});
-  }
+  import { alarmCount } from '$lib/util/store.js';
+  import { viewComment } from '$lib/util/embeder.js';
+  import Dialog from '$lib/components/dialog.svelte';
+  import { onMount } from 'svelte';
+  import BoardList from '$lib/components/board_list.svelte';
 
   function like(){
     fetch(`/board/${$page.params.boardId}/${$page.params.articleId}/like`, {method: 'POST'})
@@ -633,6 +625,11 @@
         {/if}
       {/each}
 
+      <!--목록 끝-->
+
+
+
+      <!-- 댓글 입력 -->
       {#if $page.data.session?.user.nickname}
         <div class="border p-3 rounded-4 shadow-sm mt-3" bind:this={commentDiv}>
           <Loader
@@ -707,118 +704,11 @@
   </Row>
 
 
-
-
   <!-- 목록-->
   <Row class="mt-4 shadow rounded-4 p-1 m-0">
 
-    {#each data.articles as article}
+    <BoardList {data}/>
 
-      {#if article._id === $page.params.articleId}
-        <Row class="p-2 border-bottom border-secondary-subtle m-0 bg-secondary bg-opacity-25">
-          <Col lg="7" md="5" xs="12"
-               class="text-break link-opacity-hover-50 pb-1 position-relative">
-            <Icon name="arrow-right-circle-fill" class="text-info"/>
-            {article.title}
-            {@html article.content}
-            {#if article.comment}
-              {#if article.isNewComment}
-                <Badge color="warning" class="bg-opacity-50">{article.comment}</Badge>
-              {:else}
-                <Badge color="primary" class="bg-opacity-50">{article.comment}</Badge>
-              {/if}
-            {/if}
-          </Col>
-          <Col lg="2" md="2" xs="5" class="text-muted" style="font-size: small">{article.nickname}</Col>
-          <Col lg="1" md="1" xs="1" class="text-muted text-end" style="font-size: small">{article.read}</Col>
-          <Col lg="1" md="1" xs="2" class="text-muted text-end" style="font-size: small"
-          ><Icon name="hand-thumbs-up" class="text-success pe-" />{article.like}</Col
-          >
-          <Col lg="1" md="2" xs="4" class="text-muted text-end" style="font-size: small"
-          >{formatDistanceToNowStrict(parseISO(article.createdAt), {
-            locale: ko,
-            addSuffix: true
-          })}</Col
-          >
-        </Row>
-
-      {:else}
-
-      <Row class="p-2 border-bottom border-secondary-subtle m-0">
-        <Col lg="7" md="5" xs="12"
-        class="text-break link-opacity-hover-50 pb-1 position-relative">
-
-          <a data-sveltekit-preload-data="tap" data-sveltekit-invalidate="all"
-             href={`/board/${$page.params.boardId}/${$page.params.pageNo || 1}/${article._id}`}
-             style="cursor: pointer; font-size: 1.1em"
-             class="link-underline link-underline-opacity-0 link-offset-2 link-underline-opacity-50-hover stretched-link">
-            {article.title}
-            {@html article.content}
-            {#if article.comment}
-              {#if article.isNewComment}
-                <Badge color="warning" class="bg-opacity-50">{article.comment}</Badge>
-              {:else}
-                <Badge color="primary" class="bg-opacity-50">{article.comment}</Badge>
-              {/if}
-            {/if}
-          </a>
-        </Col>
-        <Col lg="2" md="2" xs="5" class="text-muted" style="font-size: small">{article.nickname}</Col>
-        <Col lg="1" md="1" xs="1" class="text-muted text-end" style="font-size: small">{article.read}</Col>
-        <Col lg="1" md="1" xs="2" class="text-muted text-end" style="font-size: small"
-        ><Icon name="hand-thumbs-up" class="text-success pe-" />{article.like}</Col
-        >
-        <Col lg="1" md="2" xs="4" class="text-muted text-end" style="font-size: small"
-        >{formatDistanceToNowStrict(parseISO(article.createdAt), {
-            locale: ko,
-            addSuffix: true
-        })}</Col
-        >
-      </Row>
-      {/if}
-    {/each}
-    {#if data.maxPage>1}
-        <Row class="mt-3 mx-0">
-            <Col xs="12">
-                <Pagination size="md" arialabel="페이지 네이션" class="d-flex justify-content-center">
-                    <PaginationItem
-                    ><PaginationLink first href="#top" on:click={()=>gopage(1)} /></PaginationItem
-                    >
-                    {#each Array((data.endNo - data.startNo +1)) as _, i}
-                        <PaginationItem
-                                active={(!data.pageNo && (data.startNo -i) === 1) || (i + data.startNo) == data.pageNo}
-                        >
-                            <PaginationLink href="#top" on:click={()=>gopage(i + data.startNo)}>
-                                {i + data.startNo}
-                            </PaginationLink>
-                        </PaginationItem>
-                    {/each}
-                    <PaginationItem
-                    ><PaginationLink href="#top"
-                                     last
-                                     on:click={()=>gopage(data.maxPage)}
-                    /></PaginationItem
-                    >
-                </Pagination>
-            </Col>
-        </Row>
-    {/if}
-    {#if $page.data.session?.user.nickname}
-      <Row class="px-0 mx-0 pe-3 pb-4 mt-2">
-        <Col class="d-flex justify-content-end p-0">
-          <Button class="px-2" color="primary" on:click={write}>
-            <Icon name="pencil-fill" class="pe-2 " />글쓰기
-          </Button>
-        </Col>
-      </Row>
-    {/if}
-    </Row>
+  </Row>
 
 </main>
-
-<style>
-    a:visited{
-        color: var(--bs-gray);
-    }
-</style>
-
