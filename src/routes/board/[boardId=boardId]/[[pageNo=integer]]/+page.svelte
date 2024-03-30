@@ -1,26 +1,13 @@
 <script>
-  import {
-    Badge,
-    Button,
-    Col,
-    Icon,
-    Image,
-    Offcanvas,
-    Pagination,
-    PaginationItem,
-    PaginationLink,
-    Row
-  } from 'sveltestrap';
-    import {page} from '$app/stores';
-    import {goto} from '$app/navigation';
-    import {Confetti} from 'svelte-confetti';
+  import { Badge, Button, Col, Icon, Image, Pagination, PaginationItem, PaginationLink, Row } from 'sveltestrap';
+  import { page } from '$app/stores';
+  import { goto } from '$app/navigation';
 
-  import {formatDistanceToNowStrict, parseISO} from 'date-fns';
-    import ko from 'date-fns/locale/ko/index.js';
-  import {alarmCount} from "$lib/util/store.js";
 
-  import ccd from '$lib/shared/stores/ccd.js';
-  import { tr } from 'date-fns/locale';
+  import { formatDistanceToNowStrict, parseISO } from 'date-fns';
+  import ko from 'date-fns/locale/ko/index.js';
+  import { alarmCount } from '$lib/util/store.js';
+
 
   function write() {
     goto(`/board/${$page.params.boardId}/write`);
@@ -37,36 +24,8 @@
   alarmCount.update(alarmCount =>$page.data.alarmCount);
 </script>
 
-<svelte:window on:keydown|preventDefault={(evt)=>{
-  console.log(evt.altKey, evt.key)
-  if(evt.altKey && evt.key === 'W') write();
-}}></svelte:window>
-
 
 <main class="container my-md-2" style="min-height: 50vh">
-
-  <!--<Offcanvas isOpen={$ccd} header="👨‍👩‍👧‍welcome👨‍👩‍👧‍👦"
-             toggle={()=>ccd.set(false)}
-             fade={true}
-             class="text-center bg-secondary text-dark rounded-bottom-4"
-             style="background: linear-gradient(90deg, rgba(211,209,247,1) 0%, rgba(150,150,146,1) 70%, rgba(111,112,101,1) 100%);"
-             placement="top">
-    <div class="neon">🌸<span class="text-danger">환)</span> 🎉데게의 딸🍾 유이나❤️짱 방한🎊 <span class="text-danger">(영</span>🌼
-    </div>
-    <div style="
- position: fixed;
- top: -50px;
- left: 0;
- height: 100vh;
- width: 100vw;
- display: flex;
- justify-content: center;
- overflow: hidden;
- pointer-events: none;">
-      <Confetti x={[-5, 5]} y={[0, 0.1]} delay={[500, 2000]} infinite duration=5000 amount=200 fallDistance="100vh" />
-    </div>
-  </Offcanvas>-->
-
 
 
   <Row class="py-2 shadow rounded-4 mx-0">
@@ -114,7 +73,9 @@
                 {/if}
            </a>
               </Col>
-          <Col lg="2" md="2" xs="5" class="text-muted" style="font-size: small">{article.nickname}</Col>
+          <Col lg="2" md="2" xs="5" class="text-muted" style="font-size: small">
+            {article.nickname}
+          </Col>
           <Col lg="1" md="1" xs="1" class="text-muted text-end" style="font-size: small">{article.read}</Col>
           <Col lg="1" md="1" xs="2" class="text-muted text-end" style="font-size: small"
             ><Icon name="hand-thumbs-up" class="text-success pe-" />{article.like}</Col
@@ -167,37 +128,8 @@
 </main>
 
 <style>
-  a:visited{
-      color: var(--bs-gray);
-  }
-  .neon {
-      font-family: 'ChosunGs',serif;
-      font-size: 2.2em;
-      /*font-weight: 700;*/
-      color: #fff;
-      text-shadow: 0 0 0.1em rgba(0, 255, 255, 0.7);
-      animation: neon-flicker 0.1s infinite alternate;
-  }
-  @keyframes neon-flicker {
-      0% {
-          text-shadow:
-                  0 0 10px rgba(0, 255, 255, 0.7),
-                  0 0 20px rgba(0, 255, 255, 0.7),
-                  0 0 30px rgba(0, 255, 255, 0.7);
-      }
-      100% {
-          text-shadow:
-                  0 0 20px rgba(0, 255, 255, 0.7),
-                  0 0 30px rgba(0, 255, 255, 0.7),
-                  0 0 40px rgba(0, 255, 255, 0.7);
-      }
-  }
-
-  @font-face {
-      font-family: 'ChosunGs';
-      src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_20-04@1.0/ChosunGs.woff') format('woff');
-      font-weight: normal;
-      font-style: normal;
-  }
+    a:visited{
+        color: var(--bs-gray);
+    }
 
 </style>
