@@ -104,7 +104,9 @@
             {/if}
             저장
           </Button>
-          <Tooltip isOpen={uploading>0} target="uploadBtn">이미지 업로드 중입니다.</Tooltip>
+          {#if uploading>0}
+            <Tooltip isOpen={uploading>0} target="uploadBtn">이미지 업로드 중입니다.</Tooltip>
+          {/if}
         </Col>
       </Row>
     </form>
