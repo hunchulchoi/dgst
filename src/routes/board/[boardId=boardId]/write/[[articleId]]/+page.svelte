@@ -1,5 +1,5 @@
 <script>
-  import { Button, Col, FormGroup, Icon, Input, Row } from 'sveltestrap';
+  import { Button, Col, FormGroup, Icon, Input, Row, Spinner, Tooltip } from 'sveltestrap';
   import CKEditor5 from '$lib/components/CKEditor5.svelte';
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
@@ -15,6 +15,18 @@
   export let data;
 
   let { title, content } = data;
+
+  $: uploading =0
+
+  $:{console.log('uploading', uploading)}
+
+  function uploadPlus(){
+    uploading++;
+  }
+
+  function uploadMinus(){
+    uploading--;
+  }
 </script>
 
 <svelte:head>
@@ -47,7 +59,7 @@
           return cancel();
         }
 
-        if (title.replace(' ', '').length < 2) {
+        if (title.replace(' ', '').length < 1) {
           alert('제목이 너무 짧습니다.');
           return cancel();
         }
@@ -75,7 +87,7 @@
       <FormGroup floating label="제목">
         <Input id="title" name="title" bind:value={title} required autofocus />
       </FormGroup>
-      <CKEditor5 bind:editorData={content} />
+      <CKEditor5 bind:editorData={content} {uploadPlus} {uploadMinus} />
       <Row class="text-end pe-2 mt-4">
         <Col md="10" xs="8" class="text-end">
           <Button color="warning" on:click={list}>
@@ -84,10 +96,15 @@
           </Button>
         </Col>
         <Col md="2" xs="4">
-          <Button color="primary" role="submit">
-            <Icon name="pencil-fill" class="pe-2" />
+          <Button color="primary" role="submit" id="uploadBtn" disabled={uploading>0}>
+            {#if uploading>0}
+              <Spinner color="info" size="sm"/>
+            {:else}
+              <Icon name="pencil-fill" class="pe-2" />
+            {/if}
             저장
           </Button>
+          <Tooltip isOpen={uploading>0} target="uploadBtn">이미지 업로드 중입니다.</Tooltip>
         </Col>
       </Row>
     </form>

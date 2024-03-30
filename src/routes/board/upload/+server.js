@@ -4,7 +4,7 @@ import { error } from '@sveltejs/kit';
 import { write } from '$lib/util/fileUpload.js';
 
 export async function POST({ request, locals }) {
-  console.log('upload.server POST', request);
+  //console.log('upload.server POST', request);
 
   const session = await locals.getSession();
 

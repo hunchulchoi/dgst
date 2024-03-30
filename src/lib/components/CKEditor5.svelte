@@ -17,10 +17,14 @@
 
   let CKEditor;
 
+  export let uploadPlus;
+  export let uploadMinus;
+
+
   function DgstUploadAdapterPlugin(editor) {
     //
     editor.plugins.get('FileRepository').createUploadAdapter = (loader) => {
-      return new DgstUploadAdapter(loader);
+      return new DgstUploadAdapter(loader, uploadPlus, uploadMinus);
     };
   }
 
@@ -292,12 +296,15 @@
     imageUploadEditing.isEnabled = false;
     editor.plugins.get('ImageInlineEditing').isEnabled = false;
 
+    imageUploadEditing.on('change', (evt1)=>{
+      console.log('upload', evt1);
+    })
+
     imageUploadEditing.on('uploadComplete', (evt, { data, imageElement }) => {
       console.log('uploadComplete', evt, 'data', data, 'imageElement', imageElement);
 
-      editor.model.change((writer) => {
-        writer.setAttribute('someAttribute', 'foo', imageElement);
-      });
+      loadingImage = false;
+
     });
 
     editor.plugins.get('FileRepository').loaders._items[0].on('uploaded', (evt, data) => {
