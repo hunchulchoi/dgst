@@ -19,7 +19,7 @@
     Label,
     Popover,
     Row
-  } from 'sveltestrap';
+  } from '@sveltestrap/sveltestrap'
 
   import { PUBLIC_GOOGLE_RECAPTCHA_SITE_KEY } from '$env/static/public';
   import { page } from '$app/stores';

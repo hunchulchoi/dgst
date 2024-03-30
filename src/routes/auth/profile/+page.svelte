@@ -9,26 +9,23 @@
     CardText,
     Col,
     Form,
-    FormCheck,
     FormGroup,
     Icon,
     Image,
     Input,
     InputGroup,
     InputGroupText,
-    Label,
-    Popover,
     Row
-  } from 'sveltestrap';
+  } from '@sveltestrap/sveltestrap';
 
   import { PUBLIC_GOOGLE_RECAPTCHA_SITE_KEY } from '$env/static/public';
   import { page } from '$app/stores';
   import { goto } from '$app/navigation';
   import { browser } from '$app/environment';
-  import {blobToWebP} from "webp-converter-browser";
-  import {signOut} from '@auth/sveltekit/client';
+  import { blobToWebP } from 'webp-converter-browser';
+  import { signOut } from '@auth/sveltekit/client';
 
-  console.log('$page.data.session', $page.data);
+  //console.log('$page.data.session', $page.data);
 
   if (!$page.data.session) {
     if (browser) goto('/', { replaceState: true });
