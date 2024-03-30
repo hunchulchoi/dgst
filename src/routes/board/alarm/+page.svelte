@@ -1,8 +1,8 @@
 <script>
-    import {Badge, Col, Icon, Image, NavLink, Row} from "sveltestrap";
-  import {formatDistanceToNowStrict, parseISO} from "date-fns";
-  import ko from "date-fns/locale/ko/index.js";
-    import {alarmCount} from "$lib/util/store.js";
+  import { Badge, Col, Icon, Image, Row } from '@sveltestrap/sveltestrap';
+  import { formatDistanceToNowStrict, parseISO } from 'date-fns';
+  import ko from 'date-fns/locale/ko/index.js';
+  import { alarmCount } from '$lib/util/store.js';
 
   export let data;
 

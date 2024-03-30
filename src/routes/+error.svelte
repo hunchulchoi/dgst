@@ -1,9 +1,8 @@
 <script>
-  import {Button, Card, CardBody, CardFooter, CardHeader, CardText, Col, Icon, Image, Row} from 'sveltestrap';
+  import { Button, Card, CardBody, CardFooter, CardHeader, CardText, Icon, Image } from '@sveltestrap/sveltestrap';
 
-    import { page } from '$app/stores';
-  import {goto, invalidate} from "$app/navigation";
-
+  import { page } from '$app/stores';
+  import { goto } from '$app/navigation';
 </script>
 
 <Card class="m-5 shadow rounded-4" style="max-width: 500px">

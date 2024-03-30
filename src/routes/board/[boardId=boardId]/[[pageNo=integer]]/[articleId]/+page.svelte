@@ -47,7 +47,7 @@
     Toast,
     ToastBody,
     ToastHeader
-  } from 'sveltestrap';
+  } from '@sveltestrap/sveltestrap';
   import { page } from '$app/stores';
   import { goto } from '$app/navigation';
   import { scale } from 'svelte/transition';
