@@ -1,7 +1,7 @@
 <script>
 
   import { page } from '$app/stores';
-  import { Badge, Button, Col, Icon, Image, Pagination, PaginationItem, PaginationLink, Row } from 'sveltestrap';
+  import { Badge, Button, Col, Icon, Image, Pagination, PaginationItem, PaginationLink, Row } from '@sveltestrap/sveltestrap';
 
   import { formatDistanceToNowStrict, parseISO } from 'date-fns';
   import ko from 'date-fns/locale/ko/index.js';

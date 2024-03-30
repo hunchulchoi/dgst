@@ -1,5 +1,5 @@
 <script>
-  import { Button, Col, FormGroup, Icon, Input, Row, Spinner, Tooltip } from 'sveltestrap';
+  import { Button, Col, FormGroup, Icon, Input, Row, Spinner, Tooltip } from '@sveltestrap/sveltestrap';
   import CKEditor5 from '$lib/components/CKEditor5.svelte';
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';

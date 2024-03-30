@@ -1,5 +1,5 @@
 <script>
-  import { Button, Col, Icon, Row } from 'sveltestrap';
+  import { Button, Col, Icon, Row } from '@sveltestrap/sveltestrap';
   import { page } from '$app/stores';
 
   import BoardList from '$lib/components/board_list.svelte';

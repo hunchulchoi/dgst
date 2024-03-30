@@ -1,5 +1,5 @@
 <script>
-import { Offcanvas } from 'sveltestrap';
+import { Offcanvas } from '@sveltestrap/sveltestrap';
 import {Confetti} from 'svelte-confetti';
 
 import ccd from '$lib/shared/stores/ccd.js';

@@ -1,8 +1,9 @@
 <script>
-  import { Row, Col, Image } from 'sveltestrap';
+  import { Col, Image, Row } from '@sveltestrap/sveltestrap';
 </script>
 
 <footer class="mt-4" style="font-size: 12px;">
+
   <Row class="mx-0 mb-3">
     <Col class="p-1 text-center text-muted border-top border-secondary-subtle">
       <Image

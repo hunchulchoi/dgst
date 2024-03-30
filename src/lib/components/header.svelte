@@ -14,7 +14,7 @@
     NavLink,
     Row,
     Styles
-  } from 'sveltestrap';
+  } from '@sveltestrap/sveltestrap';
 
   import theme from '$lib/shared/stores/theme.js';
 
