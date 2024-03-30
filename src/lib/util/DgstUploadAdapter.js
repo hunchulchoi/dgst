@@ -1,18 +1,26 @@
 import { srcToWebP } from 'webp-converter-browser';
 
 class DgstUploadAdapter {
-  constructor(loader) {
+  constructor(loader, uploadPlus, uploadMinus) {
     this.loader = loader;
+    this.uploadMinus = uploadMinus;
+    this.uploadPlus = uploadPlus;
   }
+  
+  uploadPlus;
+  uploadMinus;
 
   upload() {
     return this.loader.file
       .then(
         (file) =>
           new Promise((resolve, reject) => {
+            
+            this.uploadPlus()
             this._initRequest();
             this._initListeners(resolve, reject, file);
             this._sendRequest(file);
+            
           })
       )
       .catch((error) => console.error(error));
@@ -23,7 +31,6 @@ class DgstUploadAdapter {
     }
   }
   _initRequest() {
-    console.log('_initRequest()');
     const xhr = (this.xhr = new XMLHttpRequest());
 
     xhr.open('POST', '/board/upload', true);
@@ -32,7 +39,8 @@ class DgstUploadAdapter {
 
   // xhr 리스너 초기화 하기
   _initListeners(resolve, reject, file) {
-    console.log('_initListeners()', file);
+    
+    console.log('_initListeners', file.name);
 
     const xhr = this.xhr;
     const loader = this.loader;
@@ -43,8 +51,9 @@ class DgstUploadAdapter {
     xhr.addEventListener('error', () => reject(genericErrorText));
     xhr.addEventListener('abort', () => reject('파일 업로드가 취소 되었습니다.'));
     xhr.addEventListener('load', () => {
+      this.uploadMinus()
+      
       const response = xhr.response;
-
       // xhr response 객체가 error와 함께 올 수 있으며 이에러는 메세지를 가지며
       // 이 메시지는 업로드 프로미스의 매개변수로 넘어갈 수 있다.
       if (!response || response.error) {
@@ -60,6 +69,7 @@ class DgstUploadAdapter {
       if (xhr.upload) {
         xhr.upload.addEventListener('progress', (evt) => {
           if (evt.lengthComputable) {
+            console.log('progress', evt.total, evt.loaded)
             loader.uploadTotal = evt.total;
             loader.uploaded = evt.loaded;
           }

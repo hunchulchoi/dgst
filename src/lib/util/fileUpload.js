@@ -14,13 +14,13 @@ function safeString(_name, _path) {
 
   _path = decodeURIComponent(_path);
 
-  console.debug(path.normalize(path.join(UPLOAD_PATH, _path, _name)));
+  //console.debug(path.normalize(path.join(UPLOAD_PATH, _path, _name)));
 
   return path.normalize(path.join(UPLOAD_PATH, _path, _name)).startsWith(UPLOAD_PATH);
 }
 
 export async function write(file, email, preservePath = 'jjal') {
-  console.debug('preservePath', preservePath, 'file', file);
+  //console.debug('preservePath', preservePath, 'file', file);
 
   const now = new Date();
 
@@ -34,7 +34,7 @@ export async function write(file, email, preservePath = 'jjal') {
     fs.mkdirSync(`${UPLOAD_PATH}${dir}`, { recursive: true });
   }
 
-  console.debug(UPLOAD_PATH, dir, fs.existsSync(`${UPLOAD_PATH}${dir}`));
+  //console.debug(UPLOAD_PATH, dir, fs.existsSync(`${UPLOAD_PATH}${dir}`));
 
   let fileName = `${email?.substring(0,8)}_${file.name
     .substring(0, file.name.lastIndexOf('.'))
@@ -51,7 +51,7 @@ export async function write(file, email, preservePath = 'jjal') {
     fs.unlink(`${UPLOAD_PATH}${dir}/${fileName}`, (err)=> console.error(err))
 
     fileName = `${fileName}.webp`;
-		console.log('gwebp', gwebp)
+		//console.log('gwebp', gwebp)
 
   //  아이폰은 webp 변환해도 2메가 넘어가는 경우가 있음
   // 서버에서 다시한번 압축
@@ -62,7 +62,7 @@ export async function write(file, email, preservePath = 'jjal') {
       fs.unlink(`${UPLOAD_PATH}${dir}/${fileName}`, (err)=> console.error(err))
 
       fileName = `${fileName}.webp`;
-      console.log('cwebp', cwebp)
+      //console.log('cwebp', cwebp)
     }
 
   if (fs.existsSync(`${UPLOAD_PATH}${dir}/${fileName}`)) return `/images${dir}/${fileName}`;
