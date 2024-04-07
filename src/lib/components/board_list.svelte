@@ -5,22 +5,10 @@
 
   import { formatDistanceToNowStrict, parseISO } from 'date-fns';
   import ko from 'date-fns/locale/ko/index.js';
-  import { goto } from '$app/navigation';
-
-  /**
-   * page 이동
-   * @param pageNo {number}
-   */
-  function gopage(pageNo){
-    goto(`/board/${$page.params.boardId}/${pageNo}?v=${new Date().getSeconds()}`
-      , {invalidateAll: true});
-  }
-
-  function write() {
-    goto(`/board/${$page.params.boardId}/write`);
-  }
 
   export let data;
+  export let gopage;
+  export let write;
 </script>
 
 {#if !data.articles.length}
@@ -77,19 +65,19 @@
     <Col xs="12">
       <Pagination size="md" arialabel="페이지 네이션" class="d-flex justify-content-center">
         <PaginationItem
-        ><PaginationLink first on:click={()=>gopage(1)} /></PaginationItem
+        ><PaginationLink first href="#top" on:click={()=>gopage(1)} /></PaginationItem
         >
         {#each Array((data.endNo - data.startNo +1)) as _, i}
           <PaginationItem
             active={(!data.pageNo && (data.startNo -i) === 1) || (i + data.startNo) == data.pageNo}
           >
-            <PaginationLink on:click={()=>gopage(i + data.startNo)}>
+            <PaginationLink href="#top" on:click={()=>gopage(i + data.startNo)}>
               {i + data.startNo}
             </PaginationLink>
           </PaginationItem>
         {/each}
         <PaginationItem
-        ><PaginationLink
+        ><PaginationLink href="#top"
                          last
                          on:click={()=>gopage(data.maxPage)}
         /></PaginationItem
