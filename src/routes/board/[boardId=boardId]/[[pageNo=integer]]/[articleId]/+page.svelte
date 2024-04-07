@@ -425,19 +425,19 @@
           목록
         </Button>
       </Col>
-    </Row>
-    <Row class="my-3 bg-warning-subtle p-2 rounded-3 mb-1 mx-0">
-      <!--리플-->
-      <Col>
-        <Icon name="chat"/>
-        의견남기기
-        <Badge color="primary">{commentData.length}</Badge>
-      </Col>
-      <Col class="text-end">
-        <Button class="fw-bolder py-0" on:click={comments} outline>
-          <Icon name="arrow-repeat"/>
-        </Button>
-      </Col>
+      <Row class="my-3 bg-warning-subtle p-2 rounded-3 mb-1 mx-0">
+        <!--리플-->
+        <Col>
+          <Icon name="chat"/>
+          의견남기기
+          <Badge color="primary">{commentData.length}</Badge>
+        </Col>
+        <Col class="text-end">
+          <Button class="fw-bolder py-0" on:click={comments} outline>
+            <Icon name="arrow-repeat"/>
+          </Button>
+        </Col>
+      </Row>
     </Row>
 
     <Row class="mb-5 mx-0">
@@ -627,6 +627,23 @@
 
       <!--목록 끝-->
 
+      {#if commentData?.length}
+
+      <Row class="my-3 bg-warning-subtle p-2 rounded-3 mb-1 mx-0">
+        <!--리플-->
+        <Col>
+          <Icon name="chat"/>
+          의견남기기
+          <Badge color="primary">{commentData.length}</Badge>
+        </Col>
+        <Col class="text-end">
+          <Button class="fw-bolder py-0" on:click={comments} outline>
+            <Icon name="arrow-repeat"/>
+          </Button>
+        </Col>
+      </Row>
+
+      {/if}
 
 
       <!-- 댓글 입력 -->
