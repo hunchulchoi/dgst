@@ -77,19 +77,19 @@
     <Col xs="12">
       <Pagination size="md" arialabel="페이지 네이션" class="d-flex justify-content-center">
         <PaginationItem
-        ><PaginationLink first href="#top" on:click={()=>gopage(1)} /></PaginationItem
+        ><PaginationLink first on:click={()=>gopage(1)} /></PaginationItem
         >
         {#each Array((data.endNo - data.startNo +1)) as _, i}
           <PaginationItem
             active={(!data.pageNo && (data.startNo -i) === 1) || (i + data.startNo) == data.pageNo}
           >
-            <PaginationLink href="#top" on:click={()=>gopage(i + data.startNo)}>
+            <PaginationLink on:click={()=>gopage(i + data.startNo)}>
               {i + data.startNo}
             </PaginationLink>
           </PaginationItem>
         {/each}
         <PaginationItem
-        ><PaginationLink href="#top"
+        ><PaginationLink
                          last
                          on:click={()=>gopage(data.maxPage)}
         /></PaginationItem
