@@ -11,6 +11,16 @@
     goto(`/board/${$page.params.boardId}/write`);
   }
 
+  /**
+   * page 이동
+   * @param pageNo {number}
+   */
+  function gopage(pageNo){
+    goto(`/board/${$page.params.boardId}/${pageNo}?v=${new Date().getSeconds()}`
+      , {invalidateAll: true});
+  }
+
+
   export let data;
 
   alarmCount.update(alarmCount =>$page.data.alarmCount);
@@ -32,7 +42,7 @@
       </Row>
     {/if}
 
-    <BoardList {data}/>
+    <BoardList {data} {gopage} {write}/>
 
   </Row>
 </main>
