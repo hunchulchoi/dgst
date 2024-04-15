@@ -48,11 +48,19 @@
   <NavbarBrand href="/" class="p-0">
     <Image
       fluid
+      title="잊지않을께"
+      alt="remeber0416"
+      src="/icons/remember0416.png"
+      class="p-0"
+      style="height: 40px"
+    />
+    <!--<Image
+      fluid
       alt="dgst logo"
       src="/logo/logo_transparent_100.png"
       class="p-0"
       style="height: 40px"
-    />
+    />-->
   </NavbarBrand>
   <Nav>
     <NavItem>
