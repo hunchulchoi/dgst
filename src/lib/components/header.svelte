@@ -46,21 +46,21 @@
 <Row class="m-0">
 <Navbar expand="md" class="m-0 rounded shadow text-secondary" style="background-color: #fafae4">
   <NavbarBrand href="/" class="p-0">
-    <Image
+    <!--<Image
       fluid
       title="잊지않을께"
       alt="remeber0416"
       src="/icons/remember0416.png"
       class="p-0"
       style="height: 40px"
-    />
-    <!--<Image
+    />-->
+    <Image
       fluid
       alt="dgst logo"
       src="/logo/logo_transparent_100.png"
       class="p-0"
       style="height: 40px"
-    />-->
+    />
   </NavbarBrand>
   <Nav>
     <NavItem>
