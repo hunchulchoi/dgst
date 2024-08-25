@@ -65,23 +65,20 @@
     <Col xs="12">
       <Pagination size="md" arialabel="페이지 네이션" class="d-flex justify-content-center">
         <PaginationItem
-        ><PaginationLink first href="#top" on:click={()=>gopage(1)} /></PaginationItem
+        ><PaginationLink first href="{`/board/${$page.params.boardId}`}" rel="external"/></PaginationItem
         >
         {#each Array((data.endNo - data.startNo +1)) as _, i}
           <PaginationItem
             active={(!data.pageNo && (data.startNo -i) === 1) || (i + data.startNo) == data.pageNo}
           >
-            <PaginationLink href="#top" on:click={()=>gopage(i + data.startNo)}>
+            <PaginationLink href={`/board/${$page.params.boardId}/${i + data.startNo}`} rel="external">
               {i + data.startNo}
             </PaginationLink>
           </PaginationItem>
         {/each}
         <PaginationItem
-        ><PaginationLink href="#top"
-                         last
-                         on:click={()=>gopage(data.maxPage)}
-        /></PaginationItem
-        >
+        ><PaginationLink href={`/board/${$page.params.boardId}/${data.maxPage}`} rel="external"
+                         last /></PaginationItem>
       </Pagination>
     </Col>
   </Row>
