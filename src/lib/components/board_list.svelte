@@ -7,7 +7,6 @@
   import ko from 'date-fns/locale/ko/index.js';
 
   export let data;
-  export let gopage;
   export let write;
 </script>
 
@@ -65,19 +64,19 @@
     <Col xs="12">
       <Pagination size="md" arialabel="페이지 네이션" class="d-flex justify-content-center">
         <PaginationItem
-        ><PaginationLink first href="{`/board/${$page.params.boardId}`}" rel="external"/></PaginationItem
+        ><PaginationLink first href="{`/board/${$page.params.boardId}`}" data-sveltekit-preload-data="hover"/></PaginationItem
         >
         {#each Array((data.endNo - data.startNo +1)) as _, i}
           <PaginationItem
             active={(!data.pageNo && (data.startNo -i) === 1) || (i + data.startNo) == data.pageNo}
           >
-            <PaginationLink href={`/board/${$page.params.boardId}/${i + data.startNo}`} rel="external">
+            <PaginationLink href={`/board/${$page.params.boardId}/${i + data.startNo}`}  data-sveltekit-preload-data="hover">
               {i + data.startNo}
             </PaginationLink>
           </PaginationItem>
         {/each}
         <PaginationItem
-        ><PaginationLink href={`/board/${$page.params.boardId}/${data.maxPage}`} rel="external"
+        ><PaginationLink href={`/board/${$page.params.boardId}/${data.maxPage}`}  data-sveltekit-preload-data="hover"
                          last /></PaginationItem>
       </Pagination>
     </Col>
