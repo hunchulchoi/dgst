@@ -122,7 +122,7 @@
           </NavLink>
         </NavItem>
       {/if}
-      <NavItem>
+      <!--<NavItem>
         <NavLink href="/game/56471" active={$page.data.pathname.startsWith('/game/56471')}>
           <Icon name="bi bi-joystick" class="text-primary"/>
         </NavLink>
@@ -136,7 +136,7 @@
         <NavLink href="/game/47767" active={$page.data.pathname.startsWith('/game/47767')}>
           <Icon name="bi bi-joystick" class="text-info"/>
         </NavLink>
-      </NavItem>
+      </NavItem>-->
     </Nav>
   </Navbar>
 </Row>
