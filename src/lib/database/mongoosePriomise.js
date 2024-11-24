@@ -3,9 +3,9 @@ import { MONGODB_CONNECTION_STRING, DB_NAME } from '$env/static/private';
 
 const uri = MONGODB_CONNECTION_STRING;
 const connectOptions = {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-  /*dbName: DB_NAME*/
+  /*useNewUrlParser: true,
+  useUnifiedTopology: true,*/
+  dbName: DB_NAME
 };
 
 const connection = mongoose
