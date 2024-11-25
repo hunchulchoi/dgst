@@ -125,11 +125,7 @@
           <NavLink href="/board/bug" active={$page.data.pathname.startsWith('/board/bug')}>
             <Icon name="bug-fill" class="text-warning me-2"/>버그 신고
           </NavLink>
-        </NavItem> <NavItem>
-        <NavLink href="/board/bug" active={$page.data.pathname.startsWith('/board/bug')}>
-          <Icon name="bug-fill" class="text-warning me-2"/>버그 신고
-        </NavLink>
-      </NavItem>
+        </NavItem>
       {/if}
       <!--<NavItem>
         <NavLink href="/game/56471" active={$page.data.pathname.startsWith('/game/56471')}>
