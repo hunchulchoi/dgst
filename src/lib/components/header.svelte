@@ -30,7 +30,7 @@
   };
 
   function free(){
-    goto(`/board/free?v=${new Date().getSeconds()}`, {invalidateAll: true, replaceState: true});
+    goto(`/board/free`, {invalidateAll: true, replaceState: true});
   }
 
   $: colorModeIcon =
