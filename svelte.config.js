@@ -8,9 +8,12 @@ const config = {
     // See https://kit.svelte.dev/docs/adapters for more information about adapters.
     adapter: adapter(),
     appDir: 'static',
+    paths:{
+      assets: 'static/',
+      relative: true,
+    },
     prerender: {
-      crawl: false,
-      entries: ['/index'],
+      entries: ['*'],
     }
   }
 };
