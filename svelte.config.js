@@ -12,7 +12,7 @@ const config = {
       relative: true,
     },
     prerender: {
-      entries: ['*'],
+      entries: ['/index'],
     }
   }
 };
