@@ -16,6 +16,8 @@
     Styles
   } from '@sveltestrap/sveltestrap';
 
+  import Swal from 'sweetalert2';
+
   import theme from '$lib/shared/stores/theme.js';
 
   import { signIn, signOut } from '@auth/sveltekit/client';
@@ -23,8 +25,24 @@
   import { goto } from '$app/navigation';
 
   import { alarmCount } from '$lib/util/store.js';
+  import { onMount } from 'svelte';
 
-  const handleGoogleSignIn = () => {
+  onMount(() => {
+    const host = window.location.hostname;
+    if (host === 'dgst.site' || host === 'www.dgst.site') {
+      Swal.fire({
+        title: '도메인 변경 안내',
+        html: `dgst.site에서 <mark>dgst.me</mark>로 변경 되었습니다.
+<div><strong class="text-danger">dgst.me</strong>로 이동합니다.</div>`,
+        icon: 'info',
+        confirmButtonText: '확인',
+      }).then(() => {
+        goto('https://dgst.me', { replaceState: true});
+      });
+    }
+
+
+    const handleGoogleSignIn = () => {
     //console.log('handleGoogleSignIn');
     signIn('google', { callbackUrl: '/' });
   };
@@ -47,6 +65,8 @@
 <Navbar expand="md" class="m-0 rounded shadow text-secondary" style="background-color: #fafae4">
   <NavbarBrand href="/" class="p-0">
     <NavbarBrand href="/" class="p-0">
+
+
       {#if new Date().getMonth() === 3 && new Date().getDate() >= 15 && new Date().getDate() <= 17}
         <Image
           fluid
