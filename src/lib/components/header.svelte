@@ -29,6 +29,9 @@
 
   onMount(() => {
     const host = window.location.hostname;
+
+    alert(host)
+
     if (host === 'dgst.site' || host === 'www.dgst.site') {
       Swal.fire({
         title: '도메인 변경 안내',
