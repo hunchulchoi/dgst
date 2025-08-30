@@ -39,7 +39,7 @@
         icon: 'info',
         confirmButtonText: '확인',
       }).then(() => {
-        goto('https://dgst.me', { replaceState: true});
+        goto('https://www.dgst.me');
       });
     }
   });
