@@ -27,6 +27,7 @@
   import { alarmCount } from '$lib/util/store.js';
   import { onMount } from 'svelte';
 
+  // 도메인 변경 안내
   onMount(() => {
     const host = window.location.hostname;
 
@@ -43,6 +44,7 @@
         goto('https://dgst.me', { replaceState: true});
       });
     }
+  });
 
 
     const handleGoogleSignIn = () => {
