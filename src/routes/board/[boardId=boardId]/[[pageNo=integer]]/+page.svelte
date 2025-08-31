@@ -7,6 +7,26 @@
   import { alarmCount } from '$lib/util/store.js';
   import { goto } from '$app/navigation';
 
+  import { onMount } from 'svelte';
+
+  // 도메인 변경 안내
+  onMount(() => {
+    const host = window.location.hostname;
+
+    if (host === 'dgst.site' || host === 'www.dgst.site') {
+      Swal.fire({
+        title: '도메인 변경 안내',
+        html: `dgst.site에서 <mark>dgst.me</mark>로 변경 되었습니다.
+<div class="m-2"><strong class="text-danger">dgst.me</strong>로 이동합니다.</div>`,
+        icon: 'info',
+        confirmButtonText: '확인',
+      }).then(() => {
+        goto('https://www.dgst.me');
+      });
+    }
+  });
+
+
   function write() {
     goto(`/board/${$page.params.boardId}/write`);
   }
@@ -19,7 +39,6 @@
     goto(`/board/${$page.params.boardId}/${pageNo}?v=${new Date().getSeconds()}`
       , {invalidateAll: true});
   }
-
 
   export let data;
 
