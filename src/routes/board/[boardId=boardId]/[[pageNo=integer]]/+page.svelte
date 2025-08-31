@@ -7,6 +7,7 @@
   import { alarmCount } from '$lib/util/store.js';
   import { goto } from '$app/navigation';
 
+  import Swal from 'sweetalert2';
   import { onMount } from 'svelte';
 
   // 도메인 변경 안내
