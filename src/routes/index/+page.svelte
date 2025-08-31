@@ -10,5 +10,5 @@
       사람이 별로 없으니 광고는 다른데 알아보세요
     </CardText>
   </CardBody>
-  <CardFooter class="text-center">dgst.site</CardFooter>
+  <CardFooter class="text-center">dgst.me</CardFooter>
 </Card>
