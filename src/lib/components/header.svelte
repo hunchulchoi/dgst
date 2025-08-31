@@ -16,7 +16,7 @@
     Styles
   } from '@sveltestrap/sveltestrap';
 
-  import Swal from 'sweetalert2';
+
 
   import theme from '$lib/shared/stores/theme.js';
 
