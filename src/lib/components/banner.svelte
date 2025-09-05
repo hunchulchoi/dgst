@@ -4,18 +4,19 @@ import {Confetti} from 'svelte-confetti';
 
 import ccd from '$lib/shared/stores/ccd.js';
 
-ccd.set(false);
+ccd.set(true);
 
-const bannerContent = `🌸<span class="text-danger">환)</span> 🎉데게의 딸🍾 유이나❤️짱 방한🎊 <span class="text-danger">(영</span>🌼`
+const bannerContent =
+  `🌸<span class="text-danger">경)</span> 🎉해운대⛱️ 삼익비치의 딸🍾 공기업❤️ 취직🎊 <span class="text-danger">(축</span>🌼`
 </script>
 
 <Offcanvas isOpen={$ccd} header="👨‍👩‍👧‍welcome👨‍👩‍👧‍👦"
            toggle={()=>ccd.set(false)}
            fade={true}
-           class="text-center bg-secondary text-dark rounded-bottom-4"
+           class="text-center text-dark rounded-bottom-4"
            style="background: linear-gradient(90deg, rgba(211,209,247,1) 0%, rgba(150,150,146,1) 70%, rgba(111,112,101,1) 100%);"
            placement="top">
-  <div class="neon">{@html bannerContent}</div>
+  <div class="neon">{@html bannerContent}
   <div style="
  position: fixed;
  top: -50px;
