@@ -10,7 +10,7 @@ const bannerContent =
   `🌸<span class="text-danger">경)</span> 🎉해운대⛱️ 삼익비치의 딸🍾 공기업❤️ 취직🎊 <span class="text-danger">(축</span>🌼`
 </script>
 
-<Offcanvas isOpen={$ccd} header="👨‍👩‍👧‍welcome👨‍👩‍👧‍👦"
+<Offcanvas isOpen={$ccd}
            toggle={()=>ccd.set(false)}
            fade={true}
            class="text-center text-dark rounded-bottom-4"
