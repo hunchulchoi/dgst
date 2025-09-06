@@ -4,7 +4,7 @@ import {Confetti} from 'svelte-confetti';
 
 import ccd from '$lib/shared/stores/ccd.js';
 
-ccd.set(true);
+ccd.set(false);
 
 const bannerContent =
   `🌸<span class="text-danger">경)</span> 🎉강알리⛱️ 삼익비치의 딸🍾 공기업❤️ 취직🎊 <span class="text-danger">(축</span>🌼`
