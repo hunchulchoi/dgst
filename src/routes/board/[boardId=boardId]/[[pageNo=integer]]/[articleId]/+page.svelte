@@ -416,7 +416,7 @@
     <Row class="mx-0">
       <!--버튼-->
       <Col class="text-end pe-md-3 p-xs-0 m-xs-0">
-        {#if data.article.email === $page.data.session?.user.email}
+        {#if $page.data.session?.user?.email && data.article.email === $page.data.session.user.email}
           <Button color="danger" on:click={() => remove(data.article._id)} class="ps-1 pe-2">
             <Icon name="trash"/>
             삭제
