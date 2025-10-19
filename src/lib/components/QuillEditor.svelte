@@ -45,11 +45,13 @@
       compressionTime = 0;
       estimatedTime = 0;
       uploadPlus?.();
+      
+      const startTime = Date.now();
 
       // Progress 이벤트 리스너 설정
-      ffmpeg.on('progress', ({ progress, time }) => {
+      const progressHandler = ({ progress, time }) => {
         compressionProgress = Math.round(progress * 100);
-        compressionTime = Math.round(time / 1000000); // 마이크로초를 초로 변환
+        compressionTime = Math.round((Date.now() - startTime) / 1000); // 경과 시간 (초)
         
         // 예상 시간 계산 (진행률 기반)
         if (progress > 0.01) {
@@ -57,7 +59,9 @@
         }
         
         console.log(`압축 진행률: ${compressionProgress}%`, `경과: ${compressionTime}초`, `예상: ${estimatedTime}초`);
-      });
+      };
+      
+      ffmpeg.on('progress', progressHandler);
 
       // FFmpeg에 파일 쓰기
       compressionProgress = 5;
@@ -66,6 +70,8 @@
 
       // 비디오 압축 실행
       compressionProgress = 10;
+      console.log('FFmpeg 압축 시작...');
+      
       await ffmpeg.exec([
         '-i', 'input.mp4',
         '-c:v', 'libx264',
@@ -73,9 +79,10 @@
         '-preset', 'medium',
         '-c:a', 'aac',
         '-b:a', '128k',
-        '-progress', 'pipe:1',
         'output.mp4'
       ]);
+      
+      console.log('FFmpeg 압축 완료');
 
       // 압축된 파일 가져오기
       compressionProgress = 95;
@@ -344,6 +351,12 @@
         fetchFile = UtilModule.fetchFile;
         
         ffmpeg = new FFmpeg();
+        
+        // FFmpeg 로그 활성화
+        ffmpeg.on('log', ({ message }) => {
+          console.log('[FFmpeg]', message);
+        });
+        
         await ffmpeg.load();
         console.log('✅ FFmpeg loaded successfully');
       } catch (err) {
@@ -382,8 +395,8 @@
     
     {#if isCompressing}
       <div class="compression-overlay">
-        <div class="progress-container">
-          <h5 class="mb-3">
+        <div class="progress-container bg-light">
+          <h5 class="mb-3 text-dark">
             <span class="spinner-border spinner-border-sm me-2" role="status"></span>
             비디오 압축 중...
           </h5>
@@ -408,7 +421,7 @@
               </span>
             {/if}
           </div>
-          <small class="text-muted">
+          <small class="text-secondary">
             압축이 완료될 때까지 기다려주세요...<br/>
             (브라우저 탭을 닫지 마세요)
           </small>
