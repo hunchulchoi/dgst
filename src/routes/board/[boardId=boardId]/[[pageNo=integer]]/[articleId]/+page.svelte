@@ -87,9 +87,19 @@
   }
 
   function comments() {
+    console.log('🔄 댓글 새로고침 시작:', `/board/${boardId}/${articleId}/comment`);
     fetch(`/board/${boardId}/${articleId}/comment`)
-      .then((res) => res.json())
-      .then((d) => (data.article.comments = d));
+      .then((res) => {
+        console.log('✅ 댓글 응답:', res.status);
+        return res.json();
+      })
+      .then((d) => {
+        console.log('📝 댓글 데이터:', d.length, '개');
+        data.article.comments = d;
+      })
+      .catch((err) => {
+        console.error('❌ 댓글 새로고침 실패:', err);
+      });
   }
 
   function list() {
