@@ -10,7 +10,7 @@
 
 </script>
 
-<Header />
+<Header session={data.session} pathname={data.pathname} />
 <Banner />
 <Memo />
 

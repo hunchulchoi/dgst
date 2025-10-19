@@ -21,10 +21,12 @@
   import theme from '$lib/shared/stores/theme.js';
 
   import { signIn, signOut } from '@auth/sveltekit/client';
-  import { page } from '$app/stores';
   import { goto } from '$app/navigation';
 
   import { alarmCount } from '$lib/util/store.js';
+
+  // Svelte 5 Runes - Props
+  let { session, pathname } = $props();
 
     const handleGoogleSignIn = () => {
     //console.log('handleGoogleSignIn');
@@ -69,15 +71,15 @@
   </NavbarBrand>
   <Nav>
     <NavItem>
-      {#if $page.data.session?.user?.nickname}
+      {#if session?.user?.nickname}
         <Image
           thumbnail
-          alt="{$page.data.session.user.nickname} 프로필 사진"
-          src={$page.data.session.user.photo ?? '/icons/unknown-person-icon-4.jpg'}
+          alt="{session.user.nickname} 프로필 사진"
+          src={session.user.photo ?? '/icons/unknown-person-icon-4.jpg'}
           class="p-0 rounded"
           style="max-height: 30px;max-width: 30px"
         />
-        <span class="text-secondary" on:click={()=>goto('/auth/profile')}>{$page.data.session.user.nickname}</span>
+        <span class="text-secondary" on:click={()=>goto('/auth/profile')}>{session.user.nickname}</span>
       {:else}
         <NavLink on:click={handleGoogleSignIn} class="p-0 m-0">
           <Image alt="google계정으로 로그인" src={loginButton} class="p-0" style="max-width:40vw"/>
@@ -97,7 +99,7 @@
         <DropdownItem on:click={() => theme.set('dark')}
         ><Icon name="moon-stars-fill" /> 어둡게</DropdownItem
         >
-      {#if $page.data.session?.user.nickname}
+      {#if session?.user?.nickname}
           <DropdownItem divider />
           <DropdownItem on:click={signOut} class="text-bg-danger-subtle"
           ><Icon name="door-closed" /> 로그아웃</DropdownItem
@@ -111,15 +113,15 @@
 
     <Nav tabs data-svelteit-preload-data="false">
       <NavItem>
-        <NavLink on:click={free} active={$page.data.pathname.startsWith('/board/free')}>자유게시판
+        <NavLink on:click={free} active={pathname?.startsWith('/board/free')}>자유게시판
         </NavLink>
       </NavItem>
-      {#if $page.data.session?.user?.nickname}
+      {#if session?.user?.nickname}
         <NavItem>
           <NavLink href="/board/alarm" data-sveltekit-invalidate="all"
                    data-sveltekit-replace
                    data-sveltekit-preload-data="tap"
-                   active={$page.data.pathname.startsWith('/board/alarm')}>
+                   active={pathname?.startsWith('/board/alarm')}>
             <Icon name="megaphone" class="text-success me-2"/>알림
             {#if $alarmCount}
               <Badge pill color="danger">{$alarmCount}</Badge>
@@ -127,7 +129,7 @@
           </NavLink>
         </NavItem>
         <NavItem>
-          <NavLink href="/board/bug" active={$page.data.pathname.startsWith('/board/bug')}>
+          <NavLink href="/board/bug" active={pathname?.startsWith('/board/bug')}>
             <Icon name="bug-fill" class="text-warning me-2"/>버그 신고
           </NavLink>
         </NavItem>
