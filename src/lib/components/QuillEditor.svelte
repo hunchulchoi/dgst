@@ -286,16 +286,16 @@
       
       // 간단한 링크 프리뷰 삽입 (카드 형태)
       const cardHtml = `
-        <p><br></p>
-        <div style="border: 1px solid #e0e0e0; border-radius: 8px; padding: 12px; margin: 8px 0; max-width: 400px; background: #f9f9f9;">
-          ${ogData.image ? `<img src="${ogData.image}" style="width: 100%; height: 120px; object-fit: cover; border-radius: 4px; margin-bottom: 8px;" alt="">` : ''}
+        <div><br></div>
+        <div style="border: 1px solid #e0e0e0; border-radius: 8px; padding: 10px; margin: 8px 0; max-width: 350px; background: #fafafa;">
+          ${ogData.image ? `<img src="${ogData.image}" style="width: 100%; max-height: 80px; object-fit: cover; border-radius: 4px; margin-bottom: 8px;" alt="">` : ''}
           <div style="font-weight: bold; font-size: 14px; margin-bottom: 4px;">
             <a href="${ogData.url}" target="_blank" rel="noopener" style="color: #1a73e8; text-decoration: none;">${ogData.title || url}</a>
           </div>
-          ${ogData.description ? `<div style="color: #5f6368; font-size: 13px; line-height: 1.4;">${ogData.description.substring(0, 100)}${ogData.description.length > 100 ? '...' : ''}</div>` : ''}
-          <div style="color: #70757a; font-size: 12px; margin-top: 4px;">${ogData.siteName || new URL(url).hostname}</div>
+          ${ogData.description ? `<div style="color: #5f6368; font-size: 12px; line-height: 1.3;">${ogData.description.substring(0, 80)}${ogData.description.length > 80 ? '...' : ''}</div>` : ''}
+          <div style="color: #70757a; font-size: 11px; margin-top: 4px;">🔗 ${ogData.siteName || new URL(url).hostname}</div>
         </div>
-        <p><br></p>
+        <div><br></div>
       `;
 
       quillInstance.clipboard.dangerouslyPasteHTML(range.index, cardHtml);
