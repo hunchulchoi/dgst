@@ -80,7 +80,7 @@
           class="p-0 rounded"
           style="max-height: 30px;max-width: 30px"
         />
-        <span class="text-secondary" on:click={()=>goto('/auth/profile')}>{session.user.nickname}</span>
+        <button type="button" class="btn btn-link text-secondary p-0" on:click={()=>goto('/auth/profile')}>{session.user.nickname}</button>
       {:else}
         <NavLink on:click={handleGoogleSignIn} class="p-0 m-0">
           <Image alt="google계정으로 로그인" src={loginButton} class="p-0" style="max-width:40vw"/>
