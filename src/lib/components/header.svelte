@@ -128,7 +128,7 @@
                  active={pathname?.startsWith('/board/free')}>
           자유게시판
           {#if showSpinner}
-            <span class="spinner-border spinner-border-sm ms-2" role="status"></span>
+            <span class="spinner-border spinner-border-sm ms-2 text-primary" role="status" aria-hidden="true"></span>
           {/if}
         </NavLink>
       </NavItem>
