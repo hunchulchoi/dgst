@@ -80,9 +80,9 @@
           class="p-0 rounded"
           style="max-height: 30px;max-width: 30px"
         />
-        <button type="button" class="btn btn-link text-secondary p-0" on:click={()=>goto('/auth/profile')}>{session.user.nickname}</button>
+        <button type="button" class="btn btn-link text-secondary p-0" onclick={()=>goto('/auth/profile')}>{session.user.nickname}</button>
       {:else}
-        <NavLink on:click={handleGoogleSignIn} class="p-0 m-0">
+        <NavLink onclick={handleGoogleSignIn} class="p-0 m-0">
           <Image alt="google계정으로 로그인" src={loginButton} class="p-0" style="max-width:40vw"/>
         </NavLink>
       {/if}
@@ -90,14 +90,14 @@
     <Dropdown nav class="col-xs-1">
       <DropdownToggle nav caret class="text-secondary"><Icon name={colorModeIcon} /></DropdownToggle>
       <DropdownMenu end>
-        <DropdownItem on:click={() => theme.set('auto')}
+        <DropdownItem onclick={() => theme.set('auto')}
         ><Icon name="circle-half" /> 자동</DropdownItem
         >
         <DropdownItem divider />
-        <DropdownItem on:click={() => theme.set('light')}
+        <DropdownItem onclick={() => theme.set('light')}
         ><Icon name="sun-fill" /> 밝게</DropdownItem
         >
-        <DropdownItem on:click={() => theme.set('dark')}
+        <DropdownItem onclick={() => theme.set('dark')}
         ><Icon name="moon-stars-fill" /> 어둡게</DropdownItem
         >
       {#if session?.user?.nickname}
@@ -114,7 +114,7 @@
 
     <Nav tabs data-svelteit-preload-data="false">
       <NavItem>
-        <NavLink on:click={free} active={pathname?.startsWith('/board/free')}>자유게시판
+        <NavLink onclick={free} active={pathname?.startsWith('/board/free')}>자유게시판
         </NavLink>
       </NavItem>
       {#if session?.user?.nickname}
