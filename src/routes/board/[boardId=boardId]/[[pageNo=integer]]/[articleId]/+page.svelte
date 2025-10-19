@@ -95,7 +95,8 @@
       })
       .then((d) => {
         console.log('📝 댓글 데이터:', d.length, '개');
-        data.article.comments = d;
+        // Svelte 5 반응성: 객체를 새로 생성하여 변경 감지
+        data.article = { ...data.article, comments: d };
       })
       .catch((err) => {
         console.error('❌ 댓글 새로고침 실패:', err);

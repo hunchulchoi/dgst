@@ -3,7 +3,7 @@ import { error, json } from '@sveltejs/kit';
 import { Comment } from '$lib/models/comment.js';
 import { Article } from '$lib/models/article.js';
 import { write } from '$lib/util/fileUpload.js';
-import {Alarm} from "$lib/models/alarm.js";
+import { Alarm } from "$lib/models/alarm.js";
 import convertToTree from '$lib/util/tree.js';
 
 connectDB();
@@ -22,19 +22,21 @@ export async function GET({ params, locals }) {
 
   const session = await locals.auth();
 
+  console.log('session', session);
+
   try {
     comments = await Comment.find(
       { articleId: params.articleId, boardId: params.boardId },
-      { _id: 1, photo: 1, nickname: 1, createdAt: 1, image: 1, email: 1, content: 1, depth:1, parentCommentId: 1, parentCommentNickname: 1 , state:1, likes:1, like:1}
+      { _id: 1, photo: 1, nickname: 1, createdAt: 1, image: 1, email: 1, content: 1, depth: 1, parentCommentId: 1, parentCommentNickname: 1, state: 1, likes: 1, like: 1 }
     ).sort('createdAt');
 
 
-  // 알람 삭제
-  if(session?.user?.nickname){
-      const deleteAlarm = await Alarm.updateMany({email: session.user.email, articleId: params.articleId}
-          ,{$set:{readAt: new Date()}}, {timestamps: false});
+    // 알람 삭제
+    if (session?.user?.nickname) {
+      const deleteAlarm = await Alarm.updateMany({ email: session.user.email, articleId: params.articleId }
+        , { $set: { readAt: new Date() } }, { timestamps: false });
       console.log('delete alarm', deleteAlarm);
-  }
+    }
 
   } catch (err) {
     console.error('댓글 목록 실패', err);
@@ -47,7 +49,7 @@ export async function GET({ params, locals }) {
   if (session?.user?.nickname) {
     commentsTree.forEach((c) => {
 
-      console.log(session.user.email, c.likes,c.likes.includes(session.user.email))
+      console.log(session.user.email, c.likes, c.likes.includes(session.user.email))
 
       c.liked = c.likes.includes(session.user.email);
       delete c.likes;
@@ -83,14 +85,14 @@ export async function POST({ request, params, locals }) {
   const image = data.get('image');
 
   if (image) {
-    storeFileName = await write(image,  session.user.email,'jjal');
+    storeFileName = await write(image, session.user.email, 'jjal');
   }
 
   const parentCommentId = data.get('parentCommentId');
 
   let parentComment;
 
-  if(parentCommentId) {
+  if (parentCommentId) {
     parentComment = await Comment.findById(parentCommentId);
   }
 
@@ -105,7 +107,7 @@ export async function POST({ request, params, locals }) {
       articleId: articleId,
       content: data.get('content'),
       parentCommentId,
-      depth: parentComment?.depth +1 || 1,
+      depth: parentComment?.depth + 1 || 1,
       parentCommentNickname: parentComment?.nickname
     });
 
@@ -122,21 +124,23 @@ export async function POST({ request, params, locals }) {
     }).lean();
 
     // 내글이 아닐때 알림
-    if(article.email !== session.user.email){
-        if(!parentComment || parentComment.email !== article.email){
-            const alarm = await Alarm.findOneAndUpdate({email: article.email, articleId: articleId}
-                , {$set:{title: article.title, boardId: boardId, readAt: null}, $addToSet: {comments: comment._id}}
-                , {upsert: true, new: true}).lean();
-        }
+    if (article.email !== session.user.email) {
+      if (!parentComment || parentComment.email !== article.email) {
+        const alarm = await Alarm.findOneAndUpdate({ email: article.email, articleId: articleId }
+          , { $set: { title: article.title, boardId: boardId, readAt: null }, $addToSet: { comments: comment._id } }
+          , { upsert: true, new: true }).lean();
+      }
     }
 
     // 내 댓글이 아닐때 알림
-    if(parentComment){
-      if(parentComment.email !== session.user.email){
-        const alarm = await Alarm.findOneAndUpdate({email: parentComment.email, articleId: articleId, comment: parentComment.id}
-          , {$set:{title: article.title, boardId: boardId, comment: parentComment.id, commentContent: parentComment.content, readAt: null}
-            , $addToSet: {comments: comment._id}}
-          , {upsert: true, new: true}).lean();
+    if (parentComment) {
+      if (parentComment.email !== session.user.email) {
+        const alarm = await Alarm.findOneAndUpdate({ email: parentComment.email, articleId: articleId, comment: parentComment.id }
+          , {
+            $set: { title: article.title, boardId: boardId, comment: parentComment.id, commentContent: parentComment.content, readAt: null }
+            , $addToSet: { comments: comment._id }
+          }
+          , { upsert: true, new: true }).lean();
 
         //console.log('alarm', alarm);
       }
@@ -182,9 +186,9 @@ export async function DELETE({ request, params, locals }) {
     }
 
     //게시글 리플 목록에서 삭제
-   await Article.updateOne({_id:articleId}
-     , {$pull: {comments: data.commentId}}
-     , {timestamps: false}
+    await Article.updateOne({ _id: articleId }
+      , { $pull: { comments: data.commentId } }
+      , { timestamps: false }
     )
 
   } catch (err) {
