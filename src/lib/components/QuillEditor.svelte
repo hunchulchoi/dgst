@@ -12,21 +12,33 @@
   // 로컬 상태
   /** @type {HTMLDivElement | null} */
   let editorElement = null;
+  /** @type {any} */
   let quillInstance = null;
+  /** @type {boolean} */
   let loadingImage = false;
   /** @type {HTMLDivElement | undefined} */
   let editorDiv;
+  /** @type {any} */
   let Quill;
+  /** @type {any} */
   let ImageUploader;
+  /** @type {any} */
   let ffmpeg = null;
+  /** @type {any} */
   let FFmpeg = null;
+  /** @type {any} */
   let fetchFile = null;
+  /** @type {boolean} */
   let ffmpegReady = false;
   
   // 비디오 압축 진행 상태
+  /** @type {boolean} */
   let isCompressing = false;
+  /** @type {number} */
   let compressionProgress = 0;
+  /** @type {number} */
   let compressionTime = 0; // 경과 시간 (초)
+  /** @type {number} */
   let estimatedTime = 0; // 예상 총 시간 (초)
 
   /**
