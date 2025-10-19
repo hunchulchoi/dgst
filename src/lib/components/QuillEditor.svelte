@@ -243,36 +243,21 @@
   onMount(async () => {
     if (typeof window === 'undefined') return;
 
+    console.log('QuillEditor onMount 시작');
+
+    // editorElement 확인
+    if (!editorElement) {
+      console.error('❌ editorElement가 null입니다');
+      return;
+    }
+    console.log('✅ editorElement 준비됨');
+
     try {
-      console.log('QuillEditor onMount 시작');
-      
-      // FFmpeg 로드 (비디오 압축용)
-      try {
-        const FFmpegModule = await import('@ffmpeg/ffmpeg');
-        const UtilModule = await import('@ffmpeg/util');
-        FFmpeg = FFmpegModule.FFmpeg;
-        fetchFile = UtilModule.fetchFile;
-        
-        ffmpeg = new FFmpeg();
-        await ffmpeg.load();
-        console.log('✅ FFmpeg loaded successfully');
-      } catch (err) {
-        console.warn('⚠️ FFmpeg 로드 실패 (비디오 압축 비활성화):', err);
-      }
-
-      // editorElement가 준비될 때까지 대기
-      if (!editorElement) {
-        console.error('❌ editorElement가 null입니다');
-        return;
-      }
-
-      console.log('✅ editorElement 준비됨:', editorElement);
-
       // Quill 동적 import
       console.log('Quill import 시작...');
       const QuillModule = await import('quill');
       Quill = QuillModule.default;
-      console.log('✅ Quill imported:', Quill);
+      console.log('✅ Quill imported');
 
       // Quill 스타일 import
       await import('quill/dist/quill.snow.css');
@@ -285,7 +270,7 @@
         modules: modules,
         placeholder: '내용을 입력하세요...'
       });
-      console.log('✅ Quill 인스턴스 생성됨:', quillInstance);
+      console.log('✅ Quill 인스턴스 생성됨');
 
       // 초기 데이터 설정
       if (editorData) {
@@ -302,6 +287,23 @@
     } catch (error) {
       console.error('❌ Quill 초기화 실패:', error);
     }
+
+    // FFmpeg 로드 (비동기, 에디터 초기화와 분리)
+    (async () => {
+      try {
+        console.log('FFmpeg 로드 시작 (백그라운드)...');
+        const FFmpegModule = await import('@ffmpeg/ffmpeg');
+        const UtilModule = await import('@ffmpeg/util');
+        FFmpeg = FFmpegModule.FFmpeg;
+        fetchFile = UtilModule.fetchFile;
+        
+        ffmpeg = new FFmpeg();
+        await ffmpeg.load();
+        console.log('✅ FFmpeg loaded successfully');
+      } catch (err) {
+        console.warn('⚠️ FFmpeg 로드 실패 (비디오 압축 비활성화):', err);
+      }
+    })();
   });
 
   /**
