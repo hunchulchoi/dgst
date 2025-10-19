@@ -10,9 +10,11 @@
   let { uploadPlus, uploadMinus, editorData = $bindable('') } = $props();
 
   // 로컬 상태
+  /** @type {HTMLDivElement | null} */
   let editorElement = null;
   let quillInstance = null;
   let loadingImage = false;
+  /** @type {HTMLDivElement | undefined} */
   let editorDiv;
   let Quill;
   let ImageUploader;
