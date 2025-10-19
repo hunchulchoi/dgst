@@ -13,7 +13,7 @@ function safeString(_name, _path) {
   const mimeType = mime.getType(_name);
   // 이미지와 비디오 모두 허용
   const isValid = mimeType && (mimeType.startsWith('image') || mimeType.startsWith('video'));
-  
+
   if (!isValid) {
     console.log('Invalid file type:', mimeType, 'for file:', _name);
     return false;
@@ -23,7 +23,7 @@ function safeString(_name, _path) {
 
   const normalizedPath = path.normalize(path.join(UPLOAD_PATH, _path, _name));
   const isPathSafe = normalizedPath.startsWith(UPLOAD_PATH);
-  
+
   console.log('Path safety check:', { normalizedPath, UPLOAD_PATH, isPathSafe });
 
   return isPathSafe;
@@ -69,31 +69,42 @@ export async function write(file, email, preservePath = 'jjal') {
     fs.writeFileSync(fullPath, fileBuffer);
     console.log('File written successfully');
 
-    // 움짤 압축
-    if (file.type === 'image/gif') {
-      const gwebp = await webp.gwebp(`${UPLOAD_PATH}${dir}/${fileName}`, `${UPLOAD_PATH}${dir}/${fileName}.webp`, '-lossy');
-
-      fs.unlink(`${UPLOAD_PATH}${dir}/${fileName}`, (err) => console.error(err))
-
-      fileName = `${fileName}.webp`;
-      //console.log('gwebp', gwebp)
-
-      //  아이폰은 webp 변환해도 2메가 넘어가는 경우가 있음
-      // 서버에서 다시한번 압축
-    } else if (file.type !== 'image/webp' && file.size > 1024 * 1024) {
-
-      const cwebp = await webp.cwebp(`${UPLOAD_PATH}${dir}/${fileName}`, `${UPLOAD_PATH}${dir}/${fileName}.webp`);
-
-      fs.unlink(`${UPLOAD_PATH}${dir}/${fileName}`, (err) => console.error(err))
-
-      fileName = `${fileName}.webp`;
-      //console.log('cwebp', cwebp)
+    // 이미지만 webp 압축 (비디오는 제외)
+    if (file.type.startsWith('image')) {
+      // GIF 압축
+      if (file.type === 'image/gif') {
+        try {
+          const webpPath = `${UPLOAD_PATH}${dir}/${fileName}.webp`;
+          await webp.gwebp(fullPath, webpPath, '-lossy');
+          fs.unlink(fullPath, (err) => err && console.error('Error deleting original GIF:', err));
+          fileName = `${fileName}.webp`;
+          console.log('GIF converted to WebP:', fileName);
+        } catch (err) {
+          console.error('GIF to WebP conversion failed:', err);
+        }
+      }
+      // 큰 이미지 압축 (1MB 이상, webp 제외)
+      else if (file.type !== 'image/webp' && file.size > 1024 * 1024) {
+        try {
+          const webpPath = `${UPLOAD_PATH}${dir}/${fileName}.webp`;
+          await webp.cwebp(fullPath, webpPath);
+          fs.unlink(fullPath, (err) => err && console.error('Error deleting original:', err));
+          fileName = `${fileName}.webp`;
+          console.log('Image converted to WebP:', fileName);
+        } catch (err) {
+          console.error('Image to WebP conversion failed:', err);
+        }
+      }
+    } else {
+      console.log('Video file - skipping WebP conversion');
     }
 
-    if (fs.existsSync(`${UPLOAD_PATH}${dir}/${fileName}`)) {
+    const finalPath = `${UPLOAD_PATH}${dir}/${fileName}`;
+    if (fs.existsSync(finalPath)) {
       console.log('File uploaded successfully:', `/images${dir}/${fileName}`);
       return `/images${dir}/${fileName}`;
     } else {
+      console.error('File not found after save:', finalPath);
       throw error(500, '파일 저장 중에 오류가 발생하였습니다. 쿠훕ㅠㅠ');
     }
   } catch (err) {
