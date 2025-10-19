@@ -105,9 +105,9 @@
   }
 
   function list() {
-    const pageNo = pageNo || 1;
+    const currentPageNo = pageNo || 1;
 
-    goto(`/board/${boardId}/${pageNo}`, {invalidateAll: true, replaceState: true});
+    goto(`/board/${boardId}/${currentPageNo}`, {invalidateAll: true, replaceState: true});
   }
 
   async function preview(event, el) {
