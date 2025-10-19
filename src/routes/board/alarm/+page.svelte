@@ -4,7 +4,8 @@
   import { ko } from 'date-fns/locale';
   import { alarmCount } from '$lib/util/store.js';
 
-  export let data;
+  // Svelte 5 Runes
+  let { data } = $props();
 
   alarmCount.update((alarmCount) => Array.from(data.alarms)?.filter((a) => !a.readAt).length);
 </script>

@@ -41,7 +41,8 @@
       , {invalidateAll: true});
   }
 
-  export let data;
+  // Svelte 5 Runes
+  let { data } = $props();
 
   alarmCount.update(alarmCount =>$page.data.alarmCount);
 </script>

@@ -144,13 +144,13 @@
     }
   };
 
-  $: isInvalid = !(
+  let isInvalid = $derived(!(
     nickname &&
     !invalids.nickname &&
     introduction &&
     !invalids.introduction &&
     fight
-  );
+  ));
 </script>
 
 <svelte:head>

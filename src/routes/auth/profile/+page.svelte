@@ -55,7 +55,8 @@
     document.querySelector('#introduction').focus();
   }
 
-  export let data;
+  // Svelte 5 Runes
+  let { data } = $props();
 
   /**
    * nickname {string} 닉네임
@@ -143,12 +144,12 @@
     }
   };
 
-  $: isInvalid = !(
+  let isInvalid = $derived(!(
     nickname &&
     !invalids.nickname &&
     introduction &&
     !invalids.introduction
-  );
+  ));
 
 
 </script>

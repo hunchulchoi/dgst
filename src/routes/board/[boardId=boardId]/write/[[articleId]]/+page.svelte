@@ -43,15 +43,16 @@
     goto(`/board/${$page.params.boardId}`);
   }
 
-  export let data;
+  // Svelte 5 Runes
+  let { data } = $props();
 
   let { title, content } = data;
 
-  $: uploading = 0;
+  let uploading = $state(0);
 
-  $: {
+  $effect(() => {
     console.log('uploading', uploading);
-  }
+  });
 
   async function compressVideo(file) {
     try {

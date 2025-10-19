@@ -5,7 +5,8 @@
   import Memo from '$lib/components/memo.svelte';
   import { blur } from 'svelte/transition';
 
-  export let data;
+  // Svelte 5 Runes
+  let { data } = $props();
 
 </script>
 
