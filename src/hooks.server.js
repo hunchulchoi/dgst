@@ -9,13 +9,14 @@ import {
   DB_NAME,
   VIP_EMAIL,
   VIP_FAKE_EMAIL
-} from '$env/static/private'
+} from '$env/static/private';
 import { MongoDBAdapter } from '@auth/mongodb-adapter';
 import clientPromise from '$lib/database/clientPromise.js';
 import crypto from 'crypto';
-import { error } from "@sveltejs/kit";
+import { error } from '@sveltejs/kit';
 
-export const handle = SvelteKitAuth({
+// SvelteKit 2 + @auth/sveltekit v1.x 호환
+const { handle: authHandle } = SvelteKitAuth({
   providers: [
     GoogleProvider({
       clientId: GOOGLE_CLIENT_ID,
@@ -41,7 +42,7 @@ export const handle = SvelteKitAuth({
       type: 'credentials',
       credentials: {
         email: { label: 'Email', type: 'email', placeholder: '이메일 입력하세요' },
-        password: { label: 'Password', type: 'password', }
+        password: { label: 'Password', type: 'password' }
       },
       async authorize(credentials) {
         const { email, password } = credentials;
@@ -49,31 +50,32 @@ export const handle = SvelteKitAuth({
         const encPwd = crypto.createHash('sha512').update(password).digest('base64url');
 
         if (email === VIP_FAKE_EMAIL) {
-          const user = await clientPromise.then(db =>
-            db.db(DB_NAME)
+          const user = await clientPromise.then((db) =>
+            db
+              .db(DB_NAME)
               .collection('users')
-              .findOne({ email: VIP_EMAIL, ccd: encPwd }, {
-                id: 1,
-                email: 1,
-                nickname: 1,
-                introduction: 1,
-                photo: 1,
-                state: 1
-              }))
+              .findOne(
+                { email: VIP_EMAIL, ccd: encPwd },
+                {
+                  id: 1,
+                  email: 1,
+                  nickname: 1,
+                  introduction: 1,
+                  photo: 1,
+                  state: 1
+                }
+              )
+          );
 
           if (!user) console.error('ㅊㅊㄷ 로그인 실패', email, encPwd);
 
           return user;
-
         } else {
           console.error('ㅊㅊㄷ 로그인 실패', email, encPwd);
           throw error(405);
         }
-
       }
     })
-
-
   ],
   adapter: MongoDBAdapter(clientPromise, { databaseName: DB_NAME }),
   pages: {
@@ -81,10 +83,6 @@ export const handle = SvelteKitAuth({
   },
   callbacks: {
     jwt(params) {
-      /*console.debug('=======auth callback jwt====');
-      console.debug('params', params);
-      console.debug('=======//auth callback jwt====');
-*/
       if (params.user) {
         params.token.nickname = params.user.nickname;
         params.token.introduction = params.user.introduction;
@@ -111,10 +109,6 @@ export const handle = SvelteKitAuth({
       return false;
     },
     async session(params) {
-      /*console.debug('=======auth callback session====');
-      console.debug('params', params);
-      console.debug('=======//auth callback session====');*/
-
       if (params.token.nickname) {
         params.session.user.nickname = params.token.nickname;
         params.session.user.introduce = params.token.introduce;
@@ -129,57 +123,41 @@ export const handle = SvelteKitAuth({
       console.debug('=======//auth callback updateUser====');
     },
     async createUser(params) {
-      /*console.debug('=======auth callback createUser====');
-      console.debug('params', params);
-      console.debug('=======//auth callback createUser====');*/
+      // createUser callback
     },
     async linkAccount(params) {
-      /*console.debug('=======auth callback linkAccount====');
-      console.debug('params', params);
-      console.debug('=======//auth callback linkAccount====');*/
+      // linkAccount callback
     },
     async redirect(params) {
-      /*console.debug('=======auth callback redirect====');
-      console.debug('params', params);
-      console.debug('=======//auth callback redirect====');*/
-
       return params.url;
-      //return '/auth/register';
     }
   },
   events: {
     async signIn(message) {
-      /*console.debug('=======auth event signIn====');
-      console.debug('message', message);
-      console.debug('=======//auth event signIn====');*/
+      // signIn event
     },
     async signOut(message) {
-      // console.log('auth event signOut====', message);
+      // signOut event
     },
     async createUser(message) {
-      /*console.debug('=======auth event createUser====');
-      console.debug('message', message);
-      console.debug('=======//auth event createUser====');*/
+      // createUser event
     },
     async updateUser(message) {
-      /* console.debug('=======auth event updateUser====');
-       console.debug('message', message);
-       console.debug('=======//auth event updateUser====');*/
+      // updateUser event
     },
     async linkAccount(message) {
-      /*console.debug('=======auth event linkAccount====');
-      console.debug('message', message);
-      console.debug('=======//auth event linkAccount====');*/
+      // linkAccount event
     },
     async session(message) {
-      /*console.debug('=======auth event session====');
-      console.debug('message', message);
-      console.debug('=======//auth event session====');*/
+      // session event
     }
   },
   session: {
     strategy: 'jwt'
   },
   secret: NEXTAUTH_SECRET,
-  debug: true,
+  debug: true
 });
+
+// SvelteKit 2에서는 handle을 직접 export
+export const handle = authHandle;
