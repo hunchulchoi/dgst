@@ -5,6 +5,7 @@
 
       .image img {
           max-width: 100% !important;
+          max-height: 50vh !important;
       }
 
       .card-text img {
@@ -95,8 +96,8 @@
       })
       .then((d) => {
         console.log('📝 댓글 데이터:', d.length, '개');
-        // Svelte 5 반응성: 객체를 새로 생성하여 변경 감지
-        data.article = { ...data.article, comments: d };
+        // $state 직접 업데이트
+        commentData = d;
       })
       .catch((err) => {
         console.error('❌ 댓글 새로고침 실패:', err);
@@ -336,7 +337,8 @@
 
   let visibleReply;
 
-  let commentData = $derived(data.article.comments);
+  // 댓글 데이터를 $state로 관리
+  let commentData = $state(data.article.comments);
 
   $effect(() => {
     console.log('🔄 게시글 상세 페이지 - articleId:', articleId);
@@ -531,7 +533,7 @@
                 {#if comment.state === 'write' && comment.image}
                   <Row class="pb-3 mx-0">
                     <Col class="p-0 ps-1 m-0">
-                      <Image src={comment.image} alt="리플 짤" style="max-width: 100%;"/>
+                      <Image src={comment.image} alt="리플 짤" style="max-width: 100%;max-height: 500px;"/>
                     </Col>
                   </Row>
                 {/if}
@@ -588,8 +590,10 @@
                       disabled={comment.liked}
                       class="px-3 py-0"
                     >
+                    {#if comment.like > 0}
                       <Icon name={comment.liked?"hand-thumbs-up-fill":"hand-thumbs-up"}/>
                       {comment.like}
+                      {/if}
                     </Button>
                     <Button
                       onclick={() => visibleReply = comment._id}
