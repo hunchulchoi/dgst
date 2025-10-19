@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import mime from 'mime';
-import { getDate, getMonth, getYear } from 'date-fns';
+import { format } from 'date-fns';
 
 import { UPLOAD_PATH } from '$env/static/private';
 import { error } from '@sveltejs/kit';
@@ -20,15 +20,21 @@ function safeString(_name, _path) {
 }
 
 export async function write(file, email, preservePath = 'jjal') {
-  //console.debug('preservePath', preservePath, 'file', file);
+  try {
+    console.log('fileUpload.write called:', { fileName: file.name, preservePath, email });
 
-  const now = new Date();
+    const now = new Date();
 
-  if (!safeString(file.name, preservePath)) {
-    throw error(400, { message: '잘못된 요청입니다.' });
-  }
+    if (!safeString(file.name, preservePath)) {
+      throw error(400, { message: '잘못된 요청입니다.' });
+    }
 
-  const dir = `/${preservePath}/${getYear(now)}/${getMonth(now)}/${getDate(now)}`;
+    // date-fns v4: format 사용
+    const year = format(now, 'yyyy');
+    const month = format(now, 'M');
+    const date = format(now, 'd');
+
+    const dir = `/${preservePath}/${year}/${month}/${date}`;
 
   if (!fs.existsSync(`${UPLOAD_PATH}${dir}`)) {
     fs.mkdirSync(`${UPLOAD_PATH}${dir}`, { recursive: true });
@@ -65,8 +71,16 @@ export async function write(file, email, preservePath = 'jjal') {
       //console.log('cwebp', cwebp)
     }
 
-  if (fs.existsSync(`${UPLOAD_PATH}${dir}/${fileName}`)) return `/images${dir}/${fileName}`;
-  else throw error(500, '파일 저장 중에 오류가 발생하였습니다. 쿠훕ㅠㅠ');
+  if (fs.existsSync(`${UPLOAD_PATH}${dir}/${fileName}`)) {
+    console.log('File uploaded successfully:', `/images${dir}/${fileName}`);
+    return `/images${dir}/${fileName}`;
+  } else {
+    throw error(500, '파일 저장 중에 오류가 발생하였습니다. 쿠훕ㅠㅠ');
+  }
+  } catch (err) {
+    console.error('File upload error:', err);
+    throw err;
+  }
 }
 
 export async function read(file, preservePath) {
