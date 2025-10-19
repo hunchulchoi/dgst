@@ -114,15 +114,18 @@
 
     <Nav tabs data-svelteit-preload-data="false">
       <NavItem>
-        <NavLink onclick={free} active={pathname?.startsWith('/board/free')}>자유게시판
+        <NavLink href="/board/free" 
+                 data-sveltekit-invalidate="all" 
+                 data-sveltekit-preload-data="tap"
+                 active={pathname?.startsWith('/board/free')}>자유게시판
         </NavLink>
       </NavItem>
       {#if session?.user?.nickname}
         <NavItem>
           <NavLink href="/board/alarm" data-sveltekit-invalidate="all"
-                   data-sveltekit-replace
-                   data-sveltekit-preload-data="tap"
-                   active={pathname?.startsWith('/board/alarm')}>
+                  data-sveltekit-replace
+                  data-sveltekit-preload-data="tap"
+                  active={pathname?.startsWith('/board/alarm')}>
             <Icon name="megaphone" class="text-success me-2"/>알림
             {#if $alarmCount}
               <Badge pill color="danger">{$alarmCount}</Badge>
