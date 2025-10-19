@@ -110,12 +110,13 @@
       
       await ffmpeg.exec([
         '-i', 'input.mp4',
-  '-c:v', 'libx264',      // H.264 코덱
-  '-crf', '28',           // 압축률 (0-51, 28은 중간)
-  '-preset', 'medium',    // 속도/품질 밸런스
-  '-c:a', 'aac',          // 오디오 AAC
-  '-b:a', '128k',         // 오디오 비트레이트
-  'output.mp4'
+        '-vf', "scale='min(640,iw)':'min(640,ih)':force_original_aspect_ratio=decrease",  // 긴 쪽을 640px로 제한
+        '-c:v', 'libx264',      // H.264 코덱
+        '-crf', '28',           // 압축률 (0-51, 28은 중간)
+        '-preset', 'medium',    // 속도/품질 밸런스
+        '-c:a', 'aac',          // 오디오 AAC
+        '-b:a', '128k',         // 오디오 비트레이트
+        'output.mp4'
       ]);
       
       console.log('FFmpeg 압축 완료');
