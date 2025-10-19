@@ -13,8 +13,8 @@ export const actions = {
     //console.debug('user', session);
 
     // 권한 검사
-    if (!session.user || !session.user.nickname) {
-      throw error(401, { message: '권한이 없습니다.' });
+    if (!session?.user?.nickname) {
+      throw error(401, { message: '권한이 없습니다. 로그인 해 주세요' });
     }
 
     const data = await request.formData();
@@ -52,8 +52,8 @@ export const actions = {
         const inserted = await article.save();
         //console.log('inserted', inserted);
       }
-    } catch (error) {
-      console.error('게시글 저장 실패', error);
+    } catch (err) {
+      console.error('게시글 저장 실패', err);
       throw error(500, { message: '저장 중 오류가 발생하였습니다.ㅜㅜ' });
     }
 
@@ -64,7 +64,7 @@ export const actions = {
 export const load = async ({ params, locals }) => {
   const session = await locals.getSession();
 
-  if (!session?.user.nickname) {
+  if (!session?.user?.nickname) {
     throw error(401, { message: '권한이 없습니다. 로그인 해 주세요' });
   }
 

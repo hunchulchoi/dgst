@@ -8,7 +8,7 @@ export const load = async ({ params, locals }) => {
   const session = await locals.getSession();
   
   if (!session?.user?.nickname) {
-    throw error(405, {message: '로그인 해 주세요'});
+    throw error(401, {message: '로그인 해 주세요'});
   }
   
   const filter = { email: session.user.email, state:{$ne: 'banned'} };
