@@ -703,7 +703,7 @@
               on:paste={(evt)=>preview(evt, previewEl)}
               class="form-control border border-gray rounded-start-3"
               rows="3"
-            />
+            ></textarea>
             <Button color="primary" outline onclick={()=>writeComment()} class="z-2">
               <Icon name="pencil-fill"/>
               등록

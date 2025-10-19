@@ -46,9 +46,11 @@
         {article.nickname}
       </Col>
       <Col lg="1" md="1" xs="1" class="text-muted text-end" style="font-size: small">{article.read}</Col>
-      <Col lg="1" md="1" xs="2" class="text-muted text-end" style="font-size: small"
-      ><Icon name="hand-thumbs-up" class="text-success pe-" />{article.like}</Col
-      >
+      <Col lg="1" md="1" xs="2" class="text-muted text-end" style="font-size: small">
+        {#if article.like > 0}
+          <Icon name="hand-thumbs-up" class="text-success pe-1" />{article.like}
+        {/if}
+      </Col>
       <Col lg="1" md="2" xs="4" class="text-muted text-end" style="font-size: small"
       >{formatDistanceToNowStrict(parseISO(article.createdAt), {
         locale: ko,
