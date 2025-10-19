@@ -33,10 +33,6 @@
     signIn('google', { callbackUrl: '/' });
   };
 
-  function free(){
-    goto(`/board/free`, {invalidateAll: true, replaceState: true});
-  }
-
   let colorModeIcon = $derived(
     $theme === 'light' ? 'sun-fill' : $theme === 'dark' ? 'moon-stars-fill' : 'circle-half'
   );
