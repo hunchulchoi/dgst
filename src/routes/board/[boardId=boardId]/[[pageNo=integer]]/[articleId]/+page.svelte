@@ -335,7 +335,7 @@
 
   alarmCount.update(alarmCount => data.alarmCount);
 
-  let visibleReply;
+  let visibleReply = $state('');
 
   // 댓글 데이터를 $state로 관리
   let commentData = $state(data.article.comments);
@@ -591,7 +591,7 @@
                       class="px-3 py-0"
                     >
                       <Icon name={comment.liked?"hand-thumbs-up-fill":"hand-thumbs-up"}/>
-                      {comment.like}
+                      {comment.like || ''}
                     </Button>
                     <Button
                       onclick={() => visibleReply = comment._id}
