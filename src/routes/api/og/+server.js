@@ -7,7 +7,7 @@ import { json, error } from '@sveltejs/kit';
 export async function POST({ request }) {
   try {
     const { url } = await request.json();
-    
+
     if (!url) {
       throw error(400, 'URL이 필요합니다.');
     }

@@ -272,9 +272,11 @@
       });
 
       if (!response.ok) {
-        console.error('OG 데이터 가져오기 실패');
+        console.error('OG 데이터 가져오기 실패 - 링크로 삽입');
         const range = quillInstance.getSelection(true);
-        quillInstance.insertText(range.index, url);
+        quillInstance.insertText(range.index, url, 'link', url);
+        quillInstance.insertText(range.index + url.length, '\n');
+        quillInstance.setSelection(range.index + url.length + 1);
         return;
       }
 
@@ -288,9 +290,11 @@
       
       console.log('✅ OG 카드 삽입 완료');
     } catch (err) {
-      console.error('OG 카드 생성 실패:', err);
+      console.error('OG 카드 생성 실패 - 링크로 삽입:', err);
       const range = quillInstance.getSelection(true);
-      quillInstance.insertText(range.index, url);
+      quillInstance.insertText(range.index, url, 'link', url);
+      quillInstance.insertText(range.index + url.length, '\n');
+      quillInstance.setSelection(range.index + url.length + 1);
     } finally {
       loadingImage = false;
     }
