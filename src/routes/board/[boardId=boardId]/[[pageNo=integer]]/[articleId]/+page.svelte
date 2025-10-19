@@ -452,7 +452,7 @@
         {/if}
         <Button color="primary" on:click|once={like} class="px-3" disabled={data.article.liked}>
           <Icon name={data.article.liked?"hand-thumbs-up-fill":"hand-thumbs-up"}/>
-          {data.article.like}
+          {data.article.like || ''}
         </Button>
         <Button color="secondary" onclick={list} class="ps-1 pe-2">
           <Icon name="list"/>
