@@ -259,8 +259,15 @@
 
     try {
       // CKEditor 동적 import (CKEditor 44.3.0)
-      const CKEditorModule = await import('@ckeditor/ckeditor5-build-decoupled-document');
-      DecoupledEditor = CKEditorModule.default;
+      DecoupledEditor = (
+        await import('@ckeditor/ckeditor5-build-decoupled-document/build/ckeditor')
+      ).default;
+      
+      console.log('CKEditor loaded:', DecoupledEditor);
+      
+      if (!DecoupledEditor) {
+        throw new Error('CKEditor DecoupledEditor is undefined');
+      }
 
       // 에디터 생성
       const editor = await DecoupledEditor.create(editorElement, editorConfig);

@@ -41,6 +41,6 @@ export const articleSchema = new Schema(
     }
 );
 
-articleSchema.index({ email: -1, createdAt: -1 })
+articleSchema.index({ email: -1, createdAt: -1 });
 
-export const Article = models.ariticle || model('article', articleSchema);
+export const Article = models.article || model('article', articleSchema);
