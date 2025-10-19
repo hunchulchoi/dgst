@@ -13,19 +13,19 @@ connectDB();
 export async function GET({ params, locals }) {
   const { nickname } = params;
 
-  const session = await locals.getSession();
+  const session = await locals.auth();
 
   const email = session?.user?.email;
-  
-  const filter = {nickname};
-  
-  if(email) filter.email = {$ne: email};
 
-  const found = await User.find(filter).count();
+  const filter = { nickname };
+
+  if (email) filter.email = { $ne: email };
+
+  const found = await User.countDocuments(filter);
 
   console.debug('found', found);
 
   if (!found) return new Response(null, { status: 204 });
 
-  return new Response(found, { status: 200 });
+  return new Response(found.toString(), { status: 200 });
 }

@@ -6,7 +6,7 @@ connectDB();
 
 export const load = async ({ locals }) => {
 
-  const session = await locals.getSession();
+  const session = await locals.auth();
 
   // 로그인 안한 경우
   if (!session?.user?.nickname) {
