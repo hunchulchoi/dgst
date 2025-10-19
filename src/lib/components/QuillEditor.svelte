@@ -284,25 +284,31 @@
 
       const range = quillInstance.getSelection(true);
       
-      // OG 카드 HTML 생성
-      const cardHtml = `
-        <div class="og-card" style="border: 1px solid #ddd; border-radius: 8px; overflow: hidden; margin: 1em 0; max-width: 500px;">
-          ${ogData.image ? `<img src="${ogData.image}" style="width: 100%; height: auto; display: block;" alt="${ogData.title || ''}">` : ''}
-          <div style="padding: 12px;">
-            <div style="font-weight: bold; font-size: 16px; margin-bottom: 4px;">
-              <a href="${ogData.url}" target="_blank" rel="noopener noreferrer" style="color: #1a0dab; text-decoration: none;">
-                ${ogData.title || url}
-              </a>
-            </div>
-            ${ogData.description ? `<div style="color: #545454; font-size: 14px; margin-bottom: 4px;">${ogData.description.substring(0, 150)}${ogData.description.length > 150 ? '...' : ''}</div>` : ''}
-            <div style="color: #006621; font-size: 12px;">${ogData.siteName || new URL(url).hostname}</div>
-          </div>
-        </div>
-        <p><br></p>
-      `;
-
-      quillInstance.clipboard.dangerouslyPasteHTML(range.index, cardHtml);
-      quillInstance.setSelection(range.index + 2);
+      // 간단한 링크 프리뷰 삽입
+      quillInstance.insertText(range.index, '\n', 'user');
+      
+      // 이미지가 있으면 삽입
+      if (ogData.image) {
+        quillInstance.insertEmbed(range.index + 1, 'image', ogData.image);
+        quillInstance.insertText(range.index + 2, '\n');
+      }
+      
+      // 제목과 링크
+      const titleText = `📰 ${ogData.title || url}`;
+      const linkIndex = ogData.image ? range.index + 3 : range.index + 1;
+      quillInstance.insertText(linkIndex, titleText, { bold: true });
+      quillInstance.insertText(linkIndex + titleText.length, '\n');
+      quillInstance.formatText(linkIndex, titleText.length, 'link', ogData.url);
+      
+      // 설명
+      if (ogData.description) {
+        const desc = ogData.description.substring(0, 150) + (ogData.description.length > 150 ? '...' : '');
+        quillInstance.insertText(linkIndex + titleText.length + 1, desc, { color: '#666' });
+        quillInstance.insertText(linkIndex + titleText.length + desc.length + 1, '\n');
+      }
+      
+      quillInstance.insertText(quillInstance.getLength(), '\n');
+      quillInstance.setSelection(quillInstance.getLength());
       
       console.log('✅ OG 카드 삽입 완료');
       console.log('📄 삽입된 HTML:', cardHtml.substring(0, 200) + '...');
