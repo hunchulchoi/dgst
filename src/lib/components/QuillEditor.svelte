@@ -284,34 +284,24 @@
 
       const range = quillInstance.getSelection(true);
       
-      // 간단한 링크 프리뷰 삽입
-      quillInstance.insertText(range.index, '\n', 'user');
+      // 간단한 링크 프리뷰 삽입 (카드 형태)
+      const cardHtml = `
+        <p><br></p>
+        <div style="border: 1px solid #e0e0e0; border-radius: 8px; padding: 12px; margin: 8px 0; max-width: 400px; background: #f9f9f9;">
+          ${ogData.image ? `<img src="${ogData.image}" style="width: 100%; height: 120px; object-fit: cover; border-radius: 4px; margin-bottom: 8px;" alt="">` : ''}
+          <div style="font-weight: bold; font-size: 14px; margin-bottom: 4px;">
+            <a href="${ogData.url}" target="_blank" rel="noopener" style="color: #1a73e8; text-decoration: none;">${ogData.title || url}</a>
+          </div>
+          ${ogData.description ? `<div style="color: #5f6368; font-size: 13px; line-height: 1.4;">${ogData.description.substring(0, 100)}${ogData.description.length > 100 ? '...' : ''}</div>` : ''}
+          <div style="color: #70757a; font-size: 12px; margin-top: 4px;">${ogData.siteName || new URL(url).hostname}</div>
+        </div>
+        <p><br></p>
+      `;
+
+      quillInstance.clipboard.dangerouslyPasteHTML(range.index, cardHtml);
+      quillInstance.setSelection(range.index + 3);
       
-      // 이미지가 있으면 삽입
-      if (ogData.image) {
-        quillInstance.insertEmbed(range.index + 1, 'image', ogData.image);
-        quillInstance.insertText(range.index + 2, '\n');
-      }
-      
-      // 제목과 링크
-      const titleText = `📰 ${ogData.title || url}`;
-      const linkIndex = ogData.image ? range.index + 3 : range.index + 1;
-      quillInstance.insertText(linkIndex, titleText, { bold: true });
-      quillInstance.insertText(linkIndex + titleText.length, '\n');
-      quillInstance.formatText(linkIndex, titleText.length, 'link', ogData.url);
-      
-      // 설명
-      if (ogData.description) {
-        const desc = ogData.description.substring(0, 150) + (ogData.description.length > 150 ? '...' : '');
-        quillInstance.insertText(linkIndex + titleText.length + 1, desc, { color: '#666' });
-        quillInstance.insertText(linkIndex + titleText.length + desc.length + 1, '\n');
-      }
-      
-      quillInstance.insertText(quillInstance.getLength(), '\n');
-      quillInstance.setSelection(quillInstance.getLength());
-      
-      console.log('✅ OG 카드 삽입 완료');
-      console.log('📄 삽입된 HTML:', cardHtml.substring(0, 200) + '...');
+      console.log('✅ OG 링크 프리뷰 삽입 완료');
       console.log('📝 에디터 전체 내용:', quillInstance.root.innerHTML.substring(0, 300) + '...');
     } catch (err) {
       console.error('OG 카드 생성 실패:', err);
