@@ -10,7 +10,7 @@
     Spinner,
     Tooltip
   } from '@sveltestrap/sveltestrap';
-  import CKEditor5 from '$lib/components/CKEditor5.svelte';
+  import QuillEditor from '$lib/components/QuillEditor.svelte';
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
   import { enhance } from '$app/forms';
@@ -172,7 +172,7 @@
       <FormGroup floating label="제목">
         <Input id="title" name="title" bind:value={title} required autofocus />
       </FormGroup>
-      <CKEditor5 bind:editorData={content} {uploadPlus} {uploadMinus} />
+      <QuillEditor bind:editorData={content} {uploadPlus} {uploadMinus} />
       <Row class="text-end pe-2 mt-4">
         <Col md="10" xs="8" class="text-end">
           <Button color="warning" on:click={list}>
