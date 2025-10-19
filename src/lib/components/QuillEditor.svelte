@@ -244,6 +244,8 @@
     if (typeof window === 'undefined') return;
 
     try {
+      console.log('QuillEditor onMount 시작');
+      
       // FFmpeg 로드 (비디오 압축용)
       try {
         const FFmpegModule = await import('@ffmpeg/ffmpeg');
@@ -253,28 +255,42 @@
         
         ffmpeg = new FFmpeg();
         await ffmpeg.load();
-        console.log('FFmpeg loaded successfully');
+        console.log('✅ FFmpeg loaded successfully');
       } catch (err) {
-        console.error('FFmpeg 로드 실패 (비디오 압축 비활성화):', err);
+        console.warn('⚠️ FFmpeg 로드 실패 (비디오 압축 비활성화):', err);
       }
 
+      // editorElement가 준비될 때까지 대기
+      if (!editorElement) {
+        console.error('❌ editorElement가 null입니다');
+        return;
+      }
+
+      console.log('✅ editorElement 준비됨:', editorElement);
+
       // Quill 동적 import
+      console.log('Quill import 시작...');
       const QuillModule = await import('quill');
       Quill = QuillModule.default;
+      console.log('✅ Quill imported:', Quill);
 
       // Quill 스타일 import
       await import('quill/dist/quill.snow.css');
+      console.log('✅ Quill CSS loaded');
 
       // Quill 인스턴스 생성
+      console.log('Quill 인스턴스 생성 중...');
       quillInstance = new Quill(editorElement, {
         theme: 'snow',
         modules: modules,
         placeholder: '내용을 입력하세요...'
       });
+      console.log('✅ Quill 인스턴스 생성됨:', quillInstance);
 
       // 초기 데이터 설정
       if (editorData) {
         quillInstance.root.innerHTML = editorData;
+        console.log('✅ 초기 데이터 설정됨');
       }
 
       // 데이터 변경 감지 및 양방향 바인딩
@@ -282,9 +298,9 @@
         editorData = quillInstance.root.innerHTML;
       });
 
-      console.log('Quill Editor initialized successfully');
+      console.log('🎉 Quill Editor initialized successfully');
     } catch (error) {
-      console.error('Quill 초기화 실패:', error);
+      console.error('❌ Quill 초기화 실패:', error);
     }
   });
 
