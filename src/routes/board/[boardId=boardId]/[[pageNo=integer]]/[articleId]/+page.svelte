@@ -351,7 +351,7 @@
 
   <!-- 댓글 수정 modal -->
  <!-- <div class="d-flex justify-content-center align-item-center w-100 p-0 m-0">
-    <Button color="danger" on:click={commentModalToggle}>Open Modal</Button>
+    <Button color="danger" onclick={commentModalToggle}>Open Modal</Button>
     <Modal body header="Modal title" isOpen={commentModalOpen} fullscreen={true}
        class="d-flex justify-content-center align-item-start w-100 p-0 m-0 border-danger" style="height: 500px">
       Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod
@@ -424,11 +424,11 @@
       <!--버튼-->
       <Col class="text-end pe-md-3 p-xs-0 m-xs-0">
         {#if $page.data.session?.user?.email && data.article.email === $page.data.session.user.email}
-          <Button color="danger" on:click={() => remove(data.article._id)} class="ps-1 pe-2">
+          <Button color="danger" onclick={() => remove(data.article._id)} class="ps-1 pe-2">
             <Icon name="trash"/>
             삭제
           </Button>
-          <Button color="success" on:click={() => edit(data.article._id)} class="ps-1 pe-2">
+          <Button color="success" onclick={() => edit(data.article._id)} class="ps-1 pe-2">
             <Icon name="pencil"/>
             수정
           </Button>
@@ -437,7 +437,7 @@
           <Icon name={data.article.liked?"hand-thumbs-up-fill":"hand-thumbs-up"}/>
           {data.article.like}
         </Button>
-        <Button color="secondary" on:click={list} class="ps-1 pe-2">
+        <Button color="secondary" onclick={list} class="ps-1 pe-2">
           <Icon name="list"/>
           목록
         </Button>
@@ -450,7 +450,7 @@
           <Badge color="primary">{commentData.length}</Badge>
         </Col>
         <Col class="text-end">
-          <Button class="fw-bolder py-0" on:click={comments} outline>
+          <Button class="fw-bolder py-0" onclick={comments} outline>
             <Icon name="arrow-repeat"/>
           </Button>
         </Col>
@@ -552,7 +552,7 @@
                   <Col class="text-end pe-2 m-0">
                     {#if comment.email === $page.data.session?.user.email}
                       <Button
-                        on:click={() => deleteComment(comment._id)}
+                        onclick={() => deleteComment(comment._id)}
                         size="sm"
                         outline
                         color="danger px-2 py-0"
@@ -577,7 +577,7 @@
                       {comment.like}
                     </Button>
                     <Button
-                      on:click={() => visibleReply = comment._id}
+                      onclick={() => visibleReply = comment._id}
                       size="sm"
                       outline
                       color="info px-2 py-0"
@@ -632,7 +632,7 @@
                   class="form-control border border-gray rounded-start-3"
                   rows="3"
                 />
-                <Button color="primary" outline on:click={()=>writeComment(comment._id)}>
+                <Button color="primary" outline onclick={()=>writeComment(comment._id)}>
                   <Icon name="pencil-fill"/>
                   등록
                 </Button>
@@ -654,7 +654,7 @@
           <Badge color="primary">{commentData.length}</Badge>
         </Col>
         <Col class="text-end">
-          <Button class="fw-bolder py-0" on:click={comments} outline>
+          <Button class="fw-bolder py-0" onclick={comments} outline>
             <Icon name="arrow-repeat"/>
           </Button>
         </Col>
@@ -700,7 +700,7 @@
               class="form-control border border-gray rounded-start-3"
               rows="3"
             />
-            <Button color="primary" outline on:click={()=>writeComment()} class="z-2">
+            <Button color="primary" outline onclick={()=>writeComment()} class="z-2">
               <Icon name="pencil-fill"/>
               등록
             </Button>
@@ -715,20 +715,20 @@
       <!--버튼-->
       <Col class="text-end pe-1">
         {#if data.article.email === $page.data.session?.user.email}
-          <Button class="ps-1 pe-2" color="danger" on:click={() => remove(data.article._id)}>
+          <Button class="ps-1 pe-2" color="danger" onclick={() => remove(data.article._id)}>
             <Icon name="trash"/>
             삭제
           </Button>
-          <Button class="ps-1 pe-2" color="success" on:click={() => edit(data.article._id)}>
+          <Button class="ps-1 pe-2" color="success" onclick={() => edit(data.article._id)}>
             <Icon name="pencil"/>
             수정
           </Button>
         {/if}
-        <Button class="ps-1 pe-2" color="primary" on:click={write}>
+        <Button class="ps-1 pe-2" color="primary" onclick={write}>
           <Icon name="pencil-fill"/>
           글쓰기
         </Button>
-        <Button class="ps-1 pe-2 " color="secondary" on:click={list}>
+        <Button class="ps-1 pe-2 " color="secondary" onclick={list}>
           <Icon name="list"/>
           목록
         </Button>
