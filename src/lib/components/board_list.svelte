@@ -4,7 +4,7 @@
   import { Badge, Button, Col, Icon, Image, Pagination, PaginationItem, PaginationLink, Row } from '@sveltestrap/sveltestrap';
 
   import { formatDistanceToNowStrict, parseISO } from 'date-fns';
-  import ko from 'date-fns/locale/ko/index.js';
+  import { ko } from 'date-fns/locale';
 
   export let data;
   export let write;

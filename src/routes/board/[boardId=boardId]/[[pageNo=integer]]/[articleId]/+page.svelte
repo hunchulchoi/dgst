@@ -53,7 +53,7 @@
   import { scale } from 'svelte/transition';
 
   import { formatDistanceToNowStrict, formatISO9075, parseISO } from 'date-fns';
-  import ko from 'date-fns/locale/ko/index.js';
+  import { ko } from 'date-fns/locale';
 
   import { blobToWebP } from 'webp-converter-browser';
 
