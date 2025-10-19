@@ -7,7 +7,7 @@
   import Loader from 'svelte-loading-overlay/Loader.svelte';
 
   // Svelte 5 Runes - Props
-  let { uploadPlus, uploadMinus, editorData = $bindable('') } = $props();
+  let { uploadPlus, uploadMinus, editorData = $bindable() } = $props();
 
   // 로컬 상태
   /** @type {HTMLDivElement | null} */
@@ -439,6 +439,8 @@
       if (editorData) {
         quillInstance.root.innerHTML = editorData;
         console.log('✅ 초기 데이터 설정됨');
+      } else {
+        editorData = '';
       }
 
       // 데이터 변경 감지 및 양방향 바인딩
