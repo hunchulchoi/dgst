@@ -1,9 +1,40 @@
 <script>
-  import { Button, Col, FormGroup, Icon, Input, Row, Spinner, Tooltip } from '@sveltestrap/sveltestrap';
+  import { onMount } from 'svelte';
+  import {
+    Button,
+    Col,
+    FormGroup,
+    Icon,
+    Input,
+    Row,
+    Spinner,
+    Tooltip
+  } from '@sveltestrap/sveltestrap';
   import CKEditor5 from '$lib/components/CKEditor5.svelte';
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
   import { enhance } from '$app/forms';
+
+  let ffmpeg;
+  let uploadPlus;
+  let uploadMinus;
+
+  onMount(async () => {
+    const { FFmpeg } = await import('@ffmpeg/ffmpeg');
+    const { fetchFile } = await import('@ffmpeg/util');
+
+    ffmpeg = new FFmpeg();
+    await ffmpeg.load();
+
+    // 기존 uploadPlus 및 uploadMinus 함수 정의
+    uploadPlus = () => {
+      uploading++;
+    };
+
+    uploadMinus = () => {
+      uploading--;
+    };
+  });
 
   function list() {
     if (title || content) {
@@ -16,16 +47,71 @@
 
   let { title, content } = data;
 
-  $: uploading =0
+  $: uploading = 0;
 
-  $:{console.log('uploading', uploading)}
-
-  function uploadPlus(){
-    uploading++;
+  $: {
+    console.log('uploading', uploading);
   }
 
-  function uploadMinus(){
-    uploading--;
+  async function compressVideo(file) {
+    try {
+      uploadPlus();
+
+      // 파일을 FFmpeg에 쓰기
+      await ffmpeg.writeFile('input.mp4', await fetchFile(file));
+
+      // 비디오 압축 실행
+      await ffmpeg.exec([
+        '-i',
+        'input.mp4',
+        '-c:v',
+        'libx264',
+        '-crf',
+        '28', // 압축률 조정 (18-28 권장, 숫자가 높을수록 더 많이 압축)
+        '-preset',
+        'medium',
+        '-c:a',
+        'aac',
+        '-b:a',
+        '128k',
+        'output.mp4'
+      ]);
+
+      // 압축된 파일 가져오기
+      const compressedData = await ffmpeg.readFile('output.mp4');
+      const compressedBlob = new Blob([compressedData.buffer], { type: 'video/mp4' });
+
+      uploadMinus();
+      return compressedBlob;
+    } catch (error) {
+      console.error('비디오 압축 중 오류 발생:', error);
+      uploadMinus();
+      throw error;
+    }
+  }
+
+  // CKEditor 설정을 위한 함수 추가
+  function customUploadAdapter(loader) {
+    return {
+      upload: async () => {
+        try {
+          const file = await loader.file;
+
+          // 비디오 파일인 경우 압축 처리
+          if (file.type.startsWith('video/')) {
+            const compressedVideo = await compressVideo(file);
+            // 여기서 압축된 비디오를 서버에 업로드하는 로직 구현
+            // ... 서버 업로드 코드 ...
+          } else {
+            // 기존 이미지 업로드 로직
+            // ... 기존 코드 ...
+          }
+        } catch (error) {
+          console.error('업로드 중 오류 발생:', error);
+          throw error;
+        }
+      }
+    };
   }
 </script>
 
@@ -50,6 +136,7 @@
     }
   </style>
 </svelte:head>
+
 <main class="container my-1">
   <Row class="border border-secondary-subtle rounded-4 py-5 shadow">
     <form
@@ -69,8 +156,6 @@
         }
 
         return async ({ result, update }) => {
-          //console.debug('result', result, 'update', update);
-
           if (!result.data.success) {
             alert('저장중에 오류가 발생하였습니다.');
           } else {
@@ -96,16 +181,16 @@
           </Button>
         </Col>
         <Col md="2" xs="4">
-          <Button color="primary" role="submit" id="uploadBtn" disabled={uploading>0}>
-            {#if uploading>0}
-              <Spinner color="info" size="sm"/>
+          <Button color="primary" role="submit" id="uploadBtn" disabled={uploading > 0}>
+            {#if uploading > 0}
+              <Spinner color="info" size="sm" />
             {:else}
               <Icon name="pencil-fill" class="pe-2" />
             {/if}
             저장
           </Button>
-          {#if uploading>0}
-            <Tooltip isOpen={uploading>0} target="uploadBtn">이미지 업로드 중입니다.</Tooltip>
+          {#if uploading > 0}
+            <Tooltip isOpen={uploading > 0} target="uploadBtn">이미지 업로드 중입니다.</Tooltip>
           {/if}
         </Col>
       </Row>

@@ -2309,6 +2309,29 @@ index c43f997..86c9a39 100644
 +    }
 +  })(), (window.CKEditor5 = window.CKEditor5 || {}).image = n;
 +})();
+diff --git a/node_modules/@ckeditor/ckeditor5-image/src/imageupload/imageuploadui.js b/node_modules/@ckeditor/ckeditor5-image/src/imageupload/imageuploadui.js
+index 841d37d..ef0db64 100644
+--- a/node_modules/@ckeditor/ckeditor5-image/src/imageupload/imageuploadui.js
++++ b/node_modules/@ckeditor/ckeditor5-image/src/imageupload/imageuploadui.js
+@@ -31,8 +31,17 @@ export default class ImageUploadUI extends Plugin {
+             const command = editor.commands.get('uploadImage');
+             const imageTypes = editor.config.get('image.upload.types');
+             const imageTypesRegExp = createImageTypeRegExp(imageTypes);
++
++            console.log('imageTypes', imageTypes);
++            console.log('imageTypes', imageTypes.map(type => type.includes('/') ? type : `image/${type}`).join(','));
++
++
+             view.set({
+-                acceptedType: imageTypes.map(type => `image/${type}`).join(','),
++
++                //acceptedType: imageTypes.map(type => `image/${type}`).join(','),
++                acceptedType: imageTypes.map(type => type.includes('/') ? type : `image/${type}`).join(','),
++
++
+                 allowMultipleFiles: true
+             });
+             view.buttonView.set({
 diff --git a/node_modules/@ckeditor/ckeditor5-image/src/imageupload/uploadimagecommand.js b/node_modules/@ckeditor/ckeditor5-image/src/imageupload/uploadimagecommand.js
 index da6ad00..246056d 100644
 --- a/node_modules/@ckeditor/ckeditor5-image/src/imageupload/uploadimagecommand.js

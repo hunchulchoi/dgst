@@ -1,8 +1,3 @@
-<svelte:head>
-  <script async src="//www.instagram.com/embed.js"></script>
-  <script async src="//www.tiktok.com/embed.js"></script>
-</svelte:head>
-
 <script>
   // npm i ckeditor5-svelte
   // npm i @ckeditor/ckeditor5-build-decoupled-document/build/ckeditor
@@ -10,6 +5,9 @@
   // 42 라인 쯤의 //editor.isReadOnly = disabled; 를 주석처리(안하면 변경내용 binding 이 안됨)
 
   import DgstUploadAdapter from '$lib/util/DgstUploadAdapter.js';
+
+  import Video from '@visao/ckeditor5-video/src/video';
+
   //import Uploader from "$lib/util/DgstUploadPlugin.js";
   import { onMount } from 'svelte';
 
@@ -19,7 +17,6 @@
 
   export let uploadPlus;
   export let uploadMinus;
-
 
   function DgstUploadAdapterPlugin(editor) {
     //
@@ -48,13 +45,15 @@
   //아래 설정 지우시면 let editorConfig: any = {} 모든 에디터 기능 다 나옵니다.
   //버튼에 마우스오버하면 설정이름 나오는데, 눈찌껏 대문자 넣어서 네이밍 옵션에 넣으면 사굥가능합니다.
   let editorConfig = {
+    plguins: [Video],
     extraPlugins: [DgstUploadAdapterPlugin],
     toolbar: {
       items: [
         'undo',
         'redo',
-          '|',
+        '|',
         'uploadImage',
+        'mediaEmbed',
         '|',
         'fontSize',
         'fontColor',
@@ -73,49 +72,59 @@
         Authorization: 'Bearer <JSON Web Token>',
       }*/
     },
+
     image: {
       insert: {
         type: 'block'
       },
       upload: {
-        types: ['jpeg', 'jpg', 'gif', 'png', 'webp']
+        types: [
+          'jpeg',
+          'jpg',
+          'gif',
+          'png',
+          'webp',
+          'video/mp4',
+          'video/m4v',
+          'video/mov',
+          'video/avi'
+        ]
       },
       styles: [{ name: 'side', isDefault: true, modelElements: ['imageBlock'] }]
     },
-    link:{
-      addTargetToExternalLinks: true,
+    link: {
+      addTargetToExternalLinks: true
     },
-    mediaEmbed:{
+    mediaEmbed: {
       removeProviders: ['instagram'],
-      extraProviders:[
+      extraProviders: [
         {
           name: 'youtube shorts',
-          url:/^youtube\.com\/shorts\/([\w-]+)(?:\/\?si=([\w-]+))?/,
-          html: match=>{
-            const id = match[ 1 ];
-            const si = match[ 2 ];
+          url: /^youtube\.com\/shorts\/([\w-]+)(?:\/\?si=([\w-]+))?/,
+          html: (match) => {
+            const id = match[1];
+            const si = match[2];
 
             return (
-                    '<div style="max-width: 460px">'+
-                    '<div style="position: relative;width:100%;padding-bottom:177.777%;">' +
-                    `<iframe src="https://www.youtube.com/embed/${ id }${ si ? `?si=${ si }` : '' }" ` +
-                    'style="position: absolute; width: 100%; height: 100%; top: 0; left: 0;" ' +
-                    'frameborder="0" allow="autoplay; encrypted-media" allowfullscreen>' +
-                    '</iframe>' +
-                    '</div>'+
-                    '</div>'
+              '<div style="max-width: 460px">' +
+              '<div style="position: relative;width:100%;padding-bottom:177.777%;">' +
+              `<iframe src="https://www.youtube.com/embed/${id}${si ? `?si=${si}` : ''}" ` +
+              'style="position: absolute; width: 100%; height: 100%; top: 0; left: 0;" ' +
+              'frameborder="0" allow="autoplay; encrypted-media" allowfullscreen>' +
+              '</iframe>' +
+              '</div>' +
+              '</div>'
             );
-          },
+          }
         },
         {
           name: 'instagram reel',
           url: /^instagram\.com\/reel\/([\w-]+)(?:\?igshid=(\d+))?/,
-          html: match=>{
-            const id = match[ 1 ];
-            const time = match[ 2 ];
+          html: (match) => {
+            const id = match[1];
+            const time = match[2];
 
-            return (
-                    `<blockquote class="instagram-media"
+            return `<blockquote class="instagram-media"
                       data-instgrm-captioned
                       data-instgrm-permalink="//www.instagram.com/reel/${id}/?utm_source=ig_embed&amp;utm_campaign=loading"
                       data-instgrm-version="14"
@@ -137,19 +146,17 @@
                               <a href="//www.instagram.com/reel/${id}/?utm_source=ig_embed&amp;utm_campaign=loading" style=" color:#c9c8cd; font-family:Arial,sans-serif; font-size:14px; font-style:normal; font-weight:normal; line-height:17px; text-decoration:none;" target="_blank">공유 게시물</a>
                             </p>
                           </div>
-                     </blockquote>`
-            );
-          },
+                     </blockquote>`;
+          }
         },
         {
           name: 'instagram post',
           url: /^instagram\.com\/p\/([\w-]+)(?:\?utm_source=(\d+))?/,
-          html: match=>{
-            const id = match[ 1 ];
-            const time = match[ 2 ];
+          html: (match) => {
+            const id = match[1];
+            const time = match[2];
 
-            return (
-              `<blockquote class="instagram-media" data-instgrm-captioned
+            return `<blockquote class="instagram-media" data-instgrm-captioned
   data-instgrm-permalink="https://www.instagram.com/p/${id}/?utm_source=ig_embed&amp;utm_campaign=loading"
   data-instgrm-version="14"
   style=" background:#FFF; border:0; border-radius:3px; box-shadow:0 0 1px 0 rgba(0,0,0,0.5),0 1px 10px 0 rgba(0,0,0,0.15); margin: 1px; max-width:540px; min-width:326px; padding:0; width:99.375%; width:-webkit-calc(100% - 2px); width:calc(100% - 2px);">
@@ -231,51 +238,45 @@
         style=" color:#c9c8cd; font-family:Arial,sans-serif; font-size:14px; font-style:normal; font-weight:normal; line-height:17px; text-decoration:none;"
         target="_blank">공유 게시물</a></p>
   </div>
-</blockquote>`
-            );
-          },
+</blockquote>`;
+          }
         },
         {
           name: 'tiktok',
           url: /^tiktok\.com\/(.*)\/video\/(.*)(?:\?(.*))?/,
-          html: match=>{
-            console.log('match', match)
-            const id = match[ 1 ];
-            const vid = match[ 2 ];
+          html: (match) => {
+            console.log('match', match);
+            const id = match[1];
+            const vid = match[2];
 
-            console.log('id', id)
+            console.log('id', id);
 
-            return (
-               `<blockquote class="tiktok-embed"
+            return `<blockquote class="tiktok-embed"
                 cite="https://www.tiktok.com/${id}/video/${vid}"
                 data-video-id="${vid}"
                 data-embed-from="oembed" style="max-width: 605px;min-width: 325px;" >
                   <section>
                     <a target="_blank" title="${id}" href="https://www.tiktok.com/${id}?refer=embed">${id}</a>
                   </section>
-                </blockquote>`
-            );
-
+                </blockquote>`;
           }
         },
         {
           name: 'naver tv',
           url: /^tv\.naver\.com\/v\/([\w-]+)/,
-          html: match=>{
-            const id = match[ 1 ];
+          html: (match) => {
+            const id = match[1];
 
-            return (
-              `<iframe src='https://tv.naver.com/embed/${id}'
+            return `<iframe src='https://tv.naver.com/embed/${id}'
   frameborder='no' scrolling='no' marginwidth='0' marginheight='0' WIDTH='544' HEIGHT='306' allowfullscreen>
- </iframe>`
-            );
-          },
+ </iframe>`;
+          }
         }
       ],
       previewsInData: true
     },
     height: 400,
-    language: 'ko',
+    language: 'ko'
   };
 
   function onReady({ detail: editor }) {
@@ -292,19 +293,17 @@
     const imageUploadEditing = editor.plugins.get('ImageUploadEditing');
     //const imageInsert = editor.plugins.get( 'ImageInsert' );
 
-
     imageUploadEditing.isEnabled = false;
     editor.plugins.get('ImageInlineEditing').isEnabled = false;
 
-    imageUploadEditing.on('change', (evt1)=>{
+    imageUploadEditing.on('change', (evt1) => {
       console.log('upload', evt1);
-    })
+    });
 
     imageUploadEditing.on('uploadComplete', (evt, { data, imageElement }) => {
       console.log('uploadComplete', evt, 'data', data, 'imageElement', imageElement);
 
       loadingImage = false;
-
     });
 
     editor.plugins.get('FileRepository').loaders._items[0].on('uploaded', (evt, data) => {
@@ -316,6 +315,10 @@
   let loadingImage = false;
 </script>
 
+<svelte:head>
+  <script async src="//www.instagram.com/embed.js"></script>
+  <script async src="//www.tiktok.com/embed.js"></script>
+</svelte:head>
 
 <main>
   <div bind:this={editorDiv}>

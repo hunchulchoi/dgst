@@ -95,7 +95,7 @@
 
   async function preview(event, el) {
 
-    if(event.type == 'paste'){
+    if(event.type === 'paste'){
 
         /*console.log('event.clipboardData.files', event.clipboardData.files)
         console.log('event.clipboardData.files[0]', event.clipboardData.files[0])
