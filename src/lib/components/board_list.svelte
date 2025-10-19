@@ -6,8 +6,8 @@
   import { formatDistanceToNowStrict, parseISO } from 'date-fns';
   import { ko } from 'date-fns/locale';
 
-  export let data;
-  export let write;
+  // Svelte 5 Runes - Props
+  let { data, write } = $props();
 </script>
 
 {#if !data.articles.length}

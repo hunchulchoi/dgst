@@ -1,7 +1,8 @@
 <script>
   import {Button, Col, Icon, Row} from '@sveltestrap/sveltestrap';
 
-  export let dialog
+  // Svelte 5 Runes - Props
+  let { dialog = $bindable() } = $props();
 </script>
 <dialog bind:this={dialog} class="p-4 pb-3 px-5 rounded-3 shadow border-secondary" on:close>
   <Row>

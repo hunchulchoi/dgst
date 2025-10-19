@@ -6,10 +6,8 @@
   import { onMount, onDestroy } from 'svelte';
   import Loader from 'svelte-loading-overlay/Loader.svelte';
 
-  // Props
-  export let uploadPlus;
-  export let uploadMinus;
-  export let editorData = '';
+  // Svelte 5 Runes - Props
+  let { uploadPlus, uploadMinus, editorData = $bindable('') } = $props();
 
   // 로컬 상태
   let editorElement = null;
