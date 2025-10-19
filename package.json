@@ -41,7 +41,7 @@
     "@ffmpeg/ffmpeg": "^0.12.10",
     "@ffmpeg/util": "^0.12.1",
     "@sveltejs/adapter-node": "^5.4.0",
-    "@sveltestrap/sveltestrap": "^6.2.7",
+    "@sveltestrap/sveltestrap": "^7.1.0",
     "date-fns": "^4.1.0",
     "link-preview-js": "^3.0.5",
     "mime": "^4.0.4",
