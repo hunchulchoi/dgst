@@ -320,9 +320,6 @@
     (commentModalOpen = !commentModalOpen);
   }
 
-  // Svelte 5 Runes
-  let { data } = $props();
-
   alarmCount.update(alarmCount => data.alarmCount);
 
   let visibleReply;
