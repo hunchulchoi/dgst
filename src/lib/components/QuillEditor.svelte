@@ -346,7 +346,7 @@
   function processMediaEmbed(url, range) {
     let embedHtml = '';
 
-    // YouTube (일반 및 Shorts)
+    // YouTube (일반 및 Shorts 및 Embed)
     if (url.includes('youtube.com') || url.includes('youtu.be')) {
       let videoId;
       if (url.includes('youtube.com/shorts/')) {
@@ -354,6 +354,12 @@
         videoId = match ? match[1] : null;
         if (videoId) {
           embedHtml = `<div style="max-width: 460px"><div style="position: relative;width:100%;padding-bottom:177.777%;"><iframe src="https://www.youtube.com/embed/${videoId}" style="position: absolute; width: 100%; height: 100%; top: 0; left: 0;" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe></div></div>`;
+        }
+      } else if (url.includes('youtube.com/embed/')) {
+        const match = url.match(/youtube\.com\/embed\/([\w-]+)/);
+        videoId = match ? match[1] : null;
+        if (videoId) {
+          embedHtml = `<iframe width="560" height="315" src="https://www.youtube.com/embed/${videoId}" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>`;
         }
       } else if (url.includes('youtube.com/watch')) {
         const match = url.match(/[?&]v=([^&]+)/);
@@ -402,9 +408,17 @@
         embedHtml = `<iframe src='https://tv.naver.com/embed/${id}' frameborder='no' scrolling='no' width='544' height='306' allowfullscreen></iframe>`;
       }
     }
-    // 일반 비디오 URL
-    else {
+    // 실제 비디오 파일 URL (.mp4, .webm 등)
+    else if (url.match(/\.(mp4|webm|ogg|mov)(\?.*)?$/i)) {
       quillInstance.insertEmbed(range.index, 'video', url);
+      quillInstance.setSelection(range.index + 1);
+      return;
+    }
+    // 인식 불가능한 URL - 그냥 링크로 삽입
+    else {
+      console.warn('⚠️ 알 수 없는 URL 형식, 링크로 삽입:', url);
+      const linkHtml = `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`;
+      quillInstance.clipboard.dangerouslyPasteHTML(range.index, linkHtml);
       quillInstance.setSelection(range.index + 1);
       return;
     }
