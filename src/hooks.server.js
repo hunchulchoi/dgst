@@ -16,7 +16,7 @@ import crypto from 'crypto';
 import { error } from '@sveltejs/kit';
 
 // SvelteKit 2 + @auth/sveltekit v1.x 호환
-const { handle: authHandle } = SvelteKitAuth({
+export const { handle, signIn, signOut } = SvelteKitAuth({
   providers: [
     GoogleProvider({
       clientId: GOOGLE_CLIENT_ID,
@@ -158,6 +158,3 @@ const { handle: authHandle } = SvelteKitAuth({
   secret: NEXTAUTH_SECRET,
   debug: true
 });
-
-// SvelteKit 2에서는 handle을 직접 export
-export const handle = authHandle;
