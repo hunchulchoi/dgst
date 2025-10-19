@@ -380,25 +380,32 @@
       await import('quill/dist/quill.snow.css');
       console.log('✅ Quill CSS loaded');
 
-      // Video Blot 등록 (video 태그 지원)
+      // Video Blot 등록 (div로 감싼 video 태그)
       const BlockEmbed = Quill.import('blots/block/embed');
       class VideoBlot extends BlockEmbed {
         static create(value) {
           const node = super.create();
-          node.setAttribute('src', value);
-          node.setAttribute('controls', '');
-          node.setAttribute('style', 'max-width: 100%; height: auto;');
+          node.setAttribute('class', 'video-container');
+          node.setAttribute('style', 'margin: 1em 0;');
+          
+          const video = document.createElement('video');
+          video.setAttribute('src', value);
+          video.setAttribute('controls', '');
+          video.setAttribute('style', 'max-width: 100%; height: auto; display: block;');
+          
+          node.appendChild(video);
           return node;
         }
 
         static value(node) {
-          return node.getAttribute('src');
+          const video = node.querySelector('video');
+          return video ? video.getAttribute('src') : '';
         }
       }
       VideoBlot.blotName = 'video';
-      VideoBlot.tagName = 'video';
+      VideoBlot.tagName = 'div';
       Quill.register(VideoBlot);
-      console.log('✅ Video Blot 등록됨');
+      console.log('✅ Video Blot 등록됨 (div로 감싼 video)');
 
       // Quill 인스턴스 생성
       console.log('Quill 인스턴스 생성 중...');
