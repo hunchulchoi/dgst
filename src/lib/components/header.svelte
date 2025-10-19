@@ -21,12 +21,24 @@
   import theme from '$lib/shared/stores/theme.js';
 
   import { signIn, signOut } from '@auth/sveltekit/client';
-  import { goto } from '$app/navigation';
+  import { goto, navigating } from '$app/navigation';
 
   import { alarmCount } from '$lib/util/store.js';
 
   // Svelte 5 Runes - Props
   let { session, pathname } = $props();
+  
+  let showSpinner = $state(false);
+  
+  $effect(() => {
+    if ($navigating) {
+      showSpinner = true;
+    } else {
+      setTimeout(() => {
+        showSpinner = false;
+      }, 500);
+    }
+  });
 
     const handleGoogleSignIn = () => {
     //console.log('handleGoogleSignIn');
@@ -113,7 +125,11 @@
         <NavLink href="/board/free" 
                  data-sveltekit-invalidate="all" 
                  data-sveltekit-preload-data="tap"
-                 active={pathname?.startsWith('/board/free')}>자유게시판
+                 active={pathname?.startsWith('/board/free')}>
+          자유게시판
+          {#if showSpinner}
+            <span class="spinner-border spinner-border-sm ms-2" role="status"></span>
+          {/if}
         </NavLink>
       </NavItem>
       {#if session?.user?.nickname}
