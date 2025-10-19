@@ -21,6 +21,12 @@
   let ffmpeg = null;
   let FFmpeg = null;
   let fetchFile = null;
+  
+  // 비디오 압축 진행 상태
+  let isCompressing = false;
+  let compressionProgress = 0;
+  let compressionTime = 0; // 경과 시간 (초)
+  let estimatedTime = 0; // 예상 총 시간 (초)
 
   /**
    * 비디오 압축 함수
@@ -34,12 +40,32 @@
         return file;
       }
 
+      isCompressing = true;
+      compressionProgress = 0;
+      compressionTime = 0;
+      estimatedTime = 0;
       uploadPlus?.();
 
+      // Progress 이벤트 리스너 설정
+      ffmpeg.on('progress', ({ progress, time }) => {
+        compressionProgress = Math.round(progress * 100);
+        compressionTime = Math.round(time / 1000000); // 마이크로초를 초로 변환
+        
+        // 예상 시간 계산 (진행률 기반)
+        if (progress > 0.01) {
+          estimatedTime = Math.round(compressionTime / progress);
+        }
+        
+        console.log(`압축 진행률: ${compressionProgress}%`, `경과: ${compressionTime}초`, `예상: ${estimatedTime}초`);
+      });
+
       // FFmpeg에 파일 쓰기
+      compressionProgress = 5;
       await ffmpeg.writeFile('input.mp4', await fetchFile(file));
+      console.log('파일 쓰기 완료');
 
       // 비디오 압축 실행
+      compressionProgress = 10;
       await ffmpeg.exec([
         '-i', 'input.mp4',
         '-c:v', 'libx264',
@@ -47,21 +73,41 @@
         '-preset', 'medium',
         '-c:a', 'aac',
         '-b:a', '128k',
+        '-progress', 'pipe:1',
         'output.mp4'
       ]);
 
       // 압축된 파일 가져오기
+      compressionProgress = 95;
       const compressedData = await ffmpeg.readFile('output.mp4');
       const compressedBlob = new Blob([compressedData.buffer], { type: 'video/mp4' });
       const compressedFile = new File([compressedBlob], file.name, { type: 'video/mp4' });
 
+      compressionProgress = 100;
       uploadMinus?.();
       
       console.log('비디오 압축 완료:', 'original:', file.size, 'compressed:', compressedFile.size);
+      
+      // Progress 이벤트 리스너 제거
+      ffmpeg.off('progress');
+      
+      // 잠시 후 오버레이 제거 (100% 표시)
+      setTimeout(() => {
+        isCompressing = false;
+        compressionProgress = 0;
+        compressionTime = 0;
+        estimatedTime = 0;
+      }, 500);
+      
       return compressedFile;
     } catch (error) {
       console.error('비디오 압축 실패:', error);
       uploadMinus?.();
+      isCompressing = false;
+      compressionProgress = 0;
+      compressionTime = 0;
+      estimatedTime = 0;
+      ffmpeg.off('progress');
       return file; // 압축 실패 시 원본 반환
     }
   }
@@ -333,11 +379,119 @@
 <main>
   <div bind:this={editorDiv}>
     <Loader active={loadingImage} container={editorDiv} component="Dot" opacity="0.7" />
+    
+    {#if isCompressing}
+      <div class="compression-overlay">
+        <div class="progress-container">
+          <h5 class="mb-3">
+            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+            비디오 압축 중...
+          </h5>
+          <div class="progress mb-3" style="height: 30px; background-color: #e9ecef;">
+            <div 
+              class="progress-bar progress-bar-striped progress-bar-animated" 
+              role="progressbar" 
+              style="width: {compressionProgress}%; background-color: #28a745;"
+              aria-valuenow={compressionProgress} 
+              aria-valuemin="0" 
+              aria-valuemax="100">
+              <strong style="color: white;">{compressionProgress}%</strong>
+            </div>
+          </div>
+          <div class="time-info mb-2">
+            <span class="badge bg-primary me-2">
+              경과: {compressionTime}초
+            </span>
+            {#if estimatedTime > 0}
+              <span class="badge bg-info">
+                예상: {estimatedTime}초 (남은 시간: {Math.max(0, estimatedTime - compressionTime)}초)
+              </span>
+            {/if}
+          </div>
+          <small class="text-muted">
+            압축이 완료될 때까지 기다려주세요...<br/>
+            (브라우저 탭을 닫지 마세요)
+          </small>
+        </div>
+      </div>
+    {/if}
+    
     <div bind:this={editorElement}></div>
   </div>
 </main>
 
 <style>
+  .compression-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    backdrop-filter: blur(4px);
+  }
+
+  .progress-container {
+    background: white;
+    padding: 2.5rem;
+    border-radius: 12px;
+    min-width: 400px;
+    max-width: 500px;
+    text-align: center;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  }
+
+  .progress {
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .progress {
+    background-color: #e9ecef;
+  }
+
+  .progress-bar {
+    font-size: 14px;
+    line-height: 30px;
+    background-color: #28a745;
+    transition: width 0.3s ease;
+  }
+  
+  .progress-bar-animated {
+    animation: progress-bar-stripes 1s linear infinite;
+  }
+  
+  @keyframes progress-bar-stripes {
+    0% {
+      background-position: 1rem 0;
+    }
+    100% {
+      background-position: 0 0;
+    }
+  }
+  
+  .progress-bar-striped {
+    background-image: linear-gradient(
+      45deg,
+      rgba(255, 255, 255, 0.15) 25%,
+      transparent 25%,
+      transparent 50%,
+      rgba(255, 255, 255, 0.15) 50%,
+      rgba(255, 255, 255, 0.15) 75%,
+      transparent 75%,
+      transparent
+    );
+    background-size: 1rem 1rem;
+  }
+
+  .time-info {
+    font-size: 0.9rem;
+  }
+
   main :global(.ql-container) {
     min-height: 400px;
     font-size: 16px;
