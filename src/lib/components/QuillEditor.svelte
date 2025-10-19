@@ -305,6 +305,8 @@
       quillInstance.setSelection(range.index + 2);
       
       console.log('✅ OG 카드 삽입 완료');
+      console.log('📄 삽입된 HTML:', cardHtml.substring(0, 200) + '...');
+      console.log('📝 에디터 전체 내용:', quillInstance.root.innerHTML.substring(0, 300) + '...');
     } catch (err) {
       console.error('OG 카드 생성 실패:', err);
       // 실패 시 URL 텍스트로 붙여넣기
@@ -472,6 +474,14 @@
             return delta;
           }
           return new Delta();
+        }],
+        // iframe 태그 허용
+        ['iframe', (node, delta) => {
+          return delta;
+        }],
+        // blockquote 허용 (Instagram, TikTok)
+        ['blockquote', (node, delta) => {
+          return delta;
         }]
       ]
     }
