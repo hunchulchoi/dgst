@@ -30,6 +30,16 @@
   let estimatedTime = 0; // 예상 총 시간 (초)
 
   /**
+   * 초를 HH:MM:SS 형식으로 변환
+   */
+  function formatTime(seconds) {
+    const hrs = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+  }
+
+  /**
    * 비디오 압축 함수
    */
   async function compressVideo(file) {
@@ -453,11 +463,14 @@
           </div>
           <div class="time-info mb-2">
             <span class="badge bg-primary me-2">
-              경과: {compressionTime}초
+              경과: {formatTime(compressionTime)}
             </span>
             {#if estimatedTime > 0}
-              <span class="badge bg-info">
-                예상: {estimatedTime}초 (남은 시간: {Math.max(0, estimatedTime - compressionTime)}초)
+              <span class="badge bg-info me-2">
+                예상: {formatTime(estimatedTime)}
+              </span>
+              <span class="badge bg-warning">
+                남은 시간: {formatTime(Math.max(0, estimatedTime - compressionTime))}
               </span>
             {/if}
           </div>
