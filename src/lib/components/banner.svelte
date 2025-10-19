@@ -16,7 +16,7 @@ const bannerContent =
            class="text-center text-dark rounded-bottom-4"
            style="background: linear-gradient(90deg, rgba(211,209,247,1) 0%, rgba(150,150,146,1) 70%, rgba(111,112,101,1) 100%);"
            placement="top">
-  <div class="neon">{@html bannerContent}
+  <div class="neon">{@html bannerContent}</div>
   <div style="
  position: fixed;
  top: -50px;
