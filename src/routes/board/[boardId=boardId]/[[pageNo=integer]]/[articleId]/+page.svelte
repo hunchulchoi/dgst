@@ -149,17 +149,17 @@
 
 
   let reCommentDiv;
-  let reCommentContent;
+  let reCommentContent = $state('');
   let rePreviewEl;
   let reCommentImageEl;
 
   let commentDiv;
-  let commentContent;
-  let commentImage;
+  let commentContent = $state('');
+  let commentImage = $state(null);
   let previewEl;
   let commentImageEl;
 
-  let commentLoading = false;
+  let commentLoading = $state(false);
 
   function writeComment(parentCommentId) {
 
@@ -590,10 +590,8 @@
                       disabled={comment.liked}
                       class="px-3 py-0"
                     >
-                    {#if comment.like > 0}
                       <Icon name={comment.liked?"hand-thumbs-up-fill":"hand-thumbs-up"}/>
                       {comment.like}
-                      {/if}
                     </Button>
                     <Button
                       onclick={() => visibleReply = comment._id}
