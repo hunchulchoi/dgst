@@ -257,63 +257,6 @@
   }
 
   /**
-   * OG 카드 생성 (일반 URL)
-   * @param {string} url
-   * @returns {Promise<void>}
-   */
-  async function createOGCard(url) {
-    try {
-      loadingImage = true;
-      
-      const response = await fetch('/api/og', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url })
-      });
-
-      if (!response.ok) {
-        console.error('OG 데이터 가져오기 실패');
-        // 실패 시 그냥 URL 텍스트로 붙여넣기
-        const range = quillInstance.getSelection(true);
-        quillInstance.insertText(range.index, url);
-        return;
-      }
-
-      const ogData = await response.json();
-      console.log('✅ OG 데이터:', ogData);
-
-      const range = quillInstance.getSelection(true);
-      
-      // 간단한 링크 프리뷰 삽입 (카드 형태)
-      const cardHtml = `
-        <div><br></div>
-        <div style="border: 1px solid #e0e0e0; border-radius: 8px; padding: 10px; margin: 8px 0; max-width: 350px; background: #fafafa;">
-          ${ogData.image ? `<img src="${ogData.image}" style="width: 100%; max-height: 80px; object-fit: cover; border-radius: 4px; margin-bottom: 8px;" alt="">` : ''}
-          <div style="font-weight: bold; font-size: 14px; margin-bottom: 4px;">
-            <a href="${ogData.url}" target="_blank" rel="noopener" style="color: #1a73e8; text-decoration: none;">${ogData.title || url}</a>
-          </div>
-          ${ogData.description ? `<div style="color: #5f6368; font-size: 12px; line-height: 1.3;">${ogData.description.substring(0, 80)}${ogData.description.length > 80 ? '...' : ''}</div>` : ''}
-          <div style="color: #70757a; font-size: 11px; margin-top: 4px;">🔗 ${ogData.siteName || new URL(url).hostname}</div>
-        </div>
-        <div><br></div>
-      `;
-
-      quillInstance.clipboard.dangerouslyPasteHTML(range.index, cardHtml);
-      quillInstance.setSelection(range.index + 3);
-      
-      console.log('✅ OG 링크 프리뷰 삽입 완료');
-      console.log('📝 에디터 전체 내용:', quillInstance.root.innerHTML.substring(0, 300) + '...');
-    } catch (err) {
-      console.error('OG 카드 생성 실패:', err);
-      // 실패 시 URL 텍스트로 붙여넣기
-      const range = quillInstance.getSelection(true);
-      quillInstance.insertText(range.index, url);
-    } finally {
-      loadingImage = false;
-    }
-  }
-
-  /**
    * 미디어 자동 임베드 (URL 붙여넣기 시)
    * @param {string} url
    * @returns {void}
