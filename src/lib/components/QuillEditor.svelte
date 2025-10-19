@@ -21,6 +21,7 @@
   let ffmpeg = null;
   let FFmpeg = null;
   let fetchFile = null;
+  let ffmpegReady = false;
   
   // 비디오 압축 진행 상태
   let isCompressing = false;
@@ -35,9 +36,29 @@
     try {
       console.log('비디오 압축 시작:', file.name, 'size:', file.size);
 
-      if (!ffmpeg) {
-        console.error('FFmpeg가 로드되지 않았습니다.');
-        return file;
+      // FFmpeg 로드 대기
+      if (!ffmpegReady) {
+        console.log('⏳ FFmpeg 로드 대기 중...');
+        isCompressing = true;
+        compressionProgress = 0;
+        
+        // 최대 30초 대기
+        let waitCount = 0;
+        while (!ffmpegReady && waitCount < 60) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+          waitCount++;
+          compressionProgress = Math.min(5, waitCount);
+          console.log(`FFmpeg 로드 대기... (${waitCount * 0.5}초)`);
+        }
+        
+        if (!ffmpegReady) {
+          console.error('❌ FFmpeg 로드 시간 초과');
+          isCompressing = false;
+          alert('비디오 압축 기능을 사용할 수 없습니다. 원본 파일을 업로드합니다.');
+          return file;
+        }
+        
+        console.log('✅ FFmpeg 준비 완료');
       }
 
       isCompressing = true;
@@ -357,8 +378,10 @@
           console.log('[FFmpeg]', message);
         });
         
+        console.log('FFmpeg 로드 중...');
         await ffmpeg.load();
-        console.log('✅ FFmpeg loaded successfully');
+        ffmpegReady = true;
+        console.log('✅ FFmpeg loaded successfully and ready!');
       } catch (err) {
         console.warn('⚠️ FFmpeg 로드 실패 (비디오 압축 비활성화):', err);
       }
