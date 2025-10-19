@@ -12,9 +12,9 @@
   </Row>
   <Row class="mt-3">
     <Col>
-      <Button color="success" class="me-2" on:click={()=>dialog.close(true)}><Icon name="check-circle" class="pe-1"/> 예
+      <Button color="success" class="me-2" onclick={()=>dialog.close(true)}><Icon name="check-circle" class="pe-1"/> 예
       </Button>
-      <Button color="secondary" on:click={()=>dialog.close(false)}><Icon name="x-circle" class="pe-1"/> 아니오</Button>
+      <Button color="secondary" onclick={()=>dialog.close(false)}><Icon name="x-circle" class="pe-1"/> 아니오</Button>
     </Col>
   </Row>
 </dialog>

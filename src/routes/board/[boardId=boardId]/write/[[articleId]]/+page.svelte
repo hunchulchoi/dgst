@@ -173,7 +173,7 @@
       <QuillEditor bind:editorData={content} {uploadPlus} {uploadMinus} />
       <Row class="text-end pe-2 mt-4">
         <Col md="10" xs="8" class="text-end">
-          <Button color="warning" on:click={list}>
+          <Button color="warning" onclick={list}>
             <Icon name="x-lg" class="pe-2" />
             취소
           </Button>

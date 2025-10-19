@@ -61,7 +61,7 @@
     {#if $page.data.session?.user.nickname}
       <Row class="px-0 mx-0 pe-3 mt-2 pb-3 border-bottom border-secondary-subtle">
         <Col class="d-flex justify-content-end p-0">
-          <Button class="px-2" color="primary" on:click={write}>
+          <Button class="px-2" color="primary" onclick={write}>
             <Icon name="pencil-fill" class="pe-2 " />글쓰기
           </Button>
         </Col>

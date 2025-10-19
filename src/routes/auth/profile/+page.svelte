@@ -230,7 +230,7 @@
           </FormGroup>
           <hr />
           <div class="text-end">
-            <Button size="lg" on:click={doSubmit} color="success" bind:disabled={isInvalid}>
+            <Button size="lg" onclick={doSubmit} color="success" bind:disabled={isInvalid}>
               <Icon name="arrow-through-heart-fill pe-2" />수정
             </Button>
           </div>

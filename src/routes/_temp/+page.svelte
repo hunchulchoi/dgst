@@ -43,7 +43,7 @@
 </script>
 
 <div style="height: 70vh">
-  <!-- <Button color="danger" on:click={toggle11}>Open Modal</Button> -->
+  <!-- <Button color="danger" onclick={toggle11}>Open Modal</Button> -->
   <Modal isOpen={open11} toggle={toggle11} zIndex="20000" centered backdrop="static">
     <ModalHeader toggle={toggle11}>Modal title</ModalHeader>
     <ModalBody>
@@ -51,8 +51,8 @@
       labore et dolore magna aliqua.
     </ModalBody>
     <ModalFooter>
-      <Button color="primary" on:click={toggle11}>Do Something</Button>
-      <Button color="secondary" on:click={toggle11}>Cancel</Button>
+      <Button color="primary" onclick={toggle11}>Do Something</Button>
+      <Button color="secondary" onclick={toggle11}>Cancel</Button>
     </ModalFooter>
   </Modal>
 
