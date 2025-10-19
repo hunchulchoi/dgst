@@ -12,7 +12,13 @@
   } from '@sveltestrap/sveltestrap';
   import QuillEditor from '$lib/components/QuillEditor.svelte';
   import { goto } from '$app/navigation';
+  import { page } from '$app/stores';
   import { enhance } from '$app/forms';
+
+  // Svelte 5 Runes
+  let { data } = $props();
+  
+  const { boardId, articleId } = $page.params;
 
   let ffmpeg;
   
@@ -38,11 +44,6 @@
     }
     goto(`/board/${boardId}`);
   }
-
-  // Svelte 5 Runes
-  let { data, params } = $props();
-  
-  const { boardId, articleId } = params;
 
   let title = $state(data.title || '');
   let content = $state(data.content || '');

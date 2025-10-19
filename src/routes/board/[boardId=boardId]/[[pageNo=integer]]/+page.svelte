@@ -1,5 +1,6 @@
 <script>
   import { Button, Col, Icon, Row } from '@sveltestrap/sveltestrap';
+  import { page } from '$app/stores';
 
   import BoardList from '$lib/components/board_list.svelte';
 
@@ -10,9 +11,9 @@
   import { onMount } from 'svelte';
 
   // Svelte 5 Runes
-  let { data, params } = $props();
+  let { data } = $props();
   
-  const { boardId, pageNo } = params;
+  const { boardId, pageNo } = $page.params;
 
   // 도메인 변경 안내
   onMount(() => {
