@@ -735,7 +735,7 @@
   <!-- 목록-->
   <Row class="mt-4 shadow rounded-4 p-1 m-0">
 
-    <BoardList {data} {gopage} {write}/>
+    <BoardList {data} {write} boardId={$page.params.boardId} pageNo={$page.params.pageNo} session={$page.data.session}/>
 
   </Row>
 

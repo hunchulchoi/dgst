@@ -63,7 +63,7 @@
       </Row>
     {/if}
 
-    <BoardList {data} {gopage} {write}/>
+    <BoardList {data} {write} boardId={$page.params.boardId} pageNo={$page.params.pageNo} session={$page.data.session}/>
 
   </Row>
 </main>

@@ -1,13 +1,12 @@
 <script>
 
-  import { page } from '$app/stores';
   import { Badge, Button, Col, Icon, Image, Pagination, PaginationItem, PaginationLink, Row } from '@sveltestrap/sveltestrap';
 
   import { formatDistanceToNowStrict, parseISO } from 'date-fns';
   import { ko } from 'date-fns/locale';
 
   // Svelte 5 Runes - Props
-  let { data, write } = $props();
+  let { data, write, boardId, pageNo, session } = $props();
 </script>
 
 {#if !data.articles.length}
@@ -29,7 +28,7 @@
       <Col lg="7" md="5" xs="12"
            class="text-break link-opacity-hover-50 pb-1 position-relative">
         <a data-sveltekit-preload-data="tap" data-sveltekit-invalidate="all"
-           href={`/board/${$page.params.boardId}/${$page.params.pageNo || 1}/${article._id}`}
+           href={`/board/${boardId}/${pageNo || 1}/${article._id}`}
            style="cursor: pointer; font-size: 1.1em"
            class="link-underline link-underline-opacity-0 link-offset-2 link-underline-opacity-50-hover stretched-link">
           {article.title}
@@ -64,26 +63,26 @@
     <Col xs="12">
       <Pagination size="md" arialabel="페이지 네이션" class="d-flex justify-content-center">
         <PaginationItem
-        ><PaginationLink first href="{`/board/${$page.params.boardId}`}" data-sveltekit-preload-data="hover"/></PaginationItem
+        ><PaginationLink first href="{`/board/${boardId}`}" data-sveltekit-preload-data="hover"/></PaginationItem
         >
         {#each Array((data.endNo - data.startNo +1)) as _, i}
           <PaginationItem
             active={(!data.pageNo && (data.startNo -i) === 1) || (i + data.startNo) == data.pageNo}
           >
-            <PaginationLink href={`/board/${$page.params.boardId}/${i + data.startNo}`}  data-sveltekit-preload-data="hover">
+            <PaginationLink href={`/board/${boardId}/${i + data.startNo}`}  data-sveltekit-preload-data="hover">
               {i + data.startNo}
             </PaginationLink>
           </PaginationItem>
         {/each}
         <PaginationItem
-        ><PaginationLink href={`/board/${$page.params.boardId}/${data.maxPage}`}  data-sveltekit-preload-data="hover"
+        ><PaginationLink href={`/board/${boardId}/${data.maxPage}`}  data-sveltekit-preload-data="hover"
                          last /></PaginationItem>
       </Pagination>
     </Col>
   </Row>
 {/if}
 
-{#if $page.data.session?.user.nickname}
+{#if session?.user?.nickname}
   <Row class="px-0 mx-0 pe-3 pb-4 mt-2">
     <Col class="d-flex justify-content-end p-0">
       <Button class="px-2" color="primary" on:click={write}>
