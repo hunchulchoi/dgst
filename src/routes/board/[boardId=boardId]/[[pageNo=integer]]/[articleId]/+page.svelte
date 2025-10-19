@@ -48,7 +48,6 @@
     ToastBody,
     ToastHeader
   } from '@sveltestrap/sveltestrap';
-  import { page } from '$app/stores';
   import { goto } from '$app/navigation';
   import { scale } from 'svelte/transition';
 
@@ -65,8 +64,13 @@
   import { onMount } from 'svelte';
   import BoardList from '$lib/components/board_list.svelte';
 
+  // Svelte 5 Runes - Props
+  let { data, params, url } = $props();
+  
+  const { boardId, articleId, pageNo } = params;
+
   function like(){
-    fetch(`/board/${$page.params.boardId}/${$page.params.articleId}/like`, {method: 'POST'})
+    fetch(`/board/${boardId}/${articleId}/like`, {method: 'POST'})
       .then((res) => res.json())
       .then((d) => {
         data.article.read = d.read;
@@ -77,20 +81,20 @@
 
   async function likeComment(commentId){
 
-    await fetch(`/board/${$page.params.boardId}/${$page.params.articleId}/like/${commentId}`, {method: 'POST'});
+    await fetch(`/board/${boardId}/${articleId}/like/${commentId}`, {method: 'POST'});
     comments();
   }
 
   function comments() {
-    fetch(`/board/${$page.params.boardId}/${$page.params.articleId}/comment`)
+    fetch(`/board/${boardId}/${articleId}/comment`)
       .then((res) => res.json())
       .then((d) => (data.article.comments = d));
   }
 
   function list() {
-    const pageNo = $page.params.pageNo || 1;
+    const pageNo = pageNo || 1;
 
-    goto(`/board/${$page.params.boardId}/${pageNo}`, {invalidateAll: true, replaceState: true});
+    goto(`/board/${boardId}/${pageNo}`, {invalidateAll: true, replaceState: true});
   }
 
   async function preview(event, el) {
@@ -165,7 +169,7 @@
       if (commentImage) formData.append('image', commentImage);
     }
 
-    fetch(`/board/${$page.params.boardId}/${$page.params.articleId}/comment`, {
+    fetch(`/board/${boardId}/${articleId}/comment`, {
       method: 'POST',
       body: formData
     })
@@ -207,7 +211,7 @@
 
     showModal('삭제 하시겠습니까?', ()=>{
 
-        fetch(`/board/${$page.params.boardId}/${$page.params.articleId}/comment`, {
+        fetch(`/board/${boardId}/${articleId}/comment`, {
         method: 'DELETE',
         body: JSON.stringify({commentId})
       })
@@ -232,7 +236,7 @@
   function remove(articleId) {
 
     showModal('삭제 하시겠습니까?', ()=> {
-      fetch(`/board/${$page.params.boardId}/${$page.params.articleId}`, {
+      fetch(`/board/${boardId}/${articleId}`, {
       method: 'DELETE',
       body: JSON.stringify({articleId})
     })
@@ -253,11 +257,11 @@
   }
 
   function edit(articleId) {
-    goto(`/board/${$page.params.boardId}/write/${articleId}`);
+    goto(`/board/${boardId}/write/${articleId}`);
   }
 
   function write() {
-    goto(`/board/${$page.params.boardId}/write`);
+    goto(`/board/${boardId}/write`);
   }
 
   /**
@@ -265,7 +269,7 @@
    * @param pageNo {number}
    */
   function gopage(pageNo){
-    goto(`/board/${$page.params.boardId}/${pageNo}?v=${new Date().getSeconds()}`
+    goto(`/board/${boardId}/${pageNo}?v=${new Date().getSeconds()}`
       , {invalidateAll: true});
   }
 
@@ -326,14 +330,14 @@
   let commentData = $derived(data.article.comments);
 
   $effect(() => {
-    console.log('🔄 게시글 상세 페이지 새로고침 - articleId:', $page.params.articleId);
+    console.log('🔄 게시글 상세 페이지 - articleId:', articleId);
     console.log('📝 게시글:', data.article.title);
     console.log('💬 댓글 수:', data.article.comments?.length);
   });
 
   onMount(()=>{
 
-    const hash = $page.url.searchParams.get('a');
+    const hash = url.searchParams.get('a');
 
     if(hash){
       const el = document.querySelector(`#${hash}`);
@@ -423,7 +427,7 @@
     <Row class="mx-0">
       <!--버튼-->
       <Col class="text-end pe-md-3 p-xs-0 m-xs-0">
-        {#if $page.data.session?.user?.email && data.article.email === $page.data.session.user.email}
+        {#if data.session?.user?.email && data.article.email === data.session.user.email}
           <Button color="danger" onclick={() => remove(data.article._id)} class="ps-1 pe-2">
             <Icon name="trash"/>
             삭제
@@ -547,10 +551,10 @@
               </Col>
             </Row>
 
-              {#if $page.data.session?.user.nickname && comment.state === 'write'}
+              {#if data.session?.user.nickname && comment.state === 'write'}
                 <Row class="mt-2">
                   <Col class="text-end pe-2 m-0">
-                    {#if comment.email === $page.data.session?.user.email}
+                    {#if comment.email === data.session?.user.email}
                       <Button
                         onclick={() => deleteComment(comment._id)}
                         size="sm"
@@ -664,7 +668,7 @@
 
 
       <!-- 댓글 입력 -->
-      {#if $page.data.session?.user.nickname}
+      {#if data.session?.user.nickname}
         <div class="border p-3 rounded-4 shadow-sm mt-3" bind:this={commentDiv}>
           <Loader
             bind:active={commentLoading}
@@ -714,7 +718,7 @@
     <Row class="mx-0 mb-3">
       <!--버튼-->
       <Col class="text-end pe-1">
-        {#if data.article.email === $page.data.session?.user.email}
+        {#if data.article.email === data.session?.user.email}
           <Button class="ps-1 pe-2" color="danger" onclick={() => remove(data.article._id)}>
             <Icon name="trash"/>
             삭제
@@ -741,7 +745,7 @@
   <!-- 목록-->
   <Row class="mt-4 shadow rounded-4 p-1 m-0">
 
-    <BoardList {data} {write} boardId={$page.params.boardId} pageNo={$page.params.pageNo} session={$page.data.session}/>
+    <BoardList {data} {write} {boardId} pageNo={pageNo || 1} session={data.session}/>
 
   </Row>
 

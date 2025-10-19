@@ -1,6 +1,5 @@
 <script>
   import { Button, Col, Icon, Row } from '@sveltestrap/sveltestrap';
-  import { page } from '$app/stores';
 
   import BoardList from '$lib/components/board_list.svelte';
 
@@ -9,6 +8,11 @@
 
   import Swal from 'sweetalert2';
   import { onMount } from 'svelte';
+
+  // Svelte 5 Runes
+  let { data, params } = $props();
+  
+  const { boardId, pageNo } = params;
 
   // 도메인 변경 안내
   onMount(() => {
@@ -29,27 +33,24 @@
 
 
   function write() {
-    goto(`/board/${$page.params.boardId}/write`);
+    goto(`/board/${boardId}/write`);
   }
 
   /**
    * page 이동
    * @param pageNo {number}
    */
-  function gopage(pageNo){
-    goto(`/board/${$page.params.boardId}/${pageNo}?v=${new Date().getSeconds()}`
+  function gopage(pageNum){
+    goto(`/board/${boardId}/${pageNum}?v=${new Date().getSeconds()}`
       , {invalidateAll: true});
   }
 
-  // Svelte 5 Runes
-  let { data } = $props();
-
   $effect(() => {
-    console.log('🔄 게시판 페이지 새로고침 - boardId:', $page.params.boardId, 'pageNo:', $page.params.pageNo);
+    console.log('🔄 게시판 페이지 새로고침 - boardId:', boardId, 'pageNo:', pageNo);
     console.log('📊 게시글 수:', data.articles?.length);
   });
 
-  alarmCount.update(alarmCount =>$page.data.alarmCount);
+  alarmCount.update(alarmCount => data.alarmCount);
 </script>
 
 
@@ -58,7 +59,7 @@
 
   <Row class="py-2 shadow rounded-4 mx-0">
 
-    {#if $page.data.session?.user.nickname}
+    {#if data.session?.user?.nickname}
       <Row class="px-0 mx-0 pe-3 mt-2 pb-3 border-bottom border-secondary-subtle">
         <Col class="d-flex justify-content-end p-0">
           <Button class="px-2" color="primary" onclick={write}>
@@ -68,7 +69,7 @@
       </Row>
     {/if}
 
-    <BoardList {data} {write} boardId={$page.params.boardId} pageNo={$page.params.pageNo} session={$page.data.session}/>
+    <BoardList {data} {write} {boardId} pageNo={pageNo || 1} session={data.session}/>
 
   </Row>
 </main>

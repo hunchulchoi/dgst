@@ -12,7 +12,6 @@
   } from '@sveltestrap/sveltestrap';
   import QuillEditor from '$lib/components/QuillEditor.svelte';
   import { goto } from '$app/navigation';
-  import { page } from '$app/stores';
   import { enhance } from '$app/forms';
 
   let ffmpeg;
@@ -37,11 +36,13 @@
     if (title || content) {
       if (!confirm('취소 하시겠습니까? 작성하던 글은 사라집니다.')) return false;
     }
-    goto(`/board/${$page.params.boardId}`);
+    goto(`/board/${boardId}`);
   }
 
   // Svelte 5 Runes
-  let { data } = $props();
+  let { data, params } = $props();
+  
+  const { boardId, articleId } = params;
 
   let title = $state(data.title || '');
   let content = $state(data.content || '');
@@ -165,7 +166,7 @@
         };
       }}
     >
-      <Input type="hidden" name="articleId" value={$page.params.articleId} />
+      <Input type="hidden" name="articleId" value={articleId} />
       <Input type="hidden" name="content" bind:value={content} required />
       <FormGroup floating label="제목">
         <Input id="title" name="title" bind:value={title} required autofocus />

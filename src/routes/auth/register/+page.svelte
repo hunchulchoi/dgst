@@ -22,14 +22,16 @@
   } from '@sveltestrap/sveltestrap'
 
   import { PUBLIC_GOOGLE_RECAPTCHA_SITE_KEY } from '$env/static/public';
-  import { page } from '$app/stores';
   import { goto } from '$app/navigation';
   import { browser } from '$app/environment';
   import {blobToWebP} from "webp-converter-browser";
 
-  console.log('$page.data.session', $page.data);
+  // Svelte 5 Runes  
+  let { data } = $props();
 
-  if (!$page.data.session || $page.data.session.nickname) {
+  console.log('data.session', data);
+
+  if (!data.session || data.session.nickname) {
     if (browser) goto('/', { replaceState: true });
   }
 
