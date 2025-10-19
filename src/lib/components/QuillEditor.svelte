@@ -80,17 +80,21 @@
       
       const startTime = Date.now();
 
+      // 1초마다 경과 시간 업데이트
+      const timeInterval = setInterval(() => {
+        compressionTime = Math.round((Date.now() - startTime) / 1000);
+      }, 1000);
+
       // Progress 이벤트 리스너 설정
       const progressHandler = ({ progress, time }) => {
         compressionProgress = Math.round(progress * 100);
-        compressionTime = Math.round((Date.now() - startTime) / 1000); // 경과 시간 (초)
         
         // 예상 시간 계산 (진행률 기반)
         if (progress > 0.01) {
           estimatedTime = Math.round(compressionTime / progress);
         }
         
-        console.log(`압축 진행률: ${compressionProgress}%`, `경과: ${compressionTime}초`, `예상: ${estimatedTime}초`);
+        console.log(`압축 진행률: ${compressionProgress}%`, `경과: ${compressionTime}초`, `남은: ${Math.max(0, estimatedTime - compressionTime)}초`);
       };
       
       ffmpeg.on('progress', progressHandler);
@@ -127,8 +131,9 @@
       
       console.log('비디오 압축 완료:', 'original:', file.size, 'compressed:', compressedFile.size);
       
-      // Progress 이벤트 리스너 제거
+      // Progress 이벤트 리스너 및 타이머 제거
       ffmpeg.off('progress');
+      clearInterval(timeInterval);
       
       // 잠시 후 오버레이 제거 (100% 표시)
       setTimeout(() => {
@@ -147,6 +152,7 @@
       compressionTime = 0;
       estimatedTime = 0;
       ffmpeg.off('progress');
+      clearInterval(timeInterval);
       return file; // 압축 실패 시 원본 반환
     }
   }
@@ -203,9 +209,20 @@
         console.log('Upload response:', data);
         const url = data.url;
 
-        // 에디터에 이미지 삽입
+        // 에디터에 이미지/비디오 삽입
         const range = quillInstance.getSelection(true);
-        quillInstance.insertEmbed(range.index, 'image', url);
+        
+        if (file.type.startsWith('video/')) {
+          // 비디오 태그로 삽입
+          const videoHtml = `<video controls style="max-width: 100%; height: auto;"><source src="${url}" type="${file.type}">Your browser does not support the video tag.</video>`;
+          quillInstance.clipboard.dangerouslyPasteHTML(range.index, videoHtml);
+          console.log('비디오 삽입 완료:', url);
+        } else {
+          // 이미지 태그로 삽입
+          quillInstance.insertEmbed(range.index, 'image', url);
+          console.log('이미지 삽입 완료:', url);
+        }
+        
         quillInstance.setSelection(range.index + 1);
 
         // uploadMinus 콜백 호출
@@ -466,9 +483,6 @@
               경과: {formatTime(compressionTime)}
             </span>
             {#if estimatedTime > 0}
-              <span class="badge bg-info me-2">
-                예상: {formatTime(estimatedTime)}
-              </span>
               <span class="badge bg-warning">
                 남은 시간: {formatTime(Math.max(0, estimatedTime - compressionTime))}
               </span>
