@@ -75,8 +75,8 @@ export const load = async ({ params }) => {
 
     return { pageNo, maxPage, startNo, endNo, articles: jsonArticles };
     
-  } catch (error) {
-    console.error('[[pageNo=integer]]', error);
+  } catch (err) {
+    console.error('[[pageNo=integer]]', err);
     throw error(500, '목록을 가져오는 중에 오류가 발생하였습니다.');
   }
 };
