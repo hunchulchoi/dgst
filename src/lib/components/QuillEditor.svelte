@@ -18,9 +18,56 @@
   let editorDiv;
   let Quill;
   let ImageUploader;
+  let ffmpeg = null;
+  let FFmpeg = null;
+  let fetchFile = null;
 
   /**
-   * 커스텀 이미지 업로드 핸들러
+   * 비디오 압축 함수
+   */
+  async function compressVideo(file) {
+    try {
+      console.log('비디오 압축 시작:', file.name, 'size:', file.size);
+
+      if (!ffmpeg) {
+        console.error('FFmpeg가 로드되지 않았습니다.');
+        return file;
+      }
+
+      uploadPlus?.();
+
+      // FFmpeg에 파일 쓰기
+      await ffmpeg.writeFile('input.mp4', await fetchFile(file));
+
+      // 비디오 압축 실행
+      await ffmpeg.exec([
+        '-i', 'input.mp4',
+        '-c:v', 'libx264',
+        '-crf', '28',
+        '-preset', 'medium',
+        '-c:a', 'aac',
+        '-b:a', '128k',
+        'output.mp4'
+      ]);
+
+      // 압축된 파일 가져오기
+      const compressedData = await ffmpeg.readFile('output.mp4');
+      const compressedBlob = new Blob([compressedData.buffer], { type: 'video/mp4' });
+      const compressedFile = new File([compressedBlob], file.name, { type: 'video/mp4' });
+
+      uploadMinus?.();
+      
+      console.log('비디오 압축 완료:', 'original:', file.size, 'compressed:', compressedFile.size);
+      return compressedFile;
+    } catch (error) {
+      console.error('비디오 압축 실패:', error);
+      uploadMinus?.();
+      return file; // 압축 실패 시 원본 반환
+    }
+  }
+
+  /**
+   * 커스텀 이미지/비디오 업로드 핸들러
    */
   async function imageHandler() {
     const input = document.createElement('input');
@@ -29,7 +76,7 @@
     input.click();
 
     input.onchange = async () => {
-      const file = input.files[0];
+      let file = input.files[0];
       if (!file) return;
 
       loadingImage = true;
@@ -38,6 +85,12 @@
         // uploadPlus 콜백 호출
         if (uploadPlus) {
           uploadPlus();
+        }
+
+        // 비디오 파일이면 압축 시도
+        if (file.type.startsWith('video/') && ffmpeg) {
+          console.log('비디오 파일 감지, 압축 시작...');
+          file = await compressVideo(file);
         }
 
         // FormData 생성
@@ -191,6 +244,20 @@
     if (typeof window === 'undefined') return;
 
     try {
+      // FFmpeg 로드 (비디오 압축용)
+      try {
+        const FFmpegModule = await import('@ffmpeg/ffmpeg');
+        const UtilModule = await import('@ffmpeg/util');
+        FFmpeg = FFmpegModule.FFmpeg;
+        fetchFile = UtilModule.fetchFile;
+        
+        ffmpeg = new FFmpeg();
+        await ffmpeg.load();
+        console.log('FFmpeg loaded successfully');
+      } catch (err) {
+        console.error('FFmpeg 로드 실패 (비디오 압축 비활성화):', err);
+      }
+
       // Quill 동적 import
       const QuillModule = await import('quill');
       Quill = QuillModule.default;
