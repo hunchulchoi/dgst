@@ -635,7 +635,7 @@
                   on:paste={(evt)=>preview(evt, rePreviewEl)}
                   class="form-control border border-gray rounded-start-3"
                   rows="3"
-                />
+                ></textarea>
                 <Button color="primary" outline onclick={()=>writeComment(comment._id)}>
                   <Icon name="pencil-fill"/>
                   등록
@@ -745,7 +745,7 @@
   <!-- 목록-->
   <Row class="mt-4 shadow rounded-4 p-1 m-0">
 
-    <BoardList {data} {write} {boardId} pageNo={pageNo || 1} session={data.session}/>
+    <BoardList {data} {write} {boardId} {pageNo} session={data.session}/>
 
   </Row>
 

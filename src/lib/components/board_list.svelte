@@ -6,7 +6,9 @@
   import { ko } from 'date-fns/locale';
 
   // Svelte 5 Runes - Props
-  let { data, write, boardId, pageNo, session } = $props();
+  let { data, write, boardId, pageNo = 1, session } = $props();
+
+  
 </script>
 
 {#if !data.articles.length}

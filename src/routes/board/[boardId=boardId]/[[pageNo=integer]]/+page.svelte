@@ -70,7 +70,7 @@
       </Row>
     {/if}
 
-    <BoardList {data} {write} {boardId} pageNo={pageNo || 1} session={data.session}/>
+    <BoardList {data} {write} {boardId} {pageNo} session={data.session}/>
 
   </Row>
 </main>
