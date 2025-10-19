@@ -43,6 +43,8 @@
 
   /**
    * 초를 HH:MM:SS 형식으로 변환
+   * @param {number} seconds
+   * @returns {string}
    */
   function formatTime(seconds) {
     const hrs = Math.floor(seconds / 3600);
