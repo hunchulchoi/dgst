@@ -257,6 +257,16 @@
   }
 
   /**
+   * 미디어 자동 임베드 (URL 붙여넣기 시)
+   * @param {string} url
+   * @returns {void}
+   */
+  function autoEmbedMedia(url) {
+    const range = quillInstance.getSelection(true) || { index: quillInstance.getLength() };
+    processMediaEmbed(url, range);
+  }
+
+  /**
    * 비디오 임베드 핸들러
    * @returns {void}
    */
@@ -265,6 +275,16 @@
     if (!url) return;
 
     const range = quillInstance.getSelection(true);
+    processMediaEmbed(url, range);
+  }
+
+  /**
+   * 미디어 임베드 처리 (공통 로직)
+   * @param {string} url
+   * @param {any} range
+   * @returns {void}
+   */
+  function processMediaEmbed(url, range) {
     let embedHtml = '';
 
     // YouTube (일반 및 Shorts)
@@ -333,6 +353,7 @@
     if (embedHtml) {
       quillInstance.clipboard.dangerouslyPasteHTML(range.index, embedHtml);
       quillInstance.setSelection(range.index + 1);
+      console.log('✅ 미디어 임베드 완료:', url);
     }
   }
 
@@ -446,6 +467,33 @@
       // 데이터 변경 감지 및 양방향 바인딩
       quillInstance.on('text-change', () => {
         editorData = quillInstance.root.innerHTML;
+      });
+
+      // URL 붙여넣기 감지 및 자동 임베드
+      quillInstance.root.addEventListener('paste', (e) => {
+        const clipboardData = e.clipboardData || window.clipboardData;
+        const pastedText = clipboardData.getData('text');
+        
+        // URL 패턴 감지
+        const urlPattern = /(https?:\/\/[^\s]+)/g;
+        const urls = pastedText.match(urlPattern);
+        
+        if (urls && urls.length === 1) {
+          const url = urls[0];
+          
+          // 미디어 플랫폼 URL인지 확인
+          if (url.includes('youtube.com') || url.includes('youtu.be') || 
+              url.includes('instagram.com') || url.includes('tiktok.com') || 
+              url.includes('tv.naver.com')) {
+            
+            e.preventDefault();
+            console.log('🎬 미디어 URL 감지, 자동 임베드:', url);
+            
+            setTimeout(() => {
+              autoEmbedMedia(url);
+            }, 100);
+          }
+        }
       });
 
       console.log('🎉 Quill Editor initialized successfully');
