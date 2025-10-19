@@ -110,12 +110,12 @@
       
       await ffmpeg.exec([
         '-i', 'input.mp4',
-        '-c:v', 'libx264',
-        '-crf', '28',
-        '-preset', 'medium',
-        '-c:a', 'aac',
-        '-b:a', '128k',
-        'output.mp4'
+  '-c:v', 'libx264',      // H.264 코덱
+  '-crf', '28',           // 압축률 (0-51, 28은 중간)
+  '-preset', 'medium',    // 속도/품질 밸런스
+  '-c:a', 'aac',          // 오디오 AAC
+  '-b:a', '128k',         // 오디오 비트레이트
+  'output.mp4'
       ]);
       
       console.log('FFmpeg 압축 완료');
@@ -378,6 +378,26 @@
       // Quill 스타일 import
       await import('quill/dist/quill.snow.css');
       console.log('✅ Quill CSS loaded');
+
+      // Video Blot 등록 (video 태그 지원)
+      const BlockEmbed = Quill.import('blots/block/embed');
+      class VideoBlot extends BlockEmbed {
+        static create(value) {
+          const node = super.create();
+          node.setAttribute('src', value);
+          node.setAttribute('controls', '');
+          node.setAttribute('style', 'max-width: 100%; height: auto;');
+          return node;
+        }
+
+        static value(node) {
+          return node.getAttribute('src');
+        }
+      }
+      VideoBlot.blotName = 'video';
+      VideoBlot.tagName = 'video';
+      Quill.register(VideoBlot);
+      console.log('✅ Video Blot 등록됨');
 
       // Quill 인스턴스 생성
       console.log('Quill 인스턴스 생성 중...');
