@@ -607,12 +607,10 @@
               autoEmbedMedia(url);
             }, 100);
           }
-          // 일반 URL - OG 메타데이터 가져오기
+          // 일반 URL - 그냥 링크로 삽입
           else {
-            e.preventDefault();
-            console.log('🔗 일반 URL 감지, OG 카드 생성:', url);
-            
-            await createOGCard(url);
+            console.log('🔗 일반 URL - 기본 붙여넣기 허용');
+            // preventDefault 하지 않음 - 기본 동작 허용
           }
         } else {
           console.log('⚠️ 단일 URL 아님 또는 URL 없음');
