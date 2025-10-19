@@ -16,8 +16,14 @@
   import { enhance } from '$app/forms';
 
   let ffmpeg;
-  let uploadPlus;
-  let uploadMinus;
+  
+  const uploadPlus = () => {
+    uploading++;
+  };
+
+  const uploadMinus = () => {
+    uploading--;
+  };
 
   onMount(async () => {
     const { FFmpeg } = await import('@ffmpeg/ffmpeg');
@@ -25,15 +31,6 @@
 
     ffmpeg = new FFmpeg();
     await ffmpeg.load();
-
-    // 기존 uploadPlus 및 uploadMinus 함수 정의
-    uploadPlus = () => {
-      uploading++;
-    };
-
-    uploadMinus = () => {
-      uploading--;
-    };
   });
 
   function list() {
