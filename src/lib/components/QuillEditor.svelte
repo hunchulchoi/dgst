@@ -213,17 +213,17 @@
         const range = quillInstance.getSelection(true);
         
         if (file.type.startsWith('video/')) {
-          // 비디오 태그로 삽입
-          const videoHtml = `<video controls style="max-width: 100%; height: auto;"><source src="${url}" type="${file.type}">Your browser does not support the video tag.</video>`;
+          // 비디오 태그로 삽입 (p 태그로 감싸서 안정성 확보)
+          const videoHtml = `<p><video controls src="${url}" style="max-width: 100%; height: auto;"></video></p><p><br></p>`;
           quillInstance.clipboard.dangerouslyPasteHTML(range.index, videoHtml);
-          console.log('비디오 삽입 완료:', url);
+          quillInstance.setSelection(range.index + 2);
+          console.log('비디오 삽입 완료:', url, 'type:', file.type);
         } else {
           // 이미지 태그로 삽입
           quillInstance.insertEmbed(range.index, 'image', url);
+          quillInstance.setSelection(range.index + 1);
           console.log('이미지 삽입 완료:', url);
         }
-        
-        quillInstance.setSelection(range.index + 1);
 
         // uploadMinus 콜백 호출
         if (uploadMinus) {
