@@ -21,7 +21,8 @@
   import theme from '$lib/shared/stores/theme.js';
 
   import { signIn, signOut } from '@auth/sveltekit/client';
-  import { goto, navigating } from '$app/navigation';
+  import { goto } from '$app/navigation';
+  import { navigating } from '$app/stores';
 
   import { alarmCount } from '$lib/util/store.js';
 
