@@ -1,51 +1,37 @@
 <script>
-  // npm i ckeditor5-svelte
-  // npm i @ckeditor/ckeditor5-build-decoupled-document/build/ckeditor
-  // /node_modules\ckeditor5-svelte\src\Ckeditor.svelte 를 열어서
-  // 42 라인 쯤의 //editor.isReadOnly = disabled; 를 주석처리(안하면 변경내용 binding 이 안됨)
-
+  /**
+   * CKEditor 5 Svelte 5 통합 컴포넌트
+   * @description Svelte 5용으로 재작성된 CKEditor DecoupledEditor 통합
+   */
+  import { onMount, onDestroy } from 'svelte';
   import DgstUploadAdapter from '$lib/util/DgstUploadAdapter.js';
-
-  import Video from '@visao/ckeditor5-video/src/video';
-
-  //import Uploader from "$lib/util/DgstUploadPlugin.js";
-  import { onMount } from 'svelte';
-
   import Loader from 'svelte-loading-overlay/Loader.svelte';
 
-  let CKEditor;
-
+  // Props
   export let uploadPlus;
   export let uploadMinus;
+  export let editorData = '';
 
+  // 로컬 상태
+  let editorElement = null;
+  let editorInstance = null;
+  let DecoupledEditor = null;
+  let loadingImage = false;
+  let editorDiv;
+
+  /**
+   * 커스텀 업로드 어댑터 플러그인
+   */
   function DgstUploadAdapterPlugin(editor) {
-    //
     editor.plugins.get('FileRepository').createUploadAdapter = (loader) => {
       return new DgstUploadAdapter(loader, uploadPlus, uploadMinus);
     };
   }
 
-  let Font;
-  onMount(async () => {
-    if (typeof window !== 'undefined') {
-      CKEditor = (await import('ckeditor5-svelte')).default;
-
-      editor = (await import('@ckeditor/ckeditor5-build-decoupled-document/build/ckeditor'))
-        .default;
-    }
-  });
-
-  // Setting up editor prop to be sent to wrapper component
-  let editor;
-  // Reference to initialised editor instance
-  let editorInstance = null;
-  // Setting up any initial data for the editor
-  export let editorData = '';
-
-  //아래 설정 지우시면 let editorConfig: any = {} 모든 에디터 기능 다 나옵니다.
-  //버튼에 마우스오버하면 설정이름 나오는데, 눈찌껏 대문자 넣어서 네이밍 옵션에 넣으면 사굥가능합니다.
-  let editorConfig = {
-    plguins: [Video],
+  /**
+   * CKEditor 설정
+   */
+  const editorConfig = {
     extraPlugins: [DgstUploadAdapterPlugin],
     toolbar: {
       items: [
@@ -64,15 +50,6 @@
         'strikethrough'
       ]
     },
-    simpleUpload: {
-      uploadUrl: '/board/upload',
-      withCredentials: true
-      /* headers:{
-        'X-CSRFToken': 'CSRFToken',
-        Authorization: 'Bearer <JSON Web Token>',
-      }*/
-    },
-
     image: {
       insert: {
         type: 'block'
@@ -122,7 +99,6 @@
           url: /^instagram\.com\/reel\/([\w-]+)(?:\?igshid=(\d+))?/,
           html: (match) => {
             const id = match[1];
-            const time = match[2];
 
             return `<blockquote class="instagram-media"
                       data-instgrm-captioned
@@ -154,7 +130,6 @@
           url: /^instagram\.com\/p\/([\w-]+)(?:\?utm_source=(\d+))?/,
           html: (match) => {
             const id = match[1];
-            const time = match[2];
 
             return `<blockquote class="instagram-media" data-instgrm-captioned
   data-instgrm-permalink="https://www.instagram.com/p/${id}/?utm_source=ig_embed&amp;utm_campaign=loading"
@@ -245,11 +220,8 @@
           name: 'tiktok',
           url: /^tiktok\.com\/(.*)\/video\/(.*)(?:\?(.*))?/,
           html: (match) => {
-            console.log('match', match);
             const id = match[1];
             const vid = match[2];
-
-            console.log('id', id);
 
             return `<blockquote class="tiktok-embed"
                 cite="https://www.tiktok.com/${id}/video/${vid}"
@@ -279,40 +251,87 @@
     language: 'ko'
   };
 
-  function onReady({ detail: editor }) {
-    // Insert the toolbar before the editable area.
+  /**
+   * CKEditor 초기화
+   */
+  onMount(async () => {
+    if (typeof window === 'undefined') return;
 
-    editorInstance = editor;
+    try {
+      // CKEditor 동적 import
+      const CKEditorModule = await import(
+        '@ckeditor/ckeditor5-build-decoupled-document/build/ckeditor'
+      );
+      DecoupledEditor = CKEditorModule.default;
 
-    editor.ui
-      .getEditableElement()
-      .parentElement.insertBefore(editor.ui.view.toolbar.element, editor.ui.getEditableElement());
+      // 에디터 생성
+      const editor = await DecoupledEditor.create(editorElement, editorConfig);
+      editorInstance = editor;
 
-    editor.plugins.get('FileRepository').createLoader('');
+      // 툴바 삽입
+      const toolbarContainer = editorElement.previousElementSibling;
+      if (toolbarContainer) {
+        toolbarContainer.appendChild(editor.ui.view.toolbar.element);
+      } else {
+        // 툴바 컨테이너가 없으면 에디터 앞에 삽입
+        editorElement.parentElement.insertBefore(
+          editor.ui.view.toolbar.element,
+          editorElement
+        );
+      }
 
-    const imageUploadEditing = editor.plugins.get('ImageUploadEditing');
-    //const imageInsert = editor.plugins.get( 'ImageInsert' );
+      // 초기 데이터 설정
+      if (editorData) {
+        editor.setData(editorData);
+      }
 
-    imageUploadEditing.isEnabled = false;
-    editor.plugins.get('ImageInlineEditing').isEnabled = false;
+      // 데이터 변경 감지 및 양방향 바인딩
+      editor.model.document.on('change:data', () => {
+        editorData = editor.getData();
+      });
 
-    imageUploadEditing.on('change', (evt1) => {
-      console.log('upload', evt1);
-    });
+      // FileRepository 설정
+      const fileRepository = editor.plugins.get('FileRepository');
+      if (fileRepository) {
+        fileRepository.createLoader('');
 
-    imageUploadEditing.on('uploadComplete', (evt, { data, imageElement }) => {
-      console.log('uploadComplete', evt, 'data', data, 'imageElement', imageElement);
+        // 이미지 업로드 이벤트 처리
+        const imageUploadEditing = editor.plugins.get('ImageUploadEditing');
+        if (imageUploadEditing) {
+          imageUploadEditing.isEnabled = false;
 
-      loadingImage = false;
-    });
+          imageUploadEditing.on('uploadComplete', (evt, { data, imageElement }) => {
+            console.log('uploadComplete', evt, 'data', data, 'imageElement', imageElement);
+            loadingImage = false;
+          });
+        }
 
-    editor.plugins.get('FileRepository').loaders._items[0].on('uploaded', (evt, data) => {
-      console.log('evt', evt, 'data', data);
-    });
+        // ImageInlineEditing 비활성화
+        const imageInlineEditing = editor.plugins.get('ImageInlineEditing');
+        if (imageInlineEditing) {
+          imageInlineEditing.isEnabled = false;
+        }
+      }
+    } catch (error) {
+      console.error('CKEditor 초기화 실패:', error);
+    }
+  });
+
+  /**
+   * 정리
+   */
+  onDestroy(() => {
+    if (editorInstance) {
+      editorInstance.destroy().catch((error) => {
+        console.error('CKEditor 삭제 실패:', error);
+      });
+    }
+  });
+
+  // editorData prop 변경 감지 (외부에서 변경 시)
+  $: if (editorInstance && editorData !== editorInstance.getData()) {
+    editorInstance.setData(editorData);
   }
-
-  let editorDiv;
-  let loadingImage = false;
 </script>
 
 <svelte:head>
@@ -323,14 +342,19 @@
 <main>
   <div bind:this={editorDiv}>
     <Loader active={loadingImage} container={editorDiv} component="Dot" opacity="0.7" />
-    {#if CKEditor && editor}
-      <svelte:component
-        this={CKEditor}
-        bind:editor
-        on:ready={onReady}
-        bind:config={editorConfig}
-        bind:value={editorData}
-      />
-    {/if}
+    <div class="toolbar-container"></div>
+    <div bind:this={editorElement}></div>
   </div>
 </main>
+
+<style>
+  .toolbar-container {
+    border: 1px solid #ccc;
+    border-bottom: 0;
+  }
+
+  main :global(.ck-editor__editable) {
+    min-height: 400px;
+    border: 1px solid #ccc;
+  }
+</style>
