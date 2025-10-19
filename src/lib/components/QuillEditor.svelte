@@ -505,6 +505,7 @@
 
       // Video Blot 등록 (div로 감싼 video 태그)
       const BlockEmbed = Quill.import('blots/block/embed');
+      
       class VideoBlot extends BlockEmbed {
         static create(value) {
           const node = super.create();
@@ -529,6 +530,32 @@
       VideoBlot.tagName = 'div';
       Quill.register(VideoBlot);
       console.log('✅ Video Blot 등록됨 (div로 감싼 video)');
+
+      // IFrame Blot 등록 (YouTube, Instagram 등)
+      class IFrameBlot extends BlockEmbed {
+        static create(value) {
+          const node = super.create();
+          node.setAttribute('src', value.src || value);
+          node.setAttribute('frameborder', '0');
+          node.setAttribute('allowfullscreen', true);
+          node.setAttribute('style', 'max-width: 100%; height: 315px;');
+          if (value.width) node.setAttribute('width', value.width);
+          if (value.height) node.setAttribute('height', value.height);
+          return node;
+        }
+
+        static value(node) {
+          return {
+            src: node.getAttribute('src'),
+            width: node.getAttribute('width'),
+            height: node.getAttribute('height')
+          };
+        }
+      }
+      IFrameBlot.blotName = 'iframe';
+      IFrameBlot.tagName = 'iframe';
+      Quill.register(IFrameBlot);
+      console.log('✅ IFrame Blot 등록됨');
 
       // Quill 인스턴스 생성
       console.log('Quill 인스턴스 생성 중...');
