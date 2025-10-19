@@ -152,17 +152,17 @@
         </NavItem>
       {/if}
       <!--<NavItem>
-        <NavLink href="/game/56471" active={$page.data.pathname.startsWith('/game/56471')}>
+        <NavLink href="/game/56471" active={pathname?.startsWith('/game/56471')}>
           <Icon name="bi bi-joystick" class="text-primary"/>
         </NavLink>
       </NavItem>
       <NavItem>
-        <NavLink href="/game/52531" active={$page.data.pathname.startsWith('/game/52531')}>
+        <NavLink href="/game/52531" active={pathname?.startsWith('/game/52531')}>
           <Icon name="bi bi-joystick" class="text-warning"/>
         </NavLink>
       </NavItem>
       <NavItem>
-        <NavLink href="/game/47767" active={$page.data.pathname.startsWith('/game/47767')}>
+        <NavLink href="/game/47767" active={pathname?.startsWith('/game/47767')}>
           <Icon name="bi bi-joystick" class="text-info"/>
         </NavLink>
       </NavItem>-->
