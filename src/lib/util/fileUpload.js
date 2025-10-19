@@ -10,13 +10,23 @@ import webp from 'webp-converter';
 function safeString(_name, _path) {
   _name = decodeURIComponent(_name);
 
-  if (!mime.getType(_name).startsWith('image')) return false;
+  const mimeType = mime.getType(_name);
+  // 이미지와 비디오 모두 허용
+  const isValid = mimeType && (mimeType.startsWith('image') || mimeType.startsWith('video'));
+  
+  if (!isValid) {
+    console.log('Invalid file type:', mimeType, 'for file:', _name);
+    return false;
+  }
 
   _path = decodeURIComponent(_path);
 
-  //console.debug(path.normalize(path.join(UPLOAD_PATH, _path, _name)));
+  const normalizedPath = path.normalize(path.join(UPLOAD_PATH, _path, _name));
+  const isPathSafe = normalizedPath.startsWith(UPLOAD_PATH);
+  
+  console.log('Path safety check:', { normalizedPath, UPLOAD_PATH, isPathSafe });
 
-  return path.normalize(path.join(UPLOAD_PATH, _path, _name)).startsWith(UPLOAD_PATH);
+  return isPathSafe;
 }
 
 export async function write(file, email, preservePath = 'jjal') {
@@ -47,14 +57,14 @@ export async function write(file, email, preservePath = 'jjal') {
     const baseName = file.name.substring(0, file.name.lastIndexOf('.'));
     const safeName = baseName.substring(0, 10).replace(/[^a-zA-Z0-9가-힣]/g, '_');
     const ext = file.name.substring(file.name.lastIndexOf('.'));
-    
+
     let fileName = `${emailPrefix}_${safeName}_${now.getTime()}${ext}`;
-    
+
     console.log('Generated fileName:', fileName);
 
     const fileBuffer = Buffer.from(await file.arrayBuffer());
     const fullPath = `${UPLOAD_PATH}${dir}/${fileName}`;
-    
+
     console.log('Writing file to:', fullPath);
     fs.writeFileSync(fullPath, fileBuffer);
     console.log('File written successfully');
