@@ -18,7 +18,7 @@
 </script>
 
 <div>
-  <Button color="danger" on:click={memoModalToggle}>Open Modal</Button>
+  <!-- <Button color="danger" on:click={memoModalToggle}>Open Modal</Button>
   <Modal isOpen={memoModalOpen} toggle={memoModalToggle}>
     <ModalHeader toggle={memoModalToggle}>메모</ModalHeader>
     <ModalBody>
@@ -41,5 +41,5 @@
       <Button color="secondary" on:click={memoModalToggle}>닫기</Button>
       <Button color="primary" on:click={memoModalToggle}>저장</Button>
     </ModalFooter>
-  </Modal>
+  </Modal> -->
 </div>

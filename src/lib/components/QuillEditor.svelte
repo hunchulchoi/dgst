@@ -52,9 +52,10 @@
         }
         
         if (!ffmpegReady) {
-          console.error('❌ FFmpeg 로드 시간 초과');
+          console.warn('⚠️ FFmpeg 로드 시간 초과 - 원본 파일 업로드');
           isCompressing = false;
-          alert('비디오 압축 기능을 사용할 수 없습니다. 원본 파일을 업로드합니다.');
+          compressionProgress = 0;
+          // 압축 없이 원본 파일 반환
           return file;
         }
         
@@ -161,10 +162,14 @@
           uploadPlus();
         }
 
-        // 비디오 파일이면 압축 시도
-        if (file.type.startsWith('video/') && ffmpeg) {
-          console.log('비디오 파일 감지, 압축 시작...');
-          file = await compressVideo(file);
+        // 비디오 파일이면 압축 시도 (FFmpeg 사용 가능한 경우에만)
+        if (file.type.startsWith('video/')) {
+          if (ffmpegReady && ffmpeg) {
+            console.log('비디오 파일 감지, 압축 시작...');
+            file = await compressVideo(file);
+          } else {
+            console.log('⚠️ FFmpeg 미준비 - 원본 비디오 업로드');
+          }
         }
 
         // FormData 생성
@@ -366,11 +371,13 @@
     (async () => {
       try {
         console.log('FFmpeg 로드 시작 (백그라운드)...');
+        
         const FFmpegModule = await import('@ffmpeg/ffmpeg');
         const UtilModule = await import('@ffmpeg/util');
         FFmpeg = FFmpegModule.FFmpeg;
         fetchFile = UtilModule.fetchFile;
         
+        console.log('FFmpeg 클래스 로드 완료, 인스턴스 생성...');
         ffmpeg = new FFmpeg();
         
         // FFmpeg 로그 활성화
@@ -378,12 +385,22 @@
           console.log('[FFmpeg]', message);
         });
         
-        console.log('FFmpeg 로드 중...');
-        await ffmpeg.load();
+        console.log('FFmpeg 코어 로드 중... (시간이 걸릴 수 있습니다)');
+        
+        // timeout으로 로드 시간 제한
+        const loadPromise = ffmpeg.load();
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('FFmpeg load timeout')), 60000) // 60초
+        );
+        
+        await Promise.race([loadPromise, timeoutPromise]);
+        
         ffmpegReady = true;
         console.log('✅ FFmpeg loaded successfully and ready!');
       } catch (err) {
-        console.warn('⚠️ FFmpeg 로드 실패 (비디오 압축 비활성화):', err);
+        console.error('❌ FFmpeg 로드 실패 (비디오는 압축 없이 원본 업로드됩니다):', err);
+        ffmpegReady = false;
+        ffmpeg = null;
       }
     })();
   });
