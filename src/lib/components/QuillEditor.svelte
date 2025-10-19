@@ -321,7 +321,9 @@
    * @returns {void}
    */
   function autoEmbedMedia(url) {
+    console.log('🚀 autoEmbedMedia 호출:', url);
     const range = quillInstance.getSelection(true) || { index: quillInstance.getLength() };
+    console.log('📍 커서 위치:', range);
     processMediaEmbed(url, range);
   }
 
@@ -344,6 +346,7 @@
    * @returns {void}
    */
   function processMediaEmbed(url, range) {
+    console.log('🎯 processMediaEmbed 시작:', url);
     let embedHtml = '';
 
     // YouTube (일반 및 Shorts 및 Embed)
@@ -547,12 +550,17 @@
         const clipboardData = e.clipboardData || window.clipboardData;
         const pastedText = clipboardData.getData('text');
         
+        console.log('📋 붙여넣기 감지:', pastedText);
+        
         // URL 패턴 감지
         const urlPattern = /(https?:\/\/[^\s]+)/g;
         const urls = pastedText.match(urlPattern);
         
+        console.log('🔍 URL 추출:', urls);
+        
         if (urls && urls.length === 1) {
-          const url = urls[0];
+          const url = urls[0].trim();
+          console.log('✅ 단일 URL:', url);
           
           // 미디어 플랫폼 URL인지 확인
           if (url.includes('youtube.com') || url.includes('youtu.be') || 
@@ -573,6 +581,8 @@
             
             await createOGCard(url);
           }
+        } else {
+          console.log('⚠️ 단일 URL 아님 또는 URL 없음');
         }
       });
 
