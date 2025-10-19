@@ -49,6 +49,7 @@
     ToastHeader
   } from '@sveltestrap/sveltestrap';
   import { goto } from '$app/navigation';
+  import { page } from '$app/stores';
   import { scale } from 'svelte/transition';
 
   import { formatDistanceToNowStrict, formatISO9075, parseISO } from 'date-fns';
@@ -65,9 +66,9 @@
   import BoardList from '$lib/components/board_list.svelte';
 
   // Svelte 5 Runes - Props
-  let { data, params, url } = $props();
+  let { data } = $props();
   
-  const { boardId, articleId, pageNo } = params;
+  const { boardId, articleId, pageNo } = $page.params;
 
   function like(){
     fetch(`/board/${boardId}/${articleId}/like`, {method: 'POST'})
@@ -333,8 +334,10 @@
   });
 
   onMount(()=>{
+ 
+    console.log('url', $page.url)
 
-    const hash = url.searchParams.get('a');
+    const hash = $page.url.searchParams.get('a');
 
     if(hash){
       const el = document.querySelector(`#${hash}`);
