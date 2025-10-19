@@ -257,6 +257,65 @@
   }
 
   /**
+   * OG 카드 생성 (일반 URL)
+   * @param {string} url
+   * @returns {Promise<void>}
+   */
+  async function createOGCard(url) {
+    try {
+      loadingImage = true;
+      
+      const response = await fetch('/api/og', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url })
+      });
+
+      if (!response.ok) {
+        console.error('OG 데이터 가져오기 실패');
+        // 실패 시 그냥 URL 텍스트로 붙여넣기
+        const range = quillInstance.getSelection(true);
+        quillInstance.insertText(range.index, url);
+        return;
+      }
+
+      const ogData = await response.json();
+      console.log('✅ OG 데이터:', ogData);
+
+      const range = quillInstance.getSelection(true);
+      
+      // OG 카드 HTML 생성
+      const cardHtml = `
+        <div class="og-card" style="border: 1px solid #ddd; border-radius: 8px; overflow: hidden; margin: 1em 0; max-width: 500px;">
+          ${ogData.image ? `<img src="${ogData.image}" style="width: 100%; height: auto; display: block;" alt="${ogData.title || ''}">` : ''}
+          <div style="padding: 12px;">
+            <div style="font-weight: bold; font-size: 16px; margin-bottom: 4px;">
+              <a href="${ogData.url}" target="_blank" rel="noopener noreferrer" style="color: #1a0dab; text-decoration: none;">
+                ${ogData.title || url}
+              </a>
+            </div>
+            ${ogData.description ? `<div style="color: #545454; font-size: 14px; margin-bottom: 4px;">${ogData.description.substring(0, 150)}${ogData.description.length > 150 ? '...' : ''}</div>` : ''}
+            <div style="color: #006621; font-size: 12px;">${ogData.siteName || new URL(url).hostname}</div>
+          </div>
+        </div>
+        <p><br></p>
+      `;
+
+      quillInstance.clipboard.dangerouslyPasteHTML(range.index, cardHtml);
+      quillInstance.setSelection(range.index + 2);
+      
+      console.log('✅ OG 카드 삽입 완료');
+    } catch (err) {
+      console.error('OG 카드 생성 실패:', err);
+      // 실패 시 URL 텍스트로 붙여넣기
+      const range = quillInstance.getSelection(true);
+      quillInstance.insertText(range.index, url);
+    } finally {
+      loadingImage = false;
+    }
+  }
+
+  /**
    * 미디어 자동 임베드 (URL 붙여넣기 시)
    * @param {string} url
    * @returns {void}
@@ -470,7 +529,7 @@
       });
 
       // URL 붙여넣기 감지 및 자동 임베드
-      quillInstance.root.addEventListener('paste', (e) => {
+      quillInstance.root.addEventListener('paste', async (e) => {
         const clipboardData = e.clipboardData || window.clipboardData;
         const pastedText = clipboardData.getData('text');
         
@@ -492,6 +551,13 @@
             setTimeout(() => {
               autoEmbedMedia(url);
             }, 100);
+          }
+          // 일반 URL - OG 메타데이터 가져오기
+          else {
+            e.preventDefault();
+            console.log('🔗 일반 URL 감지, OG 카드 생성:', url);
+            
+            await createOGCard(url);
           }
         }
       });
