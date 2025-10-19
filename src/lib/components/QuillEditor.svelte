@@ -257,6 +257,46 @@
   }
 
   /**
+   * OG 카드 생성
+   * @param {string} url
+   * @returns {Promise<void>}
+   */
+  async function createOGCard(url) {
+    try {
+      loadingImage = true;
+      
+      const response = await fetch('/api/og', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url })
+      });
+
+      if (!response.ok) {
+        console.error('OG 데이터 가져오기 실패');
+        const range = quillInstance.getSelection(true);
+        quillInstance.insertText(range.index, url);
+        return;
+      }
+
+      const ogData = await response.json();
+      console.log('✅ OG 데이터:', ogData);
+
+      const range = quillInstance.getSelection(true);
+      quillInstance.insertEmbed(range.index, 'ogcard', ogData);
+      quillInstance.insertText(range.index + 1, '\n');
+      quillInstance.setSelection(range.index + 2);
+      
+      console.log('✅ OG 카드 삽입 완료');
+    } catch (err) {
+      console.error('OG 카드 생성 실패:', err);
+      const range = quillInstance.getSelection(true);
+      quillInstance.insertText(range.index, url);
+    } finally {
+      loadingImage = false;
+    }
+  }
+
+  /**
    * 미디어 자동 임베드 (URL 붙여넣기 시)
    * @param {string} url
    * @returns {void}
@@ -499,6 +539,54 @@
       Quill.register(IFrameBlot);
       console.log('✅ IFrame Blot 등록됨');
 
+      // OG Card Blot 등록
+      class OGBlot extends BlockEmbed {
+        static create(value) {
+          const node = super.create();
+          node.setAttribute('class', 'og-card-blot');
+          node.setAttribute('contenteditable', 'false');
+          
+          const container = document.createElement('div');
+          container.style.cssText = 'border: 1px solid #e0e0e0; border-radius: 8px; padding: 10px; margin: 8px 0; max-width: 350px; background: #fafafa; cursor: pointer;';
+          container.onclick = () => window.open(value.url, '_blank');
+          
+          if (value.image) {
+            const img = document.createElement('img');
+            img.src = value.image;
+            img.style.cssText = 'width: 100%; max-height: 80px; object-fit: cover; border-radius: 4px; margin-bottom: 8px;';
+            container.appendChild(img);
+          }
+          
+          const title = document.createElement('div');
+          title.style.cssText = 'font-weight: bold; font-size: 14px; margin-bottom: 4px; color: #1a73e8;';
+          title.textContent = value.title || value.url;
+          container.appendChild(title);
+          
+          if (value.description) {
+            const desc = document.createElement('div');
+            desc.style.cssText = 'color: #5f6368; font-size: 12px; line-height: 1.3; margin-bottom: 4px;';
+            desc.textContent = value.description.substring(0, 80) + (value.description.length > 80 ? '...' : '');
+            container.appendChild(desc);
+          }
+          
+          const site = document.createElement('div');
+          site.style.cssText = 'color: #70757a; font-size: 11px;';
+          site.textContent = `🔗 ${value.siteName || new URL(value.url).hostname}`;
+          container.appendChild(site);
+          
+          node.appendChild(container);
+          return node;
+        }
+
+        static value(node) {
+          return node.getAttribute('data-og-url');
+        }
+      }
+      OGBlot.blotName = 'ogcard';
+      OGBlot.tagName = 'div';
+      Quill.register(OGBlot);
+      console.log('✅ OG Card Blot 등록됨');
+
       // Quill 인스턴스 생성
       console.log('Quill 인스턴스 생성 중...');
       quillInstance = new Quill(editorElement, {
@@ -550,10 +638,11 @@
               autoEmbedMedia(url);
             }, 100);
           }
-          // 일반 URL - 그냥 링크로 삽입
+          // 일반 URL - OG 카드 생성
           else {
-            console.log('🔗 일반 URL - 기본 붙여넣기 허용');
-            // preventDefault 하지 않음 - 기본 동작 허용
+            e.preventDefault();
+            console.log('🔗 일반 URL 감지, OG 카드 생성:', url);
+            await createOGCard(url);
           }
         } else {
           console.log('⚠️ 단일 URL 아님 또는 URL 없음');
