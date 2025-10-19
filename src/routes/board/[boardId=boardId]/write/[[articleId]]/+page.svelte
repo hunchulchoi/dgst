@@ -46,8 +46,8 @@
   // Svelte 5 Runes
   let { data } = $props();
 
-  let { title = '', content = '' } = data;
-
+  let title = $state(data.title || '');
+  let content = $state(data.content || '');
   let uploading = $state(0);
 
   $effect(() => {

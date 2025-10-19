@@ -15,7 +15,7 @@
   /** @type {any} */
   let quillInstance = null;
   /** @type {boolean} */
-  let loadingImage = false;
+  let loadingImage = $state(false);
   /** @type {HTMLDivElement | undefined} */
   let editorDiv;
   /** @type {any} */
@@ -33,13 +33,13 @@
   
   // 비디오 압축 진행 상태
   /** @type {boolean} */
-  let isCompressing = false;
+  let isCompressing = $state(false);
   /** @type {number} */
-  let compressionProgress = 0;
+  let compressionProgress = $state(0);
   /** @type {number} */
-  let compressionTime = 0; // 경과 시간 (초)
+  let compressionTime = $state(0); // 경과 시간 (초)
   /** @type {number} */
-  let estimatedTime = 0; // 예상 총 시간 (초)
+  let estimatedTime = $state(0); // 예상 총 시간 (초)
 
   /**
    * 초를 HH:MM:SS 형식으로 변환
