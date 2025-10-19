@@ -37,11 +37,12 @@
     goto(`/board/free`, {invalidateAll: true, replaceState: true});
   }
 
-  $: colorModeIcon =
-    $theme === 'light' ? 'sun-fill' : $theme === 'dark' ? 'moon-stars-fill' : 'circle-half';
-  $: loginButton = `/oauth/btn_google_signin_${
-    $theme === 'light' ? 'light' : 'dark'
-  }_normal_web.png`;
+  let colorModeIcon = $derived(
+    $theme === 'light' ? 'sun-fill' : $theme === 'dark' ? 'moon-stars-fill' : 'circle-half'
+  );
+  let loginButton = $derived(
+    `/oauth/btn_google_signin_${$theme === 'light' ? 'light' : 'dark'}_normal_web.png`
+  );
 
 </script>
 
