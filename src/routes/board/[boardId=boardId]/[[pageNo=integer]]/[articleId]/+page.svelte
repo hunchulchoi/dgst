@@ -325,6 +325,12 @@
 
   let commentData = $derived(data.article.comments);
 
+  $effect(() => {
+    console.log('🔄 게시글 상세 페이지 새로고침 - articleId:', $page.params.articleId);
+    console.log('📝 게시글:', data.article.title);
+    console.log('💬 댓글 수:', data.article.comments?.length);
+  });
+
   onMount(()=>{
 
     const hash = $page.url.searchParams.get('a');

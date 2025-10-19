@@ -44,6 +44,11 @@
   // Svelte 5 Runes
   let { data } = $props();
 
+  $effect(() => {
+    console.log('🔄 게시판 페이지 새로고침 - boardId:', $page.params.boardId, 'pageNo:', $page.params.pageNo);
+    console.log('📊 게시글 수:', data.articles?.length);
+  });
+
   alarmCount.update(alarmCount =>$page.data.alarmCount);
 </script>
 
