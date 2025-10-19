@@ -213,9 +213,9 @@
         const range = quillInstance.getSelection(true);
         
         if (file.type.startsWith('video/')) {
-          // 비디오 태그로 삽입 (p 태그로 감싸서 안정성 확보)
-          const videoHtml = `<p><video controls src="${url}" style="max-width: 100%; height: auto;"></video></p><p><br></p>`;
-          quillInstance.clipboard.dangerouslyPasteHTML(range.index, videoHtml);
+          // 커스텀 Video Blot으로 비디오 삽입
+          quillInstance.insertEmbed(range.index, 'video', url);
+          quillInstance.insertText(range.index + 1, '\n');
           quillInstance.setSelection(range.index + 2);
           console.log('비디오 삽입 완료:', url, 'type:', file.type);
         } else {
@@ -339,7 +339,17 @@
       }
     },
     clipboard: {
-      matchVisual: false
+      matchVisual: false,
+      matchers: [
+        // video 태그 허용
+        ['video', (node, delta) => {
+          const src = node.getAttribute('src');
+          if (src) {
+            return delta;
+          }
+          return new Delta();
+        }]
+      ]
     }
   };
 
