@@ -55,6 +55,8 @@
 
   /**
    * 비디오 압축 함수
+   * @param {File} file
+   * @returns {Promise<File>}
    */
   async function compressVideo(file) {
     try {
@@ -174,6 +176,7 @@
 
   /**
    * 커스텀 이미지/비디오 업로드 핸들러
+   * @returns {Promise<void>}
    */
   async function imageHandler() {
     const input = document.createElement('input');
@@ -255,6 +258,7 @@
 
   /**
    * 비디오 임베드 핸들러
+   * @returns {void}
    */
   function videoHandler() {
     const url = prompt('YouTube, Instagram, TikTok 또는 비디오 URL을 입력하세요:');
@@ -334,6 +338,7 @@
 
   /**
    * Quill 에디터 설정
+   * @returns {object}
    */
   const modules = {
     toolbar: {
@@ -494,13 +499,15 @@
   });
 
   // editorData prop 변경 감지 (외부에서 변경 시)
-  $: if (quillInstance && editorData !== quillInstance.root.innerHTML) {
-    const currentSelection = quillInstance.getSelection();
-    quillInstance.root.innerHTML = editorData;
-    if (currentSelection) {
-      quillInstance.setSelection(currentSelection);
+  $effect(() => {
+    if (quillInstance && editorData !== quillInstance.root.innerHTML) {
+      const currentSelection = quillInstance.getSelection();
+      quillInstance.root.innerHTML = editorData;
+      if (currentSelection) {
+        quillInstance.setSelection(currentSelection);
+      }
     }
-  }
+  });
 </script>
 
 <svelte:head>
