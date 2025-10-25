@@ -18,8 +18,18 @@
   let loadingImage = $state(false);
   /** @type {HTMLDivElement | undefined} */
   let editorDiv;
+  /** @type {number} */
+  let uploadProgress = $state(0);
+  /** @type {number} */
+  let totalFiles = $state(0);
+  /** @type {number} */
+  let currentFile = $state(0);
+  /** @type {any} */
+  let timeInterval = null;
   /** @type {any} */
   let Quill;
+  /** @type {any} */
+  let Delta;
   /** @type {any} */
   let ImageUploader;
   /** @type {any} */
@@ -51,6 +61,46 @@
     const mins = Math.floor((seconds % 3600) / 60);
     const secs = Math.floor(seconds % 60);
     return `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+  }
+
+  /**
+   * 삽입된 콘텐츠로 스크롤 이동
+   * @param {number} index
+   * @returns {void}
+   */
+  function scrollToInsertedContent(index) {
+    // DOM 렌더링 완료를 위해 약간의 지연 추가
+    setTimeout(() => {
+      try {
+        console.log('스크롤 이동 시작, index:', index);
+        
+        // Quill 에디터의 스크롤 컨테이너 찾기
+        const editorContainer = quillInstance.root.parentElement;
+        const scrollContainer = editorContainer?.closest('.ql-container') || editorContainer;
+        
+        if (scrollContainer) {
+          console.log('스크롤 컨테이너 찾음:', scrollContainer);
+          console.log('현재 스크롤 높이:', scrollContainer.scrollHeight);
+          console.log('컨테이너 높이:', scrollContainer.clientHeight);
+          
+          // 간단한 방법: 에디터 끝으로 스크롤
+          const targetScrollTop = scrollContainer.scrollHeight - scrollContainer.clientHeight;
+          console.log('목표 스크롤 위치:', targetScrollTop);
+          
+          // 부드러운 스크롤
+          scrollContainer.scrollTo({
+            top: Math.max(0, targetScrollTop),
+            behavior: 'smooth'
+          });
+          
+          console.log('스크롤 실행 완료');
+        } else {
+          console.warn('스크롤 컨테이너를 찾을 수 없음');
+        }
+      } catch (error) {
+        console.warn('스크롤 이동 실패:', error);
+      }
+    }, 300); // 300ms로 지연 시간 더 증가
   }
 
   /**
@@ -182,77 +232,114 @@
     const input = document.createElement('input');
     input.setAttribute('type', 'file');
     input.setAttribute('accept', 'image/*,video/*');
+    input.setAttribute('multiple', 'true'); // 여러 파일 선택 가능
     input.click();
 
     input.onchange = async () => {
-      let file = input.files[0];
-      if (!file) return;
+      const files = input.files ? Array.from(input.files) : [];
+      if (!files.length) return;
 
       loadingImage = true;
+      totalFiles = files.length;
+      currentFile = 0;
+      uploadProgress = 0;
 
       try {
-        // uploadPlus 콜백 호출
-        if (uploadPlus) {
-          uploadPlus();
+        // 초기 커서 위치 저장
+        let currentRange = quillInstance.getSelection(true);
+        if (!currentRange) {
+          // 커서가 없으면 에디터 끝으로 이동
+          const length = quillInstance.getLength();
+          currentRange = { index: length - 1, length: 0 };
         }
 
-        // 비디오 파일이면 압축 시도 (FFmpeg 사용 가능한 경우에만)
-        if (file.type.startsWith('video/')) {
-          if (ffmpegReady && ffmpeg) {
-            console.log('비디오 파일 감지, 압축 시작...');
-            file = await compressVideo(file);
+        // 모든 파일을 순차적으로 업로드
+        for (let i = 0; i < files.length; i++) {
+          let file = files[i];
+          currentFile = i + 1;
+          uploadProgress = Math.round((i / files.length) * 100);
+          
+          // uploadPlus 콜백 호출
+          if (uploadPlus) {
+            uploadPlus();
+          }
+
+          // 비디오 파일이면 압축 시도 (FFmpeg 사용 가능한 경우에만)
+          if (file.type.startsWith('video/')) {
+            if (ffmpegReady && ffmpeg) {
+              console.log('비디오 파일 감지, 압축 시작...');
+              file = await compressVideo(file);
+            } else {
+              console.log('⚠️ FFmpeg 미준비 - 원본 비디오 업로드');
+            }
+          }
+
+          // FormData 생성
+          const formData = new FormData();
+          formData.append('upload', file);
+
+          // 서버에 업로드
+          const response = await fetch('/board/upload', {
+            method: 'POST',
+            body: formData,
+            credentials: 'include'
+          });
+
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Upload failed:', response.status, errorText);
+            throw new Error(`Upload failed: ${response.status}`);
+          }
+
+          const data = await response.json();
+          console.log('Upload response:', data);
+          const url = data.url;
+
+          // 현재 커서 위치에서 이미지/비디오 삽입
+          if (file.type.startsWith('video/')) {
+            // 커스텀 Video Blot으로 비디오 삽입
+            quillInstance.insertEmbed(currentRange.index, 'video', url);
+            quillInstance.insertText(currentRange.index + 1, '\n');
+            // 다음 삽입을 위해 커서 위치 업데이트
+            currentRange.index += 2;
+            console.log('비디오 삽입 완료:', url, 'type:', file.type);
           } else {
-            console.log('⚠️ FFmpeg 미준비 - 원본 비디오 업로드');
+            // 이미지 태그로 삽입
+            quillInstance.insertEmbed(currentRange.index, 'image', url);
+            quillInstance.insertText(currentRange.index + 1, '\n');
+            // 다음 삽입을 위해 커서 위치 업데이트
+            currentRange.index += 2;
+            console.log('이미지 삽입 완료:', url);
+          }
+
+          // uploadMinus 콜백 호출
+          if (uploadMinus) {
+            uploadMinus();
           }
         }
-
-        // FormData 생성
-        const formData = new FormData();
-        formData.append('upload', file);
-
-        // 서버에 업로드
-        const response = await fetch('/board/upload', {
-          method: 'POST',
-          body: formData,
-          credentials: 'include'
-        });
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error('Upload failed:', response.status, errorText);
-          throw new Error(`Upload failed: ${response.status}`);
-        }
-
-        const data = await response.json();
-        console.log('Upload response:', data);
-        const url = data.url;
-
-        // 에디터에 이미지/비디오 삽입
-        const range = quillInstance.getSelection(true);
         
-        if (file.type.startsWith('video/')) {
-          // 커스텀 Video Blot으로 비디오 삽입
-          quillInstance.insertEmbed(range.index, 'video', url);
-          quillInstance.insertText(range.index + 1, '\n');
-          quillInstance.setSelection(range.index + 2);
-          console.log('비디오 삽입 완료:', url, 'type:', file.type);
-        } else {
-          // 이미지 태그로 삽입
-          quillInstance.insertEmbed(range.index, 'image', url);
-          quillInstance.insertText(range.index + 1, '\n');
-          quillInstance.setSelection(range.index + 2);
-          console.log('이미지 삽입 완료:', url);
-        }
-
-        // uploadMinus 콜백 호출
-        if (uploadMinus) {
-          uploadMinus();
-        }
+        // 모든 업로드 완료 후 최종 커서 위치 설정 및 포커스
+        quillInstance.setSelection(currentRange.index, 0);
+        quillInstance.focus();
+        
+        // 삽입된 콘텐츠로 스크롤 이동
+        scrollToInsertedContent(currentRange.index);
+        console.log('최종 커서 위치 설정:', currentRange.index);
+        
+        // 모든 업로드 완료
+        uploadProgress = 100;
+        console.log(`모든 파일 업로드 완료: ${totalFiles}개`);
       } catch (error) {
         console.error('Image upload failed:', error);
         alert('이미지 업로드에 실패했습니다.');
       } finally {
         loadingImage = false;
+        // 진행률 초기화
+        setTimeout(() => {
+          uploadProgress = 0;
+          totalFiles = 0;
+          currentFile = 0;
+        }, 1000);
       }
     };
   }
@@ -274,28 +361,37 @@
 
       if (!response.ok) {
         console.error('OG 데이터 가져오기 실패 - 링크로 삽입');
-        const range = quillInstance.getSelection(true);
+        const range = quillInstance.getSelection(true) || { index: quillInstance.getLength() - 1, length: 0 };
         quillInstance.insertText(range.index, url, 'link', url);
         quillInstance.insertText(range.index + url.length, '\n');
         quillInstance.setSelection(range.index + url.length + 1);
+        quillInstance.focus();
         return;
       }
 
       const ogData = await response.json();
       console.log('✅ OG 데이터:', ogData);
 
-      const range = quillInstance.getSelection(true);
+      const range = quillInstance.getSelection(true) || { index: quillInstance.getLength() - 1, length: 0 };
       quillInstance.insertEmbed(range.index, 'ogcard', ogData);
       quillInstance.insertText(range.index + 1, '\n');
       quillInstance.setSelection(range.index + 2);
+      quillInstance.focus();
+      
+      // 삽입된 콘텐츠로 스크롤 이동
+      scrollToInsertedContent(range.index + 2);
       
       console.log('✅ OG 카드 삽입 완료');
     } catch (err) {
       console.error('OG 카드 생성 실패 - 링크로 삽입:', err);
-      const range = quillInstance.getSelection(true);
+      const range = quillInstance.getSelection(true) || { index: quillInstance.getLength() - 1, length: 0 };
       quillInstance.insertText(range.index, url, 'link', url);
       quillInstance.insertText(range.index + url.length, '\n');
       quillInstance.setSelection(range.index + url.length + 1);
+      quillInstance.focus();
+      
+      // 삽입된 콘텐츠로 스크롤 이동
+      scrollToInsertedContent(range.index + url.length + 1);
     } finally {
       loadingImage = false;
     }
@@ -321,7 +417,7 @@
     const url = prompt('YouTube, Instagram, TikTok 또는 비디오 URL을 입력하세요:');
     if (!url) return;
 
-    const range = quillInstance.getSelection(true);
+    const range = quillInstance.getSelection(true) || { index: quillInstance.getLength() - 1, length: 0 };
     processMediaEmbed(url, range);
   }
 
@@ -408,6 +504,10 @@
     else if (url.match(/\.(mp4|webm|ogg|mov)(\?.*)?$/i)) {
       quillInstance.insertEmbed(range.index, 'video', url);
       quillInstance.setSelection(range.index + 1);
+      quillInstance.focus();
+      
+      // 삽입된 콘텐츠로 스크롤 이동
+      scrollToInsertedContent(range.index + 1);
       return;
     }
     // 인식 불가능한 URL - 그냥 링크로 삽입
@@ -416,12 +516,20 @@
       const linkHtml = `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`;
       quillInstance.clipboard.dangerouslyPasteHTML(range.index, linkHtml);
       quillInstance.setSelection(range.index + 1);
+      quillInstance.focus();
+      
+      // 삽입된 콘텐츠로 스크롤 이동
+      scrollToInsertedContent(range.index + 1);
       return;
     }
 
     if (embedHtml) {
       quillInstance.clipboard.dangerouslyPasteHTML(range.index, embedHtml);
       quillInstance.setSelection(range.index + 1);
+      quillInstance.focus();
+      
+      // 삽입된 콘텐츠로 스크롤 이동
+      scrollToInsertedContent(range.index + 1);
       console.log('✅ 미디어 임베드 완료:', url);
     }
   }
@@ -433,13 +541,13 @@
   const modules = {
     toolbar: {
       container: [
+        ['image', 'video', 'link'], // 이미지, 비디오, 링크를 맨 앞으로
         [{ header: [1, 2, 3, false] }],
         ['bold', 'italic', 'underline', 'strike'],
         [{ color: [] }, { background: [] }],
         [{ size: ['small', false, 'large', 'huge'] }],
         [{ list: 'ordered' }, { list: 'bullet' }],
         [{ align: [] }],
-        ['link', 'image', 'video'],
         ['blockquote', 'code-block'],
         ['clean']
       ],
@@ -491,6 +599,7 @@
       console.log('Quill import 시작...');
       const QuillModule = await import('quill');
       Quill = QuillModule.default;
+      Delta = QuillModule.Delta;
       console.log('✅ Quill imported');
 
       // Quill 스타일 import
@@ -762,13 +871,45 @@
         </div>
       </div>
     {/if}
+
+    {#if loadingImage && totalFiles > 1}
+      <div class="upload-overlay">
+        <div class="progress-container bg-light">
+          <h5 class="mb-3 text-dark">
+            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+            이미지 업로드 중...
+          </h5>
+          <div class="progress mb-3" style="height: 30px; background-color: #e9ecef;">
+            <div 
+              class="progress-bar progress-bar-striped progress-bar-animated" 
+              role="progressbar" 
+              style="width: {uploadProgress}%; background-color: #007bff;"
+              aria-valuenow={uploadProgress} 
+              aria-valuemin="0" 
+              aria-valuemax="100">
+              <strong style="color: white;">{uploadProgress}%</strong>
+            </div>
+          </div>
+          <div class="time-info mb-2">
+            <span class="badge bg-primary me-2">
+              {currentFile} / {totalFiles} 파일
+            </span>
+          </div>
+          <small class="text-secondary">
+            {totalFiles}개의 파일을 업로드하고 있습니다...<br/>
+            잠시만 기다려주세요.
+          </small>
+        </div>
+      </div>
+    {/if}
     
     <div bind:this={editorElement}></div>
   </div>
 </main>
 
 <style>
-  .compression-overlay {
+  .compression-overlay,
+  .upload-overlay {
     position: fixed;
     top: 0;
     left: 0;
@@ -840,21 +981,101 @@
   }
 
   main :global(.ql-container) {
-    min-height: 400px;
+    height: 500px; /* 고정 높이 설정 */
+    max-height: 500px; /* 최대 높이 제한 */
     font-size: 16px;
+    overflow-y: auto; /* 세로 스크롤 활성화 */
+    border: 1px solid #ccc;
+    border-radius: 0 0 4px 4px;
   }
 
   main :global(.ql-editor) {
-    min-height: 400px;
+    min-height: 500px; /* 에디터 최소 높이 */
+    height: auto; /* 내용에 따라 자동 높이 조정 */
+    padding: 12px 15px;
   }
 
   main :global(.ql-toolbar) {
     background: #f8f9fa;
+    border: 1px solid #ccc;
+    border-bottom: none;
     border-radius: 4px 4px 0 0;
+    padding: 8px;
   }
 
-  main :global(.ql-container) {
-    border-radius: 0 0 4px 4px;
+  /* 이미지 버튼 스타일링 */
+  main :global(.ql-toolbar .ql-image) {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    color: white !important;
+    border-radius: 6px !important;
+    margin-right: 8px !important;
+    font-weight: bold !important;
+    box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3) !important;
+    transition: all 0.3s ease !important;
+  }
+
+  main :global(.ql-toolbar .ql-image:hover) {
+    background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%) !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 8px rgba(102, 126, 234, 0.4) !important;
+  }
+
+  main :global(.ql-toolbar .ql-image:active) {
+    transform: translateY(0) !important;
+    box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3) !important;
+  }
+
+  /* 비디오 버튼도 비슷하게 스타일링 */
+  main :global(.ql-toolbar .ql-video) {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%) !important;
+    color: white !important;
+    border-radius: 6px !important;
+    margin-right: 8px !important;
+    font-weight: bold !important;
+    box-shadow: 0 2px 4px rgba(240, 147, 251, 0.3) !important;
+    transition: all 0.3s ease !important;
+  }
+
+  main :global(.ql-toolbar .ql-video:hover) {
+    background: linear-gradient(135deg, #ee82f7 0%, #f3455a 100%) !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 8px rgba(240, 147, 251, 0.4) !important;
+  }
+
+  /* 링크 버튼도 스타일링 */
+  main :global(.ql-toolbar .ql-link) {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%) !important;
+    color: white !important;
+    border-radius: 6px !important;
+    margin-right: 8px !important;
+    font-weight: bold !important;
+    box-shadow: 0 2px 4px rgba(79, 172, 254, 0.3) !important;
+    transition: all 0.3s ease !important;
+  }
+
+  main :global(.ql-toolbar .ql-link:hover) {
+    background: linear-gradient(135deg, #3d8bfe 0%, #00e6fe 100%) !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 8px rgba(79, 172, 254, 0.4) !important;
+  }
+
+  /* 에디터 스크롤바 스타일링 */
+  main :global(.ql-container)::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  main :global(.ql-container)::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+  }
+
+  main :global(.ql-container)::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+  }
+
+  main :global(.ql-container)::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
   }
 </style>
 

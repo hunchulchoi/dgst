@@ -87,6 +87,18 @@
   
   const { boardId, articleId, pageNo } = $page.params;
 
+  // 애니메이션 관련 상태
+  let likeAnimation = $state(false);
+  let commentLikeAnimations = $state(new Set());
+
+  // 댓글 좋아요 애니메이션 함수
+  function triggerLikeAnimation(commentId) {
+    commentLikeAnimations.add(commentId);
+    setTimeout(() => {
+      commentLikeAnimations.delete(commentId);
+    }, 1000);
+  }
+
   function like(){
     likeAnimation = true;
     fetch(`/board/${boardId}/${articleId}/like`, {method: 'POST'})
@@ -101,9 +113,27 @@
   }
 
   async function likeComment(commentId){
-
-    await fetch(`/board/${boardId}/${articleId}/like/${commentId}`, {method: 'POST'});
-    comments();
+    try {
+      const response = await fetch(`/board/${boardId}/${articleId}/like/${commentId}`, {method: 'POST'});
+      const updatedComment = await response.json();
+      
+      // 개별 댓글만 업데이트
+      commentData = commentData.map(comment => {
+        if (comment._id === commentId) {
+          return {
+            ...comment,
+            like: updatedComment.like,
+            liked: updatedComment.liked
+          };
+        }
+        return comment;
+      });
+      
+      // 좋아요 애니메이션 트리거
+      triggerLikeAnimation(commentId);
+    } catch (error) {
+      console.error('댓글 좋아요 실패:', error);
+    }
   }
 
   function comments() {
@@ -146,14 +176,16 @@
 
     }else commentImage = event.target.files[0];
 
-    el.src = window.URL.createObjectURL(commentImage);
+    if (commentImage) {
+      el.src = window.URL.createObjectURL(commentImage);
+    }
 
     el.onload = async (evt) => {
       commentLoading = true;
 
       //console.log('commentImage.type', commentImage.type)
 
-      if (!commentImage.type.endsWith('gif') && !commentImage.type.endsWith('webp')) {
+      if (commentImage && !commentImage.type.endsWith('gif') && !commentImage.type.endsWith('webp')) {
 
           const webp = await blobToWebP(commentImage, {width: 1400});
           commentImage = new File([webp], commentImage.name);
@@ -215,7 +247,7 @@
         }
 
         commentContent = '';
-        commentImage = '';
+        commentImage = null;
         commentImageEl.value = '';
         previewEl.src = '';
         previewEl.classList.add('d-none');
@@ -362,7 +394,6 @@
   // 게시물 좋아요 데이터를 $state로 관리
   let articleLike = $state(data.article.like);
   let articleLiked = $state(data.article.liked);
-  let likeAnimation = $state(false);
 
   $effect(() => {
     console.log('🔄 게시글 상세 페이지 - articleId:', articleId);
@@ -540,7 +571,7 @@
               </Card>
             </Col>
           {:else}
-            <Col xs="auto" clsss="border-end p-0">
+            <Col xs="auto" class="border-end p-0">
               {comment.nickname}
               <span class="text-muted ps-2" style="font-size: smaller"
               >{formatDistanceToNowStrict(parseISO(comment.createdAt), {
@@ -607,12 +638,13 @@
                       </Button>
                     {/if}
                     <Button
-                      on:click|once={() => likeComment(comment.id)}
+                      on:click|once={() => likeComment(comment._id)}
                       size="sm"
                       outline
                       color="primary"
                       disabled={comment.liked}
-                      class="px-3 py-0"
+                      class="px-3 py-0 comment-like-btn {commentLikeAnimations.has(comment._id) ? 'like-animation' : ''}"
+                      data-comment-id={comment._id}
                     >
                       <Icon name={comment.liked?"hand-thumbs-up-fill":"hand-thumbs-up"}/>
                       {comment.like || ''}
@@ -650,7 +682,6 @@
                   type="file"
                   bind:this={reCommentImageEl}
                   on:change={(evt)=>preview(evt, rePreviewEl)}
-                  muliple="false"
                   accept="image/*"
                   class="form-control m-2"
                 />
@@ -719,7 +750,6 @@
               type="file"
               bind:this={commentImageEl}
               on:change={(evt)=>preview(evt, previewEl)}
-              muliple="false"
               accept="image/*"
               class="form-control m-2"
             />
@@ -787,3 +817,118 @@
   </Row>
 
 </main>
+
+<style>
+  /* 댓글 좋아요 애니메이션 */
+  .comment-like-btn {
+    position: relative;
+    transition: all 0.3s ease;
+    overflow: hidden;
+  }
+
+  .comment-like-btn.like-animation {
+    animation: likePulse 0.6s ease-in-out;
+    transform: scale(1.2);
+    background-color: #ff6b6b !important;
+    color: white !important;
+    border-color: #ff6b6b !important;
+  }
+
+  @keyframes likePulse {
+    0% {
+      transform: scale(1);
+      box-shadow: 0 0 0 0 rgba(255, 107, 107, 0.7);
+    }
+    50% {
+      transform: scale(1.3);
+      box-shadow: 0 0 0 10px rgba(255, 107, 107, 0);
+    }
+    100% {
+      transform: scale(1.2);
+      box-shadow: 0 0 0 0 rgba(255, 107, 107, 0);
+    }
+  }
+
+  /* 하트 파티클 효과 */
+  .comment-like-btn.like-animation::before {
+    content: '❤️';
+    position: absolute;
+    top: -20px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 20px;
+    animation: heartFloat 1s ease-out forwards;
+    pointer-events: none;
+    z-index: 1000;
+  }
+
+  .comment-like-btn.like-animation::after {
+    content: '✨';
+    position: absolute;
+    top: -15px;
+    left: 30%;
+    transform: translateX(-50%);
+    font-size: 16px;
+    animation: sparkleFloat 1s ease-out 0.2s forwards;
+    pointer-events: none;
+    z-index: 1000;
+  }
+
+  @keyframes heartFloat {
+    0% {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0) scale(0.5);
+    }
+    50% {
+      opacity: 1;
+      transform: translateX(-50%) translateY(-30px) scale(1.2);
+    }
+    100% {
+      opacity: 0;
+      transform: translateX(-50%) translateY(-60px) scale(1);
+    }
+  }
+
+  @keyframes sparkleFloat {
+    0% {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0) scale(0.3);
+    }
+    50% {
+      opacity: 1;
+      transform: translateX(-50%) translateY(-25px) scale(1);
+    }
+    100% {
+      opacity: 0;
+      transform: translateX(-50%) translateY(-50px) scale(0.8);
+    }
+  }
+
+  /* 호버 효과 */
+  .comment-like-btn:hover:not(:disabled) {
+    transform: scale(1.05);
+    box-shadow: 0 4px 8px rgba(0, 123, 255, 0.3);
+  }
+
+  .comment-like-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  /* 좋아요 버튼 아이콘 애니메이션 */
+  .comment-like-btn.like-animation svg {
+    animation: iconBounce 0.6s ease-in-out;
+  }
+
+  @keyframes iconBounce {
+    0%, 100% {
+      transform: rotate(0deg);
+    }
+    25% {
+      transform: rotate(-10deg);
+    }
+    75% {
+      transform: rotate(10deg);
+    }
+  }
+</style>

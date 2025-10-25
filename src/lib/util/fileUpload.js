@@ -5,7 +5,7 @@ import { format } from 'date-fns';
 import { UPLOAD_PATH } from '$env/static/private';
 import { error } from '@sveltejs/kit';
 import path from 'path';
-import webp from 'webp-converter';
+import sharp from 'sharp';
 
 function safeString(_name, _path) {
   _name = decodeURIComponent(_name);
@@ -71,28 +71,23 @@ export async function write(file, email, preservePath = 'jjal') {
 
     // 이미지만 webp 압축 (비디오는 제외)
     if (file.type.startsWith('image')) {
-      // GIF 압축
-      if (file.type === 'image/gif') {
+      // GIF나 큰 이미지 압축 (1MB 이상, webp 제외)
+      if (file.type === 'image/gif' || (file.type !== 'image/webp' && file.size > 1024 * 1024)) {
         try {
           const webpPath = `${UPLOAD_PATH}${dir}/${fileName}.webp`;
-          await webp.gwebp(fullPath, webpPath, '-lossy');
-          fs.unlink(fullPath, (err) => err && console.error('Error deleting original GIF:', err));
-          fileName = `${fileName}.webp`;
-          console.log('GIF converted to WebP:', fileName);
-        } catch (err) {
-          console.error('GIF to WebP conversion failed:', err);
-        }
-      }
-      // 큰 이미지 압축 (1MB 이상, webp 제외)
-      else if (file.type !== 'image/webp' && file.size > 1024 * 1024) {
-        try {
-          const webpPath = `${UPLOAD_PATH}${dir}/${fileName}.webp`;
-          await webp.cwebp(fullPath, webpPath);
+
+          // Sharp를 사용한 안전한 WebP 변환
+          await sharp(fullPath)
+            .webp({ quality: 80, effort: 6 })
+            .toFile(webpPath);
+
+          // 원본 파일 삭제
           fs.unlink(fullPath, (err) => err && console.error('Error deleting original:', err));
           fileName = `${fileName}.webp`;
           console.log('Image converted to WebP:', fileName);
         } catch (err) {
           console.error('Image to WebP conversion failed:', err);
+          // 변환 실패 시 원본 파일 유지
         }
       }
     } else {
