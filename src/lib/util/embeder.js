@@ -57,8 +57,15 @@ export function viewComment(comment) {
   if (matched) {
 
     matched.forEach(m => {
-      let link = youtubeEmbeder(m) || `<a href="${m}" target="_blank"><em class="text-success bi bi-arrow-up-right-square-fill me-1"></em>${m}</a>`
-      comment = comment.replace(m, link);
+      // YouTube 임베드 우선 처리
+      const youtubeEmbed = youtubeEmbeder(m);
+      if (youtubeEmbed) {
+        comment = comment.replace(m, youtubeEmbed);
+        return;
+      }
+      
+      // 일반 링크는 제거 (OG 미리보기로 대체됨)
+      comment = comment.replace(m, '');
     })
   }
 

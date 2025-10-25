@@ -101,6 +101,7 @@
   import Dialog from '$lib/components/dialog.svelte';
   import { onMount } from 'svelte';
   import BoardList from '$lib/components/board_list.svelte';
+  import OGPreview from '$lib/components/OGPreview.svelte';
 
   // Svelte 5 Runes - Props
   let { data } = $props();
@@ -835,6 +836,12 @@
     console.log('💬 댓글 수:', data.article.comments?.length);
   });
 
+  // 댓글 내용에서 URL 추출하는 함수
+  function extractUrls(text) {
+    const urlRegex = /https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&\/=]*)/g;
+    return text.match(urlRegex) || [];
+  }
+
   onMount(()=>{
  
     console.log('url', $page.url)
@@ -1118,7 +1125,18 @@
                         <span class="text-bg-secondary p-1 rounded-2"
                               style="font-size: small"><span
                           class="text-warning">@</span>{comment.parentCommentNickname}</span>
-                        {/if}{@html viewComment(comment.content)}</div>
+                        {/if}
+                        <div bind:this={commentDiv} data-comment-id={comment._id}>
+                          {@html viewComment(comment.content)}
+                        </div>
+                        
+                        <!-- OG 미리보기 처리 -->
+                        {#each extractUrls(comment.content) as url}
+                          {#if !url.includes('youtube.com') && !url.includes('youtu.be')}
+                            <OGPreview {url} />
+                          {/if}
+                        {/each}
+                      </div>
                     {/if}
                   {/if}
                 {/if}
