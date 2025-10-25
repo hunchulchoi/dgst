@@ -15,6 +15,19 @@
   
   const { boardId, pageNo } = $page.params;
 
+  // 게시판 이름 매핑
+  const getBoardName = (boardId) => {
+    const boardNames = {
+      'free': '자유게시판',
+      'bug': '버그신고',
+      'alarm': '알림'
+    };
+    return boardNames[boardId] || '게시판';
+  };
+
+  const boardName = getBoardName(boardId);
+  const pageTitle = pageNo ? `${boardName} ${pageNo}페이지` : boardName;
+
   // 도메인 변경 안내
   onMount(() => {
     const host = window.location.hostname;
@@ -54,6 +67,26 @@
   alarmCount.update(alarmCount => data.alarmCount);
 </script>
 
+<svelte:head>
+  <!-- Open Graph 메타 태그 -->
+  <title>{pageTitle} - 데게실버타운</title>
+  <meta name="description" content={`${boardName}에서 최신 게시글을 확인하세요. ${data.articles?.length || 0}개의 게시글이 있습니다.`} />
+  
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://www.dgst.me/board/{boardId}{pageNo ? `/${pageNo}` : ''}" />
+  <meta property="og:title" content={pageTitle} />
+  <meta property="og:description" content={`${boardName}에서 최신 게시글을 확인하세요. ${data.articles?.length || 0}개의 게시글이 있습니다.`} />
+  <meta property="og:image" content="https://www.dgst.me/logo/twitter_header_photo_2.png" />
+  <meta property="og:site_name" content="데게실버타운" />
+  
+  <!-- Twitter -->
+  <meta property="twitter:card" content="summary_large_image" />
+  <meta property="twitter:url" content="https://www.dgst.me/board/{boardId}{pageNo ? `/${pageNo}` : ''}" />
+  <meta property="twitter:title" content={pageTitle} />
+  <meta property="twitter:description" content={`${boardName}에서 최신 게시글을 확인하세요. ${data.articles?.length || 0}개의 게시글이 있습니다.`} />
+  <meta property="twitter:image" content="https://www.dgst.me/logo/twitter_header_photo_2.png" />
+</svelte:head>
 
 <main class="container my-md-2" style="min-height: 50vh">
 
