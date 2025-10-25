@@ -94,7 +94,7 @@
   import { onMount } from 'svelte';
   import BoardList from '$lib/components/board_list.svelte';
   import OGPreview from '$lib/components/OGPreview.svelte';
-  import { sanitizeHtml } from 'sanitize-html';
+  import sanitizeHtml from 'sanitize-html';
 
   // Svelte 5 Runes - Props
   let { data } = $props();
