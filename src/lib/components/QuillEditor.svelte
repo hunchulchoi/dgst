@@ -931,8 +931,21 @@
           }
           
           const site = document.createElement('div');
-          site.style.cssText = 'color: #70757a; font-size: 11px;';
-          site.textContent = `🔗 ${value.siteName || new URL(value.url).hostname}`;
+          site.style.cssText = 'color: #70757a; font-size: 11px; display: flex; align-items: center;';
+          
+          // favicon 추가
+          const favicon = document.createElement('img');
+          favicon.src = `https://www.google.com/s2/favicons?domain=${new URL(value.url).hostname}&sz=16`;
+          favicon.style.cssText = 'width: 16px; height: 16px; margin-right: 4px;';
+          favicon.alt = 'favicon';
+          favicon.onerror = () => {
+            // favicon 로드 실패 시 기본 아이콘 표시
+            favicon.style.display = 'none';
+            site.innerHTML = `🔗 ${value.siteName || new URL(value.url).hostname}`;
+          };
+          
+          site.appendChild(favicon);
+          site.appendChild(document.createTextNode(value.siteName || new URL(value.url).hostname));
           container.appendChild(site);
 
           const url = document.createElement('div');
