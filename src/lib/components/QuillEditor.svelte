@@ -239,7 +239,8 @@
         } else {
           // 이미지 태그로 삽입
           quillInstance.insertEmbed(range.index, 'image', url);
-          quillInstance.setSelection(range.index + 1);
+          quillInstance.insertText(range.index + 1, '\n');
+          quillInstance.setSelection(range.index + 2);
           console.log('이미지 삽입 완료:', url);
         }
 

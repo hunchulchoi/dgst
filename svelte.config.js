@@ -8,7 +8,6 @@ const config = {
     adapter: adapter(),
     paths: {
       assets: '',
-      base: '/',
       relative: false
     },
     prerender: {
