@@ -16,6 +16,22 @@
         max-width: 100% !important;
       }
 
+      @keyframes likeBounce {
+        0%, 100% {
+          transform: scale(1);
+        }
+        25% {
+          transform: scale(1.3);
+        }
+        50% {
+          transform: scale(0.9);
+        }
+      }
+
+      .like-animation {
+        animation: likeBounce 0.6s ease;
+      }
+
   </style>
 
   <script>
@@ -72,11 +88,15 @@
   const { boardId, articleId, pageNo } = $page.params;
 
   function like(){
+    likeAnimation = true;
     fetch(`/board/${boardId}/${articleId}/like`, {method: 'POST'})
       .then((res) => res.json())
       .then((d) => {
         articleLike = d.like;
         articleLiked = d.liked;
+        setTimeout(() => {
+          likeAnimation = false;
+        }, 600);
       });
   }
 
@@ -342,6 +362,7 @@
   // 게시물 좋아요 데이터를 $state로 관리
   let articleLike = $state(data.article.like);
   let articleLiked = $state(data.article.liked);
+  let likeAnimation = $state(false);
 
   $effect(() => {
     console.log('🔄 게시글 상세 페이지 - articleId:', articleId);
@@ -453,7 +474,7 @@
             수정
           </Button>
         {/if}
-        <Button color="primary" onclick={like} class="px-3" disabled={articleLiked}>
+        <Button color="primary" onclick={like} class="px-3 {likeAnimation ? 'like-animation' : ''}" disabled={articleLiked}>
           <Icon name={articleLiked?"hand-thumbs-up-fill":"hand-thumbs-up"}/>
           {articleLike || ''}
         </Button>
