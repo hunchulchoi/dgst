@@ -61,6 +61,13 @@ server{
 								return 302 /board/free;
 				}				
 
+				# favicon.ico 처리
+				location = /favicon.ico {
+				    alias /mnt/dgst/volume/static/favicon/favicon.ico;
+				    expires 1y;
+				    add_header Cache-Control "public, immutable";
+				}
+
 				location /images {
             alias /mnt/dgst/volume/uploads;
 						valid_referers none blocked

@@ -68,6 +68,13 @@ server {
         return 302 /board/free;
     }
 
+    # favicon.ico 처리
+    location = /favicon.ico {
+        alias /mnt/dgst/volume/static/favicon/favicon.ico;
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+
     # 이미지 디렉토리: alias는 디렉토리 끝에 슬래시 필요, location도 슬래시로 맞춤
     location /images/ {
         alias /mnt/dgst/volume/uploads/;
