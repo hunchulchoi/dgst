@@ -18,7 +18,6 @@
   <meta property="twitter:description" content={data.article.content.replace(/<[^>]*>/g, '').substring(0, 160)} />
   <meta property="twitter:image" content="https://www.dgst.me/logo/twitter_header_photo_2.png" />
   
-  <script async src="https://platform.instagram.com/en_US/embeds.js"></script>
   <script async src="//www.tiktok.com/embed.js"></script>
   <style>
 
@@ -56,13 +55,6 @@
   <script>
     window.onload = function(){
 
-      /*setTimeout(()=>{
-        console.log("document.querySelector('blockquote.instagram-media')", document.querySelector('iframe.instagram-media'))
-        if(document.querySelector('iframe.instagram-media')){
-          //console.log('data.insta', data.insta)
-          instgrm.Embeds.process();
-        }
-      }, 1000)*/
     }
   </script>
 </svelte:head>
@@ -102,6 +94,7 @@
   import { onMount } from 'svelte';
   import BoardList from '$lib/components/board_list.svelte';
   import OGPreview from '$lib/components/OGPreview.svelte';
+  import { sanitizeHtml } from 'sanitize-html';
 
   // Svelte 5 Runes - Props
   let { data } = $props();
@@ -842,6 +835,29 @@
     return text.match(urlRegex) || [];
   }
 
+  // 게시물 내용에서 URL 추출하는 함수
+  function extractUrlsFromArticle(htmlContent) {
+    // HTML 태그를 제거하고 텍스트만 추출
+    const textContent = htmlContent.replace(/<[^>]*>/g, '');
+    return extractUrls(textContent);
+  }
+
+  // 게시물 내용을 처리하는 함수 (URL 제거하고 HTML 정리)
+  function processArticleContent(htmlContent) {
+    // URL을 제거하고 HTML 정리
+    let processedContent = htmlContent;
+    const urls = extractUrlsFromArticle(htmlContent);
+    
+    urls.forEach(url => {
+      // YouTube 링크는 그대로 두고, 다른 링크는 제거
+      if (!url.includes('youtube.com') && !url.includes('youtu.be')) {
+        processedContent = processedContent.replace(url, '');
+      }
+    });
+    
+    return sanitizeHtml(processedContent);
+  }
+
   onMount(()=>{
  
     console.log('url', $page.url)
@@ -853,9 +869,6 @@
       setTimeout(()=> el.scrollIntoView({behavior: 'smooth', block: 'center', inline: 'center'}) , 500)
     }
 
-    if(data.insta){
-      setTimeout(()=>  instgrm.Embeds.process(), 1000)
-    }
   })
 
 </script>
@@ -906,8 +919,15 @@
     </Row>
     <Row class="py-3 px-2 mx-0">
       <CardText style="max-width: 100%;" class="text-break px-2">
-        {@html data.article.content}
+        {@html processArticleContent(data.article.content)}
       </CardText>
+      
+      <!-- Open Graph 미리보기 -->
+      {#each extractUrlsFromArticle(data.article.content) as url}
+        {#if !url.includes('youtube.com') && !url.includes('youtu.be')}
+          <OGPreview {url} />
+        {/if}
+      {/each}
     </Row>
     <Row class="p-md-3 p-xs-1 mb-3 mx-0">
       <!--프로필-->

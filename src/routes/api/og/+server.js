@@ -7,7 +7,7 @@ import { json } from '@sveltejs/kit';
  */
 export async function GET({ url }) {
   const targetUrl = url.searchParams.get('url');
-  
+
   if (!targetUrl) {
     return json({ error: 'URL parameter is required' }, { status: 400 });
   }
@@ -23,7 +23,7 @@ export async function GET({ url }) {
 export async function POST({ request }) {
   try {
     const { url: targetUrl } = await request.json();
-    
+
     if (!targetUrl) {
       return json({ error: 'URL is required' }, { status: 400 });
     }
@@ -67,12 +67,12 @@ async function fetchOGData(targetUrl) {
     }
 
     const html = await response.text();
-    
+
     // Open Graph 메타 태그 파싱
     const ogData = parseOpenGraphData(html, targetUrl);
-    
+
     return json(ogData);
-    
+
   } catch (error) {
     console.error('OG 데이터 가져오기 실패:', error);
     return json({ error: 'Failed to fetch OG data' }, { status: 500 });
