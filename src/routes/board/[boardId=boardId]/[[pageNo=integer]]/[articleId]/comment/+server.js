@@ -154,6 +154,69 @@ export async function POST({ request, params, locals }) {
   return new Response('ok', { status: 201 });
 }
 
+export async function PUT({ request, params, locals }) {
+  const boardId = params.boardId;
+  const articleId = params.articleId;
+
+  if (!boardId || !articleId) {
+    console.error('invalid', params);
+    throw error(400, { message: '잘못된 접근입니다.' });
+  }
+
+  const session = await locals.auth();
+
+  // 권한 검사
+  if (!session?.user?.nickname) {
+    throw error(401, { message: '권한이 없습니다. 로그인 해주세요' });
+  }
+
+  const data = await request.formData();
+  const commentId = data.get('commentId');
+  const content = data.get('content');
+
+  if (!commentId || !content) {
+    throw error(400, { message: '댓글 ID와 내용이 필요합니다.' });
+  }
+
+  // 파일 저장
+  let storeFileName;
+  const image = data.get('image');
+
+  if (image) {
+    storeFileName = await write(image, session.user.email, 'jjal');
+  }
+
+  try {
+    const updateData = {
+      content: content,
+      modified_email: session.user.email
+    };
+
+    // 새 이미지가 있으면 업데이트
+    if (storeFileName) {
+      updateData.image = storeFileName;
+    }
+
+    const updatedComment = await Comment.findOneAndUpdate(
+      { _id: commentId, boardId, articleId, email: session.user.email, state: 'write' },
+      updateData,
+      { timestamps: true, new: true }
+    );
+
+    if (!updatedComment) {
+      throw error(401, {
+        message: '수정되지 않았습니다. 이미 삭제되었거나 권한이 없는 것 같습니다.'
+      });
+    }
+
+    return json({ message: '댓글이 수정되었습니다.' });
+
+  } catch (err) {
+    console.error('댓글 수정 실패', err);
+    throw error(err.status || 500, { message: err.body?.message || '댓글 수정 중 오류가 발생하였습니다.' });
+  }
+}
+
 export async function DELETE({ request, params, locals }) {
 
   const boardId = params.boardId;

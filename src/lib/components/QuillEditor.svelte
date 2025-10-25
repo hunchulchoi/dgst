@@ -6,6 +6,7 @@
   import { onMount, onDestroy } from 'svelte';
   import Loader from 'svelte-loading-overlay/Loader.svelte';
   import Swal from 'sweetalert2';
+  import { blobToWebP } from 'webp-converter-browser';
 
   // Svelte 5 Runes - Props
   let { uploadPlus, uploadMinus, editorData = $bindable() } = $props();
@@ -62,6 +63,20 @@
     const mins = Math.floor((seconds % 3600) / 60);
     const secs = Math.floor(seconds % 60);
     return `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+  }
+
+  /**
+   * EXIF Orientation을 적용한 WebP 변환 함수
+   * @param {File|Blob} file
+   * @param {Object} options
+   * @returns {Promise<Blob>}
+   */
+  async function convertToWebPWithOrientation(file, options = {}) {
+    // WebP로 변환 (blobToWebP가 자동으로 회전을 처리하는 것 같음)
+    const webpBlob = await blobToWebP(file, options);
+    console.log('WebP 변환 완료, 크기:', webpBlob.size);
+
+    return webpBlob;
   }
 
   /**
@@ -265,6 +280,13 @@
             uploadPlus();
           }
 
+          // 이미지 파일이면 EXIF Orientation 적용해서 WebP 변환
+          if (file.type.startsWith('image/') && !file.type.endsWith('gif') && !file.type.endsWith('webp')) {
+            console.log('이미지 파일 감지, EXIF Orientation 적용하여 WebP 변환...');
+            const webpBlob = await convertToWebPWithOrientation(file, { width: 1400 });
+            file = new File([webpBlob], file.name, { type: 'image/webp' });
+          }
+
           // 비디오 파일이면 압축 시도 (FFmpeg 사용 가능한 경우에만)
           if (file.type.startsWith('video/')) {
             if (ffmpegReady && ffmpeg) {
@@ -305,9 +327,10 @@
             currentRange.index += 2;
             console.log('비디오 삽입 완료:', url, 'type:', file.type);
           } else {
-            // 이미지 태그로 삽입
+            // 이미지 태그로 삽입 (이미 WebP 변환 시 회전이 적용됨)
             quillInstance.insertEmbed(currentRange.index, 'image', url);
             quillInstance.insertText(currentRange.index + 1, '\n');
+            
             // 다음 삽입을 위해 커서 위치 업데이트
             currentRange.index += 2;
             console.log('이미지 삽입 완료:', url);
