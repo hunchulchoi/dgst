@@ -535,13 +535,226 @@
   }
 
 
+  // 이미지 EXIF Orientation 읽기 함수
+  function getImageOrientation(fileOrBlob) {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const view = new DataView(e.target.result);
+        if (view.getUint16(0, false) !== 0xFFD8) {
+          resolve(1); // JPEG가 아니면 기본값
+          return;
+        }
+        
+        const length = view.byteLength;
+        let offset = 2;
+        
+        while (offset < length) {
+          if (view.getUint16(offset, false) !== 0xFFE1) {
+            offset += 2;
+            continue;
+          }
+          
+          const exifLength = view.getUint16(offset + 2, false);
+          offset += 4;
+          
+          if (view.getUint32(offset, false) !== 0x45786966) {
+            offset += exifLength - 4;
+            continue;
+          }
+          
+          offset += 6;
+          const tiffOffset = offset;
+          const littleEndian = view.getUint16(tiffOffset, false) === 0x4949;
+          
+          if (view.getUint16(tiffOffset + 2, littleEndian) !== 0x002A) {
+            resolve(1);
+            return;
+          }
+          
+          const firstIFDOffset = view.getUint32(tiffOffset + 4, littleEndian);
+          const ifdOffset = tiffOffset + firstIFDOffset;
+          const numEntries = view.getUint16(ifdOffset, littleEndian);
+          
+          for (let i = 0; i < numEntries; i++) {
+            const entryOffset = ifdOffset + 2 + (i * 12);
+            const tag = view.getUint16(entryOffset, littleEndian);
+            
+            if (tag === 0x0112) { // Orientation tag
+              const orientation = view.getUint16(entryOffset + 8, littleEndian);
+              resolve(orientation);
+              return;
+            }
+          }
+          
+          resolve(1);
+          return;
+        }
+        
+        resolve(1);
+      };
+      reader.readAsArrayBuffer(fileOrBlob);
+    });
+  }
+
   // EXIF Orientation을 적용한 WebP 변환 함수
   async function convertToWebPWithOrientation(file, options = {}) {
-    // WebP로 변환 (blobToWebP가 자동으로 회전을 처리하는 것 같음)
+    const orientation = await getImageOrientation(file);
+    console.log('EXIF Orientation:', orientation);
+    
+    // 1단계: 먼저 WebP로 변환
     const webpBlob = await blobToWebP(file, options);
     console.log('WebP 변환 완료, 크기:', webpBlob.size);
 
-    return webpBlob;
+    // Orientation이 1이면 그대로 반환 (회전 불필요)
+    if (orientation === 1) {
+      console.log('Orientation 1 - 회전 불필요');
+      return webpBlob;
+    }
+    
+    console.log('EXIF Orientation 적용을 위한 Canvas 회전, Orientation:', orientation);
+    
+    // 2단계: Canvas를 사용한 회전
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // 원본 이미지 크기
+        const originalWidth = img.width;
+        const originalHeight = img.height;
+        console.log('원본 이미지 크기:', originalWidth, 'x', originalHeight);
+        
+        // 이미지 비율 계산
+        const aspectRatio = originalWidth / originalHeight;
+        const isPortrait = originalHeight > originalWidth;
+        const isLandscape = originalWidth > originalHeight;
+        const isSquare = Math.abs(aspectRatio - 1) < 0.1;
+        
+        console.log('이미지 비율 정보:', {
+          aspectRatio: aspectRatio.toFixed(2),
+          isPortrait,
+          isLandscape,
+          isSquare
+        });
+        
+        // Orientation과 이미지 비율을 고려한 회전 결정
+        let shouldRotate = false;
+        let rotationAngle = 0;
+        let needsFlip = false;
+        
+        // Orientation이 1이 아니고 null이 아니고 landscape 비율일 때만 회전
+        if (orientation !== 1 && orientation !== null && isLandscape) {
+          shouldRotate = true;
+          
+          switch (orientation) {
+            case 2: // 좌우 반전
+              needsFlip = true;
+              break;
+            case 3: // 180도 회전
+              rotationAngle = 180;
+              break;
+            case 4: // 상하 반전
+              rotationAngle = 180;
+              needsFlip = true;
+              break;
+            case 5: // 90도 회전 + 좌우 반전
+              rotationAngle = 90;
+              needsFlip = true;
+              break;
+            case 6: // 90도 회전
+              rotationAngle = 90;
+              console.log('Landscape 이미지 90도 회전 적용');
+              break;
+            case 7: // 270도 회전 + 좌우 반전
+              rotationAngle = 270;
+              needsFlip = true;
+              break;
+            case 8: // 270도 회전
+              rotationAngle = 270;
+              console.log('Landscape 이미지 270도 회전 적용');
+              break;
+          }
+        } else if (orientation !== 1 && orientation !== null && isPortrait) {
+          console.log('Portrait 이미지는 회전하지 않음');
+        } else if (orientation !== 1 && orientation !== null && isSquare) {
+          console.log('Square 이미지는 회전하지 않음');
+        } else if (orientation === null) {
+          console.log('Orientation이 null - 회전하지 않음');
+        }
+        
+        if (!shouldRotate) {
+          console.log('회전 불필요 - 원본 WebP 반환');
+          resolve(webpBlob);
+          return;
+        }
+        
+        // Orientation에 따른 캔버스 크기 설정
+        let canvasWidth, canvasHeight;
+        
+        if (rotationAngle === 90 || rotationAngle === 270) {
+          // 90도 또는 270도 회전 시 가로세로 바뀜
+          canvasWidth = originalHeight;
+          canvasHeight = originalWidth;
+        } else {
+          // 180도 회전 시 크기 유지
+          canvasWidth = originalWidth;
+          canvasHeight = originalHeight;
+        }
+        
+        canvas.width = canvasWidth;
+        canvas.height = canvasHeight;
+        console.log('Canvas 크기 설정:', canvasWidth, 'x', canvasHeight);
+        
+        // Canvas 변환 적용
+        if (rotationAngle === 90) {
+          ctx.translate(canvasWidth, 0);
+          ctx.rotate(Math.PI / 2);
+          if (needsFlip) {
+            ctx.scale(-1, 1);
+          }
+        } else if (rotationAngle === 180) {
+          ctx.translate(canvasWidth, canvasHeight);
+          ctx.rotate(Math.PI);
+          if (needsFlip) {
+            ctx.scale(-1, 1);
+          }
+        } else if (rotationAngle === 270) {
+          ctx.translate(0, canvasHeight);
+          ctx.rotate(-Math.PI / 2);
+          if (needsFlip) {
+            ctx.scale(-1, 1);
+          }
+        }
+        
+        // 이미지 그리기
+        ctx.drawImage(img, 0, 0, originalWidth, originalHeight);
+        
+        console.log('Canvas 회전 적용 완료:', {
+          orientation,
+          rotationAngle,
+          needsFlip,
+          finalSize: `${canvasWidth}x${canvasHeight}`
+        });
+        
+        // Canvas를 WebP Blob으로 변환
+        canvas.toBlob((blob) => {
+          if (blob) {
+            console.log('회전된 WebP 생성 완료:', orientation, '크기:', blob.size);
+            resolve(blob);
+          } else {
+            reject(new Error('Canvas to WebP 변환 실패'));
+          }
+        }, 'image/webp', options.quality || 0.9);
+      };
+      
+      img.onerror = () => {
+        reject(new Error('이미지 로드 실패'));
+      };
+      
+      img.src = URL.createObjectURL(webpBlob);
+    });
   }
 
   let toastColor = 'primary';

@@ -37,6 +37,20 @@
 
     ffmpeg = new FFmpeg();
     await ffmpeg.load();
+    
+    // 모바일에서 제목 입력칸으로 스크롤하고 포커스
+    setTimeout(() => {
+      const titleInput = document.getElementById('title');
+      if (titleInput) {
+        // 제목 입력칸으로 스크롤
+        titleInput.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        
+        // 모바일에서만 포커스 (데스크톱에서는 autofocus가 이미 있음)
+        if (window.innerWidth <= 768) {
+          titleInput.focus();
+        }
+      }
+    }, 100); // DOM 렌더링 완료 후 실행
   });
 
   async function list() {
