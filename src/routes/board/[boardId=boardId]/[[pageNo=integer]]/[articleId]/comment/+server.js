@@ -20,7 +20,7 @@ export async function GET({ params, locals }) {
 
   let comments;
 
-  const session = await locals.getSession();
+  const session = await locals.auth();
 
   try {
     comments = await Comment.find(
@@ -68,7 +68,7 @@ export async function POST({ request, params, locals }) {
     throw error(400, { message: '잘못된 접근입니다.' });
   }
 
-  const session = await locals.getSession();
+  const session = await locals.auth();
 
   // 권한 검사
   if (!session?.user?.nickname) {
@@ -160,7 +160,7 @@ export async function DELETE({ request, params, locals }) {
     throw error(400, { message: '잘못된 접근입니다.' });
   }
 
-  const session = await locals.getSession();
+  const session = await locals.auth();
 
   // 권한 검사
   if (!session?.user?.nickname) {

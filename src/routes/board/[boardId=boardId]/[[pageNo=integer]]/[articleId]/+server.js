@@ -13,7 +13,7 @@ export async function DELETE({ request, params, locals }) {
     throw error(400, { message: '잘못된 접근입니다.' });
   }
 
-  const session = await locals.getSession();
+  const session = await locals.auth();
 
   console.debug('user', session);
 

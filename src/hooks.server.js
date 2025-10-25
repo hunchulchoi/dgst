@@ -13,7 +13,7 @@ import {
 import { MongoDBAdapter } from '@auth/mongodb-adapter';
 import clientPromise from '$lib/database/clientPromise.js';
 import crypto from 'crypto';
-import {error} from "@sveltejs/kit";
+import { error } from "@sveltejs/kit";
 
 export const handle = SvelteKitAuth({
   providers: [
@@ -39,20 +39,20 @@ export const handle = SvelteKitAuth({
       id: 'email-password-credential',
       name: 'Credentials',
       type: 'credentials',
-      credentials:{
-        email: {label: 'Email', type: 'email', placeholder: '이메일 입력하세요'},
-        password: {label: 'Password', type: 'password',}
+      credentials: {
+        email: { label: 'Email', type: 'email', placeholder: '이메일 입력하세요' },
+        password: { label: 'Password', type: 'password', }
       },
-      async authorize(credentials){
-        const {email, password} = credentials;
-      
+      async authorize(credentials) {
+        const { email, password } = credentials;
+
         const encPwd = crypto.createHash('sha512').update(password).digest('base64url');
-        
-        if(email === VIP_FAKE_EMAIL){
-          const user = await clientPromise.then(db=>
+
+        if (email === VIP_FAKE_EMAIL) {
+          const user = await clientPromise.then(db =>
             db.db(DB_NAME)
               .collection('users')
-              .findOne({email: VIP_EMAIL , ccd: encPwd}, {
+              .findOne({ email: VIP_EMAIL, ccd: encPwd }, {
                 id: 1,
                 email: 1,
                 nickname: 1,
@@ -60,20 +60,20 @@ export const handle = SvelteKitAuth({
                 photo: 1,
                 state: 1
               }))
-          
-          if(!user) console.error('ㅊㅊㄷ 로그인 실패', email, encPwd);
-          
+
+          if (!user) console.error('ㅊㅊㄷ 로그인 실패', email, encPwd);
+
           return user;
-          
-        }else {
+
+        } else {
           console.error('ㅊㅊㄷ 로그인 실패', email, encPwd);
           throw error(405);
         }
-        
+
       }
     })
-    
-    
+
+
   ],
   adapter: MongoDBAdapter(clientPromise, { databaseName: DB_NAME }),
   pages: {
@@ -81,9 +81,9 @@ export const handle = SvelteKitAuth({
   },
   callbacks: {
     jwt(params) {
-       /*console.debug('=======auth callback jwt====');
-       console.debug('params', params);
-       console.debug('=======//auth callback jwt====');
+      /*console.debug('=======auth callback jwt====');
+      console.debug('params', params);
+      console.debug('=======//auth callback jwt====');
 */
       if (params.user) {
         params.token.nickname = params.user.nickname;
@@ -97,9 +97,9 @@ export const handle = SvelteKitAuth({
       console.debug('=======auth callback signIn====');
       console.debug('params', params);
       console.debug('=======//auth callback signIn====');
-      
-      if(!params.profile && params.user) return true;
-      
+
+      if (!params.profile && params.user) return true;
+
       if (params.profile.email_verified) {
         if (params.user) {
           if (params.user.state !== 'blocked') {
@@ -162,9 +162,9 @@ export const handle = SvelteKitAuth({
       console.debug('=======//auth event createUser====');*/
     },
     async updateUser(message) {
-     /* console.debug('=======auth event updateUser====');
-      console.debug('message', message);
-      console.debug('=======//auth event updateUser====');*/
+      /* console.debug('=======auth event updateUser====');
+       console.debug('message', message);
+       console.debug('=======//auth event updateUser====');*/
     },
     async linkAccount(message) {
       /*console.debug('=======auth event linkAccount====');

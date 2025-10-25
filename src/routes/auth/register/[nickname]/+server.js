@@ -13,7 +13,7 @@ connectDB();
 export async function GET({ params, locals }) {
   const { nickname } = params;
 
-  const session = await locals.getSession();
+  const session = await locals.auth();
 
   const email = session?.user?.email;
   
