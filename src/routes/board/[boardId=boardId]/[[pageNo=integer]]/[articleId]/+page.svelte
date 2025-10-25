@@ -31,6 +31,11 @@
           max-width: 100%;  
       }
 
+      .card-text a {
+          pointer-events: auto !important;
+          cursor: pointer !important;
+      }
+
       figure{
         max-width: 100% !important;
       }
@@ -954,7 +959,7 @@
       <!-- Open Graph 미리보기 (인스타그램 제외) -->
       {#each extractUrlsFromArticle(data.article.content) as url}
         {#if !url.includes('youtube.com') && !url.includes('youtu.be') && !url.includes('instagram.com')}
-          {#if url.includes('dgst.me')}
+          {#if url.includes('111dgst.me')}
             <!-- 우리 사이트 링크 - 제목과 닉네임 표시 -->
             <div class="my-3">
               <div class="d-flex align-items-center mb-2">

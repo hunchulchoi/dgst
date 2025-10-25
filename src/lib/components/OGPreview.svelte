@@ -63,7 +63,7 @@
   </a>
 {:else}
   <!-- OG 미리보기 표시 -->
-  <a href={url} target="_blank" rel="noopener noreferrer" class="text-decoration-none">
+  <a href={url} target="dgst_out_link" rel="noopener noreferrer" class="text-decoration-none">
     <div class="og-preview border rounded p-3 my-2" style="max-width: 500px; cursor: pointer;">
       <div class="d-flex">
         {#if ogData.image}
