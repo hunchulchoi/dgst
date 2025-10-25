@@ -901,18 +901,16 @@
       // OG Card Blot 등록
       class OGBlot extends BlockEmbed {
         static create(value) {
-
-
           console.log('value', value);
           const node = super.create();
           node.setAttribute('class', 'og-card-blot');
           node.setAttribute('contenteditable', 'false');
-
-          //node.addEventListener('click', () => window.open(value.url, 'dgst_out_link'));
+          node.setAttribute('data-url', value.url);
           
-          const container = document.createElement('div');
-          container.style.cssText = 'border: 1px solid #e0e0e0; border-radius: 8px; padding: 10px; margin: 8px 0; max-width: 350px; background: #fafafa; cursor: pointer;';
-          container.onclick = (e) => {
+          // node 자체에 클릭 이벤트 설정
+          node.style.cssText = 'border: 1px solid #e0e0e0; border-radius: 8px; padding: 10px; margin: 8px 0; max-width: 350px; background: #fafafa; cursor: pointer; display: block;';
+          
+          node.onclick = (e) => {
             e.preventDefault();
             e.stopPropagation();
             console.log('OG 카드 클릭:', value.url);
@@ -920,7 +918,7 @@
           };
           
           // 추가 클릭 이벤트 리스너
-          container.addEventListener('click', (e) => {
+          node.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
             console.log('OG 카드 클릭 (addEventListener):', value.url);
@@ -928,12 +926,12 @@
           }, true);
           
           // 마우스 이벤트도 추가
-          container.addEventListener('mousedown', (e) => {
+          node.addEventListener('mousedown', (e) => {
             e.preventDefault();
             e.stopPropagation();
           });
           
-          container.addEventListener('mouseup', (e) => {
+          node.addEventListener('mouseup', (e) => {
             e.preventDefault();
             e.stopPropagation();
             console.log('OG 카드 마우스업:', value.url);
@@ -944,19 +942,19 @@
             const img = document.createElement('img');
             img.src = value.image;
             img.style.cssText = 'width: 100%; max-height: 80px; object-fit: cover; border-radius: 4px; margin-bottom: 8px;';
-            container.appendChild(img);
+            node.appendChild(img);
           }
           
           const title = document.createElement('div');
           title.style.cssText = 'font-weight: bold; font-size: 14px; margin-bottom: 4px; color: #1a73e8;';
           title.textContent = value.title || value.url;
-          container.appendChild(title);
+          node.appendChild(title);
           
           if (value.description) {
             const desc = document.createElement('div');
             desc.style.cssText = 'color: #5f6368; font-size: 12px; line-height: 1.3; margin-bottom: 4px;';
             desc.textContent = value.description.substring(0, 80) + (value.description.length > 80 ? '...' : '');
-            container.appendChild(desc);
+            node.appendChild(desc);
           }
           
           const site = document.createElement('div');
@@ -981,14 +979,13 @@
           
           site.appendChild(favicon);
           site.appendChild(document.createTextNode(value.siteName || new URL(value.url).hostname));
-          container.appendChild(site);
+          node.appendChild(site);
 
           const url = document.createElement('div');
           url.style.cssText = 'color: #70757a; font-size: 10px; word-break: break-all;';
           url.textContent = `${value.url}`;
-          container.appendChild(url);
+          node.appendChild(url);
           
-          node.appendChild(container);
           return node;
         }
 
