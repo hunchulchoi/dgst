@@ -47,6 +47,13 @@ server{
 
 								add_header 'Cache-Control' 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0';
 
+								# 404, 502 에러 시 /board/free로 리다이렉트
+								error_page 404 = @fallback;
+								error_page 502 = @fallback;
+				}
+
+				location @fallback {
+								return 302 /board/free;
 				}				
 
 				location /images {

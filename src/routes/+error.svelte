@@ -3,8 +3,16 @@
 
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
+  import { onMount } from 'svelte';
   
   // Svelte 5 Runes - page store 필요 (error page는 예외)
+  
+  // 404, 502 에러 시 자동으로 /board/free로 리다이렉트
+  onMount(() => {
+    if ($page.status === 404 || $page.status === 502) {
+      goto('/board/free');
+    }
+  });
 </script>
 
 <Card class="m-5 shadow rounded-4" style="max-width: 500px">
