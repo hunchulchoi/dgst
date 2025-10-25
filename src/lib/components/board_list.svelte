@@ -25,8 +25,8 @@
     </Row>
   </Row>
 {:else}
-  {#each data.articles as article}
-    <Row class="p-2 border-bottom border-secondary-subtle m-0">
+  {#each data.articles as article, index}
+    <Row class="p-2 border-bottom border-secondary-subtle m-0 {index % 2 === 1 ? 'bg-light bg-opacity-50' : ''}">
       <Col lg="7" md="5" xs="12"
            class="text-break link-opacity-hover-50 pb-1 position-relative">
         <a data-sveltekit-preload-data="tap" data-sveltekit-invalidate="all"

@@ -32,8 +32,8 @@
         </Row>
       </Row>
     {:else}
-      {#each data.alarms as alarm}
-        <Row class="py-2 border-bottom border-secondary-subtle m-0">
+      {#each data.alarms as alarm, index}
+        <Row class="py-2 border-bottom border-secondary-subtle m-0 {index % 2 === 1 ? 'bg-light bg-opacity-50' : ''}">
           {#if alarm.comment}
             <Col
               lg="7"
