@@ -1,4 +1,23 @@
 <svelte:head>
+  <!-- Open Graph 메타 태그 -->
+  <title>{data.article.title} - 데게실버타운</title>
+  <meta name="description" content={data.article.content.replace(/<[^>]*>/g, '').substring(0, 160)} />
+  
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="article" />
+  <meta property="og:url" content="https://www.dgst.me{data.article._id}" />
+  <meta property="og:title" content={data.article.title} />
+  <meta property="og:description" content={data.article.content.replace(/<[^>]*>/g, '').substring(0, 160)} />
+  <meta property="og:image" content="https://www.dgst.me/logo/twitter_header_photo_2.png" />
+  <meta property="og:site_name" content="데게실버타운" />
+  
+  <!-- Twitter -->
+  <meta property="twitter:card" content="summary_large_image" />
+  <meta property="twitter:url" content="https://www.dgst.me{data.article._id}" />
+  <meta property="twitter:title" content={data.article.title} />
+  <meta property="twitter:description" content={data.article.content.replace(/<[^>]*>/g, '').substring(0, 160)} />
+  <meta property="twitter:image" content="https://www.dgst.me/logo/twitter_header_photo_2.png" />
+  
   <script async src="https://platform.instagram.com/en_US/embeds.js"></script>
   <script async src="//www.tiktok.com/embed.js"></script>
   <style>
