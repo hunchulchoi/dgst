@@ -1,6 +1,6 @@
 <svelte:head>
   <!-- Open Graph 메타 태그 -->
-  <title>{data.article.title} - 데게실버타운</title>
+  <title>{data.article.title} - dgst.me</title>
   <meta name="description" content={`${data.article.nickname} - ${data.article.content.replace(/<[^>]*>/g, '').substring(0, 20)}`} />
   
   <!-- Open Graph / Facebook -->
@@ -9,7 +9,7 @@
   <meta property="og:title" content={data.article.title} />
   <meta property="og:description" content={`${data.article.nickname} - ${data.article.content.replace(/<[^>]*>/g, '').substring(0, 20)}`} />
   <meta property="og:image" content="https://www.dgst.me/logo/twitter_header_photo_2.png" />
-  <meta property="og:site_name" content="데게실버타운" />
+  <meta property="og:site_name" content="dgst.me" />
   
   <!-- Twitter -->
   <meta property="twitter:card" content="summary_large_image" />

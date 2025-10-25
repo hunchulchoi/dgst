@@ -43,8 +43,8 @@
   </div>
 {:else if error || !ogData}
   <!-- OG 데이터가 없으면 일반 링크로 표시 -->
-  <a href={url} target="_blank" class="text-decoration-none">
-    <div class="og-preview border rounded p-3 my-2" style="max-width: 500px;">
+  <a href={url} target="_blank" rel="noopener noreferrer" class="text-decoration-none">
+    <div class="og-preview border rounded p-3 my-2" style="max-width: 500px; cursor: pointer;">
       <div class="d-flex align-items-center">
         <div class="me-3">
           <i class="bi bi-link-45deg text-primary" style="font-size: 24px;"></i>
@@ -61,8 +61,8 @@
   </a>
 {:else}
   <!-- OG 미리보기 표시 -->
-  <a href={url} target="_blank" class="text-decoration-none">
-    <div class="og-preview border rounded p-3 my-2" style="max-width: 500px;">
+  <a href={url} target="_blank" rel="noopener noreferrer" class="text-decoration-none">
+    <div class="og-preview border rounded p-3 my-2" style="max-width: 500px; cursor: pointer;">
       <div class="d-flex">
         {#if ogData.image}
           <img 
@@ -85,8 +85,13 @@
             {ogData.description}
           </p>
           <small class="text-muted" style="font-size: 11px;">
-            {new URL(url).hostname}
+            {url.includes('dgst.me') ? 'dgst.me' : new URL(url).hostname}
           </small>
+          <div class="mt-1">
+            <small class="text-primary" style="font-size: 10px; word-break: break-all;">
+              {url}
+            </small>
+          </div>
         </div>
         <div class="ms-2 d-flex align-items-center">
           <i class="bi bi-arrow-up-right-square text-muted"></i>

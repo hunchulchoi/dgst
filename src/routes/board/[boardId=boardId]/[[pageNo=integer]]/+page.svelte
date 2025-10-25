@@ -69,7 +69,7 @@
 
 <svelte:head>
   <!-- Open Graph 메타 태그 -->
-  <title>{pageTitle} - 데게실버타운</title>
+        <title>{pageTitle} - dgst.me</title>
   <meta name="description" content={`${boardName}에서 최신 게시글을 확인하세요. ${data.articles?.length || 0}개의 게시글이 있습니다.`} />
   
   <!-- Open Graph / Facebook -->
@@ -78,7 +78,7 @@
   <meta property="og:title" content={pageTitle} />
   <meta property="og:description" content={`${boardName}에서 최신 게시글을 확인하세요. ${data.articles?.length || 0}개의 게시글이 있습니다.`} />
   <meta property="og:image" content="https://www.dgst.me/logo/twitter_header_photo_2.png" />
-  <meta property="og:site_name" content="데게실버타운" />
+  <meta property="og:site_name" content="dgst.me" />
   
   <!-- Twitter -->
   <meta property="twitter:card" content="summary_large_image" />
