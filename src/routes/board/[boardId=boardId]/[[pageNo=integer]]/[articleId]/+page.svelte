@@ -927,17 +927,27 @@
       <!-- Open Graph 미리보기 -->
       {#each extractUrlsFromArticle(data.article.content) as url}
         {#if !url.includes('youtube.com') && !url.includes('youtu.be')}
-          <div class="my-3">
-            <div class="d-flex align-items-center mb-2">
-              <h6 class="mb-0 me-2" style="font-size: 16px; font-weight: 600; color: #333;">
-                {data.article.title}
-              </h6>
-              <small class="text-muted">by {data.article.nickname}</small>
+          {#if url.includes('dgst.me')}
+            <!-- 우리 사이트 링크 - 제목과 닉네임 표시 -->
+            <div class="my-3">
+              <div class="d-flex align-items-center mb-2">
+                <h6 class="mb-0 me-2" style="font-size: 16px; font-weight: 600; color: #333;">
+                  {data.article.title}
+                </h6>
+                <small class="text-muted">by {data.article.nickname}</small>
+              </div>
+              <OGPreview {url} />
+              <!-- 디버깅용 -->
+              <small class="text-muted">URL: {url}</small>
             </div>
-            <OGPreview {url} />
-            <!-- 디버깅용 -->
-            <small class="text-muted">URL: {url}</small>
-          </div>
+          {:else}
+            <!-- 다른 사이트 링크 - 일반 OG 미리보기 -->
+            <div class="my-3">
+              <OGPreview {url} />
+              <!-- 디버깅용 -->
+              <small class="text-muted">URL: {url}</small>
+            </div>
+          {/if}
         {/if}
       {/each}
     </Row>
