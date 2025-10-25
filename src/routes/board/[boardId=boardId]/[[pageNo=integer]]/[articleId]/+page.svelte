@@ -75,9 +75,8 @@
     fetch(`/board/${boardId}/${articleId}/like`, {method: 'POST'})
       .then((res) => res.json())
       .then((d) => {
-        data.article.read = d.read;
-        data.article.like = d.like;
-        data.article.liked = d.liked;
+        articleLike = d.like;
+        articleLiked = d.liked;
       });
   }
 
@@ -340,6 +339,10 @@
   // 댓글 데이터를 $state로 관리
   let commentData = $state(data.article.comments);
 
+  // 게시물 좋아요 데이터를 $state로 관리
+  let articleLike = $state(data.article.like);
+  let articleLiked = $state(data.article.liked);
+
   $effect(() => {
     console.log('🔄 게시글 상세 페이지 - articleId:', articleId);
     console.log('📝 게시글:', data.article.title);
@@ -450,9 +453,9 @@
             수정
           </Button>
         {/if}
-        <Button color="primary" on:click|once={like} class="px-3" disabled={data.article.liked}>
-          <Icon name={data.article.liked?"hand-thumbs-up-fill":"hand-thumbs-up"}/>
-          {data.article.like || ''}
+        <Button color="primary" onclick={like} class="px-3" disabled={articleLiked}>
+          <Icon name={articleLiked?"hand-thumbs-up-fill":"hand-thumbs-up"}/>
+          {articleLike || ''}
         </Button>
         <Button color="secondary" onclick={list} class="ps-1 pe-2">
           <Icon name="list"/>
