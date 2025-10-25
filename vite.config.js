@@ -37,5 +37,10 @@ export default defineConfig({
         }
       }
     }
+  },
+
+  // 프로덕션에서 console 제거
+  esbuild: {
+    drop: process.env.NODE_ENV === 'production' ? ['console', 'debugger'] : []
   }
 });
