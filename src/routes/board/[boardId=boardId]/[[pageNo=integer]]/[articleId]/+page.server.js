@@ -13,7 +13,7 @@ export const load = async ({ params, locals }) => {
     throw error(400, { message: '잘못된 접근입니다.' });
   }
 
-  const session = await locals.auth();
+  const session = await locals.getSession();
 
   let filter = { _id: params.articleId, boardId: params.boardId, state: 'write', createdAt: {$gt: new Date(new Date()-1000*60*60*24*3)} };
 

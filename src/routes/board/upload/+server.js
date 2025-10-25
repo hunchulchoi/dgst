@@ -6,7 +6,7 @@ import { write } from '$lib/util/fileUpload.js';
 export async function POST({ request, locals }) {
   //console.log('upload.server POST', request);
 
-  const session = await locals.auth();
+  const session = await locals.getSession();
 
   if(!session || !session.user?.nickname){
     throw error(401, { message: '로그인 해 주세요' });

@@ -8,7 +8,7 @@ export const actions = {
   default: async ({ request, params, locals }) => {
     //console.log('write.server default', request);
 
-    const session = await locals.auth();
+    const session = await locals.getSession();
 
     //console.debug('user', session);
 
@@ -62,7 +62,7 @@ export const actions = {
 };
 
 export const load = async ({ params, locals }) => {
-  const session = await locals.auth();
+  const session = await locals.getSession();
 
   if (!session?.user.nickname) {
     throw error(401, { message: '권한이 없습니다. 로그인 해 주세요' });

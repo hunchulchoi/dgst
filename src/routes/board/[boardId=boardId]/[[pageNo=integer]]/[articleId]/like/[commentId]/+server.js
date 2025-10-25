@@ -13,7 +13,7 @@ export async function POST({ params, locals }) {
     throw error(400, { message: '잘못된 접근입니다.' });
   }
   
-  const session = await locals.auth();
+  const session = await locals.getSession();
   
   // 권한 검사
   if (!session?.user?.nickname) {

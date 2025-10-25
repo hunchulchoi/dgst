@@ -5,7 +5,7 @@ import { User } from '$lib/models/user.js';
 connectDB();
 export const load = async ({ params, locals }) => {
   
-  const session = await locals.auth();
+  const session = await locals.getSession();
   
   if (!session?.user?.nickname) {
     throw error(405, {message: '로그인 해 주세요'});

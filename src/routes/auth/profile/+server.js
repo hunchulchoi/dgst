@@ -7,7 +7,7 @@ import { User } from '$lib/models/user.js';
 connectDB();
 
 export async function PATCH({ request, locals }) {
-  const session = await locals.auth();
+  const session = await locals.getSession();
 
   if(!session || !session.user?.email){
     throw error(401, { message: '로그인 해 주세요' });
