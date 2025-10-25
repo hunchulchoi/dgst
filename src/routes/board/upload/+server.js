@@ -8,13 +8,13 @@ export async function POST({ request, locals }) {
 
   const session = await locals.auth();
 
-  if(!session || !session.user?.nickname){
+  if (!session || !session.user?.nickname) {
     throw error(401, { message: '로그인 해 주세요' });
   }
 
   const data = await request.formData();
 
-  console.log('body', data.get('upload').name);
+  console.debug('File upload request:', data.get('upload').name);
 
   const res = await write(data.get('upload'), session.user.email, 'jjal');
 

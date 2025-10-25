@@ -67,11 +67,11 @@ export const { handle, signIn, signOut } = SvelteKitAuth({
               )
           );
 
-          if (!user) console.error('ㅊㅊㄷ 로그인 실패', email, encPwd);
+          if (!user) console.error('VIP 로그인 실패', email, encPwd);
 
           return user;
         } else {
-          console.error('ㅊㅊㄷ 로그인 실패', email, encPwd);
+          console.error('일반 사용자 로그인 실패', email, encPwd);
           throw error(405);
         }
       }

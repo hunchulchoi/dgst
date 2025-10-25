@@ -22,7 +22,7 @@ export async function GET({ params, locals }) {
 
   const session = await locals.auth();
 
-  console.log('session', session);
+  console.debug('session', session);
 
   try {
     comments = await Comment.find(
@@ -35,7 +35,7 @@ export async function GET({ params, locals }) {
     if (session?.user?.nickname) {
       const deleteAlarm = await Alarm.updateMany({ email: session.user.email, articleId: params.articleId }
         , { $set: { readAt: new Date() } }, { timestamps: false });
-      console.log('delete alarm', deleteAlarm);
+      console.debug('delete alarm', deleteAlarm);
     }
 
   } catch (err) {
@@ -49,7 +49,7 @@ export async function GET({ params, locals }) {
   if (session?.user?.nickname) {
     commentsTree.forEach((c) => {
 
-      console.log(session.user.email, c.likes, c.likes.includes(session.user.email))
+      console.debug(session.user.email, c.likes, c.likes.includes(session.user.email))
 
       c.liked = c.likes.includes(session.user.email);
       delete c.likes;

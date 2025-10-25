@@ -15,7 +15,7 @@ function safeString(_name, _path) {
   const isValid = mimeType && (mimeType.startsWith('image') || mimeType.startsWith('video'));
 
   if (!isValid) {
-    console.log('Invalid file type:', mimeType, 'for file:', _name);
+    console.debug('Invalid file type:', mimeType, 'for file:', _name);
     return false;
   }
 
@@ -24,14 +24,14 @@ function safeString(_name, _path) {
   const normalizedPath = path.normalize(path.join(UPLOAD_PATH, _path, _name));
   const isPathSafe = normalizedPath.startsWith(UPLOAD_PATH);
 
-  console.log('Path safety check:', { normalizedPath, UPLOAD_PATH, isPathSafe });
+  console.debug('Path safety check:', { normalizedPath, UPLOAD_PATH, isPathSafe });
 
   return isPathSafe;
 }
 
 export async function write(file, email, preservePath = 'jjal') {
   try {
-    console.log('fileUpload.write called:', { fileName: file.name, preservePath, email });
+    console.debug('fileUpload.write called:', { fileName: file.name, preservePath, email });
 
     const now = new Date();
 
@@ -50,7 +50,7 @@ export async function write(file, email, preservePath = 'jjal') {
       fs.mkdirSync(`${UPLOAD_PATH}${dir}`, { recursive: true });
     }
 
-    console.log('Upload directory:', `${UPLOAD_PATH}${dir}`);
+    console.debug('Upload directory:', `${UPLOAD_PATH}${dir}`);
 
     // 파일명 생성 (특수문자 안전 처리)
     const emailPrefix = email?.substring(0, 8).replace(/[^a-zA-Z0-9]/g, '') || 'anonymous';
@@ -60,14 +60,14 @@ export async function write(file, email, preservePath = 'jjal') {
 
     let fileName = `${emailPrefix}_${safeName}_${now.getTime()}${ext}`;
 
-    console.log('Generated fileName:', fileName);
+    console.debug('Generated fileName:', fileName);
 
     const fileBuffer = Buffer.from(await file.arrayBuffer());
     const fullPath = `${UPLOAD_PATH}${dir}/${fileName}`;
 
-    console.log('Writing file to:', fullPath);
+    console.debug('Writing file to:', fullPath);
     fs.writeFileSync(fullPath, fileBuffer);
-    console.log('File written successfully');
+    console.debug('File written successfully');
 
     // 이미지만 webp 압축 (비디오는 제외)
     if (file.type.startsWith('image')) {
@@ -84,19 +84,19 @@ export async function write(file, email, preservePath = 'jjal') {
           // 원본 파일 삭제
           fs.unlink(fullPath, (err) => err && console.error('Error deleting original:', err));
           fileName = `${fileName}.webp`;
-          console.log('Image converted to WebP:', fileName);
+          console.debug('Image converted to WebP:', fileName);
         } catch (err) {
           console.error('Image to WebP conversion failed:', err);
           // 변환 실패 시 원본 파일 유지
         }
       }
     } else {
-      console.log('Video file - skipping WebP conversion');
+      console.debug('Video file - skipping WebP conversion');
     }
 
     const finalPath = `${UPLOAD_PATH}${dir}/${fileName}`;
     if (fs.existsSync(finalPath)) {
-      console.log('File uploaded successfully:', `/images${dir}/${fileName}`);
+      console.debug('File uploaded successfully:', `/images${dir}/${fileName}`);
       return `/images${dir}/${fileName}`;
     } else {
       console.error('File not found after save:', finalPath);

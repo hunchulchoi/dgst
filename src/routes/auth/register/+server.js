@@ -1,4 +1,4 @@
-import {error, json} from '@sveltejs/kit';
+import { error, json } from '@sveltejs/kit';
 import connectDB from '$lib/database/mongoosePriomise.js';
 import { write } from '$lib/util/fileUpload.js';
 
@@ -9,7 +9,7 @@ connectDB();
 export async function PATCH({ request, locals }) {
   const session = await locals.auth();
 
-  if(!session || !session.user?.email){
+  if (!session || !session.user?.email) {
     throw error(401, { message: '로그인 해 주세요' });
   }
 
@@ -45,8 +45,8 @@ export async function PATCH({ request, locals }) {
     state: 'registered',
     last_modified: new Date()
   };
-  
-  if(storeFileName) update.photo = storeFileName;
+
+  if (storeFileName) update.photo = storeFileName;
 
   console.debug('filter', filter, 'update', update);
 
@@ -60,7 +60,7 @@ export async function PATCH({ request, locals }) {
     session.user.introduction = registeredUser.introduction;
     session.user.photo = registeredUser.photo;
 
-    console.log('session', session);
+    console.debug('session', session);
 
     return json({ nickname: registeredUser.nickname, photo: registeredUser.photo });
   } catch (error) {

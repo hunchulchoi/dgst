@@ -12,7 +12,7 @@ export async function POST({ request }) {
       throw error(400, 'URL이 필요합니다.');
     }
 
-    console.log('🔍 OG 메타데이터 가져오기:', url);
+    console.debug('🔍 OG 메타데이터 가져오기:', url);
 
     // URL fetch
     const response = await fetch(url, {
@@ -36,7 +36,7 @@ export async function POST({ request }) {
       siteName: extractMeta(html, 'og:site_name')
     };
 
-    console.log('✅ OG 메타데이터:', ogData);
+    console.debug('✅ OG 메타데이터:', ogData);
 
     return json(ogData);
   } catch (err) {
