@@ -925,7 +925,15 @@
       <!-- Open Graph 미리보기 -->
       {#each extractUrlsFromArticle(data.article.content) as url}
         {#if !url.includes('youtube.com') && !url.includes('youtu.be')}
-          <OGPreview {url} />
+          <div class="my-3">
+            <div class="d-flex align-items-center mb-2">
+              <h6 class="mb-0 me-2" style="font-size: 16px; font-weight: 600; color: #333;">
+                {data.article.title}
+              </h6>
+              <small class="text-muted">by {data.article.nickname}</small>
+            </div>
+            <OGPreview {url} />
+          </div>
         {/if}
       {/each}
     </Row>
