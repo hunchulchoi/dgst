@@ -919,6 +919,27 @@
             window.open(value.url, '_blank');
           };
           
+          // 추가 클릭 이벤트 리스너
+          container.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('OG 카드 클릭 (addEventListener):', value.url);
+            window.open(value.url, '_blank');
+          }, true);
+          
+          // 마우스 이벤트도 추가
+          container.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          });
+          
+          container.addEventListener('mouseup', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('OG 카드 마우스업:', value.url);
+            window.open(value.url, '_blank');
+          });
+          
           if (value.image) {
             const img = document.createElement('img');
             img.src = value.image;
@@ -945,7 +966,7 @@
           const favicon = document.createElement('img');
  
           if(value.url.includes('dgst.me')) {
-            favicon.src = '/icons/favicon.ico';
+            favicon.src = 'https://www.dgst.me/favicon/favicon-16x16.png';
           } else {
             favicon.src = `https://www.google.com/s2/favicons?domain=${new URL(value.url).hostname}&sz=16`;
           }
