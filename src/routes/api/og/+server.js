@@ -7,11 +7,39 @@ import { json } from '@sveltejs/kit';
  */
 export async function GET({ url }) {
   const targetUrl = url.searchParams.get('url');
-
+  
   if (!targetUrl) {
     return json({ error: 'URL parameter is required' }, { status: 400 });
   }
 
+  return await fetchOGData(targetUrl);
+}
+
+/**
+ * POST 요청으로 Open Graph 데이터를 가져오는 API
+ * @param {Object} request - 요청 객체
+ * @returns {Response} OG 데이터 JSON 응답
+ */
+export async function POST({ request }) {
+  try {
+    const { url: targetUrl } = await request.json();
+    
+    if (!targetUrl) {
+      return json({ error: 'URL is required' }, { status: 400 });
+    }
+
+    return await fetchOGData(targetUrl);
+  } catch (error) {
+    return json({ error: 'Invalid JSON body' }, { status: 400 });
+  }
+}
+
+/**
+ * Open Graph 데이터를 실제로 가져오는 공통 함수
+ * @param {string} targetUrl - 대상 URL
+ * @returns {Response} OG 데이터 JSON 응답
+ */
+async function fetchOGData(targetUrl) {
   try {
     // URL 유효성 검사
     new URL(targetUrl);
@@ -39,12 +67,12 @@ export async function GET({ url }) {
     }
 
     const html = await response.text();
-
+    
     // Open Graph 메타 태그 파싱
     const ogData = parseOpenGraphData(html, targetUrl);
-
+    
     return json(ogData);
-
+    
   } catch (error) {
     console.error('OG 데이터 가져오기 실패:', error);
     return json({ error: 'Failed to fetch OG data' }, { status: 500 });
