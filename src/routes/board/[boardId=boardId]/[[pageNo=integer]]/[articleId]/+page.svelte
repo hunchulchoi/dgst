@@ -156,33 +156,21 @@
     }
   }
 
-  async function comments() {
+  function comments() {
     console.log('🔄 댓글 새로고침 시작:', `/board/${boardId}/${articleId}/comment`);
-    try {
-      const res = await fetch(`/board/${boardId}/${articleId}/comment`);
-      console.log('✅ 댓글 응답:', res.status);
-      const d = await res.json();
-      console.log('📝 댓글 데이터:', d.length, '개');
-      
-      // 댓글 내용을 비동기로 처리
-      const processedComments = {};
-      for (const comment of d) {
-        try {
-          processedComments[comment._id] = await viewComment(comment.content);
-        } catch (error) {
-          console.error('댓글 내용 처리 실패:', error);
-          processedComments[comment._id] = comment.content;
-        }
-      }
-      
-      // 처리된 댓글 내용을 상태에 저장
-      processedComments = processedComments;
-      
-      // $state 직접 업데이트
-      commentData = d;
-    } catch (err) {
-      console.error('❌ 댓글 새로고침 실패:', err);
-    }
+    fetch(`/board/${boardId}/${articleId}/comment`)
+      .then((res) => {
+        console.log('✅ 댓글 응답:', res.status);
+        return res.json();
+      })
+      .then((d) => {
+        console.log('📝 댓글 데이터:', d.length, '개');
+        // $state 직접 업데이트
+        commentData = d;
+      })
+      .catch((err) => {
+        console.error('❌ 댓글 새로고침 실패:', err);
+      });
   }
 
   function list() {
@@ -840,24 +828,6 @@
   let articleLike = $state(data.article.like);
   let articleLiked = $state(data.article.liked);
   
-  // 댓글 내용 처리된 상태
-  let processedComments = $state({});
-
-  // 댓글 내용을 비동기로 처리하는 함수
-  async function processCommentContent(commentId, content) {
-    if (processedComments[commentId]) {
-      return processedComments[commentId];
-    }
-    
-    try {
-      const processed = await viewComment(content);
-      processedComments[commentId] = processed;
-      return processed;
-    } catch (error) {
-      console.error('댓글 내용 처리 실패:', error);
-      return content; // 실패 시 원본 반환
-    }
-  }
 
   $effect(() => {
     console.log('🔄 게시글 상세 페이지 - articleId:', articleId);
@@ -1148,7 +1118,7 @@
                         <span class="text-bg-secondary p-1 rounded-2"
                               style="font-size: small"><span
                           class="text-warning">@</span>{comment.parentCommentNickname}</span>
-                        {/if}{@html processedComments[comment._id] || comment.content}</div>
+                        {/if}{@html viewComment(comment.content)}</div>
                     {/if}
                   {/if}
                 {/if}
