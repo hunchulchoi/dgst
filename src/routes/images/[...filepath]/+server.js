@@ -47,16 +47,10 @@ export async function GET({ params }) {
 
     const contentType = mimeTypes[ext] || 'application/octet-stream';
 
-    // 이미지 파일만 캐시 적용
-    const isImage = contentType.startsWith('image/');
-    const cacheControl = isImage 
-      ? 'public, max-age=31536000' // 이미지는 1년 캐시
-      : 'no-cache, no-store, must-revalidate'; // 비디오 등은 캐시 안함
-
     return new Response(fileBuffer, {
       headers: {
         'Content-Type': contentType,
-        'Cache-Control': cacheControl,
+        'Cache-Control': 'public, max-age=31536000',
         'Content-Length': fileBuffer.length.toString()
       }
     });

@@ -55,8 +55,8 @@ server {
         add_header 'Cache-Control' 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0';
     }
 
-    # 이미지 파일만 캐시 적용
-    location ~* \.(jpg|jpeg|png|gif|webp)$ {
+    # 이미지 디렉토리: alias는 디렉토리 끝에 슬래시 필요, location도 슬래시로 맞춤
+    location /images/ {
         alias /mnt/dgst/volume/uploads/;
         valid_referers none blocked server_names *.dgst.site dgst.site;
         if ($invalid_referer) {
@@ -66,20 +66,6 @@ server {
         log_not_found off;
         access_log off;
         expires 1w;
-        try_files $uri $uri/ =404;
-    }
-
-    # 비디오 파일은 캐시 안함
-    location ~* \.(mp4|mov|avi|webm)$ {
-        alias /mnt/dgst/volume/uploads/;
-        valid_referers none blocked server_names *.dgst.site dgst.site;
-        if ($invalid_referer) {
-            return 302 /images/dgst.png;
-        }
-
-        log_not_found off;
-        access_log off;
-        add_header Cache-Control "no-cache, no-store, must-revalidate";
         try_files $uri $uri/ =404;
     }
 
