@@ -1,5 +1,6 @@
 <script>
   import { onMount } from 'svelte';
+  import sanitizeHtml from 'sanitize-html';
   
   let { url } = $props();
   let ogData = $state(null);
@@ -80,10 +81,10 @@
         {/if}
         <div class="flex-grow-1">
           <h6 class="mb-1 text-dark" style="font-size: 14px; font-weight: 600; line-height: 1.3;">
-            {@html ogData.title}
+            {@html sanitizeHtml(ogData.title, { allowedTags: [], allowedAttributes: {} })}
           </h6>
           <p class="mb-1 text-muted" style="font-size: 12px; line-height: 1.4;">
-            {@html ogData.description}
+            {@html sanitizeHtml(ogData.description, { allowedTags: [], allowedAttributes: {} })}
           </p>
           <small class="text-muted" style="font-size: 11px;">
             {url.includes('dgst.me') ? 'dgst.me' : new URL(url).hostname}
