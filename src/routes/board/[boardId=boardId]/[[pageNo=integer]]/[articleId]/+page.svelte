@@ -847,19 +847,8 @@
 
   // 게시물 내용을 처리하는 함수 (URL 제거하고 HTML 정리)
   function processArticleContent(htmlContent) {
-    // URL을 제거하고 HTML 정리
-    let processedContent = htmlContent;
-    const urls = extractUrlsFromArticle(htmlContent);
-    
-    urls.forEach(url => {
-      // YouTube 링크는 그대로 두고, 다른 링크는 제거 (인스타그램은 제거하지 않음)
-      if (!url.includes('youtube.com') && !url.includes('youtu.be') && !url.includes('instagram.com')) {
-        processedContent = processedContent.replace(url, '');
-      }
-    });
-    
     // sanitize-html 설정에서 인스타그램 임베드 허용
-    return sanitizeHtml(processedContent, {
+    return sanitizeHtml(htmlContent, {
       allowedTags: [
         'p', 'br', 'strong', 'em', 'u', 's', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
         'ul', 'ol', 'li', 'blockquote', 'a', 'img', 'iframe', 'div', 'span'
@@ -878,10 +867,27 @@
   onMount(()=>{
     // 인스타그램 임베드 처리
     setTimeout(() => {
+      console.log('인스타그램 임베드 확인:', document.querySelector('blockquote.instagram-media'));
       if (document.querySelector('blockquote.instagram-media')) {
-        instgrm.Embeds.process();
+        console.log('인스타그램 임베드 처리 시작');
+        if (typeof instgrm !== 'undefined' && instgrm.Embeds) {
+          instgrm.Embeds.process();
+          console.log('인스타그램 임베드 처리 완료');
+        } else {
+          console.log('instgrm 객체를 찾을 수 없음');
+        }
       }
     }, 1000);
+    
+    // 추가로 3초 후에도 다시 시도
+    setTimeout(() => {
+      if (document.querySelector('blockquote.instagram-media')) {
+        console.log('인스타그램 임베드 재처리 시도');
+        if (typeof instgrm !== 'undefined' && instgrm.Embeds) {
+          instgrm.Embeds.process();
+        }
+      }
+    }, 3000);
  
     console.log('url', $page.url)
 
