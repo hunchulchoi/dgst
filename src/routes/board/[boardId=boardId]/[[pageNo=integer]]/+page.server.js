@@ -64,11 +64,13 @@ export const load = async ({ params }) => {
       delete article.likes;
 
       const image = article.content.includes('<img ');
+      const video = article.content.includes('<video ');
       const youtube = article.content.includes('<div data-oembed-url=') && article.content.includes('youtu');
       const insta = article.content.includes('<div data-oembed-url=') && article.content.includes('instagram.com');
 
       article.content =
         (image ? '<i class="bi bi-card-image text-success px-2"></i>' : '') +
+        (video ? '<i class="bi bi-camera-video text-primary px-2"></i>' : '') +
         (youtube ? '<i class="bi bi-youtube text-danger px-2"></i>' : '') +
         (insta ? '<i class="bi bi-instagram text-warning px-2"></i>' : '');
     });
