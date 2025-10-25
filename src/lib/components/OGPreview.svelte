@@ -88,7 +88,7 @@
               <img src={ogData.favicon} alt="favicon" class="me-1" style="width: 16px; height: 16px; border-radius: 2px;">
             {/if}
             </div>
-          <small class="text-secondary fw-bold" style="font-size: 11px;">
+          <small class="text-secondary fw-bold">
             {#if ogData.favicon}
               <img src={ogData.favicon} alt="favicon" class="me-1" style="width: 16px; height: 16px; border-radius: 2px;">
             {/if}

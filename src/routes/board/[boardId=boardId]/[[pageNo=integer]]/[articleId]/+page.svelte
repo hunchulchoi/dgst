@@ -6,16 +6,16 @@
   <!-- Open Graph / Facebook -->
   <meta property="og:type" content="article" />
   <meta property="og:url" content="https://www.dgst.me/board/{boardId}/{data.article._id}" />
-  <meta property="og:title" content={data.article.title} />
-  <meta property="og:description" content={`${data.article.nickname} - ${data.article.content.replace(/<[^>]*>/g, '').substring(0, 20)}`} />
+  <meta property="og:title" content={`${data.article.title} - ${data.article.nickname}`} />
+  <meta property="og:description" content={`${data.article.content.replace(/<[^>]*>/g, '').substring(0, 20)}`} />
   <meta property="og:image" content="https://www.dgst.me/logo/twitter_header_photo_2.png" />
   <meta property="og:site_name" content="dgst.me" />
   
   <!-- Twitter -->
   <meta property="twitter:card" content="summary_large_image" />
   <meta property="twitter:url" content="https://www.dgst.me/board/{boardId}/{data.article._id}" />
-  <meta property="twitter:title" content={data.article.title} />
-  <meta property="twitter:description" content={`${data.article.nickname} - ${data.article.content.replace(/<[^>]*>/g, '').substring(0, 20)}`} />
+  <meta property="twitter:title" content={`${data.article.title} - ${data.article.nickname}`} />
+  <meta property="twitter:description" content={`${data.article.content.replace(/<[^>]*>/g, '').substring(0, 20)}`} />
   <meta property="twitter:image" content="https://www.dgst.me/logo/twitter_header_photo_2.png" />
   
   <script async src="https://platform.instagram.com/en_US/embeds.js"></script>
@@ -956,28 +956,6 @@
         {@html processArticleContent(data.article.content)}
       </CardText>
       
-      <!-- Open Graph 미리보기 (인스타그램 제외) -->
-      {#each extractUrlsFromArticle(data.article.content) as url}
-        {#if !url.includes('youtube.com') && !url.includes('youtu.be') && !url.includes('instagram.com')}
-          {#if url.includes('222dgst.me')}
-            <!-- 우리 사이트 링크 - 제목과 닉네임 표시 -->
-            <div class="my-3">
-              <div class="d-flex align-items-center mb-2">
-                <h6 class="mb-0 me-2" style="font-size: 16px; font-weight: 600; color: #333;">
-                  {data.article.title}
-                </h6>
-                <small class="text-muted">by {data.article.nickname}</small>
-              </div>
-              <OGPreview {url} />
-            </div>
-          {:else}
-            <!-- 다른 사이트 링크 - 일반 OG 미리보기 -->
-            <div class="my-3">
-              <OGPreview {url} />
-            </div>
-          {/if}
-        {/if}
-      {/each}
     </Row>
     <Row class="p-md-3 p-xs-1 mb-3 mx-0">
       <!--프로필-->
