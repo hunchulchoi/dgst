@@ -713,16 +713,22 @@
       }
       console.log('📦 최종 embedHtml:', embedHtml ? 'OK' : 'EMPTY');
     }
-    // Instagram - Open Graph 미리보기로 처리
+    // Instagram - 원래 임베드 방식으로 복원
     else if (url.includes('instagram.com')) {
-      console.log('📸 Instagram URL 감지 - Open Graph 미리보기로 처리');
-      // 인스타그램은 Open Graph 미리보기로 처리하므로 텍스트로만 삽입
-      quillInstance.insertText(range.index, url, 'link', url);
-      quillInstance.insertText(range.index + url.length, '\n');
-      quillInstance.setSelection(range.index + url.length + 1);
-      quillInstance.focus();
-      console.log('✅ Instagram 링크 삽입 완료');
-      return;
+      console.log('📸 Instagram URL 감지 - 임베드로 처리');
+      if (url.includes('/reel/')) {
+        const match = url.match(/instagram\.com\/reel\/([\w-]+)/);
+        const id = match ? match[1] : null;
+        if (id) {
+          embedHtml = `<blockquote class="instagram-media" data-instgrm-permalink="https://www.instagram.com/reel/${id}/" style="max-width:540px; min-width:326px;"></blockquote>`;
+        }
+      } else if (url.includes('/p/')) {
+        const match = url.match(/instagram\.com\/p\/([\w-]+)/);
+        const id = match ? match[1] : null;
+        if (id) {
+          embedHtml = `<blockquote class="instagram-media" data-instgrm-permalink="https://www.instagram.com/p/${id}/" style="max-width:540px; min-width:326px;"></blockquote>`;
+        }
+      }
     }
     // TikTok
     else if (url.includes('tiktok.com')) {

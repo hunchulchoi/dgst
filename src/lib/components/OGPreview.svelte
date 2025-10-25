@@ -7,21 +7,27 @@
   let error = $state(false);
 
   onMount(async () => {
+    console.log('🔍 OGPreview 시작:', url);
     try {
       const response = await fetch(`/api/og?url=${encodeURIComponent(url)}`);
+      console.log('📡 API 응답 상태:', response.status);
       if (response.ok) {
         ogData = await response.json();
+        console.log('📊 OG 데이터:', ogData);
         if (!ogData.title || !ogData.description) {
+          console.log('❌ OG 데이터 부족:', { title: ogData.title, description: ogData.description });
           error = true;
         }
       } else {
+        console.log('❌ API 응답 실패:', response.status);
         error = true;
       }
     } catch (err) {
-      console.error('OG 데이터 로드 실패:', err);
+      console.error('❌ OG 데이터 로드 실패:', err);
       error = true;
     } finally {
       loading = false;
+      console.log('✅ OGPreview 로딩 완료');
     }
   });
 </script>

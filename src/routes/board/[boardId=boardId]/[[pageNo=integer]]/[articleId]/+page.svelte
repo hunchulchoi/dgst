@@ -18,6 +18,7 @@
   <meta property="twitter:description" content={`${data.article.nickname} - ${data.article.content.replace(/<[^>]*>/g, '').substring(0, 20)}`} />
   <meta property="twitter:image" content="https://www.dgst.me/logo/twitter_header_photo_2.png" />
   
+  <script async src="https://platform.instagram.com/en_US/embeds.js"></script>
   <script async src="//www.tiktok.com/embed.js"></script>
   <style>
 
@@ -851,16 +852,36 @@
     const urls = extractUrlsFromArticle(htmlContent);
     
     urls.forEach(url => {
-      // YouTube 링크는 그대로 두고, 다른 링크는 제거 (인스타그램도 제거)
-      if (!url.includes('youtube.com') && !url.includes('youtu.be')) {
+      // YouTube 링크는 그대로 두고, 다른 링크는 제거 (인스타그램은 제거하지 않음)
+      if (!url.includes('youtube.com') && !url.includes('youtu.be') && !url.includes('instagram.com')) {
         processedContent = processedContent.replace(url, '');
       }
     });
     
-    return sanitizeHtml(processedContent);
+    // sanitize-html 설정에서 인스타그램 임베드 허용
+    return sanitizeHtml(processedContent, {
+      allowedTags: [
+        'p', 'br', 'strong', 'em', 'u', 's', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+        'ul', 'ol', 'li', 'blockquote', 'a', 'img', 'iframe', 'div', 'span'
+      ],
+      allowedAttributes: {
+        'blockquote': ['class', 'data-instgrm-permalink', 'style'],
+        'iframe': ['src', 'width', 'height', 'frameborder', 'allow', 'allowfullscreen', 'style'],
+        'a': ['href', 'target', 'rel'],
+        'img': ['src', 'alt', 'width', 'height', 'style'],
+        'div': ['class', 'style'],
+        'span': ['class', 'style']
+      }
+    });
   }
 
   onMount(()=>{
+    // 인스타그램 임베드 처리
+    setTimeout(() => {
+      if (document.querySelector('blockquote.instagram-media')) {
+        instgrm.Embeds.process();
+      }
+    }, 1000);
  
     console.log('url', $page.url)
 
@@ -924,9 +945,9 @@
         {@html processArticleContent(data.article.content)}
       </CardText>
       
-      <!-- Open Graph 미리보기 -->
+      <!-- Open Graph 미리보기 (인스타그램 제외) -->
       {#each extractUrlsFromArticle(data.article.content) as url}
-        {#if !url.includes('youtube.com') && !url.includes('youtu.be')}
+        {#if !url.includes('youtube.com') && !url.includes('youtu.be') && !url.includes('instagram.com')}
           {#if url.includes('dgst.me')}
             <!-- 우리 사이트 링크 - 제목과 닉네임 표시 -->
             <div class="my-3">
@@ -937,15 +958,11 @@
                 <small class="text-muted">by {data.article.nickname}</small>
               </div>
               <OGPreview {url} />
-              <!-- 디버깅용 -->
-              <small class="text-muted">URL: {url}</small>
             </div>
           {:else}
             <!-- 다른 사이트 링크 - 일반 OG 미리보기 -->
             <div class="my-3">
               <OGPreview {url} />
-              <!-- 디버깅용 -->
-              <small class="text-muted">URL: {url}</small>
             </div>
           {/if}
         {/if}
