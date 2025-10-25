@@ -907,54 +907,35 @@
           node.setAttribute('contenteditable', 'false');
           node.setAttribute('data-url', value.url);
           
-          // node 자체에 클릭 이벤트 설정
-          node.style.cssText = 'border: 1px solid #e0e0e0; border-radius: 8px; padding: 10px; margin: 8px 0; max-width: 350px; background: #fafafa; cursor: pointer; display: block;';
+          // a 태그로 감싸기
+          const link = document.createElement('a');
+          link.href = value.url;
+          link.target = '_blank';
+          link.rel = 'noopener noreferrer';
+          link.style.cssText = 'text-decoration: none; color: inherit; display: block; border: 1px solid #e0e0e0; border-radius: 8px; padding: 10px; margin: 8px 0; max-width: 350px; background: #fafafa; cursor: pointer;';
           
-          node.onclick = (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            console.log('OG 카드 클릭:', value.url);
-            window.open(value.url, '_blank');
+          link.onclick = (e) => {
+            console.log('OG 카드 링크 클릭:', value.url);
+            // 기본 링크 동작을 허용하므로 preventDefault 제거
           };
-          
-          // 추가 클릭 이벤트 리스너
-          node.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            console.log('OG 카드 클릭 (addEventListener):', value.url);
-            window.open(value.url, '_blank');
-          }, true);
-          
-          // 마우스 이벤트도 추가
-          node.addEventListener('mousedown', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-          });
-          
-          node.addEventListener('mouseup', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            console.log('OG 카드 마우스업:', value.url);
-            window.open(value.url, '_blank');
-          });
           
           if (value.image) {
             const img = document.createElement('img');
             img.src = value.image;
             img.style.cssText = 'width: 100%; max-height: 80px; object-fit: cover; border-radius: 4px; margin-bottom: 8px;';
-            node.appendChild(img);
+            link.appendChild(img);
           }
           
           const title = document.createElement('div');
           title.style.cssText = 'font-weight: bold; font-size: 14px; margin-bottom: 4px; color: #1a73e8;';
           title.textContent = value.title || value.url;
-          node.appendChild(title);
+          link.appendChild(title);
           
           if (value.description) {
             const desc = document.createElement('div');
             desc.style.cssText = 'color: #5f6368; font-size: 12px; line-height: 1.3; margin-bottom: 4px;';
             desc.textContent = value.description.substring(0, 80) + (value.description.length > 80 ? '...' : '');
-            node.appendChild(desc);
+            link.appendChild(desc);
           }
           
           const site = document.createElement('div');
@@ -979,13 +960,14 @@
           
           site.appendChild(favicon);
           site.appendChild(document.createTextNode(value.siteName || new URL(value.url).hostname));
-          node.appendChild(site);
+          link.appendChild(site);
 
           const url = document.createElement('div');
           url.style.cssText = 'color: #70757a; font-size: 10px; word-break: break-all;';
           url.textContent = `${value.url}`;
-          node.appendChild(url);
+          link.appendChild(url);
           
+          node.appendChild(link);
           return node;
         }
 
