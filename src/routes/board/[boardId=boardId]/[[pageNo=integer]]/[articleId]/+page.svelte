@@ -839,7 +839,9 @@
   function extractUrlsFromArticle(htmlContent) {
     // HTML 태그를 제거하고 텍스트만 추출
     const textContent = htmlContent.replace(/<[^>]*>/g, '');
-    return extractUrls(textContent);
+    const urls = extractUrls(textContent);
+    console.log('게시물에서 추출된 URLs:', urls);
+    return urls;
   }
 
   // 게시물 내용을 처리하는 함수 (URL 제거하고 HTML 정리)
@@ -849,7 +851,7 @@
     const urls = extractUrlsFromArticle(htmlContent);
     
     urls.forEach(url => {
-      // YouTube 링크는 그대로 두고, 다른 링크는 제거
+      // YouTube 링크는 그대로 두고, 다른 링크는 제거 (인스타그램도 제거)
       if (!url.includes('youtube.com') && !url.includes('youtu.be')) {
         processedContent = processedContent.replace(url, '');
       }
@@ -933,6 +935,8 @@
               <small class="text-muted">by {data.article.nickname}</small>
             </div>
             <OGPreview {url} />
+            <!-- 디버깅용 -->
+            <small class="text-muted">URL: {url}</small>
           </div>
         {/if}
       {/each}
