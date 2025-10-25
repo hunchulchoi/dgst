@@ -14,6 +14,7 @@
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
   import { enhance } from '$app/forms';
+  import Swal from 'sweetalert2';
 
   // Svelte 5 Runes
   let { data } = $props();
@@ -38,9 +39,20 @@
     await ffmpeg.load();
   });
 
-  function list() {
+  async function list() {
     if (title || content) {
-      if (!confirm('취소 하시겠습니까? 작성하던 글은 사라집니다.')) return false;
+      const result = await Swal.fire({
+        title: '작성 취소',
+        text: '취소 하시겠습니까? 작성하던 글은 사라집니다.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: '취소',
+        cancelButtonText: '계속 작성'
+      });
+      
+      if (!result.isConfirmed) return false;
     }
     goto(`/board/${boardId}`);
   }
@@ -147,17 +159,32 @@
         }
 
         if (title.replace(' ', '').length < 1) {
-          alert('제목이 너무 짧습니다.');
+          Swal.fire({
+            icon: 'warning',
+            title: '제목 오류',
+            text: '제목이 너무 짧습니다.',
+            confirmButtonText: '확인'
+          });
           return cancel();
         }
         if (content.replace(' ', '').length < 5) {
-          alert('본문이 너무 짧습니다.');
+          Swal.fire({
+            icon: 'warning',
+            title: '본문 오류',
+            text: '본문이 너무 짧습니다.',
+            confirmButtonText: '확인'
+          });
           return cancel();
         }
 
         return async ({ result, update }) => {
           if (!result.data.success) {
-            alert('저장중에 오류가 발생하였습니다.');
+            Swal.fire({
+              icon: 'error',
+              title: '저장 실패',
+              text: '저장중에 오류가 발생하였습니다.',
+              confirmButtonText: '확인'
+            });
           } else {
             title = '';
             content = '';

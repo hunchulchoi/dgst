@@ -5,6 +5,7 @@
    */
   import { onMount, onDestroy } from 'svelte';
   import Loader from 'svelte-loading-overlay/Loader.svelte';
+  import Swal from 'sweetalert2';
 
   // Svelte 5 Runes - Props
   let { uploadPlus, uploadMinus, editorData = $bindable() } = $props();
@@ -331,7 +332,12 @@
         console.log(`모든 파일 업로드 완료: ${totalFiles}개`);
       } catch (error) {
         console.error('Image upload failed:', error);
-        alert('이미지 업로드에 실패했습니다.');
+        Swal.fire({
+          icon: 'error',
+          title: '업로드 실패',
+          text: '이미지 업로드에 실패했습니다.',
+          confirmButtonText: '확인'
+        });
       } finally {
         loadingImage = false;
         // 진행률 초기화

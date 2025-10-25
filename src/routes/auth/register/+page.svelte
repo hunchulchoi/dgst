@@ -25,6 +25,7 @@
   import { goto } from '$app/navigation';
   import { browser } from '$app/environment';
   import {blobToWebP} from "webp-converter-browser";
+  import Swal from 'sweetalert2';
 
   // Svelte 5 Runes  
   let { data } = $props();
@@ -103,17 +104,32 @@
         console.log('res', res);
 
         if (res.ok) {
-          alert('등록 되었습니다.\n다시 로그인 해주세요.');
+          Swal.fire({
+            icon: 'success',
+            title: '등록 완료',
+            text: '등록 되었습니다.\n다시 로그인 해주세요.',
+            confirmButtonText: '확인'
+          });
           console.log(res);
 
           goto('/');
         } else {
-          alert(res.message || '저장 중에 오류가 발생하였습니다.');
+          Swal.fire({
+            icon: 'error',
+            title: '저장 실패',
+            text: res.message || '저장 중에 오류가 발생하였습니다.',
+            confirmButtonText: '확인'
+          });
         }
       })
       .catch((reason) => {
         console.error(reason);
-        alert('저장에 실패했습니다.');
+        Swal.fire({
+          icon: 'error',
+          title: '저장 실패',
+          text: '저장에 실패했습니다.',
+          confirmButtonText: '확인'
+        });
       });
   };
 
@@ -131,7 +147,12 @@
         if (!invalids.nickname) {
           fetch(`/auth/register/${target.value}`).then((res) => {
             if (res.status !== 204) {
-              alert('사용중인 아이디 입니다.');
+              Swal.fire({
+                icon: 'warning',
+                title: '아이디 중복',
+                text: '사용중인 아이디 입니다.',
+                confirmButtonText: '확인'
+              });
               invalids.nickname = true;
             }
           });
