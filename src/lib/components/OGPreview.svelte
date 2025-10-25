@@ -67,7 +67,7 @@
           <img 
             src={ogData.image} 
             class="me-3" 
-            style="width: 80px; height: 120px; object-fit: cover; border-radius: 4px;" 
+            style="width: 80px; height: 100px; object-fit: cover; border-radius: 4px;" 
             alt="미리보기 이미지"
             loading="lazy"
           />

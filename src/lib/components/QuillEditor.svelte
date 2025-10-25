@@ -903,7 +903,8 @@
         static create(value) {
           console.log('value', value);
           const node = super.create();
-          node.setAttribute('class', 'og-card-blot');
+          node.setAttribute('class', 'og-card-blot border rounded p-3 my-2 bg-light shadow text-decoration-none');
+          node.style.cssText = 'display: block; max-width: 350px; margin: 8px 0;';
           node.setAttribute('contenteditable', 'false');
           node.setAttribute('data-url', value.url);
           
