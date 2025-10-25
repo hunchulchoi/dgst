@@ -6,7 +6,7 @@ connectDB();
 export const load = async (event) => {
   const session = await event.locals.auth();
 
-  let alarmCount = 0;
+  let alarmCount = null; // 초기값을 null로 설정하여 로딩 상태 표시
 
   // 내용이 없는 알람 삭제
   await Alarm.deleteMany({comments: {$exists: true, $eq: []}})
@@ -14,6 +14,8 @@ export const load = async (event) => {
   // 알림이 있는 지 확인
   if (session?.user?.nickname) {
     alarmCount = await Alarm.countDocuments({ email: session.user.email, readAt: null, createdAt: {$gt: new Date(new Date()-1000*60*60*24)} });
+  } else {
+    alarmCount = 0; // 로그인하지 않은 경우 0으로 설정
   }
 
   console.log('layout server alarmCount', alarmCount)

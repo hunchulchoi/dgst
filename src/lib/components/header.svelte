@@ -140,7 +140,7 @@
                   data-sveltekit-preload-data="tap"
                   active={pathname?.startsWith('/board/alarm')}>
             <Icon name="megaphone" class="text-success me-2"/>알림
-            {#if $alarmCount}
+            {#if $alarmCount && $alarmCount > 0}
               <Badge pill color="danger">{$alarmCount}</Badge>
             {/if}
           </NavLink>
