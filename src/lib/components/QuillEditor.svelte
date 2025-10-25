@@ -904,10 +904,12 @@
           const node = super.create();
           node.setAttribute('class', 'og-card-blot');
           node.setAttribute('contenteditable', 'false');
+
+          node.addEventListener('click', () => window.open(value.url, 'dgst_out_link'));
           
           const container = document.createElement('div');
           container.style.cssText = 'border: 1px solid #e0e0e0; border-radius: 8px; padding: 10px; margin: 8px 0; max-width: 350px; background: #fafafa; cursor: pointer;';
-          container.onclick = () => window.open(value.url, '_blank');
+          //container.onclick = () => window.open(value.url, '_blank');
           
           if (value.image) {
             const img = document.createElement('img');
@@ -932,6 +934,11 @@
           site.style.cssText = 'color: #70757a; font-size: 11px;';
           site.textContent = `🔗 ${value.siteName || new URL(value.url).hostname}`;
           container.appendChild(site);
+
+          const url = document.createElement('div');
+          url.style.cssText = 'color: #70757a; font-size: 10px; word-break: break-all;';
+          url.textContent = `${value.url}`;
+          container.appendChild(url);
           
           node.appendChild(container);
           return node;
