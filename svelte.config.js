@@ -8,7 +8,8 @@ const config = {
     adapter: adapter(),
     paths: {
       assets: '',
-      relative: true
+      base: '/',
+      relative: false
     },
     prerender: {
       entries: ['/index']
