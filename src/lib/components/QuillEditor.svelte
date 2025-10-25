@@ -912,7 +912,12 @@
           
           const container = document.createElement('div');
           container.style.cssText = 'border: 1px solid #e0e0e0; border-radius: 8px; padding: 10px; margin: 8px 0; max-width: 350px; background: #fafafa; cursor: pointer;';
-          container.onclick = () => window.open(value.url, '_blank');
+          container.onclick = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('OG 카드 클릭:', value.url);
+            window.open(value.url, '_blank');
+          };
           
           if (value.image) {
             const img = document.createElement('img');
@@ -934,11 +939,17 @@
           }
           
           const site = document.createElement('div');
-          site.style.cssText = 'color: #70757a; font-size: 12px; display: flex; align-items: center;';
+          site.style.cssText = 'color: #70757a; font-size: 12px; display: flex; align-items: center; font-weight: bold;';
           
           // favicon 추가
           const favicon = document.createElement('img');
-          favicon.src = `https://www.google.com/s2/favicons?domain=${new URL(value.url).hostname}&sz=16`;
+ 
+          if(value.url.includes('dgst.me')) {
+            favicon.src = '/icons/favicon.ico';
+          } else {
+            favicon.src = `https://www.google.com/s2/favicons?domain=${new URL(value.url).hostname}&sz=16`;
+          }
+
           favicon.style.cssText = 'width: 16px; height: 16px; margin-right: 4px;';
           favicon.alt = 'favicon';
           favicon.onerror = () => {
