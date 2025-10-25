@@ -49,7 +49,8 @@ server{
 
 				}				
 
-				location /images {
+				# 이미지 파일만 캐시 적용
+				location ~* \.(jpg|jpeg|png|gif|webp)$ {
             alias /mnt/dgst/volume/uploads;
 						valid_referers none blocked
 				    server_names ~($host);
@@ -60,7 +61,20 @@ server{
 				    log_not_found off; access_log off;
 				    expires 1w;
 				    try_files $uri =404;
+         }
 
+				# 비디오 파일은 캐시 안함
+				location ~* \.(mp4|mov|avi|webm)$ {
+            alias /mnt/dgst/volume/uploads;
+						valid_referers none blocked
+				    server_names ~($host);
+				    if ($invalid_referer) {
+								rewrite (.*)$ /images/dgst.png redirect;
+								access_log /var/log/nginx/$host-hotlink-access.log;
+				    }
+				    log_not_found off; access_log off;
+				    add_header Cache-Control "no-cache, no-store, must-revalidate";
+				    try_files $uri =404;
          }
 				 location /images/dgst.png {
             alias /mnt/dgst/volume/uploads/jjal/dgst.png;
