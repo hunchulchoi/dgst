@@ -54,6 +54,7 @@
           <small class="text-muted">{new URL(url).hostname}</small>
         </div>
         <div class="ms-2">
+          <small class="text-muted"> {url}</small>
           <i class="bi bi-arrow-up-right-square text-muted"></i>
         </div>
       </div>
@@ -79,22 +80,19 @@
         {/if}
         <div class="flex-grow-1">
           <h6 class="mb-1 text-dark" style="font-size: 14px; font-weight: 600; line-height: 1.3;">
-            {ogData.title}
+            {@html ogData.title}
           </h6>
           <p class="mb-1 text-muted" style="font-size: 12px; line-height: 1.4;">
-            {ogData.description}
+            {@html ogData.description}
           </p>
           <small class="text-muted" style="font-size: 11px;">
             {url.includes('dgst.me') ? 'dgst.me' : new URL(url).hostname}
           </small>
           <div class="mt-1">
             <small class="text-primary" style="font-size: 10px; word-break: break-all;">
-              {url}
+              <i class="bi bi-arrow-up-right-square text-muted"></i> {url}
             </small>
           </div>
-        </div>
-        <div class="ms-2 d-flex align-items-center">
-          <i class="bi bi-arrow-up-right-square text-muted"></i>
         </div>
       </div>
     </div>
