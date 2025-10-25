@@ -44,33 +44,30 @@
   </div>
 {:else if error || !ogData}
   <!-- OG 데이터가 없으면 일반 링크로 표시 -->
-  <a href={url} target="_blank" rel="noopener noreferrer" class="text-decoration-none">
+  <a href={url} target="dgst_out_link" rel="noopener noreferrer" class="text-decoration-none">
     <div class="og-preview border rounded p-3 my-2" style="max-width: 500px; cursor: pointer;">
       <div class="d-flex align-items-center">
         <div class="me-3">
           <i class="bi bi-link-45deg text-primary" style="font-size: 24px;"></i>
         </div>
         <div class="flex-grow-1">
-          <div class="fw-bold text-primary">{url}</div>
-          <small class="text-muted">{new URL(url).hostname}</small>
-        </div>
-        <div class="ms-2">
-          <small class="text-muted"> {url}</small>
-          <i class="bi bi-arrow-up-right-square text-muted"></i>
+          <div class="fw-bold text-primary text-break">{url}</div>
+          <small class="text-muted" style="font-size: 11px;">{new URL(url).hostname}</small>
         </div>
       </div>
     </div>
   </a>
 {:else}
   <!-- OG 미리보기 표시 -->
-  <a href={url} target="dgst_out_link" rel="noopener noreferrer" class="text-decoration-none">
-    <div class="og-preview border rounded p-3 my-2" style="max-width: 500px; cursor: pointer;">
+  
+    <div class="og-preview border rounded p-3 my-2 bg-light shadow" style="max-width: 500px; cursor: pointer;">
+      <a href={url} target="dgst_out_link" rel="noopener noreferrer" class="text-decoration-none">
       <div class="d-flex">
         {#if ogData.image}
           <img 
             src={ogData.image} 
             class="me-3" 
-            style="width: 80px; height: 80px; object-fit: cover; border-radius: 4px;" 
+            style="width: 80px; height: 120px; object-fit: cover; border-radius: 4px;" 
             alt="미리보기 이미지"
             loading="lazy"
           />
@@ -80,24 +77,34 @@
           </div>
         {/if}
         <div class="flex-grow-1">
-          <h6 class="mb-1 text-dark" style="font-size: 14px; font-weight: 600; line-height: 1.3;">
+          <h6 class="mb-1 text-primary" style="font-size: 14px; font-weight: 600; line-height: 1.3;">
             {@html sanitizeHtml(ogData.title, { allowedTags: [], allowedAttributes: {} })}
           </h6>
-          <p class="mb-1 text-muted" style="font-size: 12px; line-height: 1.4;">
+          <p class="mb-1 text-secondary" style="font-size: 12px; line-height: 1.4;">
             {@html sanitizeHtml(ogData.description, { allowedTags: [], allowedAttributes: {} })}
           </p>
-          <small class="text-muted" style="font-size: 11px;">
-            {url.includes('dgst.me') ? 'dgst.me' : new URL(url).hostname}
+          <div class="d-flex align-items-center">
+            {#if ogData.favicon}
+              <img src={ogData.favicon} alt="favicon" class="me-1" style="width: 16px; height: 16px; border-radius: 2px;">
+            {/if}
+            </div>
+          <small class="text-secondary fw-bold" style="font-size: 11px;">
+            {#if ogData.favicon}
+              <img src={ogData.favicon} alt="favicon" class="me-1" style="width: 16px; height: 16px; border-radius: 2px;">
+            {/if}
+           
+            {ogData.siteName}
           </small>
           <div class="mt-1">
-            <small class="text-primary" style="font-size: 10px; word-break: break-all;">
-              <i class="bi bi-arrow-up-right-square text-muted"></i> {url}
+            
+            <small class="text-primary text-decoration-underline" style="font-size: 11px; word-break: break-all; display: block;">
+              {url}
             </small>
           </div>
         </div>
       </div>
+    </a>
     </div>
-  </a>
 {/if}
 
 <style>

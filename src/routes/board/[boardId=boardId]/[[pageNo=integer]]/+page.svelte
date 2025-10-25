@@ -74,7 +74,7 @@
   
   <!-- Open Graph / Facebook -->
   <meta property="og:type" content="website" />
-  <meta property="og:url" content="https://www.dgst.me/board/{boardId}{pageNo ? `/${pageNo}` : ''}" />
+  <meta property="og:url" content="https://www.dgst.me/board/{boardId}" />
   <meta property="og:title" content={pageTitle} />
   <meta property="og:description" content={`${boardName}에서 최신 게시글을 확인하세요. ${data.articles?.length || 0}개의 게시글이 있습니다.`} />
   <meta property="og:image" content="https://www.dgst.me/logo/twitter_header_photo_2.png" />

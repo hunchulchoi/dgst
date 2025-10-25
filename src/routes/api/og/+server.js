@@ -91,7 +91,8 @@ function parseOpenGraphData(html, baseUrl) {
     description: '',
     image: '',
     url: baseUrl,
-    siteName: ''
+    siteName: '',
+    favicon: ''
   };
 
   // 정규식으로 메타 태그 추출
@@ -153,6 +154,8 @@ function parseOpenGraphData(html, baseUrl) {
     ogData.description = '링크를 클릭하여 내용을 확인하세요.';
   }
 
+  ogData.description = ogData.description.substring(0, 50);
+
   // 제목이 없으면 URL 사용
   if (!ogData.title) {
     try {
@@ -161,6 +164,19 @@ function parseOpenGraphData(html, baseUrl) {
     } catch (error) {
       ogData.title = baseUrl;
     }
+  }
+
+  // favicon 추출
+  const favicon = html.match(/<link[^>]+rel=["']icon["'][^>]+>/i);
+  if (favicon) {
+
+
+    console.log('favicon', favicon);
+    ogData.favicon = resolveUrl(favicon[0].href, baseUrl);
+  }
+
+  if (!ogData.siteName) {
+    ogData.siteName = new URL(baseUrl).hostname;
   }
 
   return ogData;

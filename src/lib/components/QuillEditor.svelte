@@ -901,6 +901,9 @@
       // OG Card Blot 등록
       class OGBlot extends BlockEmbed {
         static create(value) {
+
+
+          console.log('value', value);
           const node = super.create();
           node.setAttribute('class', 'og-card-blot');
           node.setAttribute('contenteditable', 'false');

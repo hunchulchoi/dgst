@@ -5,7 +5,7 @@
   
   <!-- Open Graph / Facebook -->
   <meta property="og:type" content="article" />
-  <meta property="og:url" content="https://www.dgst.me{data.article._id}" />
+  <meta property="og:url" content="https://www.dgst.me/board/{boardId}/{data.article._id}" />
   <meta property="og:title" content={data.article.title} />
   <meta property="og:description" content={`${data.article.nickname} - ${data.article.content.replace(/<[^>]*>/g, '').substring(0, 20)}`} />
   <meta property="og:image" content="https://www.dgst.me/logo/twitter_header_photo_2.png" />
@@ -13,7 +13,7 @@
   
   <!-- Twitter -->
   <meta property="twitter:card" content="summary_large_image" />
-  <meta property="twitter:url" content="https://www.dgst.me{data.article._id}" />
+  <meta property="twitter:url" content="https://www.dgst.me/board/{boardId}/{data.article._id}" />
   <meta property="twitter:title" content={data.article.title} />
   <meta property="twitter:description" content={`${data.article.nickname} - ${data.article.content.replace(/<[^>]*>/g, '').substring(0, 20)}`} />
   <meta property="twitter:image" content="https://www.dgst.me/logo/twitter_header_photo_2.png" />
