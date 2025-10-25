@@ -63,7 +63,7 @@ export function viewComment(comment) {
         comment = comment.replace(m, youtubeEmbed);
         return;
       }
-      
+
       // 일반 링크는 제거 (OG 미리보기로 대체됨)
       comment = comment.replace(m, '');
     })
