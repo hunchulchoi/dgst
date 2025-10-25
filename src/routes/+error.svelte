@@ -10,6 +10,13 @@
   // 404, 502 에러 시 자동으로 /board/free로 리다이렉트
   onMount(() => {
     if ($page.status === 404 || $page.status === 502) {
+      // 404 에러이고 경로에 admin이 포함된 경우 fmkorea로 리다이렉트
+      if ($page.status === 404 && $page.url.pathname.includes('admin')) {
+        window.location.href = 'https://www.fmkorea.com/best';
+        return;
+      }
+      
+      // 그 외의 경우 /board/free로 리다이렉트
       goto('/board/free');
     }
   });

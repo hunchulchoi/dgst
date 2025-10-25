@@ -53,6 +53,11 @@ server{
 				}
 
 				location @fallback {
+								# admin 경로인 경우 fmkorea로 리다이렉트
+								if ($request_uri ~* admin) {
+									return 302 https://www.fmkorea.com/best;
+								}
+								# 그 외의 경우 /board/free로 리다이렉트
 								return 302 /board/free;
 				}				
 
