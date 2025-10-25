@@ -911,7 +911,7 @@
           // a 태그로 감싸기
           const link = document.createElement('a');
           link.href = value.url;
-          link.target = '_blank';
+          link.target = 'dgst_out_link';
           link.rel = 'noopener noreferrer';
           link.style.cssText = 'text-decoration: none; color: inherit; display: block; border: 1px solid #e0e0e0; border-radius: 8px; padding: 10px; margin: 8px 0; max-width: 350px; background: #fafafa; cursor: pointer;';
           

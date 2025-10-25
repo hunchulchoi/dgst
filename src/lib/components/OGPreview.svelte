@@ -71,10 +71,6 @@
             alt="미리보기 이미지"
             loading="lazy"
           />
-        {:else}
-          <div class="me-3 d-flex align-items-center justify-content-center bg-light rounded" style="width: 80px; height: 80px;">
-            <i class="bi bi-link-45deg text-muted" style="font-size: 24px;"></i>
-          </div>
         {/if}
         <div class="flex-grow-1">
           <h6 class="mb-1 text-primary" style="font-size: 14px; font-weight: 600; line-height: 1.3;">
