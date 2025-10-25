@@ -4,7 +4,7 @@ import connectDB from "$lib/database/mongoosePriomise.js";
 connectDB();
 
 export const load = async (event) => {
-  const session = await event.locals.auth();
+  const session = await event.locals.getSession();
 
   let alarmCount = 0;
 
