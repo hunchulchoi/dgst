@@ -793,6 +793,30 @@
       // 삽입된 콘텐츠로 스크롤 이동
       scrollToInsertedContent(range.index + 1);
       console.log('✅ 미디어 임베드 완료:', url);
+      
+      // Instagram 임베드 처리
+      if (embedHtml.includes('instagram-media')) {
+        console.log('📸 Instagram 임베드 처리 시작...');
+        setTimeout(() => {
+          if (typeof instgrm !== 'undefined' && instgrm.Embeds) {
+            instgrm.Embeds.process();
+            console.log('✅ Instagram 임베드 처리 완료');
+          } else {
+            console.log('⚠️ instgrm 객체를 찾을 수 없음, 스크립트 재로드 필요');
+            // Instagram 스크립트 재로드 시도
+            const script = document.createElement('script');
+            script.src = '//www.instagram.com/embed.js';
+            script.async = true;
+            script.onload = () => {
+              console.log('✅ Instagram 스크립트 재로드 완료');
+              if (instgrm && instgrm.Embeds) {
+                instgrm.Embeds.process();
+              }
+            };
+            document.head.appendChild(script);
+          }
+        }, 100);
+      }
     }
   }
 
