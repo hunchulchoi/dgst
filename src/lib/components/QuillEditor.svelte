@@ -788,18 +788,13 @@
     if (embedHtml) {
       console.log('📝 HTML 삽입 전 Quill 내용:', quillInstance.root.innerHTML.substring(0, 100));
       
-      // Instagram 임베드는 iframe으로 변환 (blockquote는 Quill에서 제거될 수 있음)
+      // Instagram 임베드는 링크로 저장 (iframe은 작동하지 않을 수 있음)
       if (embedHtml.includes('instagram-media')) {
-        console.log('📸 Instagram 임베드를 iframe으로 변환');
+        console.log('📸 Instagram 임베드를 링크로 저장');
         
         // URL에서 ID 추출
         const cleanUrl = url.split('?')[0];
-        const isReel = cleanUrl.includes('/reel/');
-        const idMatch = cleanUrl.match(isReel ? /\/reel\/([\w-]+)/ : /\/p\/([\w-]+)/);
-        const instaId = idMatch ? idMatch[1] : 'DPydNdhk09T';
-        
-        const embedType = isReel ? 'reel' : 'p';
-        embedHtml = `<iframe src="https://www.instagram.com/${embedType}/${instaId}/embed/" frameborder="0" allowtransparency="true" allowfullscreen="" width="540" height="700" style="display:block;margin:16px auto;"></iframe>`;
+        embedHtml = `<div class="instagram-embed-link"><a href="${cleanUrl}" target="_blank" rel="noopener noreferrer" style="display:block;padding:16px;border:1px solid #e0e0e0;border-radius:8px;text-align:center;background:#fafafa;margin:16px 0;"><span style="font-size:18px;">📸</span><br><strong>Instagram Post/Reel</strong><br><small style="color:#666;">Click to view on Instagram</small></a></div>`;
         console.log('📸 변환된 HTML:', embedHtml);
       }
       
