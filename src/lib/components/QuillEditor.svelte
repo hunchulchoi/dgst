@@ -797,10 +797,22 @@
       // Instagram 임베드 처리
       if (embedHtml.includes('instagram-media')) {
         console.log('📸 Instagram 임베드 처리 시작...');
+        console.log('📊 삽입된 HTML:', embedHtml);
+        
+        // 삽입 후 DOM 확인
         setTimeout(() => {
+          const instaBlockquote = document.querySelector('blockquote.instagram-media');
+          console.log('📊 blockquote.instagram-media 요소:', instaBlockquote);
+          
           if (typeof instgrm !== 'undefined' && instgrm.Embeds) {
             instgrm.Embeds.process();
             console.log('✅ Instagram 임베드 처리 완료');
+            
+            // 처리 후 확인
+            setTimeout(() => {
+              const instaBlockquoteAfter = document.querySelector('blockquote.instagram-media');
+              console.log('📊 처리 후 blockquote.instagram-media:', instaBlockquoteAfter);
+            }, 1000);
           } else {
             console.log('⚠️ instgrm 객체를 찾을 수 없음, 스크립트 재로드 필요');
             // Instagram 스크립트 재로드 시도
