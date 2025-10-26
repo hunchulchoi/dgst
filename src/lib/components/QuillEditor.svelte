@@ -786,7 +786,27 @@
     }
 
     if (embedHtml) {
+      console.log('📝 HTML 삽입 전 Quill 내용:', quillInstance.root.innerHTML.substring(0, 100));
+      
+      // Instagram 임베드는 iframe으로 변환 (blockquote는 Quill에서 제거될 수 있음)
+      if (embedHtml.includes('instagram-media')) {
+        console.log('📸 Instagram 임베드를 iframe으로 변환');
+        
+        // URL에서 ID 추출
+        const cleanUrl = url.split('?')[0];
+        const isReel = cleanUrl.includes('/reel/');
+        const idMatch = cleanUrl.match(isReel ? /\/reel\/([\w-]+)/ : /\/p\/([\w-]+)/);
+        const instaId = idMatch ? idMatch[1] : 'DPydNdhk09T';
+        
+        const embedType = isReel ? 'reel' : 'p';
+        embedHtml = `<iframe src="https://www.instagram.com/${embedType}/${instaId}/embed/" frameborder="0" allowtransparency="true" allowfullscreen="" width="540" height="700" style="display:block;margin:16px auto;"></iframe>`;
+        console.log('📸 변환된 HTML:', embedHtml);
+      }
+      
       quillInstance.clipboard.dangerouslyPasteHTML(range.index, embedHtml);
+      
+      console.log('📝 HTML 삽입 후 Quill 내용:', quillInstance.root.innerHTML.substring(0, 200));
+      
       quillInstance.setSelection(range.index + 1);
       quillInstance.focus();
       
@@ -794,41 +814,6 @@
       scrollToInsertedContent(range.index + 1);
       console.log('✅ 미디어 임베드 완료:', url);
       
-      // Instagram 임베드 처리
-      if (embedHtml.includes('instagram-media')) {
-        console.log('📸 Instagram 임베드 처리 시작...');
-        console.log('📊 삽입된 HTML:', embedHtml);
-        
-        // 삽입 후 DOM 확인
-        setTimeout(() => {
-          const instaBlockquote = document.querySelector('blockquote.instagram-media');
-          console.log('📊 blockquote.instagram-media 요소:', instaBlockquote);
-          
-          if (typeof instgrm !== 'undefined' && instgrm.Embeds) {
-            instgrm.Embeds.process();
-            console.log('✅ Instagram 임베드 처리 완료');
-            
-            // 처리 후 확인
-            setTimeout(() => {
-              const instaBlockquoteAfter = document.querySelector('blockquote.instagram-media');
-              console.log('📊 처리 후 blockquote.instagram-media:', instaBlockquoteAfter);
-            }, 1000);
-          } else {
-            console.log('⚠️ instgrm 객체를 찾을 수 없음, 스크립트 재로드 필요');
-            // Instagram 스크립트 재로드 시도
-            const script = document.createElement('script');
-            script.src = '//www.instagram.com/embed.js';
-            script.async = true;
-            script.onload = () => {
-              console.log('✅ Instagram 스크립트 재로드 완료');
-              if (instgrm && instgrm.Embeds) {
-                instgrm.Embeds.process();
-              }
-            };
-            document.head.appendChild(script);
-          }
-        }, 100);
-      }
     }
   }
 
