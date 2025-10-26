@@ -46,8 +46,21 @@ export function viewComment(comment) {
 
   comment = comment.replace(/(?:\r\n|\r|\n)/g, '<br>')
 
-  // 안전 태그
-  comment = sanitizeHtml(comment);
+  // 안전 태그 (Instagram 임베드 허용)
+  comment = sanitizeHtml(comment, {
+    allowedTags: [
+      'br', 'strong', 'em', 'u', 's', 'p', 'div',
+      'blockquote', 'img', 'iframe', 'a', 'span'
+    ],
+    allowedAttributes: {
+      'blockquote': ['class', 'data-instgrm-permalink', 'style'],
+      'iframe': ['src', 'width', 'height', 'frameborder', 'allow', 'allowfullscreen', 'style', 'position'],
+      'div': ['style', 'class'],
+      'a': ['href', 'target', 'rel'],
+      'img': ['src', 'alt', 'width', 'height', 'style'],
+      'span': ['style']
+    }
+  });
 
   const httpRegexG =
     /https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&\/=]*)/g;
