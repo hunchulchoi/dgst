@@ -1019,7 +1019,9 @@
       });
 
       // URL 붙여넣기 감지 및 자동 임베드
+      console.log('🔗 붙여넣기 이벤트 리스너 등록 중...');
       quillInstance.root.addEventListener('paste', async (e) => {
+        console.log('📋 붙여넣기 이벤트 발생!');
         const clipboardData = e.clipboardData || window.clipboardData;
         const pastedText = clipboardData.getData('text');
         
