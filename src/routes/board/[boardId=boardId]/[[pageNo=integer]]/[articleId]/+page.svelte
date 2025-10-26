@@ -860,12 +860,12 @@
       ],
       allowedAttributes: {
         'blockquote': ['class', 'data-instgrm-permalink', 'style'],
-        'iframe': ['src', 'width', 'height', 'frameborder', 'allow', 'allowfullscreen', 'style'],
+        'iframe': ['src', 'width', 'height', 'frameborder', 'allow', 'allowfullscreen', 'style', 'position'],
         'video': ['src', 'controls', 'style', 'width', 'height'],
         'a': ['href', 'target', 'rel'],
         'img': ['src', 'alt', 'width', 'height', 'style'],
-        'div': ['class', 'style'],
-        'span': ['class', 'style']
+        'div': ['class', 'style', 'position'],
+        'span': ['style']
       }
     });
   }
