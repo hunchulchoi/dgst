@@ -856,11 +856,12 @@
     return sanitizeHtml(htmlContent, {
       allowedTags: [
         'p', 'br', 'strong', 'em', 'u', 's', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
-        'ul', 'ol', 'li', 'blockquote', 'a', 'img', 'iframe', 'div', 'span'
+        'ul', 'ol', 'li', 'blockquote', 'a', 'img', 'video', 'iframe', 'div', 'span'
       ],
       allowedAttributes: {
         'blockquote': ['class', 'data-instgrm-permalink', 'style'],
         'iframe': ['src', 'width', 'height', 'frameborder', 'allow', 'allowfullscreen', 'style'],
+        'video': ['src', 'controls', 'style', 'width', 'height'],
         'a': ['href', 'target', 'rel'],
         'img': ['src', 'alt', 'width', 'height', 'style'],
         'div': ['class', 'style'],
