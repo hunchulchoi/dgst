@@ -65,8 +65,8 @@ export const load = async ({ params }) => {
 
       const image = article.content.includes('<img ');
       const video = article.content.includes('<video ');
-      const youtube = article.content.includes('<div data-oembed-url=') && article.content.includes('youtu');
-      const insta = article.content.includes('<div data-oembed-url=') && article.content.includes('instagram.com');
+      const youtube = article.content.includes('youtube.com') || article.content.includes('youtu.be') || article.content.includes('youtube.com/embed');
+      const insta = article.content.includes('instagram.com') || article.content.includes('blockquote class="instagram-media"');
 
       article.content =
         (image ? '<i class="bi bi-card-image text-success px-2"></i>' : '') +
