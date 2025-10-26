@@ -18,8 +18,8 @@
   <meta property="twitter:description" content={`${data.article.content.replace(/<[^>]*>/g, '').substring(0, 20)}`} />
   <meta property="twitter:image" content="https://www.dgst.me/logo/twitter_header_photo_2.png" />
   
-  <script async src="https://platform.instagram.com/en_US/embeds.js"></script>
-  <script async src="//www.tiktok.com/embed.js"></script>
+  <script defer src="https://platform.instagram.com/en_US/embeds.js"></script>
+  <script defer src="//www.tiktok.com/embed.js"></script>
   <style>
 
       .image img {

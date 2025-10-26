@@ -840,16 +840,16 @@
     console.log('✅ editorElement 준비됨');
 
     try {
-      // Quill 동적 import
+      // Quill 동적 import (지연 로드)
       console.log('Quill import 시작...');
-      const QuillModule = await import('quill');
+      const [QuillModule, QuillCSS] = await Promise.all([
+        import('quill'),
+        import('quill/dist/quill.snow.css')
+      ]);
+      
       Quill = QuillModule.default;
       Delta = QuillModule.Delta;
       console.log('✅ Quill imported');
-
-      // Quill 스타일 import
-      await import('quill/dist/quill.snow.css');
-      console.log('✅ Quill CSS loaded');
 
       // Video Blot 등록 (video 태그 직접 사용)
       const BlockEmbed = Quill.import('blots/block/embed');
@@ -1048,42 +1048,47 @@
       console.error('❌ Quill 초기화 실패:', error);
     }
 
-    // FFmpeg 로드 (비동기, 에디터 초기화와 분리)
-    (async () => {
-      try {
-        console.log('FFmpeg 로드 시작 (백그라운드)...');
-        
-        const FFmpegModule = await import('@ffmpeg/ffmpeg');
-        const UtilModule = await import('@ffmpeg/util');
-        FFmpeg = FFmpegModule.FFmpeg;
-        fetchFile = UtilModule.fetchFile;
-        
-        console.log('FFmpeg 클래스 로드 완료, 인스턴스 생성...');
-        ffmpeg = new FFmpeg();
-        
-        // FFmpeg 로그 활성화
-        ffmpeg.on('log', ({ message }) => {
-          console.log('[FFmpeg]', message);
-        });
-        
-        console.log('FFmpeg 코어 로드 중... (시간이 걸릴 수 있습니다)');
-        
-        // timeout으로 로드 시간 제한
-        const loadPromise = ffmpeg.load();
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('FFmpeg load timeout')), 60000) // 60초
-        );
-        
-        await Promise.race([loadPromise, timeoutPromise]);
-        
-        ffmpegReady = true;
-        console.log('✅ FFmpeg loaded successfully and ready!');
-      } catch (err) {
-        console.error('❌ FFmpeg 로드 실패 (비디오는 압축 없이 원본 업로드됩니다):', err);
-        ffmpegReady = false;
-        ffmpeg = null;
-      }
-    })();
+    // FFmpeg 로드 (글쓰기 페이지에서만 로드)
+    const isWritePage = window.location.pathname.includes('/write');
+    if (isWritePage) {
+      (async () => {
+        try {
+          console.log('FFmpeg 로드 시작 (글쓰기 페이지에서만)...');
+          
+          const FFmpegModule = await import('@ffmpeg/ffmpeg');
+          const UtilModule = await import('@ffmpeg/util');
+          FFmpeg = FFmpegModule.FFmpeg;
+          fetchFile = UtilModule.fetchFile;
+          
+          console.log('FFmpeg 클래스 로드 완료, 인스턴스 생성...');
+          ffmpeg = new FFmpeg();
+          
+          // FFmpeg 로그 활성화
+          ffmpeg.on('log', ({ message }) => {
+            console.log('[FFmpeg]', message);
+          });
+          
+          console.log('FFmpeg 코어 로드 중... (시간이 걸릴 수 있습니다)');
+          
+          // timeout으로 로드 시간 제한
+          const loadPromise = ffmpeg.load();
+          const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('FFmpeg load timeout')), 60000) // 60초
+          );
+          
+          await Promise.race([loadPromise, timeoutPromise]);
+          
+          ffmpegReady = true;
+          console.log('✅ FFmpeg loaded successfully and ready!');
+        } catch (err) {
+          console.error('❌ FFmpeg 로드 실패 (비디오는 압축 없이 원본 업로드됩니다):', err);
+          ffmpegReady = false;
+          ffmpeg = null;
+        }
+      })();
+    } else {
+      console.log('📝 글쓰기 페이지가 아니므로 FFmpeg 로드 건너뜀');
+    }
   });
 
   /**
@@ -1108,8 +1113,8 @@
 </script>
 
 <svelte:head>
-  <script async src="//www.instagram.com/embed.js"></script>
-  <script async src="//www.tiktok.com/embed.js"></script>
+  <script defer src="//www.instagram.com/embed.js"></script>
+  <script defer src="//www.tiktok.com/embed.js"></script>
 </svelte:head>
 
 <main>
