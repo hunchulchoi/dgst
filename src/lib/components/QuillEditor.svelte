@@ -715,19 +715,29 @@
     }
     // Instagram - 원래 임베드 방식으로 복원
     else if (url.includes('instagram.com')) {
-      console.log('📸 Instagram URL 감지 - 임베드로 처리');
+      console.log('📸 Instagram URL 감지 - 임베드로 처리:', url);
       if (url.includes('/reel/')) {
         const match = url.match(/instagram\.com\/reel\/([\w-]+)/);
         const id = match ? match[1] : null;
+        console.log('📸 Instagram Reel ID:', id);
         if (id) {
           embedHtml = `<blockquote class="instagram-media" data-instgrm-permalink="https://www.instagram.com/reel/${id}/" style="max-width:540px; min-width:326px;"></blockquote>`;
+          console.log('📸 Instagram Reel embedHtml 생성됨');
+        } else {
+          console.log('❌ Instagram Reel ID 추출 실패');
         }
       } else if (url.includes('/p/')) {
         const match = url.match(/instagram\.com\/p\/([\w-]+)/);
         const id = match ? match[1] : null;
+        console.log('📸 Instagram Post ID:', id);
         if (id) {
           embedHtml = `<blockquote class="instagram-media" data-instgrm-permalink="https://www.instagram.com/p/${id}/" style="max-width:540px; min-width:326px;"></blockquote>`;
+          console.log('📸 Instagram Post embedHtml 생성됨');
+        } else {
+          console.log('❌ Instagram Post ID 추출 실패');
         }
+      } else {
+        console.log('❌ Instagram URL 패턴 일치 안함 - /reel/ 또는 /p/ 필요');
       }
     }
     // TikTok
