@@ -77,14 +77,16 @@ export async function write(file, email, preservePath = 'jjal') {
           const webpPath = `${UPLOAD_PATH}${dir}/${fileName}.webp`;
 
           // Sharp를 사용한 안전한 WebP 변환
-          await sharp(fullPath)
+          await sharp(fullPath, { animated: true })
+            .resize(1400)
+            .rotate()
             .webp({ quality: 80, effort: 6 })
             .toFile(webpPath);
 
           // 원본 파일 삭제
           fs.unlink(fullPath, (err) => err && console.error('Error deleting original:', err));
           fileName = `${fileName}.webp`;
-          console.debug('Image converted to WebP:', fileName);
+          console.debug('Image converted to개 WebP:', fileName);
         } catch (err) {
           console.error('Image to WebP conversion failed:', err);
           // 변환 실패 시 원본 파일 유지
