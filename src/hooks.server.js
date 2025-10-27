@@ -157,5 +157,5 @@ export const { handle, signIn, signOut } = SvelteKitAuth({
   },
   secret: NEXTAUTH_SECRET,
   trustHost: true, // 프로덕션 환경에서 호스트 신뢰
-  debug: true
+  debug: false
 });

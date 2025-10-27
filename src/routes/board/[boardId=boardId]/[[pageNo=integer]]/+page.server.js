@@ -2,7 +2,10 @@ import connectDB from '$lib/database/mongoosePriomise.js';
 import { Article } from '$lib/models/article.js';
 
 connectDB();
-export const load = async ({ params }) => {
+
+export const load = async ({ params, depends }) => {
+  // 캐시 키를 매번 다르게 생성하여 캐시 방지
+  depends('board-list');
   console.log('[[pageNo=integer]]', params);
 
   // 한페이지에 보여주는 게시물

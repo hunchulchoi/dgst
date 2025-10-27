@@ -16,11 +16,11 @@
         ogData = await response.json();
         console.log('📊 OG 데이터:', ogData);
         if (!ogData.title || !ogData.description) {
-          console.log('❌ OG 데이터 부족:', { title: ogData.title, description: ogData.description });
+          console.error('❌ OG 데이터 부족:', { title: ogData.title, description: ogData.description });
           error = true;
         }
       } else {
-        console.log('❌ API 응답 실패:', response.status);
+        console.error('❌ API 응답 실패:', response.status);
         error = true;
       }
     } catch (err) {
