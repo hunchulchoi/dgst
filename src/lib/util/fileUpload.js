@@ -95,7 +95,7 @@ export async function write(file, email, preservePath = 'jjal') {
 
           // Sharp를 사용한 안전한 WebP 변환
           await sharp(fullPath, { animated: true })
-            .resize(1400)
+            .resize({ width: 1400, withoutEnlargement: true })
             .rotate()
             .webp({ quality: 80, effort: 6 })
             .toFile(webpPath);
