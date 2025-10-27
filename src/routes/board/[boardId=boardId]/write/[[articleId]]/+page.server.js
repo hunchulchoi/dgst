@@ -27,7 +27,7 @@ export const actions = {
           { _id: params.articleId, email: session.user.email, state: 'write' },
           {
             title: data.get('title'),
-            content: data.get('content'),
+            content: data.get('content')?.replace(/<p><br\/?><\/p>/g, '<br>'),
             modified_email: session.user.email
           },
           { timestamps: true }
@@ -44,7 +44,7 @@ export const actions = {
           nickname: session.user.nickname,
           boardId: params.boardId,
           title: data.get('title'),
-          content: data.get('content')
+          content: data.get('content')?.replace(/<p><br\/?><\/p>/g, '<br>')
         });
 
         //console.log(article);

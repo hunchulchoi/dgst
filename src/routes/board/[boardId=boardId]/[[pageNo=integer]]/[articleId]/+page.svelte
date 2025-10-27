@@ -959,7 +959,7 @@
     </Row>
     <Row class="py-3 px-2 mx-0">
       <CardText style="max-width: 100%;" class="text-break px-2">
-        {@html processArticleContent(data.article.content)}
+        {@html processArticleContent(data.article.content.replace(/<p><br\/?><\/p>/g, '<br>'))}
       </CardText>
       
     </Row>
@@ -1082,7 +1082,7 @@
                   <!-- 댓글 수정 모드 -->
                   <div class="border p-3 rounded-4 shadow-sm bg-light position-relative">
                     {#if commentLoading}
-                      <div class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center rounded-4" style="z-index: 1000; background-color: rgba(255, 255, 255, 0.9);">
+                      <div class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center rounded-4" style="z-index: 1000; background-color: rgba(255, 255, 255, 0.75);">
                         <div class="text-center">
                           <div class="spinner-border text-primary" role="status">
                             <span class="visually-hidden">Loading...</span>
@@ -1262,7 +1262,7 @@
                class="mt-2 mx-0 border-bottom border-secondary-subtle bg-secondary bg-opacity-25">
             <div class="border p-3 mb-2 rounded-4 shadow-sm position-relative" bind:this={reCommentDiv}>
               {#if commentLoading}
-                <div class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center rounded-4" style="z-index: 1000; background-color: rgba(255, 255, 255, 0.9);">
+                <div class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center rounded-4" style="z-index: 1000; background-color: rgba(255, 255, 255, 0.75);">
                   <div class="text-center">
                     <div class="spinner-border text-primary" role="status">
                       <span class="visually-hidden">Loading...</span>
@@ -1334,7 +1334,7 @@
       {#if data.session?.user.nickname}
         <div class="border p-3 rounded-4 shadow-sm mt-3 position-relative" bind:this={commentDiv}>
           {#if commentLoading}
-            <div class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center rounded-4" style="z-index: 1000; background-color: rgba(255, 255, 255, 0.9); left: 0; right: 0; top: 0; bottom: 0;">
+            <div class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center rounded-4" style="z-index: 1000; background-color: rgba(255, 255, 255, 0.75); left: 0; right: 0; top: 0; bottom: 0;">
               <div class="text-center">
                 <div class="spinner-border text-primary" role="status">
                   <span class="visually-hidden">Loading...</span>
