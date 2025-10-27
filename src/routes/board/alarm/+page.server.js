@@ -19,6 +19,10 @@ export const load = async ({ locals, setHeaders }) => {
     throw error(401, { message: '로그인이 필요합니다.' });
   }
 
+  // 알림 페이지 진입 시, 읽지 않은 알림은 즉시 읽음 처리
+  await Alarm.updateMany({ email: session.user.email, readAt: null }, { $set: { readAt: new Date() } }, { timestamps: false });
+
+  // 최신 알림 조회 (최근 24시간)
   let alarms = await Alarm.find({ email: session.user.email, updatedAt: { $gt: new Date(new Date() - 1000 * 60 * 60 * 24) } })
     .select('boardId articleId title comments updatedAt comment commentContent readAt')
     .sort({ updatedAt: -1 })

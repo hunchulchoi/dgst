@@ -6,6 +6,11 @@ connectDB();
 export const load = async (event) => {
   const session = await event.locals.auth();
 
+  // 캐시 방지 헤더로 항상 최신 카운트 제공
+  event.setHeaders({
+    'Cache-Control': 'private, max-age=0, no-store, must-revalidate'
+  });
+
   let alarmCount = null; // 초기값을 null로 설정하여 로딩 상태 표시
 
   // 내용이 없는 알람 삭제
