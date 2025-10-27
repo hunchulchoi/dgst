@@ -1208,7 +1208,7 @@
       </div>
     {/if}
 
-    {#if loadingImage && totalFiles > 1}
+    {#if loadingImage && totalFiles > 0}
       <div class="upload-overlay">
         <div class="progress-container bg-light">
           <h5 class="mb-3 text-dark">
@@ -1226,13 +1226,15 @@
               <strong style="color: white;">{uploadProgress}%</strong>
             </div>
           </div>
-          <div class="time-info mb-2">
-            <span class="badge bg-primary me-2">
-              {currentFile} / {totalFiles} 파일
-            </span>
-          </div>
+          {#if totalFiles > 1}
+            <div class="time-info mb-2">
+              <span class="badge bg-primary me-2">
+                {currentFile} / {totalFiles} 파일
+              </span>
+            </div>
+          {/if}
           <small class="text-secondary">
-            {totalFiles}개의 파일을 업로드하고 있습니다...<br/>
+            {totalFiles === 1 ? '1개의 파일을 업로드하고 있습니다...' : `${totalFiles}개의 파일을 업로드하고 있습니다...`}<br/>
             잠시만 기다려주세요.
           </small>
         </div>

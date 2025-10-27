@@ -6,6 +6,7 @@ import { UPLOAD_PATH } from '$env/static/private';
 import { error } from '@sveltejs/kit';
 import path from 'path';
 import sharp from 'sharp';
+import logger from './logger';
 
 function safeString(_name, _path) {
   _name = decodeURIComponent(_name);
@@ -72,13 +73,12 @@ export async function write(file, email, preservePath = 'jjal') {
     // 이미지만 webp 압축 (비디오는 제외)
     if (file.type.startsWith('image')) {
 
-      console.log('file.type', file.type, 'file.size', file.size, 'file.name', file.name);
-
-
+      logger.info('fileUpload.write file.type', file.type, 'file.size', file.size, 'file.name', file.name);
+      \
       // GIF나 큰 이미지 압축 (1MB 이상, webp 제외)
       if (file.type === 'image/gif' || (file.size > 1024 * 1024)) {
 
-        console.log('2222 file.type', file.type, 'file.size', file.size, 'file.name', file.name);
+        logger.info('  file.type', file.type, 'file.size', file.size, 'file.name', file.name);
         try {
           const webpPath = `${UPLOAD_PATH}${dir}/${fileName}.webp`;
 
@@ -92,9 +92,9 @@ export async function write(file, email, preservePath = 'jjal') {
           // 원본 파일 삭제
           fs.unlink(fullPath, (err) => err && console.error('Error deleting original:', err));
           fileName = `${fileName}.webp`;
-          console.info('Image converted to개 WebP:', fileName);
+          logger.info('Image converted to개 WebP:', fileName);
         } catch (err) {
-          console.error('Image to WebP conversion failed:', err);
+          logger.error('Image to WebP conversion failed:', err);
           // 변환 실패 시 원본 파일 유지
         }
       }
@@ -107,7 +107,7 @@ export async function write(file, email, preservePath = 'jjal') {
       console.debug('File uploaded successfully:', `/images${dir}/${fileName}`);
       return `/images${dir}/${fileName}`;
     } else {
-      console.error('File not found after save:', finalPath);
+      logger.error('File not found after save:', finalPath);
       throw error(500, '파일 저장 중에 오류가 발생하였습니다. 쿠훕ㅠㅠ');
     }
   } catch (err) {
@@ -118,6 +118,7 @@ export async function write(file, email, preservePath = 'jjal') {
 
 export async function read(file, preservePath) {
   if (!safeString(file.name, preservePath)) {
+    logger.error('read safeString failed:', file.name, preservePath);
     throw error(400, { message: '잘못된 요청입니다.' });
   }
 }

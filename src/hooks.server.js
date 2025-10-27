@@ -172,7 +172,7 @@ export const { handle: authHandle, signIn, signOut } = SvelteKitAuth({
 export async function handle({ event, resolve }) {
   const startTime = Date.now();
   const { pathname } = event.url;
-  
+
   if (pathname.startsWith('/images/')) {
     depends('image-cache');
   }
@@ -181,11 +181,11 @@ export async function handle({ event, resolve }) {
 
   // Auth 핸들러를 먼저 실행
   const authResponse = await authHandle({ event, resolve });
-  
+
   const endTime = Date.now();
   const executionTime = endTime - startTime;
   const status = authResponse?.status || 200;
-  
+
   logger.info('📤 응답 완료:', {
     pathname,
     status,
