@@ -74,7 +74,7 @@ export async function write(file, email, preservePath = 'jjal') {
     if (file.type.startsWith('image')) {
 
       logger.info('fileUpload.write file.type', file.type, 'file.size', file.size, 'file.name', file.name);
-      \
+
       // GIF나 큰 이미지 압축 (1MB 이상, webp 제외)
       if (file.type === 'image/gif' || (file.size > 1024 * 1024)) {
 
