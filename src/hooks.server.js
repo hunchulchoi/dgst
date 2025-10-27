@@ -14,6 +14,7 @@ import { MongoDBAdapter } from '@auth/mongodb-adapter';
 import clientPromise from '$lib/database/clientPromise.js';
 import crypto from 'crypto';
 import { error } from '@sveltejs/kit';
+import logger from '$lib/util/logger';
 
 const cache = new Map();
 
@@ -22,11 +23,8 @@ export function depends(key) {
 }
 
 
-
-
-
 // SvelteKit 2 + @auth/sveltekit v1.x 호환
-export const { handle, signIn, signOut } = SvelteKitAuth({
+export const { handle: authHandle, signIn, signOut } = SvelteKitAuth({
   providers: [
     GoogleProvider({
       clientId: GOOGLE_CLIENT_ID,
@@ -169,3 +167,31 @@ export const { handle, signIn, signOut } = SvelteKitAuth({
   trustHost: true, // 프로덕션 환경에서 호스트 신뢰
   debug: false
 });
+
+// 우리의 handle 함수 (Auth 핸들러와 함께 사용)
+export async function handle({ event, resolve }) {
+  const startTime = Date.now();
+  const { pathname } = event.url;
+  
+  if (pathname.startsWith('/images/')) {
+    depends('image-cache');
+  }
+
+  logger.info('📥 요청 시작:', { pathname, timestamp: new Date().toISOString() });
+
+  // Auth 핸들러를 먼저 실행
+  const authResponse = await authHandle({ event, resolve });
+  
+  const endTime = Date.now();
+  const executionTime = endTime - startTime;
+  const status = authResponse?.status || 200;
+  
+  logger.info('📤 응답 완료:', {
+    pathname,
+    status,
+    executionTime: `${executionTime}ms`,
+    timestamp: new Date().toISOString()
+  });
+
+  return authResponse;
+}

@@ -5,16 +5,16 @@ connectDB();
 
 export const load = async ({ params, depends, setHeaders }) => {
   const startTime = Date.now();
-  
+
   // 캐시 키를 매번 다르게 생성하여 캐시 방지
   depends('board-list');
-  
+
   // 캐시 방지 헤더 설정
   setHeaders({
     'cache-control': 'no-store, no-cache, must-revalidate, max-age=0',
     'expires': '0'
   });
-  
+
   console.log('📊 게시판 목록 로드 시작:', {
     boardId: params.boardId,
     pageNo: params.pageNo,
@@ -93,7 +93,7 @@ export const load = async ({ params, depends, setHeaders }) => {
 
     const endTime = Date.now();
     const executionTime = endTime - startTime;
-    
+
     console.log('✅ 게시판 목록 로드 완료:', {
       boardId: params.boardId,
       pageNo,
@@ -108,7 +108,7 @@ export const load = async ({ params, depends, setHeaders }) => {
   } catch (err) {
     const endTime = Date.now();
     const executionTime = endTime - startTime;
-    
+
     console.error('❌ 게시판 목록 로드 실패:', {
       boardId: params.boardId,
       pageNo,
@@ -117,7 +117,7 @@ export const load = async ({ params, depends, setHeaders }) => {
       status: 'error',
       stack: err.stack
     });
-    
+
     throw error(500, '목록을 가져오는 중에 오류가 발생하였습니다.');
   }
 };
