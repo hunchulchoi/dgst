@@ -26,6 +26,8 @@
   let totalFiles = $state(0);
   /** @type {number} */
   let currentFile = $state(0);
+  /** 단일 이미지 업로드 여부 */
+  let isSingleImageUpload = $state(false);
   /** @type {any} */
   let timeInterval = null;
   /** @type {any} */
@@ -409,12 +411,13 @@
       
       await ffmpeg.exec([
         '-i', 'input.mp4',
-        '-vf', "scale='min(640,iw)':'min(640,ih)':force_original_aspect_ratio=decrease",  // 긴 쪽을 640px로 제한
+        '-vf', "scale='min(640,iw)':'min(640,ih)':force_original_aspect_ratio=decrease,pad=ceil(iw/2)*2:ceil(ih/2)*2",  // 긴 쪽을 640px로 제한하고 짝수 크기로 패딩
         '-c:v', 'libx264',      // H.264 코덱
         '-crf', '28',           // 압축률 (0-51, 28은 중간)
         '-preset', 'medium',    // 속도/품질 밸런스
         '-c:a', 'aac',          // 오디오 AAC
         '-b:a', '128k',         // 오디오 비트레이트
+        '-pix_fmt', 'yuv420p',  // 호환성 픽셀 포맷
         'output.mp4'
       ]);
       
@@ -472,7 +475,10 @@
       const files = input.files ? Array.from(input.files) : [];
       if (!files.length) return;
 
-      loadingImage = true;
+      // 단일 이미지 업로드 여부 결정
+      isSingleImageUpload = files.length === 1 && files[0].type.startsWith('image/');
+
+      loadingImage = isSingleImageUpload;
       totalFiles = files.length;
       currentFile = 0;
       uploadProgress = 0;
@@ -506,7 +512,10 @@
 
           // 비디오 파일이면 압축 시도 (FFmpeg 사용 가능한 경우에만)
           if (file.type.startsWith('video/')) {
-            if (ffmpegReady && ffmpeg) {
+            // 이미지 로딩 오버레이 숨김, 비디오 압축 오버레이만 표시
+            loadingImage = false;
+            isSingleImageUpload = false;
+            if (ffmpegReady) {
               console.log('비디오 파일 감지, 압축 시작...');
               file = await compressVideo(file);
             } else {
@@ -580,6 +589,7 @@
         });
       } finally {
         loadingImage = false;
+        isSingleImageUpload = false;
         // 진행률 초기화
         setTimeout(() => {
           uploadProgress = 0;
@@ -1170,7 +1180,7 @@
 
 <main>
   <div bind:this={editorDiv}>
-    <Loader active={loadingImage} container={editorDiv} component="Dot" opacity="0.7" />
+    <Loader active={loadingImage && isSingleImageUpload && !isCompressing} container={editorDiv} component="Dot" opacity="0.7" />
     
     {#if isCompressing}
       <div class="compression-overlay">
@@ -1208,7 +1218,7 @@
       </div>
     {/if}
 
-    {#if loadingImage && totalFiles > 0}
+    {#if loadingImage && isSingleImageUpload && !isCompressing}
       <div class="upload-overlay">
         <div class="progress-container bg-light">
           <h5 class="mb-3 text-dark">
@@ -1226,17 +1236,9 @@
               <strong style="color: white;">{uploadProgress}%</strong>
             </div>
           </div>
-          {#if totalFiles > 1}
-            <div class="time-info mb-2">
-              <span class="badge bg-primary me-2">
-                {currentFile} / {totalFiles} 파일
-              </span>
-            </div>
-          {/if}
-          <small class="text-secondary">
-            {totalFiles === 1 ? '1개의 파일을 업로드하고 있습니다...' : `${totalFiles}개의 파일을 업로드하고 있습니다...`}<br/>
-            잠시만 기다려주세요.
-          </small>
+          <div class="text-muted">
+            {currentFile}/{totalFiles}
+          </div>
         </div>
       </div>
     {/if}
