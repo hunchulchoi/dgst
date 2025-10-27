@@ -4,7 +4,13 @@ import connectDB from "$lib/database/mongoosePriomise.js";
 
 connectDB();
 
-export const load = async ({ locals }) => {
+// 캐시 방지 - 항상 최신 데이터 로드
+export const load = async ({ locals, setHeaders }) => {
+
+  // 캐시 헤더 설정 - 항상 새로 불러오기
+  setHeaders({
+    'Cache-Control': 'private, max-age=0, must-revalidate'
+  });
 
   const session = await locals.auth();
 

@@ -76,7 +76,7 @@ export const load = async ({ params, locals }) => {
 
   let pageNo = parseInt(params.pageNo || 1)
 
-  filter = { boardId: params.boardId, state: 'write' };
+  filter = { boardId: params.boardId, state: 'write', createdAt: { $gt: new Date(new Date() - 1000 * 60 * 60 * 24 * 3) } };
 
   const total = await Article.countDocuments(filter);
 

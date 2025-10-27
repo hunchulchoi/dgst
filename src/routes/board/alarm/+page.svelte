@@ -1,5 +1,5 @@
 <script>
-  import { Badge, Col, Icon, Image, Row } from '@sveltestrap/sveltestrap';
+  import { Badge, Col, Icon, Row } from '@sveltestrap/sveltestrap';
   import { formatDistanceToNowStrict, parseISO } from 'date-fns';
   import { ko } from 'date-fns/locale';
   import { alarmCount } from '$lib/util/store.js';
@@ -16,7 +16,7 @@
       <Row class="mt-2 mx-0">
         <Row>
           <Col class="text-center">
-            <Image
+            <img
               src="/icons/nothing.webp"
               alt="없어요 그냥 짤"
               class="mt-2"

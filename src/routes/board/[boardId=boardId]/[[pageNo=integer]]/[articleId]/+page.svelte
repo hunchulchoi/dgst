@@ -75,7 +75,6 @@
     CardText,
     Col,
     Icon,
-    Image,
     InputGroup,
     Row,
     Toast,
@@ -84,6 +83,7 @@
   } from '@sveltestrap/sveltestrap';
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
+  import { browser } from '$app/environment';
   import { scale } from 'svelte/transition';
 
   import { formatDistanceToNowStrict, formatISO9075, parseISO } from 'date-fns';
@@ -91,8 +91,6 @@
 
   import { blobToWebP } from 'webp-converter-browser';
   import Swal from 'sweetalert2';
-
-  import Loader from 'svelte-loading-overlay/Loader.svelte';
 
   import { alarmCount } from '$lib/util/store.js';
   import { viewComment } from '$lib/util/embeder.js';
@@ -240,7 +238,7 @@
   let editPreviewEl;
   let editCommentImageEl;
 
-  function writeComment(parentCommentId) {
+  async function writeComment(parentCommentId) {
 
     //console.log(commentContent, parentCommentId, reCommentContent)
 
@@ -248,7 +246,11 @@
       toast('내용을 입력하세요', 'warning');
       return;
     }
+    
+    // 댓글 저장 시작 시 즉시 오버레이 표시
+    console.log('🔄 댓글 저장 시작 - commentLoading:', commentLoading);
     commentLoading = true;
+    console.log('✅ commentLoading = true로 설정');
 
     const formData = new FormData();
 
@@ -293,10 +295,13 @@
         comments();
       })
       .catch((error) => {
-        console.error(error);
+        console.error('❌ 댓글 저장 실패:', error);
         toast(error.message ?? '저장 중 오류가 발생했습니다.', 'danger');
       })
-      .finally(() => (commentLoading = false));
+      .finally(() => {
+        console.log('🏁 댓글 저장 완료 - commentLoading을 false로 설정');
+        commentLoading = false;
+      });
   }
 
   function deleteComment(commentId) {
@@ -963,12 +968,11 @@
       <Card class="p-2">
         <Row class="g-1 d-flex align-items-center">
           <Col xs="auto">
-            <Image
+            <img
               alt="프로필 사진"
               class="card-img-left rounded-start"
               src={data.photo}
-              fluid
-              style="max-height: 100px;max-width:100px"
+              style="max-height: 100px;max-width:100px; width: 100%; height: auto;"
             />
           </Col>
           <Col>
@@ -1038,12 +1042,11 @@
               <Card class="p-0 border-0">
                 <Row class="g-1 mx-0">
                   <Col xs="auto">
-                    <Image
+                    <img
                       alt="프로필 사진"
                       class="card-img-left rounded-start"
-                      style="max-height: 40px"
+                      style="max-height: 40px; width: 100%; height: auto;"
                       src={comment.photo}
-                      fluid
                     />
                   </Col>
                   <Col xs="auto">
@@ -1077,12 +1080,17 @@
               <Col class="text-break p-0 m-0" style="max-width: 98%">
                 {#if editingCommentId === comment._id}
                   <!-- 댓글 수정 모드 -->
-                  <div class="border p-3 rounded-4 shadow-sm bg-light">
-                    <Loader
-                      bind:active={commentLoading}
-                      component="Dot"
-                      opacity="0.7"
-                    />
+                  <div class="border p-3 rounded-4 shadow-sm bg-light position-relative">
+                    {#if commentLoading}
+                      <div class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center rounded-4" style="z-index: 1000; background-color: rgba(255, 255, 255, 0.9);">
+                        <div class="text-center">
+                          <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                          </div>
+                          <div class="mt-2 fw-bold">댓글 저장 중...</div>
+                        </div>
+                      </div>
+                    {/if}
                     
                     <!-- 이미지 업로드 -->
                     <InputGroup class="mb-2">
@@ -1142,10 +1150,10 @@
                   {#if comment.state === 'write' && comment.image}
                     <Row class="pb-3 mx-0">
                       <Col class="p-0 ps-1 m-0">
-                        <Image 
+                        <img 
                           src={comment.image} 
                           alt="리플 짤" 
-                          style="max-width: 100%;max-height: {getImageMaxHeight(document.querySelector(`img[src='${comment.image}']`))};"
+                          style="max-width: 100%;max-height: {browser ? (getImageMaxHeight(document.querySelector(`img[src='${comment.image}']`)) || '500px') : '500px'};"
                           onload={async (e) => {
                             const img = e.target;
                             
@@ -1252,13 +1260,17 @@
         {#if visibleReply === comment._id}
           <div transition:scale
                class="mt-2 mx-0 border-bottom border-secondary-subtle bg-secondary bg-opacity-25">
-            <div class="border p-3 mb-2 rounded-4 shadow-sm" bind:this={reCommentDiv}>
-              <Loader
-                bind:active={commentLoading}
-                container={reCommentDiv}
-                component="Dot"
-                opacity="0.7"
-              />
+            <div class="border p-3 mb-2 rounded-4 shadow-sm position-relative" bind:this={reCommentDiv}>
+              {#if commentLoading}
+                <div class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center rounded-4" style="z-index: 1000; background-color: rgba(255, 255, 255, 0.9);">
+                  <div class="text-center">
+                    <div class="spinner-border text-primary" role="status">
+                      <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <div class="mt-2 fw-bold">댓글 저장 중...</div>
+                  </div>
+                </div>
+              {/if}
               <InputGroup class="mb-2">
 
                 <input
@@ -1320,13 +1332,17 @@
 
       <!-- 댓글 입력 -->
       {#if data.session?.user.nickname}
-        <div class="border p-3 rounded-4 shadow-sm mt-3" bind:this={commentDiv}>
-          <Loader
-            bind:active={commentLoading}
-            container={commentDiv}
-            component="Dot"
-            opacity="0.7"
-          />
+        <div class="border p-3 rounded-4 shadow-sm mt-3 position-relative" bind:this={commentDiv}>
+          {#if commentLoading}
+            <div class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center rounded-4" style="z-index: 1000; background-color: rgba(255, 255, 255, 0.9); left: 0; right: 0; top: 0; bottom: 0;">
+              <div class="text-center">
+                <div class="spinner-border text-primary" role="status">
+                  <span class="visually-hidden">Loading...</span>
+                </div>
+                <div class="mt-2 fw-bold">댓글 저장 중...</div>
+              </div>
+            </div>
+          {/if}
           <InputGroup class="mb-2">
 
             <input

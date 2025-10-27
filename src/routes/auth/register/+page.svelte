@@ -12,7 +12,6 @@
     FormCheck,
     FormGroup,
     Icon,
-    Image,
     Input,
     InputGroup,
     InputGroupText,
@@ -185,21 +184,21 @@
 <Row class="d-flex justify-content-center">
   <Card outline class="rounded rounded-4 shadow my-4" style="max-width: 500px">
     <CardHeader class="mt-3 text-center" style="background-color: #fafae4">
-      <Image src="/logo/logo_transparent_120.png" alt="데게실버타운 로고" />
+      <img src="/logo/logo_transparent_120.png" alt="데게실버타운 로고" />
     </CardHeader>
     <CardBody>
       <Row>
         <Card class="p-2">
           <Row>
             <Col xs="4" md="3" class="d-flex align-items-center">
-              <Image
+              <img
                 id="preview"
                 src="/icons/unknown-person-icon-4.jpg"
-                thumbnail
                 width="100"
                 height="100"
                 alt="프로필 사진"
                 class="card-img-left rounded-2"
+                style="width: 100px; height: 100px; object-fit: cover;"
               />
             </Col>
             <Col xs="7" md="8">

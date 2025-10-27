@@ -177,7 +177,7 @@ export async function handle({ event, resolve }) {
     depends('image-cache');
   }
 
-  logger.info('📥 요청 시작:', { pathname, timestamp: new Date().toISOString() });
+  logger.info(`📥 요청 시작: ${pathname} - ${new Date().toLocaleString()}`);
 
   // Auth 핸들러를 먼저 실행
   const authResponse = await authHandle({ event, resolve });
@@ -186,12 +186,7 @@ export async function handle({ event, resolve }) {
   const executionTime = endTime - startTime;
   const status = authResponse?.status || 200;
 
-  logger.info('📤 응답 완료:', {
-    pathname,
-    status,
-    executionTime: `${executionTime}ms`,
-    timestamp: new Date().toISOString()
-  });
+  logger.info(`📤 응답 완료: ${pathname} - Status: ${status}, Time: ${executionTime}ms - ${new Date().toISOString()}`);
 
   return authResponse;
 }

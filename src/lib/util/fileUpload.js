@@ -73,12 +73,22 @@ export async function write(file, email, preservePath = 'jjal') {
     // 이미지만 webp 압축 (비디오는 제외)
     if (file.type.startsWith('image')) {
 
-      logger.info('fileUpload.write file.type', file.type, 'file.size', file.size, 'file.name', file.name);
+      logger.info({
+        type: file.type,
+        size: file.size,
+        name: file.name,
+        message: 'fileUpload.write file.type'
+      });
 
       // GIF나 큰 이미지 압축 (1MB 이상, webp 제외)
       if (file.type === 'image/gif' || (file.size > 1024 * 1024)) {
 
-        logger.info('  file.type', file.type, 'file.size', file.size, 'file.name', file.name);
+        logger.info({
+          type: file.type,
+          size: file.size,
+          name: file.name,
+          message: 'Starting image compression'
+        });
         try {
           const webpPath = `${UPLOAD_PATH}${dir}/${fileName}.webp`;
 
@@ -92,9 +102,9 @@ export async function write(file, email, preservePath = 'jjal') {
           // 원본 파일 삭제
           fs.unlink(fullPath, (err) => err && console.error('Error deleting original:', err));
           fileName = `${fileName}.webp`;
-          logger.info('Image converted to개 WebP:', fileName);
+          logger.info({ fileName, message: 'Image converted to WebP' });
         } catch (err) {
-          logger.error('Image to WebP conversion failed:', err);
+          logger.error({ err, message: 'Image to WebP conversion failed' });
           // 변환 실패 시 원본 파일 유지
         }
       }
@@ -107,7 +117,7 @@ export async function write(file, email, preservePath = 'jjal') {
       console.debug('File uploaded successfully:', `/images${dir}/${fileName}`);
       return `/images${dir}/${fileName}`;
     } else {
-      logger.error('File not found after save:', finalPath);
+      logger.error({ finalPath, message: 'File not found after save' });
       throw error(500, '파일 저장 중에 오류가 발생하였습니다. 쿠훕ㅠㅠ');
     }
   } catch (err) {
@@ -118,7 +128,7 @@ export async function write(file, email, preservePath = 'jjal') {
 
 export async function read(file, preservePath) {
   if (!safeString(file.name, preservePath)) {
-    logger.error('read safeString failed:', file.name, preservePath);
+    logger.error({ fileName: file.name, preservePath, message: 'read safeString failed' });
     throw error(400, { message: '잘못된 요청입니다.' });
   }
 }

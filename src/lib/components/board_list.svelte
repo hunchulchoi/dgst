@@ -1,6 +1,6 @@
 <script>
 
-  import { Badge, Button, Col, Icon, Image, Pagination, PaginationItem, PaginationLink, Row } from '@sveltestrap/sveltestrap';
+  import { Badge, Button, Col, Icon, Pagination, PaginationItem, PaginationLink, Row } from '@sveltestrap/sveltestrap';
 
   import { formatDistanceToNowStrict, parseISO } from 'date-fns';
   import { ko } from 'date-fns/locale';
@@ -15,7 +15,7 @@
   <Row class="my-5 mx-0">
     <Row>
       <Col class="text-center">
-        <Image src="/icons/nothing.webp" alt="없어요 그냥 짤" class="mt-2" style="width:540px; max-width: 100%"/>
+        <img src="/icons/nothing.webp" alt="없어요 그냥 짤" class="mt-2" style="width:540px; max-width: 100%"/>
       </Col>
     </Row>
     <Row>

@@ -6,7 +6,6 @@
     DropdownMenu,
     DropdownToggle,
     Icon,
-    Image,
     Nav,
     Navbar,
     NavbarBrand,
@@ -61,38 +60,35 @@
 <Navbar expand="md" class="m-0 rounded shadow text-secondary" style="background-color: #fafae4">
   <NavbarBrand href="/" class="p-0">
     {#if new Date().getMonth() === 3 && new Date().getDate() >= 15 && new Date().getDate() <= 17}
-      <Image
-        fluid
+      <img
         title="잊지않을께"
         alt="remember0416"
         src="/icons/remember0416.png"
         class="p-0"
-        style="height: 40px"
+        style="height: 40px; width: auto;"
       />
     {:else}
-      <Image
-        fluid
+      <img
         alt="dgst logo"
         src="/logo/logo_transparent_100.png"
         class="p-0"
-        style="height: 40px"
+        style="height: 40px; width: auto;"
       />
     {/if}
   </NavbarBrand>
   <Nav>
     <NavItem>
       {#if session?.user?.nickname}
-        <Image
-          thumbnail
+        <img
           alt="{session.user.nickname} 프로필 사진"
           src={session.user.photo ?? '/icons/unknown-person-icon-4.jpg'}
           class="p-0 rounded"
-          style="max-height: 30px;max-width: 30px"
+          style="max-height: 30px;max-width: 30px; height: auto; width: auto;"
         />
         <button type="button" class="btn btn-link text-secondary p-0" onclick={()=>goto('/auth/profile')}>{session.user.nickname}</button>
       {:else}
         <NavLink onclick={handleGoogleSignIn} class="p-0 m-0">
-          <Image alt="google계정으로 로그인" src={loginButton} class="p-0" style="max-width:40vw"/>
+          <img alt="google계정으로 로그인" src={loginButton} class="p-0" style="max-width:40vw; width: auto; height: auto;"/>
         </NavLink>
       {/if}
     </NavItem>
@@ -135,8 +131,8 @@
       </NavItem>
       {#if session?.user?.nickname}
         <NavItem>
-          <NavLink href="/board/alarm" data-sveltekit-invalidate="all"
-                  data-sveltekit-replace
+          <NavLink href="/board/alarm" 
+                  data-sveltekit-invalidate="all"
                   data-sveltekit-preload-data="tap"
                   active={pathname?.startsWith('/board/alarm')}>
             <Icon name="megaphone" class="text-success me-2"/>알림
