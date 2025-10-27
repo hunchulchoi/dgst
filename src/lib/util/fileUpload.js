@@ -73,6 +73,9 @@ export async function write(file, email, preservePath = 'jjal') {
     if (file.type.startsWith('image')) {
       // GIF나 큰 이미지 압축 (1MB 이상, webp 제외)
       if (file.type === 'image/gif' || (file.type !== 'image/webp' && file.size > 1024 * 1024)) {
+
+
+        console.log('file.type', file.type, 'file.size', file.size, 'file.name', file.name);
         try {
           const webpPath = `${UPLOAD_PATH}${dir}/${fileName}.webp`;
 
@@ -86,7 +89,7 @@ export async function write(file, email, preservePath = 'jjal') {
           // 원본 파일 삭제
           fs.unlink(fullPath, (err) => err && console.error('Error deleting original:', err));
           fileName = `${fileName}.webp`;
-          console.debug('Image converted to개 WebP:', fileName);
+          console.info('Image converted to개 WebP:', fileName);
         } catch (err) {
           console.error('Image to WebP conversion failed:', err);
           // 변환 실패 시 원본 파일 유지
