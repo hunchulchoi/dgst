@@ -88,9 +88,11 @@ export async function write(file, email, preservePath = 'jjal') {
           type: file.type,
           size: file.size,
           name: file.name,
-          message: 'Starting image compression'
+          message: 'GIF or large image - skipping WebP conversion'
         });
+
         try {
+          const convertStart = Date.now();
           const webpPath = `${UPLOAD_PATH}${dir}/${fileName}.webp`;
 
           // Sharp를 사용한 안전한 WebP 변환
@@ -100,10 +102,21 @@ export async function write(file, email, preservePath = 'jjal') {
             .webp({ quality: 80, effort: 6 })
             .toFile(webpPath);
 
+          const convertElapsedMs = Date.now() - convertStart;
+          const webpBytes = fs.statSync(webpPath).size;
+
           // 원본 파일 삭제 후 WebP로 교체
           fs.unlink(fullPath, (err) => err && console.error('Error deleting original:', err));
           fileName = `${fileName}.webp`;
-          logger.info({ fileName, message: 'Image converted to WebP' });
+          logger.info({
+            fileName,
+            message: 'Image converted to WebP',
+            originalBytes: file.size,
+            webpBytes,
+            savedBytes: Math.max(0, file.size - webpBytes),
+            savedPercent: Number(((1 - webpBytes / file.size) * 100).toFixed(1)),
+            elapsedMs: convertElapsedMs
+          });
         } catch (err) {
           logger.error({ err, message: 'Image to WebP conversion failed' });
           // 변환 실패 시 원본 파일 유지
