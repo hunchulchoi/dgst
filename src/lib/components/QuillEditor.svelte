@@ -506,8 +506,17 @@
           // 이미지 파일이면 EXIF Orientation 적용해서 WebP 변환
           if (file.type.startsWith('image/') && !file.type.endsWith('gif') && !file.type.endsWith('webp')) {
             console.log('이미지 파일 감지, EXIF Orientation 적용하여 WebP 변환...');
-            const webpBlob = await convertToWebPWithOrientation(file, { width: 1400 });
-            file = new File([webpBlob], file.name, { type: 'image/webp' });
+            try {
+              const webpBlob = await convertToWebPWithOrientation(file, { width: 1400 });
+              // 원본 파일명에서 확장자 제거 후 .webp로 교체
+              const dotIdx = file.name.lastIndexOf('.');
+              const base = dotIdx > -1 ? file.name.substring(0, dotIdx) : file.name;
+              const newName = `${base}.webp`;
+              file = new File([webpBlob], newName, { type: 'image/webp' });
+              console.log('WebP 파일명으로 변환:', newName, 'size:', webpBlob.size);
+            } catch (e) {
+              console.warn('WebP 변환 실패, 원본으로 업로드합니다:', e);
+            }
           }
 
           // 비디오 파일이면 압축 시도 (FFmpeg 사용 가능한 경우에만)
