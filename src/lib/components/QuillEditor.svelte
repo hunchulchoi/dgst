@@ -788,14 +788,32 @@
     if (embedHtml) {
       console.log('📝 HTML 삽입 전 Quill 내용:', quillInstance.root.innerHTML.substring(0, 100));
       
-      // Instagram 임베드는 링크로 저장 (iframe은 작동하지 않을 수 있음)
+      // Instagram 임베드는 OG 카드로 변환
       if (embedHtml.includes('instagram-media')) {
-        console.log('📸 Instagram 임베드를 링크로 저장');
+        console.log('📸 Instagram 임베드를 OG 카드로 변환');
         
         // URL에서 ID 추출
         const cleanUrl = url.split('?')[0];
-        embedHtml = `<div class="instagram-embed-link"><a href="${cleanUrl}" target="_blank" rel="noopener noreferrer" style="display:block;padding:16px;border:1px solid #e0e0e0;border-radius:8px;text-align:center;background:#fafafa;margin:16px 0;"><span style="font-size:18px;">📸</span><br><strong>Instagram Post/Reel</strong><br><small style="color:#666;">Click to view on Instagram</small></a></div>`;
-        console.log('📸 변환된 HTML:', embedHtml);
+        const isReel = cleanUrl.includes('/reel/');
+        const idMatch = cleanUrl.match(isReel ? /\/reel\/([\w-]+)/ : /\/p\/([\w-]+)/);
+        const instaId = idMatch ? idMatch[1] : '';
+        
+        // OG 카드 Blot 사용
+        quillInstance.insertEmbed(range.index, 'ogcard', {
+          url: cleanUrl,
+          title: `Instagram ${isReel ? 'Reel' : 'Post'}`,
+          description: `View this post on Instagram`,
+          image: 'https://www.instagram.com/static/images/ico/favicon-192.png',
+          siteName: 'Instagram'
+        });
+        
+        quillInstance.insertText(range.index + 1, '\n');
+        quillInstance.setSelection(range.index + 2);
+        quillInstance.focus();
+        
+        scrollToInsertedContent(range.index + 2);
+        console.log('✅ Instagram OG 카드 삽입 완료');
+        return; // 여기서 종료하여 아래 코드 실행 방지
       }
       
       quillInstance.clipboard.dangerouslyPasteHTML(range.index, embedHtml);
