@@ -180,104 +180,104 @@
           isSquare
         });
         
-        // // Orientation과 이미지 비율을 고려한 회전 결정
-        // let shouldRotate = false;
-        // let rotationAngle = 0;
-        // let needsFlip = false;
+        // Orientation과 이미지 비율을 고려한 회전 결정
+        let shouldRotate = false;
+        let rotationAngle = 0;
+        let needsFlip = false;
         
-        // // Orientation이 1이 아니고 null이 아니고 landscape 비율일 때만 회전
-        // if (orientation !== 1 && orientation !== null && isLandscape) {
-        //   shouldRotate = true;
+        // Orientation이 1이 아니고 null이 아니고 landscape 비율일 때만 회전
+        if (orientation !== 1 && orientation !== null && isLandscape) {
+          shouldRotate = true;
           
-        //   switch (orientation) {
-        //     case 2: // 좌우 반전
-        //       needsFlip = true;
-        //       break;
-        //     case 3: // 180도 회전
-        //       rotationAngle = 180;
-        //       break;
-        //     case 4: // 상하 반전
-        //       rotationAngle = 180;
-        //       needsFlip = true;
-        //       break;
-        //     case 5: // 90도 회전 + 좌우 반전
-        //       rotationAngle = 90;
-        //       needsFlip = true;
-        //       break;
-        //     case 6: // 90도 회전
-        //       rotationAngle = 90;
-        //       console.log('Landscape 이미지 90도 회전 적용');
-        //       break;
-        //     case 7: // 270도 회전 + 좌우 반전
-        //       rotationAngle = 270;
-        //       needsFlip = true;
-        //       break;
-        //     case 8: // 270도 회전
-        //       rotationAngle = 270;
-        //       console.log('Landscape 이미지 270도 회전 적용');
-        //       break;
-        //   }
-        // } else if (orientation !== 1 && orientation !== null && isPortrait) {
-        //   console.log('Portrait 이미지는 회전하지 않음');
-        // } else if (orientation !== 1 && orientation !== null && isSquare) {
-        //   console.log('Square 이미지는 회전하지 않음');
-        // } else if (orientation === null) {
-        //   console.log('Orientation이 null - 회전하지 않음');
-        // }
+          switch (orientation) {
+            case 2: // 좌우 반전
+              needsFlip = true;
+              break;
+            case 3: // 180도 회전
+              rotationAngle = 180;
+              break;
+            case 4: // 상하 반전
+              rotationAngle = 180;
+              needsFlip = true;
+              break;
+            case 5: // 90도 회전 + 좌우 반전
+              rotationAngle = 90;
+              needsFlip = true;
+              break;
+            case 6: // 90도 회전
+              rotationAngle = 90;
+              console.log('Landscape 이미지 90도 회전 적용');
+              break;
+            case 7: // 270도 회전 + 좌우 반전
+              rotationAngle = 270;
+              needsFlip = true;
+              break;
+            case 8: // 270도 회전
+              rotationAngle = 270;
+              console.log('Landscape 이미지 270도 회전 적용');
+              break;
+          }
+        } else if (orientation !== 1 && orientation !== null && isPortrait) {
+          console.log('Portrait 이미지는 회전하지 않음');
+        } else if (orientation !== 1 && orientation !== null && isSquare) {
+          console.log('Square 이미지는 회전하지 않음');
+        } else if (orientation === null) {
+          console.log('Orientation이 null - 회전하지 않음');
+        }
         
-        // if (!shouldRotate) {
-        //   console.log('회전 불필요 - 원본 WebP 반환');
-        //   resolve(webpBlob);
-        //   return;
-        // }
+        if (!shouldRotate) {
+          console.log('회전 불필요 - 원본 WebP 반환');
+          resolve(webpBlob);
+          return;
+        }
         
-        // // Orientation에 따른 캔버스 크기 설정
-        // let canvasWidth, canvasHeight;
+        // Orientation에 따른 캔버스 크기 설정
+        let canvasWidth, canvasHeight;
         
-        // if (rotationAngle === 90 || rotationAngle === 270) {
-        //   // 90도 또는 270도 회전 시 가로세로 바뀜
-        //   canvasWidth = originalHeight;
-        //   canvasHeight = originalWidth;
-        // } else {
-        //   // 180도 회전 시 크기 유지
-        //   canvasWidth = originalWidth;
-        //   canvasHeight = originalHeight;
-        // }
+        if (rotationAngle === 90 || rotationAngle === 270) {
+          // 90도 또는 270도 회전 시 가로세로 바뀜
+          canvasWidth = originalHeight;
+          canvasHeight = originalWidth;
+        } else {
+          // 180도 회전 시 크기 유지
+          canvasWidth = originalWidth;
+          canvasHeight = originalHeight;
+        }
         
-        // canvas.width = canvasWidth;
-        // canvas.height = canvasHeight;
-        // console.log('Canvas 크기 설정:', canvasWidth, 'x', canvasHeight);
+        canvas.width = canvasWidth;
+        canvas.height = canvasHeight;
+        console.log('Canvas 크기 설정:', canvasWidth, 'x', canvasHeight);
         
-        // // Canvas 변환 적용
-        // if (rotationAngle === 90) {
-        //   ctx.translate(canvasWidth, 0);
-        //   ctx.rotate(Math.PI / 2);
-        //   if (needsFlip) {
-        //     ctx.scale(-1, 1);
-        //   }
-        // } else if (rotationAngle === 180) {
-        //   ctx.translate(canvasWidth, canvasHeight);
-        //   ctx.rotate(Math.PI);
-        //   if (needsFlip) {
-        //     ctx.scale(-1, 1);
-        //   }
-        // } else if (rotationAngle === 270) {
-        //   ctx.translate(0, canvasHeight);
-        //   ctx.rotate(-Math.PI / 2);
-        //   if (needsFlip) {
-        //     ctx.scale(-1, 1);
-        //   }
-        // }
+        // Canvas 변환 적용
+        if (rotationAngle === 90) {
+          ctx.translate(canvasWidth, 0);
+          ctx.rotate(Math.PI / 2);
+          if (needsFlip) {
+            ctx.scale(-1, 1);
+          }
+        } else if (rotationAngle === 180) {
+          ctx.translate(canvasWidth, canvasHeight);
+          ctx.rotate(Math.PI);
+          if (needsFlip) {
+            ctx.scale(-1, 1);
+          }
+        } else if (rotationAngle === 270) {
+          ctx.translate(0, canvasHeight);
+          ctx.rotate(-Math.PI / 2);
+          if (needsFlip) {
+            ctx.scale(-1, 1);
+          }
+        }
         
-        // // 이미지 그리기
-        // ctx.drawImage(img, 0, 0, originalWidth, originalHeight);
+        // 이미지 그리기
+        ctx.drawImage(img, 0, 0, originalWidth, originalHeight);
         
-        // console.log('Canvas 회전 적용 완료:', {
-        //   orientation,
-        //   rotationAngle,
-        //   needsFlip,
-        //   finalSize: `${canvasWidth}x${canvasHeight}`
-        // });
+        console.log('Canvas 회전 적용 완료:', {
+          orientation,
+          rotationAngle,
+          needsFlip,
+          finalSize: `${canvasWidth}x${canvasHeight}`
+        });
         
         // Canvas를 WebP Blob으로 변환
         canvas.toBlob((blob) => {

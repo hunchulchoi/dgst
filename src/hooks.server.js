@@ -190,3 +190,21 @@ export async function handle({ event, resolve }) {
 
   return authResponse;
 }
+
+// 전역 에러 로깅
+/** @type {import('@sveltejs/kit').HandleServerError} */
+export function handleError({ event, error }) {
+  try {
+    logger.error({
+      message: 'Unhandled server error',
+      pathname: event.url?.pathname,
+      method: event.request?.method,
+      status: error?.status ?? 500,
+      name: error?.name,
+      error: error?.message,
+      stack: error?.stack
+    });
+  } catch (e) {
+    console.error('Failed to log error', e);
+  }
+}
