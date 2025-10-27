@@ -3,17 +3,13 @@ import { Article } from '$lib/models/article.js';
 
 connectDB();
 
-export const load = async ({ params, depends, setHeaders }) => {
+export const load = async ({ params, depends }) => {
   const startTime = Date.now();
 
   // 캐시 키를 매번 다르게 생성하여 캐시 방지
   depends('board-list');
 
-  // 캐시 방지 헤더 설정
-  setHeaders({
-    'cache-control': 'no-store, no-cache, must-revalidate, max-age=0',
-    'expires': '0'
-  });
+  // 캐시 방지는 레이아웃에서 일괄 설정
 
   console.log('📊 게시판 목록 로드 시작:', {
     boardId: params.boardId,
