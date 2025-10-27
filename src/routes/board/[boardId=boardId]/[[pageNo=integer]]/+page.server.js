@@ -4,16 +4,22 @@ import { Article } from '$lib/models/article.js';
 connectDB();
 
 export const load = async ({ params, depends, setHeaders }) => {
+  const startTime = Date.now();
+  
   // 캐시 키를 매번 다르게 생성하여 캐시 방지
   depends('board-list');
-
+  
   // 캐시 방지 헤더 설정
   setHeaders({
     'cache-control': 'no-store, no-cache, must-revalidate, max-age=0',
     'expires': '0'
   });
-
-  console.log('[[pageNo=integer]]', params);
+  
+  console.log('📊 게시판 목록 로드 시작:', {
+    boardId: params.boardId,
+    pageNo: params.pageNo,
+    timestamp: new Date().toISOString()
+  });
 
   // 한페이지에 보여주는 게시물
   const pageUnit = 30;
@@ -85,10 +91,33 @@ export const load = async ({ params, depends, setHeaders }) => {
         (insta ? '<i class="bi bi-instagram text-warning px-2"></i>' : '');
     });
 
+    const endTime = Date.now();
+    const executionTime = endTime - startTime;
+    
+    console.log('✅ 게시판 목록 로드 완료:', {
+      boardId: params.boardId,
+      pageNo,
+      articleCount: jsonArticles.length,
+      totalArticles: total,
+      executionTime: `${executionTime}ms`,
+      status: 'success'
+    });
+
     return { pageNo, maxPage, startNo, endNo, articles: jsonArticles };
 
   } catch (err) {
-    console.error('[[pageNo=integer]]', err);
+    const endTime = Date.now();
+    const executionTime = endTime - startTime;
+    
+    console.error('❌ 게시판 목록 로드 실패:', {
+      boardId: params.boardId,
+      pageNo,
+      error: err.message,
+      executionTime: `${executionTime}ms`,
+      status: 'error',
+      stack: err.stack
+    });
+    
     throw error(500, '목록을 가져오는 중에 오류가 발생하였습니다.');
   }
 };
