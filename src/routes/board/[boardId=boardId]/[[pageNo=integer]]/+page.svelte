@@ -62,11 +62,6 @@
   $effect(() => {
     console.log('🔄 게시판 페이지 새로고침 - boardId:', boardId, 'pageNo:', pageNo);
     console.log('📊 게시글 수:', data.articles?.length);
-    
-    // 캐시 무시하기 위해 invalidateAll 호출
-    import('$app/navigation').then(({ invalidateAll }) => {
-      invalidateAll();
-    });
   });
 
   alarmCount.update(alarmCount => data.alarmCount);

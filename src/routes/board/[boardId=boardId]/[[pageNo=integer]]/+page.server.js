@@ -3,9 +3,16 @@ import { Article } from '$lib/models/article.js';
 
 connectDB();
 
-export const load = async ({ params, depends }) => {
+export const load = async ({ params, depends, setHeaders }) => {
   // 캐시 키를 매번 다르게 생성하여 캐시 방지
   depends('board-list');
+  
+  // 캐시 방지 헤더 설정
+  setHeaders({
+    'cache-control': 'no-store, no-cache, must-revalidate, max-age=0',
+    'expires': '0'
+  });
+  
   console.log('[[pageNo=integer]]', params);
 
   // 한페이지에 보여주는 게시물
