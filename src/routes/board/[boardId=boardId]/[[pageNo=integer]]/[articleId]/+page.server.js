@@ -21,11 +21,11 @@ export const load = async ({ params, locals }) => {
 
   let alarmCount = 0;
 
-  // 알람 삭제
+  // 알람 읽음 처리: 해당 글을 읽을 때만 처리
   if (session?.user?.nickname) {
-    const deleteAlarm = await Alarm.updateMany({ email: session.user.email, articleId: params.articleId }
+    const markAsRead = await Alarm.updateMany({ email: session.user.email, articleId: params.articleId, readAt: null }
       , { $set: { readAt: new Date() } }, { timestamps: false });
-    console.log('delete alarm', deleteAlarm);
+    console.log('mark alarm read', markAsRead?.modifiedCount ?? 0);
 
     alarmCount = await Alarm.countDocuments({ email: session.user.email, readAt: null, updatedAt: { $gt: new Date(new Date() - 1000 * 60 * 60 * 24) } });
   }
