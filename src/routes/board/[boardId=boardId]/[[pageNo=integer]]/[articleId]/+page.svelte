@@ -959,7 +959,7 @@
     </Row>
     <Row class="py-3 px-2 mx-0">
       <CardText style="max-width: 100%;" class="text-break px-2">
-        {@html processArticleContent(data.article.content.replace(/<p><br\/?><\/p>/g, '<br>'))}
+        {@html processArticleContent(data.article.content.replace(/<p>\s*<br\s*\/?>(\s|\u00A0)*<\/p>/g, '<br>'))}
       </CardText>
       
     </Row>

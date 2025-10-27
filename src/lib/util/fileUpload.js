@@ -70,7 +70,7 @@ export async function write(file, email, preservePath = 'jjal') {
     fs.writeFileSync(fullPath, fileBuffer);
     console.debug('File written successfully');
 
-    // 이미지만 webp 압축 (비디오는 제외)
+    // 이미지만 처리 (비디오는 제외)
     if (file.type.startsWith('image')) {
 
       logger.info({
@@ -80,8 +80,9 @@ export async function write(file, email, preservePath = 'jjal') {
         message: 'fileUpload.write file.type'
       });
 
-      // GIF나 큰 이미지 압축 (1MB 이상, webp 제외)
-      if (file.type === 'image/gif' || (file.size > 1024 * 1024)) {
+      // GIF는 리사이즈/변환하지 않고 그대로 저장 (서버 별도 파이프라인 처리)
+      // GIF가 아닌 큰 이미지(1MB 이상)만 WebP로 변환
+      if (file.type !== 'image/gif' && (file.size > 1024 * 1024)) {
 
         logger.info({
           type: file.type,
@@ -99,7 +100,7 @@ export async function write(file, email, preservePath = 'jjal') {
             .webp({ quality: 80, effort: 6 })
             .toFile(webpPath);
 
-          // 원본 파일 삭제
+          // 원본 파일 삭제 후 WebP로 교체
           fs.unlink(fullPath, (err) => err && console.error('Error deleting original:', err));
           fileName = `${fileName}.webp`;
           logger.info({ fileName, message: 'Image converted to WebP' });
