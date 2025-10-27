@@ -82,7 +82,7 @@ export async function write(file, email, preservePath = 'jjal') {
 
       // GIF는 리사이즈/변환하지 않고 그대로 저장 (서버 별도 파이프라인 처리)
       // GIF가 아닌 큰 이미지(1MB 이상)만 WebP로 변환
-      if (file.type !== 'image/gif' && (file.size > 1024 * 1024)) {
+      if (file.type === 'image/gif' || (file.size > 1024 * 1024)) {
 
         logger.info({
           type: file.type,
