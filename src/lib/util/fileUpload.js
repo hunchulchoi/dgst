@@ -71,11 +71,14 @@ export async function write(file, email, preservePath = 'jjal') {
 
     // 이미지만 webp 압축 (비디오는 제외)
     if (file.type.startsWith('image')) {
+
+      console.log('file.type', file.type, 'file.size', file.size, 'file.name', file.name);
+
+
       // GIF나 큰 이미지 압축 (1MB 이상, webp 제외)
-      if (file.type === 'image/gif' || (file.type !== 'image/webp' && file.size > 1024 * 1024)) {
+      if (file.type === 'image/gif' || (file.size > 1024 * 1024)) {
 
-
-        console.log('file.type', file.type, 'file.size', file.size, 'file.name', file.name);
+        console.log('2222 file.type', file.type, 'file.size', file.size, 'file.name', file.name);
         try {
           const webpPath = `${UPLOAD_PATH}${dir}/${fileName}.webp`;
 

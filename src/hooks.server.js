@@ -15,6 +15,16 @@ import clientPromise from '$lib/database/clientPromise.js';
 import crypto from 'crypto';
 import { error } from '@sveltejs/kit';
 
+const cache = new Map();
+
+export function depends(key) {
+  cache.set(key, new Date().getTime());
+}
+
+
+
+
+
 // SvelteKit 2 + @auth/sveltekit v1.x 호환
 export const { handle, signIn, signOut } = SvelteKitAuth({
   providers: [
