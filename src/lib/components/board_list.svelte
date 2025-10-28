@@ -67,7 +67,7 @@
     <Col xs="12">
       <Pagination size="md" arialabel="페이지 네이션" class="d-flex justify-content-center">
         <PaginationItem
-        ><PaginationLink first href="{`/board/${boardId}`}" data-sveltekit-preload-data="hover"/></PaginationItem
+        ><PaginationLink first href={`/board/${boardId}`} data-sveltekit-preload-data="hover"/></PaginationItem
         >
         {#each Array((data.endNo - data.startNo +1)) as _, i}
           <PaginationItem

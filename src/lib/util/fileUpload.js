@@ -76,19 +76,29 @@ export async function write(file, email, preservePath = 'jjal') {
       logger.info({
         type: file.type,
         size: file.size,
+        sizeMB: (file.size / (1024 * 1024)).toFixed(2),
         name: file.name,
-        message: 'fileUpload.write file.type'
+        message: 'fileUpload.write - image file received'
       });
 
-      // GIF는 리사이즈/변환하지 않고 그대로 저장 (서버 별도 파이프라인 처리)
-      // GIF가 아닌 큰 이미지(1MB 이상)만 WebP로 변환
-      if (file.type === 'image/gif' || (file.size > 1024 * 1024)) {
+      // GIF이거나 1MB 이상인 이미지는 서버에서 리사이즈 및 WebP 변환 처리
+      const shouldResize = file.type === 'image/gif' || file.size > 1024 * 1024;
+
+      logger.info({
+        type: file.type,
+        size: file.size,
+        sizeMB: (file.size / (1024 * 1024)).toFixed(2),
+        shouldResize,
+        message: 'fileUpload.write - resize check'
+      });
+
+      if (shouldResize) {
 
         logger.info({
           type: file.type,
           size: file.size,
           name: file.name,
-          message: 'GIF or large image - skipping WebP conversion'
+          message: 'GIF or large image - processing WebP conversion'
         });
 
         try {
@@ -99,7 +109,7 @@ export async function write(file, email, preservePath = 'jjal') {
           await sharp(fullPath, { animated: true })
             .resize({ width: 1400, withoutEnlargement: true })
             .rotate()
-            .webp({ quality: 80, effort: 6 })
+            .webp({ quality: 90, effort: 4 })
             .toFile(webpPath);
 
           const convertElapsedMs = Date.now() - convertStart;

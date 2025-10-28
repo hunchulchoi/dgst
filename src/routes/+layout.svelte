@@ -6,7 +6,7 @@
   import { blur } from 'svelte/transition';
 
   // Svelte 5 Runes
-  let { data } = $props();
+  let { data, children } = $props();
 
 </script>
 
@@ -16,7 +16,7 @@
 
 {#key data.pathname}
   <div transition:blur={{ amount: 40, duration: 400 }}>
-    <slot />
+    {@render children()}
   </div>
 {/key}
 
