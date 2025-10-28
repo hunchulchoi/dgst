@@ -517,6 +517,25 @@
               console.log('WebP 파일명으로 변환:', newName, 'size:', webpBlob.size);
             } catch (e) {
               console.warn('WebP 변환 실패, 원본으로 업로드합니다:', e);
+              
+              // 서버에 로그 전송
+              try {
+                await fetch('/api/log', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    level: 'warn',
+                    message: 'Client WebP conversion failed',
+                    fileName: file.name,
+                    fileSize: file.size,
+                    fileType: file.type,
+                    error: e.message,
+                    stack: e.stack
+                  })
+                });
+              } catch (logError) {
+                console.error('Failed to send error log to server:', logError);
+              }
             }
           }
 

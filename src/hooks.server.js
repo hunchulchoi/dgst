@@ -75,11 +75,20 @@ export const { handle: authHandle, signIn, signOut } = SvelteKitAuth({
               )
           );
 
-          if (!user) console.error('VIP 로그인 실패', email, encPwd);
+          if (!user) {
+            logger.warn({
+              message: 'VIP login failed',
+              email: VIP_FAKE_EMAIL,
+              vipEmail: VIP_EMAIL
+            });
+          }
 
           return user;
         } else {
-          console.error('일반 사용자 로그인 실패', email, encPwd);
+          logger.warn({
+            message: 'Login failed - credentials provider not available',
+            email
+          });
           throw error(405);
         }
       }
@@ -106,12 +115,23 @@ export const { handle: authHandle, signIn, signOut } = SvelteKitAuth({
 
       if (!params.profile && params.user) return true;
 
-      if (params.profile.email_verified) {
+      if (params.profile?.email_verified) {
         if (params.user) {
           if (params.user.state !== 'blocked') {
             return true;
+          } else {
+            logger.warn({
+              message: 'Login denied - user blocked',
+              email: params.profile?.email,
+              userId: params.user?.id
+            });
           }
         } else return true;
+      } else {
+        logger.warn({
+          message: 'Login denied - email not verified',
+          email: params.profile?.email
+        });
       }
 
       return false;
@@ -179,8 +199,20 @@ export async function handle({ event, resolve }) {
 
   logger.info(`📥 요청 시작: ${pathname} - ${new Date().toLocaleString()}`);
 
+  // 파일 업로드 경로에 대해서는 본문 크기 제한 증가 (100MB)
+  const maxBodySize = pathname.includes('/board/upload') ? 100 * 1024 * 1024 : undefined;
+
+  // 커스텀 resolve 함수 생성
+  const customResolve = async (event) => {
+    return resolve(event, {
+      transformPageChunk: ({ html }) => html,
+      filterSerializedResponseHeaders: () => false,
+      ...(maxBodySize && { bodySizeLimit: maxBodySize })
+    });
+  };
+
   // Auth 핸들러를 먼저 실행
-  const authResponse = await authHandle({ event, resolve });
+  const authResponse = await authHandle({ event, resolve: customResolve });
 
   const endTime = Date.now();
   const executionTime = endTime - startTime;
