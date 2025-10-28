@@ -45,17 +45,24 @@ const writeErrorToFile = (level, data) => {
   }
 };
 
-// wrapper logger: error/warn는 파일에도 기록
-const logger = {
-  ...baseLogger,
-  error: (data) => {
-    baseLogger.error(data);
-    writeErrorToFile('error', data);
-  },
-  warn: (data) => {
-    baseLogger.warn(data);
-    writeErrorToFile('warn', data);
-  },
-};
+// Proxy를 사용하여 error/warn 메서드만 오버라이드
+const logger = new Proxy(baseLogger, {
+  get(target, prop) {
+    if (prop === 'error') {
+      return (data) => {
+        target.error(data);
+        writeErrorToFile('error', data);
+      };
+    }
+    if (prop === 'warn') {
+      return (data) => {
+        target.warn(data);
+        writeErrorToFile('warn', data);
+      };
+    }
+    // 나머지는 원본 logger의 속성 반환
+    return target[prop];
+  }
+});
 
 export default logger;
