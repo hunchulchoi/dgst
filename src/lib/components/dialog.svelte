@@ -2,12 +2,12 @@
   import {Button, Col, Icon, Row} from '@sveltestrap/sveltestrap';
 
   // Svelte 5 Runes - Props
-  let { dialog = $bindable() } = $props();
+  let { dialog = $bindable(), children } = $props();
 </script>
-<dialog bind:this={dialog} class="p-4 pb-3 px-5 rounded-3 shadow border-secondary" on:close>
+<dialog bind:this={dialog} class="p-4 pb-3 px-5 rounded-3 shadow border-secondary" onclose={() => {}}>
   <Row>
     <Col>
-      <slot/>
+      {@render children()}
     </Col>
   </Row>
   <Row class="mt-3">

@@ -72,7 +72,6 @@
     Card,
     CardBody,
     CardSubtitle,
-    CardText,
     Col,
     Icon,
     InputGroup,
@@ -781,10 +780,10 @@
     });
   }
 
-  let toastColor = 'primary';
-  let toastMessage = '';
-  let toastPosition;
-  let toastIsOpen = false;
+  let toastColor = $state('primary');
+  let toastMessage = $state('');
+  let toastPosition = $state('');
+  let toastIsOpen = $state(false);
 
   function toast(message, color = 'primary') {
 
@@ -796,8 +795,8 @@
 
   const toggle = () => (toastIsOpen = !toastIsOpen);
 
-  let dialog;
-  let dialogText;
+  let dialog = $state(null);
+  let dialogText = $state('');
 
   function showModal(message, callback){
 
@@ -958,9 +957,9 @@
       >
     </Row>
     <Row class="py-3 px-2 mx-0">
-      <CardText style="max-width: 100%;" class="text-break px-2">
+      <div style="max-width: 100%;" class="text-break px-2">
         {@html processArticleContent(data.article.content.replace(/<p>\s*<br\s*\/?>(\s|\u00A0)*<\/p>/g, '<br>'))}
-      </CardText>
+      </div>
       
     </Row>
     <Row class="p-md-3 p-xs-1 mb-3 mx-0">
@@ -978,9 +977,9 @@
           <Col>
             <CardBody class="px-2">
               <CardSubtitle>{data.article.nickname}</CardSubtitle>
-              <CardText class="text-muted pt-2">
+              <div class="text-muted pt-2">
                 <pre style="white-space: pre-line">{data.introduction}</pre>
-              </CardText>
+              </div>
             </CardBody>
           </Col>
         </Row>
@@ -1052,12 +1051,12 @@
                   <Col xs="auto">
                     <CardBody class="px-1 py-1 border-0">
                       <CardSubtitle>{comment.nickname}</CardSubtitle>
-                      <CardText class="text-muted text-break" style="font-size:smaller">
+                      <div class="text-muted text-break" style="font-size:smaller">
                         {formatDistanceToNowStrict(parseISO(comment.createdAt), {
                           locale: ko,
                           addSuffix: true
                         })}
-                      </CardText>
+                      </div>
                     </CardBody>
                   </Col>
                 </Row>

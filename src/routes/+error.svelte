@@ -1,5 +1,5 @@
 <script>
-  import { Button, Card, CardBody, CardFooter, CardHeader, CardText, Icon } from '@sveltestrap/sveltestrap';
+  import { Button, Card, CardBody, CardFooter, CardHeader, Icon } from '@sveltestrap/sveltestrap';
 
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
@@ -26,12 +26,12 @@
     <CardHeader class="text-bg-warning bg-opacity-25"><h3>Ooooops!-{$page.status}</h3></CardHeader>
     <img src="/logo/twitter_header_photo_2.png" alt="데게실버타운 로고"/>
     <CardBody>
-        <CardText class="p-2">
+        <div class="p-2">
           {#if $page.status===500}에러가 발생하였습니다.{/if}
             <div class="fs-3">{$page.status}</div>
             <div class="fs-4">{$page.error?.message || '알 수 없는 오류'}</div>
           {#if $page.status===500}소스 작업 하는 중일 수 있습니다. 새로고침을 해보세요{/if}
-        </CardText>
+        </div>
     </CardBody>
     <CardFooter class="d-flex justify-content-end p-3">
       {#if $page.status===500}

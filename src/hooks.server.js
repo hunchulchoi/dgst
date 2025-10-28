@@ -227,6 +227,7 @@ export async function handle({ event, resolve }) {
 /** @type {import('@sveltejs/kit').HandleServerError} */
 export function handleError({ event, error }) {
   try {
+    const clientIp = event.getClientAddress ? event.getClientAddress() : 'unknown';
     logger.error({
       message: 'Unhandled server error',
       pathname: event.url?.pathname,
@@ -234,7 +235,8 @@ export function handleError({ event, error }) {
       status: error?.status ?? 500,
       name: error?.name,
       error: error?.message,
-      stack: error?.stack
+      stack: error?.stack,
+      clientIp
     });
   } catch (e) {
     console.error('Failed to log error', e);
