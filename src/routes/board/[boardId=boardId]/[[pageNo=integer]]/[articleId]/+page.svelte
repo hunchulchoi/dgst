@@ -31,6 +31,20 @@
           max-width: 100%;  
       }
 
+      .article-content img {
+          max-width: 100%;
+          height: auto;
+          display: block;
+          margin: 0.5rem 0;
+      }
+
+      .article-content video {
+          max-width: 100%;
+          height: auto;
+          display: block;
+          margin: 0.5rem 0;
+      }
+
       .card-text a {
           pointer-events: auto !important;
           cursor: pointer !important;
@@ -957,7 +971,7 @@
       >
     </Row>
     <Row class="py-3 px-2 mx-0">
-      <div style="max-width: 100%;" class="text-break px-2">
+      <div style="max-width: 100%;" class="text-break px-2 article-content">
         {@html processArticleContent(data.article.content.replace(/<p>\s*<br\s*\/?>(\s|\u00A0)*<\/p>/g, '<br>'))}
       </div>
       
