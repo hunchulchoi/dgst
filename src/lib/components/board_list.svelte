@@ -67,19 +67,19 @@
     <Col xs="12">
       <Pagination size="md" arialabel="페이지 네이션" class="d-flex justify-content-center">
         <PaginationItem
-        ><PaginationLink first href={`/board/${boardId}`} data-sveltekit-preload-data="hover"/></PaginationItem
+        ><PaginationLink first href={`/board/${boardId}`} data-sveltekit-preload-data="hover" data-sveltekit-invalidate="all"/></PaginationItem
         >
         {#each Array((data.endNo - data.startNo +1)) as _, i}
           <PaginationItem
             active={(!data.pageNo && (data.startNo -i) === 1) || (i + data.startNo) == data.pageNo}
           >
-            <PaginationLink href={`/board/${boardId}/${i + data.startNo}`}  data-sveltekit-preload-data="hover">
+            <PaginationLink href={`/board/${boardId}/${i + data.startNo}`}  data-sveltekit-preload-data="hover" data-sveltekit-invalidate="all">
               {i + data.startNo}
             </PaginationLink>
           </PaginationItem>
         {/each}
         <PaginationItem
-        ><PaginationLink href={`/board/${boardId}/${data.maxPage}`}  data-sveltekit-preload-data="hover"
+        ><PaginationLink href={`/board/${boardId}/${data.maxPage}`}  data-sveltekit-preload-data="hover" data-sveltekit-invalidate="all"
                          last /></PaginationItem>
       </Pagination>
     </Col>
