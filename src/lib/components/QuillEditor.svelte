@@ -478,7 +478,8 @@
       // 단일 이미지 업로드 여부 결정
       isSingleImageUpload = files.length === 1 && files[0].type.startsWith('image/');
 
-      loadingImage = isSingleImageUpload;
+      // 이미지가 포함된 경우 업로드 오버레이 표시
+      loadingImage = files.some(f => f.type.startsWith('image/'));
       totalFiles = files.length;
       currentFile = 0;
       uploadProgress = 0;
@@ -521,9 +522,7 @@
 
           // 비디오 파일이면 압축 시도 (FFmpeg 사용 가능한 경우에만)
           if (file.type.startsWith('video/')) {
-            // 이미지 로딩 오버레이 숨김, 비디오 압축 오버레이만 표시
-            loadingImage = false;
-            isSingleImageUpload = false;
+            // 비디오 압축 중에는 이미지 오버레이 유지 (여러 파일 업로드 시)
             if (ffmpegReady) {
               console.log('비디오 파일 감지, 압축 시작...');
               file = await compressVideo(file);
@@ -531,6 +530,9 @@
               console.log('⚠️ FFmpeg 미준비 - 원본 비디오 업로드');
             }
           }
+
+          // 진행률 업데이트 (현재 파일 업로드 시작)
+          uploadProgress = Math.round(((i + 0.5) / files.length) * 100);
 
           // FormData 생성
           const formData = new FormData();
@@ -542,6 +544,9 @@
             body: formData,
             credentials: 'include'
           });
+
+          // 업로드 완료 후 진행률 업데이트
+          uploadProgress = Math.round(((i + 1) / files.length) * 100);
 
           if (!response.ok) {
             const errorText = await response.text();
@@ -1227,7 +1232,7 @@
       </div>
     {/if}
 
-    {#if loadingImage && isSingleImageUpload && !isCompressing}
+    {#if loadingImage && !isCompressing}
       <div class="upload-overlay">
         <div class="progress-container bg-light">
           <h5 class="mb-3 text-dark">
