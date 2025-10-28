@@ -5,7 +5,7 @@ import * as path from 'path';
 const isDevelopment = process.env.NODE_ENV !== 'production';
 
 // 로그 디렉토리 생성
-const logDir = process.env.LOG_DIR || '/volume/logs';
+const logDir = process.env.LOG_DIR || './logs';
 if (!fs.existsSync(logDir)) {
   fs.mkdirSync(logDir, { recursive: true });
 }
