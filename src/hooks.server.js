@@ -46,18 +46,28 @@ function KakaoProvider(options) {
     authorization: {
       url: 'https://kauth.kakao.com/oauth/authorize',
       params: {
-        response_type: 'code'
+        response_type: 'code',
+        scope: '' // 빈 scope 명시적 설정
       },
-      async request({ provider, options: authOptions }) {
-        // 카카오는 scope 파라미터를 사용하지 않으므로 명시적으로 제외
-        const url = new URL(provider.authorization.url);
+      async request(context) {
+        // @auth/core가 자동으로 추가한 scope를 제거하기 위해 완전히 커스텀 URL 생성
+        const { provider, options: authOptions } = context;
+        const url = new URL('https://kauth.kakao.com/oauth/authorize');
+        
+        // 필수 파라미터만 추가
         url.searchParams.set('client_id', provider.clientId);
         url.searchParams.set('redirect_uri', provider.callbackUrl);
         url.searchParams.set('response_type', 'code');
-        // scope 파라미터를 추가하지 않음
+        
+        // scope는 명시적으로 제외
+        // state 추가
         if (authOptions.state) {
           url.searchParams.set('state', authOptions.state);
         }
+        
+        // scope 파라미터가 있다면 제거
+        url.searchParams.delete('scope');
+        
         return { url: url.toString() };
       }
     },
@@ -72,7 +82,7 @@ function KakaoProvider(options) {
           code: params.code,
           redirect_uri: provider.callbackUrl
         });
-        
+
         const response = await fetch(provider.token.url, {
           method: 'POST',
           headers: {
@@ -80,7 +90,7 @@ function KakaoProvider(options) {
           },
           body: body.toString()
         });
-        
+
         return await response.json();
       }
     },
