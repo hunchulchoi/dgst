@@ -317,118 +317,118 @@
 
       // 모든 파일을 순차적으로 업로드
       for (let i = 0; i < files.length; i++) {
-          let file = files[i];
-          currentFile = i + 1;
-          uploadProgress = Math.round((i / files.length) * 100);
+        let file = files[i];
+        currentFile = i + 1;
+        uploadProgress = Math.round((i / files.length) * 100);
+        
+        // uploadPlus 콜백 호출
+        if (uploadPlus) {
+          uploadPlus();
+          uploadPlusCount++;
+        }
+
+        // 이미지 파일이면 browser-image-compression으로 WebP 변환 (움짤 포함)
+        if (file.type.startsWith('image/') && file.type !== 'image/webp') {
+          // 원본 파일 보존 (변환 실패 시 사용)
+          const originalFile = file;
+          console.log('[browser-image-compression] 이미지 파일 감지, WebP 변환 시작...', originalFile.name);
           
-          // uploadPlus 콜백 호출
-          if (uploadPlus) {
-            uploadPlus();
-            uploadPlusCount++;
-          }
-
-          // 이미지 파일이면 browser-image-compression으로 WebP 변환 (움짤 포함)
-          if (file.type.startsWith('image/') && file.type !== 'image/webp') {
-            // 원본 파일 보존 (변환 실패 시 사용)
-            const originalFile = file;
-            console.log('[browser-image-compression] 이미지 파일 감지, WebP 변환 시작...', originalFile.name);
+          try {
+            const webpBlob = await convertToWebP(originalFile, { width: 1400, quality: 0.85 });
+            // 원본 파일명에서 확장자 제거 후 .webp로 교체
+            const dotIdx = originalFile.name.lastIndexOf('.');
+            const base = dotIdx > -1 ? originalFile.name.substring(0, dotIdx) : originalFile.name;
+            const newName = `${base}.webp`;
+            file = new File([webpBlob], newName, { type: 'image/webp' });
+            console.log('[browser-image-compression] WebP 변환 완료:', newName, 'size:', webpBlob.size);
+          } catch (e) {
+            const error = e instanceof Error ? e : new Error(String(e));
+            console.warn('[browser-image-compression] WebP 변환 실패, 원본 파일을 서버에서 처리합니다:', error);
             
+            // 원본 파일로 복원 (서버에서 처리)
+            file = originalFile;
+            
+            // 서버에 로그 전송
             try {
-              const webpBlob = await convertToWebP(originalFile, { width: 1400, quality: 0.85 });
-              // 원본 파일명에서 확장자 제거 후 .webp로 교체
-              const dotIdx = originalFile.name.lastIndexOf('.');
-              const base = dotIdx > -1 ? originalFile.name.substring(0, dotIdx) : originalFile.name;
-              const newName = `${base}.webp`;
-              file = new File([webpBlob], newName, { type: 'image/webp' });
-              console.log('[browser-image-compression] WebP 변환 완료:', newName, 'size:', webpBlob.size);
-            } catch (e) {
-              const error = e instanceof Error ? e : new Error(String(e));
-              console.warn('[browser-image-compression] WebP 변환 실패, 원본 파일을 서버에서 처리합니다:', error);
-              
-              // 원본 파일로 복원 (서버에서 처리)
-              file = originalFile;
-              
-              // 서버에 로그 전송
-              try {
-                await fetch('/api/log', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    level: 'warn',
-                    message: 'Client WebP conversion failed (browser-image-compression) - will process on server',
-                    fileName: originalFile instanceof File ? originalFile.name : 'unknown',
-                    fileSize: originalFile.size,
-                    fileType: originalFile.type,
-                    error: error.message,
-                    stack: error.stack
-                  })
-                });
-              } catch (logError) {
-                console.error('Failed to send error log to server:', logError);
-              }
+              await fetch('/api/log', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  level: 'warn',
+                  message: 'Client WebP conversion failed (browser-image-compression) - will process on server',
+                  fileName: originalFile instanceof File ? originalFile.name : 'unknown',
+                  fileSize: originalFile.size,
+                  fileType: originalFile.type,
+                  error: error.message,
+                  stack: error.stack
+                })
+              });
+            } catch (logError) {
+              console.error('Failed to send error log to server:', logError);
             }
           }
+        }
 
-          // 비디오 파일이면 압축 시도 (FFmpeg 사용 가능한 경우에만)
-          if (file.type.startsWith('video/')) {
-            // 비디오 압축 중에는 이미지 오버레이 유지 (여러 파일 업로드 시)
-            if (ffmpegReady) {
-              console.log('비디오 파일 감지, 압축 시작...');
-              file = await compressVideo(file);
-            } else {
-              console.log('⚠️ FFmpeg 미준비 - 원본 비디오 업로드');
-            }
-          }
-
-          // 진행률 업데이트 (현재 파일 업로드 시작)
-          uploadProgress = Math.round(((i + 0.5) / files.length) * 100);
-
-          // FormData 생성
-          const formData = new FormData();
-          formData.append('upload', file);
-
-          // 서버에 업로드
-          const response = await fetch('/board/upload', {
-            method: 'POST',
-            body: formData,
-            credentials: 'include'
-          });
-
-          // 업로드 완료 후 진행률 업데이트
-          uploadProgress = Math.round(((i + 1) / files.length) * 100);
-
-          if (!response.ok) {
-            const errorText = await response.text();
-            console.error('Upload failed:', response.status, errorText);
-            throw new Error(`Upload failed: ${response.status}`);
-          }
-
-          const data = await response.json();
-          console.log('Upload response:', data);
-          const url = data.url;
-
-          // 현재 커서 위치에서 이미지/비디오 삽입
-          if (file.type.startsWith('video/')) {
-            // 커스텀 Video Blot으로 비디오 삽입
-            quillInstance.insertEmbed(currentRange.index, 'video', url);
-            quillInstance.insertText(currentRange.index + 1, '\n');
-            // 다음 삽입을 위해 커서 위치 업데이트
-            currentRange.index += 2;
-            console.log('비디오 삽입 완료:', url, 'type:', file.type);
+        // 비디오 파일이면 압축 시도 (FFmpeg 사용 가능한 경우에만)
+        if (file.type.startsWith('video/')) {
+          // 비디오 압축 중에는 이미지 오버레이 유지 (여러 파일 업로드 시)
+          if (ffmpegReady) {
+            console.log('비디오 파일 감지, 압축 시작...');
+            file = await compressVideo(file);
           } else {
-            // 이미지 태그로 삽입 (이미 WebP 변환 시 회전이 적용됨)
-            quillInstance.insertEmbed(currentRange.index, 'image', url);
-            quillInstance.insertText(currentRange.index + 1, '\n');
-            
-            // 다음 삽입을 위해 커서 위치 업데이트
-            currentRange.index += 2;
-            console.log('이미지 삽입 완료:', url);
+            console.log('⚠️ FFmpeg 미준비 - 원본 비디오 업로드');
           }
+        }
 
-          // uploadMinus 콜백 호출 (업로드 성공 시에만)
-          if (uploadMinus) {
-            uploadMinus();
-          }
+        // 진행률 업데이트 (현재 파일 업로드 시작)
+        uploadProgress = Math.round(((i + 0.5) / files.length) * 100);
+
+        // FormData 생성
+        const formData = new FormData();
+        formData.append('upload', file);
+
+        // 서버에 업로드
+        const response = await fetch('/board/upload', {
+          method: 'POST',
+          body: formData,
+          credentials: 'include'
+        });
+
+        // 업로드 완료 후 진행률 업데이트
+        uploadProgress = Math.round(((i + 1) / files.length) * 100);
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('Upload failed:', response.status, errorText);
+          throw new Error(`Upload failed: ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log('Upload response:', data);
+        const url = data.url;
+
+        // 현재 커서 위치에서 이미지/비디오 삽입
+        if (file.type.startsWith('video/')) {
+          // 커스텀 Video Blot으로 비디오 삽입
+          quillInstance.insertEmbed(currentRange.index, 'video', url);
+          quillInstance.insertText(currentRange.index + 1, '\n');
+          // 다음 삽입을 위해 커서 위치 업데이트
+          currentRange.index += 2;
+          console.log('비디오 삽입 완료:', url, 'type:', file.type);
+        } else {
+          // 이미지 태그로 삽입 (이미 WebP 변환 시 회전이 적용됨)
+          quillInstance.insertEmbed(currentRange.index, 'image', url);
+          quillInstance.insertText(currentRange.index + 1, '\n');
+          
+          // 다음 삽입을 위해 커서 위치 업데이트
+          currentRange.index += 2;
+          console.log('이미지 삽입 완료:', url);
+        }
+
+        // uploadMinus 콜백 호출 (업로드 성공 시에만)
+        if (uploadMinus) {
+          uploadMinus();
+        }
         successCount++;
       }
       
