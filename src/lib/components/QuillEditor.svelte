@@ -80,6 +80,7 @@
     const maxWidth = options.width || 1400;
     const quality = options.quality || 0.85;
     const fileName = file instanceof File ? file.name : 'image';
+    const fileSizeMB = file.size / (1024 * 1024);
 
     try {
       console.log('[browser-image-compression] 이미지 변환 시작:', fileName, 'type:', file.type, 'size:', file.size);
@@ -87,6 +88,12 @@
       // GIF는 WebP로 변환하지 않고 원본 유지 (서버에서 처리)
       if (file.type === 'image/gif') {
         console.log('[browser-image-compression] GIF 파일은 원본 유지');
+        return file;
+      }
+
+      // 1MB 이하는 변환하지 않고 원본 유지
+      if (fileSizeMB <= 1) {
+        console.log('[browser-image-compression] 1MB 이하 이미지는 원본 유지:', fileSizeMB.toFixed(2), 'MB');
         return file;
       }
 

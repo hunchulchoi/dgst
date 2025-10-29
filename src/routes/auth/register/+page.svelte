@@ -23,7 +23,7 @@
   import { PUBLIC_GOOGLE_RECAPTCHA_SITE_KEY } from '$env/static/public';
   import { goto } from '$app/navigation';
   import { browser } from '$app/environment';
-  import {blobToWebP} from "webp-converter-browser";
+  import imageCompression from 'browser-image-compression';
   import Swal from 'sweetalert2';
 
   // Svelte 5 Runes  
@@ -87,10 +87,26 @@
         formData.append('photo', files[0]);
 
       }else{
-        const webp = await blobToWebP(files[0], { width: 400 });
-
-        console.debug('webp', webp);
-        formData.append('photo', new File([webp], files[0].name));
+        const fileSizeMB = files[0].size / (1024 * 1024);
+        // 1MB 이하는 변환하지 않고 원본 유지
+        if (fileSizeMB > 1) {
+          try {
+            const webp = await imageCompression(files[0], {
+              maxSizeMB: 10,
+              maxWidthOrHeight: 400,
+              useWebWorker: true,
+              fileType: 'image/webp',
+              initialQuality: 0.85
+            });
+            formData.append('photo', webp);
+          } catch (error) {
+            console.error('[browser-image-compression] 이미지 변환 실패:', error);
+            formData.append('photo', files[0]); // 변환 실패 시 원본 사용
+          }
+        } else {
+          console.log('[browser-image-compression] 1MB 이하 이미지는 원본 유지:', fileSizeMB.toFixed(2), 'MB');
+          formData.append('photo', files[0]);
+        }
       }
 
     }
