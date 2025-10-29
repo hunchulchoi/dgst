@@ -33,13 +33,13 @@ const getErrorLogPath = () => {
 const koreaTimeFormat = winston.format.printf(({ level, message, timestamp, ...metadata }) => {
   const koreaTime = getKoreaTime();
   const levelUpper = level.toUpperCase();
-  
+
   // clientIp 제외
   const { clientIp, ...rest } = metadata;
-  
+
   // 나머지 메타데이터 포맷팅
   const metaString = Object.keys(rest).length > 0 ? ' ' + JSON.stringify(rest) : '';
-  
+
   return `[${koreaTime}] [${levelUpper}] ${message}${metaString}`;
 });
 

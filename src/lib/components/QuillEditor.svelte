@@ -433,7 +433,6 @@
           if (uploadMinus) {
             uploadMinus();
           }
-          uploadSuccess = true;
           successCount++;
         }
         
