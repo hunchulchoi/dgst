@@ -17,11 +17,16 @@ const KAKAO_CLIENT_ID = dynamicEnv.KAKAO_CLIENT_ID;
 const KAKAO_CLIENT_SECRET = dynamicEnv.KAKAO_CLIENT_SECRET;
 
 // 디버깅: 카카오 환경 변수 확인
+const hasKakaoCredentials = !!KAKAO_CLIENT_ID && !!KAKAO_CLIENT_SECRET;
 console.log('카카오 환경 변수 확인:', {
   hasClientId: !!KAKAO_CLIENT_ID,
   hasClientSecret: !!KAKAO_CLIENT_SECRET,
-  clientIdLength: KAKAO_CLIENT_ID?.length || 0
+  clientIdLength: KAKAO_CLIENT_ID?.length || 0,
+  willRegister: hasKakaoCredentials
 });
+if (!hasKakaoCredentials) {
+  console.warn('⚠️ 카카오 로그인 비활성화: KAKAO_CLIENT_ID 또는 KAKAO_CLIENT_SECRET이 설정되지 않았습니다.');
+}
 import { MongoDBAdapter } from '@auth/mongodb-adapter';
 import clientPromise from '$lib/database/clientPromise.js';
 import crypto from 'crypto';
@@ -51,8 +56,8 @@ function KakaoProvider(options) {
   const provider = {
     id: 'kakao',
     name: 'Kakao',
-    type: 'oauth' as const,
-    checks: ['state'] as const,
+    type: 'oauth',
+    checks: ['state'],
     clientId: clientId, // 명시적으로 설정
     clientSecret: clientSecret, // 명시적으로 설정
     authorization: {
@@ -176,7 +181,7 @@ function KakaoProvider(options) {
       };
     }
   };
-  
+
   // 디버깅: 프로바이더 객체 확인
   console.log('[KakaoProvider] 반환 객체:', {
     id: provider.id,
@@ -187,7 +192,7 @@ function KakaoProvider(options) {
     hasUserinfo: !!provider.userinfo,
     hasProfile: !!provider.profile
   });
-  
+
   return provider;
 }
 
@@ -217,7 +222,16 @@ const providers = [
       clientId: KAKAO_CLIENT_ID,
       clientSecret: KAKAO_CLIENT_SECRET
     })
-  ] : []).filter(Boolean), // filter(Boolean)로 undefined 제거
+  ] : [])
+    .filter((p) => {
+      // 프로바이더가 유효한지 확인
+      if (!p) return false;
+      const isValid = p && typeof p === 'object' && p.id === 'kakao';
+      if (!isValid) {
+        console.error('[Providers] 카카오 프로바이더가 유효하지 않음:', p);
+      }
+      return isValid;
+    }),
   Credentials({
     id: 'email-password-credential',
     name: 'Credentials',
