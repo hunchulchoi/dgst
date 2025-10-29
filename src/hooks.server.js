@@ -41,13 +41,20 @@ function KakaoProvider(options) {
   // 클로저로 options 캡처
   const { clientId, clientSecret } = options;
   
+  // 디버깅: clientId 확인
+  console.log('[KakaoProvider] 초기화:', {
+    hasClientId: !!clientId,
+    hasClientSecret: !!clientSecret,
+    clientIdLength: clientId?.length || 0
+  });
+  
   return {
     id: 'kakao',
     name: 'Kakao',
     type: 'oauth',
     checks: ['state'],
-    clientId,
-    clientSecret,
+    clientId: clientId, // 명시적으로 설정
+    clientSecret: clientSecret, // 명시적으로 설정
     authorization: {
       url: 'https://kauth.kakao.com/oauth/authorize',
       params: {
@@ -58,37 +65,58 @@ function KakaoProvider(options) {
         // @auth/core가 자동으로 추가한 scope를 제거하기 위해 완전히 커스텀 URL 생성
         const { provider, options: authOptions } = context;
         const url = new URL('https://kauth.kakao.com/oauth/authorize');
-        
+
         // 클로저에서 캡처한 clientId 사용
         url.searchParams.set('client_id', clientId);
         url.searchParams.set('redirect_uri', provider.callbackUrl);
         url.searchParams.set('response_type', 'code');
-        
+
         // scope는 명시적으로 제외
         // state 추가
         if (authOptions.state) {
           url.searchParams.set('state', authOptions.state);
         }
-        
+
         // scope 파라미터가 있다면 제거
         url.searchParams.delete('scope');
-        
+
         return { url: url.toString() };
       }
     },
     token: {
       url: 'https://kauth.kakao.com/oauth/token',
       async request({ params, provider }) {
-        // 클로저에서 캡처한 clientId, clientSecret 사용
-        if (!clientId || !clientSecret) {
+        // 디버깅: 전달된 값 확인
+        console.log('[KakaoProvider] token.request 호출:', {
+          providerClientId: provider.clientId,
+          providerClientSecret: provider.clientSecret ? '***' : undefined,
+          closureClientId: clientId ? '***' : undefined,
+          closureClientSecret: clientSecret ? '***' : undefined,
+          hasCode: !!params.code,
+          redirectUri: provider.callbackUrl
+        });
+        
+        // provider.clientId가 null이면 클로저 값 사용
+        const useClientId = provider.clientId || clientId;
+        const useClientSecret = provider.clientSecret || clientSecret;
+        
+        if (!useClientId || !useClientSecret) {
+          console.error('[KakaoProvider] clientId or clientSecret is missing:', {
+            useClientId: !!useClientId,
+            useClientSecret: !!useClientSecret,
+            providerClientId: !!provider.clientId,
+            providerClientSecret: !!provider.clientSecret,
+            closureClientId: !!clientId,
+            closureClientSecret: !!clientSecret
+          });
           throw new Error('Kakao clientId or clientSecret is missing');
         }
         
         // 카카오는 표준 OAuth2 형식 사용
         const body = new URLSearchParams({
           grant_type: 'authorization_code',
-          client_id: clientId,
-          client_secret: clientSecret,
+          client_id: useClientId,
+          client_secret: useClientSecret,
           code: params.code,
           redirect_uri: provider.callbackUrl
         });
@@ -104,9 +132,15 @@ function KakaoProvider(options) {
         const data = await response.json();
         
         if (!response.ok) {
+          console.error('[KakaoProvider] 토큰 요청 실패:', {
+            status: response.status,
+            statusText: response.statusText,
+            data
+          });
           throw new Error(`Kakao token error: ${JSON.stringify(data)}`);
         }
         
+        console.log('[KakaoProvider] 토큰 요청 성공');
         return data;
       }
     },
