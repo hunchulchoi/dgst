@@ -33,9 +33,25 @@ const getErrorLogPath = () => {
 
 // 커스텀 writer - 한국시간으로 포맷팅 (콘솔 출력용, clientIp 제외)
 class CustomWriter extends Writable {
+  constructor() {
+    super({ objectMode: false });
+  }
+  
   _write(chunk, encoding, callback) {
     try {
       const logString = chunk.toString();
+      if (!logString || logString.trim() === '') {
+        callback();
+        return;
+      }
+      
+      // 디버깅: _write가 호출되는지 확인 (첫 몇 번만)
+      if (!this._writeCount) this._writeCount = 0;
+      this._writeCount++;
+      if (this._writeCount <= 3) {
+        console.error(`[CustomWriter] _write called #${this._writeCount}, chunk length: ${chunk.length}`);
+      }
+      
       const log = JSON.parse(logString);
       const koreaTime = getKoreaTime();
       const levelNum = typeof log.level === 'number' ? log.level :
@@ -52,8 +68,9 @@ class CustomWriter extends Writable {
       console.log(`[${koreaTime}] [${level}] ${message}${extraFields}`);
       callback();
     } catch (err) {
-      console.log('CustomWriter error:', err.message);
-      console.log('Raw logString:', chunk.toString());
+      const error = err instanceof Error ? err : new Error(String(err));
+      console.error('CustomWriter error:', error.message);
+      console.error('Raw logString:', chunk.toString());
       callback();
     }
   }
@@ -81,15 +98,19 @@ const baseLogger = isDevelopment
       },
     },
   })
-  : pino({
-    level: 'info',
-    timestamp: () => `,"time":"${getKoreaTime()}"`,
-    formatters: {
-      level: (label) => {
-        return { level: label.toUpperCase() };
-      },
-    },
-  }, new CustomWriter());
+  : (() => {
+      const writer = new CustomWriter();
+      console.log('CustomWriter instance created for production');
+      return pino({
+        level: 'info',
+        timestamp: () => `,"time":"${getKoreaTime()}"`,
+        formatters: {
+          level: (label) => {
+            return { level: label.toUpperCase() };
+          },
+        },
+      }, writer);
+    })();
 
 // 실패 로그 파일 writer
 const writeErrorToFile = (level, data) => {
