@@ -3,6 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 const isDevelopment = process.env.NODE_ENV !== 'production';
+console.log('Logger environment check:', { NODE_ENV: process.env.NODE_ENV, isDevelopment });
 
 // 한국시간 변환 함수
 const getKoreaTime = () => {
@@ -48,7 +49,8 @@ class CustomWriter {
 
       console.log(`[${koreaTime}] [${level}] ${message}${extraFields}`);
     } catch (err) {
-      console.log(logString);
+      console.log('CustomWriter error:', err.message);
+      console.log('Raw logString:', logString);
     }
   }
 }
