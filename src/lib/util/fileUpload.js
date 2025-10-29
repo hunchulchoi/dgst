@@ -32,7 +32,7 @@ function safeString(_name, _path) {
 
 export async function write(file, email, preservePath = 'jjal') {
   try {
-    console.debug('fileUpload.write called:', { fileName: file.name, preservePath, email });
+    logger.info({ fileName: file.name, preservePath, email, filesize: file.size, type: file.type, message: 'fileUpload.write called' });
 
     const now = new Date();
 
@@ -148,12 +148,12 @@ export async function write(file, email, preservePath = 'jjal') {
     console.error('File upload error:', err);
     logger.error({ fileName: file.name, preservePath, err, message: '파일 저장 실패' });
     throw err;
-  }
-}
 
-export async function read(file, preservePath) {
-  if (!safeString(file.name, preservePath)) {
-    logger.error({ fileName: file.name, preservePath, message: 'read safeString failed' });
-    throw error(400, { message: '잘못된 요청입니다.' });
   }
-}
+
+  export async function read(file, preservePath) {
+    if (!safeString(file.name, preservePath)) {
+      logger.error({ fileName: file.name, preservePath, message: 'read safeString failed' });
+      throw error(400, { message: '잘못된 요청입니다.' });
+    }
+  }
