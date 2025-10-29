@@ -1,4 +1,4 @@
-import pino from 'pino';
+import winston from 'winston';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -29,76 +29,67 @@ const getErrorLogPath = () => {
   return path.join(logDir, `error-${new Date().toISOString().split('T')[0]}.log`);
 };
 
-// 메인 logger 설정
-const baseLogger = isDevelopment
-  ? pino({
-    level: 'debug',
-    timestamp: () => `,"time":"${getKoreaTime()}"`,
-    formatters: {
-      level: (label) => {
-        return { level: label.toUpperCase() };
-      },
-    },
-    transport: {
-      target: 'pino-pretty',
-      options: {
-        colorize: true,
-        translateTime: false, // timestamp formatter에서 이미 한국시간 처리
-        ignore: 'pid,hostname,clientIp', // 콘솔 출력 시 clientIp 제외
-        singleLine: true,
-        customColors: 'info:blue,warn:yellow,error:red',
-        // messageFormat 제거 - Worker 스레드 직렬화 문제 방지
-      },
-    },
-  })
-  : pino({
-    level: 'info',
-    timestamp: () => `,"time":"${getKoreaTime()}"`,
-    formatters: {
-      level: (label) => {
-        return { level: label.toUpperCase() };
-      },
-    },
-  });
+// 커스텀 포맷터: 한국시간 + 메시지 포맷 (clientIp 제외)
+const koreaTimeFormat = winston.format.printf(({ level, message, timestamp, ...metadata }) => {
+  const koreaTime = getKoreaTime();
+  const levelUpper = level.toUpperCase();
+  
+  // clientIp 제외
+  const { clientIp, ...rest } = metadata;
+  
+  // 나머지 메타데이터 포맷팅
+  const metaString = Object.keys(rest).length > 0 ? ' ' + JSON.stringify(rest) : '';
+  
+  return `[${koreaTime}] [${levelUpper}] ${message}${metaString}`;
+});
 
-// 실패 로그 파일 writer
-const writeErrorToFile = (level, data) => {
-  try {
-    const logPath = getErrorLogPath();
+// 개발 환경 포맷터 (컬러 + 한국시간)
+const devFormat = winston.format.combine(
+  winston.format.colorize(),
+  winston.format.printf(({ level, message, ...metadata }) => {
     const koreaTime = getKoreaTime();
-    const logEntry = JSON.stringify({
-      ...data,
-      level,
-      timestamp: koreaTime,
-    }) + '\n';
+    const { clientIp, ...rest } = metadata;
+    const metaString = Object.keys(rest).length > 0 ? ' ' + JSON.stringify(rest) : '';
+    return `[${koreaTime}] ${level} ${message}${metaString}`;
+  })
+);
 
-    fs.appendFileSync(logPath, logEntry, 'utf8');
-  } catch (err) {
-    console.error('Failed to write error log to file:', err);
-  }
-};
+// 프로덕션 환경 포맷터 (JSON + 한국시간)
+const prodFormat = winston.format.combine(
+  winston.format.timestamp({ format: () => getKoreaTime() }),
+  winston.format.printf(({ timestamp, level, message, ...metadata }) => {
+    const { clientIp, ...rest } = metadata;
+    return JSON.stringify({
+      time: timestamp,
+      level: level.toUpperCase(),
+      message,
+      ...rest
+    });
+  })
+);
 
-// finalLogger는 baseLogger와 동일하게 사용
-const finalLogger = baseLogger;
+// 파일 포맷터 (error/warn 로그용)
+const fileFormat = winston.format.combine(
+  winston.format.timestamp({ format: () => getKoreaTime() }),
+  winston.format.json()
+);
 
-// Proxy를 사용하여 error/warn 메서드만 오버라이드
-const logger = new Proxy(finalLogger, {
-  get(target, prop) {
-    if (prop === 'error') {
-      return (data) => {
-        target.error(data);
-        writeErrorToFile('error', data);
-      };
-    }
-    if (prop === 'warn') {
-      return (data) => {
-        target.warn(data);
-        writeErrorToFile('warn', data);
-      };
-    }
-    // 나머지는 원본 logger의 속성 반환
-    return target[prop];
-  }
+// Winston logger 생성
+const logger = winston.createLogger({
+  level: isDevelopment ? 'debug' : 'info',
+  format: isDevelopment ? devFormat : prodFormat,
+  transports: [
+    // 콘솔 출력
+    new winston.transports.Console({
+      format: isDevelopment ? devFormat : prodFormat,
+    }),
+    // 에러/경고 로그 파일 저장
+    new winston.transports.File({
+      filename: getErrorLogPath(),
+      level: 'warn', // warn 이상만 저장
+      format: fileFormat,
+    }),
+  ],
 });
 
 export default logger;
