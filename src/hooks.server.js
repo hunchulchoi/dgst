@@ -10,10 +10,18 @@ import {
   VIP_EMAIL,
   VIP_FAKE_EMAIL
 } from '$env/static/private';
+import { env as dynamicEnv } from '$env/dynamic/private';
 
 // 카카오 환경 변수 (선택적 - 환경 변수 파일에 추가 필요)
-const KAKAO_CLIENT_ID = process.env.KAKAO_CLIENT_ID;
-const KAKAO_CLIENT_SECRET = process.env.KAKAO_CLIENT_SECRET;
+const KAKAO_CLIENT_ID = dynamicEnv.KAKAO_CLIENT_ID;
+const KAKAO_CLIENT_SECRET = dynamicEnv.KAKAO_CLIENT_SECRET;
+
+// 디버깅: 카카오 환경 변수 확인
+console.log('카카오 환경 변수 확인:', {
+  hasClientId: !!KAKAO_CLIENT_ID,
+  hasClientSecret: !!KAKAO_CLIENT_SECRET,
+  clientIdLength: KAKAO_CLIENT_ID?.length || 0
+});
 import { MongoDBAdapter } from '@auth/mongodb-adapter';
 import clientPromise from '$lib/database/clientPromise.js';
 import crypto from 'crypto';
@@ -64,8 +72,7 @@ function KakaoProvider(options) {
 }
 
 // SvelteKit 2 + @auth/sveltekit v1.x 호환
-export const { handle: authHandle, signIn, signOut } = SvelteKitAuth({
-  providers: [
+const providers = [
     GoogleProvider({
       clientId: GOOGLE_CLIENT_ID,
       clientSecret: GOOGLE_CLIENT_SECRET,
@@ -140,7 +147,13 @@ export const { handle: authHandle, signIn, signOut } = SvelteKitAuth({
         }
       }
     })
-  ],
+];
+
+// 프로바이더 목록 로그
+console.log('등록된 프로바이더:', providers.map(p => p.id || p.name));
+
+export const { handle: authHandle, signIn, signOut } = SvelteKitAuth({
+  providers,
   adapter: MongoDBAdapter(clientPromise, { databaseName: DB_NAME }),
   pages: {
     newUser: '/auth/profile'
