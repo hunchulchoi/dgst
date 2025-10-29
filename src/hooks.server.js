@@ -45,18 +45,22 @@ function KakaoProvider(options) {
     authorization: {
       url: 'https://kauth.kakao.com/oauth/authorize',
       params: {
-        scope: 'profile_nickname,account_email',
         response_type: 'code'
       }
     },
     token: 'https://kauth.kakao.com/oauth/token',
     userinfo: 'https://kapi.kakao.com/v2/user/me',
     profile(profile) {
-      const kakaoAccount = profile.kakao_account;
+      const kakaoAccount = profile.kakao_account || {};
+      // 이메일이나 닉네임 동의 없이도 기본 정보만으로 로그인 가능
+      // 카카오 ID를 이메일 대신 사용 (해시 처리)
+      const kakaoId = String(profile.id);
+      const emailHash = crypto.createHash('sha512').update(`kakao:${kakaoId}`).digest('base64url');
+      
       return {
-        id: String(profile.id),
-        email: kakaoAccount?.email ? crypto.createHash('sha512').update(kakaoAccount.email).digest('base64url') : undefined,
-        nickname: kakaoAccount?.profile?.nickname || kakaoAccount?.name || '카카오 사용자',
+        id: kakaoId,
+        email: kakaoAccount?.email ? crypto.createHash('sha512').update(kakaoAccount.email).digest('base64url') : emailHash,
+        nickname: kakaoAccount?.profile?.nickname || kakaoAccount?.name || `카카오${kakaoId.slice(-4)}`,
         introduction: '우리 자기',
         photo: kakaoAccount?.profile?.profile_image_url || kakaoAccount?.profile?.thumbnail_image_url,
         grade: 'user',
@@ -73,80 +77,80 @@ function KakaoProvider(options) {
 
 // SvelteKit 2 + @auth/sveltekit v1.x 호환
 const providers = [
-    GoogleProvider({
-      clientId: GOOGLE_CLIENT_ID,
-      clientSecret: GOOGLE_CLIENT_SECRET,
-      profile(profile) {
-        return {
-          id: profile.sub,
-          email: crypto.createHash('sha512').update(profile.email).digest('base64url'),
-          nickname: profile.name,
-          introduction: '우리 자기',
-          photo: profile.image,
-          grade: 'user',
-          state: 'registered',
-          created_at: new Date(),
-          latest_login_at: new Date(),
-          latest_modified_at: new Date()
-        };
-      }
-    }),
-    // 카카오 프로바이더 (환경 변수가 설정되어 있을 때만 활성화)
-    ...(KAKAO_CLIENT_ID && KAKAO_CLIENT_SECRET ? [
-      KakaoProvider({
-        clientId: KAKAO_CLIENT_ID,
-        clientSecret: KAKAO_CLIENT_SECRET
-      })
-    ] : []),
-    Credentials({
-      id: 'email-password-credential',
-      name: 'Credentials',
-      type: 'credentials',
-      credentials: {
-        email: { label: 'Email', type: 'email', placeholder: '이메일 입력하세요' },
-        password: { label: 'Password', type: 'password' }
-      },
-      async authorize(credentials) {
-        const { email, password } = credentials;
-
-        const encPwd = crypto.createHash('sha512').update(password).digest('base64url');
-
-        if (email === VIP_FAKE_EMAIL) {
-          const user = await clientPromise.then((db) =>
-            db
-              .db(DB_NAME)
-              .collection('users')
-              .findOne(
-                { email: VIP_EMAIL, ccd: encPwd },
-                {
-                  id: 1,
-                  email: 1,
-                  nickname: 1,
-                  introduction: 1,
-                  photo: 1,
-                  state: 1
-                }
-              )
-          );
-
-          if (!user) {
-            logger.warn({
-              message: 'VIP login failed',
-              email: VIP_FAKE_EMAIL,
-              vipEmail: VIP_EMAIL
-            });
-          }
-
-          return user;
-        } else {
-          logger.warn({
-            message: 'Login failed - credentials provider not available',
-            email
-          });
-          throw error(405);
-        }
-      }
+  GoogleProvider({
+    clientId: GOOGLE_CLIENT_ID,
+    clientSecret: GOOGLE_CLIENT_SECRET,
+    profile(profile) {
+      return {
+        id: profile.sub,
+        email: crypto.createHash('sha512').update(profile.email).digest('base64url'),
+        nickname: profile.name,
+        introduction: '우리 자기',
+        photo: profile.image,
+        grade: 'user',
+        state: 'registered',
+        created_at: new Date(),
+        latest_login_at: new Date(),
+        latest_modified_at: new Date()
+      };
+    }
+  }),
+  // 카카오 프로바이더 (환경 변수가 설정되어 있을 때만 활성화)
+  ...(KAKAO_CLIENT_ID && KAKAO_CLIENT_SECRET ? [
+    KakaoProvider({
+      clientId: KAKAO_CLIENT_ID,
+      clientSecret: KAKAO_CLIENT_SECRET
     })
+  ] : []),
+  Credentials({
+    id: 'email-password-credential',
+    name: 'Credentials',
+    type: 'credentials',
+    credentials: {
+      email: { label: 'Email', type: 'email', placeholder: '이메일 입력하세요' },
+      password: { label: 'Password', type: 'password' }
+    },
+    async authorize(credentials) {
+      const { email, password } = credentials;
+
+      const encPwd = crypto.createHash('sha512').update(password).digest('base64url');
+
+      if (email === VIP_FAKE_EMAIL) {
+        const user = await clientPromise.then((db) =>
+          db
+            .db(DB_NAME)
+            .collection('users')
+            .findOne(
+              { email: VIP_EMAIL, ccd: encPwd },
+              {
+                id: 1,
+                email: 1,
+                nickname: 1,
+                introduction: 1,
+                photo: 1,
+                state: 1
+              }
+            )
+        );
+
+        if (!user) {
+          logger.warn({
+            message: 'VIP login failed',
+            email: VIP_FAKE_EMAIL,
+            vipEmail: VIP_EMAIL
+          });
+        }
+
+        return user;
+      } else {
+        logger.warn({
+          message: 'Login failed - credentials provider not available',
+          email
+        });
+        throw error(405);
+      }
+    }
+  })
 ];
 
 // 프로바이더 목록 로그
