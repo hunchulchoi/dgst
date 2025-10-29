@@ -949,6 +949,38 @@
       quillInstance.root.addEventListener('paste', async (e) => {
         console.log('📋 붙여넣기 이벤트 발생!');
         const clipboardData = e.clipboardData || window.clipboardData;
+        
+        // 클립보드에서 이미지 파일 확인
+        if (clipboardData.items && clipboardData.items.length > 0) {
+          const items = Array.from(clipboardData.items);
+          const imageItem = items.find(item => item.type.startsWith('image/'));
+          
+          if (imageItem) {
+            e.preventDefault();
+            console.log('🖼️ 이미지 붙여넣기 감지:', imageItem.type);
+            
+            const file = imageItem.getAsFile();
+            if (file) {
+              // 현재 커서 위치 가져오기
+              const range = quillInstance.getSelection(true);
+              if (!range) {
+                quillInstance.setSelection(quillInstance.getLength(), 0);
+              }
+              
+              // imageHandler를 사용하여 이미지 업로드 및 삽입
+              const fakeEvent = {
+                target: {
+                  files: [file]
+                }
+              };
+              
+              await imageHandler(fakeEvent);
+              return; // 이미지 처리 후 종료
+            }
+          }
+        }
+        
+        // 이미지가 없으면 텍스트 URL 처리
         const pastedText = clipboardData.getData('text');
         
         console.log('📋 붙여넣기 감지:', pastedText);
