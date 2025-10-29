@@ -112,6 +112,7 @@
   import BoardList from '$lib/components/board_list.svelte';
   import OGPreview from '$lib/components/OGPreview.svelte';
   import sanitizeHtml from 'sanitize-html';
+    import { _ } from '$env/static/private';
 
   // Svelte 5 Runes - Props
   let { data } = $props();
@@ -303,13 +304,26 @@
           rePreviewEl.classList.add('d-none');
         }
 
-        toast('저장 되었습니다.');
+        Swal.fire({
+          icon: 'success',
+          title: '저장 되었습니다.',
+          isToast: true,
+        })
+
+        //toast('저장 되었습니다.');
 
         comments();
       })
       .catch((error) => {
         console.error('❌ 댓글 저장 실패:', error);
-        toast(error.message ?? '저장 중 오류가 발생했습니다.', 'danger');
+        //toast(error.message ?? '저장 중 오류가 발생했습니다.', 'danger');
+
+        Swal.fire({
+          icon: 'error',
+          title: '저장 실패',
+          text: error.message ?? '저장 중 오류가 발생했습니다.',
+          isToast: true,
+        })
       })
       .finally(() => {
         console.log('🏁 댓글 저장 완료 - commentLoading을 false로 설정');
@@ -329,17 +343,34 @@
       confirmButtonText: '삭제'
     }).then((result) => {
       if (result.isConfirmed) {
+
+        commentLoading = true;
+
         fetch(`/board/${boardId}/${articleId}/comment`, {
           method: 'DELETE',
           body: JSON.stringify({commentId})
         })
         .then(async (res) => {
+
           if (res.status !== 200) {
             const {message} = await res.json();
-            toast(message);
+            Swal.fire({
+              icon: 'error',
+              title: message,
+              isToast: true,
+            })
             return;
           }
-          toast(await res.text());
+
+          const _message = await res.text();
+
+          Swal.fire({
+            icon: 'success',
+            title: _message,
+            isToast: true,
+          })
+
+          commentLoading = false;
           comments();
         })
         .catch((err) => {
@@ -353,6 +384,8 @@
             cancelButtonColor: '#d33',
             confirmButtonText: '확인'
           });
+        }).finally(() => {
+          commentLoading = false;
         });
       }
     })
@@ -421,12 +454,23 @@
         return;
       }
 
-      toast('댓글이 수정되었습니다.');
+      Swal.fire({
+        icon: 'success',
+        title: '댓글이 수정되었습니다.',
+        isToast: true,
+      })
+
       cancelEditComment();
       comments();
     } catch (error) {
       console.error('댓글 수정 실패:', error);
-      toast('댓글 수정 중 오류가 발생했습니다.', 'danger');
+
+      Swal.fire({
+        icon: 'error',
+        title: '댓글 수정 중 오류가 발생했습니다.',
+        isToast: true,
+      })
+      
     } finally {
       commentLoading = false;
     }
