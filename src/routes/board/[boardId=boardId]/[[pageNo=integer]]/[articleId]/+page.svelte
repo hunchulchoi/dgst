@@ -915,7 +915,7 @@
  
     console.log('url', $page.url)
 
-    const hash = $page.url.searchParams.get('a');
+      const hash = $page.url.searchParams.get('a');
 
     if(hash){
       const el = document.querySelector(`#${hash}`);
@@ -1095,7 +1095,7 @@
                   <!-- 댓글 수정 모드 -->
                   <div class="border p-3 rounded-4 shadow-sm bg-light position-relative">
                     {#if commentLoading}
-                      <div class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center rounded-4" style="z-index: 1000; background-color: rgba(255, 255, 255, 0.75);">
+                      <div class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center rounded-4" style="z-index: 1000; background-color: rgba(255, 255, 255, 0.50);">
                         <div class="text-center">
                           <div class="spinner-border text-primary" role="status">
                             <span class="visually-hidden">Loading...</span>
@@ -1347,7 +1347,7 @@
       {#if data.session?.user.nickname}
         <div class="border p-3 rounded-4 shadow-sm mt-3 position-relative" bind:this={commentDiv}>
           {#if commentLoading}
-            <div class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center rounded-4" style="z-index: 1000; background-color: rgba(255, 255, 255, 0.75); left: 0; right: 0; top: 0; bottom: 0;">
+            <div class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center rounded-4" style="z-index: 1000; background-color: rgba(255, 255, 255, 0.50); left: 0; right: 0; top: 0; bottom: 0;">
               <div class="text-center">
                 <div class="spinner-border text-primary" role="status">
                   <span class="visually-hidden">Loading...</span>

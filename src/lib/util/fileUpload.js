@@ -146,6 +146,7 @@ export async function write(file, email, preservePath = 'jjal') {
     }
   } catch (err) {
     console.error('File upload error:', err);
+    logger.error({ fileName: file.name, preservePath, err, message: '파일 저장 실패' });
     throw err;
   }
 }
