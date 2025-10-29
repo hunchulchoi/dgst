@@ -4,10 +4,17 @@ import connectDB from "$lib/database/mongoosePriomise.js";
 connectDB();
 
 export const load = async (event) => {
-  // 캐시 방지 헤더 설정
-  event.setHeaders({
-    'Cache-Control': 'private, max-age=0, no-store, must-revalidate, proxy-revalidate'
-  });
+  // 캐시 방지 헤더 설정 (이미 설정된 경우 무시)
+  try {
+    event.setHeaders({
+      'Cache-Control': 'private, max-age=0, no-store, must-revalidate, proxy-revalidate'
+    });
+  } catch (err) {
+    // 헤더가 이미 설정된 경우 무시
+    if (!err.message?.includes('already set')) {
+      throw err;
+    }
+  }
 
   const session = await event.locals.auth();
 
