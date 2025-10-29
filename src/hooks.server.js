@@ -10,6 +10,10 @@ import {
   VIP_EMAIL,
   VIP_FAKE_EMAIL
 } from '$env/static/private';
+
+// 카카오 환경 변수 (선택적 - 환경 변수 파일에 추가 필요)
+const KAKAO_CLIENT_ID = process.env.KAKAO_CLIENT_ID;
+const KAKAO_CLIENT_SECRET = process.env.KAKAO_CLIENT_SECRET;
 import { MongoDBAdapter } from '@auth/mongodb-adapter';
 import clientPromise from '$lib/database/clientPromise.js';
 import crypto from 'crypto';
@@ -22,6 +26,42 @@ export function depends(key) {
   cache.set(key, new Date().getTime());
 }
 
+/**
+ * 카카오 OAuth2 프로바이더
+ */
+function KakaoProvider(options) {
+  return {
+    id: 'kakao',
+    name: 'Kakao',
+    type: 'oauth',
+    authorization: {
+      url: 'https://kauth.kakao.com/oauth/authorize',
+      params: {
+        scope: 'profile_nickname,account_email',
+        response_type: 'code'
+      }
+    },
+    token: 'https://kauth.kakao.com/oauth/token',
+    userinfo: 'https://kapi.kakao.com/v2/user/me',
+    profile(profile) {
+      const kakaoAccount = profile.kakao_account;
+      return {
+        id: String(profile.id),
+        email: kakaoAccount?.email ? crypto.createHash('sha512').update(kakaoAccount.email).digest('base64url') : undefined,
+        nickname: kakaoAccount?.profile?.nickname || kakaoAccount?.name || '카카오 사용자',
+        introduction: '우리 자기',
+        photo: kakaoAccount?.profile?.profile_image_url || kakaoAccount?.profile?.thumbnail_image_url,
+        grade: 'user',
+        state: 'registered',
+        created_at: new Date(),
+        latest_login_at: new Date(),
+        latest_modified_at: new Date()
+      };
+    },
+    clientId: options.clientId,
+    clientSecret: options.clientSecret
+  };
+}
 
 // SvelteKit 2 + @auth/sveltekit v1.x 호환
 export const { handle: authHandle, signIn, signOut } = SvelteKitAuth({
@@ -44,6 +84,13 @@ export const { handle: authHandle, signIn, signOut } = SvelteKitAuth({
         };
       }
     }),
+    // 카카오 프로바이더 (환경 변수가 설정되어 있을 때만 활성화)
+    ...(KAKAO_CLIENT_ID && KAKAO_CLIENT_SECRET ? [
+      KakaoProvider({
+        clientId: KAKAO_CLIENT_ID,
+        clientSecret: KAKAO_CLIENT_SECRET
+      })
+    ] : []),
     Credentials({
       id: 'email-password-credential',
       name: 'Credentials',
