@@ -1,10 +1,8 @@
 import pino from 'pino';
 import * as fs from 'fs';
 import * as path from 'path';
-import { Writable } from 'stream';
 
 const isDevelopment = process.env.NODE_ENV !== 'production';
-console.log('Logger environment check:', { NODE_ENV: process.env.NODE_ENV, isDevelopment });
 
 // 한국시간 변환 함수
 const getKoreaTime = () => {
@@ -31,51 +29,6 @@ const getErrorLogPath = () => {
   return path.join(logDir, `error-${new Date().toISOString().split('T')[0]}.log`);
 };
 
-// 커스텀 writer - 한국시간으로 포맷팅 (콘솔 출력용, clientIp 제외)
-class CustomWriter extends Writable {
-  constructor() {
-    super({ objectMode: false });
-  }
-  
-  _write(chunk, encoding, callback) {
-    try {
-      const logString = chunk.toString();
-      if (!logString || logString.trim() === '') {
-        callback();
-        return;
-      }
-      
-      // 디버깅: _write가 호출되는지 확인 (첫 몇 번만)
-      if (!this._writeCount) this._writeCount = 0;
-      this._writeCount++;
-      if (this._writeCount <= 3) {
-        console.error(`[CustomWriter] _write called #${this._writeCount}, chunk length: ${chunk.length}`);
-      }
-      
-      const log = JSON.parse(logString);
-      const koreaTime = getKoreaTime();
-      const levelNum = typeof log.level === 'number' ? log.level :
-        (log.level === 'error' || log.level === 'ERROR' ? 50 :
-          log.level === 'warn' || log.level === 'WARN' ? 40 :
-            log.level === 'info' || log.level === 'INFO' ? 30 :
-              log.level === 'debug' || log.level === 'DEBUG' ? 20 : 10);
-      const level = levelNum >= 50 ? 'ERROR' : levelNum >= 40 ? 'WARN' : levelNum >= 30 ? 'INFO' : levelNum >= 20 ? 'DEBUG' : 'TRACE';
-      const message = log.msg || log.message || '';
-      // 콘솔 출력 시 clientIp 제외
-      const { time, level: _, msg, message: __, pid, hostname, clientIp, ...rest } = log;
-      const extraFields = Object.keys(rest).length > 0 ? ' ' + JSON.stringify(rest) : '';
-
-      console.log(`[${koreaTime}] [${level}] ${message}${extraFields}`);
-      callback();
-    } catch (err) {
-      const error = err instanceof Error ? err : new Error(String(err));
-      console.error('CustomWriter error:', error.message);
-      console.error('Raw logString:', chunk.toString());
-      callback();
-    }
-  }
-}
-
 // 메인 logger 설정
 const baseLogger = isDevelopment
   ? pino({
@@ -98,19 +51,15 @@ const baseLogger = isDevelopment
       },
     },
   })
-  : (() => {
-      const writer = new CustomWriter();
-      console.log('CustomWriter instance created for production');
-      return pino({
-        level: 'info',
-        timestamp: () => `,"time":"${getKoreaTime()}"`,
-        formatters: {
-          level: (label) => {
-            return { level: label.toUpperCase() };
-          },
-        },
-      }, writer);
-    })();
+  : pino({
+    level: 'info',
+    timestamp: () => `,"time":"${getKoreaTime()}"`,
+    formatters: {
+      level: (label) => {
+        return { level: label.toUpperCase() };
+      },
+    },
+  });
 
 // 실패 로그 파일 writer
 const writeErrorToFile = (level, data) => {
