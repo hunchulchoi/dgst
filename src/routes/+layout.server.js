@@ -4,6 +4,11 @@ import connectDB from "$lib/database/mongoosePriomise.js";
 connectDB();
 
 export const load = async (event) => {
+  // 캐시 방지 헤더 설정
+  event.setHeaders({
+    'Cache-Control': 'private, max-age=0, no-store, must-revalidate, proxy-revalidate'
+  });
+
   const session = await event.locals.auth();
 
   // 캐시 방지는 hooks.server.js에서 처리

@@ -20,7 +20,7 @@
   import theme from '$lib/shared/stores/theme.js';
 
   import { signIn, signOut } from '@auth/sveltekit/client';
-  import { goto } from '$app/navigation';
+  import { goto, invalidateAll } from '$app/navigation';
   import { navigating } from '$app/stores';
 
   import { alarmCount } from '$lib/util/store.js';
@@ -43,6 +43,26 @@
     const handleGoogleSignIn = () => {
     //console.log('handleGoogleSignIn');
     signIn('google', { callbackUrl: '/' });
+  };
+
+  // 자유게시판 클릭 핸들러 - 항상 캐시 무효화
+  const handleFreeBoardClick = (e) => {
+    e.preventDefault();
+    console.log('📌 [자유게시판] 링크 클릭 - 강제 새로고침:', {
+      currentPath: pathname,
+      timestamp: new Date().toISOString()
+    });
+    goto('/board/free', { invalidateAll: true });
+  };
+
+  // 알림 클릭 핸들러 - 항상 캐시 무효화
+  const handleAlarmClick = (e) => {
+    e.preventDefault();
+    console.log('🔔 [알림] 링크 클릭 - 강제 새로고침:', {
+      currentPath: pathname,
+      timestamp: new Date().toISOString()
+    });
+    goto('/board/alarm', { invalidateAll: true });
   };
 
   let colorModeIcon = $derived(
@@ -119,9 +139,9 @@
 
     <Nav tabs data-svelteit-preload-data="false">
       <NavItem>
-        <NavLink href="/board/free" 
-                 data-sveltekit-invalidate="all" 
-                 data-sveltekit-preload-data="tap"
+        <NavLink 
+                 href="/board/free" 
+                 onclick={handleFreeBoardClick}
                  active={pathname?.startsWith('/board/free')}>
           자유게시판
           {#if showSpinner}
@@ -131,9 +151,9 @@
       </NavItem>
       {#if session?.user?.nickname}
         <NavItem>
-          <NavLink href="/board/alarm" 
-                  data-sveltekit-invalidate="all"
-                  data-sveltekit-preload-data="tap"
+          <NavLink 
+                  href="/board/alarm" 
+                  onclick={handleAlarmClick}
                   active={pathname?.startsWith('/board/alarm')}>
             <Icon name="megaphone" class="text-success me-2"/>알림
             {#if $alarmCount && $alarmCount > 0}

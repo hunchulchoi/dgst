@@ -18,7 +18,7 @@
   <meta property="twitter:description" content={`${data.article.content.replace(/<[^>]*>/g, '').substring(0, 20)}`} />
   <meta property="twitter:image" content="https://www.dgst.me/logo/twitter_header_photo_2.png" />
   
-  <script defer src="https://platform.instagram.com/en_US/embeds.js"></script>
+  <!-- <script defer src="https://platform.instagram.com/en_US/embeds.js"></script> -->
   <script defer src="//www.tiktok.com/embed.js"></script>
   <style>
 
@@ -470,7 +470,7 @@
         title: '댓글 수정 중 오류가 발생했습니다.',
         isToast: true,
       })
-      
+
     } finally {
       commentLoading = false;
     }

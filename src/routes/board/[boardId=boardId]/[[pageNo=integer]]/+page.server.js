@@ -5,16 +5,16 @@ connectDB();
 
 export const load = async ({ params, depends }) => {
   const startTime = Date.now();
+  const timestamp = new Date().toISOString();
 
   // 캐시 키를 매번 다르게 생성하여 캐시 방지
   depends('board-list');
 
-  // 캐시 방지는 레이아웃에서 일괄 설정
-
-  console.log('📊 게시판 목록 로드 시작:', {
+  console.log('📊 [자유게시판] load 함수 시작:', {
     boardId: params.boardId,
     pageNo: params.pageNo,
-    timestamp: new Date().toISOString()
+    timestamp,
+    startTime
   });
 
   // 한페이지에 보여주는 게시물
@@ -25,7 +25,9 @@ export const load = async ({ params, depends }) => {
   try {
     const filter = { boardId: params.boardId, state: 'write', createdAt: { $gt: new Date(new Date() - 1000 * 60 * 60 * 24 * 3) } };
 
+    const dbStartTime = Date.now();
     const total = await Article.countDocuments(filter);
+    const dbEndTime = Date.now();
 
     console.debug('total', total);
 
@@ -56,6 +58,7 @@ export const load = async ({ params, depends }) => {
     }
 
 
+    const articlesStartTime = Date.now();
     const articles = await Article.find(filter,
       { content: 1, createdAt: 1, nickname: 1, title: 1, read: 1, like: 1, reads: 1, comments: 1, likes: 1 }
     )
@@ -64,6 +67,7 @@ export const load = async ({ params, depends }) => {
       .limit(pageUnit)
       .populate({ path: 'comments', select: 'createdAt' })
       .exec();
+    const articlesEndTime = Date.now();
 
     const jsonArticles = JSON.parse(JSON.stringify(articles));
 
@@ -90,13 +94,16 @@ export const load = async ({ params, depends }) => {
     const endTime = Date.now();
     const executionTime = endTime - startTime;
 
-    console.log('✅ 게시판 목록 로드 완료:', {
+    console.log('✅ [자유게시판] load 함수 완료:', {
       boardId: params.boardId,
       pageNo,
       articleCount: jsonArticles.length,
       totalArticles: total,
-      executionTime: `${executionTime}ms`,
-      status: 'success'
+      countTime: `${dbEndTime - dbStartTime}ms`,
+      findTime: `${articlesEndTime - articlesStartTime}ms`,
+      totalTime: `${executionTime}ms`,
+      timestamp,
+      fromCache: false // 항상 DB에서 조회
     });
 
     return { pageNo, maxPage, startNo, endNo, articles: jsonArticles };
