@@ -29,9 +29,12 @@
 
   //console.log('data.session', data);
 
-  if (!data.session) {
-    if (browser) goto('/', { replaceState: true });
-  }
+  // 클라이언트에서만 세션 체크 및 리다이렉트
+  $effect(() => {
+    if (browser && !data.session) {
+      goto('/', { replaceState: true });
+    }
+  });
 
   let token = '';
   function checkRecaptcha() {
