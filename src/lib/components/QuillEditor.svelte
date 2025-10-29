@@ -293,31 +293,30 @@
   async function uploadAndInsertFiles(files) {
     if (!files.length) return;
 
+    // 단일 이미지 업로드 여부 결정
+    isSingleImageUpload = files.length === 1 && files[0].type.startsWith('image/');
 
-      // 단일 이미지 업로드 여부 결정
-      isSingleImageUpload = files.length === 1 && files[0].type.startsWith('image/');
+    // 이미지가 포함된 경우 업로드 오버레이 표시
+    loadingImage = files.some(f => f.type.startsWith('image/'));
+    totalFiles = files.length;
+    currentFile = 0;
+    uploadProgress = 0;
 
-      // 이미지가 포함된 경우 업로드 오버레이 표시
-      loadingImage = files.some(f => f.type.startsWith('image/'));
-      totalFiles = files.length;
-      currentFile = 0;
-      uploadProgress = 0;
+    // uploadPlus 호출 횟수 추적 (실패 시 보상 호출용)
+    let uploadPlusCount = 0;
+    let successCount = 0; // 성공한 파일 수
+    
+    try {
+      // 초기 커서 위치 저장
+      let currentRange = quillInstance.getSelection(true);
+      if (!currentRange) {
+        // 커서가 없으면 에디터 끝으로 이동
+        const length = quillInstance.getLength();
+        currentRange = { index: length - 1, length: 0 };
+      }
 
-      // uploadPlus 호출 횟수 추적 (실패 시 보상 호출용)
-      let uploadPlusCount = 0;
-      let successCount = 0; // 성공한 파일 수
-      
-      try {
-        // 초기 커서 위치 저장
-        let currentRange = quillInstance.getSelection(true);
-        if (!currentRange) {
-          // 커서가 없으면 에디터 끝으로 이동
-          const length = quillInstance.getLength();
-          currentRange = { index: length - 1, length: 0 };
-        }
-
-        // 모든 파일을 순차적으로 업로드
-        for (let i = 0; i < files.length; i++) {
+      // 모든 파일을 순차적으로 업로드
+      for (let i = 0; i < files.length; i++) {
           let file = files[i];
           currentFile = i + 1;
           uploadProgress = Math.round((i / files.length) * 100);
@@ -430,46 +429,46 @@
           if (uploadMinus) {
             uploadMinus();
           }
-          successCount++;
-        }
-        
-        // 모든 업로드 완료 후 최종 커서 위치 설정 및 포커스
-        quillInstance.setSelection(currentRange.index, 0);
-        quillInstance.focus();
-        
-        // 삽입된 콘텐츠로 스크롤 이동
-        scrollToInsertedContent(currentRange.index);
-        console.log('최종 커서 위치 설정:', currentRange.index);
-        
-        // 모든 업로드 완료
-        uploadProgress = 100;
-        console.log(`모든 파일 업로드 완료: ${totalFiles}개`);
-      } catch (error) {
-        console.error('Image upload failed:', error);
-        Swal.fire({
-          icon: 'error',
-          title: '업로드 실패',
-          text: '이미지 업로드에 실패했습니다.',
-          confirmButtonText: '확인'
-        });
-        // 실패 시: 성공한 파일은 이미 uploadMinus가 호출되었으므로
-        // 실패한 파일(호출된 uploadPlus - 성공한 파일 수)만큼 uploadMinus 호출
-        const failedCount = uploadPlusCount - successCount;
-        if (uploadMinus && failedCount > 0) {
-          for (let i = 0; i < failedCount; i++) {
-            uploadMinus();
-          }
-        }
-      } finally {
-        loadingImage = false;
-        isSingleImageUpload = false;
-        // 진행률 초기화
-        setTimeout(() => {
-          uploadProgress = 0;
-          totalFiles = 0;
-          currentFile = 0;
-        }, 1000);
+        successCount++;
       }
+      
+      // 모든 업로드 완료 후 최종 커서 위치 설정 및 포커스
+      quillInstance.setSelection(currentRange.index, 0);
+      quillInstance.focus();
+      
+      // 삽입된 콘텐츠로 스크롤 이동
+      scrollToInsertedContent(currentRange.index);
+      console.log('최종 커서 위치 설정:', currentRange.index);
+      
+      // 모든 업로드 완료
+      uploadProgress = 100;
+      console.log(`모든 파일 업로드 완료: ${totalFiles}개`);
+    } catch (error) {
+      console.error('Image upload failed:', error);
+      Swal.fire({
+        icon: 'error',
+        title: '업로드 실패',
+        text: '이미지 업로드에 실패했습니다.',
+        confirmButtonText: '확인'
+      });
+      // 실패 시: 성공한 파일은 이미 uploadMinus가 호출되었으므로
+      // 실패한 파일(호출된 uploadPlus - 성공한 파일 수)만큼 uploadMinus 호출
+      const failedCount = uploadPlusCount - successCount;
+      if (uploadMinus && failedCount > 0) {
+        for (let i = 0; i < failedCount; i++) {
+          uploadMinus();
+        }
+      }
+    } finally {
+      loadingImage = false;
+      isSingleImageUpload = false;
+      // 진행률 초기화
+      setTimeout(() => {
+        uploadProgress = 0;
+        totalFiles = 0;
+        currentFile = 0;
+      }, 1000);
+    }
   }
 
   /**
