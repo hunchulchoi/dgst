@@ -1,6 +1,7 @@
 import pino from 'pino';
 import * as fs from 'fs';
 import * as path from 'path';
+import { Writable } from 'stream';
 
 const isDevelopment = process.env.NODE_ENV !== 'production';
 console.log('Logger environment check:', { NODE_ENV: process.env.NODE_ENV, isDevelopment });
@@ -31,9 +32,10 @@ const getErrorLogPath = () => {
 };
 
 // 커스텀 writer - 한국시간으로 포맷팅 (콘솔 출력용, clientIp 제외)
-class CustomWriter {
-  write(logString) {
+class CustomWriter extends Writable {
+  _write(chunk, encoding, callback) {
     try {
+      const logString = chunk.toString();
       const log = JSON.parse(logString);
       const koreaTime = getKoreaTime();
       const levelNum = typeof log.level === 'number' ? log.level :
@@ -48,9 +50,11 @@ class CustomWriter {
       const extraFields = Object.keys(rest).length > 0 ? ' ' + JSON.stringify(rest) : '';
 
       console.log(`[${koreaTime}] [${level}] ${message}${extraFields}`);
+      callback();
     } catch (err) {
       console.log('CustomWriter error:', err.message);
-      console.log('Raw logString:', logString);
+      console.log('Raw logString:', chunk.toString());
+      callback();
     }
   }
 }

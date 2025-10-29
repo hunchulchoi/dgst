@@ -133,7 +133,7 @@ export async function write(file, email, preservePath = 'jjal') {
             const baseName = dotIdx > -1 ? fileName.substring(0, dotIdx) : fileName;
             tempWebpPath = `${UPLOAD_PATH}${dir}/${baseName}.temp.webp`;
             webpPath = tempWebpPath;
-            
+
             logger.info({
               tempWebpPath,
               webpPath,
@@ -214,7 +214,7 @@ export async function write(file, email, preservePath = 'jjal') {
             if (fs.existsSync(actualWebpPath)) {
               fileName = finalFileName;
               fullPath = actualWebpPath;
-              
+
               logger.info({
                 actualWebpPath,
                 fileName,
