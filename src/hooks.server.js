@@ -40,19 +40,19 @@ export function depends(key) {
 function KakaoProvider(options) {
   // 클로저로 options 캡처
   const { clientId, clientSecret } = options;
-  
+
   // 디버깅: clientId 확인
   console.log('[KakaoProvider] 초기화:', {
     hasClientId: !!clientId,
     hasClientSecret: !!clientSecret,
     clientIdLength: clientId?.length || 0
   });
-  
-  return {
+
+  const provider = {
     id: 'kakao',
     name: 'Kakao',
-    type: 'oauth',
-    checks: ['state'],
+    type: 'oauth' as const,
+    checks: ['state'] as const,
     clientId: clientId, // 명시적으로 설정
     clientSecret: clientSecret, // 명시적으로 설정
     authorization: {
@@ -95,11 +95,11 @@ function KakaoProvider(options) {
           hasCode: !!params.code,
           redirectUri: provider.callbackUrl
         });
-        
+
         // provider.clientId가 null이면 클로저 값 사용
         const useClientId = provider.clientId || clientId;
         const useClientSecret = provider.clientSecret || clientSecret;
-        
+
         if (!useClientId || !useClientSecret) {
           console.error('[KakaoProvider] clientId or clientSecret is missing:', {
             useClientId: !!useClientId,
@@ -111,7 +111,7 @@ function KakaoProvider(options) {
           });
           throw new Error('Kakao clientId or clientSecret is missing');
         }
-        
+
         // 카카오는 표준 OAuth2 형식 사용
         const body = new URLSearchParams({
           grant_type: 'authorization_code',
@@ -120,7 +120,7 @@ function KakaoProvider(options) {
           code: params.code,
           redirect_uri: provider.callbackUrl
         });
-        
+
         const response = await fetch('https://kauth.kakao.com/oauth/token', {
           method: 'POST',
           headers: {
@@ -128,9 +128,9 @@ function KakaoProvider(options) {
           },
           body: body.toString()
         });
-        
+
         const data = await response.json();
-        
+
         if (!response.ok) {
           console.error('[KakaoProvider] 토큰 요청 실패:', {
             status: response.status,
@@ -139,7 +139,7 @@ function KakaoProvider(options) {
           });
           throw new Error(`Kakao token error: ${JSON.stringify(data)}`);
         }
-        
+
         console.log('[KakaoProvider] 토큰 요청 성공');
         return data;
       }
@@ -176,6 +176,19 @@ function KakaoProvider(options) {
       };
     }
   };
+  
+  // 디버깅: 프로바이더 객체 확인
+  console.log('[KakaoProvider] 반환 객체:', {
+    id: provider.id,
+    type: provider.type,
+    hasClientId: !!provider.clientId,
+    hasAuthorization: !!provider.authorization,
+    hasToken: !!provider.token,
+    hasUserinfo: !!provider.userinfo,
+    hasProfile: !!provider.profile
+  });
+  
+  return provider;
 }
 
 // SvelteKit 2 + @auth/sveltekit v1.x 호환
@@ -204,7 +217,7 @@ const providers = [
       clientId: KAKAO_CLIENT_ID,
       clientSecret: KAKAO_CLIENT_SECRET
     })
-  ] : []),
+  ] : []).filter(Boolean), // filter(Boolean)로 undefined 제거
   Credentials({
     id: 'email-password-credential',
     name: 'Credentials',
@@ -256,8 +269,13 @@ const providers = [
   })
 ];
 
-// 프로바이더 목록 로그
-console.log('등록된 프로바이더:', providers.map(p => p.id || p.name));
+// 프로바이더 목록 로그 (상세)
+console.log('등록된 프로바이더:', providers.map(p => ({
+  id: p.id || p.name,
+  type: p.type,
+  name: p.name
+})));
+console.log('카카오 프로바이더 포함 여부:', providers.some(p => p.id === 'kakao'));
 
 export const { handle: authHandle, signIn, signOut } = SvelteKitAuth({
   providers,
