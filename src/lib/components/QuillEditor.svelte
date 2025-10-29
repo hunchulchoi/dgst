@@ -306,6 +306,10 @@
       currentFile = 0;
       uploadProgress = 0;
 
+      // uploadPlus 호출 횟수 추적 (실패 시 보상 호출용)
+      let uploadPlusCount = 0;
+      let successCount = 0; // 성공한 파일 수
+      
       try {
         // 초기 커서 위치 저장
         let currentRange = quillInstance.getSelection(true);
@@ -324,6 +328,7 @@
           // uploadPlus 콜백 호출
           if (uploadPlus) {
             uploadPlus();
+            uploadPlusCount++;
           }
 
           // 이미지 파일이면 browser-image-compression으로 WebP 변환 (움짤 포함)
@@ -424,10 +429,12 @@
             console.log('이미지 삽입 완료:', url);
           }
 
-          // uploadMinus 콜백 호출
+          // uploadMinus 콜백 호출 (업로드 성공 시에만)
           if (uploadMinus) {
             uploadMinus();
           }
+          uploadSuccess = true;
+          successCount++;
         }
         
         // 모든 업로드 완료 후 최종 커서 위치 설정 및 포커스
@@ -449,6 +456,14 @@
           text: '이미지 업로드에 실패했습니다.',
           confirmButtonText: '확인'
         });
+        // 실패 시: 성공한 파일은 이미 uploadMinus가 호출되었으므로
+        // 실패한 파일(호출된 uploadPlus - 성공한 파일 수)만큼 uploadMinus 호출
+        const failedCount = uploadPlusCount - successCount;
+        if (uploadMinus && failedCount > 0) {
+          for (let i = 0; i < failedCount; i++) {
+            uploadMinus();
+          }
+        }
       } finally {
         loadingImage = false;
         isSingleImageUpload = false;
