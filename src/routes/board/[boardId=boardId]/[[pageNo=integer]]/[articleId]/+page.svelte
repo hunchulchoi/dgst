@@ -329,7 +329,9 @@
         Swal.fire({
           icon: 'success',
           title: '저장 되었습니다.',
-          isToast: true,
+          toast: true,
+          timer: 1500,
+          timerProgressBar: true,
         })
 
         //toast('저장 되었습니다.');
@@ -344,7 +346,9 @@
           icon: 'error',
           title: '저장 실패',
           text: error.message ?? '저장 중 오류가 발생했습니다.',
-          isToast: true,
+          toast: true,
+          timerProgressBar: true,
+          timer: 1500,
         })
       })
       .finally(() => {
@@ -379,7 +383,9 @@
             Swal.fire({
               icon: 'error',
               title: message,
-              isToast: true,
+              toast: true,
+              timerProgressBar: true,
+              timer: 1500,
             })
             return;
           }
@@ -481,7 +487,9 @@
         Swal.fire({
           icon: 'error',
           title: message || '댓글 수정 중 오류가 발생했습니다.',
-          isToast: true,
+          toast: true,
+          timerProgressBar: true,
+          timer: 1500,
         });
         return;
       }
@@ -489,7 +497,9 @@
       Swal.fire({
         icon: 'success',
         title: '댓글이 수정되었습니다.',
-        isToast: true,
+        toast: true,
+        timerProgressBar: true,
+        timer: 1500,
       })
 
       cancelEditComment();
@@ -500,7 +510,9 @@
       Swal.fire({
         icon: 'error',
         title: '댓글 수정 중 오류가 발생했습니다.',
-        isToast: true,
+        toast: true,
+        timerProgressBar: true,
+        timer: 1500,
       })
 
     } finally {
@@ -613,7 +625,9 @@
             title: '삭제 중 오류가 발생했습니다.',
             text: err.message ?? '삭제 중 오류가 발생했습니다.',
             icon: 'error',
-            toast: true
+            toast: true,
+            timerProgressBar: true,
+            timer: 1500,
           });
         }); 
       }
