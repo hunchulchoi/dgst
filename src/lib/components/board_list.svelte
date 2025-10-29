@@ -4,9 +4,27 @@
 
   import { formatDistanceToNowStrict, parseISO } from 'date-fns';
   import { ko } from 'date-fns/locale';
+  import { goto } from '$app/navigation';
 
   // Svelte 5 Runes - Props
   let { data, write, boardId, pageNo = 1, session } = $props();
+
+  // 페이지 네이션 클릭 핸들러 - 중복 클릭 방지
+  function handlePageClick(targetPage, e) {
+    const currentPage = pageNo || 1;
+    
+    // 같은 페이지 클릭 시 무시
+    if (targetPage === currentPage) {
+      e.preventDefault();
+      console.log('⚠️ 이미 현재 페이지입니다:', targetPage);
+      return;
+    }
+    
+    // 다른 페이지로 이동 시 invalidateAll로 강제 새로고침
+    e.preventDefault();
+    console.log('📄 페이지 이동:', currentPage, '->', targetPage);
+    goto(`/board/${boardId}/${targetPage}`, { invalidateAll: true });
+  }
 
   
 </script>
@@ -67,19 +85,20 @@
     <Col xs="12">
       <Pagination size="md" arialabel="페이지 네이션" class="d-flex justify-content-center">
         <PaginationItem
-        ><PaginationLink first href={`/board/${boardId}`} data-sveltekit-preload-data="hover" data-sveltekit-invalidate="all"/></PaginationItem
+        ><PaginationLink first href={`/board/${boardId}`} onclick={(e) => handlePageClick(1, e)} data-sveltekit-preload-data="hover"/></PaginationItem
         >
         {#each Array((data.endNo - data.startNo +1)) as _, i}
+          {@const targetPage = i + data.startNo}
           <PaginationItem
-            active={(!data.pageNo && (data.startNo -i) === 1) || (i + data.startNo) == data.pageNo}
+            active={(!data.pageNo && targetPage === 1) || targetPage == data.pageNo}
           >
-            <PaginationLink href={`/board/${boardId}/${i + data.startNo}`}  data-sveltekit-preload-data="hover" data-sveltekit-invalidate="all">
-              {i + data.startNo}
+            <PaginationLink href={`/board/${boardId}/${targetPage}`} onclick={(e) => handlePageClick(targetPage, e)} data-sveltekit-preload-data="hover">
+              {targetPage}
             </PaginationLink>
           </PaginationItem>
         {/each}
         <PaginationItem
-        ><PaginationLink href={`/board/${boardId}/${data.maxPage}`}  data-sveltekit-preload-data="hover" data-sveltekit-invalidate="all"
+        ><PaginationLink href={`/board/${boardId}/${data.maxPage}`} onclick={(e) => handlePageClick(data.maxPage, e)} data-sveltekit-preload-data="hover"
                          last /></PaginationItem>
       </Pagination>
     </Col>

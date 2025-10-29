@@ -256,6 +256,12 @@
 
     //console.log(commentContent, parentCommentId, reCommentContent)
 
+    // 중복 클릭 방지
+    if (commentLoading) {
+      console.log('⚠️ 이미 댓글 저장 중입니다.');
+      return;
+    }
+
     if ((!parentCommentId && !commentContent) || (parentCommentId && !reCommentContent)) {
       toast('내용을 입력하세요', 'warning');
       return;
@@ -426,6 +432,12 @@
 
   // 댓글 수정 저장
   async function saveEditComment() {
+    // 중복 클릭 방지
+    if (commentLoading) {
+      console.log('⚠️ 이미 댓글 수정 저장 중입니다.');
+      return;
+    }
+
     if (!editCommentContent.trim()) {
       toast('내용을 입력하세요', 'warning');
       return;
@@ -450,7 +462,11 @@
 
       if (response.status !== 200) {
         const {message} = await response.json();
-        toast(message, 'danger');
+        Swal.fire({
+          icon: 'error',
+          title: message || '댓글 수정 중 오류가 발생했습니다.',
+          isToast: true,
+        });
         return;
       }
 
@@ -1192,11 +1208,11 @@
                         rows="3"
                         placeholder="댓글 내용을 입력하세요"
                       ></textarea>
-                      <Button color="success" onclick={saveEditComment} class="z-2">
+                      <Button color="success" onclick={saveEditComment} class="z-2" disabled={commentLoading}>
                         <Icon name="check"/>
                         저장
                       </Button>
-                      <Button color="secondary" onclick={cancelEditComment} class="z-2">
+                      <Button color="secondary" onclick={cancelEditComment} class="z-2" disabled={commentLoading}>
                         <Icon name="x"/>
                         취소
                       </Button>
@@ -1356,7 +1372,7 @@
                   class="form-control border border-gray rounded-start-3"
                   rows="3"
                 ></textarea>
-                <Button color="primary" outline onclick={()=>writeComment(comment._id)}>
+                <Button color="primary" outline onclick={()=>writeComment(comment._id)} disabled={commentLoading}>
                   <Icon name="pencil-fill"/>
                   등록
                 </Button>
@@ -1427,7 +1443,7 @@
               class="form-control border border-gray rounded-start-3"
               rows="3"
             ></textarea>
-            <Button color="primary" outline onclick={()=>writeComment()} class="z-2">
+            <Button color="primary" outline onclick={()=>writeComment()} class="z-2" disabled={commentLoading}>
               <Icon name="pencil-fill"/>
               등록
             </Button>
