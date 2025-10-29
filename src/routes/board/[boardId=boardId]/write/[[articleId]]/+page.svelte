@@ -192,18 +192,39 @@
         }
 
         return async ({ result, update }) => {
-          if (!result.data.success) {
+          if (result.type === 'failure') {
+            await update();
+            const errorMessage = typeof result.data === 'object' && result.data?.message 
+              ? String(result.data.message) 
+              : '저장중에 오류가 발생하였습니다.';
             Swal.fire({
               icon: 'error',
               title: '저장 실패',
-              text: '저장중에 오류가 발생하였습니다.',
+              text: errorMessage,
               confirmButtonText: '확인'
             });
+            return;
+          }
+          
+          if (result.type === 'success') {
+            const data = result.data;
+            
+            if (!data?.success) {
+              await update();
+              Swal.fire({
+                icon: 'error',
+                title: '저장 실패',
+                text: '저장중에 오류가 발생하였습니다.',
+                confirmButtonText: '확인'
+              });
+            } else {
+              title = '';
+              content = '';
+              await update();
+              await list();
+            }
           } else {
-            title = '';
-            content = '';
-
-            list();
+            await update();
           }
         };
       }}

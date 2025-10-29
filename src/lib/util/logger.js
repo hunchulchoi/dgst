@@ -66,17 +66,11 @@ const baseLogger = isDevelopment
       target: 'pino-pretty',
       options: {
         colorize: true,
-        translateTime: false,
+        translateTime: false, // timestamp formatter에서 이미 한국시간 처리
         ignore: 'pid,hostname',
         singleLine: true,
-        messageFormat: (log, messageKey) => {
-          const koreaTime = getKoreaTime();
-          const levelNum = typeof log.level === 'number' ? log.level : 30;
-          const level = levelNum >= 50 ? 'ERROR' : levelNum >= 40 ? 'WARN' : levelNum >= 30 ? 'INFO' : levelNum >= 20 ? 'DEBUG' : 'TRACE';
-          const message = log[messageKey] || log.msg || log.message || '';
-          return `[${koreaTime}] [${level}] ${message}`;
-        },
         customColors: 'info:blue,warn:yellow,error:red',
+        // messageFormat 제거 - Worker 스레드 직렬화 문제 방지
       },
     },
   })

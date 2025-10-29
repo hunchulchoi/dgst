@@ -6,7 +6,7 @@
   import { onMount, onDestroy } from 'svelte';
   import Loader from 'svelte-loading-overlay/Loader.svelte';
   import Swal from 'sweetalert2';
-  import { blobToWebP } from 'webp-converter-browser';
+  import imageCompression from 'browser-image-compression';
 
   // Svelte 5 Runes - Props
   let { uploadPlus, uploadMinus, editorData = $bindable() } = $props();
@@ -18,8 +18,10 @@
   let quillInstance = null;
   /** @type {boolean} */
   let loadingImage = $state(false);
-  /** @type {HTMLDivElement | undefined} */
-  let editorDiv;
+  /** @type {HTMLDivElement | null} */
+  // @ts-ignore - bind:this로 자동 할당되므로 반응성 불필요
+  // svelte-ignore non_reactive_update
+  let editorDiv = null;
   /** @type {number} */
   let uploadProgress = $state(0);
   /** @type {number} */
@@ -45,6 +47,7 @@
   /** @type {boolean} */
   let ffmpegReady = false;
   
+  
   // 비디오 압축 진행 상태
   /** @type {boolean} */
   let isCompressing = $state(false);
@@ -68,234 +71,46 @@
   }
 
   /**
-   * 이미지 EXIF Orientation 읽기 함수
-   * @param {File|Blob} fileOrBlob
-   * @returns {Promise<number>}
-   */
-  function getImageOrientation(fileOrBlob) {
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        const view = new DataView(e.target.result);
-        if (view.getUint16(0, false) !== 0xFFD8) {
-          resolve(1); // JPEG가 아니면 기본값
-          return;
-        }
-        
-        const length = view.byteLength;
-        let offset = 2;
-        
-        while (offset < length) {
-          if (view.getUint16(offset, false) !== 0xFFE1) {
-            offset += 2;
-            continue;
-          }
-          
-          const exifLength = view.getUint16(offset + 2, false);
-          offset += 4;
-          
-          if (view.getUint32(offset, false) !== 0x45786966) {
-            offset += exifLength - 4;
-            continue;
-          }
-          
-          offset += 6;
-          const tiffOffset = offset;
-          const littleEndian = view.getUint16(tiffOffset, false) === 0x4949;
-          
-          if (view.getUint16(tiffOffset + 2, littleEndian) !== 0x002A) {
-            resolve(1);
-            return;
-          }
-          
-          const firstIFDOffset = view.getUint32(tiffOffset + 4, littleEndian);
-          const ifdOffset = tiffOffset + firstIFDOffset;
-          const numEntries = view.getUint16(ifdOffset, littleEndian);
-          
-          for (let i = 0; i < numEntries; i++) {
-            const entryOffset = ifdOffset + 2 + (i * 12);
-            const tag = view.getUint16(entryOffset, littleEndian);
-            
-            if (tag === 0x0112) { // Orientation tag
-              const orientation = view.getUint16(entryOffset + 8, littleEndian);
-              resolve(orientation);
-              return;
-            }
-          }
-          
-          resolve(1);
-          return;
-        }
-        
-        resolve(1);
-      };
-      reader.readAsArrayBuffer(fileOrBlob);
-    });
-  }
-
-  /**
-   * EXIF Orientation을 적용한 WebP 변환 함수
+   * browser-image-compression을 사용한 WebP 변환 함수 (움짤 포함)
    * @param {File|Blob} file
-   * @param {Object} options
+   * @param {{width?: number, quality?: number}} options
    * @returns {Promise<Blob>}
    */
-  async function convertToWebPWithOrientation(file, options = {}) {
-    const orientation = await getImageOrientation(file);
-    console.log('EXIF Orientation:', orientation);
-    
-    // 1단계: 먼저 WebP로 변환
-    const webpBlob = await blobToWebP(file, options);
-    console.log('WebP 변환 완료, 크기:', webpBlob.size);
+  async function convertToWebP(file, options = {}) {
+    const maxWidth = options.width || 1400;
+    const quality = options.quality || 0.85;
+    const fileName = file instanceof File ? file.name : 'image';
 
-    // Orientation이 1이면 그대로 반환 (회전 불필요)
-    if (orientation === 1) {
-      console.log('Orientation 1 - 회전 불필요');
-      return webpBlob;
+    try {
+      console.log('[browser-image-compression] 이미지 변환 시작:', fileName, 'type:', file.type, 'size:', file.size);
+      
+      // GIF는 WebP로 변환하지 않고 원본 유지 (서버에서 처리)
+      if (file.type === 'image/gif') {
+        console.log('[browser-image-compression] GIF 파일은 원본 유지');
+        return file;
+      }
+
+      // browser-image-compression으로 리사이즈 및 압축
+      const compressedFile = await imageCompression(file, {
+        maxSizeMB: 10, // 최대 크기
+        maxWidthOrHeight: maxWidth, // 최대 너비/높이
+        useWebWorker: true, // 웹 워커 사용
+        fileType: 'image/webp', // WebP 형식으로 변환
+        initialQuality: quality // 품질
+      });
+
+      console.log('[browser-image-compression] WebP 변환 완료:', {
+        originalSize: file.size,
+        webpSize: compressedFile.size,
+        savedBytes: file.size - compressedFile.size,
+        savedPercent: ((1 - compressedFile.size / file.size) * 100).toFixed(1)
+      });
+
+      return compressedFile;
+    } catch (error) {
+      console.error('[browser-image-compression] 이미지 변환 실패:', error);
+      throw error;
     }
-    
-    console.log('EXIF Orientation 적용을 위한 Canvas 회전, Orientation:', orientation);
-    
-    // 2단계: Canvas를 사용한 회전
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        
-        // 원본 이미지 크기
-        const originalWidth = img.width;
-        const originalHeight = img.height;
-        console.log('원본 이미지 크기:', originalWidth, 'x', originalHeight);
-        
-        // 이미지 비율 계산
-        const aspectRatio = originalWidth / originalHeight;
-        const isPortrait = originalHeight > originalWidth;
-        const isLandscape = originalWidth > originalHeight;
-        const isSquare = Math.abs(aspectRatio - 1) < 0.1;
-        
-        console.log('이미지 비율 정보:', {
-          aspectRatio: aspectRatio.toFixed(2),
-          isPortrait,
-          isLandscape,
-          isSquare
-        });
-        
-        // Orientation과 이미지 비율을 고려한 회전 결정
-        let shouldRotate = false;
-        let rotationAngle = 0;
-        let needsFlip = false;
-        
-        // Orientation이 1이 아니고 null이 아니고 landscape 비율일 때만 회전
-        if (orientation !== 1 && orientation !== null && isLandscape) {
-          shouldRotate = true;
-          
-          switch (orientation) {
-            case 2: // 좌우 반전
-              needsFlip = true;
-              break;
-            case 3: // 180도 회전
-              rotationAngle = 180;
-              break;
-            case 4: // 상하 반전
-              rotationAngle = 180;
-              needsFlip = true;
-              break;
-            case 5: // 90도 회전 + 좌우 반전
-              rotationAngle = 90;
-              needsFlip = true;
-              break;
-            case 6: // 90도 회전
-              rotationAngle = 90;
-              console.log('Landscape 이미지 90도 회전 적용');
-              break;
-            case 7: // 270도 회전 + 좌우 반전
-              rotationAngle = 270;
-              needsFlip = true;
-              break;
-            case 8: // 270도 회전
-              rotationAngle = 270;
-              console.log('Landscape 이미지 270도 회전 적용');
-              break;
-          }
-        } else if (orientation !== 1 && orientation !== null && isPortrait) {
-          console.log('Portrait 이미지는 회전하지 않음');
-        } else if (orientation !== 1 && orientation !== null && isSquare) {
-          console.log('Square 이미지는 회전하지 않음');
-        } else if (orientation === null) {
-          console.log('Orientation이 null - 회전하지 않음');
-        }
-        
-        if (!shouldRotate) {
-          console.log('회전 불필요 - 원본 WebP 반환');
-          resolve(webpBlob);
-          return;
-        }
-        
-        // Orientation에 따른 캔버스 크기 설정
-        let canvasWidth, canvasHeight;
-        
-        if (rotationAngle === 90 || rotationAngle === 270) {
-          // 90도 또는 270도 회전 시 가로세로 바뀜
-          canvasWidth = originalHeight;
-          canvasHeight = originalWidth;
-        } else {
-          // 180도 회전 시 크기 유지
-          canvasWidth = originalWidth;
-          canvasHeight = originalHeight;
-        }
-        
-        canvas.width = canvasWidth;
-        canvas.height = canvasHeight;
-        console.log('Canvas 크기 설정:', canvasWidth, 'x', canvasHeight);
-        
-        // Canvas 변환 적용
-        if (rotationAngle === 90) {
-          ctx.translate(canvasWidth, 0);
-          ctx.rotate(Math.PI / 2);
-          if (needsFlip) {
-            ctx.scale(-1, 1);
-          }
-        } else if (rotationAngle === 180) {
-          ctx.translate(canvasWidth, canvasHeight);
-          ctx.rotate(Math.PI);
-          if (needsFlip) {
-            ctx.scale(-1, 1);
-          }
-        } else if (rotationAngle === 270) {
-          ctx.translate(0, canvasHeight);
-          ctx.rotate(-Math.PI / 2);
-          if (needsFlip) {
-            ctx.scale(-1, 1);
-          }
-        }
-        
-        // 이미지 그리기
-        ctx.drawImage(img, 0, 0, originalWidth, originalHeight);
-        
-        console.log('Canvas 회전 적용 완료:', {
-          orientation,
-          rotationAngle,
-          needsFlip,
-          finalSize: `${canvasWidth}x${canvasHeight}`
-        });
-        
-        // Canvas를 WebP Blob으로 변환
-        canvas.toBlob((blob) => {
-          if (blob) {
-            console.log('회전된 WebP 생성 완료:', orientation, '크기:', blob.size);
-            resolve(blob);
-          } else {
-            reject(new Error('Canvas to WebP 변환 실패'));
-          }
-        }, 'image/webp', options.quality || 0.9);
-      };
-      
-      img.onerror = () => {
-        reject(new Error('이미지 로드 실패'));
-      };
-      
-      img.src = URL.createObjectURL(webpBlob);
-    });
   }
 
   /**
@@ -504,19 +319,26 @@
             uploadPlus();
           }
 
-          // 이미지 파일이면 EXIF Orientation 적용해서 WebP 변환
-          if (file.type.startsWith('image/') && !file.type.endsWith('gif') && !file.type.endsWith('webp')) {
-            console.log('이미지 파일 감지, EXIF Orientation 적용하여 WebP 변환...');
+          // 이미지 파일이면 browser-image-compression으로 WebP 변환 (움짤 포함)
+          if (file.type.startsWith('image/') && file.type !== 'image/webp') {
+            // 원본 파일 보존 (변환 실패 시 사용)
+            const originalFile = file;
+            console.log('[browser-image-compression] 이미지 파일 감지, WebP 변환 시작...', originalFile.name);
+            
             try {
-              const webpBlob = await convertToWebPWithOrientation(file, { width: 1400 });
+              const webpBlob = await convertToWebP(originalFile, { width: 1400, quality: 0.85 });
               // 원본 파일명에서 확장자 제거 후 .webp로 교체
-              const dotIdx = file.name.lastIndexOf('.');
-              const base = dotIdx > -1 ? file.name.substring(0, dotIdx) : file.name;
+              const dotIdx = originalFile.name.lastIndexOf('.');
+              const base = dotIdx > -1 ? originalFile.name.substring(0, dotIdx) : originalFile.name;
               const newName = `${base}.webp`;
               file = new File([webpBlob], newName, { type: 'image/webp' });
-              console.log('WebP 파일명으로 변환:', newName, 'size:', webpBlob.size);
+              console.log('[browser-image-compression] WebP 변환 완료:', newName, 'size:', webpBlob.size);
             } catch (e) {
-              console.warn('WebP 변환 실패, 원본으로 업로드합니다:', e);
+              const error = e instanceof Error ? e : new Error(String(e));
+              console.warn('[browser-image-compression] WebP 변환 실패, 원본 파일을 서버에서 처리합니다:', error);
+              
+              // 원본 파일로 복원 (서버에서 처리)
+              file = originalFile;
               
               // 서버에 로그 전송
               try {
@@ -525,12 +347,12 @@
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({
                     level: 'warn',
-                    message: 'Client WebP conversion failed',
-                    fileName: file.name,
-                    fileSize: file.size,
-                    fileType: file.type,
-                    error: e.message,
-                    stack: e.stack
+                    message: 'Client WebP conversion failed (browser-image-compression) - will process on server',
+                    fileName: originalFile instanceof File ? originalFile.name : 'unknown',
+                    fileSize: originalFile.size,
+                    fileType: originalFile.type,
+                    error: error.message,
+                    stack: error.stack
                   })
                 });
               } catch (logError) {
@@ -946,6 +768,8 @@
       // Video Blot 등록 (video 태그 직접 사용)
       const BlockEmbed = Quill.import('blots/block/embed');
       
+      // @ts-ignore - Quill Blot 확장을 위해 onMount 내부에서 선언 필요
+      // svelte-ignore perf_avoid_nested_class
       class VideoBlot extends BlockEmbed {
         static create(value) {
           const node = super.create();
@@ -965,6 +789,8 @@
       console.log('✅ Video Blot 등록됨 (video 태그)');
 
       // IFrame Blot 등록 (YouTube, Instagram 등)
+      // @ts-ignore - Quill Blot 확장을 위해 onMount 내부에서 선언 필요
+      // svelte-ignore perf_avoid_nested_class
       class IFrameBlot extends BlockEmbed {
         static create(value) {
           const node = super.create();
@@ -991,6 +817,8 @@
       console.log('✅ IFrame Blot 등록됨');
 
       // OG Card Blot 등록
+      // @ts-ignore - Quill Blot 확장을 위해 onMount 내부에서 선언 필요
+      // svelte-ignore perf_avoid_nested_class
       class OGBlot extends BlockEmbed {
         static create(value) {
           console.log('value', value);
@@ -1271,7 +1099,7 @@
           </div>
           <div class="text-muted">
             {currentFile}/{totalFiles}
-          </div>
+            </div>
         </div>
       </div>
     {/if}

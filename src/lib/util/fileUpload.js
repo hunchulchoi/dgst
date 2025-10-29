@@ -81,13 +81,20 @@ export async function write(file, email, preservePath = 'jjal') {
         message: 'fileUpload.write - image file received'
       });
 
-      // GIF이거나 1MB 이상인 이미지는 서버에서 리사이즈 및 WebP 변환 처리
-      const shouldResize = file.type === 'image/gif' || file.size > 1024 * 1024;
+      // 모든 이미지는 jjal 경로에 저장 (댓글 이미지 포함)
+      // 이미지는 1MB 이상일 때 리사이즈
+      // 클라이언트에서 이미 WebP로 변환된 파일도 서버에서 크기가 1MB 이상이면 다시 변환
+      const isCommentImage = false; // 댓글 이미지도 jjal 경로에 저장하므로 항상 false
+      const isWebP = file.type === 'image/webp' || file.name.endsWith('.webp');
+      const shouldResize = isCommentImage || file.size > 1024 * 1024;
 
       logger.info({
         type: file.type,
         size: file.size,
         sizeMB: (file.size / (1024 * 1024)).toFixed(2),
+        preservePath,
+        isCommentImage,
+        isWebP,
         shouldResize,
         message: 'fileUpload.write - resize check'
       });
@@ -98,29 +105,56 @@ export async function write(file, email, preservePath = 'jjal') {
           type: file.type,
           size: file.size,
           name: file.name,
-          message: 'GIF or large image - processing WebP conversion'
+          isWebP,
+          message: isWebP ? 'Large WebP image - reprocessing with Sharp' : 'Large image - processing WebP conversion'
         });
 
         try {
           const convertStart = Date.now();
-          const webpPath = `${UPLOAD_PATH}${dir}/${fileName}.webp`;
+          // 이미 .webp 확장자가 있으면 그대로 사용, 없으면 추가
+          const finalFileName = fileName.endsWith('.webp') ? fileName : `${fileName}.webp`;
+
+          // 입력 파일과 출력 파일이 같으면 임시 파일명 사용
+          let webpPath = `${UPLOAD_PATH}${dir}/${finalFileName}`;
+          const isSamePath = fullPath === webpPath;
+          let tempWebpPath = null;
+
+          if (isSamePath) {
+            // 임시 파일명 사용 (원본 파일명 기반)
+            const dotIdx = fileName.lastIndexOf('.');
+            const baseName = dotIdx > -1 ? fileName.substring(0, dotIdx) : fileName;
+            tempWebpPath = `${UPLOAD_PATH}${dir}/${baseName}.temp.webp`;
+            webpPath = tempWebpPath;
+          }
+
+          // 모든 이미지는 1400px로 리사이즈
+          const maxWidth = 1400;
 
           // Sharp를 사용한 안전한 WebP 변환
+          // 이미 WebP인 경우에도 리사이즈 및 재압축을 위해 다시 처리
           await sharp(fullPath, { animated: true })
-            .resize({ width: 1400, withoutEnlargement: true })
+            .resize({ width: maxWidth, withoutEnlargement: true })
             .rotate()
-            .webp({ quality: 90, effort: 4 })
+            .webp({ quality: 85, effort: 4 })
             .toFile(webpPath);
 
           const convertElapsedMs = Date.now() - convertStart;
           const webpBytes = fs.statSync(webpPath).size;
 
-          // 원본 파일 삭제 후 WebP로 교체
+          // 원본 파일 삭제
           fs.unlink(fullPath, (err) => err && console.error('Error deleting original:', err));
-          fileName = `${fileName}.webp`;
+
+          // 임시 파일을 최종 파일명으로 이동
+          if (tempWebpPath) {
+            const finalWebpPath = `${UPLOAD_PATH}${dir}/${finalFileName}`;
+            fs.renameSync(tempWebpPath, finalWebpPath);
+          }
+
+          fileName = finalFileName;
+
           logger.info({
             fileName,
-            message: 'Image converted to WebP',
+            message: isWebP ? 'WebP image reprocessed with Sharp' : 'Image converted to WebP',
             originalBytes: file.size,
             webpBytes,
             savedBytes: Math.max(0, file.size - webpBytes),
@@ -148,12 +182,12 @@ export async function write(file, email, preservePath = 'jjal') {
     console.error('File upload error:', err);
     logger.error({ fileName: file.name, preservePath, err, message: '파일 저장 실패' });
     throw err;
-
   }
+}
 
-  export async function read(file, preservePath) {
-    if (!safeString(file.name, preservePath)) {
-      logger.error({ fileName: file.name, preservePath, message: 'read safeString failed' });
-      throw error(400, { message: '잘못된 요청입니다.' });
-    }
+export async function read(file, preservePath) {
+  if (!safeString(file.name, preservePath)) {
+    logger.error({ fileName: file.name, preservePath, message: 'read safeString failed' });
+    throw error(400, { message: '잘못된 요청입니다.' });
   }
+}
