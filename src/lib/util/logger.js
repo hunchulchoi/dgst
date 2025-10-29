@@ -30,8 +30,8 @@ const getErrorLogPath = () => {
 };
 
 // 커스텀 writer - 한국시간으로 포맷팅 (콘솔 출력용, clientIp 제외)
-const customWriter = {
-  write: (logString) => {
+class CustomWriter {
+  write(logString) {
     try {
       const log = JSON.parse(logString);
       const koreaTime = getKoreaTime();
@@ -51,7 +51,7 @@ const customWriter = {
       console.log(logString);
     }
   }
-};
+}
 
 // 메인 logger 설정
 const baseLogger = isDevelopment
@@ -83,7 +83,7 @@ const baseLogger = isDevelopment
         return { level: label.toUpperCase() };
       },
     },
-  }, customWriter);
+  }, new CustomWriter());
 
 // 실패 로그 파일 writer
 const writeErrorToFile = (level, data) => {
