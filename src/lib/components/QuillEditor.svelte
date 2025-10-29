@@ -286,16 +286,13 @@
    * 커스텀 이미지/비디오 업로드 핸들러
    * @returns {Promise<void>}
    */
-  async function imageHandler() {
-    const input = document.createElement('input');
-    input.setAttribute('type', 'file');
-    input.setAttribute('accept', 'image/*,video/*');
-    input.setAttribute('multiple', 'true'); // 여러 파일 선택 가능
-    input.click();
+  /**
+   * 파일 업로드 및 삽입 공통 함수
+   * @param {File[]} files - 업로드할 파일 배열
+   */
+  async function uploadAndInsertFiles(files) {
+    if (!files.length) return;
 
-    input.onchange = async () => {
-      const files = input.files ? Array.from(input.files) : [];
-      if (!files.length) return;
 
       // 단일 이미지 업로드 여부 결정
       isSingleImageUpload = files.length === 1 && files[0].type.startsWith('image/');
@@ -473,6 +470,23 @@
           currentFile = 0;
         }, 1000);
       }
+  }
+
+  /**
+   * 이미지 핸들러 (파일 선택 창 열기)
+   */
+  async function imageHandler() {
+    const input = document.createElement('input');
+    input.setAttribute('type', 'file');
+    input.setAttribute('accept', 'image/*,video/*');
+    input.setAttribute('multiple', 'true'); // 여러 파일 선택 가능
+    input.click();
+
+    input.onchange = async () => {
+      const files = input.files ? Array.from(input.files) : [];
+      if (!files.length) return;
+      
+      await uploadAndInsertFiles(files);
     };
   }
 
@@ -961,20 +975,8 @@
             
             const file = imageItem.getAsFile();
             if (file) {
-              // 현재 커서 위치 가져오기
-              const range = quillInstance.getSelection(true);
-              if (!range) {
-                quillInstance.setSelection(quillInstance.getLength(), 0);
-              }
-              
-              // imageHandler를 사용하여 이미지 업로드 및 삽입
-              const fakeEvent = {
-                target: {
-                  files: [file]
-                }
-              };
-              
-              await imageHandler(fakeEvent);
+              // uploadAndInsertFiles를 직접 호출하여 파일 선택 창 없이 업로드
+              await uploadAndInsertFiles([file]);
               return; // 이미지 처리 후 종료
             }
           }
