@@ -64,7 +64,7 @@ export async function write(file, email, preservePath = 'jjal') {
     console.debug('Generated fileName:', fileName);
 
     const fileBuffer = Buffer.from(await file.arrayBuffer());
-    const fullPath = `${UPLOAD_PATH}${dir}/${fileName}`;
+    let fullPath = `${UPLOAD_PATH}${dir}/${fileName}`;
 
     console.debug('Writing file to:', fullPath);
     fs.writeFileSync(fullPath, fileBuffer);
@@ -148,6 +148,8 @@ export async function write(file, email, preservePath = 'jjal') {
           if (tempWebpPath) {
             const finalWebpPath = `${UPLOAD_PATH}${dir}/${finalFileName}`;
             fs.renameSync(tempWebpPath, finalWebpPath);
+            // 최종 파일 경로로 업데이트 (존재 확인용)
+            fullPath = finalWebpPath;
           }
 
           fileName = finalFileName;

@@ -227,10 +227,20 @@ export async function handle({ event, resolve }) {
 /** @type {import('@sveltejs/kit').HandleServerError} */
 export function handleError({ event, error }) {
   try {
+    // apple-touch-icon 등 정상적인 404 요청은 로그하지 않음
+    const pathname = event.url?.pathname || '';
+    if (
+      pathname.includes('apple-touch-icon') ||
+      pathname.includes('favicon') ||
+      pathname.includes('robots.txt')
+    ) {
+      return;
+    }
+
     const clientIp = event.getClientAddress ? event.getClientAddress() : 'unknown';
     logger.error({
       message: 'Unhandled server error',
-      pathname: event.url?.pathname,
+      pathname,
       method: event.request?.method,
       status: error?.status ?? 500,
       name: error?.name,

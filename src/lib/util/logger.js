@@ -29,7 +29,7 @@ const getErrorLogPath = () => {
   return path.join(logDir, `error-${new Date().toISOString().split('T')[0]}.log`);
 };
 
-// 커스텀 writer - 한국시간으로 포맷팅
+// 커스텀 writer - 한국시간으로 포맷팅 (콘솔 출력용, clientIp 제외)
 const customWriter = {
   write: (logString) => {
     try {
@@ -42,7 +42,8 @@ const customWriter = {
               log.level === 'debug' || log.level === 'DEBUG' ? 20 : 10);
       const level = levelNum >= 50 ? 'ERROR' : levelNum >= 40 ? 'WARN' : levelNum >= 30 ? 'INFO' : levelNum >= 20 ? 'DEBUG' : 'TRACE';
       const message = log.msg || log.message || '';
-      const { time, level: _, msg, message: __, pid, hostname, ...rest } = log;
+      // 콘솔 출력 시 clientIp 제외
+      const { time, level: _, msg, message: __, pid, hostname, clientIp, ...rest } = log;
       const extraFields = Object.keys(rest).length > 0 ? ' ' + JSON.stringify(rest) : '';
 
       console.log(`[${koreaTime}] [${level}] ${message}${extraFields}`);
@@ -67,7 +68,7 @@ const baseLogger = isDevelopment
       options: {
         colorize: true,
         translateTime: false, // timestamp formatter에서 이미 한국시간 처리
-        ignore: 'pid,hostname',
+        ignore: 'pid,hostname,clientIp', // 콘솔 출력 시 clientIp 제외
         singleLine: true,
         customColors: 'info:blue,warn:yellow,error:red',
         // messageFormat 제거 - Worker 스레드 직렬화 문제 방지
