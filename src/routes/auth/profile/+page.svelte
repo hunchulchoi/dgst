@@ -24,6 +24,9 @@
   import { signOut } from '@auth/sveltekit/client';
   import Swal from 'sweetalert2';
 
+  // Svelte 5 Runes
+  let { data } = $props();
+
   //console.log('data.session', data);
 
   if (!data.session) {
@@ -53,9 +56,6 @@
     document.querySelector('#preview').src = window.URL.createObjectURL(fileEl.files[0]);
     document.querySelector('#introduction').focus();
   }
-
-  // Svelte 5 Runes
-  let { data } = $props();
 
   /**
    * nickname {string} 닉네임
