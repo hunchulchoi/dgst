@@ -38,11 +38,16 @@ export function depends(key) {
  * 카카오 OAuth2 프로바이더
  */
 function KakaoProvider(options) {
+  // 클로저로 options 캡처
+  const { clientId, clientSecret } = options;
+  
   return {
     id: 'kakao',
     name: 'Kakao',
     type: 'oauth',
     checks: ['state'],
+    clientId,
+    clientSecret,
     authorization: {
       url: 'https://kauth.kakao.com/oauth/authorize',
       params: {
@@ -54,8 +59,8 @@ function KakaoProvider(options) {
         const { provider, options: authOptions } = context;
         const url = new URL('https://kauth.kakao.com/oauth/authorize');
         
-        // 필수 파라미터만 추가
-        url.searchParams.set('client_id', provider.clientId);
+        // 클로저에서 캡처한 clientId 사용
+        url.searchParams.set('client_id', clientId);
         url.searchParams.set('redirect_uri', provider.callbackUrl);
         url.searchParams.set('response_type', 'code');
         
@@ -74,24 +79,35 @@ function KakaoProvider(options) {
     token: {
       url: 'https://kauth.kakao.com/oauth/token',
       async request({ params, provider }) {
+        // 클로저에서 캡처한 clientId, clientSecret 사용
+        if (!clientId || !clientSecret) {
+          throw new Error('Kakao clientId or clientSecret is missing');
+        }
+        
         // 카카오는 표준 OAuth2 형식 사용
         const body = new URLSearchParams({
           grant_type: 'authorization_code',
-          client_id: provider.clientId,
-          client_secret: provider.clientSecret,
+          client_id: clientId,
+          client_secret: clientSecret,
           code: params.code,
           redirect_uri: provider.callbackUrl
         });
-
-        const response = await fetch(provider.token.url, {
+        
+        const response = await fetch('https://kauth.kakao.com/oauth/token', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/x-www-form-urlencoded'
           },
           body: body.toString()
         });
-
-        return await response.json();
+        
+        const data = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(`Kakao token error: ${JSON.stringify(data)}`);
+        }
+        
+        return data;
       }
     },
     userinfo: {
@@ -124,9 +140,7 @@ function KakaoProvider(options) {
         latest_login_at: new Date(),
         latest_modified_at: new Date()
       };
-    },
-    clientId: options.clientId,
-    clientSecret: options.clientSecret
+    }
   };
 }
 
