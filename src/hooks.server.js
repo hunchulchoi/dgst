@@ -42,21 +42,66 @@ function KakaoProvider(options) {
     id: 'kakao',
     name: 'Kakao',
     type: 'oauth',
+    checks: ['state'],
     authorization: {
       url: 'https://kauth.kakao.com/oauth/authorize',
       params: {
         response_type: 'code'
+      },
+      async request({ provider, options: authOptions }) {
+        // 카카오는 scope 파라미터를 사용하지 않으므로 명시적으로 제외
+        const url = new URL(provider.authorization.url);
+        url.searchParams.set('client_id', provider.clientId);
+        url.searchParams.set('redirect_uri', provider.callbackUrl);
+        url.searchParams.set('response_type', 'code');
+        // scope 파라미터를 추가하지 않음
+        if (authOptions.state) {
+          url.searchParams.set('state', authOptions.state);
+        }
+        return { url: url.toString() };
       }
     },
-    token: 'https://kauth.kakao.com/oauth/token',
-    userinfo: 'https://kapi.kakao.com/v2/user/me',
+    token: {
+      url: 'https://kauth.kakao.com/oauth/token',
+      async request({ params, provider }) {
+        // 카카오는 표준 OAuth2 형식 사용
+        const body = new URLSearchParams({
+          grant_type: 'authorization_code',
+          client_id: provider.clientId,
+          client_secret: provider.clientSecret,
+          code: params.code,
+          redirect_uri: provider.callbackUrl
+        });
+        
+        const response = await fetch(provider.token.url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded'
+          },
+          body: body.toString()
+        });
+        
+        return await response.json();
+      }
+    },
+    userinfo: {
+      url: 'https://kapi.kakao.com/v2/user/me',
+      async request({ tokens, provider }) {
+        const response = await fetch(provider.userinfo.url, {
+          headers: {
+            Authorization: `Bearer ${tokens.access_token}`
+          }
+        });
+        return await response.json();
+      }
+    },
     profile(profile) {
       const kakaoAccount = profile.kakao_account || {};
       // 이메일이나 닉네임 동의 없이도 기본 정보만으로 로그인 가능
       // 카카오 ID를 이메일 대신 사용 (해시 처리)
       const kakaoId = String(profile.id);
       const emailHash = crypto.createHash('sha512').update(`kakao:${kakaoId}`).digest('base64url');
-      
+
       return {
         id: kakaoId,
         email: kakaoAccount?.email ? crypto.createHash('sha512').update(kakaoAccount.email).digest('base64url') : emailHash,
