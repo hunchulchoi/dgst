@@ -147,12 +147,47 @@ export async function write(file, email, preservePath = 'jjal') {
           // 임시 파일을 최종 파일명으로 이동
           if (tempWebpPath) {
             const finalWebpPath = `${UPLOAD_PATH}${dir}/${finalFileName}`;
+            
+            // 임시 파일 존재 확인
+            if (!fs.existsSync(tempWebpPath)) {
+              logger.error({ tempWebpPath, message: 'tempWebpPath does not exist before rename' });
+              throw new Error('Temp WebP file not found before rename');
+            }
+            
             fs.renameSync(tempWebpPath, finalWebpPath);
+            
+            // 파일 시스템 동기화를 위한 대기 (최대 3회 재시도)
+            let retries = 3;
+            let fileExists = false;
+            while (retries > 0 && !fileExists) {
+              fileExists = fs.existsSync(finalWebpPath);
+              if (!fileExists) {
+                // 10ms 대기 후 재시도
+                await new Promise(resolve => setTimeout(resolve, 10));
+                retries--;
+              }
+            }
+            
             // 최종 파일 경로로 업데이트 (존재 확인용)
             fullPath = finalWebpPath;
+            fileName = finalFileName;
+            
+            logger.info({
+              tempWebpPath,
+              finalWebpPath,
+              fileName,
+              exists: fileExists,
+              retries: 3 - retries,
+              message: 'tempWebpPath renamed to finalWebpPath'
+            });
+            
+            if (!fileExists) {
+              logger.error({ finalWebpPath, message: 'finalWebpPath does not exist after rename' });
+              throw new Error('Final WebP file not found after rename');
+            }
+          } else {
+            fileName = finalFileName;
           }
-
-          fileName = finalFileName;
 
           logger.info({
             fileName,
@@ -172,12 +207,37 @@ export async function write(file, email, preservePath = 'jjal') {
       console.debug('Video file - skipping WebP conversion');
     }
 
-    const finalPath = `${UPLOAD_PATH}${dir}/${fileName}`;
+    // fullPath가 업데이트되었으면 그것을 사용, 아니면 새로 계산
+    const finalPath = fullPath || `${UPLOAD_PATH}${dir}/${fileName}`;
+    
+    logger.info({
+      finalPath,
+      fullPath,
+      fileName,
+      dir,
+      exists: fs.existsSync(finalPath),
+      message: 'Checking file existence after save'
+    });
+    
     if (fs.existsSync(finalPath)) {
       console.debug('File uploaded successfully:', `/images${dir}/${fileName}`);
       return `/images${dir}/${fileName}`;
     } else {
-      logger.error({ finalPath, message: 'File not found after save' });
+      // 파일이 없으면 디렉토리 내용 확인
+      try {
+        const dirContents = fs.readdirSync(`${UPLOAD_PATH}${dir}`);
+        logger.error({ 
+          finalPath, 
+          dirContents,
+          message: 'File not found after save - directory contents listed' 
+        });
+      } catch (dirErr) {
+        logger.error({ 
+          finalPath, 
+          dirError: dirErr.message,
+          message: 'File not found after save - could not read directory' 
+        });
+      }
       throw error(500, '파일 저장 중에 오류가 발생하였습니다. 쿠훕ㅠㅠ');
     }
   } catch (err) {
