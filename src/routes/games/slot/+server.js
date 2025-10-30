@@ -27,7 +27,7 @@ async function getBalance(email) {
   return last?.balance ?? 0;
 }
 
-// 잔액 0 상태가 10분 이상이면 100점 보충 (지연 지급)
+// 잔액 0 상태가 10분 이상이면 500점 보충 (지연 지급)
 async function maybeTopupAfterOOPS(email, nickname) {
   const last = await GameScore.findOne({ email }).sort({ createdAt: -1 }).lean();
   if (!last) return 0;
@@ -41,9 +41,9 @@ async function maybeTopupAfterOOPS(email, nickname) {
       nickname,
       game: 'slot',
       bet: 0,
-      payout: 100,
-      delta: 100,
-      balance: 100,
+      payout: 500,
+      delta: 500,
+      balance: 500,
       reels: ['-', '-', '-']
     });
     return doc.balance;
