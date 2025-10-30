@@ -4,11 +4,6 @@ import { defineConfig } from 'vite';
 export default defineConfig({
   plugins: [sveltekit()],
 
-  // 개발 시 브라우저에서 Node 모듈 경고가 나는 소스맵 처리 비활성화
-  css: {
-    devSourcemap: false
-  },
-
   // SSR 외부화
   ssr: {
     external: ['@ffmpeg/ffmpeg', '@ffmpeg/util']
@@ -33,7 +28,6 @@ export default defineConfig({
   // 프로덕션 빌드 설정
   build: {
     target: 'esnext',
-    sourcemap: false,
     rollupOptions: {
       output: {
         manualChunks: (id) => {
