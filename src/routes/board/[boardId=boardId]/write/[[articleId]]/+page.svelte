@@ -220,14 +220,27 @@
         const titleValue = title || '';
         const contentValue = content || '';
         
+        // 제목 검증
         if (titleValue.replace(/\s/g, '').length < 1) {
           toast('제목이 너무 짧습니다.', 'warning');
           return cancel();
         }
-        // content에서 HTML 태그 제거 후 실제 텍스트 길이 확인
-        const textContent = contentValue.replace(/<[^>]*>/g, '').replace(/\s/g, '');
+        
+        // content 검증: 비어있거나 HTML 태그만 있는 경우 거부
+        if (!contentValue || contentValue.trim().length === 0) {
+          toast('본문을 입력해주세요.', 'warning');
+          return cancel();
+        }
+        
+        // HTML 태그 제거 후 실제 텍스트 내용 확인
+        const textContent = contentValue
+          .replace(/<[^>]*>/g, '') // HTML 태그 제거
+          .replace(/&nbsp;/g, ' ') // &nbsp;를 공백으로
+          .replace(/[\s\u00A0]/g, '') // 모든 공백 및 줄바꿈 제거
+          .trim();
+        
         if (textContent.length < 5) {
-          toast('본문이 너무 짧습니다.', 'warning');
+          toast('본문이 너무 짧습니다. 최소 5자 이상 입력해주세요.', 'warning');
           return cancel();
         }
 

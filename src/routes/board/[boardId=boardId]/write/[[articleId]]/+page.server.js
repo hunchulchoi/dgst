@@ -21,11 +21,13 @@ export const actions = {
 
     //console.log(data);
 
-    // content 처리 (null, undefined, 빈 문자열 체크)
+    // content 처리 (null, undefined 체크)
     const rawContent = data.get('content');
-    const processedContent = rawContent 
-      ? String(rawContent).replace(/<p>\s*<br\s*\/?>(\s|\u00A0)*<\/p>/g, '<br>')
-      : '';
+    if (!rawContent || String(rawContent).trim().length === 0) {
+      throw error(400, { message: '본문을 입력해주세요.' });
+    }
+    
+    const processedContent = String(rawContent).replace(/<p>\s*<br\s*\/?>(\s|\u00A0)*<\/p>/g, '<br>');
 
     try {
       if (params.articleId) {
