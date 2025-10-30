@@ -26,13 +26,13 @@ export const actions = {
     if (!rawTitle || String(rawTitle).trim().length === 0) {
       throw error(400, { message: '제목을 입력해주세요.' });
     }
-    
+
     // content 검증 (null, undefined 체크)
     const rawContent = data.get('content');
     if (!rawContent || String(rawContent).trim().length === 0) {
       throw error(400, { message: '본문을 입력해주세요.' });
     }
-    
+
     const processedContent = String(rawContent).replace(/<p>\s*<br\s*\/?>(\s|\u00A0)*<\/p>/g, '<br>');
 
     try {

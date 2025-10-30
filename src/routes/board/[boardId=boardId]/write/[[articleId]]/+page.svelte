@@ -26,38 +26,31 @@
   /**
    * Swal toast 메시지 표시
    * @param {string} message - 표시할 메시지
-   * @param {string} type - 메시지 타입 ('success', 'error', 'warning', 'info', 'primary')
+   * @param {object} options - 토스트 옵션
+   * @param {string} [options.icon='info'] - 메시지 아이콘 ('success', 'error', 'warning', 'info', 'primary')
+   * @param {string} [options.position='center'] - 토스트 위치 ('top', 'top-start', 'top-end', 'center', 'center-start', 'center-end', 'bottom', 'bottom-start', 'bottom-end')
+   * @param {number} [options.timer=750] - 토스트 지속 시간
+   * @param {boolean} [options.toast=true] - 토스트 표시 여부
    */
-  async function toast(message, type = 'primary') {
-    // type을 Swal icon으로 매핑
-    const iconMap = {
-      'success': 'success',
-      'error': 'error',
-      'danger': 'error',
-      'warning': 'warning',
-      'info': 'info',
-      'primary': 'success' // 기본값은 success
-    };
-    
-    const icon = iconMap[type] || 'success';
+  async function toast(message, options = {icon:'info', position:'center', timer:750, toast:true}) {
+    const {icon, position, timer, toast} = options;
 
-    if(type === 'error'){
+    if(options.icon === 'error'){
       // error 타입은 일반 모달로 표시
       await Swal.fire({
-        icon: 'error',
+        icon,
         title: message,
         confirmButtonColor: '#3085d6',
         confirmButtonText: '확인'
-      });
+      }); 
     } else {
       // 그 외 타입은 toast로 표시
       await Swal.fire({
-        icon: icon,
+        icon,
         title: message,
-        toast: true,
-        timer: 750,
-        timerProgressBar: true,
-        showConfirmButton: false,
+        toast,
+        timer,
+        timerProgressBar: timer>0?true:false,
         position: 'center'
       });
     }
@@ -222,13 +215,13 @@
         
         // 제목 검증
         if (titleValue.replace(/\s/g, '').length < 1) {
-          toast('제목이 너무 짧습니다.', 'warning');
+          toast('제목이 너무 짧습니다.', {icon:'warning', toast: false});
           return cancel();
         }
         
         // content 검증: 비어있거나 HTML 태그만 있는 경우 거부
         if (!contentValue || contentValue.trim().length === 0) {
-          toast('본문을 입력해주세요.', 'warning');
+          toast('본문을 입력해주세요.', {icon:'warning', toast: false});
           return cancel();
         }
         
@@ -240,7 +233,7 @@
           .trim();
         
         if (textContent.length < 5) {
-          toast('본문이 너무 짧습니다. 최소 5자 이상 입력해주세요.', 'warning');
+          toast('본문이 너무 짧습니다. 최소 5자 이상 입력해주세요.', {icon:'warning', toast: false});
           return cancel();
         }
 
@@ -252,7 +245,7 @@
             const errorMessage = typeof result.data === 'object' && result.data?.message 
               ? String(result.data.message) 
               : '저장중에 오류가 발생하였습니다.';
-            await toast(errorMessage, 'error');
+            await toast(errorMessage, {icon:'error', toast: false});
             return;
           }
           
@@ -260,8 +253,10 @@
             const data = result.data;
             
             if (!data?.success) {
-              await toast('저장중에 오류가 발생하였습니다.', 'error');
+              await toast('저장중에 오류가 발생하였습니다.', {icon:'error', toast: false});
             } else {
+              await toast('저장되었습니다.', {icon:'success'});
+
               title = '';
               content = '';
               
