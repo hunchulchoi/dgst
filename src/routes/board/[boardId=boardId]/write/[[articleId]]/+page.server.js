@@ -21,7 +21,13 @@ export const actions = {
 
     //console.log(data);
 
-    // content 처리 (null, undefined 체크)
+    // title 검증
+    const rawTitle = data.get('title');
+    if (!rawTitle || String(rawTitle).trim().length === 0) {
+      throw error(400, { message: '제목을 입력해주세요.' });
+    }
+    
+    // content 검증 (null, undefined 체크)
     const rawContent = data.get('content');
     if (!rawContent || String(rawContent).trim().length === 0) {
       throw error(400, { message: '본문을 입력해주세요.' });
@@ -34,7 +40,7 @@ export const actions = {
         const update = await Article.findOneAndUpdate(
           { _id: params.articleId, email: session.user.email, state: 'write' },
           {
-            title: data.get('title'),
+            title: String(rawTitle).trim(),
             content: processedContent,
             modified_email: session.user.email
           },
@@ -54,7 +60,7 @@ export const actions = {
           email: session.user.email,
           nickname: session.user.nickname,
           boardId: params.boardId,
-          title: data.get('title'),
+          title: String(rawTitle).trim(),
           content: processedContent
         });
 
