@@ -10,7 +10,7 @@
     Spinner,
     Tooltip
   } from '@sveltestrap/sveltestrap';
-  import QuillEditor from '$lib/components/QuillEditor.svelte';
+  import ToastEditor from '$lib/components/ToastEditor.svelte';
   import { goto } from '$app/navigation';
   /**
    * SvelteKit page store import for accessing current route info
@@ -282,7 +282,7 @@
       <FormGroup floating label="제목">
         <Input id="title" name="title" bind:value={title} required autofocus />
       </FormGroup>
-      <QuillEditor bind:editorData={content} {uploadPlus} {uploadMinus} />
+      <ToastEditor bind:editorData={content} {uploadPlus} {uploadMinus} />
       <Row class="text-end pe-2 mt-4">
         <Col md="10" xs="8" class="text-end">
           <Button color="warning" onclick={list}>
