@@ -140,7 +140,7 @@
             <div class="display-4">{reels[0]} {reels[1]} {reels[2]}</div>
           </div>
               <button class="btn btn-lg btn-primary w-100" disabled={spinning} onclick={play}>
-            {spinning ? '스핀 중...' : 'ㄱㄱ'}
+            {spinning ? '스핀 중...' : '🎁 ㄱㄱ'}
           </button>
           {#if message}
           <div class="mt-3 fw-bold">{message}</div>
@@ -200,7 +200,7 @@
                   <div class="ms-1">{comment.content}</div>
                   
                   <!-- 대댓글 작성 폼 -->
-                  {#if data.session?.user && 'nickname' in data.session.user}
+                  {#if data.session?.user?.nickname}
                     <div class="mt-2">
                       {#if replyingTo === comment.id}
                         <div class="input-group input-group-sm">
@@ -251,8 +251,8 @@
           {/if}
           
           <!-- 댓글 작성 폼 -->
-          {#if data.session?.user && 'nickname' in data.session.user}
-            <div class="input-group">
+          {#if data.session?.user?.nickname}
+            <div class="input-group mt-3">
               <textarea 
                 class="form-control" 
                 rows="3" 
@@ -270,7 +270,7 @@
               </button>
             </div>
           {:else}
-            <div class="text-muted text-center py-2">
+            <div class="text-muted text-center py-2 mt-3">
               <small>로그인 후 리플을 남길 수 있습니다.</small>
             </div>
           {/if}
