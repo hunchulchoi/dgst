@@ -50,6 +50,8 @@
   let ffmpegReady = false;
   /** @type {boolean} */
   let isComposing = $state(false);
+  // iOS 감지 (SSR 안전)
+  const IS_IOS = typeof navigator !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent);
   /** @type {boolean} */
   let isUserTyping = $state(false);
   /** @type {any} */
