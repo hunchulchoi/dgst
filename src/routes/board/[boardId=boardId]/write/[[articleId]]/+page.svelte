@@ -24,7 +24,7 @@
    * @param {string} message - 표시할 메시지
    * @param {string} type - 메시지 타입 ('success', 'error', 'warning', 'info', 'primary')
    */
-  function toast(message, type = 'primary') {
+  async function toast(message, type = 'primary') {
     // type을 Swal icon으로 매핑
     const iconMap = {
       'success': 'success',
@@ -39,7 +39,7 @@
 
     if(type === 'error'){
       // error 타입은 일반 모달로 표시
-      Swal.fire({
+      await Swal.fire({
         icon: 'error',
         title: message,
         confirmButtonColor: '#3085d6',
@@ -47,7 +47,7 @@
       });
     } else {
       // 그 외 타입은 toast로 표시
-      Swal.fire({
+      await Swal.fire({
         icon: icon,
         title: message,
         toast: true,
@@ -212,22 +212,25 @@
           return cancel();
         }
 
-        if (title.replace(' ', '').length < 1) {
-          toast('제목이 너무 짧습니다.', 'warning');
-          return cancel();
-        }
-        if (content.replace(' ', '').length < 5) {
-          toast('본문이 너무 짧습니다.', 'warning');
-          return cancel();
-        }
-
-        return async ({ result, update }) => {
+        // 비동기 검증 함수
+        return async () => {
+          if (title.replace(' ', '').length < 1) {
+            await toast('제목이 너무 짧습니다.', 'warning');
+            return cancel();
+          }
+          if (content.replace(' ', '').length < 5) {
+            await toast('본문이 너무 짧습니다.', 'warning');
+            return cancel();
+          }
+          
+          // 검증 통과 시 결과 핸들러 반환
+          return async ({ result, update }) => {
           if (result.type === 'failure') {
             await update();
             const errorMessage = typeof result.data === 'object' && result.data?.message 
               ? String(result.data.message) 
               : '저장중에 오류가 발생하였습니다.';
-            toast(errorMessage, 'error');
+            await toast(errorMessage, 'error');
             return;
           }
           
@@ -236,7 +239,7 @@
             
             if (!data?.success) {
               await update();
-              toast('저장중에 오류가 발생하였습니다.', 'error');
+              await toast('저장중에 오류가 발생하였습니다.', 'error');
             } else {
               title = '';
               content = '';
@@ -253,6 +256,7 @@
           } else {
             await update();
           }
+          };
         };
       }}
     >
