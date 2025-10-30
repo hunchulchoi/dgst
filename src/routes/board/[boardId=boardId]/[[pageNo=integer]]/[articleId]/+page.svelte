@@ -326,15 +326,7 @@
           rePreviewEl.classList.add('d-none');
         }
 
-        Swal.fire({
-          icon: 'success',
-          title: '저장 되었습니다.',
-          toast: true,
-          timer: 750,
-          timerProgressBar: true,
-        })
-
-        //toast('저장 되었습니다.');
+        toast('저장 되었습니다.', 'success');
 
         comments();
       })
@@ -342,14 +334,7 @@
         console.error('❌ 댓글 저장 실패:', error);
         //toast(error.message ?? '저장 중 오류가 발생했습니다.', 'danger');
 
-        Swal.fire({
-          icon: 'error',
-          title: '저장 실패',
-          text: error.message ?? '저장 중 오류가 발생했습니다.',
-          toast: true,
-          timerProgressBar: true,
-          timer: 750,
-        })
+        toast(error.message ?? '저장 중 오류가 발생했습니다.', 'error');
       })
       .finally(() => {
         console.log('🏁 댓글 저장 완료 - commentLoading을 false로 설정');
@@ -380,25 +365,13 @@
 
           if (res.status !== 200) {
             const {message} = await res.json();
-            Swal.fire({
-              icon: 'error',
-              title: message,
-              toast: true,
-              timerProgressBar: true,
-              timer: 750,
-            })
+            toast(message, 'error');
             return;
           }
 
           const _message = await res.text();
 
-          Swal.fire({
-            icon: 'success',
-            title: _message,
-            isToast: true,
-            timer: 750,
-            timerProgressBar: true,
-          })
+          toast(_message, 'success');
 
           commentLoading = false;
           comments();
@@ -486,36 +459,18 @@
 
       if (response.status !== 200) {
         const {message} = await response.json();
-        Swal.fire({
-          icon: 'error',
-          title: message || '댓글 수정 중 오류가 발생했습니다.',
-          toast: true,
-          timerProgressBar: true,
-          timer: 750,
-        });
+        toast(message || '댓글 수정 중 오류가 발생했습니다.', 'error');
         return;
       }
 
-      Swal.fire({
-        icon: 'success',
-        title: '댓글이 수정되었습니다.',
-        toast: true,
-        timerProgressBar: true,
-        timer: 750,
-      })
+      toast('댓글이 수정되었습니다.', 'success');
 
       cancelEditComment();
       comments();
     } catch (error) {
       console.error('댓글 수정 실패:', error);
 
-      Swal.fire({
-        icon: 'error',
-        title: '댓글 수정 중 오류가 발생했습니다.',
-        toast: true,
-        timerProgressBar: true,
-        timer: 750,
-      })
+      toast('댓글 수정 중 오류가 발생했습니다.', 'error');
 
     } finally {
       commentLoading = false;
@@ -598,15 +553,7 @@
           if (res.status !== 200) {
             const {message} = await res.json();
 
-            Swal.fire({
-              icon: 'error',
-              toast: true,
-              title: message,
-              timer: 750,
-              timerProgressBar: true,
-              confirmButtonColor: '#3085d6',
-              confirmButtonText: '확인'
-            })
+            toast(message, 'error');
             return;
           }
 
@@ -683,20 +630,35 @@
   }
 
 
-  let toastColor = $state('primary');
-  let toastMessage = $state('');
-  let toastPosition = $state('');
-  let toastIsOpen = $state(false);
 
-  function toast(message, color = 'primary') {
-
-    toastMessage = message;
-    toastColor = color;
-    toggle()
-
+  /**
+   * Swal toast 메시지 표시
+   * @param {string} message - 표시할 메시지
+   * @param {string} type - 메시지 타입 ('success', 'error', 'warning', 'info', 'primary')
+   */
+  function toast(message, type = 'primary') {
+    // type을 Swal icon으로 매핑
+    const iconMap = {
+      'success': 'success',
+      'error': 'error',
+      'danger': 'error',
+      'warning': 'warning',
+      'info': 'info',
+      'primary': 'success' // 기본값은 success
+    };
+    
+    const icon = iconMap[type] || 'success';
+    
+    Swal.fire({
+      icon: icon,
+      title: message,
+      toast: true,
+      timer: 750,
+      timerProgressBar: true,
+      showConfirmButton: false,
+      position: 'top-end'
+    });
   }
-
-  const toggle = () => (toastIsOpen = !toastIsOpen);
 
   let dialog = $state(null);
   let dialogText = $state('');
@@ -832,18 +794,6 @@
     {dialogText}
   </Dialog>
 
-  <div class="d-flex justify-content-{toastColor==='primary'?'end':'center'} w-100 p-0 m-0">
-    <Toast
-      autohide
-      isOpen={toastIsOpen}
-      delay={toastColor==='primary'?1000:2500}
-      on:close={() => (toastIsOpen = false)}
-      class="position-fixed {toastColor==='primary'?'top-0':'bottom-50'} z-3 mt-5"
-    >
-      <ToastHeader icon={toastColor} {toggle}>dgst.site</ToastHeader>
-      <ToastBody class="bg-light bg-opacity-50 text-dark">{toastMessage}</ToastBody>
-    </Toast>
-  </div>
 
   <Row class="mt-4 shadow rounded-bottom-4 p-1 m-0">
     <Row class="border-bottom border-secondary-subtle pt-2 p-0 m-0">
