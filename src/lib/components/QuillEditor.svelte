@@ -50,6 +50,10 @@
   let ffmpegReady = false;
   /** @type {boolean} */
   let isComposing = $state(false);
+  /** @type {boolean} */
+  let isUserTyping = $state(false);
+  /** @type {any} */
+  let syncTimer = null;
   
   
   // 비디오 압축 진행 상태
@@ -1016,17 +1020,17 @@
         editorData = quillInstance.root.innerHTML;
       });
 
-      // 데이터 변경 감지 및 양방향 바인딩 (합성 중에는 스킵)
+      // 데이터 변경 감지 및 양방향 바인딩 (합성/사용자 입력 중에는 디바운스)
       quillInstance.on('text-change', (_delta, _old, source) => {
-        if (isComposing) return;
-        if (source !== 'user') {
-          // 사용자 입력 외 변화도 동기화하되 빈도 최소화
-          requestAnimationFrame(() => {
-            if (!isComposing) editorData = quillInstance.root.innerHTML;
-          });
-          return;
+        if (source === 'user') {
+          isUserTyping = true;
         }
-        editorData = quillInstance.root.innerHTML;
+        if (isComposing) return;
+        if (syncTimer) clearTimeout(syncTimer);
+        syncTimer = setTimeout(() => {
+          editorData = quillInstance.root.innerHTML;
+          isUserTyping = false;
+        }, 120);
       });
 
       // URL 붙여넣기 감지 및 자동 임베드
@@ -1162,7 +1166,8 @@
 
   // editorData prop 변경 감지 (외부에서 변경 시)
   $effect(() => {
-    if (quillInstance && editorData !== quillInstance.root.innerHTML) {
+    // 사용자 타이핑 중에는 외부 동기화로 DOM을 덮어쓰지 않음
+    if (quillInstance && !isUserTyping && editorData !== quillInstance.root.innerHTML) {
       const currentSelection = quillInstance.getSelection();
       quillInstance.root.innerHTML = editorData;
       if (currentSelection) {
