@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { formatDistanceToNowStrict, parseISO } from 'date-fns';
   import { ko } from 'date-fns/locale';
+  import { invalidateAll } from '$app/navigation';
   let { data } = $props();
   let balance = $state(data.balance || 0);
   let bet = $state(10);
@@ -68,10 +69,17 @@
 
   async function loadComments() {
     try {
-      const res = await fetch('/games/slot/comment');
+      const res = await fetch('/games/slot/comment', {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache'
+        }
+      });
       if (res.ok) {
         const data = await res.json();
         comments = data || [];
+        // 알람이 읽음 처리되었으므로 레이아웃의 알람 카운트 갱신
+        await invalidateAll();
       }
     } catch (e) {
       console.error('댓글 로드 실패:', e);
@@ -100,6 +108,8 @@
           commentContent = '';
         }
         await loadComments();
+        // 알람 카운트 갱신
+        await invalidateAll();
       } else {
         const err = await res.json();
         alert(err?.message || '댓글 작성 실패');

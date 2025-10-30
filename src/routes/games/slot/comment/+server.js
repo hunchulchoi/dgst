@@ -10,7 +10,12 @@ connectDB();
 const SLOT_BOARD_ID = 'slot';
 const SLOT_ARTICLE_ID = 'slot';
 
-export async function GET({ locals }) {
+export async function GET({ locals, setHeaders }) {
+  // 캐시 방지 헤더 설정
+  setHeaders({
+    'Cache-Control': 'private, max-age=0, no-store, must-revalidate, proxy-revalidate'
+  });
+  
   const session = await locals.auth();
   
   try {
