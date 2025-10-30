@@ -36,16 +36,20 @@
       });
       const j = await res.json();
       if (!res.ok || !j.success) throw new Error(j?.message || '실패');
-      reels = j.reels;
-      balance = j.balance;
+      // 결과는 스핀 종료 후에만 적용
+      const nextReels = j.reels;
+      const nextBalance = j.balance;
       const sign = j.delta >= 0 ? '+' : '';
-      message = `${sign}${j.delta} (${j.payout})`;
-      await loadRank();
+      const nextMessage = `${sign}${j.delta} (${j.payout})`;
       // 최소 2초 오버레이 유지
       const elapsed = Date.now() - start;
       if (elapsed < 2000) {
         await new Promise(r => setTimeout(r, 2000 - elapsed));
       }
+      reels = nextReels;
+      balance = nextBalance;
+      message = nextMessage;
+      await loadRank();
     } catch (e) {
       message = e.message || '오류';
     } finally {
