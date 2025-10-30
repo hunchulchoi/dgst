@@ -132,6 +132,14 @@
     }
   }
 
+  async function refreshAll() {
+    await Promise.all([
+      refreshBalance(),
+      loadRank(),
+      loadComments()
+    ]);
+  }
+
   onMount(() => {
     loadRank();
     loadComments();
@@ -149,7 +157,12 @@
           </div>
         {/if}
         <div class="card-body">
-          <h4 class="mb-3">뺑뺑이</h4>
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h4 class="mb-0">뺑뺑이</h4>
+            <button class="btn btn-sm btn-outline-secondary" onclick={refreshAll} title="새로고침">
+              🔄
+            </button>
+          </div>
           <div class="d-flex justify-content-between mb-2">
             <div>보유 점수: <strong>{balance}</strong></div>
             <div>
@@ -171,7 +184,12 @@
     <div class="col-md-4 order-1 order-md-2 mb-3 mb-md-0">
       <div class="card shadow rounded-4">
         <div class="card-body">
-          <h5 class="mb-3">랭킹 Top 7</h5>
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="mb-0">랭킹 Top 7</h5>
+            <button class="btn btn-sm btn-outline-secondary" onclick={refreshAll} title="새로고침">
+              🔄
+            </button>
+          </div>
           <ol class="list-group list-group-numbered">
             {#each rankList as r, i}
               <li class="list-group-item d-flex justify-content-between align-items-center">
@@ -196,7 +214,12 @@
           </div>
         {/if}
         <div class="card-body">
-          <h5 class="mb-3">💬 리플 ({comments.length})</h5>
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="mb-0">💬 리플 ({comments.length})</h5>
+            <button class="btn btn-sm btn-outline-secondary" onclick={refreshAll} title="새로고침">
+              🔄
+            </button>
+          </div>
           
           <!-- 댓글 목록 -->
           {#if comments.length > 0}
