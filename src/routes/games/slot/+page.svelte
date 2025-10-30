@@ -1,12 +1,19 @@
 <script>
   import { onMount } from 'svelte';
+  import { formatDistanceToNowStrict, parseISO } from 'date-fns';
+  import { ko } from 'date-fns/locale';
   let { data } = $props();
   let balance = $state(data.balance || 0);
   let bet = $state(10);
   let spinning = $state(false);
   let reels = $state(['-', '-', '-']);
   let message = $state('');
-  let rankList = $state([]);
+  let rankList = $state<any[]>([]);
+  let comments = $state<any[]>([]);
+  let commentContent = $state('');
+  let commentLoading = $state(false);
+  let replyingTo = $state<string | null>(null);
+  let replyContent = $state<Record<string, string>>({});
 
   async function refreshBalance() {
     const res = await fetch('/games/slot');
@@ -51,14 +58,64 @@
       balance = nextBalance;
       message = nextMessage;
       await loadRank();
-    } catch (e) {
-      message = e.message || '오류';
+      await loadComments();
+    } catch (e: any) {
+      message = e?.message || '오류';
     } finally {
       spinning = false;
     }
   }
 
-  onMount(loadRank);
+  async function loadComments() {
+    try {
+      const res = await fetch('/games/slot/comment');
+      if (res.ok) {
+        const data = await res.json();
+        comments = data || [];
+      }
+    } catch (e) {
+      console.error('댓글 로드 실패:', e);
+    }
+  }
+
+  async function writeComment(parentId?: string) {
+    const content = parentId ? replyContent[parentId] : commentContent;
+    if (!content?.trim() || commentLoading) return;
+    try {
+      commentLoading = true;
+      const formData = new FormData();
+      formData.set('content', content.trim());
+      if (parentId) {
+        formData.set('parentCommentId', parentId);
+      }
+      const res = await fetch('/games/slot/comment', {
+        method: 'POST',
+        body: formData
+      });
+      if (res.ok) {
+        if (parentId) {
+          replyContent[parentId] = '';
+          replyingTo = null;
+        } else {
+          commentContent = '';
+        }
+        await loadComments();
+      } else {
+        const err = await res.json();
+        alert(err?.message || '댓글 작성 실패');
+      }
+    } catch (e) {
+      console.error('댓글 작성 실패:', e);
+      alert('댓글 작성 중 오류가 발생했습니다.');
+    } finally {
+      commentLoading = false;
+    }
+  }
+
+  onMount(() => {
+    loadRank();
+    loadComments();
+  });
 </script>
 
 <main class="container my-4">
@@ -82,7 +139,7 @@
           <div class="slot border rounded-3 p-3 text-center mb-3">
             <div class="display-4">{reels[0]} {reels[1]} {reels[2]}</div>
           </div>
-          <button class="btn btn-lg btn-primary w-100" disabled={spinning} on:click={play}>
+              <button class="btn btn-lg btn-primary w-100" disabled={spinning} onclick={play}>
             {spinning ? '스핀 중...' : 'ㄱㄱ'}
           </button>
           {#if message}
@@ -103,6 +160,120 @@
               </li>
             {/each}
           </ol>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- 댓글 섹션 -->
+  <div class="row justify-content-center mt-4">
+    <div class="col-md-10">
+      <div class="card shadow rounded-4">
+        <div class="card-body">
+          <h5 class="mb-3">💬 리플 ({comments.length})</h5>
+          
+          <!-- 댓글 목록 -->
+          {#if comments.length > 0}
+            <div class="mb-3">
+              {#each comments as comment}
+                <div class="border-bottom pb-3 mb-3 {comment.depth > 1 ? 'ms-4' : ''}">
+                  {#if comment.parentCommentNickname}
+                    <div class="mb-2">
+                      <span class="badge bg-secondary text-warning">@</span>
+                      <span class="text-muted small">{comment.parentCommentNickname}</span>
+                    </div>
+                  {/if}
+                  <div class="d-flex align-items-start gap-2 mb-2">
+                    {#if comment.photo}
+                      <img src={comment.photo} alt="프로필" class="rounded-circle" style="width: 32px; height: 32px; object-fit: cover;" />
+                    {/if}
+                    <div class="flex-grow-1">
+                      <div class="fw-bold">{comment.nickname}</div>
+                      <small class="text-muted">
+                        {formatDistanceToNowStrict(parseISO(comment.createdAt), {
+                          locale: ko,
+                          addSuffix: true
+                        })}
+                      </small>
+                    </div>
+                  </div>
+                  <div class="ms-1">{comment.content}</div>
+                  
+                  <!-- 대댓글 작성 폼 -->
+                  {#if data.session?.user && 'nickname' in data.session.user}
+                    <div class="mt-2">
+                      {#if replyingTo === comment.id}
+                        <div class="input-group input-group-sm">
+                          <textarea 
+                            class="form-control" 
+                            rows="2" 
+                            placeholder="답글을 입력하세요..."
+                            bind:value={replyContent[comment.id]}
+                            disabled={commentLoading}
+                          ></textarea>
+                          <button 
+                            class="btn btn-sm btn-primary" 
+                            type="button"
+                            onclick={() => writeComment(comment.id)}
+                            disabled={commentLoading || !replyContent[comment.id]?.trim()}
+                          >
+                            {commentLoading ? '등록 중...' : '등록'}
+                          </button>
+                          <button 
+                            class="btn btn-sm btn-secondary" 
+                            type="button"
+                            onclick={() => {
+                              replyingTo = null;
+                              replyContent[comment.id] = '';
+                            }}
+                          >
+                            취소
+                          </button>
+                        </div>
+                      {:else}
+                        <button 
+                          class="btn btn-sm btn-outline-secondary"
+                          onclick={() => {
+                            replyingTo = comment.id;
+                            if (!replyContent[comment.id]) replyContent[comment.id] = '';
+                          }}
+                        >
+                          답글
+                        </button>
+                      {/if}
+                    </div>
+                  {/if}
+                </div>
+              {/each}
+            </div>
+          {:else}
+            <div class="text-muted text-center py-3">아직 리플이 없습니다. 첫 리플을 남겨보세요! 💬</div>
+          {/if}
+          
+          <!-- 댓글 작성 폼 -->
+          {#if data.session?.user && 'nickname' in data.session.user}
+            <div class="input-group">
+              <textarea 
+                class="form-control" 
+                rows="3" 
+                placeholder="리플을 남겨주세요..."
+                bind:value={commentContent}
+                disabled={commentLoading}
+              ></textarea>
+              <button 
+                class="btn btn-primary" 
+                type="button"
+                onclick={writeComment}
+                disabled={commentLoading || !commentContent.trim()}
+              >
+                {commentLoading ? '등록 중...' : '등록'}
+              </button>
+            </div>
+          {:else}
+            <div class="text-muted text-center py-2">
+              <small>로그인 후 리플을 남길 수 있습니다.</small>
+            </div>
+          {/if}
         </div>
       </div>
     </div>

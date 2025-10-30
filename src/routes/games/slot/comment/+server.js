@@ -1,0 +1,163 @@
+import connectDB from '$lib/database/mongoosePriomise.js';
+import { error, json } from '@sveltejs/kit';
+import { Comment } from '$lib/models/comment.js';
+import { Alarm } from '$lib/models/alarm.js';
+import convertToTree from '$lib/util/tree.js';
+
+connectDB();
+
+// 게임용 댓글: boardId='slot', articleId='slot' 사용
+const SLOT_BOARD_ID = 'slot';
+const SLOT_ARTICLE_ID = 'slot';
+
+export async function GET({ locals }) {
+  const session = await locals.auth();
+  
+  try {
+    // 최근 24시간 내 댓글만 조회
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    
+    const comments = await Comment.find(
+      { 
+        boardId: SLOT_BOARD_ID, 
+        articleId: SLOT_ARTICLE_ID,
+        createdAt: { $gte: oneDayAgo }
+      },
+      { 
+        _id: 1, photo: 1, nickname: 1, createdAt: 1, image: 1, email: 1, 
+        content: 1, depth: 1, parentCommentId: 1, parentCommentNickname: 1, 
+        state: 1, likes: 1, like: 1 
+      }
+    ).sort({ createdAt: 1 }).lean();
+    
+    // ID를 문자열로 변환하고 트리 구조로 변환
+    const commentsWithId = comments.map(c => ({
+      ...c,
+      id: c._id.toString(),
+      parentCommentId: c.parentCommentId?.toString()
+    }));
+    
+    const commentsTree = JSON.parse(JSON.stringify(convertToTree(commentsWithId)));
+
+    // 좋아요 여부 표시 및 알림 읽음 처리
+    if (session?.user?.email) {
+      commentsTree.forEach((c) => {
+        c.liked = c.likes?.includes(session.user.email) || false;
+        delete c.likes;
+      });
+      
+      // 알림 읽음 처리
+      await Alarm.updateMany(
+        { email: session.user.email, articleId: SLOT_ARTICLE_ID },
+        { $set: { readAt: new Date() } },
+        { timestamps: false }
+      );
+    } else {
+      commentsTree.forEach((c) => {
+        delete c.likes;
+      });
+    }
+
+    return json(commentsTree);
+  } catch (err) {
+    console.error('댓글 목록 실패', err);
+    throw error(500, { message: '데이터를 가져오는 중에 오류가 발생하였습니다.' });
+  }
+}
+
+export async function POST({ request, locals }) {
+  const session = await locals.auth();
+  if (!session?.user?.email) {
+    throw error(401, { message: '로그인이 필요합니다.' });
+  }
+
+  try {
+    const data = await request.formData();
+    const content = data.get('content')?.toString()?.trim();
+    const parentCommentId = data.get('parentCommentId')?.toString();
+    
+    if (!content || content.length === 0) {
+      throw error(400, { message: '댓글 내용을 입력해주세요.' });
+    }
+
+    if (content.length > 1000) {
+      throw error(400, { message: '댓글은 1000자 이하여야 합니다.' });
+    }
+
+    // 대댓글인 경우 부모 댓글 확인
+    let parentComment = null;
+    if (parentCommentId) {
+      parentComment = await Comment.findById(parentCommentId).lean();
+      if (!parentComment || parentComment.boardId !== SLOT_BOARD_ID || parentComment.articleId !== SLOT_ARTICLE_ID) {
+        throw error(400, { message: '부모 댓글을 찾을 수 없습니다.' });
+      }
+    }
+
+    const comment = new Comment({
+      email: session.user.email,
+      nickname: session.user.nickname || 'anonymous',
+      photo: session.user.photo,
+      boardId: SLOT_BOARD_ID,
+      articleId: SLOT_ARTICLE_ID,
+      content: content,
+      depth: parentComment ? (parentComment.depth + 1) : 1,
+      parentCommentId: parentCommentId || undefined,
+      parentCommentNickname: parentComment?.nickname,
+      state: 'write'
+    });
+
+    await comment.save();
+
+    const title = '뺑뺑이';
+
+    // 대댓글인 경우: 부모 댓글 작성자에게 알림
+    if (parentComment && parentComment.email !== session.user.email) {
+      await Alarm.findOneAndUpdate(
+        { email: parentComment.email, articleId: SLOT_ARTICLE_ID, comment: parentCommentId },
+        {
+          $set: {
+            title,
+            boardId: SLOT_BOARD_ID,
+            comment: parentCommentId,
+            commentContent: parentComment.content,
+            readAt: null
+          },
+          $addToSet: { comments: comment._id.toString() }
+        },
+        { upsert: true, new: true }
+      );
+    }
+
+    // 일반 댓글인 경우: 다른 댓글 작성자들에게 알림
+    if (!parentComment) {
+      const otherCommenters = await Comment.distinct('email', {
+        boardId: SLOT_BOARD_ID,
+        articleId: SLOT_ARTICLE_ID,
+        email: { $ne: session.user.email },
+        createdAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } // 최근 24시간 내 작성자만
+      });
+
+      for (const email of otherCommenters) {
+        await Alarm.findOneAndUpdate(
+          { email, articleId: SLOT_ARTICLE_ID },
+          {
+            $set: {
+              title,
+              boardId: SLOT_BOARD_ID,
+              readAt: null
+            },
+            $addToSet: { comments: comment._id.toString() }
+          },
+          { upsert: true, new: true }
+        );
+      }
+    }
+
+    return json({ success: true, comment });
+  } catch (err) {
+    if (err.status) throw err;
+    console.error('댓글 저장 실패', err);
+    throw error(500, { message: '댓글 저장 중 오류가 발생하였습니다.' });
+  }
+}
+
