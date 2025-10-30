@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
   import { onMount } from 'svelte';
   import { formatDistanceToNowStrict, parseISO } from 'date-fns';
   import { ko } from 'date-fns/locale';
@@ -9,8 +9,18 @@
   let spinning = $state(false);
   let reels = $state(['-', '-', '-']);
   let message = $state('');
-  let rankList = $state<any[]>([]);
-  let comments = $state<any[]>([]);
+  let rankList = $state<Array<{ nickname: string; balance: number; _id?: string }>>([]);
+  let comments = $state<Array<{ 
+    _id?: string; 
+    id?: string; 
+    nickname: string; 
+    content: string; 
+    createdAt: string; 
+    photo?: string; 
+    depth?: number; 
+    parentCommentNickname?: string; 
+    liked?: boolean;
+  }>>([]);
   let commentContent = $state('');
   let commentLoading = $state(false);
   let replyingTo = $state<string | null>(null);
@@ -178,7 +188,13 @@
   <!-- 댓글 섹션 -->
   <div class="row justify-content-center mt-4">
     <div class="col-md-10">
-      <div class="card shadow rounded-4">
+      <div class="card shadow rounded-4 position-relative overflow-hidden">
+        {#if commentLoading}
+          <div class="slot-overlay d-flex flex-column justify-content-center align-items-center">
+            <div class="spinner-border text-light" role="status"></div>
+            <div class="mt-2 fw-bold text-light">댓글 등록 중...</div>
+          </div>
+        {/if}
         <div class="card-body">
           <h5 class="mb-3">💬 리플 ({comments.length})</h5>
           
@@ -186,7 +202,7 @@
           {#if comments.length > 0}
             <div class="mb-3">
               {#each comments as comment}
-                <div class="border-bottom pb-3 mb-3 {comment.depth > 1 ? 'ms-4' : ''}">
+                <div class="border-bottom pb-3 mb-3 {(comment.depth ?? 1) > 1 ? 'ms-4' : ''}">
                   {#if comment.parentCommentNickname}
                     <div class="mb-2">
                       <span class="badge bg-secondary text-warning">@</span>
@@ -210,9 +226,9 @@
                   <div class="ms-1">{comment.content}</div>
                   
                   <!-- 대댓글 작성 폼 -->
-                  {#if data.session?.user?.nickname}
+                  {#if data.session?.user && 'nickname' in data.session.user}
                     <div class="mt-2">
-                      {#if replyingTo === comment.id}
+                      {#if comment.id && replyingTo === comment.id}
                         <div class="input-group input-group-sm">
                           <textarea 
                             class="form-control" 
@@ -224,7 +240,7 @@
                           <button 
                             class="btn btn-sm btn-primary" 
                             type="button"
-                            onclick={() => writeComment(comment.id)}
+                            onclick={() => comment.id && writeComment(comment.id)}
                             disabled={commentLoading || !replyContent[comment.id]?.trim()}
                           >
                             {commentLoading ? '등록 중...' : '등록'}
@@ -233,19 +249,23 @@
                             class="btn btn-sm btn-secondary" 
                             type="button"
                             onclick={() => {
-                              replyingTo = null;
-                              replyContent[comment.id] = '';
+                              if (comment.id) {
+                                replyingTo = null;
+                                replyContent[comment.id] = '';
+                              }
                             }}
                           >
                             취소
                           </button>
                         </div>
-                      {:else}
+                      {:else if comment.id}
                         <button 
                           class="btn btn-sm btn-outline-secondary"
                           onclick={() => {
-                            replyingTo = comment.id;
-                            if (!replyContent[comment.id]) replyContent[comment.id] = '';
+                            if (comment.id) {
+                              replyingTo = comment.id;
+                              if (!replyContent[comment.id]) replyContent[comment.id] = '';
+                            }
                           }}
                         >
                           답글
@@ -261,19 +281,19 @@
           {/if}
           
           <!-- 댓글 작성 폼 -->
-          {#if data.session?.user?.nickname}
-            <div class="input-group mt-3">
+          {#if data.session?.user && 'nickname' in data.session.user}
+            <div class="comment-input-wrapper mt-3">
               <textarea 
-                class="form-control" 
+                class="form-control comment-textarea" 
                 rows="3" 
                 placeholder="리플을 남겨주세요..."
                 bind:value={commentContent}
                 disabled={commentLoading}
               ></textarea>
               <button 
-                class="btn btn-primary" 
+                class="btn btn-primary comment-submit-btn" 
                 type="button"
-                onclick={writeComment}
+                onclick={() => writeComment()}
                 disabled={commentLoading || !commentContent.trim()}
               >
                 {commentLoading ? '등록 중...' : '등록'}
@@ -298,7 +318,41 @@
     position: absolute;
     inset: 0;
     background: rgba(0,0,0,0.5);
-    z-index: 5;
+    z-index: 10;
+  }
+  /* 댓글 입력창 */
+  .comment-input-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .comment-textarea {
+    font-size: 16px !important; /* iOS 줌 인 방지 */
+    width: 100%;
+    resize: vertical;
+  }
+  .comment-submit-btn {
+    align-self: flex-start;
+    min-width: 80px;
+  }
+  /* 모바일에서 댓글 입력창이 보이도록 */
+  @media (max-width: 768px) {
+    .comment-input-wrapper {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      position: relative;
+      z-index: 1;
+    }
+    .comment-textarea {
+      font-size: 16px !important;
+      min-height: 80px;
+      width: 100%;
+    }
+    .comment-submit-btn {
+      width: 100%;
+      min-width: auto;
+    }
   }
   /* 1위 번호 위치에 왕관 아이콘 표시 */
   :global(.list-group-numbered > .list-group-item:first-child::before) {
