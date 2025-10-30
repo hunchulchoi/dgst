@@ -1016,21 +1016,22 @@
       });
       quillInstance.root.addEventListener('compositionend', () => {
         isComposing = false;
-        // 합성 종료 직후에 한 번만 동기화
-        editorData = quillInstance.root.innerHTML;
+        // 합성 종료 후 한 번만 동기화 (iOS는 일정 스택이 밀린 뒤 반영)
+        if (IS_IOS) {
+          Promise.resolve().then(() => editorData = quillInstance.root.innerHTML);
+        } else {
+          editorData = quillInstance.root.innerHTML;
+        }
       });
 
-      // 데이터 변경 감지 및 양방향 바인딩 (합성/사용자 입력 중에는 디바운스)
+      // 데이터 변경 감지 및 양방향 바인딩
       quillInstance.on('text-change', (_delta, _old, source) => {
-        if (source === 'user') {
-          isUserTyping = true;
-        }
         if (isComposing) return;
-        if (syncTimer) clearTimeout(syncTimer);
-        syncTimer = setTimeout(() => {
+        if (IS_IOS) {
+          Promise.resolve().then(() => editorData = quillInstance.root.innerHTML);
+        } else {
           editorData = quillInstance.root.innerHTML;
-          isUserTyping = false;
-        }, 120);
+        }
       });
 
       // URL 붙여넣기 감지 및 자동 임베드
@@ -1166,8 +1167,7 @@
 
   // editorData prop 변경 감지 (외부에서 변경 시)
   $effect(() => {
-    // 사용자 타이핑 중에는 외부 동기화로 DOM을 덮어쓰지 않음
-    if (quillInstance && !isUserTyping && editorData !== quillInstance.root.innerHTML) {
+    if (quillInstance && editorData !== quillInstance.root.innerHTML) {
       const currentSelection = quillInstance.getSelection();
       quillInstance.root.innerHTML = editorData;
       if (currentSelection) {
