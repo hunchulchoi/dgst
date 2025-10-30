@@ -765,9 +765,6 @@
   </div>-->
 
 
-  <Dialog bind:dialog>
-    {dialogText}
-  </Dialog>
 
 
   <Row class="mt-4 shadow rounded-bottom-4 p-1 m-0">
