@@ -41,9 +41,9 @@ async function maybeTopupAfterOOPS(email, nickname) {
       nickname,
       game: 'slot',
       bet: 0,
-      payout: 100,
-      delta: 100,
-      balance: 100,
+      payout: 1000,
+      delta: 1000,
+      balance: 1000,
       reels: ['-', '-', '-']
     });
     return doc.balance;
@@ -102,7 +102,7 @@ export async function POST({ request, locals }) {
     reels,
   });
 
-  const extraMsg = balanceAfter === 0 ? '오링! 10분 뒤에 100점이 자동 지급됩니다.' : undefined;
+  const extraMsg = balanceAfter === 0 ? '오링! 10분 뒤에 1000점이 자동 지급됩니다.' : undefined;
   return json({ success: true, reels, payout, delta, balance: balanceAfter, id: doc._id, message: extraMsg });
 }
 
