@@ -212,7 +212,7 @@
           return cancel();
         }
 
-        // 비동기 검증 함수
+        // 비동기 검증
         return async () => {
           if (title.replace(' ', '').length < 1) {
             await toast('제목이 너무 짧습니다.', 'warning');
@@ -222,9 +222,10 @@
             await toast('본문이 너무 짧습니다.', 'warning');
             return cancel();
           }
-          
-          // 검증 통과 시 결과 핸들러 반환
-          return async ({ result, update }) => {
+        };
+      },
+      ({ result, update }) => {
+        return async () => {
           if (result.type === 'failure') {
             await update();
             const errorMessage = typeof result.data === 'object' && result.data?.message 
@@ -256,7 +257,6 @@
           } else {
             await update();
           }
-          };
         };
       }}
     >
