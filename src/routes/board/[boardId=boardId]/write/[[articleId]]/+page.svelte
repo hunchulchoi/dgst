@@ -227,7 +227,7 @@
             const errorMessage = typeof result.data === 'object' && result.data?.message 
               ? String(result.data.message) 
               : '저장중에 오류가 발생하였습니다.';
-            await toast(errorMessage, 'error');
+            toast(errorMessage, 'error');
             return;
           }
           
