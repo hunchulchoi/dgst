@@ -168,7 +168,7 @@
         </NavItem> -->
         <NavItem>
           <NavLink href="/games/slot" active={pathname?.startsWith('/games/slot')}>
-            <Icon name="dice-3-fill" class="text-danger me-2"/>뺑뺑이
+            <Icon name="dice-3-fill" class="text-info me-2"/>뺑뺑이
           </NavLink>
         </NavItem>
       {/if}
