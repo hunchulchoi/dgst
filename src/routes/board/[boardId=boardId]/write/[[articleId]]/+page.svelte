@@ -19,6 +19,46 @@
   // Svelte 5 Runes
   let { data } = $props();
   
+  /**
+   * Swal toast 메시지 표시
+   * @param {string} message - 표시할 메시지
+   * @param {string} type - 메시지 타입 ('success', 'error', 'warning', 'info', 'primary')
+   */
+  function toast(message, type = 'primary') {
+    // type을 Swal icon으로 매핑
+    const iconMap = {
+      'success': 'success',
+      'error': 'error',
+      'danger': 'error',
+      'warning': 'warning',
+      'info': 'info',
+      'primary': 'success' // 기본값은 success
+    };
+    
+    const icon = iconMap[type] || 'success';
+
+    if(type === 'error'){
+      // error 타입은 일반 모달로 표시
+      Swal.fire({
+        icon: 'error',
+        title: message,
+        confirmButtonColor: '#3085d6',
+        confirmButtonText: '확인'
+      });
+    } else {
+      // 그 외 타입은 toast로 표시
+      Swal.fire({
+        icon: icon,
+        title: message,
+        toast: true,
+        timer: 750,
+        timerProgressBar: true,
+        showConfirmButton: false,
+        position: 'top-end'
+      });
+    }
+  }
+  
   const { boardId, articleId } = $page.params;
 
   let ffmpeg;
@@ -173,21 +213,11 @@
         }
 
         if (title.replace(' ', '').length < 1) {
-          Swal.fire({
-            icon: 'warning',
-            title: '제목 오류',
-            text: '제목이 너무 짧습니다.',
-            confirmButtonText: '확인'
-          });
+          toast('제목이 너무 짧습니다.', 'warning');
           return cancel();
         }
         if (content.replace(' ', '').length < 5) {
-          Swal.fire({
-            icon: 'warning',
-            title: '본문 오류',
-            text: '본문이 너무 짧습니다.',
-            confirmButtonText: '확인'
-          });
+          toast('본문이 너무 짧습니다.', 'warning');
           return cancel();
         }
 
@@ -197,12 +227,7 @@
             const errorMessage = typeof result.data === 'object' && result.data?.message 
               ? String(result.data.message) 
               : '저장중에 오류가 발생하였습니다.';
-            Swal.fire({
-              icon: 'error',
-              title: '저장 실패',
-              text: errorMessage,
-              confirmButtonText: '확인'
-            });
+            await toast(errorMessage, 'error');
             return;
           }
           
@@ -211,12 +236,7 @@
             
             if (!data?.success) {
               await update();
-              Swal.fire({
-                icon: 'error',
-                title: '저장 실패',
-                text: '저장중에 오류가 발생하였습니다.',
-                confirmButtonText: '확인'
-              });
+              toast('저장중에 오류가 발생하였습니다.', 'error');
             } else {
               title = '';
               content = '';

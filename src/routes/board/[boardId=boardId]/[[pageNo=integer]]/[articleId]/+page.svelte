@@ -375,14 +375,9 @@
         .catch((err) => {
           console.error(err);
 
-          Swal.fire({
-            title: '삭제 중 오류가 발생했습니다.',
-            text: err.message ?? '삭제 중 오류가 발생했습니다.',
-            icon: 'error',
-            confirmButtonColor: '#3085d6',
-            cancelButtonColor: '#d33',
-            confirmButtonText: '확인'
-          });
+          toast(err.message ?? '삭제 중 오류가 발생했습니다.', 'error');
+
+          
         }).finally(() => {
           commentLoading = false;
         });
@@ -553,18 +548,10 @@
             return;
           }
 
-          Swal.fire({
-            title: '삭제 완료',
-            text: '삭제 완료되었습니다.',
-            icon: 'success',
-            confirmButtonColor: '#3085d6',
-            cancelButtonColor: '#d33',
-            confirmButtonText: '확인'
-          }).then(() => {
-            list();
-          });
-
+          await toast('삭제되었습니다', 'success')
           
+          list();
+
         })
         .catch((err) => {
           console.error(err);
@@ -573,7 +560,7 @@
         }); 
       }
     })
-  }
+  } 
 
   function edit(articleId) {
     goto(`/board/${boardId}/write/${articleId}`);
@@ -626,7 +613,7 @@
    * @param {string} message - 표시할 메시지
    * @param {string} type - 메시지 타입 ('success', 'error', 'warning', 'info', 'primary')
    */
-  function toast(message, type = 'primary') {
+  async function toast(message, type = 'primary') {
     // type을 Swal icon으로 매핑
     const iconMap = {
       'success': 'success',
@@ -641,7 +628,7 @@
 
     if(type === 'error'){
       // error 타입은 일반 모달로 표시
-      Swal.fire({
+      return await Swal.fire({
         icon: 'error',
         title: message,
         confirmButtonColor: '#3085d6',
@@ -649,7 +636,7 @@
       });
     } else {
       // 그 외 타입은 toast로 표시
-      Swal.fire({
+      return await Swal.fire({
         icon: icon,
         title: message,
         toast: true,
@@ -658,6 +645,7 @@
         showConfirmButton: false,
         position: 'top-end'
       });
+      
     }
   }
 
