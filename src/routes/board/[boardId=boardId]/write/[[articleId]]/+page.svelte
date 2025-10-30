@@ -212,49 +212,52 @@
           return cancel();
         }
 
-        // 비동기 검증 및 결과 처리
-        return async ({ result, update }) => {
-          // 비동기 검증
-          if (title.replace(' ', '').length < 1) {
-            await toast('제목이 너무 짧습니다.', 'warning');
-            return;
-          }
-          if (content.replace(' ', '').length < 5) {
-            await toast('본문이 너무 짧습니다.', 'warning');
-            return;
-          }
-
-          // 검증 통과 후 결과 처리
-          if (result.type === 'failure') {
-            await update();
-            const errorMessage = typeof result.data === 'object' && result.data?.message 
-              ? String(result.data.message) 
-              : '저장중에 오류가 발생하였습니다.';
-            await toast(errorMessage, 'error');
-            return;
-          }
-          
-          if (result.type === 'success') {
-            const data = result.data;
-            
-            if (!data?.success) {
-              await update();
-              await toast('저장중에 오류가 발생하였습니다.', 'error');
-            } else {
-              title = '';
-              content = '';
-              await update();
-              
-              // 방금 작성/수정한 글의 상세 페이지로 이동
-              const savedArticleId = data.articleId || articleId;
-              if (savedArticleId) {
-                goto(`/board/${boardId}/${savedArticleId}`);
-              } else {
-                await list();
-              }
+        return {
+          // 비동기 검증 (제출 전 실행)
+          validate: async () => {
+            if (title.replace(' ', '').length < 1) {
+              await toast('제목이 너무 짧습니다.', 'warning');
+              return false;
             }
-          } else {
-            await update();
+            if (content.replace(' ', '').length < 5) {
+              await toast('본문이 너무 짧습니다.', 'warning');
+              return false;
+            }
+            return true;
+          },
+          // 결과 처리
+          submit: async ({ result, update }) => {
+            if (result.type === 'failure') {
+              await update();
+              const errorMessage = typeof result.data === 'object' && result.data?.message 
+                ? String(result.data.message) 
+                : '저장중에 오류가 발생하였습니다.';
+              await toast(errorMessage, 'error');
+              return;
+            }
+            
+            if (result.type === 'success') {
+              const data = result.data;
+              
+              if (!data?.success) {
+                await update();
+                await toast('저장중에 오류가 발생하였습니다.', 'error');
+              } else {
+                title = '';
+                content = '';
+                await update();
+                
+                // 방금 작성/수정한 글의 상세 페이지로 이동
+                const savedArticleId = data.articleId || articleId;
+                if (savedArticleId) {
+                  goto(`/board/${boardId}/${savedArticleId}`);
+                } else {
+                  await list();
+                }
+              }
+            } else {
+              await update();
+            }
           }
         };
       }}
