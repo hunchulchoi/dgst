@@ -361,23 +361,22 @@
 
           if (res.status !== 200) {
             const {message} = await res.json();
-            toast(message, 'error');
+            await toast(message, 'error');
             return;
           }
 
           const _message = await res.text();
 
-          toast(_message || '삭제 되었습니다.', 'success');
+          await toast(_message || '삭제 되었습니다.', 'success');
 
           commentLoading = false;
           comments();
         })
-        .catch((err) => {
+        .catch(async (err) => {
           console.error(err);
 
-          toast(err.message ?? '삭제 중 오류가 발생했습니다.', 'error');
+          await toast(err.message ?? '삭제 중 오류가 발생했습니다.', 'error');
 
-          
         }).finally(() => {
           commentLoading = false;
         });
@@ -643,7 +642,7 @@
         timer: 750,
         timerProgressBar: true,
         showConfirmButton: false,
-        position: 'top-end'
+        position: 'center'
       });
       
     }

@@ -12,6 +12,10 @@
   } from '@sveltestrap/sveltestrap';
   import QuillEditor from '$lib/components/QuillEditor.svelte';
   import { goto } from '$app/navigation';
+  /**
+   * SvelteKit page store import for accessing current route info
+   * @see https://kit.svelte.dev/docs/modules#$app-stores
+   */
   import { page } from '$app/stores';
   import { enhance } from '$app/forms';
   import Swal from 'sweetalert2';
@@ -54,7 +58,7 @@
         timer: 750,
         timerProgressBar: true,
         showConfirmButton: false,
-        position: 'top-end'
+        position: 'center'
       });
     }
   }
