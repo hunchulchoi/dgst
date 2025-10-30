@@ -38,6 +38,9 @@ export const actions = {
             message: '업데이트 되지 않았습니다. 이미 삭제되었거나 권한이 없는 것 같습니다.'
           });
         }
+        
+        // 글 수정 시 기존 articleId 반환
+        return { success: true, articleId: params.articleId };
       } else {
         const article = new Article({
           email: session.user.email,
@@ -51,17 +54,14 @@ export const actions = {
 
         const inserted = await article.save();
         //console.log('inserted', inserted);
-        
+
         // 새 글 작성 시 articleId 반환
         return { success: true, articleId: inserted._id.toString() };
-      } else {
-        // 글 수정 시 기존 articleId 반환
-        return { success: true, articleId: params.articleId };
       }
-    } catch (err) {
-      console.error('게시글 저장 실패', err);
-      throw error(500, { message: '저장 중 오류가 발생하였습니다.ㅜㅜ' });
-    }
+} catch (err) {
+  console.error('게시글 저장 실패', err);
+  throw error(500, { message: '저장 중 오류가 발생하였습니다.ㅜㅜ' });
+}
   }
 };
 
