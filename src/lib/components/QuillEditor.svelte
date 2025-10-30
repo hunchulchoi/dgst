@@ -44,6 +44,8 @@
   let FFmpeg = null;
   /** @type {any} */
   let fetchFile = null;
+  /** @type {any} */
+  let heic2any = null;
   /** @type {boolean} */
   let ffmpegReady = false;
   
@@ -85,10 +87,18 @@
     try {
       console.log('[browser-image-compression] 이미지 변환 시작:', fileName, 'type:', file.type, 'size:', file.size);
       
-      // GIF는 WebP로 변환하지 않고 원본 유지 (서버에서 처리)
-      if (file.type === 'image/gif') {
-        console.log('[browser-image-compression] GIF 파일은 원본 유지');
-        return file;
+      // GIF/HEIC/HEIF는 클라이언트 변환 대상 아님
+      const lowerType = (file.type || '').toLowerCase();
+      const lowerName = (fileName || '').toLowerCase();
+      if (
+        lowerType === 'image/gif' ||
+        lowerType.includes('image/heic') ||
+        lowerType.includes('image/heif') ||
+        lowerName.endsWith('.heic') ||
+        lowerName.endsWith('.heif')
+      ) {
+        console.log('[browser-image-compression] GIF/HEIC/HEIF 파일은 변환하지 않음:', fileName, lowerType);
+        return file; // 서버/사용자 측에서 처리 (브라우저 표시 불가 형식은 업로드 차단 로직에서 안내)
       }
 
       // 1MB 이하는 변환하지 않고 원본 유지
@@ -329,6 +339,39 @@
 
         // 이미지 파일이면 browser-image-compression으로 WebP 변환 (움짤 포함)
         if (file.type.startsWith('image/') && file.type !== 'image/webp') {
+          const typeLower = (file.type || '').toLowerCase();
+          const nameLower = (file.name || '').toLowerCase();
+
+          // HEIC/HEIF는 클라이언트에서 heic2any로 JPEG 변환 시도
+          if (
+            typeLower.includes('image/heic') ||
+            typeLower.includes('image/heif') ||
+            nameLower.endsWith('.heic') ||
+            nameLower.endsWith('.heif')
+          ) {
+            try {
+              console.log('[upload] HEIC/HEIF 감지 - heic2any로 변환 시도:', file.name);
+              if (!heic2any) {
+                heic2any = (await import('heic2any')).default;
+              }
+              const jpgBlob = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.8 });
+              const baseName = nameLower.replace(/\.(heic|heif)$/i, '');
+              file = new File([jpgBlob], `${baseName || 'image'}.jpg`, { type: 'image/jpeg' });
+              console.log('[upload] HEIC → JPEG 변환 완료:', file.name, file.type, file.size);
+            } catch (e) {
+              console.error('[upload] HEIC 변환 실패 - 업로드 중단:', e);
+              // 보상 호출: 이미 uploadPlus 한 경우 감소
+              if (uploadMinus) uploadMinus();
+              uploadPlusCount = Math.max(0, uploadPlusCount - 1);
+              await Swal.fire({
+                icon: 'warning',
+                title: 'HEIC 변환 실패',
+                html: 'iPhone 사진(HEIC)을 변환하지 못했습니다. JPG/PNG로 저장 후 업로드해 주세요.',
+                confirmButtonText: '확인'
+              });
+              continue;
+            }
+          }
           // 원본 파일 보존 (변환 실패 시 사용)
           const originalFile = file;
           console.log('[browser-image-compression] 이미지 파일 감지, WebP 변환 시작...', originalFile.name);
