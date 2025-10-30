@@ -1,0 +1,105 @@
+import connectDB from '$lib/database/mongoosePriomise.js';
+import { error, json } from '@sveltejs/kit';
+import { GameScore } from '$lib/models/gameScore.js';
+
+connectDB();
+
+function spinReels() {
+  const symbols = ['🍒', '🍋', '🔔', '⭐', '7️⃣'];
+  return [0, 0, 0].map(() => symbols[Math.floor(Math.random() * symbols.length)]);
+}
+
+function calcPayout(reels, bet) {
+  const [a, b, c] = reels;
+  if (a === b && b === c) {
+    // triple
+    return bet * 10;
+  }
+  if (a === b || b === c || a === c) {
+    // pair
+    return bet * 2;
+  }
+  return 0;
+}
+
+async function getBalance(email) {
+  const last = await GameScore.findOne({ email }).sort({ createdAt: -1 }).select({ balance: 1 }).lean();
+  return last?.balance ?? 0;
+}
+
+export async function POST({ request, locals }) {
+  const session = await locals.auth();
+  if (!session?.user?.email) throw error(401, { message: '로그인이 필요합니다.' });
+
+  const body = await request.json().catch(() => ({}));
+  const bet = Number(body?.bet ?? 0);
+  if (!Number.isFinite(bet) || bet <= 0 || bet > 1000000) {
+    throw error(400, { message: '잘못된 베팅 금액입니다.' });
+  }
+
+  const email = session.user.email;
+  const nickname = session.user.nickname || 'anonymous';
+
+  let balanceBefore = await getBalance(email);
+  // 최초 이용자: 1000점 지급 후 안내
+  if (balanceBefore === 0) {
+    await GameScore.create({
+      email,
+      nickname,
+      game: 'slot',
+      bet: 0,
+      payout: 0,
+      delta: 0,
+      balance: 1000,
+      reels: ['-', '-', '-']
+    });
+    return json({ success: false, balance: 1000, message: '첫 1000점 지급! 다시 베팅해 주세요.' });
+  }
+  if (balanceBefore < bet) throw error(400, { message: '보유 점수가 부족합니다.' });
+
+  const reels = spinReels();
+  const payout = calcPayout(reels, bet);
+  const delta = payout - bet;
+  const balanceAfter = balanceBefore + delta;
+
+  const doc = await GameScore.create({
+    email,
+    nickname,
+    game: 'slot',
+    bet,
+    payout,
+    delta,
+    balance: balanceAfter,
+    reels,
+  });
+
+  return json({ success: true, reels, payout, delta, balance: balanceAfter, id: doc._id });
+}
+
+export async function GET({ locals, url }) {
+  const session = await locals.auth();
+  if (!session?.user?.email) throw error(401, { message: '로그인이 필요합니다.' });
+  let balance = await getBalance(session.user.email);
+  if (balance === 0) {
+    await GameScore.create({
+      email: session.user.email,
+      nickname: session.user.nickname || 'anonymous',
+      game: 'slot',
+      bet: 0, payout: 0, delta: 0, balance: 1000, reels: ['-', '-', '-']
+    });
+    balance = 1000;
+  }
+  if (url.searchParams.get('rank')) {
+    // 랭킹 처리: 각 user의 가장 최근 balance, 상위 10명
+    const balances = await GameScore.aggregate([
+      { $sort: { createdAt: -1 } },
+      { $group: { _id: '$email', nickname: { $first: '$nickname' }, balance: { $first: '$balance' } } },
+      { $sort: { balance: -1 } },
+      { $limit: 10 }
+    ]);
+    return json({ balance, rank: balances });
+  }
+  return json({ balance });
+}
+
+

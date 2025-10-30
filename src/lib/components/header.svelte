@@ -161,9 +161,14 @@
             {/if}
           </NavLink>
         </NavItem>
-        <NavItem>
+        <!-- <NavItem>
           <NavLink href="/board/bug" active={pathname?.startsWith('/board/bug')}>
             <Icon name="bug-fill" class="text-warning me-2"/>버그 신고
+          </NavLink>
+        </NavItem> -->
+        <NavItem>
+          <NavLink href="/games/slot" active={pathname?.startsWith('/games/slot')}>
+            <Icon name="dice-3-fill" class="text-danger me-2"/>뺑뺑이
           </NavLink>
         </NavItem>
       {/if}
