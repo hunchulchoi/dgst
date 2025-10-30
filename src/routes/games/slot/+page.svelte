@@ -76,7 +76,7 @@
           <div class="d-flex justify-content-between mb-2">
             <div>보유 점수: <strong>{balance}</strong></div>
             <div>
-              <input type="number" min="1" class="form-control form-control-sm d-inline-block" style="width: 120px;" bind:value={bet} />
+              <input type="tel" min="1" class="form-control form-control-sm d-inline-block" style="width: 120px;" bind:value={bet} />
             </div>
           </div>
           <div class="slot border rounded-3 p-3 text-center mb-3">
@@ -121,6 +121,14 @@
     inset: 0;
     background: rgba(0,0,0,0.5);
     z-index: 5;
+  }
+  /* 1위 번호 위치에 왕관 아이콘 표시 */
+  :global(.list-group-numbered > .list-group-item:first-child::before) {
+    content: '👑' !important;
+    background: transparent !important;
+    color: inherit !important;
+    font-size: 1.1rem;
+    line-height: 1;
   }
 </style>
 
