@@ -95,7 +95,7 @@ export async function GET({ locals, url }) {
       { $sort: { createdAt: -1 } },
       { $group: { _id: '$email', nickname: { $first: '$nickname' }, balance: { $first: '$balance' } } },
       { $sort: { balance: -1 } },
-      { $limit: 10 }
+      { $limit: 7 }
     ]);
     return json({ balance, rank: balances });
   }

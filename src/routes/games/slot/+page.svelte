@@ -28,6 +28,7 @@
     try {
       spinning = true;
       message = '';
+      const start = Date.now();
       const res = await fetch('/games/slot', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -40,6 +41,11 @@
       const sign = j.delta >= 0 ? '+' : '';
       message = `${sign}${j.delta} (${j.payout})`;
       await loadRank();
+      // 최소 2초 오버레이 유지
+      const elapsed = Date.now() - start;
+      if (elapsed < 2000) {
+        await new Promise(r => setTimeout(r, 2000 - elapsed));
+      }
     } catch (e) {
       message = e.message || '오류';
     } finally {
@@ -53,9 +59,15 @@
 <main class="container my-4">
   <div class="row justify-content-center">
     <div class="col-md-6 order-2 order-md-1">
-      <div class="card shadow rounded-4">
+      <div class="card shadow rounded-4 position-relative overflow-hidden">
+        {#if spinning}
+          <div class="slot-overlay d-flex flex-column justify-content-center align-items-center">
+            <div class="spinner-border text-light" role="status"></div>
+            <div class="mt-2 fw-bold text-light">스핀 중...</div>
+          </div>
+        {/if}
         <div class="card-body">
-          <h4 class="mb-3">슬롯머신</h4>
+          <h4 class="mb-3">뺑뺑이</h4>
           <div class="d-flex justify-content-between mb-2">
             <div>보유 점수: <strong>{balance}</strong></div>
             <div>
@@ -66,8 +78,8 @@
             <div class="display-4">{reels[0]} {reels[1]} {reels[2]}</div>
           </div>
           <div class="d-flex gap-2">
-            <button class="btn btn-primary" disabled={spinning} on:click={play}>
-              {spinning ? '스핀 중...' : '스핀'}
+            <button class="btn btn-lg btn-primary" disabled={spinning} on:click={play}>
+              {spinning ? '스핀 중...' : 'ㄱㄱ'}
             </button>
             <button class="btn btn-secondary" on:click={refreshBalance}>새로고침</button>
           </div>
@@ -80,7 +92,7 @@
     <div class="col-md-4 order-1 order-md-2 mb-3 mb-md-0">
       <div class="card shadow rounded-4">
         <div class="card-body">
-          <h5 class="mb-3">랭킹 Top 10</h5>
+          <h5 class="mb-3">랭킹 Top 7</h5>
           <ol class="list-group list-group-numbered">
             {#each rankList as r, i}
               <li class="list-group-item d-flex justify-content-between align-items-center">
@@ -98,6 +110,12 @@
 <style>
   .slot {
     background: var(--bs-secondary-bg);
+  }
+  .slot-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 5;
   }
 </style>
 
