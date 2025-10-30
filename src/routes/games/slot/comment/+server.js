@@ -33,7 +33,7 @@ export async function GET({ locals, setHeaders }) {
         content: 1, depth: 1, parentCommentId: 1, parentCommentNickname: 1, 
         state: 1, likes: 1, like: 1 
       }
-    ).sort({ createdAt: 1 }).lean();
+    ).sort({ createdAt: -1 }).lean();
     
     // ID를 문자열로 변환하고 트리 구조로 변환
     const commentsWithId = comments.map(c => ({
