@@ -639,7 +639,7 @@
         icon: icon,
         title: message,
         toast: true,
-        timer: 750,
+        timer: 1000,
         timerProgressBar: true,
         showConfirmButton: false,
         position: 'center'

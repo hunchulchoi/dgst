@@ -29,13 +29,18 @@
    * @param {object} options - 토스트 옵션
    * @param {string} [options.icon='info'] - 메시지 아이콘 ('success', 'error', 'warning', 'info', 'primary')
    * @param {string} [options.position='center'] - 토스트 위치 ('top', 'top-start', 'top-end', 'center', 'center-start', 'center-end', 'bottom', 'bottom-start', 'bottom-end')
-   * @param {number} [options.timer=750] - 토스트 지속 시간
-   * @param {boolean} [options.toast=true] - 토스트 표시 여부
+   * @param {number} [options.timer=1000] - 토스트 지속 시간 (0일 경우 지속 시간 없음)
+   * @param {boolean} [options.isToast=true] - 토스트 표시 여부
    */
-  async function toast(message, options = {icon:'info', position:'center', timer:750, toast:true}) {
-    const {icon, position, timer, toast} = options;
+  async function toast(message, options = {}) {
+    const {
+      icon = 'info',
+      position = 'center',
+      timer = 1000,
+      isToast = true
+    } = options;
 
-    if(options.icon === 'error'){
+    if(icon === 'error'){
       // error 타입은 일반 모달로 표시
       await Swal.fire({
         icon,
@@ -48,10 +53,10 @@
       await Swal.fire({
         icon,
         title: message,
-        toast,
+        toast: isToast,  
         timer,
-        timerProgressBar: timer>0?true:false,
-        position: 'center'
+        timerProgressBar: timer > 0,
+        position,  
       });
     }
   }
@@ -214,14 +219,14 @@
         const contentValue = content || '';
         
         // 제목 검증
-        if (titleValue.replace(/\s/g, '').length < 1) {
-          toast('제목이 너무 짧습니다.', {icon:'warning', toast: false});
+        if (titleValue.replace(/\s/g, '').length < 2) {
+          toast('제목이 너무 짧습니다.', {icon:'warning', isToast: false});
           return cancel();
         }
         
         // content 검증: 비어있거나 HTML 태그만 있는 경우 거부
         if (!contentValue || contentValue.trim().length === 0) {
-          toast('본문을 입력해주세요.', {icon:'warning', toast: false});
+          toast('본문을 입력해주세요.', {icon:'warning', isToast: false});
           return cancel();
         }
         
@@ -233,7 +238,7 @@
           .trim();
         
         if (textContent.length < 5) {
-          toast('본문이 너무 짧습니다. 최소 5자 이상 입력해주세요.', {icon:'warning', toast: false});
+          toast('본문이 너무 짧습니다. 최소 5자 이상 입력해주세요.', {icon:'warning', isToast: false});
           return cancel();
         }
 
@@ -245,7 +250,7 @@
             const errorMessage = typeof result.data === 'object' && result.data?.message 
               ? String(result.data.message) 
               : '저장중에 오류가 발생하였습니다.';
-            await toast(errorMessage, {icon:'error', toast: false});
+            await toast(errorMessage, {icon:'error', isToast: false});
             return;
           }
           
@@ -253,9 +258,9 @@
             const data = result.data;
             
             if (!data?.success) {
-              await toast('저장중에 오류가 발생하였습니다.', {icon:'error', toast: false});
+              await toast('저장중에 오류가 발생하였습니다.', {icon:'error', isToast: false});
             } else {
-              await toast('저장되었습니다.', {icon:'success'});
+              await toast('저장되었습니다.', {icon:'success', timer: 1000});
 
               title = '';
               content = '';
