@@ -221,7 +221,14 @@
               title = '';
               content = '';
               await update();
-              await list();
+              
+              // 방금 작성/수정한 글의 상세 페이지로 이동
+              const savedArticleId = data.articleId || articleId;
+              if (savedArticleId) {
+                goto(`/board/${boardId}/${savedArticleId}`);
+              } else {
+                await list();
+              }
             }
           } else {
             await update();
