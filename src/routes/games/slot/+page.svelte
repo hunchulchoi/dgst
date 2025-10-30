@@ -76,18 +76,15 @@
           <div class="d-flex justify-content-between mb-2">
             <div>보유 점수: <strong>{balance}</strong></div>
             <div>
-              <input type="tel" min="1" class="form-control form-control-sm d-inline-block" style="width: 120px;" bind:value={bet} />
+              <input type="tel" min="1" max={balance} class="form-control form-control-sm d-inline-block bet-input" style="width: 150px;" bind:value={bet} />
             </div>
           </div>
           <div class="slot border rounded-3 p-3 text-center mb-3">
             <div class="display-4">{reels[0]} {reels[1]} {reels[2]}</div>
           </div>
-          <div class="d-flex gap-2">
-            <button class="btn btn-lg btn-primary" disabled={spinning} on:click={play}>
-              {spinning ? '스핀 중...' : 'ㄱㄱ'}
-            </button>
-            <button class="btn btn-secondary" on:click={refreshBalance}>새로고침</button>
-          </div>
+          <button class="btn btn-lg btn-primary w-100" disabled={spinning} on:click={play}>
+            {spinning ? '스핀 중...' : 'ㄱㄱ'}
+          </button>
           {#if message}
           <div class="mt-3 fw-bold">{message}</div>
           {/if}
@@ -129,6 +126,10 @@
     color: inherit !important;
     font-size: 1.1rem;
     line-height: 1;
+  }
+  /* iOS Safari 자동 줌 인 방지 (font-size 16px 이상 필요) */
+  .bet-input {
+    font-size: 16px !important;
   }
 </style>
 

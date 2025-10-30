@@ -27,7 +27,7 @@ async function getBalance(email) {
   return last?.balance ?? 0;
 }
 
-// 잔액 0 상태가 10분 이상이면 500점 보충 (지연 지급)
+// 잔액 0 상태가 10분 이상이면 700점 보충 (지연 지급)
 async function maybeTopupAfterOOPS(email, nickname) {
   const last = await GameScore.findOne({ email }).sort({ createdAt: -1 }).lean();
   if (!last) return 0;
@@ -41,9 +41,9 @@ async function maybeTopupAfterOOPS(email, nickname) {
       nickname,
       game: 'slot',
       bet: 0,
-      payout: 500,
-      delta: 500,
-      balance: 500,
+      payout: 700,
+      delta: 700,
+      balance: 700,
       reels: ['-', '-', '-']
     });
     return doc.balance;
@@ -84,7 +84,7 @@ export async function POST({ request, locals }) {
     const topped = await maybeTopupAfterOOPS(email, nickname);
     balanceBefore = topped > 0 ? topped : 0;
     if (balanceBefore === 0) {
-      throw error(400, { message: '오링 상태입니다. 10분 뒤에 100점이 자동 지급됩니다.' });
+      throw error(400, { message: '오링 상태입니다. 10분 뒤에 700점이 자동 지급됩니다.' });
     }
   }
   if (balanceBefore < bet) throw error(400, { message: '보유 점수가 부족합니다.' });
@@ -105,7 +105,7 @@ export async function POST({ request, locals }) {
     balance: balanceAfter,
     reels,
   });
-  const extraMsg = balanceAfter === 0 ? '오링! 10분 뒤에 100점이 자동 지급됩니다.' : undefined;
+  const extraMsg = balanceAfter === 0 ? '오링! 10분 뒤에 700점이 자동 지급됩니다.' : undefined;
   return json({ success: true, reels, payout, delta, balance: balanceAfter, id: docSpin._id, message: extraMsg });
 }
 
@@ -126,7 +126,7 @@ export async function GET({ locals, url }) {
     });
     balance = 1000;
   }
-  // 잔액 0이 10분 이상 지속되면 100점 보충
+  // 잔액 0이 10분 이상 지속되면 700점 보충
   if (balance === 0) {
     const topped = await maybeTopupAfterOOPS(email, nickname);
     if (topped > 0) balance = topped;
