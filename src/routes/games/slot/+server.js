@@ -27,6 +27,30 @@ async function getBalance(email) {
   return last?.balance ?? 0;
 }
 
+// 잔액 0 상태가 10분 이상이면 100점 보충
+async function maybeTopupAfterOOPS(email, nickname) {
+  const last = await GameScore.findOne({ email }).sort({ createdAt: -1 }).lean();
+  if (!last) return 0;
+  if ((last.balance ?? 0) > 0) return last.balance;
+  const createdAt = new Date(last.createdAt).getTime();
+  const now = Date.now();
+  const TEN_MIN = 10 * 60 * 1000;
+  if (now - createdAt >= TEN_MIN) {
+    const doc = await GameScore.create({
+      email,
+      nickname,
+      game: 'slot',
+      bet: 0,
+      payout: 100,
+      delta: 100,
+      balance: 100,
+      reels: ['-', '-', '-']
+    });
+    return doc.balance;
+  }
+  return 0;
+}
+
 export async function POST({ request, locals }) {
   const session = await locals.auth();
   if (!session?.user?.email) throw error(401, { message: '로그인이 필요합니다.' });
@@ -55,6 +79,11 @@ export async function POST({ request, locals }) {
     });
     return json({ success: false, balance: 1000, message: '첫 1000점 지급! 다시 베팅해 주세요.' });
   }
+  // 0원 유지 10분 경과 시 자동 100점 보충
+  if (balanceBefore === 0) {
+    const topped = await maybeTopupAfterOOPS(email, nickname);
+    if (topped > 0) balanceBefore = topped;
+  }
   if (balanceBefore < bet) throw error(400, { message: '보유 점수가 부족합니다.' });
 
   const reels = spinReels();
@@ -73,7 +102,8 @@ export async function POST({ request, locals }) {
     reels,
   });
 
-  return json({ success: true, reels, payout, delta, balance: balanceAfter, id: doc._id });
+  const extraMsg = balanceAfter === 0 ? '오링! 10분 뒤에 100점이 자동 지급됩니다.' : undefined;
+  return json({ success: true, reels, payout, delta, balance: balanceAfter, id: doc._id, message: extraMsg });
 }
 
 export async function GET({ locals, url }) {
@@ -88,6 +118,11 @@ export async function GET({ locals, url }) {
       bet: 0, payout: 0, delta: 0, balance: 1000, reels: ['-', '-', '-']
     });
     balance = 1000;
+  }
+  // 잔액 0이 10분 이상 지속되면 100점 보충
+  if (balance === 0) {
+    const topped = await maybeTopupAfterOOPS(session.user.email, session.user.nickname || 'anonymous');
+    if (topped > 0) balance = topped;
   }
   if (url.searchParams.get('rank')) {
     // 랭킹 처리: 각 user의 가장 최근 balance, 상위 10명

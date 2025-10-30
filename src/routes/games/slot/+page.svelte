@@ -40,7 +40,8 @@
       const nextReels = j.reels;
       const nextBalance = j.balance;
       const sign = j.delta >= 0 ? '+' : '';
-      const nextMessage = `${sign}${j.delta} (${j.payout})`;
+      const extra = j.message ? ` - ${j.message}` : '';
+      const nextMessage = `${sign}${j.delta} (${j.payout})${extra}`;
       // 최소 2초 오버레이 유지
       const elapsed = Date.now() - start;
       if (elapsed < 2000) {
