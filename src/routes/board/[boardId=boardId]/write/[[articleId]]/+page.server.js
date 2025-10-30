@@ -21,13 +21,19 @@ export const actions = {
 
     //console.log(data);
 
+    // content 처리 (null, undefined, 빈 문자열 체크)
+    const rawContent = data.get('content');
+    const processedContent = rawContent 
+      ? String(rawContent).replace(/<p>\s*<br\s*\/?>(\s|\u00A0)*<\/p>/g, '<br>')
+      : '';
+
     try {
       if (params.articleId) {
         const update = await Article.findOneAndUpdate(
           { _id: params.articleId, email: session.user.email, state: 'write' },
           {
             title: data.get('title'),
-            content: data.get('content')?.replace(/<p>\s*<br\s*\/?>(\s|\u00A0)*<\/p>/g, '<br>'),
+            content: processedContent,
             modified_email: session.user.email
           },
           { timestamps: true }
@@ -47,7 +53,7 @@ export const actions = {
           nickname: session.user.nickname,
           boardId: params.boardId,
           title: data.get('title'),
-          content: data.get('content')?.replace(/<p>\s*<br\s*\/?>(\s|\u00A0)*<\/p>/g, '<br>')
+          content: processedContent
         });
 
         //console.log(article);

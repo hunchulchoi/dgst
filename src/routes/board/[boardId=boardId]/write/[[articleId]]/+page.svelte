@@ -217,11 +217,16 @@
         }
 
         // 동기 검증 (제출 전)
-        if (title.replace(' ', '').length < 1) {
+        const titleValue = title || '';
+        const contentValue = content || '';
+        
+        if (titleValue.replace(/\s/g, '').length < 1) {
           toast('제목이 너무 짧습니다.', 'warning');
           return cancel();
         }
-        if (content.replace(' ', '').length < 5) {
+        // content에서 HTML 태그 제거 후 실제 텍스트 길이 확인
+        const textContent = contentValue.replace(/<[^>]*>/g, '').replace(/\s/g, '');
+        if (textContent.length < 5) {
           toast('본문이 너무 짧습니다.', 'warning');
           return cancel();
         }
