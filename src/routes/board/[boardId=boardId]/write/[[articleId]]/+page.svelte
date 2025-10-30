@@ -64,14 +64,6 @@
   const { boardId, articleId } = $page.params;
 
   let ffmpeg;
-  
-  const uploadPlus = () => {
-    uploading++;
-  };
-
-  const uploadMinus = () => {
-    uploading--;
-  };
 
   onMount(async () => {
     const { FFmpeg } = await import('@ffmpeg/ffmpeg');
@@ -282,7 +274,7 @@
       <FormGroup floating label="제목">
         <Input id="title" name="title" bind:value={title} required autofocus />
       </FormGroup>
-      <ToastEditor bind:editorData={content} {uploadPlus} {uploadMinus} />
+      <ToastEditor bind:editorData={content} />
       <Row class="text-end pe-2 mt-4">
         <Col md="10" xs="8" class="text-end">
           <Button color="warning" onclick={list}>

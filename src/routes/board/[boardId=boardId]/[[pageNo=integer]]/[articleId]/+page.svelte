@@ -50,6 +50,22 @@
           cursor: pointer !important;
       }
 
+      .og-card {
+          transition: transform 0.2s ease, box-shadow 0.2s ease;
+          max-width: 500px !important;
+          width: fit-content;
+      }
+
+      .og-card:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+      }
+
+      .og-card a {
+          color: inherit !important;
+          text-decoration: none !important;
+      }
+
       figure{
         max-width: 100% !important;
       }
@@ -681,24 +697,107 @@
     return urls;
   }
 
+  // 동영상 링크를 video 태그로 변환하는 함수
+  function convertVideoLinks(htmlContent) {
+    // 동영상 파일 확장자 패턴
+    const videoPattern = /(\/(uploads|public)\/[^"'\s<>]+\.(mp4|webm|ogg|mov)(\?[^"'\s<>]*)?)/gi;
+    
+    // 링크 태그 내의 동영상 URL 감지 및 변환
+    const linkPattern = /<a[^>]+href=["']([^"']+\.(mp4|webm|ogg|mov)(\?[^"']*)?)["'][^>]*>([^<]*)\[동영상 다운로드\/재생\]<\/a>/gi;
+    
+    let processedHtml = htmlContent;
+    
+    // <a href="...동영상">[동영상 다운로드/재생]</a> 패턴을 video 태그로 변환
+    processedHtml = processedHtml.replace(linkPattern, (match, url) => {
+      const videoTag = `<video src="${url}" controls style="max-width: 100%; height: auto; display: block; margin: 1em 0;"></video>`;
+      return videoTag;
+    });
+    
+    // 일반 텍스트 내의 동영상 URL도 변환 (보험 처리)
+    processedHtml = processedHtml.replace(videoPattern, (match) => {
+      if (match.includes('src=') || match.includes('<video')) {
+        return match; // 이미 video 태그 안에 있으면 변환하지 않음
+      }
+      const videoTag = `<video src="${match}" controls style="max-width: 100%; height: auto; display: block; margin: 1em 0;"></video>`;
+      return videoTag;
+    });
+    
+    return processedHtml;
+  }
+
+  // OG 카드 플레이스홀더를 실제 카드 HTML로 변환하는 함수
+  function convertOGCards(htmlContent) {
+    // HTML 엔티티 디코딩 먼저 처리
+    let decoded = htmlContent.replace(/&colon;/g, ':');
+    
+    // 더 정확한 정규식: URL은 전체를, base64 문자열 매칭
+    const ogCardPattern = /OG_CARD_START:((?:https?:\/\/[^\s:]+)):([A-Za-z0-9+/=]+):OG_CARD_END/g;
+    
+    return decoded.replace(ogCardPattern, (match, url, ogDataBase64) => {
+      console.log('[convertOGCards] 플레이스홀더 발견:', { url, ogDataBase64: ogDataBase64.substring(0, 50) });
+      try {
+        // base64 디코딩
+        const ogDataJson = decodeURIComponent(escape(atob(ogDataBase64)));
+        const ogData = JSON.parse(ogDataJson);
+        
+        const ogCardHtml = `<div class="card shadow-sm rounded mb-3" style="max-width:500px;">
+          ${ogData.image ? `<img src='${ogData.image}' class='card-img-top' alt='미리보기 이미지' style='height:200px;object-fit:cover;'>` : ''}
+          <div class="card-body p-3">
+            <div class="card-title fw-bold lh-sm mb-1" style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${ogData.title || url}</div>
+            ${ogData.description ? `<p class="card-text text-secondary small mb-2" style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${ogData.description}</p>` : ''}
+            <div class="mt-2">
+              <div class="d-flex align-items-center gap-2 mb-1">
+                ${ogData.favicon ? `<img src='${ogData.favicon}' alt='favicon' class='rounded me-1' style='width:18px;height:18px;'>` : ''}
+                <span class="text-primary fw-semibold small">${ogData.siteName || new URL(url).hostname}</span>
+              </div>
+              <a href='${url}' target='_blank' rel='noopener' class='text-primary text-decoration-underline small'>${url}</a>
+            </div>
+          </div>
+        </div>`;
+        console.log('[convertOGCards] OG 카드 HTML 생성 완료');
+        return ogCardHtml;
+      } catch (e) {
+        console.error('[convertOGCards] JSON 파싱 실패:', e, ogDataBase64);
+        return url; // 실패 시 원본 URL 반환
+      }
+    });
+  }
+
   // 게시물 내용을 처리하는 함수 (URL 제거하고 HTML 정리)
   function processArticleContent(htmlContent) {
+    // OG 카드 블록을 HTML로 먼저 변환 (sanitize 이전)
+    let processedContent = convertOGCards(htmlContent);
+    
+    // 동영상 링크를 video 태그로 변환
+    processedContent = convertVideoLinks(processedContent);
+    
     // sanitize-html 설정에서 인스타그램 임베드 허용
-    return sanitizeHtml(htmlContent, {
+    let sanitized = sanitizeHtml(processedContent, {
       allowedTags: [
         'p', 'br', 'strong', 'em', 'u', 's', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
-        'ul', 'ol', 'li', 'blockquote', 'a', 'img', 'video', 'iframe', 'div', 'span'
+        'ul', 'ol', 'li', 'blockquote', 'a', 'img', 'video', 'iframe', 'div', 'span', 'h6', 'small'
       ],
       allowedAttributes: {
         'blockquote': ['class', 'data-instgrm-permalink', 'style'],
         'iframe': ['src', 'width', 'height', 'frameborder', 'allow', 'allowfullscreen', 'style', 'position'],
         'video': ['src', 'controls', 'style', 'width', 'height'],
-        'a': ['href', 'target', 'rel'],
-        'img': ['src', 'alt', 'width', 'height', 'style'],
-        'div': ['class', 'style', 'position'],
-        'span': ['style']
+        'a': ['href', 'target', 'rel', 'class', 'style'],
+        'img': ['src', 'alt', 'width', 'height', 'style', 'loading', 'class'],
+        'div': ['class', 'style', 'data-url', 'data-title', 'data-description', 'data-image', 'data-sitename', 'data-favicon'],
+        'span': ['style', 'class'],
+        'h6': ['style'],
+        'small': ['style'],
+        'p': ['style', 'class']
+      },
+      allowedClasses: {
+        'div': ['og-card', 'og-card-data', 'card', 'card-body', 'card-img-top', 'shadow', 'shadow-sm', 'shadow-lg', 'rounded', 'rounded-xl', 'my-3', 'mb-3', 'p-3', 'd-flex', 'align-items-center', 'gap-2', 'mt-2', 'fw-bold', 'lh-sm', 'mb-1', 'card-title', 'card-text', 'text-secondary', 'small', 'me-1'],
+        'img': ['rounded', 'card-img-top', 'me-1'],
+        'a': ['text-decoration-none', 'text-primary', 'fw-semibold', 'small', 'text-decoration-underline'],
+        'p': ['card-text', 'text-secondary', 'small', 'mb-2']
       }
     });
+    
+    return sanitized;
   }
 
   onMount(()=>{
