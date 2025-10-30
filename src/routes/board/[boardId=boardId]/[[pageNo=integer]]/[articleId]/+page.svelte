@@ -89,10 +89,7 @@
     Col,
     Icon,
     InputGroup,
-    Row,
-    Toast,
-    ToastBody,
-    ToastHeader
+    Row
   } from '@sveltestrap/sveltestrap';
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
@@ -107,7 +104,6 @@
 
   import { alarmCount } from '$lib/util/store.js';
   import { viewComment } from '$lib/util/embeder.js';
-  import Dialog from '$lib/components/dialog.svelte';
   import { onMount } from 'svelte';
   import BoardList from '$lib/components/board_list.svelte';
   import OGPreview from '$lib/components/OGPreview.svelte';
@@ -308,7 +304,7 @@
 
         if (res.status !== 201) {
           const {message} = await res.json();
-          toast(message);
+          toast(message, 'error');
           return;
         }
 
@@ -371,7 +367,7 @@
 
           const _message = await res.text();
 
-          toast(_message, 'success');
+          toast(_message || '삭제 되었습니다.', 'success');
 
           commentLoading = false;
           comments();
@@ -572,14 +568,8 @@
         })
         .catch((err) => {
           console.error(err);
-          Swal.fire({
-            title: '삭제 중 오류가 발생했습니다.',
-            text: err.message ?? '삭제 중 오류가 발생했습니다.',
-            icon: 'error',
-            toast: true,
-            timerProgressBar: true,
-            timer: 750,
-          });
+
+          toast(err.message ?? '삭제 중 오류가 발생했습니다.', 'error')
         }); 
       }
     })
@@ -648,42 +638,27 @@
     };
     
     const icon = iconMap[type] || 'success';
-    
-    Swal.fire({
-      icon: icon,
-      title: message,
-      toast: true,
-      timer: 750,
-      timerProgressBar: true,
-      showConfirmButton: false,
-      position: 'top-end'
-    });
-  }
 
-  let dialog = $state(null);
-  let dialogText = $state('');
-
-  function showModal(message, callback){
-
-    dialogText = message
-
-    const callbakckFn = function(evt){
-      if (dialog.returnValue === 'true') {
-        callback();
-      }
-
-      dialog.removeEventListener('close', callbakckFn)
+    if(type === 'error'){
+      // error 타입은 일반 모달로 표시
+      Swal.fire({
+        icon: 'error',
+        title: message,
+        confirmButtonColor: '#3085d6',
+        confirmButtonText: '확인'
+      });
+    } else {
+      // 그 외 타입은 toast로 표시
+      Swal.fire({
+        icon: icon,
+        title: message,
+        toast: true,
+        timer: 750,
+        timerProgressBar: true,
+        showConfirmButton: false,
+        position: 'top-end'
+      });
     }
-
-    dialog.addEventListener('close', callbakckFn)
-
-    dialog.showModal();
-  }
-
-  let commentModalOpen = false;
-  const commentModalToggle = () =>{
-
-    (commentModalOpen = !commentModalOpen);
   }
 
   alarmCount.update(alarmCount => data.alarmCount);
