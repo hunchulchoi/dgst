@@ -330,7 +330,7 @@
           icon: 'success',
           title: '저장 되었습니다.',
           toast: true,
-          timer: 1500,
+          timer: 750,
           timerProgressBar: true,
         })
 
@@ -348,7 +348,7 @@
           text: error.message ?? '저장 중 오류가 발생했습니다.',
           toast: true,
           timerProgressBar: true,
-          timer: 1500,
+          timer: 750,
         })
       })
       .finally(() => {
@@ -385,7 +385,7 @@
               title: message,
               toast: true,
               timerProgressBar: true,
-              timer: 1500,
+              timer: 750,
             })
             return;
           }
@@ -396,6 +396,8 @@
             icon: 'success',
             title: _message,
             isToast: true,
+            timer: 750,
+            timerProgressBar: true,
           })
 
           commentLoading = false;
@@ -489,7 +491,7 @@
           title: message || '댓글 수정 중 오류가 발생했습니다.',
           toast: true,
           timerProgressBar: true,
-          timer: 1500,
+          timer: 750,
         });
         return;
       }
@@ -499,7 +501,7 @@
         title: '댓글이 수정되었습니다.',
         toast: true,
         timerProgressBar: true,
-        timer: 1500,
+        timer: 750,
       })
 
       cancelEditComment();
@@ -512,7 +514,7 @@
         title: '댓글 수정 중 오류가 발생했습니다.',
         toast: true,
         timerProgressBar: true,
-        timer: 1500,
+        timer: 750,
       })
 
     } finally {
@@ -600,6 +602,8 @@
               icon: 'error',
               toast: true,
               title: message,
+              timer: 750,
+              timerProgressBar: true,
               confirmButtonColor: '#3085d6',
               confirmButtonText: '확인'
             })
@@ -627,7 +631,7 @@
             icon: 'error',
             toast: true,
             timerProgressBar: true,
-            timer: 1500,
+            timer: 750,
           });
         }); 
       }
