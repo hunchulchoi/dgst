@@ -212,20 +212,19 @@
           return cancel();
         }
 
-        // 비동기 검증
-        return async () => {
+        // 비동기 검증 및 결과 처리
+        return async ({ result, update }) => {
+          // 비동기 검증
           if (title.replace(' ', '').length < 1) {
             await toast('제목이 너무 짧습니다.', 'warning');
-            return cancel();
+            return;
           }
           if (content.replace(' ', '').length < 5) {
             await toast('본문이 너무 짧습니다.', 'warning');
-            return cancel();
+            return;
           }
-        };
-      },
-      ({ result, update }) => {
-        return async () => {
+
+          // 검증 통과 후 결과 처리
           if (result.type === 'failure') {
             await update();
             const errorMessage = typeof result.data === 'object' && result.data?.message 
