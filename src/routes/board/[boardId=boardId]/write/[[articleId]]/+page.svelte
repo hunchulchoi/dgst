@@ -216,23 +216,20 @@
           return cancel();
         }
 
-        // 비동기 검증 및 결과 처리
+        // 동기 검증 (제출 전)
+        if (title.replace(' ', '').length < 1) {
+          toast('제목이 너무 짧습니다.', 'warning');
+          return cancel();
+        }
+        if (content.replace(' ', '').length < 5) {
+          toast('본문이 너무 짧습니다.', 'warning');
+          return cancel();
+        }
+
+        // 결과 처리
         return async ({ result, update }) => {
-          // 비동기 검증 (제출 전에 체크, result가 있으면 이미 제출된 상태)
-          if (!result) {
-            if (title.replace(' ', '').length < 1) {
-              await toast('제목이 너무 짧습니다.', 'warning');
-              cancel();
-              return;
-            }
-            if (content.replace(' ', '').length < 5) {
-              await toast('본문이 너무 짧습니다.', 'warning');
-              cancel();
-              return;
-            }
-            // 검증 통과 - 제출 진행
-            return;
-          }
+          await update();
+          
           if (result.type === 'failure') {
             const errorMessage = typeof result.data === 'object' && result.data?.message 
               ? String(result.data.message) 
