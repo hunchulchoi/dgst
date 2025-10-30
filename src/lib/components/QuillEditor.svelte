@@ -857,8 +857,8 @@
         static create(value) {
           console.log('value', value);
           const node = super.create();
-          node.setAttribute('class', 'og-card-blot border rounded p-3 my-2 bg-light shadow text-decoration-none');
-          node.style.cssText = 'display: block; max-width: 350px; margin: 8px 0;';
+          node.setAttribute('class', 'og-card-blot border rounded my-2 shadow text-decoration-none');
+          node.style.cssText = 'display: block; margin: 8px 0; max-width: 500px; width: 100%;';
           node.setAttribute('contenteditable', 'false');
           node.setAttribute('data-url', value.url);
           
@@ -867,7 +867,7 @@
           link.href = value.url;
           link.target = 'dgst_out_link';
           link.rel = 'noopener noreferrer';
-          link.style.cssText = 'text-decoration: none; color: inherit; display: block; border: 1px solid #e0e0e0; border-radius: 8px; padding: 10px; margin: 8px 0; max-width: 350px; background: #fafafa; cursor: pointer;';
+          link.style.cssText = 'text-decoration: none; color: inherit; display: block; border: 1px solid var(--bs-border-color); border-radius: 8px; margin: 8px 0; max-width: 100%; background: transparent; cursor: pointer; overflow: hidden; padding: 0;';
           
           link.onclick = (e) => {
             console.log('OG 카드 링크 클릭:', value.url);
@@ -877,24 +877,33 @@
           if (value.image) {
             const img = document.createElement('img');
             img.src = value.image;
-            img.style.cssText = 'width: 100%; max-height: 80px; object-fit: cover; border-radius: 4px; margin-bottom: 8px;';
+            img.style.cssText = 'width: 100%; height: 200px; object-fit: cover; display: block; margin: 0; border: 0;';
             link.appendChild(img);
           }
           
           const title = document.createElement('div');
-          title.style.cssText = 'font-weight: bold; font-size: 14px; margin-bottom: 4px; color: #1a73e8;';
-          title.textContent = value.title || value.url;
+          title.style.cssText = 'font-weight: 700; font-size: 14px; line-height: 1.25; margin: 12px 16px 2px; color: var(--bs-body-color);';
+          // HTML 엔티티 디코딩
+          const decode = (str) => {
+            try {
+              const txt = document.createElement('textarea');
+              txt.innerHTML = String(str ?? '');
+              return txt.value;
+            } catch (_) { return String(str ?? ''); }
+          };
+          title.textContent = decode(value.title || value.url);
           link.appendChild(title);
           
           if (value.description) {
             const desc = document.createElement('div');
-            desc.style.cssText = 'color: #5f6368; font-size: 12px; line-height: 1.3; margin-bottom: 4px;';
-            desc.textContent = value.description.substring(0, 80) + (value.description.length > 80 ? '...' : '');
+            desc.style.cssText = 'color: var(--bs-secondary-color); font-size: 12px; line-height: 1.35; margin: 0 16px 2px; opacity: 0.9;';
+            const dtext = decode(value.description || '');
+            desc.textContent = dtext.substring(0, 120) + (dtext.length > 120 ? '...' : '');
             link.appendChild(desc);
           }
           
           const site = document.createElement('div');
-          site.style.cssText = 'color: #70757a; font-size: 12px; display: flex; align-items: center; font-weight: bold;';
+          site.style.cssText = 'color: var(--bs-secondary-color); font-size: 12px; display: flex; align-items: center; font-weight: 600; margin: 0 16px 4px;';
           
           // favicon 추가
           const favicon = document.createElement('img');
@@ -918,7 +927,7 @@
           link.appendChild(site);
 
           const url = document.createElement('div');
-          url.style.cssText = 'color: #70757a; font-size: 10px; word-break: break-all;';
+          url.style.cssText = 'color: var(--bs-primary); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0 16px 10px;';
           url.textContent = `${value.url}`;
           link.appendChild(url);
           
@@ -1089,7 +1098,6 @@
 </script>
 
 <svelte:head>
-  <script defer src="//www.instagram.com/embed.js"></script>
   <script defer src="//www.tiktok.com/embed.js"></script>
 </svelte:head>
 
@@ -1238,9 +1246,10 @@
   main :global(.ql-container) {
     height: 450px; /* 더 크게 조정 */
     max-height: 450px; /* 최대 높이 제한 */
-    font-size: 16px;
+    font-size: 1rem; /* Bootstrap 기본 폰트 크기 */
     overflow-y: auto; /* 세로 스크롤 활성화 */
-    border: 1px solid #ccc;
+    background-color: var(--bs-body-bg); /* Bootstrap 변수 기반 */
+    border: 1px solid var(--bs-border-color); /* Bootstrap 변수 기반 */
     border-radius: 0 0 4px 4px;
   }
 
@@ -1248,11 +1257,15 @@
     min-height: 450px; /* 에디터 최소 높이를 더 크게 조정 */
     height: auto; /* 내용에 따라 자동 높이 조정 */
     padding: 12px 15px;
+    color: var(--bs-body-color); /* Bootstrap 변수 기반 텍스트 색상 */
+    background-color: var(--bs-body-bg); /* Bootstrap 변수 기반 배경 */
+    font-size: 1rem; /* Bootstrap 기본 폰트 크기 */
+    line-height: 1.5; /* Bootstrap 기본 줄간격 */
   }
 
   /* 에디터 placeholder 색상 변경 */
   main :global(.ql-editor.ql-blank::before) {
-    color: #6c757d !important; /* 회색으로 변경 */
+    color: var(--bs-secondary-color) !important; /* Bootstrap 변수 기반 */
     font-style: normal !important;
   }
 
@@ -1281,11 +1294,73 @@
   }
 
   main :global(.ql-toolbar) {
-    background: #f8f9fa;
-    border: 1px solid #ccc;
+    background: var(--bs-secondary-bg); /* Bootstrap 변수 기반 */
+    border: 1px solid var(--bs-border-color); /* Bootstrap 변수 기반 */
     border-bottom: none;
     border-radius: 4px 4px 0 0;
     padding: 8px;
+  }
+
+  /* 다크/라이트에서 툴바 아이콘/텍스트 가독성 개선 */
+  main :global(.ql-toolbar .ql-picker-label),
+  main :global(.ql-toolbar .ql-picker-item) {
+    color: var(--bs-body-color) !important;
+  }
+
+  main :global(.ql-toolbar .ql-picker-label:hover),
+  main :global(.ql-toolbar .ql-picker-item:hover) {
+    color: var(--bs-emphasis-color) !important;
+  }
+
+  /* Quill 기본 SVG 아이콘 stroke/fill 색상 동기화 */
+  main :global(.ql-toolbar button .ql-stroke),
+  main :global(.ql-toolbar .ql-picker .ql-stroke) {
+    stroke: var(--bs-body-color) !important;
+  }
+
+  main :global(.ql-toolbar button .ql-fill),
+  main :global(.ql-toolbar .ql-picker .ql-fill) {
+    fill: var(--bs-body-color) !important;
+  }
+
+  /* 툴바 선택기 보더 대비 향상 */
+  main :global(.ql-toolbar .ql-picker),
+  main :global(.ql-toolbar .ql-picker-options) {
+    border-color: var(--bs-border-color) !important;
+    background-color: var(--bs-secondary-bg) !important;
+  }
+
+  /* OG 카드 링크 밑줄 제거 및 색상 상속 */
+  main :global(.og-card-blot a) {
+    text-decoration: none !important;
+    color: inherit !important;
+  }
+  main :global(.og-card-blot a:hover),
+  main :global(.og-card-blot a:focus) {
+    text-decoration: none !important;
+    color: inherit !important;
+  }
+
+  /* 밑줄 강제 제거 (링크 자식 포함, visited/active 상태 포함) */
+  main :global(.og-card-blot a *),
+  main :global(.og-card-blot a:link),
+  main :global(.og-card-blot a:visited),
+  main :global(.og-card-blot a:active) {
+    text-decoration: none !important;
+    color: inherit !important;
+    border-bottom: 0 !important;
+  }
+
+  /* 에디터 전체 링크 밑줄 제거 (OG 카드 외 일반 링크 포함) */
+  main :global(.ql-editor a),
+  main :global(.ql-editor a *),
+  main :global(.ql-editor a:link),
+  main :global(.ql-editor a:visited),
+  main :global(.ql-editor a:hover),
+  main :global(.ql-editor a:active) {
+    text-decoration: none !important;
+    border-bottom: 0 !important;
+    color: var(--bs-link-color, inherit) !important; /* 색상은 테마 변수 사용 */
   }
 
   /* 이미지 버튼 스타일링 */

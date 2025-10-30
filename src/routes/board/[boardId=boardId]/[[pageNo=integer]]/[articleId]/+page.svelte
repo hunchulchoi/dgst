@@ -31,6 +31,125 @@
           max-width: 100%;  
       }
 
+      /* OG 카드: 링크 밑줄 제거 및 색상 상속 */
+      .article-content .og-card-blot a,
+      .article-content .og-card-blot a:link,
+      .article-content .og-card-blot a:visited,
+      .article-content .og-card-blot a:hover,
+      .article-content .og-card-blot a:active,
+      .article-content .og-card-blot a * {
+          text-decoration: none !important;
+          border-bottom: 0 !important;
+          color: inherit !important;
+      }
+
+      /* OGPreview 카드: 링크 전체를 클릭 가능하게 하고 밑줄 제거 */
+      .article-content .og-preview a,
+      .article-content .og-preview a:link,
+      .article-content .og-preview a:visited,
+      .article-content .og-preview a:hover,
+      .article-content .og-preview a:active,
+      .article-content .og-preview a * {
+          text-decoration: none !important;
+          border-bottom: 0 !important;
+          color: inherit !important;
+          pointer-events: auto !important;
+          cursor: pointer !important;
+          display: block !important;
+      }
+
+      /* OGBlot 카드: 상단 이미지를 패딩 없이 꽉 차게, 본문 연하게, URL 파란색 + ellipsis */
+      .article-content .og-card-blot {
+          max-width: 500px !important;
+          width: 100% !important;
+      }
+      .article-content .og-card-blot a {
+          padding: 0 !important;
+          display: block !important;
+          cursor: pointer !important;
+      }
+
+      /* OGPreview 카드도 동일하게 강제 적용 (주석 카드) */
+      .article-content .og-preview {
+          padding: 0 !important;
+          overflow: hidden !important;
+      }
+      .article-content .og-preview > a {
+          display: block !important;
+      }
+      .article-content .og-preview img {
+          width: 100% !important;
+          height: 200px !important;
+          object-fit: cover !important;
+          display: block !important;
+          margin: 0 !important;
+          border: 0 !important;
+      }
+      .article-content .og-preview .og-body h6 {
+          line-height: 1.25 !important;
+          margin-bottom: 4px !important;
+          font-weight: 700 !important;
+      }
+      .article-content .og-preview .og-body p {
+          line-height: 1.35 !important;
+          margin-bottom: 6px !important;
+          color: var(--bs-secondary-color) !important;
+          opacity: 0.9 !important;
+      }
+      .article-content .og-preview .og-url {
+          white-space: nowrap !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+      }
+      .article-content .og-card-blot a > img {
+          width: 100% !important;
+          height: 180px !important;
+          object-fit: cover !important;
+          display: block !important;
+          margin: 0 !important;
+          border-radius: 0 !important;
+      }
+      .article-content .og-card-blot a > :not(img) {
+          display: block;
+          padding: 0 16px;
+      }
+      /* 제목 (첫 번째 div) */
+      .article-content .og-card-blot a > div:nth-of-type(1) {
+          color: var(--bs-body-color) !important;
+          font-weight: 700 !important;
+          font-size: 14px !important;
+          line-height: 1.35 !important;
+          margin-bottom: 2px !important;
+          margin-top: 12px !important;
+      }
+      /* 설명 (두 번째 div) */
+      .article-content .og-card-blot a > div:nth-of-type(2) {
+          color: var(--bs-secondary-color) !important;
+          opacity: 0.9 !important;
+          font-size: 12px !important;
+          line-height: 1.5 !important;
+          margin-bottom: 2px !important;
+      }
+      /* URL (마지막 div) */
+      .article-content .og-card-blot a > div:last-child {
+          color: var(--bs-primary) !important;
+          white-space: nowrap !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+          font-size: 11px !important;
+          padding-top: 0 !important;
+          padding-bottom: 10px !important;
+      }
+
+      /* 밑줄 강제 제거 (요소 전체, u/ins 포함) */
+      .article-content .og-card-blot,
+      .article-content .og-card-blot *,
+      .article-content .og-card-blot u,
+      .article-content .og-card-blot ins {
+          text-decoration: none !important;
+          border-bottom: 0 !important;
+      }
+
       .article-content img {
           max-width: 100%;
           height: auto;

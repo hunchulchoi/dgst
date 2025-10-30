@@ -60,46 +60,32 @@
 {:else}
   <!-- OG 미리보기 표시 -->
   
-    <div class="og-preview border rounded p-3 my-2 bg-light shadow" style="max-width: 500px; cursor: pointer;">
+    <div class="og-preview border rounded my-2 shadow overflow-hidden" style="max-width: 500px; cursor: pointer; padding: 0; line-height: normal;">
       <a href={url} target="dgst_out_link" rel="noopener noreferrer" class="text-decoration-none">
-      <div class="d-flex">
         {#if ogData.image}
           <img 
             src={ogData.image} 
-            class="me-3" 
-            style="width: 80px; height: 100px; object-fit: cover; border-radius: 4px;" 
+            class="og-cover" 
             alt="미리보기 이미지"
             loading="lazy"
           />
         {/if}
-        <div class="flex-grow-1">
-          <h6 class="mb-1 text-primary" style="font-size: 14px; font-weight: 600; line-height: 1.3;">
+        <div class="og-body p-3">
+          <h6 class="mb-1" style="font-size: 14px; font-weight: 700; line-height: 1.25; color: var(--bs-body-color); margin-bottom: 4px;">
             {@html sanitizeHtml(ogData.title, { allowedTags: [], allowedAttributes: {} })}
           </h6>
-          <p class="mb-1 text-secondary" style="font-size: 12px; line-height: 1.4;">
+          <p class="mb-2" style="font-size: 12px; line-height: 1.35; color: var(--bs-secondary-color); opacity: 0.9; margin-bottom: 6px;">
             {@html sanitizeHtml(ogData.description, { allowedTags: [], allowedAttributes: {} })}
           </p>
-          <div class="d-flex align-items-center">
+          <div class="d-flex align-items-center mb-1">
             {#if ogData.favicon}
               <img src={ogData.favicon} alt="favicon" class="me-1" style="width: 16px; height: 16px; border-radius: 2px;">
             {/if}
-            </div>
-          <small class="text-secondary fw-bold">
-            {#if ogData.favicon}
-              <img src={ogData.favicon} alt="favicon" class="me-1" style="width: 16px; height: 16px; border-radius: 2px;">
-            {/if}
-           
-            {ogData.siteName}
-          </small>
-          <div class="mt-1">
-            
-            <small class="text-primary text-decoration-underline" style="font-size: 11px; word-break: break-all; display: block;">
-              {url}
-            </small>
+            <small style="color: var(--bs-secondary-color); font-weight: 600;">{ogData.siteName}</small>
           </div>
+          <small class="og-url text-primary">{url}</small>
         </div>
-      </div>
-    </a>
+      </a>
     </div>
 {/if}
 
@@ -111,9 +97,31 @@
   
   .og-preview a {
     color: inherit;
+    text-decoration: none;
+    display: block;
+    pointer-events: auto;
+    cursor: pointer;
   }
   
   .og-preview a:hover {
     color: inherit;
+    text-decoration: none;
+  }
+
+  .og-cover {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+    display: block;
+    margin: 0 !important;
+    border: 0 !important;
+  }
+
+  .og-url {
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
   }
 </style>

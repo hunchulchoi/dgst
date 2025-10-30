@@ -185,23 +185,10 @@
 
 <svelte:head>
   <style>
-    #_editor {
-      border: 1px solid lightgrey;
-      border-radius: 4px;
-    }
-    .ck-editor__editable {
-      min-height: 400px;
-      border: 1px solid black;
-      max-height: 500px;
-    }
-    .ck-content .image {
-      display: inline-block;
-      text-align: left;
-    }
-    .ck-content .image img {
-      width: 100%;
-      max-width: 100%;
-    }
+    /* CKEditor 전용 스타일 제거 -> Quill 기준으로 정리 */
+    /* Quill 컨테이너 높이만 페이지 레벨에서 보강이 필요할 경우 사용 가능
+    .ql-container { height: 450px; }
+    */
   </style>
 </svelte:head>
 
@@ -242,6 +229,18 @@
           return cancel();
         }
 
+        // 제출 직전에 에디터 내용 및 식별자 주입
+        try {
+          formData.set('content', content || '');
+          if (articleId) {
+            formData.set('articleId', articleId);
+          } else {
+            formData.delete('articleId');
+          }
+        } catch (e) {
+          console.error('formData 주입 실패:', e);
+        }
+
         // 결과 처리
         return async ({ result, update }) => {
           await update();
@@ -277,10 +276,9 @@
         };
       }}
     >
-      <Input type="hidden" name="articleId" value={articleId} />
-      <Input type="hidden" name="content" bind:value={content} required />
+      <input type="hidden" name="articleId" value={articleId} />
       <FormGroup floating label="제목">
-        <Input id="title" name="title" bind:value={title} required autofocus />
+        <input type="text" id="title" name="title" class="form-control" bind:value={title} required autofocus placeholder=" " />
       </FormGroup>
       <QuillEditor bind:editorData={content} {uploadPlus} {uploadMinus} />
       <Row class="text-end pe-2 mt-4">
