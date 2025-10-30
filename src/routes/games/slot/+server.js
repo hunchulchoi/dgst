@@ -27,7 +27,7 @@ async function getBalance(email) {
   return last?.balance ?? 0;
 }
 
-// 잔액 0 상태가 10분 이상이면 100점 보충
+// 잔액 0 상태가 10분 이상이면 100점 보충 (지연 지급)
 async function maybeTopupAfterOOPS(email, nickname) {
   const last = await GameScore.findOne({ email }).sort({ createdAt: -1 }).lean();
   if (!last) return 0;
@@ -41,9 +41,9 @@ async function maybeTopupAfterOOPS(email, nickname) {
       nickname,
       game: 'slot',
       bet: 0,
-      payout: 1000,
-      delta: 1000,
-      balance: 1000,
+      payout: 100,
+      delta: 100,
+      balance: 100,
       reels: ['-', '-', '-']
     });
     return doc.balance;
@@ -63,10 +63,10 @@ export async function POST({ request, locals }) {
 
   const email = session.user.email;
   const nickname = session.user.nickname || 'anonymous';
-
-  let balanceBefore = await getBalance(email);
-  // 최초 이용자: 1000점 지급 후 안내
-  if (balanceBefore === 0) {
+  const last = await GameScore.findOne({ email }).sort({ createdAt: -1 }).lean();
+  let balanceBefore = last?.balance ?? 0;
+  // 최초 이용자(기록이 전무): 1000점 지급 후 안내
+  if (!last) {
     await GameScore.create({
       email,
       nickname,
@@ -79,10 +79,13 @@ export async function POST({ request, locals }) {
     });
     return json({ success: false, balance: 1000, message: '첫 1000점 지급! 다시 베팅해 주세요.' });
   }
-  // 0원 유지 10분 경과 시 자동 100점 보충
+  // 기록은 있지만 잔액 0인 경우: 10분 경과 시 100점 보충, 미경과 시 안내
   if (balanceBefore === 0) {
     const topped = await maybeTopupAfterOOPS(email, nickname);
-    if (topped > 0) balanceBefore = topped;
+    balanceBefore = topped > 0 ? topped : 0;
+    if (balanceBefore === 0) {
+      throw error(400, { message: '오링 상태입니다. 10분 뒤에 100점이 자동 지급됩니다.' });
+    }
   }
   if (balanceBefore < bet) throw error(400, { message: '보유 점수가 부족합니다.' });
 
@@ -91,7 +94,8 @@ export async function POST({ request, locals }) {
   const delta = payout - bet;
   const balanceAfter = balanceBefore + delta;
 
-  const doc = await GameScore.create({
+  // 스핀 결과 기록
+  const docSpin = await GameScore.create({
     email,
     nickname,
     game: 'slot',
@@ -101,19 +105,22 @@ export async function POST({ request, locals }) {
     balance: balanceAfter,
     reels,
   });
-
-  const extraMsg = balanceAfter === 0 ? '오링! 10분 뒤에 1000점이 자동 지급됩니다.' : undefined;
-  return json({ success: true, reels, payout, delta, balance: balanceAfter, id: doc._id, message: extraMsg });
+  const extraMsg = balanceAfter === 0 ? '오링! 10분 뒤에 100점이 자동 지급됩니다.' : undefined;
+  return json({ success: true, reels, payout, delta, balance: balanceAfter, id: docSpin._id, message: extraMsg });
 }
 
 export async function GET({ locals, url }) {
   const session = await locals.auth();
   if (!session?.user?.email) throw error(401, { message: '로그인이 필요합니다.' });
-  let balance = await getBalance(session.user.email);
-  if (balance === 0) {
+  const email = session.user.email;
+  const nickname = session.user.nickname || 'anonymous';
+  const last = await GameScore.findOne({ email }).sort({ createdAt: -1 }).lean();
+  let balance = last?.balance ?? 0;
+  // 최초 이용자만 1000점 지급 (기록이 전무한 경우에만)
+  if (!last) {
     await GameScore.create({
-      email: session.user.email,
-      nickname: session.user.nickname || 'anonymous',
+      email,
+      nickname,
       game: 'slot',
       bet: 0, payout: 0, delta: 0, balance: 1000, reels: ['-', '-', '-']
     });
@@ -121,7 +128,7 @@ export async function GET({ locals, url }) {
   }
   // 잔액 0이 10분 이상 지속되면 100점 보충
   if (balance === 0) {
-    const topped = await maybeTopupAfterOOPS(session.user.email, session.user.nickname || 'anonymous');
+    const topped = await maybeTopupAfterOOPS(email, nickname);
     if (topped > 0) balance = topped;
   }
   if (url.searchParams.get('rank')) {
