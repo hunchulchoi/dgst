@@ -48,6 +48,8 @@
   let heic2any = null;
   /** @type {boolean} */
   let ffmpegReady = false;
+  /** @type {boolean} */
+  let isComposing = $state(false);
   
   
   // 비디오 압축 진행 상태
@@ -1004,8 +1006,26 @@
         editorData = '';
       }
 
-      // 데이터 변경 감지 및 양방향 바인딩
-      quillInstance.on('text-change', () => {
+      // 입력 합성(iOS/한글 IME) 중에는 바인딩 지연
+      quillInstance.root.addEventListener('compositionstart', () => {
+        isComposing = true;
+      });
+      quillInstance.root.addEventListener('compositionend', () => {
+        isComposing = false;
+        // 합성 종료 직후에 한 번만 동기화
+        editorData = quillInstance.root.innerHTML;
+      });
+
+      // 데이터 변경 감지 및 양방향 바인딩 (합성 중에는 스킵)
+      quillInstance.on('text-change', (_delta, _old, source) => {
+        if (isComposing) return;
+        if (source !== 'user') {
+          // 사용자 입력 외 변화도 동기화하되 빈도 최소화
+          requestAnimationFrame(() => {
+            if (!isComposing) editorData = quillInstance.root.innerHTML;
+          });
+          return;
+        }
         editorData = quillInstance.root.innerHTML;
       });
 
@@ -1117,6 +1137,18 @@
     } else {
       console.log('📝 글쓰기 페이지가 아니므로 FFmpeg 로드 건너뜀');
     }
+
+    // iOS 입력 관련 속성 최적화 (커서 끌림/중복 입력 방지에 도움)
+    try {
+      const rootEl = quillInstance?.root;
+      if (rootEl) {
+        rootEl.setAttribute('autocapitalize', 'off');
+        rootEl.setAttribute('autocorrect', 'off');
+        rootEl.setAttribute('autocomplete', 'off');
+        rootEl.setAttribute('spellcheck', 'false');
+        rootEl.style.webkitUserSelect = 'text';
+      }
+    } catch {}
   });
 
   /**
