@@ -32,11 +32,41 @@ async function getBalance(email) {
 }
 
 // 잔액 0 상태가 10분 이상이면 700점 보충 (지연 지급)
+// 댓글 보상(bet=0)은 무시하고, 실제 스핀(bet>0) 중 오링(balance=0) 기록을 찾아서 체크
 async function maybeTopupAfterOOPS(email, nickname) {
-  const last = await GameScore.findOne({ email }).sort({ createdAt: -1 }).lean();
-  if (!last) return 0;
-  if ((last.balance ?? 0) > 0) return last.balance;
-  const createdAt = new Date(last.createdAt).getTime();
+  // 실제 스핀 기록(bet > 0) 중에서 balance가 0인 마지막 기록 찾기
+  const lastOopsSpin = await GameScore.findOne({
+    email,
+    bet: { $gt: 0 }, // 실제 스핀만 (댓글 보상 제외)
+    balance: 0
+  }).sort({ createdAt: -1 }).lean();
+
+  if (!lastOopsSpin) {
+    // 마지막 실제 스핀 기록 확인 (balance가 0이 아닐 수도 있음)
+    const lastSpin = await GameScore.findOne({ email, bet: { $gt: 0 } }).sort({ createdAt: -1 }).lean();
+    if (!lastSpin) return 0;
+    if ((lastSpin.balance ?? 0) > 0) return lastSpin.balance;
+    // balance가 0이면 해당 스핀 시점 기준으로 체크
+    const createdAt = new Date(lastSpin.createdAt).getTime();
+    const now = Date.now();
+    const TEN_MIN = 10 * 60 * 1000;
+    if (now - createdAt >= TEN_MIN) {
+      const doc = await GameScore.create({
+        email,
+        nickname,
+        game: 'slot',
+        bet: 0,
+        payout: 700,
+        delta: 700,
+        balance: 700,
+        reels: ['-', '-', '-']
+      });
+      return doc.balance;
+    }
+    return 0;
+  }
+
+  const createdAt = new Date(lastOopsSpin.createdAt).getTime();
   const now = Date.now();
   const TEN_MIN = 10 * 60 * 1000;
   if (now - createdAt >= TEN_MIN) {
@@ -137,15 +167,22 @@ export async function GET({ locals, url }) {
     if (topped > 0) {
       balance = topped;
     } else {
-      // 오링 상태: 남은 시간 정보 반환
-      const createdAt = new Date(last.createdAt).getTime();
+      // 오링 상태: 남은 시간 정보 반환 (실제 스핀 기준)
+      const lastOopsSpin = await GameScore.findOne({
+        email,
+        bet: { $gt: 0 },
+        balance: 0
+      }).sort({ createdAt: -1 }).lean();
+
+      const oopsSpin = lastOopsSpin || last;
+      const createdAt = new Date(oopsSpin.createdAt).getTime();
       const now = Date.now();
       const TEN_MIN = 10 * 60 * 1000;
       const elapsed = now - createdAt;
       const remaining = TEN_MIN - elapsed;
       if (remaining > 0) {
         oopsInfo = {
-          createdAt: last.createdAt,
+          createdAt: oopsSpin.createdAt,
           remainingMs: remaining
         };
       }

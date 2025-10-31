@@ -180,6 +180,29 @@
       
       // 오링 상태 확인
       if (nextBalance === 0) {
+        // 오링 시 자동 댓글 작성
+        try {
+          const oopsComment = `😢 오링! 잔액 0점... 10분 후 700점이 지급됩니다.`;
+          
+          const formData = new FormData();
+          formData.set('content', oopsComment);
+          
+          const commentRes = await fetch('/games/slot/comment', {
+            method: 'POST',
+            body: formData
+          });
+          
+          if (commentRes.ok) {
+            // 댓글 작성 성공 시 리스트 새로고침 (보상은 서버에서 처리)
+            await loadComments();
+            await refreshBalance();
+            await loadRank();
+          }
+        } catch (e) {
+          // 댓글 작성 실패는 조용히 무시
+          console.error('오링 댓글 자동 작성 실패:', e);
+        }
+        
         await refreshBalance();
       } else {
         oopsInfo = null;
