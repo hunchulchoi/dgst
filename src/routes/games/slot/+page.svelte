@@ -565,59 +565,58 @@
                         {comment.content}
                       {/if}
                     </div>
-                  </div>
-                  
-                  <!-- 대댓글 작성 폼 -->
-                  {#if data.session?.user && 'nickname' in data.session.user}
-                    <div class="mt-2">
-                      {#if comment.id && replyingTo === comment.id}
-                        <div class="comment-input-wrapper">
-                          <textarea 
-                            class="form-control comment-textarea" 
-                            rows="2" 
-                            placeholder="답글을 입력하세요..."
-                            bind:value={replyContent[comment.id]}
-                            disabled={commentLoading}
-                          ></textarea>
-                          <div class="d-flex gap-2">
-                            <button 
-                              class="btn btn-primary comment-submit-btn" 
-                              type="button"
-                              onclick={() => comment.id && writeComment(comment.id)}
-                              disabled={commentLoading || !replyContent[comment.id]?.trim() || (replyContent[comment.id]?.trim().length ?? 0) < 3}
-                            >
-                              {commentLoading ? '등록 중...' : '등록'}
-                            </button>
-                            <button 
-                              class="btn btn-secondary comment-submit-btn" 
-                              type="button"
-                              onclick={() => {
-                                if (comment.id) {
-                                  replyingTo = null;
-                                  replyContent[comment.id] = '';
-                                }
-                              }}
+                    <!-- 대댓글 작성 폼 -->
+                    {#if data.session?.user && 'nickname' in data.session.user}
+                      <div class="mt-2">
+                        {#if comment.id && replyingTo === comment.id}
+                          <div class="comment-input-wrapper">
+                            <textarea 
+                              class="form-control comment-textarea" 
+                              rows="2" 
+                              placeholder="답글을 입력하세요..."
+                              bind:value={replyContent[comment.id]}
                               disabled={commentLoading}
-                            >
-                              취소
-                            </button>
+                            ></textarea>
+                            <div class="d-flex gap-2">
+                              <button 
+                                class="btn btn-primary comment-submit-btn" 
+                                type="button"
+                                onclick={() => comment.id && writeComment(comment.id)}
+                                disabled={commentLoading || !replyContent[comment.id]?.trim() || (replyContent[comment.id]?.trim().length ?? 0) < 5}
+                              >
+                                {commentLoading ? '등록 중...' : '등록'}
+                              </button>
+                              <button 
+                                class="btn btn-secondary comment-submit-btn" 
+                                type="button"
+                                onclick={() => {
+                                  if (comment.id) {
+                                    replyingTo = null;
+                                    replyContent[comment.id] = '';
+                                  }
+                                }}
+                                disabled={commentLoading}
+                              >
+                                취소
+                              </button>
+                            </div>
                           </div>
-                        </div>
-                      {:else if comment.id}
-                        <button 
-                          class="btn btn-sm btn-outline-secondary"
-                          onclick={() => {
-                            if (comment.id) {
-                              replyingTo = comment.id;
-                              if (!replyContent[comment.id]) replyContent[comment.id] = '';
-                            }
-                          }}
-                        >
-                          답글
-                        </button>
-                      {/if}
-                    </div>
-                  {/if}
+                        {:else if comment.id}
+                          <button 
+                            class="btn btn-sm btn-outline-secondary"
+                            onclick={() => {
+                              if (comment.id) {
+                                replyingTo = comment.id;
+                                if (!replyContent[comment.id]) replyContent[comment.id] = '';
+                              }
+                            }}
+                          >
+                            답글
+                          </button>
+                        {/if}
+                      </div>
+                    {/if}
+                  </div>
                 </div>
               {/each}
             </div>
