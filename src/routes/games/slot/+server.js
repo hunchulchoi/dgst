@@ -32,7 +32,8 @@ async function getBalance(email) {
 }
 
 // 잔액 0 상태가 10분 이상이면 700점 보충 (지연 지급)
-// 댓글 보상(bet=0)은 무시하고, 실제 스핀(bet>0) 중 오링(balance=0) 기록을 찾아서 체크
+// 실제 스핀(bet>0)에서 오링(balance=0)이 발생한 경우만 체크
+// 댓글 보상으로 받은 점수가 있으면 오링이 아님
 async function maybeTopupAfterOOPS(email, nickname) {
   // 실제 스핀 기록(bet > 0) 중에서 balance가 0인 마지막 기록 찾기
   const lastOopsSpin = await GameScore.findOne({
@@ -42,30 +43,28 @@ async function maybeTopupAfterOOPS(email, nickname) {
   }).sort({ createdAt: -1 }).lean();
 
   if (!lastOopsSpin) {
-    // 마지막 실제 스핀 기록 확인 (balance가 0이 아닐 수도 있음)
-    const lastSpin = await GameScore.findOne({ email, bet: { $gt: 0 } }).sort({ createdAt: -1 }).lean();
-    if (!lastSpin) return 0;
-    if ((lastSpin.balance ?? 0) > 0) return lastSpin.balance;
-    // balance가 0이면 해당 스핀 시점 기준으로 체크
-    const createdAt = new Date(lastSpin.createdAt).getTime();
-    const now = Date.now();
-    const TEN_MIN = 10 * 60 * 1000;
-    if (now - createdAt >= TEN_MIN) {
-      const doc = await GameScore.create({
-        email,
-        nickname,
-        game: 'slot',
-        bet: 0,
-        payout: 700,
-        delta: 700,
-        balance: 700,
-        reels: ['-', '-', '-']
-      });
-      return doc.balance;
-    }
-    return 0;
+    return 0; // 실제 스핀에서 오링이 발생하지 않았으면 0 반환
   }
 
+  // 댓글 보상으로 받은 점수가 있는지 확인 (오링 이후에 댓글 보상이 있으면 오링이 아님)
+  const lastRewardAfterOops = await GameScore.findOne({
+    email,
+    bet: 0,
+    payout: 100,
+    delta: 100,
+    createdAt: { $gt: lastOopsSpin.createdAt }
+  }).sort({ createdAt: -1 }).lean();
+
+  // 오링 이후에 댓글 보상을 받았으면 오링이 아님 (balance > 0이 되었을 것)
+  if (lastRewardAfterOops) {
+    // 댓글 보상 이후의 최종 balance 확인
+    const lastAfterReward = await GameScore.findOne({ email }).sort({ createdAt: -1 }).lean();
+    if (lastAfterReward && (lastAfterReward.balance ?? 0) > 0) {
+      return lastAfterReward.balance; // 댓글 보상으로 balance가 올라갔으면 오링이 아님
+    }
+  }
+
+  // 오링 시점 기준으로 10분 경과 확인
   const createdAt = new Date(lastOopsSpin.createdAt).getTime();
   const now = Date.now();
   const TEN_MIN = 10 * 60 * 1000;
@@ -161,31 +160,50 @@ export async function GET({ locals, url }) {
     balance = 1000;
   }
   let oopsInfo = null;
-  // 잔액 0이 10분 이상 지속되면 700점 보충
+  // 잔액 0인 경우 체크
   if (balance === 0 && last) {
-    const topped = await maybeTopupAfterOOPS(email, nickname);
-    if (topped > 0) {
-      balance = topped;
-    } else {
-      // 오링 상태: 남은 시간 정보 반환 (실제 스핀 기준)
-      const lastOopsSpin = await GameScore.findOne({
+    // 실제 스핀에서 오링이 발생한 경우인지 확인
+    const lastOopsSpin = await GameScore.findOne({
+      email,
+      bet: { $gt: 0 }, // 실제 스핀만
+      balance: 0
+    }).sort({ createdAt: -1 }).lean();
+
+    if (lastOopsSpin) {
+      // 오링 이후에 댓글 보상으로 받은 점수가 있는지 확인
+      const lastRewardAfterOops = await GameScore.findOne({
         email,
-        bet: { $gt: 0 },
-        balance: 0
+        bet: 0,
+        payout: 100,
+        delta: 100,
+        createdAt: { $gt: lastOopsSpin.createdAt }
       }).sort({ createdAt: -1 }).lean();
 
-      const oopsSpin = lastOopsSpin || last;
-      const createdAt = new Date(oopsSpin.createdAt).getTime();
-      const now = Date.now();
-      const TEN_MIN = 10 * 60 * 1000;
-      const elapsed = now - createdAt;
-      const remaining = TEN_MIN - elapsed;
-      if (remaining > 0) {
-        oopsInfo = {
-          createdAt: oopsSpin.createdAt,
-          remainingMs: remaining
-        };
+      // 댓글 보상으로 받은 점수가 있으면 오링이 아님 (balance > 0이 되어 있을 것)
+      // 댓글 보상이 없거나, 받았지만 다시 0이 된 경우(10개 보상 다 받고 다시 스핀해서 0이 된 경우)에만 오링 처리
+      const shouldCountAsOops = !lastRewardAfterOops ||
+        (await GameScore.findOne({ email }).sort({ createdAt: -1 }).lean())?.balance === 0;
+
+      if (shouldCountAsOops) {
+        const topped = await maybeTopupAfterOOPS(email, nickname);
+        if (topped > 0) {
+          balance = topped;
+        } else {
+          // 오링 상태: 남은 시간 정보 반환 (실제 스핀 기준)
+          const createdAt = new Date(lastOopsSpin.createdAt).getTime();
+          const now = Date.now();
+          const TEN_MIN = 10 * 60 * 1000;
+          const elapsed = now - createdAt;
+          const remaining = TEN_MIN - elapsed;
+          if (remaining > 0) {
+            oopsInfo = {
+              createdAt: lastOopsSpin.createdAt,
+              remainingMs: remaining
+            };
+          }
+        }
       }
+      // 댓글 보상으로 받은 점수가 있고 balance > 0이면 오링이 아니므로 oopsInfo는 null로 유지
     }
   }
   if (url.searchParams.get('rank')) {

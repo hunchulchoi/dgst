@@ -96,24 +96,20 @@ export async function POST({ request, locals }) {
 
     const email = session.user.email;
     const nickname = session.user.nickname || 'anonymous';
-    const noReward = data.get('noReward') === 'true'; // 보상 없이 플래그
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
     const todayEnd = new Date();
     todayEnd.setHours(23, 59, 59, 999);
     
-    // 오늘 받은 댓글 보상 개수 체크 (100점 보상은 하루 10개까지만, 보상 없이 플래그가 있으면 체크하지 않음)
-    let todayRewardCount = 0;
-    if (!noReward) {
-      todayRewardCount = await GameScore.countDocuments({
-        email,
-        game: 'slot',
-        bet: 0,
-        payout: 100,
-        delta: 100,
-        createdAt: { $gte: todayStart, $lte: todayEnd }
-      });
-    }
+    // 오늘 받은 댓글 보상 개수 체크 (100점 보상은 하루 10개까지만)
+    const todayRewardCount = await GameScore.countDocuments({
+      email,
+      game: 'slot',
+      bet: 0,
+      payout: 100,
+      delta: 100,
+      createdAt: { $gte: todayStart, $lte: todayEnd }
+    });
 
     // 대댓글인 경우 부모 댓글 확인
     let parentComment = null;
@@ -139,9 +135,9 @@ export async function POST({ request, locals }) {
 
     await comment.save();
 
-    // 댓글 작성 보상: 100점 지급 (하루 10개까지만, 보상 없이 플래그가 없을 때만)
+    // 댓글 작성 보상: 100점 지급 (하루 10개까지만)
     let rewardGiven = false;
-    if (!noReward && todayRewardCount < 10) {
+    if (todayRewardCount < 10) {
       const lastScore = await GameScore.findOne({ email }).sort({ createdAt: -1 }).lean();
       const currentBalance = lastScore?.balance ?? 0;
       await GameScore.create({

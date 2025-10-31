@@ -181,13 +181,12 @@
       
       // 오링 상태 확인 (실제 스핀에서 balance가 0이 된 경우)
       if (nextBalance === 0 && j.delta < 0) {
-        // 오링 시 자동 댓글 작성 (보상 없이)
+        // 오링 시 자동 댓글 작성 (보상 있음)
         try {
           const oopsComment = `😢 오링! 잔액 0점... 10분 후 700점이 지급됩니다.`;
           
           const formData = new FormData();
           formData.set('content', oopsComment);
-          formData.set('noReward', 'true'); // 보상 없이 플래그
           
           const commentRes = await fetch('/games/slot/comment', {
             method: 'POST',
