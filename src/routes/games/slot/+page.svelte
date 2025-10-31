@@ -182,7 +182,7 @@
       if (nextBalance === 0) {
         // 오링 시 자동 댓글 작성
         try {
-          const oopsComment = `😢 오링! 잔액 0점... -${j.delta}점`;
+          const oopsComment = `😢 오링! 인생여전ㅜ... ${j.delta}`;
           
           const formData = new FormData();
           formData.set('content', oopsComment);
