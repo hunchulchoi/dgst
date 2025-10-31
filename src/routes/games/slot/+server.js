@@ -13,6 +13,10 @@ function calcPayout(reels, bet) {
   const [a, b, c] = reels;
   if (a === b && b === c) {
     // triple
+    // 7️⃣7️⃣7️⃣은 ×20, 나머지는 ×10
+    if (a === '7️⃣' && b === '7️⃣' && c === '7️⃣') {
+      return bet * 20;
+    }
     return bet * 10;
   }
   if (a === b || b === c || a === c) {

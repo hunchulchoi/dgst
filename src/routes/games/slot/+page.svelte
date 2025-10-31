@@ -3,6 +3,7 @@
   import { formatDistanceToNowStrict, parseISO } from 'date-fns';
   import { ko } from 'date-fns/locale';
   import { invalidateAll } from '$app/navigation';
+  import Swal from 'sweetalert2';
   let { data } = $props();
   let balance = $state(data.balance || 0);
   let bet = $state(10);
@@ -96,6 +97,64 @@
       reels = nextReels;
       balance = nextBalance;
       message = nextMessage;
+      
+      // Triple 체크 (3개 모두 같음)
+      const isTriple = nextReels[0] === nextReels[1] && nextReels[1] === nextReels[2];
+      const reelStr = `${nextReels[0]} ${nextReels[1]} ${nextReels[2]}`;
+      
+      if (isTriple && j.delta > 0) {
+        // Triple 당첨 시 큰 alert
+        const is777 = nextReels[0] === '7️⃣';
+        Swal.fire({
+          icon: 'success',
+          title: is777 ? '🎰 777 잭팟! 20배!  ' : '🎉 Triple! 10배!',
+          html: `<div style="font-size: 48px; margin: 20px 0;">${reelStr}</div><div style="font-size: 24px; font-weight: bold;">+${j.delta}점</div>`,
+          showConfirmButton: true,
+          confirmButtonText: '확인',
+          width: '500px'
+        });
+        
+        // Triple 당첨 시 자동 댓글 작성
+        try {
+          const tripleComment = is777 
+            ? `🎰 ${reelStr} 777 잭팟 당첨! +${j.delta}점 획득!`
+            : `🎉 ${reelStr} Triple 당첨! +${j.delta}점 획득!`;
+          
+          const formData = new FormData();
+          formData.set('content', tripleComment);
+          
+          const commentRes = await fetch('/games/slot/comment', {
+            method: 'POST',
+            body: formData
+          });
+          
+          if (commentRes.ok) {
+            // 댓글 작성 성공 시 리스트 새로고침 (보상은 서버에서 처리)
+            await loadComments();
+            await refreshBalance();
+            await loadRank();
+          }
+        } catch (e) {
+          // 댓글 작성 실패는 조용히 무시 (사용자 경험 방해 방지)
+          console.error('Triple 댓글 자동 작성 실패:', e);
+        }
+      } else {
+        // 일반 결과는 toast
+        const toastMessage = j.delta > 0 
+          ? `🎉 당첨! +${j.delta}점 (${reelStr})`
+          : `😢 -${Math.abs(j.delta)}점 (${reelStr})`;
+        
+        Swal.fire({
+          icon: j.delta > 0 ? 'success' : 'error',
+          title: toastMessage,
+          toast: true,
+          position: 'center',
+          showConfirmButton: false,
+          timer: 3000,
+          timerProgressBar: true
+        });
+      }
+      
       // 오링 상태 확인
       if (nextBalance === 0) {
         await refreshBalance();
@@ -106,6 +165,15 @@
       await loadComments();
     } catch (e: any) {
       message = e?.message || '오류';
+      Swal.fire({
+        icon: 'error',
+        title: e?.message || '오류가 발생했습니다.',
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false,
+        timer: 3000,
+        timerProgressBar: true
+      });
     } finally {
       spinning = false;
     }
@@ -158,16 +226,49 @@
         } else {
           commentContent = '';
         }
-        await loadComments();
+        // 댓글 작성 시 100점 지급되므로 잔액과 랭킹 갱신
+        await Promise.all([
+          loadComments(),
+          refreshBalance(),
+          loadRank()
+        ]);
+        
+        // 댓글 작성 보상 toast 알림
+        Swal.fire({
+          icon: 'success',
+          title: '💬 댓글 작성 보상 +100점',
+          toast: true,
+          position: 'center',
+          showConfirmButton: false,
+          timer: 3000,
+          timerProgressBar: true
+        });
+        
         // 알람 카운트 갱신
         await invalidateAll();
       } else {
         const err = await res.json();
-        alert(err?.message || '댓글 작성 실패');
+        Swal.fire({
+          icon: 'error',
+          title: err?.message || '댓글 작성 실패',
+          toast: true,
+          position: 'center',
+          showConfirmButton: false,
+          timer: 3000,
+          timerProgressBar: true
+        });
       }
     } catch (e) {
       console.error('댓글 작성 실패:', e);
-      alert('댓글 작성 중 오류가 발생했습니다.');
+      Swal.fire({
+        icon: 'error',
+        title: '댓글 작성 중 오류가 발생했습니다.',
+        toast: true,
+        position: 'center',
+        showConfirmButton: false,
+        timer: 3000,
+        timerProgressBar: true
+      });
     } finally {
       commentLoading = false;
     }
@@ -380,34 +481,37 @@
                   {#if data.session?.user && 'nickname' in data.session.user}
                     <div class="mt-2">
                       {#if comment.id && replyingTo === comment.id}
-                        <div class="input-group input-group-sm">
+                        <div class="comment-input-wrapper">
                           <textarea 
-                            class="form-control" 
+                            class="form-control comment-textarea" 
                             rows="2" 
                             placeholder="답글을 입력하세요..."
                             bind:value={replyContent[comment.id]}
                             disabled={commentLoading}
                           ></textarea>
-                          <button 
-                            class="btn btn-sm btn-primary" 
-                            type="button"
-                            onclick={() => comment.id && writeComment(comment.id)}
-                            disabled={commentLoading || !replyContent[comment.id]?.trim()}
-                          >
-                            {commentLoading ? '등록 중...' : '등록'}
-                          </button>
-                          <button 
-                            class="btn btn-sm btn-secondary" 
-                            type="button"
-                            onclick={() => {
-                              if (comment.id) {
-                                replyingTo = null;
-                                replyContent[comment.id] = '';
-                              }
-                            }}
-                          >
-                            취소
-                          </button>
+                          <div class="d-flex gap-2">
+                            <button 
+                              class="btn btn-primary comment-submit-btn" 
+                              type="button"
+                              onclick={() => comment.id && writeComment(comment.id)}
+                              disabled={commentLoading || !replyContent[comment.id]?.trim()}
+                            >
+                              {commentLoading ? '등록 중...' : '등록'}
+                            </button>
+                            <button 
+                              class="btn btn-secondary comment-submit-btn" 
+                              type="button"
+                              onclick={() => {
+                                if (comment.id) {
+                                  replyingTo = null;
+                                  replyContent[comment.id] = '';
+                                }
+                              }}
+                              disabled={commentLoading}
+                            >
+                              취소
+                            </button>
+                          </div>
                         </div>
                       {:else if comment.id}
                         <button 
@@ -434,13 +538,13 @@
           <!-- 댓글 작성 폼 -->
           {#if data.session?.user && 'nickname' in data.session.user}
             <div class="comment-input-wrapper mt-3">
-              <textarea 
-                class="form-control comment-textarea" 
-                rows="3" 
-                placeholder="리플을 남겨주세요..."
-                bind:value={commentContent}
-                disabled={commentLoading}
-              ></textarea>
+                <textarea 
+                  class="form-control comment-textarea" 
+                  rows="3" 
+                  placeholder="리플 작성시 100점 줍니다 하루 10개까지"
+                  bind:value={commentContent}
+                  disabled={commentLoading}
+                ></textarea>
               <button 
                 class="btn btn-primary comment-submit-btn" 
                 type="button"
