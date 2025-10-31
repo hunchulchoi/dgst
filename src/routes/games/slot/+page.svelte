@@ -527,7 +527,7 @@
           {#if comments.length > 0}
             <div class="mb-3">
               {#each comments as comment}
-                <div class="border-bottom pb-2 mb-2 d-flex">
+                <div class="border-bottom pb-3 mb-3 d-flex">
                   {#if comment.parentCommentNickname}
                     <div class="me-2 flex-shrink-0">
                       <i class="bi bi-arrow-return-right text-success"></i>
@@ -542,7 +542,7 @@
                         </span>
                       </div>
                     {/if}
-                    <div class="d-flex align-items-start gap-2 mb-1">
+                    <div class="d-flex align-items-start gap-2 mb-2">
                       {#if comment.photo}
                         <img src={comment.photo} alt="프로필" class="rounded-circle" style="width: 32px; height: 32px; object-fit: cover;" />
                       {/if}
