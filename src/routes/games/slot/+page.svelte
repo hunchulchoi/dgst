@@ -27,6 +27,7 @@
   let replyContent = $state<Record<string, string>>({});
   let oopsInfo = $state<{ createdAt: string; remainingMs: number } | null>(null);
   let oopsCountdown = $state<string>('');
+  let refreshing = $state(false);
 
   async function refreshBalance() {
     const res = await fetch('/games/slot');
@@ -173,11 +174,33 @@
   }
 
   async function refreshAll() {
-    await Promise.all([
-      refreshBalance(),
-      loadRank(),
-      loadComments()
-    ]);
+    refreshing = true;
+    try {
+      await Promise.all([
+        refreshBalance(),
+        loadRank(),
+        loadComments()
+      ]);
+      // 오링 상태면 카운트다운 시작
+      if (oopsInfo) {
+        updateOopsCountdown();
+        // 카운트다운 인터벌이 없으면 시작
+        if (!countdownInterval) {
+          countdownInterval = setInterval(() => {
+            if (oopsInfo) {
+              updateOopsCountdown();
+            } else {
+              if (countdownInterval) {
+                clearInterval(countdownInterval);
+                countdownInterval = null;
+              }
+            }
+          }, 1000);
+        }
+      }
+    } finally {
+      refreshing = false;
+    }
   }
 
   function scrollToComment(commentId: string | null) {
@@ -232,16 +255,16 @@
   <div class="row justify-content-center">
     <div class="col-md-6 order-2 order-md-1">
       <div class="card shadow rounded-4 position-relative overflow-hidden">
-        {#if spinning}
+        {#if spinning || refreshing}
           <div class="slot-overlay d-flex flex-column justify-content-center align-items-center">
             <div class="spinner-border text-light" role="status"></div>
-            <div class="mt-2 fw-bold text-light">스핀 중...</div>
+            <div class="mt-2 fw-bold text-light">{spinning ? '스핀 중...' : '새로고침 중...'}</div>
           </div>
         {/if}
         <div class="card-body">
           <div class="d-flex justify-content-between align-items-center mb-3">
             <h4 class="mb-0">뺑뺑이</h4>
-            <button class="btn btn-sm btn-outline-secondary" onclick={refreshAll} title="새로고침">
+            <button class="btn btn-sm btn-outline-secondary" onclick={refreshAll} title="새로고침" disabled={refreshing || spinning}>
               🔄
             </button>
           </div>
@@ -263,7 +286,7 @@
           {#if oopsInfo && oopsCountdown}
           <div class="mt-3 p-3 bg-warning-subtle rounded border border-warning">
             <div class="fw-bold text-danger mb-2">욕심은 화를 부릅니다</div>
-            <div class="text-muted">남은 시간: <strong class="text-dark">{oopsCountdown}</strong></div>
+            <div class="mb-1">남은 시간: <strong class="text-danger" style="font-size: 1.2em;">{oopsCountdown}</strong></div>
             <small class="text-muted">10분 후에 700점이 자동 지급됩니다.</small>
           </div>
           {/if}
@@ -275,7 +298,7 @@
         <div class="card-body">
           <div class="d-flex justify-content-between align-items-center mb-3">
             <h5 class="mb-0">랭킹 Top 7</h5>
-            <button class="btn btn-sm btn-outline-secondary" onclick={refreshAll} title="새로고침">
+            <button class="btn btn-sm btn-outline-secondary" onclick={refreshAll} title="새로고침" disabled={refreshing || spinning}>
               🔄
             </button>
           </div>
@@ -305,7 +328,7 @@
         <div class="card-body">
           <div class="d-flex justify-content-between align-items-center mb-3">
             <h5 class="mb-0">💬 리플 ({comments.length})</h5>
-            <button class="btn btn-sm btn-outline-secondary" onclick={refreshAll} title="새로고침">
+            <button class="btn btn-sm btn-outline-secondary" onclick={refreshAll} title="새로고침" disabled={refreshing || spinning}>
               🔄
             </button>
           </div>
