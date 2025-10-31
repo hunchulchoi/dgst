@@ -450,6 +450,29 @@
             </button>
           </div>
           
+          <!-- 댓글 작성 폼 (위) - 댓글이 있을 때만 표시 -->
+          {#if data.session?.user && 'nickname' in data.session.user && comments.length > 0}
+            <div class="comment-input-wrapper mb-3">
+                <textarea 
+                  class="form-control comment-textarea" 
+                  rows="3" 
+                  placeholder="리플 작성시 100점 줍니다 하루 10개까지"
+                  bind:value={commentContent}
+                  disabled={commentLoading}
+                ></textarea>
+              <button 
+                class="btn btn-primary comment-submit-btn" 
+                type="button"
+                onclick={() => writeComment()}
+                disabled={commentLoading || !commentContent.trim() || commentContent.trim().length < 5}
+              >
+                {commentLoading ? '등록 중...' : '등록'}
+              </button>
+            </div>
+ 
+            <hr>
+          {/if}
+          
           <!-- 댓글 목록 -->
           {#if comments.length > 0}
             <div class="mb-3">
@@ -494,7 +517,7 @@
                               class="btn btn-primary comment-submit-btn" 
                               type="button"
                               onclick={() => comment.id && writeComment(comment.id)}
-                              disabled={commentLoading || !replyContent[comment.id]?.trim()}
+                              disabled={commentLoading || !replyContent[comment.id]?.trim() || (replyContent[comment.id]?.trim().length ?? 0) < 5}
                             >
                               {commentLoading ? '등록 중...' : '등록'}
                             </button>
@@ -534,6 +557,8 @@
           {:else}
             <div class="text-muted text-center py-3">아직 리플이 없습니다. 첫 리플을 남겨보세요! 💬</div>
           {/if}
+
+          <hr>
           
           <!-- 댓글 작성 폼 -->
           {#if data.session?.user && 'nickname' in data.session.user}
@@ -549,7 +574,7 @@
                 class="btn btn-primary comment-submit-btn" 
                 type="button"
                 onclick={() => writeComment()}
-                disabled={commentLoading || !commentContent.trim()}
+                disabled={commentLoading || !commentContent.trim() || commentContent.trim().length < 5}
               >
                 {commentLoading ? '등록 중...' : '등록'}
               </button>

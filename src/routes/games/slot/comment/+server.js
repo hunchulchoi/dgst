@@ -86,6 +86,10 @@ export async function POST({ request, locals }) {
       throw error(400, { message: '댓글 내용을 입력해주세요.' });
     }
 
+    if (content.length < 5) {
+      throw error(400, { message: '댓글은 5자 이상 입력해주세요.' });
+    }
+
     if (content.length > 1000) {
       throw error(400, { message: '댓글은 1000자 이하여야 합니다.' });
     }
