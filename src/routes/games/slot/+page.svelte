@@ -272,23 +272,26 @@
         } else {
           commentContent = '';
         }
-        // 댓글 작성 시 100점 지급되므로 잔액과 랭킹 갱신
+        // 댓글 작성 시 잔액과 랭킹 갱신
+        const result = await res.json();
         await Promise.all([
           loadComments(),
           refreshBalance(),
           loadRank()
         ]);
         
-        // 댓글 작성 보상 toast 알림
-        Swal.fire({
-          icon: 'success',
-          title: '💬 댓글 작성 보상 +100점',
-          toast: true,
-          position: 'center',
-          showConfirmButton: false,
-          timer: 3000,
-          timerProgressBar: true
-        });
+        // 댓글 작성 보상 toast 알림 (보상을 받은 경우에만)
+        if (result.rewardGiven) {
+          Swal.fire({
+            icon: 'success',
+            title: '💬 댓글 작성 보상 +100점',
+            toast: true,
+            position: 'center',
+            showConfirmButton: false,
+            timer: 3000,
+            timerProgressBar: true
+          });
+        }
         
         // 알람 카운트 갱신
         await invalidateAll();
@@ -502,7 +505,7 @@
                 <textarea 
                   class="form-control comment-textarea" 
                   rows="3" 
-                  placeholder="리플 작성시 100점 줍니다 하루 10개까지"
+                  placeholder="리플 작성시 100점 줍니다 (하루 10개까지 보상)"
                   bind:value={commentContent}
                   disabled={commentLoading}
                 ></textarea>
@@ -612,7 +615,7 @@
                 <textarea 
                   class="form-control comment-textarea" 
                   rows="3" 
-                  placeholder="리플 작성시 100점 줍니다 하루 10개까지"
+                  placeholder="리플 작성시 100점 줍니다 (하루 10개까지 보상)"
                   bind:value={commentContent}
                   disabled={commentLoading}
                 ></textarea>

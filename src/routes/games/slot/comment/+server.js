@@ -94,7 +94,6 @@ export async function POST({ request, locals }) {
       throw error(400, { message: '댓글은 1000자 이하여야 합니다.' });
     }
 
-    // 하루 댓글 작성 횟수 체크 (하루 최대 10개)
     const email = session.user.email;
     const nickname = session.user.nickname || 'anonymous';
     const todayStart = new Date();
@@ -102,16 +101,15 @@ export async function POST({ request, locals }) {
     const todayEnd = new Date();
     todayEnd.setHours(23, 59, 59, 999);
     
-    const todayCommentCount = await Comment.countDocuments({
+    // 오늘 받은 댓글 보상 개수 체크 (100점 보상은 하루 10개까지만)
+    const todayRewardCount = await GameScore.countDocuments({
       email,
-      boardId: SLOT_BOARD_ID,
-      articleId: SLOT_ARTICLE_ID,
+      game: 'slot',
+      bet: 0,
+      payout: 100,
+      delta: 100,
       createdAt: { $gte: todayStart, $lte: todayEnd }
     });
-
-    if (todayCommentCount >= 10) {
-      throw error(400, { message: '하루에 최대 10개의 댓글만 작성할 수 있습니다.' });
-    }
 
     // 대댓글인 경우 부모 댓글 확인
     let parentComment = null;
@@ -137,19 +135,23 @@ export async function POST({ request, locals }) {
 
     await comment.save();
 
-    // 댓글 작성 보상: 100점 지급
-    const lastScore = await GameScore.findOne({ email }).sort({ createdAt: -1 }).lean();
-    const currentBalance = lastScore?.balance ?? 0;
-    await GameScore.create({
-      email,
-      nickname,
-      game: 'slot',
-      bet: 0,
-      payout: 100,
-      delta: 100,
-      balance: currentBalance + 100,
-      reels: ['-', '-', '-']
-    });
+    // 댓글 작성 보상: 100점 지급 (하루 10개까지만)
+    let rewardGiven = false;
+    if (todayRewardCount < 10) {
+      const lastScore = await GameScore.findOne({ email }).sort({ createdAt: -1 }).lean();
+      const currentBalance = lastScore?.balance ?? 0;
+      await GameScore.create({
+        email,
+        nickname,
+        game: 'slot',
+        bet: 0,
+        payout: 100,
+        delta: 100,
+        balance: currentBalance + 100,
+        reels: ['-', '-', '-']
+      });
+      rewardGiven = true;
+    }
 
     const title = '뺑뺑이';
 
@@ -196,7 +198,7 @@ export async function POST({ request, locals }) {
       }
     }
 
-    return json({ success: true, comment });
+    return json({ success: true, comment, rewardGiven });
   } catch (err) {
     if (err.status) throw err;
     console.error('댓글 저장 실패', err);
