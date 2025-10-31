@@ -220,6 +220,13 @@
 
   let countdownInterval: ReturnType<typeof setInterval> | null = null;
 
+  // balance가 변경되면 bet이 balance를 초과하지 않도록 제한
+  $effect(() => {
+    if (balance > 0 && bet > balance) {
+      bet = balance;
+    }
+  });
+
   onMount(async () => {
     await refreshBalance();
     loadRank();
@@ -268,16 +275,25 @@
               🔄
             </button>
           </div>
-          <div class="d-flex justify-content-between mb-2">
+          <div class="d-flex justify-content-between align-items-center mb-2">
             <div>보유 점수: <strong>{balance}</strong></div>
-            <div>
-              <input type="tel" min="1" max={balance} class="form-control form-control-sm d-inline-block bet-input" style="width: 150px;" bind:value={bet} />
+            <div class="d-flex align-items-center gap-2">
+              <input type="tel" min="1" max={balance} class="form-control form-control-sm bet-input" style="width: 100px;" bind:value={bet} oninput={(e) => { const target = e.target as HTMLInputElement; if (!target) return; const val = Number(target.value); if (val > balance) bet = balance; else if (val >= 1) bet = val; else bet = 1; }} />
+              <button class="btn btn-sm btn-light" onclick={() => bet = 10} disabled={spinning || refreshing || balance < 10}>
+                 <em class="bi bi-dice-1 me-0 me-md-2"></em><span class="d-none d-md-inline">10</span>
+              </button>
+              <button class="btn btn-sm btn-warning" onclick={() => bet = Math.floor(balance / 2)} disabled={spinning || refreshing || balance < 2}>
+                 <em class="bi bi-dice-3 me-0 me-md-2"></em><span class="d-none d-md-inline">반틈</span>
+              </button>
+              <button class="btn btn-sm btn-danger" onclick={() => bet = balance} disabled={spinning || refreshing || balance < 1}>
+                <em class="bi bi-dice-6 me-0 me-md-2"></em><span class="d-none d-md-inline">올인</span>
+              </button>
             </div>
           </div>
           <div class="slot border rounded-3 p-3 text-center mb-3">
             <div class="display-4">{reels[0]} {reels[1]} {reels[2]}</div>
           </div>
-              <button class="btn btn-lg btn-primary w-100" disabled={spinning} onclick={play}>
+              <button class="btn btn-lg btn-primary w-100" disabled={spinning || balance < bet || balance === 0} onclick={play}>
             {spinning ? '스핀 중...' : '🎁 ㄱㄱ'}
           </button>
           {#if message}
