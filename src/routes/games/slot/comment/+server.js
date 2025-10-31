@@ -96,12 +96,21 @@ export async function POST({ request, locals }) {
 
     const email = session.user.email;
     const nickname = session.user.nickname || 'anonymous';
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
-    const todayEnd = new Date();
-    todayEnd.setHours(23, 59, 59, 999);
     
-    // 오늘 받은 댓글 보상 개수 체크 (100점 보상은 하루 10개까지만)
+    // 한국 시간(KST, UTC+9) 기준으로 당일 0시 계산
+    const now = new Date();
+    const kstOffset = 9 * 60 * 60 * 1000; // UTC+9
+    const kstNow = new Date(now.getTime() + kstOffset);
+    const kstYear = kstNow.getUTCFullYear();
+    const kstMonth = kstNow.getUTCMonth();
+    const kstDate = kstNow.getUTCDate();
+    
+    // 한국 시간 기준 오늘 0시 (UTC로 변환)
+    const todayStart = new Date(Date.UTC(kstYear, kstMonth, kstDate, 0, 0, 0, 0) - kstOffset);
+    // 한국 시간 기준 오늘 23:59:59.999 (UTC로 변환)
+    const todayEnd = new Date(Date.UTC(kstYear, kstMonth, kstDate, 23, 59, 59, 999) - kstOffset);
+    
+    // 오늘 받은 댓글 보상 개수 체크 (100점 보상은 하루 10개까지만, 한국 시간 기준 당일 0시~23:59:59)
     const todayRewardCount = await GameScore.countDocuments({
       email,
       game: 'slot',
