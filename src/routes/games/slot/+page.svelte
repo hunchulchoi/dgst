@@ -182,7 +182,7 @@
       if (nextBalance === 0) {
         // 오링 시 자동 댓글 작성
         try {
-          const oopsComment = `😢 오링! 잔액 0점... 10분 후 700점이 지급됩니다.`;
+          const oopsComment = `😢 오링! 잔액 0점... -${j.delta}점`;
           
           const formData = new FormData();
           formData.set('content', oopsComment);
