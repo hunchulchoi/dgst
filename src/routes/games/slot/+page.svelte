@@ -25,13 +25,40 @@
   let commentLoading = $state(false);
   let replyingTo = $state<string | null>(null);
   let replyContent = $state<Record<string, string>>({});
+  let oopsInfo = $state<{ createdAt: string; remainingMs: number } | null>(null);
+  let oopsCountdown = $state<string>('');
 
   async function refreshBalance() {
     const res = await fetch('/games/slot');
     if (res.ok) {
       const j = await res.json();
       balance = j.balance;
+      oopsInfo = j.oopsInfo || null;
     }
+  }
+  
+  function updateOopsCountdown() {
+    if (!oopsInfo) {
+      oopsCountdown = '';
+      return;
+    }
+    const now = Date.now();
+    const createdAt = new Date(oopsInfo.createdAt).getTime();
+    const TEN_MIN = 10 * 60 * 1000;
+    const elapsed = now - createdAt;
+    const remaining = TEN_MIN - elapsed;
+    
+    if (remaining <= 0) {
+      oopsInfo = null;
+      oopsCountdown = '';
+      // 자동으로 잔액 새로고침 (700점 지급 확인)
+      refreshBalance();
+      return;
+    }
+    
+    const minutes = Math.floor(remaining / (60 * 1000));
+    const seconds = Math.floor((remaining % (60 * 1000)) / 1000);
+    oopsCountdown = `${minutes}분 ${seconds}초`;
   }
 
   async function loadRank() {
@@ -68,6 +95,12 @@
       reels = nextReels;
       balance = nextBalance;
       message = nextMessage;
+      // 오링 상태 확인
+      if (nextBalance === 0) {
+        await refreshBalance();
+      } else {
+        oopsInfo = null;
+      }
       await loadRank();
       await loadComments();
     } catch (e: any) {
@@ -162,7 +195,10 @@
     }, 500);
   }
 
+  let countdownInterval: ReturnType<typeof setInterval> | null = null;
+
   onMount(async () => {
+    await refreshBalance();
     loadRank();
     await loadComments();
     
@@ -170,6 +206,25 @@
     const urlParams = new URLSearchParams(window.location.search);
     const commentId = urlParams.get('cmt');
     scrollToComment(commentId);
+    
+    // 오링 카운트다운 업데이트
+    updateOopsCountdown();
+    countdownInterval = setInterval(() => {
+      if (oopsInfo) {
+        updateOopsCountdown();
+      } else {
+        if (countdownInterval) {
+          clearInterval(countdownInterval);
+          countdownInterval = null;
+        }
+      }
+    }, 1000);
+    
+    return () => {
+      if (countdownInterval) {
+        clearInterval(countdownInterval);
+      }
+    };
   });
 </script>
 
@@ -204,6 +259,13 @@
           </button>
           {#if message}
           <div class="mt-3 fw-bold">{message}</div>
+          {/if}
+          {#if oopsInfo && oopsCountdown}
+          <div class="mt-3 p-3 bg-warning-subtle rounded border border-warning">
+            <div class="fw-bold text-danger mb-2">욕심은 화를 부릅니다</div>
+            <div class="text-muted">남은 시간: <strong class="text-dark">{oopsCountdown}</strong></div>
+            <small class="text-muted">10분 후에 700점이 자동 지급됩니다.</small>
+          </div>
           {/if}
         </div>
       </div>

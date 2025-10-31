@@ -126,10 +126,26 @@ export async function GET({ locals, url }) {
     });
     balance = 1000;
   }
+  let oopsInfo = null;
   // 잔액 0이 10분 이상 지속되면 700점 보충
-  if (balance === 0) {
+  if (balance === 0 && last) {
     const topped = await maybeTopupAfterOOPS(email, nickname);
-    if (topped > 0) balance = topped;
+    if (topped > 0) {
+      balance = topped;
+    } else {
+      // 오링 상태: 남은 시간 정보 반환
+      const createdAt = new Date(last.createdAt).getTime();
+      const now = Date.now();
+      const TEN_MIN = 10 * 60 * 1000;
+      const elapsed = now - createdAt;
+      const remaining = TEN_MIN - elapsed;
+      if (remaining > 0) {
+        oopsInfo = {
+          createdAt: last.createdAt,
+          remainingMs: remaining
+        };
+      }
+    }
   }
   if (url.searchParams.get('rank')) {
     // 랭킹 처리: 각 user의 가장 최근 balance, 상위 10명
@@ -139,9 +155,9 @@ export async function GET({ locals, url }) {
       { $sort: { balance: -1 } },
       { $limit: 7 }
     ]);
-    return json({ balance, rank: balances });
+    return json({ balance, rank: balances, oopsInfo });
   }
-  return json({ balance });
+  return json({ balance, oopsInfo });
 }
 
 
