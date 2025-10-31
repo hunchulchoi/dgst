@@ -4,6 +4,7 @@
   import { ko } from 'date-fns/locale';
   import { invalidateAll } from '$app/navigation';
   import Swal from 'sweetalert2';
+  import { isOnlyOneEmoji } from '$lib/util/emoji.js';
   let { data } = $props();
   let balance = $state(data.balance || 0);
   let bet = $state(10);
@@ -526,28 +527,45 @@
           {#if comments.length > 0}
             <div class="mb-3">
               {#each comments as comment}
-                <div class="border-bottom pb-3 mb-3 {(comment.depth ?? 1) > 1 ? 'ms-4' : ''}">
+                <div class="border-bottom pb-2 mb-2 d-flex">
                   {#if comment.parentCommentNickname}
-                    <div class="mb-2">
-                      <span class="badge bg-secondary text-warning">@</span>
-                      <span class="text-muted small">{comment.parentCommentNickname}</span>
+                    <div class="me-2 flex-shrink-0">
+                      <i class="bi bi-arrow-return-right text-success"></i>
                     </div>
                   {/if}
-                  <div class="d-flex align-items-start gap-2 mb-2">
-                    {#if comment.photo}
-                      <img src={comment.photo} alt="프로필" class="rounded-circle" style="width: 32px; height: 32px; object-fit: cover;" />
+                  <div class="flex-grow-1 {(comment.depth ?? 1) > 1 ? 'ms-2' : ''}">
+                    {#if comment.parentCommentNickname}
+                      <div class="mb-2">
+                        <span class="badge bg-secondary text-warning">
+                          <span>@</span>
+                          <span class="text-muted small">{comment.parentCommentNickname}</span>
+                        </span>
+                      </div>
                     {/if}
-                    <div class="flex-grow-1">
-                      <div class="fw-bold">{comment.nickname}</div>
-                      <small class="text-muted">
-                        {formatDistanceToNowStrict(parseISO(comment.createdAt), {
-                          locale: ko,
-                          addSuffix: true
-                        })}
-                      </small>
+                    <div class="d-flex align-items-start gap-2 mb-1">
+                      {#if comment.photo}
+                        <img src={comment.photo} alt="프로필" class="rounded-circle" style="width: 32px; height: 32px; object-fit: cover;" />
+                      {/if}
+                      <div class="flex-grow-1">
+                        <div class="d-flex align-items-center gap-2">
+                          <span class="fw-bold">{comment.nickname}</span>
+                          <small class="text-muted">
+                            {formatDistanceToNowStrict(parseISO(comment.createdAt), {
+                              locale: ko,
+                              addSuffix: true
+                            })}
+                          </small>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="ms-1" id={comment.id ? `comment-${comment.id}` : undefined}>
+                      {#if isOnlyOneEmoji(comment.content)}
+                        <span class="fs-2">{comment.content}</span>
+                      {:else}
+                        {comment.content}
+                      {/if}
                     </div>
                   </div>
-                  <div class="ms-1" id={comment.id ? `comment-${comment.id}` : undefined}>{comment.content}</div>
                   
                   <!-- 대댓글 작성 폼 -->
                   {#if data.session?.user && 'nickname' in data.session.user}
@@ -607,8 +625,6 @@
             <div class="text-muted text-center py-3">아직 리플이 없습니다. 첫 리플을 남겨보세요! 💬</div>
           {/if}
 
-          <hr>
-          
           <!-- 댓글 작성 폼 -->
           {#if data.session?.user && 'nickname' in data.session.user}
             <div class="comment-input-wrapper mt-3">

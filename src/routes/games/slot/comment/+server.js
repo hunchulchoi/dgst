@@ -173,30 +173,7 @@ export async function POST({ request, locals }) {
       );
     }
 
-    // 일반 댓글인 경우: 다른 댓글 작성자들에게 알림
-    if (!parentComment) {
-      const otherCommenters = await Comment.distinct('email', {
-        boardId: SLOT_BOARD_ID,
-        articleId: SLOT_ARTICLE_ID,
-        email: { $ne: session.user.email },
-        createdAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } // 최근 24시간 내 작성자만
-      });
-
-      for (const email of otherCommenters) {
-        await Alarm.findOneAndUpdate(
-          { email, articleId: SLOT_ARTICLE_ID },
-          {
-            $set: {
-              title,
-              boardId: SLOT_BOARD_ID,
-              readAt: null
-            },
-            $addToSet: { comments: comment._id.toString() }
-          },
-          { upsert: true, new: true }
-        );
-      }
-    }
+    // 일반 댓글인 경우: 알림을 보내지 않음 (대댓글만 알림)
 
     return json({ success: true, comment, rewardGiven });
   } catch (err) {
