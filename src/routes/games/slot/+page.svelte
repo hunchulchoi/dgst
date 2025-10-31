@@ -90,6 +90,13 @@
         comments = data || [];
         // 알람이 읽음 처리되었으므로 레이아웃의 알람 카운트 갱신
         await invalidateAll();
+        
+        // 댓글 로드 후 URL에 댓글 ID가 있으면 스크롤
+        const urlParams = new URLSearchParams(window.location.search);
+        const commentId = urlParams.get('cmt');
+        if (commentId) {
+          scrollToComment(commentId);
+        }
       }
     } catch (e) {
       console.error('댓글 로드 실패:', e);
@@ -140,9 +147,29 @@
     ]);
   }
 
-  onMount(() => {
+  function scrollToComment(commentId: string | null) {
+    if (!commentId) return;
+    setTimeout(() => {
+      const element = document.getElementById(`comment-${commentId}`);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        element.style.backgroundColor = 'var(--bs-warning-bg-subtle)';
+        setTimeout(() => {
+          element.style.transition = 'background-color 2s';
+          element.style.backgroundColor = '';
+        }, 2000);
+      }
+    }, 500);
+  }
+
+  onMount(async () => {
     loadRank();
-    loadComments();
+    await loadComments();
+    
+    // URL에 댓글 ID가 있으면 해당 댓글로 스크롤
+    const urlParams = new URLSearchParams(window.location.search);
+    const commentId = urlParams.get('cmt');
+    scrollToComment(commentId);
   });
 </script>
 
@@ -246,7 +273,7 @@
                       </small>
                     </div>
                   </div>
-                  <div class="ms-1">{comment.content}</div>
+                  <div class="ms-1" id={comment.id ? `comment-${comment.id}` : undefined}>{comment.content}</div>
                   
                   <!-- 대댓글 작성 폼 -->
                   {#if data.session?.user && 'nickname' in data.session.user}

@@ -41,10 +41,11 @@
               xs="9"
               class="text-break link-opacity-hover-50 pb-1 px-0 position-relative"
             >
+              {@const commentId = alarm.comment || (alarm.comments && alarm.comments.length > 0 ? alarm.comments[alarm.comments.length - 1] : '')}
               <a
                 data-sveltekit-preload-data="tap"
                 data-sveltekit-invalidate="all"
-                href={`/board/${alarm.boardId}/${alarm.articleId}?a=cmt${alarm.comment}`}
+                href={alarm.boardId === 'slot' ? (commentId ? `/games/slot?cmt=${commentId}` : `/games/slot`) : `/board/${alarm.boardId}/${alarm.articleId}?a=cmt${alarm.comment}`}
                 style="cursor: pointer; font-size: 1.1em"
                 class="link-underline link-underline-opacity-0 link-offset-2 link-underline-opacity-50-hover stretched-link"
               >
@@ -74,10 +75,11 @@
               xs="8"
               class="text-break link-opacity-hover-50 pb-1 position-relative"
             >
+              {@const commentIdForGeneral = alarm.comments && alarm.comments.length > 0 ? alarm.comments[alarm.comments.length - 1] : ''}
               <a
                 data-sveltekit-preload-data="tap"
                 data-sveltekit-invalidate="all"
-                href={`/board/${alarm.boardId}/${alarm.articleId}`}
+                href={alarm.boardId === 'slot' ? (commentIdForGeneral ? `/games/slot?cmt=${commentIdForGeneral}` : `/games/slot`) : `/board/${alarm.boardId}/${alarm.articleId}`}
                 style="cursor: pointer; font-size: 1.1em"
                 class="link-underline link-underline-opacity-0 link-offset-2 link-underline-opacity-50-hover stretched-link"
               >
