@@ -431,13 +431,13 @@
             <div class="d-flex align-items-center gap-2">
               <input type="tel" max={balance} class="form-control form-control-sm bet-input" style="width: 100px;" bind:value={bet} oninput={(e) => { const target = e.target as HTMLInputElement; if (!target) return; const val = Number(target.value); if (val > balance) bet = balance; else if (val >= 1) bet = val; else bet = 1; }} />
               <button class="btn btn-sm btn-light" onclick={() => bet = 10} disabled={spinning || refreshing || balance < 10}>
-                 <em class="bi bi-dice-1 me-0 me-md-2"></em><span class="d-none d-md-inline">10</span>
+                 <em class="bi bi-dice-1 me-0 me-md-2"></em><span class="d-none d-lg-inline">10</span>
               </button>
               <button class="btn btn-sm btn-warning" onclick={() => bet = Math.floor(balance / 2)} disabled={spinning || refreshing || balance < 2}>
-                 <em class="bi bi-dice-3 me-0 me-md-2"></em><span class="d-none d-md-inline">반틈</span>
+                 <em class="bi bi-dice-3 me-0 me-md-2"></em><span class="d-none d-lg-inline">반틈</span>
               </button>
               <button class="btn btn-sm btn-danger" onclick={() => bet = balance} disabled={spinning || refreshing || balance < 1}>
-                <em class="bi bi-dice-6 me-0 me-md-2"></em><span class="d-none d-md-inline">올인</span>
+                <em class="bi bi-dice-6 me-0 me-md-2"></em><span class="d-none d-lg-inline">올인</span>
               </button>
             </div>
           </div>
