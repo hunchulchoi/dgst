@@ -107,8 +107,8 @@
         // Triple 당첨 시 큰 alert
         const is777 = nextReels[0] === '7️⃣';
         Swal.fire({
-          icon: 'success',
-          title: is777 ? '🎰 777 잭팟! 20배!  ' : '🎉 Triple! 10배!',
+          icon: is777 ? '🎰' : '🎉',
+          title: is777 ? '🎰 7️⃣7️⃣7️⃣ 잭팟! 20배! 🎰' : '🎉 Triple! 10배! 🎉',
           html: `<div style="font-size: 48px; margin: 20px 0;">${reelStr}</div><div style="font-size: 24px; font-weight: bold;">+${j.delta}점</div>`,
           showConfirmButton: true,
           confirmButtonText: '확인',
@@ -119,8 +119,8 @@
         try {
           const formattedDelta = formatNumber(j.delta);
           const tripleComment = is777 
-            ? `🎰 ${reelStr} 777 잭팟 당첨! +${formattedDelta}점 획득!`
-            : `🎉 ${reelStr} Triple 당첨! +${formattedDelta}점 획득!`;
+            ? `🎰 ${reelStr} 7️⃣7️⃣7️⃣ 잭팟 당첨! +${formattedDelta} 🎰`
+            : `🎉 ${reelStr} Triple 당첨! +${formattedDelta} 🎉`;
           
           const formData = new FormData();
           formData.set('content', tripleComment);
