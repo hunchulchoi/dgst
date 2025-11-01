@@ -90,7 +90,7 @@ export async function POST({ request, locals }) {
 
   const body = await request.json().catch(() => ({}));
   const bet = Number(body?.bet ?? 0);
-  if (!Number.isFinite(bet) || bet <= 0 || bet > 1000000) {
+  if (!Number.isFinite(bet) || bet <= 0) {
     throw error(400, { message: '잘못된 베팅 금액입니다.' });
   }
 
@@ -98,6 +98,10 @@ export async function POST({ request, locals }) {
   const nickname = session.user.nickname || 'anonymous';
   const last = await GameScore.findOne({ email }).sort({ createdAt: -1 }).lean();
   let balanceBefore = last?.balance ?? 0;
+
+  if (bet > balanceBefore) {
+    throw error(400, { message: '보유 점수가 부족합니다.' });
+  }
   // 최초 이용자(기록이 전무): 1000점 지급 후 안내
   if (!last) {
     await GameScore.create({
@@ -117,7 +121,7 @@ export async function POST({ request, locals }) {
     const topped = await maybeTopupAfterOOPS(email, nickname);
     balanceBefore = topped > 0 ? topped : 0;
     if (balanceBefore === 0) {
-      throw error(400, { message: '오링 상태입니다. 10분 뒤에 700점이 자동 지급됩니다.' });
+      throw error(400, { message: '오링 😵' });
     }
   }
   if (balanceBefore < bet) throw error(400, { message: '보유 점수가 부족합니다.' });
@@ -138,7 +142,7 @@ export async function POST({ request, locals }) {
     balance: balanceAfter,
     reels,
   });
-  const extraMsg = balanceAfter === 0 ? '오링! 10분 뒤에 700점이 자동 지급됩니다.' : undefined;
+  const extraMsg = balanceAfter === 0 ? '오링! 😵' : undefined;
   return json({ success: true, reels, payout, delta, balance: balanceAfter, id: docSpin._id, message: extraMsg });
 }
 

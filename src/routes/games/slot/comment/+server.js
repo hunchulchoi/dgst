@@ -37,13 +37,36 @@ export async function GET({ locals, setHeaders }) {
     ).sort({ createdAt: -1 }).lean();
     
     // ID를 문자열로 변환하고 트리 구조로 변환
-    const commentsWithId = comments.map(c => ({
+    const commentsWithId = comments.map((c) => ({
       ...c,
       id: c._id.toString(),
       parentCommentId: c.parentCommentId?.toString()
     }));
-    
-    const commentsTree = JSON.parse(JSON.stringify(convertToTree(commentsWithId)));
+
+    // 대댓글인데 부모가 없는 경우 제외하기 위해 유효한 댓글만 필터링
+    const sortedByDepth = [...commentsWithId].sort((a, b) => {
+      const depthDiff = (a.depth ?? 1) - (b.depth ?? 1);
+      if (depthDiff !== 0) return depthDiff;
+      // 깊이가 같으면 생성일 기준 오름차순 정렬
+      return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+    });
+
+    const validCommentIds = new Set();
+    for (const comment of sortedByDepth) {
+      const depth = comment.depth ?? 1;
+      if (depth <= 1) {
+        validCommentIds.add(comment.id);
+        continue;
+      }
+
+      if (comment.parentCommentId && validCommentIds.has(comment.parentCommentId)) {
+        validCommentIds.add(comment.id);
+      }
+    }
+
+    const filteredComments = commentsWithId.filter((comment) => validCommentIds.has(comment.id));
+
+    const commentsTree = JSON.parse(JSON.stringify(convertToTree(filteredComments)));
 
     // 좋아요 여부 표시 및 알림 읽음 처리
     if (session?.user?.email) {
