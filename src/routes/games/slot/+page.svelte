@@ -152,7 +152,7 @@
         try {
           const formattedDelta = formatNumber(j.delta);
           const tripleComment = is777 
-            ? `🎰 ${reelStr} 7️⃣7️⃣7️⃣ 잭팟 당첨! +${formattedDelta} 🎰`
+            ? `🎰 ${reelStr} 잭팟 당첨! +${formattedDelta} 🎰`
             : `🎉 ${reelStr} Triple 당첨! +${formattedDelta} 🎉`;
           
           const formData = new FormData();
