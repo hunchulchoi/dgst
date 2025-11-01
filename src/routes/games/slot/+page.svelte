@@ -467,6 +467,18 @@
   <div class="row justify-content-center">
     <div class="col-md-6 order-2 order-md-1">
       <div class="card shadow rounded-4 position-relative overflow-hidden">
+        <div class="alert alert-info mb-4 rounded-4 border-0 bg-gradient text-white slot-guide">
+          <div class="d-flex flex-column flex-md-row align-items-center gx-3 gap-3 text-center text-md-start">
+            <span class="display-6 mb-0">🎲</span>
+            <div>
+              <h5 class="fw-bold mb-1">뺑뺑이는 즐거운 놀이입니다</h5>
+              <p class="mb-0 small text-muted">
+                뺑뺑이 점수는 타인에게 이전하거나 현금·재화로 전환될 수 없는 순수한 놀이용 포인트입니다.
+                <br>오직 게임의 재미를 위해 활용해 주세요!
+              </p>
+            </div>
+          </div>
+        </div>
         {#if spinning || refreshing}
           <div class="slot-overlay"></div>
         {/if}
@@ -730,6 +742,10 @@
 <style>
   .slot {
     background: var(--bs-secondary-bg);
+  }
+  .slot-guide {
+    background: linear-gradient(135deg, rgba(9, 132, 227, 0.95), rgba(45, 197, 253, 0.95));
+    box-shadow: 0 10px 30px rgba(9, 132, 227, 0.25);
   }
   .slot.slot-spinning {
     border-color: var(--bs-warning);
