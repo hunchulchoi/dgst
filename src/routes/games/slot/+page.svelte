@@ -103,9 +103,9 @@
     }
     const now = Date.now();
     const createdAt = new Date(oopsInfo.createdAt).getTime();
-    const TEN_MIN = 10 * 60 * 1000;
+    const WAIT_DURATION_MS = 5 * 60 * 1000;
     const elapsed = now - createdAt;
-    const remaining = TEN_MIN - elapsed;
+    const remaining = WAIT_DURATION_MS - elapsed;
     
     if (remaining <= 0) {
       oopsInfo = null;
@@ -665,7 +665,7 @@
           <div class="mt-3 p-3 bg-warning-subtle rounded border border-warning">
             <div class="fw-bold text-danger mb-2">욕심은 화를 부릅니다</div>
             <div class="mb-1">남은 시간: <strong class="text-danger" style="font-size: 1.2em;">{oopsCountdown}</strong></div>
-            <small class="text-muted">10분 후에 700점이 자동 지급됩니다.</small>
+            <small class="text-muted">5분 후에 700점이 자동 지급됩니다.</small>
           </div>
           {/if}
         </div>
@@ -946,7 +946,7 @@
     flex: 1;
     min-width: 0;
   }
-  .slot-guide-title h5 {
+  .slot-guide-title :global(h6) {
     margin: 0;
   }
   .slot-guide-toggle {

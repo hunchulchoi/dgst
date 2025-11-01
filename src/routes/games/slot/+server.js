@@ -24,6 +24,8 @@ import { getTodaySlotStats } from '$lib/server/slotStats.js';
 
 connectDB();
 
+const OOPS_TOPUP_DELAY_MS = 5 * 60 * 1000;
+
 /**
  * @returns {string[]}
  */
@@ -65,7 +67,7 @@ async function getBalance(email) {
   return last?.balance ?? 0;
 }
 
-// 잔액 0 상태가 10분 이상이면 700점 보충 (지연 지급)
+// 잔액 0 상태가 5분 이상이면 700점 보충 (지연 지급)
 // 실제 스핀(bet>0)에서 오링(balance=0)이 발생한 경우만 체크
 // 댓글 보상으로 받은 점수가 있으면 오링이 아님
 /**
@@ -105,11 +107,10 @@ async function maybeTopupAfterOOPS(email, nickname) {
     }
   }
 
-  // 오링 시점 기준으로 10분 경과 확인
+  // 오링 시점 기준으로 5분 경과 확인
   const createdAt = new Date(lastOopsSpin.createdAt).getTime();
   const now = Date.now();
-  const TEN_MIN = 10 * 60 * 1000;
-  if (now - createdAt >= TEN_MIN) {
+  if (now - createdAt >= OOPS_TOPUP_DELAY_MS) {
     const doc = /** @type {LeanGameScore} */ (
       await GameScore.create({
         email,
@@ -163,7 +164,7 @@ export async function POST({ request, locals }) {
     });
     return json({ success: false, balance: 1000, message: '첫 1000점 지급! 다시 베팅해 주세요.' });
   }
-  // 기록은 있지만 잔액 0인 경우: 10분 경과 시 100점 보충, 미경과 시 안내
+  // 기록은 있지만 잔액 0인 경우: 5분 경과 시 100점 보충, 미경과 시 안내
   if (balanceBefore === 0) {
     const topped = await maybeTopupAfterOOPS(email, nickname);
     balanceBefore = topped > 0 ? topped : 0;
@@ -249,9 +250,8 @@ export async function GET({ locals, url }) {
           // 오링 상태: 남은 시간 정보 반환 (실제 스핀 기준)
           const createdAt = new Date(lastOopsSpin.createdAt).getTime();
           const now = Date.now();
-          const TEN_MIN = 10 * 60 * 1000;
           const elapsed = now - createdAt;
-          const remaining = TEN_MIN - elapsed;
+          const remaining = OOPS_TOPUP_DELAY_MS - elapsed;
           if (remaining > 0) {
             oopsInfo = {
               createdAt: lastOopsSpin.createdAt,

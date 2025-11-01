@@ -636,7 +636,7 @@
         videoId = match ? match[1] : null;
         console.log('📱 Shorts videoId:', videoId);
         if (videoId) {
-          embedHtml = `<div style="max-width: 460px"><div style="position: relative;width:100%;padding-bottom:177.777%;"><iframe src="https://www.youtube.com/embed/${videoId}" style="position: absolute; width: 100%; height: 100%; top: 0; left: 0;" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe></div></div>`;
+          embedHtml = `<div style="max-width: 360px"><div style="position: relative;width:100%;padding-bottom:220%;"><iframe src="https://www.youtube.com/embed/${videoId}" style="position: absolute; width: 100%; height: 100%; top: 0; left: 0;" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe></div></div>`;
         }
       } else if (url.includes('youtube.com/embed/')) {
         const match = url.match(/youtube\.com\/embed\/([\w-]+)/);
