@@ -18,9 +18,9 @@ export async function GET({ locals, setHeaders, url }) {
   });
   
   const session = await locals.auth();
-  const perPageParam = Number(url.searchParams.get('limit') ?? '100');
+  const perPageParam = Number(url.searchParams.get('limit') ?? '50');
   const pageParam = Number(url.searchParams.get('page') ?? '1');
-  const perPage = Number.isFinite(perPageParam) && perPageParam > 0 ? Math.min(perPageParam, 100) : 100;
+  const perPage = Number.isFinite(perPageParam) && perPageParam > 0 ? Math.min(perPageParam, 50) : 50;
   const page = Number.isFinite(pageParam) && pageParam > 0 ? Math.floor(pageParam) : 1;
   
   try {

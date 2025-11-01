@@ -39,7 +39,7 @@
     liked?: boolean;
   }>>([]);
   let commentPage = $state(1);
-  let commentPerPage = $state(100);
+  let commentPerPage = $state(50);
   let commentTotal = $state(0);
   let commentHasMore = $state(false);
   let commentListLoading = $state(false);
@@ -288,7 +288,10 @@
     }
     commentListLoading = true;
     try {
-      const query = new URLSearchParams({ page: String(page) });
+      const query = new URLSearchParams({
+        page: String(page),
+        limit: String(commentPerPage)
+      });
       const res = await fetch(`/games/slot/comment?${query.toString()}`, {
         cache: 'no-store',
         headers: {
