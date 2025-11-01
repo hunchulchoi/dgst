@@ -115,34 +115,12 @@
           width: '500px'
         });
         
-        // 서버에 Triple 당첨 로그 남기기
-        try {
-          await fetch('/api/log', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              level: 'info',
-              message: `Slot Triple 당첨: ${reelStr}`,
-              type: 'slot-triple',
-              is777,
-              reels: reelStr,
-              delta: j.delta,
-              payout: j.payout,
-              bet: bet,
-              balance: nextBalance,
-              nickname: data.session?.user?.nickname || 'unknown',
-              email: data.session?.user?.email || 'unknown'
-            })
-          });
-        } catch (logErr) {
-          console.error('Triple 당첨 로그 기록 실패:', logErr);
-        }
-        
         // Triple 당첨 시 자동 댓글 작성
         try {
+          const formattedDelta = formatNumber(j.delta);
           const tripleComment = is777 
-            ? `🎰 ${reelStr} 777 잭팟 당첨! +${j.delta}점 획득!`
-            : `🎉 ${reelStr} Triple 당첨! +${j.delta}점 획득!`;
+            ? `🎰 ${reelStr} 777 잭팟 당첨! +${formattedDelta}점 획득!`
+            : `🎉 ${reelStr} Triple 당첨! +${formattedDelta}점 획득!`;
           
           const formData = new FormData();
           formData.set('content', tripleComment);
@@ -183,7 +161,8 @@
       if (nextBalance === 0 && j.delta < 0) {
         // 오링 시 자동 댓글 작성 (보상 있음)
         try {
-          const oopsComment = `😢 오링! 인생여전ㅜ ${j.delta}`;
+          const formattedLoss = formatNumber(j.delta);
+          const oopsComment = `😢 오링! 인생여전ㅜ... ${formattedLoss}`;
           
           const formData = new FormData();
           formData.set('content', oopsComment);
