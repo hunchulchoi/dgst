@@ -11,13 +11,17 @@ connectDB();
 const SLOT_BOARD_ID = 'slot';
 const SLOT_ARTICLE_ID = 'slot';
 
-export async function GET({ locals, setHeaders }) {
+export async function GET({ locals, setHeaders, url }) {
   // 캐시 방지 헤더 설정
   setHeaders({
     'Cache-Control': 'private, max-age=0, no-store, must-revalidate, proxy-revalidate'
   });
   
   const session = await locals.auth();
+  const perPageParam = Number(url.searchParams.get('limit') ?? '100');
+  const pageParam = Number(url.searchParams.get('page') ?? '1');
+  const perPage = Number.isFinite(perPageParam) && perPageParam > 0 ? Math.min(perPageParam, 100) : 100;
+  const page = Number.isFinite(pageParam) && pageParam > 0 ? Math.floor(pageParam) : 1;
   
   try {
     // 최근 24시간 내 댓글만 조회
@@ -67,10 +71,57 @@ export async function GET({ locals, setHeaders }) {
     const filteredComments = commentsWithId.filter((comment) => validCommentIds.has(comment.id));
 
     const commentsTree = JSON.parse(JSON.stringify(convertToTree(filteredComments)));
+    const total = commentsTree.length;
+    const offset = Math.max(0, (page - 1) * perPage);
+
+    if (offset >= total) {
+      return json({
+        comments: [],
+        page,
+        perPage,
+        total,
+        totalPages: total > 0 ? Math.ceil(total / perPage) : 0,
+        hasMore: false
+      });
+    }
+
+    let startIndex = 0;
+    let lastRootIndex = 0;
+    let processed = 0;
+
+    for (let i = 0; i < commentsTree.length; i++) {
+      const depth = commentsTree[i].depth ?? 1;
+      if (depth <= 1) {
+        lastRootIndex = i;
+      }
+      if (processed === offset) {
+        startIndex = lastRootIndex;
+        break;
+      }
+      processed += 1;
+    }
+
+    let count = 0;
+    let endIndex = commentsTree.length;
+    for (let i = startIndex; i < commentsTree.length; i++) {
+      const depth = commentsTree[i].depth ?? 1;
+      count += 1;
+      if (count >= perPage) {
+        let j = i + 1;
+        while (j < commentsTree.length && (commentsTree[j].depth ?? 1) > 1) {
+          j += 1;
+        }
+        endIndex = j;
+        break;
+      }
+    }
+
+    const pagedComments = commentsTree.slice(startIndex, endIndex);
+    const hasMore = endIndex < commentsTree.length;
 
     // 좋아요 여부 표시 및 알림 읽음 처리
     if (session?.user?.email) {
-      commentsTree.forEach((c) => {
+      pagedComments.forEach((c) => {
         c.liked = c.likes?.includes(session.user.email) || false;
         delete c.likes;
       });
@@ -82,12 +133,19 @@ export async function GET({ locals, setHeaders }) {
         { timestamps: false }
       );
     } else {
-      commentsTree.forEach((c) => {
+      pagedComments.forEach((c) => {
         delete c.likes;
       });
     }
 
-    return json(commentsTree);
+    return json({
+      comments: pagedComments,
+      page,
+      perPage,
+      total,
+      totalPages: total > 0 ? Math.ceil(total / perPage) : 0,
+      hasMore
+    });
   } catch (err) {
     console.error('댓글 목록 실패', err);
     throw error(500, { message: '데이터를 가져오는 중에 오류가 발생하였습니다.' });

@@ -38,6 +38,11 @@
     parentCommentNickname?: string; 
     liked?: boolean;
   }>>([]);
+  let commentPage = $state(1);
+  let commentPerPage = $state(100);
+  let commentTotal = $state(0);
+  let commentHasMore = $state(false);
+  let commentListLoading = $state(false);
   let commentContent = $state('');
   let commentLoading = $state(false);
   let replyingTo = $state<string | null>(null);
@@ -195,7 +200,7 @@
           if (commentRes.ok) {
             // 댓글 작성 성공 시 리스트 새로고침 (보상은 서버에서 처리)
             await Promise.all([
-              loadComments(),
+              loadComments(1),
               refreshBalance(),
               loadRank()
             ]);
@@ -239,7 +244,7 @@
           if (commentRes.ok) {
             // 댓글 작성 성공 시 리스트 새로고침 (보상은 서버에서 처리)
             await Promise.all([
-              loadComments(),
+              loadComments(1),
               refreshBalance(),
               loadRank()
             ]);
@@ -253,7 +258,7 @@
       }
       await Promise.all([
         loadRank(),
-        loadComments(),
+        loadComments(1),
         refreshBalance()
       ]);
     } catch (e: any) {
@@ -277,9 +282,14 @@
     }
   }
 
-  async function loadComments() {
+  async function loadComments(page = 1, append = false) {
+    if (commentListLoading && append) {
+      return;
+    }
+    commentListLoading = true;
     try {
-      const res = await fetch('/games/slot/comment', {
+      const query = new URLSearchParams({ page: String(page) });
+      const res = await fetch(`/games/slot/comment?${query.toString()}`, {
         cache: 'no-store',
         headers: {
           'Cache-Control': 'no-cache'
@@ -287,21 +297,45 @@
       });
       if (res.ok) {
         const data = await res.json();
-        comments = data || [];
-        // 알람이 읽음 처리되었으므로 레이아웃의 알람 카운트 갱신
-        await invalidateAll();
-        
-        // 댓글 로드 후 URL에 댓글 ID가 있으면 스크롤
-        const urlParams = new URLSearchParams(window.location.search);
-        const commentId = urlParams.get('cmt');
-        if (commentId) {
-          scrollToComment(commentId);
+        const list = Array.isArray(data?.comments) ? data.comments : [];
+        if (append) {
+          comments = [...comments, ...list];
+        } else {
+          comments = list;
+        }
+        commentPage = typeof data?.page === 'number' ? data.page : page;
+        commentPerPage = typeof data?.perPage === 'number' ? data.perPage : commentPerPage;
+        commentTotal = typeof data?.total === 'number'
+          ? data.total
+          : (append ? commentTotal : list.length);
+        commentHasMore = Boolean(data?.hasMore);
+
+        if (!append) {
+          // 알람이 읽음 처리되었으므로 레이아웃의 알람 카운트 갱신
+          await invalidateAll();
+
+          // 댓글 로드 후 URL에 댓글 ID가 있으면 스크롤
+          const urlParams = new URLSearchParams(window.location.search);
+          const commentId = urlParams.get('cmt');
+          if (commentId) {
+            scrollToComment(commentId);
+          } else if (window.location.hash.startsWith('#comment-')) {
+            const hashComment = window.location.hash.slice('#comment-'.length);
+            scrollToComment(hashComment);
+          }
         }
       }
     } catch (e) {
       console.error('댓글 로드 실패:', e);
+    } finally {
+      commentListLoading = false;
     }
   }
+
+  const loadMoreComments = async () => {
+    if (!commentHasMore || commentListLoading) return;
+    await loadComments(commentPage + 1, true);
+  };
 
   async function writeComment(parentId?: string) {
     const content = parentId ? replyContent[parentId] : commentContent;
@@ -327,7 +361,7 @@
         // 댓글 작성 시 잔액과 랭킹 갱신
         const result = await res.json();
         await Promise.all([
-          loadComments(),
+          loadComments(1),
           refreshBalance(),
           loadRank()
         ]);
@@ -381,7 +415,7 @@
       await Promise.all([
         refreshBalance(),
         loadRank(),
-        loadComments()
+        loadComments(1)
       ]);
       // 오링 상태면 카운트다운 시작
       if (oopsInfo) {
@@ -460,7 +494,7 @@
       try {
         await refreshBalance();
         await loadRank();
-        await loadComments();
+        await loadComments(1);
 
         // URL에 댓글 ID가 있으면 해당 댓글로 스크롤
         const urlParams = new URLSearchParams(window.location.search);
@@ -499,7 +533,7 @@
 
 <main class="container my-4">
   <section class="mb-4">
-    <div class="card shadow-sm border-0 bg-light-subtle rounded-4">
+    <div class="card shadow-sm border-0 bg-info-subtle rounded-4">
       <div class="card-body stats-banner py-2">
         <p class="mb-0 stats-inline">
           <span class="stats-item">오늘의 참여 인원: <strong>{formatNumber(todayStats.users)}</strong></span>
@@ -624,7 +658,7 @@
         {/if}
         <div class="card-body">
           <div class="d-flex justify-content-between align-items-center mb-3">
-            <h5 class="mb-0">💬 리플 ({comments.length})</h5>
+            <h5 class="mb-0">💬 리플 ({formatNumber(commentTotal)})</h5>
             <button class="btn btn-sm btn-outline-secondary" onclick={refreshAll} title="새로고침" disabled={refreshing || spinning}>
               🔄
             </button>
@@ -750,6 +784,20 @@
                 </div>
               {/each}
             </div>
+            {#if commentHasMore}
+              <div class="text-center mt-3">
+                <button
+                  class="btn btn-outline-secondary btn-sm"
+                  onclick={() => void loadMoreComments()}
+                  disabled={commentListLoading || refreshing}
+                >
+                  {commentListLoading ? '불러오는 중...' : '더 보기'}
+                </button>
+                <div class="text-muted small mt-2">
+                  {formatNumber(comments.length)} / {formatNumber(commentTotal)}
+                </div>
+              </div>
+            {/if}
           {:else}
             <div class="text-muted text-center py-3">아직 리플이 없습니다. 첫 리플을 남겨보세요! 💬</div>
           {/if}
