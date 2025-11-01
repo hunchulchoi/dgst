@@ -365,6 +365,7 @@
           element.style.transition = 'background-color 2s';
           element.style.backgroundColor = '';
         }, 2000);
+        clearCommentAnchor();
       }
     }, 500);
   }
@@ -377,6 +378,22 @@ const formatNumber = (value: number | null | undefined): string => {
   } catch (err) {
     console.error('숫자 포맷팅 실패:', err);
     return String(value ?? 0);
+  }
+};
+
+const clearCommentAnchor = () => {
+  try {
+    const url = new URL(window.location.href);
+    const params = url.searchParams;
+    if (params.has('cmt')) {
+      params.delete('cmt');
+    }
+    url.hash = '';
+    const searchString = params.toString();
+    const cleanUrl = `${url.pathname}${searchString ? `?${searchString}` : ''}`;
+    history.replaceState(null, '', cleanUrl);
+  } catch (err) {
+    console.error('댓글 앵커 정리 실패:', err);
   }
 };
 
@@ -396,6 +413,10 @@ const formatNumber = (value: number | null | undefined): string => {
     const urlParams = new URLSearchParams(window.location.search);
     const commentId = urlParams.get('cmt');
     scrollToComment(commentId);
+    if (!commentId && window.location.hash.startsWith('#comment-')) {
+      const hashComment = window.location.hash.slice('#comment-'.length);
+      scrollToComment(hashComment);
+    }
     
     // 오링 카운트다운 업데이트
     updateOopsCountdown();
