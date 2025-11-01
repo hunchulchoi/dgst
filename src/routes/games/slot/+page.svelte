@@ -514,7 +514,7 @@
                 class="btn btn-primary comment-submit-btn" 
                 type="button"
                 onclick={() => writeComment()}
-                disabled={commentLoading || !commentContent.trim() || commentContent.trim().length < 3}
+                disabled={commentLoading || !commentContent.trim() || commentContent.trim().length < 2}
               >
                 {commentLoading ? '등록 중...' : '등록'}
               </button>
@@ -582,7 +582,7 @@
                                 class="btn btn-primary comment-submit-btn" 
                                 type="button"
                                 onclick={() => comment.id && writeComment(comment.id)}
-                                disabled={commentLoading || !replyContent[comment.id]?.trim() || (replyContent[comment.id]?.trim().length ?? 0) < 5}
+                                disabled={commentLoading || !replyContent[comment.id]?.trim() || (replyContent[comment.id]?.trim().length ?? 0) < 2}
                               >
                                 {commentLoading ? '등록 중...' : '등록'}
                               </button>
@@ -638,7 +638,7 @@
                 class="btn btn-primary comment-submit-btn" 
                 type="button"
                 onclick={() => writeComment()}
-                disabled={commentLoading || !commentContent.trim() || commentContent.trim().length < 5}
+                disabled={commentLoading || !commentContent.trim() || commentContent.trim().length < 2}
               >
                 {commentLoading ? '등록 중...' : '등록'}
               </button>

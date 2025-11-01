@@ -219,7 +219,8 @@
         
         // HTML 태그 제거 후 실제 텍스트 내용 확인
         const textContent = contentValue
-          .replace(/<[^>]*>/g, '') // HTML 태그 제거
+          //.replace(/<[^>]*>/g, '') // HTML 태그 제거
+          .replace(/<p>\s*<br\s*\/?>(\s|\u00A0)*<\/p>/g, '<br>') // <p><br></p>를 <br>로 변환
           .replace(/&nbsp;/g, ' ') // &nbsp;를 공백으로
           .replace(/[\s\u00A0]/g, '') // 모든 공백 및 줄바꿈 제거
           .trim();
