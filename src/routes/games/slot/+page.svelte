@@ -55,8 +55,27 @@
     spins: data.todayStats?.spins ?? 0,
     users: data.todayStats?.users ?? 0
   });
+  let isMobile = $state(false);
+  let guideCollapsed = $state(false);
 
   const reelSymbols = ['🍒', '🍋', '🔔', '⭐', '7️⃣'];
+
+  const setMobileState = (matches: boolean) => {
+    isMobile = matches;
+    if (!matches) {
+      guideCollapsed = false;
+    }
+  };
+
+  const collapseGuideAfterBet = () => {
+    if (isMobile) {
+      guideCollapsed = true;
+    }
+  };
+
+  const toggleGuideCollapse = () => {
+    guideCollapsed = !guideCollapsed;
+  };
 
   async function refreshBalance() {
     try {
@@ -140,6 +159,7 @@
     try {
       spinning = true;
       message = '';
+      collapseGuideAfterBet();
       startReelAnimation();
       const start = Date.now();
       const res = await fetch('/games/slot', {
@@ -493,6 +513,19 @@
   });
 
   onMount(() => {
+    const mediaQuery = window.matchMedia('(max-width: 768px)');
+    const handleMediaChange = (event: MediaQueryListEvent | MediaQueryList) => {
+      const matches = 'matches' in event ? event.matches : mediaQuery.matches;
+      setMobileState(matches);
+    };
+
+    handleMediaChange(mediaQuery);
+    if (typeof mediaQuery.addEventListener === 'function') {
+      mediaQuery.addEventListener('change', handleMediaChange as EventListener);
+    } else if (typeof mediaQuery.addListener === 'function') {
+      mediaQuery.addListener(handleMediaChange);
+    }
+
     const initialize = async () => {
       try {
         await refreshBalance();
@@ -526,6 +559,11 @@
     void initialize();
 
     return () => {
+      if (typeof mediaQuery.removeEventListener === 'function') {
+        mediaQuery.removeEventListener('change', handleMediaChange as EventListener);
+      } else if (typeof mediaQuery.removeListener === 'function') {
+        mediaQuery.removeListener(handleMediaChange);
+      }
       if (countdownInterval) {
         clearInterval(countdownInterval);
       }
@@ -548,17 +586,33 @@
   <div class="row justify-content-center">
     <div class="col-md-6 order-2 order-md-1">
       <div class="card shadow rounded-4 position-relative overflow-hidden">
-        <div class="alert alert-info mb-4 rounded-4 border-0 bg-gradient text-white slot-guide">
-          <div class="d-flex flex-column flex-md-row align-items-center gx-3 gap-3 text-center text-md-start">
-            <span class="display-6 mb-0">🎲</span>
-            <div>
-              <h5 class="fw-bold mb-1">뺑뺑이는 즐거운 놀이입니다</h5>
-              <p class="mb-0 small text-muted">
-                뺑뺑이 점수는 어떤 형태로든 타인에게 이전하거나 현금·재화로 전환될 수 없는 순수한 놀이용 포인트입니다.
-                <br>오직 게임의 재미를 위해 활용해 주세요!
-                <br><strong>모든 확률은 어떠한 인위적 개입도 없이 완전히 무작위로 계산됩니다.</strong>  
-              </p>
+        <div class="alert alert-info mb-4 rounded-4 border-0 bg-gradient text-white slot-guide" data-collapsed={guideCollapsed && isMobile}>
+        <div class="slot-guide-inner">
+          <div class="slot-guide-header py-1">
+            <div class="slot-guide-title">
+              <span class="display-6 mb-0 flex-shrink-0">🎲</span>
+              <h6 class="fw-bold mb-0">뺑뺑이는 즐거운 놀이터입니다</h6>
             </div>
+            <button
+              class="btn btn-sm btn-outline-light slot-guide-toggle"
+              type="button"
+              onclick={toggleGuideCollapse}
+              aria-expanded={! (guideCollapsed && isMobile)}
+              aria-controls="slot-guide-text"
+            >
+              <span class="slot-guide-toggle-icon" aria-hidden="true">{guideCollapsed && isMobile ? '⌄' : '⌃'}</span>
+              <span class="visually-hidden">{guideCollapsed && isMobile ? '안내 펼치기' : '안내 접기'}</span>
+            </button>
+          </div>
+            <p
+              id="slot-guide-text"
+              class="slot-guide-text mb-0 small mt-3 mt-md-2"
+              hidden={guideCollapsed && isMobile}
+            >
+              뺑뺑이 점수는 어떤 형태로든 타인에게 이전하거나 현금·재화로 전환될 수 없는 순수한 놀이용 포인트입니다.
+              <br>오직 게임의 재미를 위해 활용해 주세요!
+              <br><strong>모든 확률은 어떠한 인위적 개입 없이 기계적인 무작위의 결과입니다.</strong>
+            </p>
           </div>
         </div>
         {#if spinning || refreshing}
@@ -864,8 +918,66 @@
     font-size: 1.05rem;
   }
   .slot-guide {
-    background: linear-gradient(135deg, rgba(9, 132, 227, 0.95), rgba(45, 197, 253, 0.95));
+    --bs-alert-bg: transparent;
+    --bs-alert-border-color: rgba(255, 255, 255, 0.2);
+    --bs-alert-color: #fff;
+    background: linear-gradient(135deg, rgba(9, 132, 227, 0.95), rgba(45, 197, 253, 0.95)) !important;
+    border: none;
+    color: #fff;
     box-shadow: 0 10px 30px rgba(9, 132, 227, 0.25);
+  }
+  .slot-guide-inner {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  .slot-guide-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    gap: 1rem;
+    flex-wrap: nowrap;
+  }
+  .slot-guide-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.8rem;
+    flex: 1;
+    min-width: 0;
+  }
+  .slot-guide-title h5 {
+    margin: 0;
+  }
+  .slot-guide-toggle {
+    position: static;
+    border-color: rgba(255, 255, 255, 0.6);
+    color: #fff;
+    font-weight: 600;
+  }
+  .slot-guide-text {
+    color: #fff;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  }
+  .slot-guide-text strong {
+    color: #fff;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  }
+  .slot-guide-toggle-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    line-height: 1;
+  }
+  .slot-guide-toggle:focus,
+  .slot-guide-toggle:hover {
+    color: #fff;
+    border-color: rgba(255, 255, 255, 0.85);
+    background-color: rgba(255, 255, 255, 0.15);
+  }
+  .slot-guide[data-collapsed='true'] .slot-guide-inner {
+    gap: 0.75rem;
   }
   .slot.slot-spinning {
     border-color: var(--bs-warning);
@@ -950,6 +1062,10 @@
     .stats-inline {
       gap: 1rem;
       font-size: 0.9rem;
+    }
+    .slot-guide-header {
+      flex-wrap: wrap;
+      justify-content: space-between;
     }
     .comment-textarea {
       font-size: 16px !important;
