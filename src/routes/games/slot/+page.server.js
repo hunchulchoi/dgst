@@ -1,5 +1,6 @@
 import connectDB from '$lib/database/mongoosePriomise.js';
 import { GameScore } from '$lib/models/gameScore.js';
+import { getTodaySlotStats } from '$lib/server/slotStats.js';
 
 connectDB();
 
@@ -10,11 +11,13 @@ export async function load({ locals, depends }) {
   const session = await locals.auth();
   const email = session?.user?.email;
   let balance = 0;
+  let todayStats = { spins: 0, users: 0 };
   if (email) {
     const last = await GameScore.findOne({ email }).sort({ createdAt: -1 }).select({ balance: 1 }).lean();
     balance = last?.balance ?? 0;
   }
-  return { session, balance };
+  todayStats = await getTodaySlotStats();
+  return { session, balance, todayStats };
 }
 
 

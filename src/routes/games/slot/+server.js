@@ -1,14 +1,42 @@
 import connectDB from '$lib/database/mongoosePriomise.js';
 import { error, json } from '@sveltejs/kit';
 import { GameScore } from '$lib/models/gameScore.js';
+import { getTodaySlotStats } from '$lib/server/slotStats.js';
+
+/**
+ * @typedef {import('mongoose').Types.ObjectId} ObjectId
+ */
+
+/**
+ * @typedef {Object} LeanGameScore
+ * @property {ObjectId} _id
+ * @property {string} email
+ * @property {string} nickname
+ * @property {string} game
+ * @property {number} bet
+ * @property {number} payout
+ * @property {number} delta
+ * @property {number} balance
+ * @property {string[]} reels
+ * @property {Date} createdAt
+ * @property {Date} updatedAt
+ */
 
 connectDB();
 
+/**
+ * @returns {string[]}
+ */
 function spinReels() {
   const symbols = ['🍒', '🍋', '🔔', '⭐', '7️⃣'];
   return [0, 0, 0].map(() => symbols[Math.floor(Math.random() * symbols.length)]);
 }
 
+/**
+ * @param {string[]} reels
+ * @param {number} bet
+ * @returns {number}
+ */
 function calcPayout(reels, bet) {
   const [a, b, c] = reels;
   if (a === b && b === c) {
@@ -26,39 +54,52 @@ function calcPayout(reels, bet) {
   return 0;
 }
 
+/**
+ * @param {string} email
+ * @returns {Promise<number>}
+ */
 async function getBalance(email) {
-  const last = await GameScore.findOne({ email }).sort({ createdAt: -1 }).select({ balance: 1 }).lean();
+  const last = /** @type {(LeanGameScore | null)} */ (
+    await GameScore.findOne({ email }).sort({ createdAt: -1 }).select({ balance: 1 }).lean()
+  );
   return last?.balance ?? 0;
 }
 
 // 잔액 0 상태가 10분 이상이면 700점 보충 (지연 지급)
 // 실제 스핀(bet>0)에서 오링(balance=0)이 발생한 경우만 체크
 // 댓글 보상으로 받은 점수가 있으면 오링이 아님
+/**
+ * @param {string} email
+ * @param {string} nickname
+ * @returns {Promise<number>}
+ */
 async function maybeTopupAfterOOPS(email, nickname) {
   // 실제 스핀 기록(bet > 0) 중에서 balance가 0인 마지막 기록 찾기
-  const lastOopsSpin = await GameScore.findOne({
+  const lastOopsSpin = /** @type {(LeanGameScore | null)} */ (await GameScore.findOne({
     email,
     bet: { $gt: 0 }, // 실제 스핀만 (댓글 보상 제외)
     balance: 0
-  }).sort({ createdAt: -1 }).lean();
+  }).sort({ createdAt: -1 }).lean());
 
   if (!lastOopsSpin) {
     return 0; // 실제 스핀에서 오링이 발생하지 않았으면 0 반환
   }
 
   // 댓글 보상으로 받은 점수가 있는지 확인 (오링 이후에 댓글 보상이 있으면 오링이 아님)
-  const lastRewardAfterOops = await GameScore.findOne({
+  const lastRewardAfterOops = /** @type {(LeanGameScore | null)} */ (await GameScore.findOne({
     email,
     bet: 0,
     payout: 100,
     delta: 100,
     createdAt: { $gt: lastOopsSpin.createdAt }
-  }).sort({ createdAt: -1 }).lean();
+  }).sort({ createdAt: -1 }).lean());
 
   // 오링 이후에 댓글 보상을 받았으면 오링이 아님 (balance > 0이 되었을 것)
   if (lastRewardAfterOops) {
     // 댓글 보상 이후의 최종 balance 확인
-    const lastAfterReward = await GameScore.findOne({ email }).sort({ createdAt: -1 }).lean();
+    const lastAfterReward = /** @type {(LeanGameScore | null)} */ (
+      await GameScore.findOne({ email }).sort({ createdAt: -1 }).lean()
+    );
     if (lastAfterReward && (lastAfterReward.balance ?? 0) > 0) {
       return lastAfterReward.balance; // 댓글 보상으로 balance가 올라갔으면 오링이 아님
     }
@@ -69,16 +110,18 @@ async function maybeTopupAfterOOPS(email, nickname) {
   const now = Date.now();
   const TEN_MIN = 10 * 60 * 1000;
   if (now - createdAt >= TEN_MIN) {
-    const doc = await GameScore.create({
-      email,
-      nickname,
-      game: 'slot',
-      bet: 0,
-      payout: 700,
-      delta: 700,
-      balance: 700,
-      reels: ['-', '-', '-']
-    });
+    const doc = /** @type {LeanGameScore} */ (
+      await GameScore.create({
+        email,
+        nickname,
+        game: 'slot',
+        bet: 0,
+        payout: 700,
+        delta: 700,
+        balance: 700,
+        reels: ['-', '-', '-']
+      })
+    );
     return doc.balance;
   }
   return 0;
@@ -95,8 +138,12 @@ export async function POST({ request, locals }) {
   }
 
   const email = session.user.email;
-  const nickname = session.user.nickname || 'anonymous';
-  const last = await GameScore.findOne({ email }).sort({ createdAt: -1 }).lean();
+  const nickname = typeof session.user === 'object' && 'nickname' in session.user && typeof session.user.nickname === 'string'
+    ? session.user.nickname
+    : 'anonymous';
+  const last = /** @type {(LeanGameScore | null)} */ (
+    await GameScore.findOne({ email }).sort({ createdAt: -1 }).lean()
+  );
   let balanceBefore = last?.balance ?? 0;
 
   if (bet > balanceBefore) {
@@ -132,16 +179,18 @@ export async function POST({ request, locals }) {
   const balanceAfter = balanceBefore + delta;
 
   // 스핀 결과 기록
-  const docSpin = await GameScore.create({
-    email,
-    nickname,
-    game: 'slot',
-    bet,
-    payout,
-    delta,
-    balance: balanceAfter,
-    reels,
-  });
+  const docSpin = /** @type {LeanGameScore} */ (
+    await GameScore.create({
+      email,
+      nickname,
+      game: 'slot',
+      bet,
+      payout,
+      delta,
+      balance: balanceAfter,
+      reels,
+    })
+  );
   const extraMsg = balanceAfter === 0 ? '오링! 😵' : undefined;
   return json({ success: true, reels, payout, delta, balance: balanceAfter, id: docSpin._id, message: extraMsg });
 }
@@ -150,8 +199,12 @@ export async function GET({ locals, url }) {
   const session = await locals.auth();
   if (!session?.user?.email) throw error(401, { message: '로그인이 필요합니다.' });
   const email = session.user.email;
-  const nickname = session.user.nickname || 'anonymous';
-  const last = await GameScore.findOne({ email }).sort({ createdAt: -1 }).lean();
+  const nickname = typeof session.user === 'object' && 'nickname' in session.user && typeof session.user.nickname === 'string'
+    ? session.user.nickname
+    : 'anonymous';
+  const last = /** @type {(LeanGameScore | null)} */ (
+    await GameScore.findOne({ email }).sort({ createdAt: -1 }).lean()
+  );
   let balance = last?.balance ?? 0;
   // 최초 이용자만 1000점 지급 (기록이 전무한 경우에만)
   if (!last) {
@@ -167,26 +220,26 @@ export async function GET({ locals, url }) {
   // 잔액 0인 경우 체크
   if (balance === 0 && last) {
     // 실제 스핀에서 오링이 발생한 경우인지 확인
-    const lastOopsSpin = await GameScore.findOne({
+    const lastOopsSpin = /** @type {(LeanGameScore | null)} */ (await GameScore.findOne({
       email,
       bet: { $gt: 0 }, // 실제 스핀만
       balance: 0
-    }).sort({ createdAt: -1 }).lean();
+    }).sort({ createdAt: -1 }).lean());
 
     if (lastOopsSpin) {
       // 오링 이후에 댓글 보상으로 받은 점수가 있는지 확인
-      const lastRewardAfterOops = await GameScore.findOne({
+      const lastRewardAfterOops = /** @type {(LeanGameScore | null)} */ (await GameScore.findOne({
         email,
         bet: 0,
         payout: 100,
         delta: 100,
         createdAt: { $gt: lastOopsSpin.createdAt }
-      }).sort({ createdAt: -1 }).lean();
+      }).sort({ createdAt: -1 }).lean());
 
       // 댓글 보상으로 받은 점수가 있으면 오링이 아님 (balance > 0이 되어 있을 것)
       // 댓글 보상이 없거나, 받았지만 다시 0이 된 경우(10개 보상 다 받고 다시 스핀해서 0이 된 경우)에만 오링 처리
       const shouldCountAsOops = !lastRewardAfterOops ||
-        (await GameScore.findOne({ email }).sort({ createdAt: -1 }).lean())?.balance === 0;
+        (/** @type {(LeanGameScore | null)} */ (await GameScore.findOne({ email }).sort({ createdAt: -1 }).lean()))?.balance === 0;
 
       if (shouldCountAsOops) {
         const topped = await maybeTopupAfterOOPS(email, nickname);
@@ -210,17 +263,19 @@ export async function GET({ locals, url }) {
       // 댓글 보상으로 받은 점수가 있고 balance > 0이면 오링이 아니므로 oopsInfo는 null로 유지
     }
   }
+  const todayStats = await getTodaySlotStats();
+
   if (url.searchParams.get('rank')) {
     // 랭킹 처리: 각 user의 가장 최근 balance, 상위 10명
     const balances = await GameScore.aggregate([
       { $sort: { createdAt: -1 } },
       { $group: { _id: '$email', nickname: { $first: '$nickname' }, balance: { $first: '$balance' } } },
       { $sort: { balance: -1 } },
-      { $limit: 7 }
+      { $limit: 10 }
     ]);
-    return json({ balance, rank: balances, oopsInfo });
+    return json({ balance, rank: balances, oopsInfo, todayStats });
   }
-  return json({ balance, oopsInfo });
+  return json({ balance, oopsInfo, todayStats });
 }
 
 

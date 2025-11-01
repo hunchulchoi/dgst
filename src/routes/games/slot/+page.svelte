@@ -5,7 +5,22 @@
   import { invalidateAll } from '$app/navigation';
   import Swal from 'sweetalert2';
   import { isOnlyOneEmoji } from '$lib/util/emoji.js';
-  let { data } = $props();
+  import type { PageData } from './$types';
+
+  interface SlotTodayStats {
+    spins: number;
+    users: number;
+  }
+
+  type SlotPageData = PageData & {
+    todayStats?: SlotTodayStats;
+  };
+
+  interface SlotPageProps {
+    data: SlotPageData;
+  }
+
+  let { data }: SlotPageProps = $props();
   let balance = $state(data.balance || 0);
   let bet = $state(10);
   let spinning = $state(false);
@@ -31,15 +46,29 @@
   let oopsCountdown = $state<string>('');
   let refreshing = $state(false);
   let spinAnimationInterval: ReturnType<typeof setInterval> | null = null;
+  let todayStats = $state<SlotTodayStats>({
+    spins: data.todayStats?.spins ?? 0,
+    users: data.todayStats?.users ?? 0
+  });
 
   const reelSymbols = ['🍒', '🍋', '🔔', '⭐', '7️⃣'];
 
   async function refreshBalance() {
-    const res = await fetch('/games/slot');
-    if (res.ok) {
-      const j = await res.json();
-      balance = j.balance;
-      oopsInfo = j.oopsInfo || null;
+    try {
+      const res = await fetch('/games/slot');
+      if (res.ok) {
+        const j = await res.json();
+        balance = j.balance;
+        oopsInfo = j.oopsInfo || null;
+        if (j.todayStats) {
+          todayStats = {
+            spins: Number(j.todayStats.spins ?? 0),
+            users: Number(j.todayStats.users ?? 0)
+          };
+        }
+      }
+    } catch (err) {
+      console.error('잔액 새로고침 실패:', err);
     }
   }
   
@@ -165,9 +194,11 @@
           
           if (commentRes.ok) {
             // 댓글 작성 성공 시 리스트 새로고침 (보상은 서버에서 처리)
-            await loadComments();
-            await refreshBalance();
-            await loadRank();
+            await Promise.all([
+              loadComments(),
+              refreshBalance(),
+              loadRank()
+            ]);
           }
         } catch (e) {
           // 댓글 작성 실패는 조용히 무시 (사용자 경험 방해 방지)
@@ -207,21 +238,24 @@
           
           if (commentRes.ok) {
             // 댓글 작성 성공 시 리스트 새로고침 (보상은 서버에서 처리)
-            await loadComments();
-            await refreshBalance();
-            await loadRank();
+            await Promise.all([
+              loadComments(),
+              refreshBalance(),
+              loadRank()
+            ]);
           }
         } catch (e) {
           // 댓글 작성 실패는 조용히 무시
           console.error('오링 댓글 자동 작성 실패:', e);
         }
-        
-        await refreshBalance();
       } else {
         oopsInfo = null;
       }
-      await loadRank();
-      await loadComments();
+      await Promise.all([
+        loadRank(),
+        loadComments(),
+        refreshBalance()
+      ]);
     } catch (e: any) {
       stopReelAnimation();
       if (!spinResolved) {
@@ -464,6 +498,16 @@
 </script>
 
 <main class="container my-4">
+  <section class="mb-4">
+    <div class="card shadow-sm border-0 bg-light-subtle rounded-4">
+      <div class="card-body stats-banner py-2">
+        <p class="mb-0 stats-inline">
+          <span class="stats-item">오늘의 참여 인원: <strong>{formatNumber(todayStats.users)}</strong></span>
+          <span class="stats-item">총 스핀 횟수: <strong>{formatNumber(todayStats.spins)}</strong></span>
+        </p>
+      </div>
+    </div>
+  </section>
   <div class="row justify-content-center">
     <div class="col-md-6 order-2 order-md-1">
       <div class="card shadow rounded-4 position-relative overflow-hidden">
@@ -475,6 +519,7 @@
               <p class="mb-0 small text-muted">
                 뺑뺑이 점수는 어떤 형태로든 타인에게 이전하거나 현금·재화로 전환될 수 없는 순수한 놀이용 포인트입니다.
                 <br>오직 게임의 재미를 위해 활용해 주세요!
+                <br><strong>모든 확률은 어떠한 인위적 개입도 없이 완전히 무작위로 계산됩니다.</strong>  
               </p>
             </div>
           </div>
@@ -544,7 +589,7 @@
         {/if}
         <div class="card-body">
           <div class="d-flex justify-content-between align-items-center mb-3">
-            <h5 class="mb-0">랭킹 Top 7</h5>
+            <h5 class="mb-0">랭킹 Top 10</h5>
             <button class="btn btn-sm btn-outline-secondary" onclick={refreshAll} title="새로고침" disabled={refreshing || spinning}>
               🔄
             </button>
@@ -743,6 +788,30 @@
   .slot {
     background: var(--bs-secondary-bg);
   }
+  .stats-banner {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 1.25rem;
+  }
+  .stats-inline {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    font-size: 0.95rem;
+    color: var(--bs-body-color);
+  }
+  .stats-item {
+    display: inline-flex;
+    gap: 0.4rem;
+    align-items: center;
+  }
+  .stats-inline strong {
+    font-size: 1.05rem;
+  }
   .slot-guide {
     background: linear-gradient(135deg, rgba(9, 132, 227, 0.95), rgba(45, 197, 253, 0.95));
     box-shadow: 0 10px 30px rgba(9, 132, 227, 0.25);
@@ -822,6 +891,14 @@
       gap: 0.5rem;
       position: relative;
       z-index: 1;
+    }
+    .stats-banner {
+      justify-content: flex-start;
+      padding: 1rem;
+    }
+    .stats-inline {
+      gap: 1rem;
+      font-size: 0.9rem;
     }
     .comment-textarea {
       font-size: 16px !important;
