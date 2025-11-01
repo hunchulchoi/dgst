@@ -22,6 +22,8 @@
 
   let { data }: SlotPageProps = $props();
   let balance = $state(data.balance || 0);
+  let hasUnreadAlarm = $state(data.hasUnreadAlarm ?? false);
+  let unreadAlarmCount = $state(data.unreadAlarmCount ?? 0);
   let bet = $state(10);
   let spinning = $state(false);
   let reels = $state(['-', '-', '-']);

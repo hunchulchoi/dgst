@@ -269,7 +269,15 @@ export async function GET({ locals, url }) {
     // 랭킹 처리: 각 user의 가장 최근 balance, 상위 10명
     const balances = await GameScore.aggregate([
       { $sort: { createdAt: -1 } },
-      { $group: { _id: '$email', nickname: { $first: '$nickname' }, balance: { $first: '$balance' } } },
+      {
+        $group: {
+          _id: '$email',
+          nickname: { $first: '$nickname' },
+          balance: { $first: '$balance' },
+          totalSpin: { $sum: { $cond: [{ $gt: ['$bet', 0] }, 1, 0] } }
+        }
+      },
+      { $match: { totalSpin: { $gt: 0 } } },
       { $sort: { balance: -1 } },
       { $limit: 10 }
     ]);
