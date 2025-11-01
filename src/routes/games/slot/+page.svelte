@@ -30,6 +30,9 @@
   let oopsInfo = $state<{ createdAt: string; remainingMs: number } | null>(null);
   let oopsCountdown = $state<string>('');
   let refreshing = $state(false);
+  let spinAnimationInterval: ReturnType<typeof setInterval> | null = null;
+
+  const reelSymbols = ['🍒', '🍋', '🔔', '⭐', '7️⃣'];
 
   async function refreshBalance() {
     const res = await fetch('/games/slot');
@@ -64,6 +67,31 @@
     oopsCountdown = `${minutes}분 ${seconds}초`;
   }
 
+  const startReelAnimation = () => {
+    try {
+      stopReelAnimation();
+      spinAnimationInterval = setInterval(() => {
+        reels = Array.from({ length: 3 }, () => {
+          const randomIndex = Math.floor(Math.random() * reelSymbols.length);
+          return reelSymbols[randomIndex];
+        });
+      }, 80);
+    } catch (err) {
+      console.error('릴 애니메이션 시작 실패:', err);
+    }
+  };
+
+  const stopReelAnimation = () => {
+    try {
+      if (spinAnimationInterval) {
+        clearInterval(spinAnimationInterval);
+        spinAnimationInterval = null;
+      }
+    } catch (err) {
+      console.error('릴 애니메이션 중지 실패:', err);
+    }
+  };
+
   async function loadRank() {
     const res = await fetch('/games/slot?rank=1');
     if (res.ok) {
@@ -73,9 +101,12 @@
   }
 
   async function play() {
+    const previousReels = [...reels];
+    let spinResolved = false;
     try {
       spinning = true;
       message = '';
+      startReelAnimation();
       const start = Date.now();
       const res = await fetch('/games/slot', {
         method: 'POST',
@@ -95,7 +126,9 @@
       if (elapsed < 2000) {
         await new Promise(r => setTimeout(r, 2000 - elapsed));
       }
+      stopReelAnimation();
       reels = nextReels;
+      spinResolved = true;
       balance = nextBalance;
       message = nextMessage;
       
@@ -107,7 +140,7 @@
         // Triple 당첨 시 큰 alert
         const is777 = nextReels[0] === '7️⃣';
         Swal.fire({
-          icon: is777 ? '🎰' : '🎉',
+          icon: 'success',
           title: is777 ? '🎰 7️⃣7️⃣7️⃣ 잭팟! 20배! 🎰' : '🎉 Triple! 10배! 🎉',
           html: `<div style="font-size: 48px; margin: 20px 0;">${reelStr}</div><div style="font-size: 24px; font-weight: bold;">+${j.delta}점</div>`,
           showConfirmButton: true,
@@ -190,6 +223,10 @@
       await loadRank();
       await loadComments();
     } catch (e: any) {
+      stopReelAnimation();
+      if (!spinResolved) {
+        reels = previousReels;
+      }
       message = e?.message || '오류';
       Swal.fire({
         icon: 'error',
@@ -201,6 +238,7 @@
         timerProgressBar: true
       });
     } finally {
+      stopReelAnimation();
       spinning = false;
     }
   }
@@ -351,30 +389,30 @@
 
   let countdownInterval: ReturnType<typeof setInterval> | null = null;
 
-const formatNumber = (value: number | null | undefined): string => {
-  try {
-    return new Intl.NumberFormat('ko-KR').format(value ?? 0);
-  } catch (err) {
-    console.error('숫자 포맷팅 실패:', err);
-    return String(value ?? 0);
-  }
-};
-
-const clearCommentAnchor = () => {
-  try {
-    const url = new URL(window.location.href);
-    const params = url.searchParams;
-    if (params.has('cmt')) {
-      params.delete('cmt');
+  const formatNumber = (value: number | null | undefined): string => {
+    try {
+      return new Intl.NumberFormat('ko-KR').format(value ?? 0);
+    } catch (err) {
+      console.error('숫자 포맷팅 실패:', err);
+      return String(value ?? 0);
     }
-    url.hash = '';
-    const searchString = params.toString();
-    const cleanUrl = `${url.pathname}${searchString ? `?${searchString}` : ''}`;
-    history.replaceState(null, '', cleanUrl);
-  } catch (err) {
-    console.error('댓글 앵커 정리 실패:', err);
-  }
-};
+  };
+
+  const clearCommentAnchor = () => {
+    try {
+      const url = new URL(window.location.href);
+      const params = url.searchParams;
+      if (params.has('cmt')) {
+        params.delete('cmt');
+      }
+      url.hash = '';
+      const searchString = params.toString();
+      const cleanUrl = `${url.pathname}${searchString ? `?${searchString}` : ''}`;
+      history.replaceState(null, '', cleanUrl);
+    } catch (err) {
+      console.error('댓글 앵커 정리 실패:', err);
+    }
+  };
 
   // balance가 변경되면 bet이 balance를 초과하지 않도록 제한
   $effect(() => {
@@ -383,37 +421,44 @@ const clearCommentAnchor = () => {
     }
   });
 
-  onMount(async () => {
-    await refreshBalance();
-    loadRank();
-    await loadComments();
-    
-    // URL에 댓글 ID가 있으면 해당 댓글로 스크롤
-    const urlParams = new URLSearchParams(window.location.search);
-    const commentId = urlParams.get('cmt');
-    scrollToComment(commentId);
-    if (!commentId && window.location.hash.startsWith('#comment-')) {
-      const hashComment = window.location.hash.slice('#comment-'.length);
-      scrollToComment(hashComment);
-    }
-    
-    // 오링 카운트다운 업데이트
-    updateOopsCountdown();
-    countdownInterval = setInterval(() => {
-      if (oopsInfo) {
-        updateOopsCountdown();
-      } else {
-        if (countdownInterval) {
-          clearInterval(countdownInterval);
-          countdownInterval = null;
+  onMount(() => {
+    const initialize = async () => {
+      try {
+        await refreshBalance();
+        await loadRank();
+        await loadComments();
+
+        // URL에 댓글 ID가 있으면 해당 댓글로 스크롤
+        const urlParams = new URLSearchParams(window.location.search);
+        const commentId = urlParams.get('cmt');
+        scrollToComment(commentId);
+        if (!commentId && window.location.hash.startsWith('#comment-')) {
+          const hashComment = window.location.hash.slice('#comment-'.length);
+          scrollToComment(hashComment);
         }
+
+        // 오링 카운트다운 업데이트
+        updateOopsCountdown();
+        countdownInterval = setInterval(() => {
+          if (oopsInfo) {
+            updateOopsCountdown();
+          } else if (countdownInterval) {
+            clearInterval(countdownInterval);
+            countdownInterval = null;
+          }
+        }, 1000);
+      } catch (err) {
+        console.error('슬롯 초기화 실패:', err);
       }
-    }, 1000);
-    
+    };
+
+    void initialize();
+
     return () => {
       if (countdownInterval) {
         clearInterval(countdownInterval);
       }
+      stopReelAnimation();
     };
   });
 </script>
@@ -423,10 +468,7 @@ const clearCommentAnchor = () => {
     <div class="col-md-6 order-2 order-md-1">
       <div class="card shadow rounded-4 position-relative overflow-hidden">
         {#if spinning || refreshing}
-          <div class="slot-overlay d-flex flex-column justify-content-center align-items-center">
-            <div class="spinner-border text-light" role="status"></div>
-            <div class="mt-2 fw-bold text-light">{spinning ? '스핀 중...' : '새로고침 중...'}</div>
-          </div>
+          <div class="slot-overlay"></div>
         {/if}
         <div class="card-body">
           <div class="d-flex justify-content-between align-items-center mb-3">
@@ -458,8 +500,12 @@ const clearCommentAnchor = () => {
               </button>
             </div>
           </div>
-          <div class="slot border rounded-3 p-3 text-center mb-3">
-            <div class="display-4">{reels[0]} {reels[1]} {reels[2]}</div>
+          <div class="slot border rounded-3 p-3 text-center mb-3" class:slot-spinning={spinning}>
+            <div class="slot-reels display-4 fw-semibold">
+              {#each reels as reel}
+                <span class="slot-reel" class:slot-reel-spinning={spinning}>{reel}</span>
+              {/each}
+            </div>
           </div>
               <button class="btn btn-lg btn-primary w-100" disabled={spinning || balance < bet || balance === 0} onclick={play}>
             {spinning ? '스핀 중...' : '🎁 ㄱㄱ'}
@@ -478,7 +524,12 @@ const clearCommentAnchor = () => {
       </div>
     </div>
     <div class="col-md-4 order-1 order-md-2 mb-3 mb-md-0">
-      <div class="card shadow rounded-4">
+      <div class="card shadow rounded-4 position-relative overflow-hidden">
+        {#if refreshing}
+          <div class="card-overlay">
+            <div class="spinner-border text-light" role="status"></div>
+          </div>
+        {/if}
         <div class="card-body">
           <div class="d-flex justify-content-between align-items-center mb-3">
             <h5 class="mb-0">랭킹 Top 7</h5>
@@ -503,6 +554,11 @@ const clearCommentAnchor = () => {
   <div class="row justify-content-center mt-4">
     <div class="col-md-10">
       <div class="card shadow rounded-4 position-relative overflow-hidden">
+        {#if refreshing && !commentLoading}
+          <div class="card-overlay">
+            <div class="spinner-border text-light" role="status"></div>
+          </div>
+        {/if}
         {#if commentLoading}
           <div class="slot-overlay d-flex flex-column justify-content-center align-items-center">
             <div class="spinner-border text-light" role="status"></div>
@@ -675,11 +731,57 @@ const clearCommentAnchor = () => {
   .slot {
     background: var(--bs-secondary-bg);
   }
+  .slot.slot-spinning {
+    border-color: var(--bs-warning);
+    box-shadow: 0 0 18px rgba(255, 193, 7, 0.35);
+    transition: box-shadow 0.3s ease, border-color 0.3s ease;
+  }
+  .slot-reels {
+    display: flex;
+    justify-content: center;
+    gap: 1.5rem;
+    align-items: center;
+    min-height: 72px;
+  }
+  .slot-reel {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    width: 68px;
+    height: 68px;
+    border-radius: 16px;
+    transition: transform 0.2s ease, background-color 0.2s ease;
+  }
+  .slot-reel-spinning {
+    animation: reelBounce 0.32s ease-in-out infinite alternate;
+    background-color: rgba(255, 255, 255, 0.08);
+    transform: scale(1.05);
+  }
+  @keyframes reelBounce {
+    from {
+      transform: translateY(-6px) scale(1.05);
+      opacity: 0.85;
+    }
+    to {
+      transform: translateY(6px) scale(1.05);
+      opacity: 1;
+    }
+  }
   .slot-overlay {
     position: absolute;
     inset: 0;
-    background: rgba(0,0,0,0.5);
+    background: rgba(0, 0, 0, 0);
     z-index: 10;
+  }
+  .card-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 12;
+    backdrop-filter: blur(1px);
   }
   /* 댓글 입력창 */
   .comment-input-wrapper {
