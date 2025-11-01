@@ -371,6 +371,15 @@
 
   let countdownInterval: ReturnType<typeof setInterval> | null = null;
 
+const formatNumber = (value: number | null | undefined): string => {
+  try {
+    return new Intl.NumberFormat('ko-KR').format(value ?? 0);
+  } catch (err) {
+    console.error('숫자 포맷팅 실패:', err);
+    return String(value ?? 0);
+  }
+};
+
   // balance가 변경되면 bet이 balance를 초과하지 않도록 제한
   $effect(() => {
     if (balance > 0 && bet > balance) {
@@ -481,7 +490,7 @@
             {#each rankList as r, i}
               <li class="list-group-item d-flex justify-content-between align-items-center">
                 <span>{r.nickname}</span>
-                <span class="fw-bold">{r.balance}</span>
+                <span class="fw-bold font-monospace">{formatNumber(r.balance)}</span>
               </li>
             {/each}
           </ol>
