@@ -30,7 +30,7 @@ const OOPS_TOPUP_DELAY_MS = 5 * 60 * 1000;
  * @returns {string[]}
  */
 function spinReels() {
-  const symbols = ['🍒', '🍋', '🔔', '⭐', '7️⃣'];
+  const symbols = ['🍒', '🍋', '🔔', '⭐', '7️⃣', '💎', '🍀'];
   return [0, 0, 0].map(() => symbols[Math.floor(Math.random() * symbols.length)]);
 }
 
