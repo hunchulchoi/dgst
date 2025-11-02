@@ -26,11 +26,18 @@ connectDB();
 
 const OOPS_TOPUP_DELAY_MS = 5 * 60 * 1000;
 
+const BASE_SYMBOLS = ['🍒', '🍋', '🔔', '⭐', '7️⃣'];
+const HIGH_BALANCE_SYMBOLS = ['💎', '🍀'];
+const HIGH_BALANCE_THRESHOLD = 1_000_000; // 100만원
+
 /**
+ * @param {number} [balance]
  * @returns {string[]}
  */
-function spinReels() {
-  const symbols = ['🍒', '🍋', '🔔', '⭐', '7️⃣', '💎', '🍀'];
+function spinReels(balance = 0) {
+  const symbols = balance >= HIGH_BALANCE_THRESHOLD
+    ? [...BASE_SYMBOLS, ...HIGH_BALANCE_SYMBOLS]
+    : BASE_SYMBOLS;
   return [0, 0, 0].map(() => symbols[Math.floor(Math.random() * symbols.length)]);
 }
 
@@ -174,7 +181,7 @@ export async function POST({ request, locals }) {
   }
   if (balanceBefore < bet) throw error(400, { message: '보유 점수가 부족합니다.' });
 
-  const reels = spinReels();
+  const reels = spinReels(balanceBefore);
   const payout = calcPayout(reels, bet);
   const delta = payout - bet;
   const balanceAfter = balanceBefore + delta;

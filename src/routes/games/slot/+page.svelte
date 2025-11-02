@@ -60,7 +60,15 @@
   let isMobile = $state(false);
   let guideCollapsed = $state(false);
 
-  const reelSymbols = ['🍒', '🍋', '🔔', '⭐', '7️⃣', '💎', '🍀'];
+  const BASE_SYMBOLS = ['🍒', '🍋', '🔔', '⭐', '7️⃣'];
+  const HIGH_BALANCE_SYMBOLS = ['💎', '🍀'];
+  const HIGH_BALANCE_THRESHOLD = 1_000_000; // 100만원
+
+  const getReelSymbols = () => {
+    return balance >= HIGH_BALANCE_THRESHOLD
+      ? [...BASE_SYMBOLS, ...HIGH_BALANCE_SYMBOLS]
+      : BASE_SYMBOLS;
+  };
 
   const setMobileState = (matches: boolean) => {
     isMobile = matches;
@@ -126,9 +134,10 @@
     try {
       stopReelAnimation();
       spinAnimationInterval = setInterval(() => {
+        const symbols = getReelSymbols();
         reels = Array.from({ length: 3 }, () => {
-          const randomIndex = Math.floor(Math.random() * reelSymbols.length);
-          return reelSymbols[randomIndex];
+          const randomIndex = Math.floor(Math.random() * symbols.length);
+          return symbols[randomIndex];
         });
       }, 80);
     } catch (err) {
