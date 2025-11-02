@@ -60,7 +60,7 @@
   let isMobile = $state(false);
   let guideCollapsed = $state(false);
 
-  const reelSymbols = ['🍒', '🍋', '🔔', '⭐', '7️⃣'];
+  const reelSymbols = ['🍒', '🍋', '🔔', '⭐', '7️⃣', '💎', '🍀'];
 
   const setMobileState = (matches: boolean) => {
     isMobile = matches;
