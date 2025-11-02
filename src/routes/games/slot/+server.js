@@ -28,7 +28,7 @@ const OOPS_TOPUP_DELAY_MS = 5 * 60 * 1000;
 
 const BASE_SYMBOLS = ['🍒', '🍋', '🔔', '⭐', '7️⃣'];
 const HIGH_BALANCE_SYMBOLS = ['💎', '🍀'];
-const HIGH_BALANCE_THRESHOLD = 1_000_000; // 100만원
+const HIGH_BALANCE_THRESHOLD = 300_000; // 30만점
 
 /**
  * @param {number} [balance]

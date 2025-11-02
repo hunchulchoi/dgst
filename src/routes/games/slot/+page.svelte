@@ -62,7 +62,7 @@
 
   const BASE_SYMBOLS = ['🍒', '🍋', '🔔', '⭐', '7️⃣'];
   const HIGH_BALANCE_SYMBOLS = ['💎', '🍀'];
-  const HIGH_BALANCE_THRESHOLD = 1_000_000; // 100만원
+  const HIGH_BALANCE_THRESHOLD = 300_000; // 30만점
 
   const getReelSymbols = () => {
     return balance >= HIGH_BALANCE_THRESHOLD
