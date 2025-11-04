@@ -620,9 +620,11 @@
               class="slot-guide-text mb-0 small mt-3 mt-md-2"
               hidden={guideCollapsed && isMobile}
             >
-              뺑뺑이 점수는 어떤 형태로든 타인에게 이전하거나 현금·재화로 전환될 수 없는 순수한 놀이용 포인트입니다.
+              뺑뺑이 점수는 무료로 무제한 제공되며 어떤 형태로든 타인에게 이전하거나 현금·재화로 전환되지 않는 순수한 놀이용 포인트입니다.
               <br>오직 게임의 재미를 위해 활용해 주세요!
-              <br><strong>모든 확률은 어떠한 인위적 개입 없이 기계적인 무작위의 결과입니다.</strong>
+              <br><strong>모든 확률은 어떠한 인위적 개입이 없는 기계적인 무작위의 결과입니다.</strong>
+              <br><strong class="text-danger">🥶현실의 도박세계는 훨씬 냉혹하고 무섭습니다.☠️</strong>
+
             </p>
           </div>
         </div>
