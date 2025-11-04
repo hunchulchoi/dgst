@@ -116,39 +116,59 @@
     formData.append('nickname', nickname);
     formData.append('introduction', introduction);
 
-    fetch('/auth/profile', { method: 'PATCH', body: formData })
-      .then((res) => {
-        console.log('res', res);
+    // 타임아웃 설정 (60초)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60000);
 
-        if (res.ok) {
-          Swal.fire({
-            icon: 'success',
-            title: '변경 완료',
-            text: '변경 되었습니다.\n다시 로그인 해주세요.',
-            confirmButtonText: '확인'
-          });
-          signOut();
-          console.log(res);
+    try {
+      const res = await fetch('/auth/profile', { 
+        method: 'PATCH', 
+        body: formData,
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      console.log('res', res);
 
-          goto('/');
-        } else {
-          Swal.fire({
-            icon: 'error',
-            title: '저장 실패',
-            text: res.message || '저장 중에 오류가 발생하였습니다.',
-            confirmButtonText: '확인'
-          });
-        }
-      })
-      .catch((reason) => {
-        console.error(reason);
+      if (res.ok) {
+        const data = await res.json();
+        Swal.fire({
+          icon: 'success',
+          title: '변경 완료',
+          text: data.message || '변경 되었습니다.\n다시 로그인 해주세요.',
+          confirmButtonText: '확인'
+        });
+        signOut();
+        goto('/');
+      } else {
+        const errorData = await res.json().catch(() => ({ message: '저장 중에 오류가 발생하였습니다.' }));
+        Swal.fire({
+          icon: 'error',
+          title: '저장 실패',
+          text: errorData.message || '저장 중에 오류가 발생하였습니다.',
+          confirmButtonText: '확인'
+        });
+      }
+    } catch (reason) {
+      clearTimeout(timeoutId);
+      console.error('프로필 업데이트 오류:', reason);
+      
+      if (reason.name === 'AbortError') {
+        Swal.fire({
+          icon: 'error',
+          title: '타임아웃',
+          text: '요청 시간이 초과되었습니다. 파일 크기를 확인해주세요.',
+          confirmButtonText: '확인'
+        });
+      } else {
         Swal.fire({
           icon: 'error',
           title: '저장 실패',
           text: '저장에 실패했습니다.',
           confirmButtonText: '확인'
         });
-      });
+      }
+    }
   };
 
   const doValidate = () => {
