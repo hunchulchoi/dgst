@@ -61,13 +61,21 @@
   let guideCollapsed = $state(false);
 
   const BASE_SYMBOLS = ['🍒', '🍋', '🔔', '⭐', '7️⃣'];
-  const HIGH_BALANCE_SYMBOLS = ['💎', '🍀'];
+  const MEDIUM_BALANCE_THRESHOLD = 100_000; // 10만점
   const HIGH_BALANCE_THRESHOLD = 300_000; // 30만점
 
   const getReelSymbols = () => {
-    return balance >= HIGH_BALANCE_THRESHOLD
-      ? [...BASE_SYMBOLS, ...HIGH_BALANCE_SYMBOLS]
-      : BASE_SYMBOLS;
+    let symbols = [...BASE_SYMBOLS];
+    
+    if (balance >= HIGH_BALANCE_THRESHOLD) {
+      // 30만점 이상: 💎, 🍀 추가
+      symbols = [...symbols, '💎', '🍀'];
+    } else if (balance >= MEDIUM_BALANCE_THRESHOLD) {
+      // 10만점 이상: 🍀 추가
+      symbols = [...symbols, '🍀'];
+    }
+    
+    return symbols;
   };
 
   const setMobileState = (matches: boolean) => {
@@ -93,12 +101,36 @@
       if (res.ok) {
         const j = await res.json();
         balance = j.balance;
+        const prevOopsInfo = oopsInfo;
         oopsInfo = j.oopsInfo || null;
         if (j.todayStats) {
           todayStats = {
             spins: Number(j.todayStats.spins ?? 0),
             users: Number(j.todayStats.users ?? 0)
           };
+        }
+        
+        // oopsInfo가 새로 설정되거나 업데이트되면 카운트다운 시작
+        if (oopsInfo && (!prevOopsInfo || prevOopsInfo.createdAt !== oopsInfo.createdAt)) {
+          updateOopsCountdown();
+          // 카운트다운 인터벌이 없으면 시작
+          if (!countdownInterval) {
+            countdownInterval = setInterval(() => {
+              if (oopsInfo) {
+                updateOopsCountdown();
+              } else if (countdownInterval) {
+                clearInterval(countdownInterval);
+                countdownInterval = null;
+              }
+            }, 1000);
+          }
+        } else if (!oopsInfo && prevOopsInfo) {
+          // oopsInfo가 사라졌으면 카운트다운 중지
+          if (countdownInterval) {
+            clearInterval(countdownInterval);
+            countdownInterval = null;
+          }
+          oopsCountdown = '';
         }
       }
     } catch (err) {
@@ -274,6 +306,7 @@
           
           if (commentRes.ok) {
             // 댓글 작성 성공 시 리스트 새로고침 (보상은 서버에서 처리)
+            // refreshBalance()에서 자동으로 oopsInfo 확인 및 카운트다운 시작
             await Promise.all([
               loadComments(1),
               refreshBalance(),

@@ -27,7 +27,7 @@ connectDB();
 const OOPS_TOPUP_DELAY_MS = 5 * 60 * 1000;
 
 const BASE_SYMBOLS = ['🍒', '🍋', '🔔', '⭐', '7️⃣'];
-const HIGH_BALANCE_SYMBOLS = ['💎', '🍀'];
+const MEDIUM_BALANCE_THRESHOLD = 100_000; // 10만점
 const HIGH_BALANCE_THRESHOLD = 300_000; // 30만점
 
 /**
@@ -35,9 +35,16 @@ const HIGH_BALANCE_THRESHOLD = 300_000; // 30만점
  * @returns {string[]}
  */
 function spinReels(balance = 0) {
-  const symbols = balance >= HIGH_BALANCE_THRESHOLD
-    ? [...BASE_SYMBOLS, ...HIGH_BALANCE_SYMBOLS]
-    : BASE_SYMBOLS;
+  let symbols = [...BASE_SYMBOLS];
+
+  if (balance >= HIGH_BALANCE_THRESHOLD) {
+    // 30만점 이상: 💎, 🍀 추가
+    symbols = [...symbols, '💎', '🍀'];
+  } else if (balance >= MEDIUM_BALANCE_THRESHOLD) {
+    // 10만점 이상: 🍀 추가
+    symbols = [...symbols, '🍀'];
+  }
+
   return [0, 0, 0].map(() => symbols[Math.floor(Math.random() * symbols.length)]);
 }
 

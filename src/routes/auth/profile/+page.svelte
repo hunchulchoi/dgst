@@ -116,9 +116,9 @@
     formData.append('nickname', nickname);
     formData.append('introduction', introduction);
 
-    // 타임아웃 설정 (60초)
+    // 타임아웃 설정 (35초 - 서버 타임아웃 30초보다 약간 길게)
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 60000);
+    const timeoutId = setTimeout(() => controller.abort(), 35000);
 
     try {
       const res = await fetch('/auth/profile', { 
