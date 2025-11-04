@@ -117,6 +117,17 @@
   let content = $state(data.content || '');
   let uploading = $state(0);
 
+  /**
+   * URL 붙여넣기 시 제목 업데이트 콜백
+   * @param {string} newTitle - 새로운 제목
+   */
+  function handleTitleUpdate(newTitle) {
+    // 제목이 비어있을 때만 업데이트
+    if (!title || title.trim().length === 0) {
+      title = newTitle;
+    }
+  }
+
   $effect(() => {
     console.log('uploading', uploading);
   });
@@ -281,7 +292,7 @@
       <FormGroup floating label="제목">
         <input type="text" id="title" name="title" class="form-control" bind:value={title} required autofocus placeholder=" " />
       </FormGroup>
-      <QuillEditor bind:editorData={content} {uploadPlus} {uploadMinus} />
+      <QuillEditor bind:editorData={content} {uploadPlus} {uploadMinus} onTitleUpdate={handleTitleUpdate} />
       <Row class="text-end pe-2 mt-4">
         <Col md="10" xs="8" class="text-end">
           <Button color="warning" onclick={list}>

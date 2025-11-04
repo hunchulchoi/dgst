@@ -9,7 +9,7 @@
   import imageCompression from 'browser-image-compression';
 
   // Svelte 5 Runes - Props
-  let { uploadPlus, uploadMinus, editorData = $bindable() } = $props();
+  let { uploadPlus, uploadMinus, editorData = $bindable(), onTitleUpdate } = $props();
 
   // 로컬 상태
   /** @type {HTMLDivElement | null} */
@@ -568,6 +568,11 @@
       const ogData = await response.json();
       console.log('✅ OG 데이터:', ogData);
 
+      // 제목이 있고 콜백이 있으면 제목 업데이트
+      if (ogData.title && onTitleUpdate && typeof onTitleUpdate === 'function') {
+        onTitleUpdate(ogData.title);
+      }
+
       const range = quillInstance.getSelection(true) || { index: quillInstance.getLength() - 1, length: 0 };
       quillInstance.insertEmbed(range.index, 'ogcard', ogData);
       quillInstance.insertText(range.index + 1, '\n');
@@ -596,12 +601,33 @@
   /**
    * 미디어 자동 임베드 (URL 붙여넣기 시)
    * @param {string} url
-   * @returns {void}
+   * @returns {Promise<void>}
    */
-  function autoEmbedMedia(url) {
+  async function autoEmbedMedia(url) {
     console.log('🚀 autoEmbedMedia 호출:', url);
     const range = quillInstance.getSelection(true) || { index: quillInstance.getLength() };
     console.log('📍 커서 위치:', range);
+    
+    // YouTube URL인 경우 OG 데이터에서 제목 추출
+    if ((url.includes('youtube.com') || url.includes('youtu.be')) && onTitleUpdate && typeof onTitleUpdate === 'function') {
+      try {
+        const response = await fetch('/api/og', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url })
+        });
+        
+        if (response.ok) {
+          const ogData = await response.json();
+          if (ogData.title) {
+            onTitleUpdate(ogData.title);
+          }
+        }
+      } catch (err) {
+        console.error('YouTube OG 데이터 가져오기 실패:', err);
+      }
+    }
+    
     processMediaEmbed(url, range);
   }
 
@@ -1083,8 +1109,8 @@
             e.preventDefault();
             console.log('🎬 미디어 URL 감지, 자동 임베드:', url);
             
-            setTimeout(() => {
-              autoEmbedMedia(url);
+            setTimeout(async () => {
+              await autoEmbedMedia(url);
             }, 100);
           }
           // 일반 URL - OG 카드 생성
