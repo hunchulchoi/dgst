@@ -6,6 +6,7 @@
   import Swal from 'sweetalert2';
   import { isOnlyOneEmoji } from '$lib/util/emoji.js';
   import type { PageData } from './$types';
+  import englishPhrases from '$lib/data/english.json';
 
   interface SlotTodayStats {
     spins: number;
@@ -53,6 +54,7 @@
   let oopsCountdown = $state<string>('');
   let refreshing = $state(false);
   let spinAnimationInterval: ReturnType<typeof setInterval> | null = null;
+  let currentSpinPhrase = $state<{ en: string; ko: string } | null>(null);
   let todayStats = $state<SlotTodayStats>({
     spins: data.todayStats?.spins ?? 0,
     users: data.todayStats?.users ?? 0
@@ -162,9 +164,21 @@
     oopsCountdown = `${minutes}분 ${seconds}초`;
   }
 
+  const getRandomPhrase = () => {
+    if (englishPhrases && Array.isArray(englishPhrases) && englishPhrases.length > 0) {
+      const randomIndex = Math.floor(Math.random() * englishPhrases.length);
+      return englishPhrases[randomIndex] as { en: string; ko: string };
+    }
+    return null;
+  };
+
   const startReelAnimation = () => {
     try {
       stopReelAnimation();
+      
+      // 스핀 시작 시 하나의 문장만 선택하여 표시
+      currentSpinPhrase = getRandomPhrase();
+      
       spinAnimationInterval = setInterval(() => {
         const symbols = getReelSymbols();
         reels = Array.from({ length: 3 }, () => {
@@ -183,6 +197,7 @@
         clearInterval(spinAnimationInterval);
         spinAnimationInterval = null;
       }
+      // 문장은 유지 (스핀이 끝나도 남아있도록)
     } catch (err) {
       console.error('릴 애니메이션 중지 실패:', err);
     }
@@ -218,10 +233,10 @@
       const sign = j.delta >= 0 ? '+' : '';
       const extra = j.message ? ` - ${j.message}` : '';
       const nextMessage = `${sign}${j.delta} (${j.payout})${extra}`;
-      // 최소 2초 오버레이 유지
+      // 최소 3초 오버레이 유지
       const elapsed = Date.now() - start;
-      if (elapsed < 2000) {
-        await new Promise(r => setTimeout(r, 2000 - elapsed));
+      if (elapsed < 3000) {
+        await new Promise(r => setTimeout(r, 3000 - elapsed));
       }
       stopReelAnimation();
       reels = nextReels;
@@ -695,6 +710,12 @@
             </div>
           </div>
           <div class="slot border rounded-3 p-3 text-center mb-3" class:slot-spinning={spinning}>
+            {#if currentSpinPhrase}
+              <div class="slot-phrase mb-3">
+                <div class="fs-5 fw-bold text-primary mb-2">{currentSpinPhrase.en}</div>
+                <div class="small text-muted">{currentSpinPhrase.ko}</div>
+              </div>
+            {/if}
             <div class="slot-reels display-4 fw-semibold">
               {#each reels as reel}
                 <span class="slot-reel" class:slot-reel-spinning={spinning}>{reel}</span>
@@ -1029,6 +1050,21 @@
     border-color: var(--bs-warning);
     box-shadow: 0 0 18px rgba(255, 193, 7, 0.35);
     transition: box-shadow 0.3s ease, border-color 0.3s ease;
+  }
+  .slot-phrase {
+    animation: fadeInOut 0.5s ease-in-out;
+    padding: 0.75rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 0.5rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  @keyframes fadeInOut {
+    0%, 100% {
+      opacity: 0.7;
+    }
+    50% {
+      opacity: 1;
+    }
   }
   .slot-reels {
     display: flex;
