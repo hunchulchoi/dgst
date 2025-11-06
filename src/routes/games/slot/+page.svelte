@@ -6,7 +6,7 @@
   import Swal from 'sweetalert2';
   import { isOnlyOneEmoji } from '$lib/util/emoji.js';
   import type { PageData } from './$types';
-  import englishPhrases from '$lib/data/english.json';
+  import dgstData from '$lib/data/dgst_data.json';
 
   interface SlotTodayStats {
     spins: number;
@@ -54,7 +54,7 @@
   let oopsCountdown = $state<string>('');
   let refreshing = $state(false);
   let spinAnimationInterval: ReturnType<typeof setInterval> | null = null;
-  let currentSpinPhrase = $state<{ en: string; ko: string } | null>(null);
+  let currentSpinPhrase = $state<{ top: string; middle?: string; bottom: string } | null>(null);
   let todayStats = $state<SlotTodayStats>({
     spins: data.todayStats?.spins ?? 0,
     users: data.todayStats?.users ?? 0
@@ -165,11 +165,48 @@
   }
 
   const getRandomPhrase = () => {
-    if (englishPhrases && Array.isArray(englishPhrases) && englishPhrases.length > 0) {
-      const randomIndex = Math.floor(Math.random() * englishPhrases.length);
-      return englishPhrases[randomIndex] as { en: string; ko: string };
+    if (!dgstData) return null;
+    
+    // 4개 카테고리 중 하나 무작위 선택
+    const categories = ['여행일본어', '상식', '명언', '여행영어'];
+    const randomCategory = categories[Math.floor(Math.random() * categories.length)];
+    const categoryData = dgstData[randomCategory as keyof typeof dgstData];
+    
+    if (!categoryData || !Array.isArray(categoryData) || categoryData.length === 0) {
+      return null;
     }
-    return null;
+    
+    // 선택된 카테고리에서 무작위 항목 선택
+    const randomIndex = Math.floor(Math.random() * categoryData.length);
+    const item = categoryData[randomIndex];
+    
+    // 카테고리별로 적절한 필드 매핑
+    switch (randomCategory) {
+      case '여행일본어':
+        return {
+          top: item.japanese || '',
+          middle: item.pronunciation || '',
+          bottom: item.korean || ''
+        };
+      case '상식':
+        return {
+          top: item.text || '',
+          bottom: '' // 상식은 하단 없음
+        };
+      case '명언':
+        return {
+          top: item.quote || '',
+          bottom: item.author ? `- ${item.author}` : ''
+        };
+      case '여행영어':
+        return {
+          top: item.english || '',
+          middle: item.example || '',
+          bottom: item.korean || ''
+        };
+      default:
+        return null;
+    }
   };
 
   const startReelAnimation = () => {
@@ -712,8 +749,13 @@
           <div class="slot border rounded-3 p-3 text-center mb-3" class:slot-spinning={spinning}>
             {#if currentSpinPhrase}
               <div class="slot-phrase mb-3">
-                <div class="fs-5 fw-bold text-primary mb-2">{currentSpinPhrase.en}</div>
-                <div class="small text-muted">{currentSpinPhrase.ko}</div>
+                <div class="fs-5 fw-bold text-primary mb-2">{currentSpinPhrase.top}</div>
+                {#if currentSpinPhrase.middle}
+                  <div class="small text-secondary mb-1">{currentSpinPhrase.middle}</div>
+                {/if}
+                {#if currentSpinPhrase.bottom}
+                  <div class="small text-muted">{currentSpinPhrase.bottom}</div>
+                {/if}
               </div>
             {/if}
             <div class="slot-reels display-4 fw-semibold">
