@@ -1230,8 +1230,14 @@
     align-self: flex-start;
     min-width: 80px;
   }
-  /* 모바일에서 댓글 입력창이 보이도록 */
+  /* 모바일에서 스핀 문구 영역 패딩 줄이기 및 댓글 입력창이 보이도록 */
   @media (max-width: 768px) {
+    .slot {
+      padding: 0.75rem !important;
+    }
+    .slot-phrase {
+      padding: 0.5rem !important;
+    }
     .comment-input-wrapper {
       display: flex;
       flex-direction: column;
