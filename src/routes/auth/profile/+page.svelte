@@ -128,27 +128,27 @@
       });
       
       clearTimeout(timeoutId);
-      console.log('res', res);
+        console.log('res', res);
 
-      if (res.ok) {
+        if (res.ok) {
         const data = await res.json();
-        Swal.fire({
-          icon: 'success',
-          title: '변경 완료',
+          Swal.fire({
+            icon: 'success',
+            title: '변경 완료',
           text: data.message || '변경 되었습니다.\n다시 로그인 해주세요.',
-          confirmButtonText: '확인'
-        });
-        signOut();
-        goto('/');
-      } else {
+            confirmButtonText: '확인'
+          });
+          signOut();
+          goto('/');
+        } else {
         const errorData = await res.json().catch(() => ({ message: '저장 중에 오류가 발생하였습니다.' }));
-        Swal.fire({
-          icon: 'error',
-          title: '저장 실패',
+          Swal.fire({
+            icon: 'error',
+            title: '저장 실패',
           text: errorData.message || '저장 중에 오류가 발생하였습니다.',
-          confirmButtonText: '확인'
-        });
-      }
+            confirmButtonText: '확인'
+          });
+        }
     } catch (reason) {
       clearTimeout(timeoutId);
       console.error('프로필 업데이트 오류:', reason);

@@ -4,7 +4,9 @@
  */
 
 function spinReels() {
-  const symbols = ['🍒', '🍋', '🔔', '⭐', '7️⃣', '💎', '🍀'];
+  // const symbols = ['🍒', '🍋', '🔔', '⭐', '7️⃣', '💎', '🍀'];
+  //const symbols = ['🍒', '🍋', '🔔', '⭐', '7️⃣'];
+  const symbols = ['🍒', '🍋', '🔔', '⭐', '7️⃣', '🍀'];
   return [0, 0, 0].map(() => symbols[Math.floor(Math.random() * symbols.length)]);
 }
 
