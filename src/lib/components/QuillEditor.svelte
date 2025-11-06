@@ -81,6 +81,21 @@
   }
 
   /**
+   * HTML 엔티티 디코딩
+   * @param {string} str
+   * @returns {string}
+   */
+  function decodeHtmlEntities(str) {
+    try {
+      const txt = document.createElement('textarea');
+      txt.innerHTML = String(str ?? '');
+      return txt.value;
+    } catch (_) {
+      return String(str ?? '');
+    }
+  }
+
+  /**
    * browser-image-compression을 사용한 WebP 변환 함수 (움짤 포함)
    * @param {File|Blob} file
    * @param {{width?: number, quality?: number}} options
@@ -568,9 +583,9 @@
       const ogData = await response.json();
       console.log('✅ OG 데이터:', ogData);
 
-      // 제목이 있고 콜백이 있으면 제목 업데이트
+      // 제목이 있고 콜백이 있으면 제목 업데이트 (HTML 엔티티 디코딩)
       if (ogData.title && onTitleUpdate && typeof onTitleUpdate === 'function') {
-        onTitleUpdate(ogData.title);
+        onTitleUpdate(decodeHtmlEntities(ogData.title));
       }
 
       const range = quillInstance.getSelection(true) || { index: quillInstance.getLength() - 1, length: 0 };
@@ -620,7 +635,7 @@
         if (response.ok) {
           const ogData = await response.json();
           if (ogData.title) {
-            onTitleUpdate(ogData.title);
+            onTitleUpdate(decodeHtmlEntities(ogData.title));
           }
         }
       } catch (err) {
@@ -961,20 +976,13 @@
           const title = document.createElement('div');
           title.style.cssText = 'font-weight: 700; font-size: 14px; line-height: 1.25; margin: 12px 16px 2px; color: var(--bs-body-color);';
           // HTML 엔티티 디코딩
-          const decode = (str) => {
-            try {
-              const txt = document.createElement('textarea');
-              txt.innerHTML = String(str ?? '');
-              return txt.value;
-            } catch (_) { return String(str ?? ''); }
-          };
-          title.textContent = decode(value.title || value.url);
+          title.textContent = decodeHtmlEntities(value.title || value.url);
           link.appendChild(title);
           
           if (value.description) {
             const desc = document.createElement('div');
             desc.style.cssText = 'color: var(--bs-secondary-color); font-size: 12px; line-height: 1.35; margin: 0 16px 2px; opacity: 0.9;';
-            const dtext = decode(value.description || '');
+            const dtext = decodeHtmlEntities(value.description || '');
             desc.textContent = dtext.substring(0, 120) + (dtext.length > 120 ? '...' : '');
             link.appendChild(desc);
           }
