@@ -734,8 +734,10 @@
               🔄
             </button>
           </div>
+          <div class="mb-2">
+            <div>보유 점수: <strong>{formatNumber(balance)}</strong></div>
+          </div>
           <div class="d-flex justify-content-between align-items-center mb-2">
-            <div>보유 점수: <strong>{balance}</strong></div>
             <div class="d-flex align-items-center gap-2">
               <input type="tel" class="form-control form-control-sm bet-input" style="width: 100px;" 
                 bind:value={bet} 
@@ -746,8 +748,14 @@
                     else if (val >= 1) bet = val; 
                   }
                 } />
-              <button class="btn btn-sm btn-light" onclick={() => bet = 10} disabled={spinning || refreshing || balance < 10}>
+              <button class="btn btn-sm btn-light" onclick={() => bet = Math.min(bet + 10, balance)} disabled={spinning || refreshing || balance < 10}>
                  <em class="bi bi-dice-1 me-0 me-md-2"></em><span class="d-none d-lg-inline">10</span>
+              </button>
+              <button class="btn btn-sm btn-success" onclick={() => bet = Math.floor(balance * 0.05)} disabled={spinning || refreshing || balance < 20}>
+                 <em class="bi bi-5-square-fill me-0 me-md-2"></em><span class="d-none d-lg-inline">5%</span>
+              </button>
+              <button class="btn btn-sm btn-info" onclick={() => bet = Math.floor(balance * 0.1)} disabled={spinning || refreshing || balance < 10}>
+                 <em class="bi bi-percent me-0 me-md-2"></em><span class="d-none d-lg-inline">10%</span>
               </button>
               <button class="btn btn-sm btn-warning" onclick={() => bet = Math.floor(balance / 2)} disabled={spinning || refreshing || balance < 2}>
                  <em class="bi bi-dice-3 me-0 me-md-2"></em><span class="d-none d-lg-inline">반틈</span>
