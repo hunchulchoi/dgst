@@ -167,8 +167,8 @@
   const getRandomPhrase = () => {
     if (!dgstData) return null;
     
-    // 4개 카테고리 중 하나 무작위 선택
-    const categories = ['여행일본어', '상식', '명언', '여행영어'];
+    // 6개 카테고리 중 하나 무작위 선택
+    const categories = ['여행일본어', '상식', '명언', '여행영어', '일본어단어', 'facts'];
     const randomCategory = categories[Math.floor(Math.random() * categories.length)];
     const categoryData = dgstData[randomCategory as keyof typeof dgstData];
     
@@ -203,6 +203,17 @@
           top: item.english || '',
           middle: item.example || '',
           bottom: item.korean || ''
+        };
+      case '일본어단어':
+        return {
+          top: item.japanese || '',
+          middle: item.romaji || '',
+          bottom: item.korean || ''
+        };
+      case 'facts':
+        return {
+          top: item.fact || '',
+          bottom: '' // facts는 하단 없음
         };
       default:
         return null;
@@ -751,7 +762,7 @@
               <div class="slot-phrase mb-3">
                 <div class="fs-5 fw-bold text-primary mb-2">{currentSpinPhrase.top}</div>
                 {#if currentSpinPhrase.middle}
-                  <div class="small text-secondary mb-1">{currentSpinPhrase.middle}</div>
+                  <div class="fs-6 text-secondary mb-1">{currentSpinPhrase.middle}</div>
                 {/if}
                 {#if currentSpinPhrase.bottom}
                   <div class="small text-muted">{currentSpinPhrase.bottom}</div>
