@@ -334,7 +334,7 @@
           icon: j.delta > 0 ? 'success' : 'error',
           title: toastMessage,
           toast: true,
-          position: 'center',
+          position: 'bottom',
           showConfirmButton: false,
           timer: 3000,
           timerProgressBar: true
@@ -681,12 +681,12 @@
   </section>
   <div class="row justify-content-center">
     <div class="col-md-6 order-2 order-md-1">
-      <div class="card shadow rounded-4 position-relative overflow-hidden">
+      <div class="card shadow rounded-4 position-relative overflow-hidden" class:overflow-visible={guideCollapsed && isMobile}>
         <div class="alert alert-info mb-4 rounded-4 border-0 bg-gradient text-white slot-guide" data-collapsed={guideCollapsed && isMobile}>
         <div class="slot-guide-inner">
           <div class="slot-guide-header py-1">
             <div class="slot-guide-title">
-              <span class="display-6 mb-0 flex-shrink-0">🎲</span>
+              <span class="display-6 mb-0 flex-shrink-0" class:slot-guide-dice-clickable={guideCollapsed && isMobile} onclick={() => { if (guideCollapsed && isMobile) toggleGuideCollapse(); }} style={guideCollapsed && isMobile ? 'cursor: pointer;' : ''}>🎲</span>
               <h6 class="fw-bold mb-0">뺑뺑이는 즐거운 놀이터입니다</h6>
             </div>
             <button
@@ -1085,8 +1085,51 @@
     border-color: rgba(255, 255, 255, 0.85);
     background-color: rgba(255, 255, 255, 0.15);
   }
+  .slot-guide[data-collapsed='true'] {
+    position: fixed;
+    top: 50%;
+    left: 0;
+    transform: translateY(-50%);
+    width: auto;
+    min-width: auto;
+    max-width: 60px;
+    margin: 0;
+    z-index: 1000;
+    padding: 0.5rem 0.25rem;
+    border-radius: 0 0.5rem 0.5rem 0;
+    box-shadow: 4px 0 12px rgba(0, 0, 0, 0.15);
+  }
   .slot-guide[data-collapsed='true'] .slot-guide-inner {
-    gap: 0.75rem;
+    gap: 0;
+    flex-direction: column;
+    align-items: center;
+  }
+  .slot-guide[data-collapsed='true'] .slot-guide-header {
+    flex-direction: column;
+    gap: 0;
+    align-items: center;
+    width: 100%;
+  }
+  .slot-guide[data-collapsed='true'] .slot-guide-title {
+    flex-direction: column;
+    gap: 0;
+    align-items: center;
+  }
+  .slot-guide[data-collapsed='true'] .slot-guide-title :global(h6) {
+    display: none;
+  }
+  .slot-guide[data-collapsed='true'] .slot-guide-title :global(.display-6) {
+    font-size: 1.5rem;
+    margin: 0;
+  }
+  .slot-guide[data-collapsed='true'] .slot-guide-toggle {
+    display: none;
+  }
+  .slot-guide[data-collapsed='true'] .slot-guide-dice-clickable {
+    transition: transform 0.2s ease;
+  }
+  .slot-guide[data-collapsed='true'] .slot-guide-dice-clickable:hover {
+    transform: scale(1.2);
   }
   .slot.slot-spinning {
     border-color: var(--bs-warning);
@@ -1144,6 +1187,12 @@
     inset: 0;
     background: rgba(0, 0, 0, 0);
     z-index: 10;
+  }
+  /* 모바일에서 접힌 상태일 때 카드 overflow 허용 */
+  @media (max-width: 768px) {
+    .card:has(.slot-guide[data-collapsed='true']) {
+      overflow: visible !important;
+    }
   }
   .card-overlay {
     position: absolute;
