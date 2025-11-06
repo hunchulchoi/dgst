@@ -99,12 +99,12 @@
 
   async function refreshBalance() {
     try {
-      const res = await fetch('/games/slot');
-      if (res.ok) {
-        const j = await res.json();
-        balance = j.balance;
+    const res = await fetch('/games/slot');
+    if (res.ok) {
+      const j = await res.json();
+      balance = j.balance;
         const prevOopsInfo = oopsInfo;
-        oopsInfo = j.oopsInfo || null;
+      oopsInfo = j.oopsInfo || null;
         if (j.todayStats) {
           todayStats = {
             spins: Number(j.todayStats.spins ?? 0),
@@ -441,14 +441,14 @@
         commentHasMore = Boolean(data?.hasMore);
 
         if (!append) {
-          // 알람이 읽음 처리되었으므로 레이아웃의 알람 카운트 갱신
-          await invalidateAll();
-
-          // 댓글 로드 후 URL에 댓글 ID가 있으면 스크롤
-          const urlParams = new URLSearchParams(window.location.search);
-          const commentId = urlParams.get('cmt');
-          if (commentId) {
-            scrollToComment(commentId);
+        // 알람이 읽음 처리되었으므로 레이아웃의 알람 카운트 갱신
+        await invalidateAll();
+        
+        // 댓글 로드 후 URL에 댓글 ID가 있으면 스크롤
+        const urlParams = new URLSearchParams(window.location.search);
+        const commentId = urlParams.get('cmt');
+        if (commentId) {
+          scrollToComment(commentId);
           } else if (window.location.hash.startsWith('#comment-')) {
             const hashComment = window.location.hash.slice('#comment-'.length);
             scrollToComment(hashComment);
@@ -717,11 +717,11 @@
               hidden={guideCollapsed && isMobile}
             >
               뺑뺑이 점수는 무료로 무제한 제공되며 어떤 형태로든 타인에게 이전하거나 현금·재화로 전환되지 않는 순수한 놀이용 포인트입니다.
-              <br>오직 게임의 재미를 위해 활용해 주세요!
+                <br>오직 게임의 재미를 위해 활용해 주세요!
               <br><strong>모든 확률은 어떠한 인위적 개입이 없는 기계적인 무작위의 결과입니다.</strong>
               <br><strong class="text-danger">🥶현실의 도박세계는 훨씬 냉혹하고 무섭습니다.☠️</strong>
 
-            </p>
+              </p>
           </div>
         </div>
         {#if spinning || refreshing}
@@ -1148,11 +1148,13 @@
     transition: box-shadow 0.3s ease, border-color 0.3s ease;
   }
   .slot-phrase {
+    display: block !important;
     animation: fadeInOut 0.5s ease-in-out;
     padding: 0.75rem;
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(255, 255, 255, 0.1);
     border-radius: 0.5rem;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    min-height: 3rem;
   }
   @keyframes fadeInOut {
     0%, 100% {
