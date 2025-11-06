@@ -345,7 +345,7 @@
           icon: j.delta > 0 ? 'success' : 'error',
           title: toastMessage,
           toast: true,
-          position: 'bottom',
+          position: isMobile ? 'bottom' : 'center',
           showConfirmButton: false,
           timer: 3000,
           timerProgressBar: true
@@ -1157,20 +1157,12 @@
   }
   .slot-phrase {
     display: block !important;
-    animation: fadeInOut 0.5s ease-in-out;
+    opacity: 1 !important;
     padding: 0.75rem;
     background: rgba(255, 255, 255, 0.1);
     border-radius: 0.5rem;
     border: 1px solid rgba(255, 255, 255, 0.2);
     min-height: 3rem;
-  }
-  @keyframes fadeInOut {
-    0%, 100% {
-      opacity: 0.7;
-    }
-    50% {
-      opacity: 1;
-    }
   }
   .slot-reels {
     display: flex;
