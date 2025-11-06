@@ -21,7 +21,7 @@ function youtubeEmbeder(url) {
       const time = _match[2];
 
       const paddingBottom = i === 4 ? '220%' : '56.2493%';
-      const maxWidth = i === 4 ? '360px' : '480px';
+      const maxWidth = i === 4 ? '280px' : '320px';
 
       return (
         `<div style="max-width: ${maxWidth}">
