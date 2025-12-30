@@ -33,7 +33,7 @@ This is svelte & svelte-kit based commnity
 
 ## Migraiton Rule
 
-- ckeditor 최신 안정화 버전으로 변경
+- Quill에디터 사용
 - Database model 구조는 변경하지 않음
 
 변경후에는 커밋을 해줍니다.

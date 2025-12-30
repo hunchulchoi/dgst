@@ -4,10 +4,10 @@ import {Confetti} from 'svelte-confetti';
 
 import ccd from '$lib/shared/stores/ccd.js';
 
-ccd.set(false);
+ccd.set(true);
 
 const bannerContent =
-  `🌸<span class="text-danger">경)</span> 🎉강알리⛱️ 삼익비치의 딸🍾 공기업❤️ 취직🎊 <span class="text-danger">(축</span>🌼`
+  `🌸<span class="text-danger">경)</span> 🎉먼지없는 송파의 세쌍디👶👶👶 아버지🍾 과장❤️ 진급🎊 <span class="text-danger">(축</span>🌼`
 </script>
 
 <Offcanvas isOpen={$ccd}
