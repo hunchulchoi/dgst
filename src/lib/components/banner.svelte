@@ -7,7 +7,7 @@ import ccd from '$lib/shared/stores/ccd.js';
 ccd.set(true);
 
 const bannerContent =
-  `🌸<span class="text-danger">경)</span> 🎉먼지없는 송파의 세쌍디👶👶👶 아버지🍾 과장❤️ 진급🎊 <span class="text-danger">(축</span>🌼`
+  `🌸<span class="text-danger">발)</span> 🎉지천명 5️⃣0️⃣ 𝑫-1️⃣ 지천명🍾 ㄹㅇ 으르신 월하루방👴 & 싸앤옹🧓️ 🎊 <span class="text-danger">(전</span>🌼`
 </script>
 
 <Offcanvas isOpen={$ccd}
