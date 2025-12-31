@@ -7,7 +7,7 @@ import ccd from '$lib/shared/stores/ccd.js';
 ccd.set(true);
 
 const bannerContent =
-  `🌸<span class="text-danger">발)</span> 🎉지천명5️⃣0️⃣ 𝑫-1️⃣🍾 ㄹㅇ 으르신 월하루방👴 & 싸앤옹🧓️ 🎊 <span class="text-danger">(전</span>🌼`
+  `🌸<span class="text-danger">발)</span> 🎉지천명5️⃣0️⃣🍾ㄹㅇ으르신 월하루방👴&싸앤옹🧓️ 🎊 <span class="text-danger">(전</span>🌼`
 </script>
 
 <Offcanvas isOpen={$ccd}
