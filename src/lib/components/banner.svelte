@@ -4,9 +4,9 @@ import {Confetti} from 'svelte-confetti';
 
 import ccd from '$lib/shared/stores/ccd.js';
 
-ccd.set(true);
+ccd.set(false);
 
-const header_ = '5️⃣⁵⑤⓹五５𝟓𝟝𝟧𝟱𝟻✋🏽'
+const header_ = '2026년도 건강하세요'
 
 const bannerContent =
   `🌸<span class="text-danger">발)</span> 🎉지천명5️⃣0️⃣🍾ㄹㅇ으르신 월하루방👴&싸앤옹🧓️ 🎊 <span class="text-danger">(전</span>🌼`
@@ -17,7 +17,8 @@ const bannerContent =
            toggle={()=>ccd.set(false)}
            fade={true}
            class="text-center text-dark rounded-bottom-4"
-           style="background: linear-gradient(90deg, rgba(211,209,247,1) 0%, rgba(150,150,146,1) 70%, rgba(111,112,101,1) 100%);"
+           style="height:100%;background: linear-gradient(90deg, rgba(211,209,247,1) 0%, rgba(150,150,146,1) 70%,
+           rgba(111,112,101,1) 100%);"
            placement="top">
   <div class="neon">{@html bannerContent}</div>
   <div style="
