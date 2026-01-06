@@ -4,12 +4,12 @@ import {Confetti} from 'svelte-confetti';
 
 import ccd from '$lib/shared/stores/ccd.js';
 
-ccd.set(false);
+ccd.set(true);
 
-const header_ = '2026년도 건강하세요'
+const header_ = '만수무강'
 
 const bannerContent =
-  `🌸<span class="text-danger">발)</span> 🎉지천명5️⃣0️⃣🍾ㄹㅇ으르신 월하루방👴&싸앤옹🧓️ 🎊 <span class="text-danger">(전</span>🌼`
+  `🌸<span class="text-danger">경)</span> 🎉광명의 자랑 🧓️시골으르신 🎊퇴원 🌼똥칠할때까지 <span class="text-danger">(축</span>🌼`
 </script>
 
 <Offcanvas isOpen={$ccd}
