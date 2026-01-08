@@ -4,7 +4,7 @@ import {Confetti} from 'svelte-confetti';
 
 import ccd from '$lib/shared/stores/ccd.js';
 
-ccd.set(true);
+ccd.set(false);
 
 const header_ = '만수무강'
 
