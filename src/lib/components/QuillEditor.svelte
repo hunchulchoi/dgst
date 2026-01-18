@@ -9,7 +9,7 @@
   import imageCompression from 'browser-image-compression';
 
   // Svelte 5 Runes - Props
-  let { uploadPlus, uploadMinus, editorData = $bindable(), onTitleUpdate } = $props();
+  let { uploadPlus, uploadMinus, editorData = $bindable(), onTitleUpdate, onLoadingChange, insertUrlFromTitle = $bindable(/** @type {string | null} */ (null)) } = $props();
 
   // 로컬 상태
   /** @type {HTMLDivElement | null} */
@@ -56,8 +56,7 @@
   let isUserTyping = $state(false);
   /** @type {any} */
   let syncTimer = null;
-  
-  
+
   // 비디오 압축 진행 상태
   /** @type {boolean} */
   let isCompressing = $state(false);
@@ -108,8 +107,15 @@
     const fileSizeMB = file.size / (1024 * 1024);
 
     try {
-      console.log('[browser-image-compression] 이미지 변환 시작:', fileName, 'type:', file.type, 'size:', file.size);
-      
+      console.log(
+        '[browser-image-compression] 이미지 변환 시작:',
+        fileName,
+        'type:',
+        file.type,
+        'size:',
+        file.size
+      );
+
       // GIF/HEIC/HEIF는 클라이언트 변환 대상 아님
       const lowerType = (file.type || '').toLowerCase();
       const lowerName = (fileName || '').toLowerCase();
@@ -120,13 +126,21 @@
         lowerName.endsWith('.heic') ||
         lowerName.endsWith('.heif')
       ) {
-        console.log('[browser-image-compression] GIF/HEIC/HEIF 파일은 변환하지 않음:', fileName, lowerType);
+        console.log(
+          '[browser-image-compression] GIF/HEIC/HEIF 파일은 변환하지 않음:',
+          fileName,
+          lowerType
+        );
         return file; // 서버/사용자 측에서 처리 (브라우저 표시 불가 형식은 업로드 차단 로직에서 안내)
       }
 
       // 1MB 이하는 변환하지 않고 원본 유지
       if (fileSizeMB <= 1) {
-        console.log('[browser-image-compression] 1MB 이하 이미지는 원본 유지:', fileSizeMB.toFixed(2), 'MB');
+        console.log(
+          '[browser-image-compression] 1MB 이하 이미지는 원본 유지:',
+          fileSizeMB.toFixed(2),
+          'MB'
+        );
         return file;
       }
 
@@ -163,26 +177,26 @@
     setTimeout(() => {
       try {
         console.log('스크롤 이동 시작, index:', index);
-        
+
         // Quill 에디터의 스크롤 컨테이너 찾기
         const editorContainer = quillInstance.root.parentElement;
         const scrollContainer = editorContainer?.closest('.ql-container') || editorContainer;
-        
+
         if (scrollContainer) {
           console.log('스크롤 컨테이너 찾음:', scrollContainer);
           console.log('현재 스크롤 높이:', scrollContainer.scrollHeight);
           console.log('컨테이너 높이:', scrollContainer.clientHeight);
-          
+
           // 간단한 방법: 에디터 끝으로 스크롤
           const targetScrollTop = scrollContainer.scrollHeight - scrollContainer.clientHeight;
           console.log('목표 스크롤 위치:', targetScrollTop);
-          
+
           // 부드러운 스크롤
           scrollContainer.scrollTo({
             top: Math.max(0, targetScrollTop),
             behavior: 'smooth'
           });
-          
+
           console.log('스크롤 실행 완료');
         } else {
           console.warn('스크롤 컨테이너를 찾을 수 없음');
@@ -207,16 +221,16 @@
         console.log('⏳ FFmpeg 로드 대기 중...');
         isCompressing = true;
         compressionProgress = 0;
-        
+
         // 최대 30초 대기
         let waitCount = 0;
         while (!ffmpegReady && waitCount < 60) {
-          await new Promise(resolve => setTimeout(resolve, 500));
+          await new Promise((resolve) => setTimeout(resolve, 500));
           waitCount++;
           compressionProgress = Math.min(5, waitCount);
           console.log(`FFmpeg 로드 대기... (${waitCount * 0.5}초)`);
         }
-        
+
         if (!ffmpegReady) {
           console.warn('⚠️ FFmpeg 로드 시간 초과 - 원본 파일 업로드');
           isCompressing = false;
@@ -224,7 +238,7 @@
           // 압축 없이 원본 파일 반환
           return file;
         }
-        
+
         console.log('✅ FFmpeg 준비 완료');
       }
 
@@ -233,7 +247,7 @@
       compressionTime = 0;
       estimatedTime = 0;
       uploadPlus?.();
-      
+
       const startTime = Date.now();
 
       // 1초마다 경과 시간 업데이트
@@ -244,15 +258,19 @@
       // Progress 이벤트 리스너 설정
       const progressHandler = ({ progress, time }) => {
         compressionProgress = Math.round(progress * 100);
-        
+
         // 예상 시간 계산 (진행률 기반)
         if (progress > 0.01) {
           estimatedTime = Math.round(compressionTime / progress);
         }
-        
-        console.log(`압축 진행률: ${compressionProgress}%`, `경과: ${compressionTime}초`, `남은: ${Math.max(0, estimatedTime - compressionTime)}초`);
+
+        console.log(
+          `압축 진행률: ${compressionProgress}%`,
+          `경과: ${compressionTime}초`,
+          `남은: ${Math.max(0, estimatedTime - compressionTime)}초`
+        );
       };
-      
+
       ffmpeg.on('progress', progressHandler);
 
       // FFmpeg에 파일 쓰기
@@ -263,19 +281,27 @@
       // 비디오 압축 실행
       compressionProgress = 10;
       console.log('FFmpeg 압축 시작...');
-      
+
       await ffmpeg.exec([
-        '-i', 'input.mp4',
-        '-vf', "scale='min(640,iw)':'min(640,ih)':force_original_aspect_ratio=decrease,pad=ceil(iw/2)*2:ceil(ih/2)*2",  // 긴 쪽을 640px로 제한하고 짝수 크기로 패딩
-        '-c:v', 'libx264',      // H.264 코덱
-        '-crf', '28',           // 압축률 (0-51, 28은 중간)
-        '-preset', 'medium',    // 속도/품질 밸런스
-        '-c:a', 'aac',          // 오디오 AAC
-        '-b:a', '128k',         // 오디오 비트레이트
-        '-pix_fmt', 'yuv420p',  // 호환성 픽셀 포맷
+        '-i',
+        'input.mp4',
+        '-vf',
+        "scale='min(640,iw)':'min(640,ih)':force_original_aspect_ratio=decrease,pad=ceil(iw/2)*2:ceil(ih/2)*2", // 긴 쪽을 640px로 제한하고 짝수 크기로 패딩
+        '-c:v',
+        'libx264', // H.264 코덱
+        '-crf',
+        '28', // 압축률 (0-51, 28은 중간)
+        '-preset',
+        'medium', // 속도/품질 밸런스
+        '-c:a',
+        'aac', // 오디오 AAC
+        '-b:a',
+        '128k', // 오디오 비트레이트
+        '-pix_fmt',
+        'yuv420p', // 호환성 픽셀 포맷
         'output.mp4'
       ]);
-      
+
       console.log('FFmpeg 압축 완료');
 
       // 압축된 파일 가져오기
@@ -286,13 +312,13 @@
 
       compressionProgress = 100;
       uploadMinus?.();
-      
+
       console.log('비디오 압축 완료:', 'original:', file.size, 'compressed:', compressedFile.size);
-      
+
       // Progress 이벤트 리스너 및 타이머 제거
       ffmpeg.off('progress');
       clearInterval(timeInterval);
-      
+
       // 잠시 후 오버레이 제거 (100% 표시)
       setTimeout(() => {
         isCompressing = false;
@@ -300,7 +326,7 @@
         compressionTime = 0;
         estimatedTime = 0;
       }, 500);
-      
+
       return compressedFile;
     } catch (error) {
       console.error('비디오 압축 실패:', error);
@@ -330,7 +356,7 @@
     isSingleImageUpload = files.length === 1 && files[0].type.startsWith('image/');
 
     // 이미지가 포함된 경우 업로드 오버레이 표시
-    loadingImage = files.some(f => f.type.startsWith('image/'));
+    loadingImage = files.some((f) => f.type.startsWith('image/'));
     totalFiles = files.length;
     currentFile = 0;
     uploadProgress = 0;
@@ -338,7 +364,7 @@
     // uploadPlus 호출 횟수 추적 (실패 시 보상 호출용)
     let uploadPlusCount = 0;
     let successCount = 0; // 성공한 파일 수
-    
+
     try {
       // 초기 커서 위치 저장
       let currentRange = quillInstance.getSelection(true);
@@ -353,7 +379,7 @@
         let file = files[i];
         currentFile = i + 1;
         uploadProgress = Math.round((i / files.length) * 100);
-        
+
         // uploadPlus 콜백 호출
         if (uploadPlus) {
           uploadPlus();
@@ -397,8 +423,11 @@
           }
           // 원본 파일 보존 (변환 실패 시 사용)
           const originalFile = file;
-          console.log('[browser-image-compression] 이미지 파일 감지, WebP 변환 시작...', originalFile.name);
-          
+          console.log(
+            '[browser-image-compression] 이미지 파일 감지, WebP 변환 시작...',
+            originalFile.name
+          );
+
           try {
             const webpBlob = await convertToWebP(originalFile, { width: 1400, quality: 0.85 });
             // 원본 파일명에서 확장자 제거 후 .webp로 교체
@@ -406,14 +435,22 @@
             const base = dotIdx > -1 ? originalFile.name.substring(0, dotIdx) : originalFile.name;
             const newName = `${base}.webp`;
             file = new File([webpBlob], newName, { type: 'image/webp' });
-            console.log('[browser-image-compression] WebP 변환 완료:', newName, 'size:', webpBlob.size);
+            console.log(
+              '[browser-image-compression] WebP 변환 완료:',
+              newName,
+              'size:',
+              webpBlob.size
+            );
           } catch (e) {
             const error = e instanceof Error ? e : new Error(String(e));
-            console.warn('[browser-image-compression] WebP 변환 실패, 원본 파일을 서버에서 처리합니다:', error);
-            
+            console.warn(
+              '[browser-image-compression] WebP 변환 실패, 원본 파일을 서버에서 처리합니다:',
+              error
+            );
+
             // 원본 파일로 복원 (서버에서 처리)
             file = originalFile;
-            
+
             // 서버에 로그 전송
             try {
               await fetch('/api/log', {
@@ -421,7 +458,8 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                   level: 'warn',
-                  message: 'Client WebP conversion failed (browser-image-compression) - will process on server',
+                  message:
+                    'Client WebP conversion failed (browser-image-compression) - will process on server',
                   fileName: originalFile instanceof File ? originalFile.name : 'unknown',
                   fileSize: originalFile.size,
                   fileType: originalFile.type,
@@ -485,7 +523,7 @@
           // 이미지 태그로 삽입 (이미 WebP 변환 시 회전이 적용됨)
           quillInstance.insertEmbed(currentRange.index, 'image', url);
           quillInstance.insertText(currentRange.index + 1, '\n');
-          
+
           // 다음 삽입을 위해 커서 위치 업데이트
           currentRange.index += 2;
           console.log('이미지 삽입 완료:', url);
@@ -497,15 +535,15 @@
         }
         successCount++;
       }
-      
+
       // 모든 업로드 완료 후 최종 커서 위치 설정 및 포커스
       quillInstance.setSelection(currentRange.index, 0);
       quillInstance.focus();
-      
+
       // 삽입된 콘텐츠로 스크롤 이동
       scrollToInsertedContent(currentRange.index);
       console.log('최종 커서 위치 설정:', currentRange.index);
-      
+
       // 모든 업로드 완료
       uploadProgress = 100;
       console.log(`모든 파일 업로드 완료: ${totalFiles}개`);
@@ -550,7 +588,7 @@
     input.onchange = async () => {
       const files = input.files ? Array.from(input.files) : [];
       if (!files.length) return;
-      
+
       await uploadAndInsertFiles(files);
     };
   }
@@ -564,6 +602,11 @@
     try {
       loadingImage = true;
       
+      // OG 로딩 시작 알림
+      if (onLoadingChange && typeof onLoadingChange === 'function') {
+        onLoadingChange(true);
+      }
+
       const response = await fetch('/api/og', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -572,7 +615,10 @@
 
       if (!response.ok) {
         console.error('OG 데이터 가져오기 실패 - 링크로 삽입');
-        const range = quillInstance.getSelection(true) || { index: quillInstance.getLength() - 1, length: 0 };
+        const range = quillInstance.getSelection(true) || {
+          index: quillInstance.getLength() - 1,
+          length: 0
+        };
         quillInstance.insertText(range.index, url, 'link', url);
         quillInstance.insertText(range.index + url.length, '\n');
         quillInstance.setSelection(range.index + url.length + 1);
@@ -588,28 +634,39 @@
         onTitleUpdate(decodeHtmlEntities(ogData.title));
       }
 
-      const range = quillInstance.getSelection(true) || { index: quillInstance.getLength() - 1, length: 0 };
+      const range = quillInstance.getSelection(true) || {
+        index: quillInstance.getLength() - 1,
+        length: 0
+      };
       quillInstance.insertEmbed(range.index, 'ogcard', ogData);
       quillInstance.insertText(range.index + 1, '\n');
       quillInstance.setSelection(range.index + 2);
       quillInstance.focus();
-      
+
       // 삽입된 콘텐츠로 스크롤 이동
       scrollToInsertedContent(range.index + 2);
-      
+
       console.log('✅ OG 카드 삽입 완료');
     } catch (err) {
       console.error('OG 카드 생성 실패 - 링크로 삽입:', err);
-      const range = quillInstance.getSelection(true) || { index: quillInstance.getLength() - 1, length: 0 };
+      const range = quillInstance.getSelection(true) || {
+        index: quillInstance.getLength() - 1,
+        length: 0
+      };
       quillInstance.insertText(range.index, url, 'link', url);
       quillInstance.insertText(range.index + url.length, '\n');
       quillInstance.setSelection(range.index + url.length + 1);
       quillInstance.focus();
-      
+
       // 삽입된 콘텐츠로 스크롤 이동
       scrollToInsertedContent(range.index + url.length + 1);
     } finally {
       loadingImage = false;
+      
+      // OG 로딩 완료 알림
+      if (onLoadingChange && typeof onLoadingChange === 'function') {
+        onLoadingChange(false);
+      }
     }
   }
 
@@ -622,16 +679,25 @@
     console.log('🚀 autoEmbedMedia 호출:', url);
     const range = quillInstance.getSelection(true) || { index: quillInstance.getLength() };
     console.log('📍 커서 위치:', range);
-    
+
     // YouTube URL인 경우 OG 데이터에서 제목 추출
-    if ((url.includes('youtube.com') || url.includes('youtu.be')) && onTitleUpdate && typeof onTitleUpdate === 'function') {
+    if (
+      (url.includes('youtube.com') || url.includes('youtu.be')) &&
+      onTitleUpdate &&
+      typeof onTitleUpdate === 'function'
+    ) {
       try {
+        // OG 로딩 시작 알림
+        if (onLoadingChange && typeof onLoadingChange === 'function') {
+          onLoadingChange(true);
+        }
+        
         const response = await fetch('/api/og', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ url })
         });
-        
+
         if (response.ok) {
           const ogData = await response.json();
           if (ogData.title) {
@@ -640,9 +706,14 @@
         }
       } catch (err) {
         console.error('YouTube OG 데이터 가져오기 실패:', err);
+      } finally {
+        // OG 로딩 완료 알림
+        if (onLoadingChange && typeof onLoadingChange === 'function') {
+          onLoadingChange(false);
+        }
       }
     }
-    
+
     processMediaEmbed(url, range);
   }
 
@@ -654,7 +725,10 @@
     const url = prompt('YouTube, Instagram, TikTok 또는 비디오 URL을 입력하세요:');
     if (!url) return;
 
-    const range = quillInstance.getSelection(true) || { index: quillInstance.getLength() - 1, length: 0 };
+    const range = quillInstance.getSelection(true) || {
+      index: quillInstance.getLength() - 1,
+      length: 0
+    };
     processMediaEmbed(url, range);
   }
 
@@ -677,7 +751,7 @@
         videoId = match ? match[1] : null;
         console.log('📱 Shorts videoId:', videoId);
         if (videoId) {
-          embedHtml = `<div style="max-width: 360px"><div style="position: relative;width:100%;padding-bottom:300%;"><iframe src="https://www.youtube.com/embed/${videoId}" style="position: absolute; width: 100%; height: 100%; top: 0; left: 0;" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe></div></div>`;
+          embedHtml = `<div style="max-width: 494px"><div style="position: relative;width:100%;padding-bottom:300%;"><iframe src="https://www.youtube.com/embed/${videoId}" style="position: absolute; width: 100%; height: 100%; top: 0; left: 0;" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe></div></div>`;
         }
       } else if (url.includes('youtube.com/embed/')) {
         const match = url.match(/youtube\.com\/embed\/([\w-]+)/);
@@ -707,11 +781,11 @@
     // Instagram - 원래 임베드 방식으로 복원
     else if (url.includes('instagram.com')) {
       console.log('📸 Instagram URL 감지 - 임베드로 처리:', url);
-      
+
       // URL에서 쿼리 파라미터 제거하고 정규화
       const cleanUrl = url.split('?')[0];
       console.log('📸 정리된 URL:', cleanUrl);
-      
+
       if (cleanUrl.includes('/reel/')) {
         const match = cleanUrl.match(/\/reel\/([\w-]+)/);
         const id = match ? match[1] : null;
@@ -758,7 +832,7 @@
       quillInstance.insertEmbed(range.index, 'video', url);
       quillInstance.setSelection(range.index + 1);
       quillInstance.focus();
-      
+
       // 삽입된 콘텐츠로 스크롤 이동
       scrollToInsertedContent(range.index + 1);
       return;
@@ -770,7 +844,7 @@
       quillInstance.clipboard.dangerouslyPasteHTML(range.index, linkHtml);
       quillInstance.setSelection(range.index + 1);
       quillInstance.focus();
-      
+
       // 삽입된 콘텐츠로 스크롤 이동
       scrollToInsertedContent(range.index + 1);
       return;
@@ -778,17 +852,17 @@
 
     if (embedHtml) {
       console.log('📝 HTML 삽입 전 Quill 내용:', quillInstance.root.innerHTML.substring(0, 100));
-      
+
       // Instagram 임베드는 OG 카드로 변환
       if (embedHtml.includes('instagram-media')) {
         console.log('📸 Instagram 임베드를 OG 카드로 변환');
-        
+
         // URL에서 ID 추출
         const cleanUrl = url.split('?')[0];
         const isReel = cleanUrl.includes('/reel/');
         const idMatch = cleanUrl.match(isReel ? /\/reel\/([\w-]+)/ : /\/p\/([\w-]+)/);
         const instaId = idMatch ? idMatch[1] : '';
-        
+
         // OG 카드 Blot 사용
         quillInstance.insertEmbed(range.index, 'ogcard', {
           url: cleanUrl,
@@ -797,27 +871,26 @@
           image: 'https://www.instagram.com/static/images/ico/favicon-192.png',
           siteName: 'Instagram'
         });
-        
+
         quillInstance.insertText(range.index + 1, '\n');
         quillInstance.setSelection(range.index + 2);
         quillInstance.focus();
-        
+
         scrollToInsertedContent(range.index + 2);
         console.log('✅ Instagram OG 카드 삽입 완료');
         return; // 여기서 종료하여 아래 코드 실행 방지
       }
-      
+
       quillInstance.clipboard.dangerouslyPasteHTML(range.index, embedHtml);
-      
+
       console.log('📝 HTML 삽입 후 Quill 내용:', quillInstance.root.innerHTML.substring(0, 200));
-      
+
       quillInstance.setSelection(range.index + 1);
       quillInstance.focus();
-      
+
       // 삽입된 콘텐츠로 스크롤 이동
       scrollToInsertedContent(range.index + 1);
       console.log('✅ 미디어 임베드 완료:', url);
-      
     }
   }
 
@@ -845,21 +918,30 @@
       matchVisual: false,
       matchers: [
         // video 태그 허용
-        ['video', (node, delta) => {
-          const src = node.getAttribute('src');
-          if (src) {
+        [
+          'video',
+          (node, delta) => {
+            const src = node.getAttribute('src');
+            if (src) {
+              return delta;
+            }
+            return new Delta();
+          }
+        ],
+        // iframe 태그 허용
+        [
+          'iframe',
+          (node, delta) => {
             return delta;
           }
-          return new Delta();
-        }],
-        // iframe 태그 허용
-        ['iframe', (node, delta) => {
-          return delta;
-        }],
+        ],
         // blockquote 허용 (Instagram, TikTok)
-        ['blockquote', (node, delta) => {
-          return delta;
-        }]
+        [
+          'blockquote',
+          (node, delta) => {
+            return delta;
+          }
+        ]
       ]
     }
   };
@@ -886,14 +968,14 @@
         import('quill'),
         import('quill/dist/quill.snow.css')
       ]);
-      
+
       Quill = QuillModule.default;
       Delta = QuillModule.Delta;
       console.log('✅ Quill imported');
 
       // Video Blot 등록 (video 태그 직접 사용)
       const BlockEmbed = Quill.import('blots/block/embed');
-      
+
       // @ts-ignore - Quill Blot 확장을 위해 onMount 내부에서 선언 필요
       // svelte-ignore perf_avoid_nested_class
       class VideoBlot extends BlockEmbed {
@@ -901,7 +983,10 @@
           const node = super.create();
           node.setAttribute('src', value);
           node.setAttribute('controls', '');
-          node.setAttribute('style', 'max-width: 100%; height: auto; display: block; margin: 1em 0;');
+          node.setAttribute(
+            'style',
+            'max-width: 100%; height: auto; display: block; margin: 1em 0;'
+          );
           return node;
         }
 
@@ -949,51 +1034,59 @@
         static create(value) {
           console.log('value', value);
           const node = super.create();
-          node.setAttribute('class', 'og-card-blot border rounded my-2 shadow text-decoration-none');
+          node.setAttribute(
+            'class',
+            'og-card-blot border rounded my-2 shadow text-decoration-none'
+          );
           node.style.cssText = 'display: block; margin: 8px 0; max-width: 500px; width: 100%;';
           node.setAttribute('contenteditable', 'false');
           node.setAttribute('data-url', value.url);
-          
+
           // a 태그로 감싸기
           const link = document.createElement('a');
           link.href = value.url;
           link.target = 'dgst_out_link';
           link.rel = 'noopener noreferrer';
-          link.style.cssText = 'text-decoration: none; color: inherit; display: block; border: 1px solid var(--bs-border-color); border-radius: 8px; margin: 8px 0; max-width: 100%; background: transparent; cursor: pointer; overflow: hidden; padding: 0;';
-          
+          link.style.cssText =
+            'text-decoration: none; color: inherit; display: block; border: 1px solid var(--bs-border-color); border-radius: 8px; margin: 8px 0; max-width: 100%; background: transparent; cursor: pointer; overflow: hidden; padding: 0;';
+
           link.onclick = (e) => {
             console.log('OG 카드 링크 클릭:', value.url);
             // 기본 링크 동작을 허용하므로 preventDefault 제거
           };
-          
+
           if (value.image) {
             const img = document.createElement('img');
             img.src = value.image;
-            img.style.cssText = 'width: 100%; height: 200px; object-fit: cover; display: block; margin: 0; border: 0;';
+            img.style.cssText =
+              'width: 100%; height: 200px; object-fit: cover; display: block; margin: 0; border: 0;';
             link.appendChild(img);
           }
-          
+
           const title = document.createElement('div');
-          title.style.cssText = 'font-weight: 700; font-size: 14px; line-height: 1.25; margin: 12px 16px 2px; color: var(--bs-body-color);';
+          title.style.cssText =
+            'font-weight: 700; font-size: 14px; line-height: 1.25; margin: 12px 16px 2px; color: var(--bs-body-color);';
           // HTML 엔티티 디코딩
           title.textContent = decodeHtmlEntities(value.title || value.url);
           link.appendChild(title);
-          
+
           if (value.description) {
             const desc = document.createElement('div');
-            desc.style.cssText = 'color: var(--bs-secondary-color); font-size: 12px; line-height: 1.35; margin: 0 16px 2px; opacity: 0.9;';
+            desc.style.cssText =
+              'color: var(--bs-secondary-color); font-size: 12px; line-height: 1.35; margin: 0 16px 2px; opacity: 0.9;';
             const dtext = decodeHtmlEntities(value.description || '');
             desc.textContent = dtext.substring(0, 120) + (dtext.length > 120 ? '...' : '');
             link.appendChild(desc);
           }
-          
+
           const site = document.createElement('div');
-          site.style.cssText = 'color: var(--bs-secondary-color); font-size: 12px; display: flex; align-items: center; font-weight: 600; margin: 0 16px 4px;';
-          
+          site.style.cssText =
+            'color: var(--bs-secondary-color); font-size: 12px; display: flex; align-items: center; font-weight: 600; margin: 0 16px 4px;';
+
           // favicon 추가
           const favicon = document.createElement('img');
- 
-          if(value.url.includes('dgst.me')) {
+
+          if (value.url.includes('dgst.me')) {
             favicon.src = 'https://www.dgst.me/favicon/favicon-16x16.png';
           } else {
             favicon.src = `https://www.google.com/s2/favicons?domain=${new URL(value.url).hostname}&sz=16`;
@@ -1006,16 +1099,17 @@
             favicon.style.display = 'none';
             site.innerHTML = `🔗 ${value.siteName || new URL(value.url).hostname}`;
           };
-          
+
           site.appendChild(favicon);
           site.appendChild(document.createTextNode(value.siteName || new URL(value.url).hostname));
           link.appendChild(site);
 
           const url = document.createElement('div');
-          url.style.cssText = 'color: var(--bs-primary); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0 16px 10px;';
+          url.style.cssText =
+            'color: var(--bs-primary); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0 16px 10px;';
           url.textContent = `${value.url}`;
           link.appendChild(url);
-          
+
           node.appendChild(link);
           return node;
         }
@@ -1054,7 +1148,7 @@
         isComposing = false;
         // 합성 종료 후 한 번만 동기화 (iOS는 일정 스택이 밀린 뒤 반영)
         if (IS_IOS) {
-          Promise.resolve().then(() => editorData = quillInstance.root.innerHTML);
+          Promise.resolve().then(() => (editorData = quillInstance.root.innerHTML));
         } else {
           editorData = quillInstance.root.innerHTML;
         }
@@ -1064,7 +1158,7 @@
       quillInstance.on('text-change', (_delta, _old, source) => {
         if (isComposing) return;
         if (IS_IOS) {
-          Promise.resolve().then(() => editorData = quillInstance.root.innerHTML);
+          Promise.resolve().then(() => (editorData = quillInstance.root.innerHTML));
         } else {
           editorData = quillInstance.root.innerHTML;
         }
@@ -1075,16 +1169,16 @@
       quillInstance.root.addEventListener('paste', async (e) => {
         console.log('📋 붙여넣기 이벤트 발생!');
         const clipboardData = e.clipboardData || window.clipboardData;
-        
+
         // 클립보드에서 이미지 파일 확인
         if (clipboardData.items && clipboardData.items.length > 0) {
           const items = Array.from(clipboardData.items);
-          const imageItem = items.find(item => item.type.startsWith('image/'));
-          
+          const imageItem = items.find((item) => item.type.startsWith('image/'));
+
           if (imageItem) {
             e.preventDefault();
             console.log('🖼️ 이미지 붙여넣기 감지:', imageItem.type);
-            
+
             const file = imageItem.getAsFile();
             if (file) {
               // uploadAndInsertFiles를 직접 호출하여 파일 선택 창 없이 업로드
@@ -1093,30 +1187,33 @@
             }
           }
         }
-        
+
         // 이미지가 없으면 텍스트 URL 처리
         const pastedText = clipboardData.getData('text');
-        
+
         console.log('📋 붙여넣기 감지:', pastedText);
-        
+
         // URL 패턴 감지
         const urlPattern = /(https?:\/\/[^\s]+)/g;
         const urls = pastedText.match(urlPattern);
-        
+
         console.log('🔍 URL 추출:', urls);
-        
+
         if (urls && urls.length === 1) {
           const url = urls[0].trim();
           console.log('✅ 단일 URL:', url);
-          
+
           // 미디어 플랫폼 URL인지 확인
-          if (url.includes('youtube.com') || url.includes('youtu.be') || 
-              url.includes('instagram.com') || url.includes('tiktok.com') || 
-              url.includes('tv.naver.com')) {
-            
+          if (
+            url.includes('youtube.com') ||
+            url.includes('youtu.be') ||
+            url.includes('instagram.com') ||
+            url.includes('tiktok.com') ||
+            url.includes('tv.naver.com')
+          ) {
             e.preventDefault();
             console.log('🎬 미디어 URL 감지, 자동 임베드:', url);
-            
+
             setTimeout(async () => {
               await autoEmbedMedia(url);
             }, 100);
@@ -1143,30 +1240,30 @@
       (async () => {
         try {
           console.log('FFmpeg 로드 시작 (글쓰기 페이지에서만)...');
-          
+
           const FFmpegModule = await import('@ffmpeg/ffmpeg');
           const UtilModule = await import('@ffmpeg/util');
           FFmpeg = FFmpegModule.FFmpeg;
           fetchFile = UtilModule.fetchFile;
-          
+
           console.log('FFmpeg 클래스 로드 완료, 인스턴스 생성...');
           ffmpeg = new FFmpeg();
-          
+
           // FFmpeg 로그 활성화
           ffmpeg.on('log', ({ message }) => {
             console.log('[FFmpeg]', message);
           });
-          
+
           console.log('FFmpeg 코어 로드 중... (시간이 걸릴 수 있습니다)');
-          
+
           // timeout으로 로드 시간 제한
           const loadPromise = ffmpeg.load();
-          const timeoutPromise = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('FFmpeg load timeout')), 60000) // 60초
+          const timeoutPromise = new Promise(
+            (_, reject) => setTimeout(() => reject(new Error('FFmpeg load timeout')), 60000) // 60초
           );
-          
+
           await Promise.race([loadPromise, timeoutPromise]);
-          
+
           ffmpegReady = true;
           console.log('✅ FFmpeg loaded successfully and ready!');
         } catch (err) {
@@ -1211,6 +1308,21 @@
       }
     }
   });
+
+  // 제목에서 URL 삽입 감지
+  $effect(() => {
+    if (insertUrlFromTitle && quillInstance) {
+      console.log('📝 제목에서 URL 삽입:', insertUrlFromTitle);
+      
+      const url = insertUrlFromTitle;
+      
+      // insertUrlFromTitle 초기화 (먼저 초기화하여 무한 루프 방지)
+      insertUrlFromTitle = null;
+      
+      // 자동 임베드 실행 (URL을 직접 전달)
+      autoEmbedMedia(url);
+    }
+  });
 </script>
 
 <svelte:head>
@@ -1219,8 +1331,13 @@
 
 <main>
   <div bind:this={editorDiv}>
-    <Loader active={loadingImage && isSingleImageUpload && !isCompressing} container={editorDiv} component="Dot" opacity="0.7" />
-    
+    <Loader
+      active={loadingImage && isSingleImageUpload && !isCompressing}
+      container={editorDiv}
+      component="Dot"
+      opacity="0.7"
+    />
+
     {#if isCompressing}
       <div class="compression-overlay">
         <div class="progress-container bg-light">
@@ -1229,13 +1346,14 @@
             비디오 압축 중...
           </h5>
           <div class="progress mb-3" style="height: 30px; background-color: #e9ecef;">
-            <div 
-              class="progress-bar progress-bar-striped progress-bar-animated" 
-              role="progressbar" 
+            <div
+              class="progress-bar progress-bar-striped progress-bar-animated"
+              role="progressbar"
               style="width: {compressionProgress}%; background-color: #28a745;"
-              aria-valuenow={compressionProgress} 
-              aria-valuemin="0" 
-              aria-valuemax="100">
+              aria-valuenow={compressionProgress}
+              aria-valuemin="0"
+              aria-valuemax="100"
+            >
               <strong style="color: white;">{compressionProgress}%</strong>
             </div>
           </div>
@@ -1250,7 +1368,7 @@
             {/if}
           </div>
           <small class="text-secondary">
-            압축이 완료될 때까지 기다려주세요...<br/>
+            압축이 완료될 때까지 기다려주세요...<br />
             (브라우저 탭을 닫지 마세요)
           </small>
         </div>
@@ -1265,23 +1383,24 @@
             이미지 업로드 중...
           </h5>
           <div class="progress mb-3" style="height: 30px; background-color: #e9ecef;">
-            <div 
-              class="progress-bar progress-bar-striped progress-bar-animated" 
-              role="progressbar" 
+            <div
+              class="progress-bar progress-bar-striped progress-bar-animated"
+              role="progressbar"
               style="width: {uploadProgress}%; background-color: #007bff;"
-              aria-valuenow={uploadProgress} 
-              aria-valuemin="0" 
-              aria-valuemax="100">
+              aria-valuenow={uploadProgress}
+              aria-valuemin="0"
+              aria-valuemax="100"
+            >
               <strong style="color: white;">{uploadProgress}%</strong>
             </div>
           </div>
           <div class="text-muted">
             {currentFile}/{totalFiles}
-            </div>
+          </div>
         </div>
       </div>
     {/if}
-    
+
     <div bind:this={editorElement}></div>
   </div>
 </main>
@@ -1327,11 +1446,11 @@
     background-color: #28a745;
     transition: width 0.3s ease;
   }
-  
+
   .progress-bar-animated {
     animation: progress-bar-stripes 1s linear infinite;
   }
-  
+
   @keyframes progress-bar-stripes {
     0% {
       background-position: 1rem 0;
@@ -1340,7 +1459,7 @@
       background-position: 0 0;
     }
   }
-  
+
   .progress-bar-striped {
     background-image: linear-gradient(
       45deg,
@@ -1554,4 +1673,3 @@
     background: #a8a8a8;
   }
 </style>
-

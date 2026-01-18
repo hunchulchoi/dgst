@@ -116,6 +116,8 @@
   let title = $state(data.title || '');
   let content = $state(data.content || '');
   let uploading = $state(0);
+  let isLoadingOG = $state(false); // OG 정보 로딩 중 상태
+  let insertUrlFromTitle = $state(null); // 제목에서 본문으로 이동할 URL
 
   /**
    * URL 붙여넣기 시 제목 업데이트 콜백
@@ -125,6 +127,38 @@
     // 제목이 비어있을 때만 업데이트
     if (!title || title.trim().length === 0) {
       title = newTitle;
+    }
+  }
+
+  /**
+   * OG 로딩 상태 변경 콜백
+   * @param {boolean} loading - 로딩 중 여부
+   */
+  function handleLoadingChange(loading) {
+    isLoadingOG = loading;
+  }
+
+  /**
+   * 제목 입력란에 URL 붙여넣기 처리
+   * @param {ClipboardEvent} event - 붙여넣기 이벤트
+   */
+  function handleTitlePaste(event) {
+    const pastedText = event.clipboardData?.getData('text');
+    
+    if (!pastedText) return;
+    
+    // URL인지 확인 (http:// 또는 https://로 시작)
+    const urlPattern = /^https?:\/\/.+/i;
+    
+    if (urlPattern.test(pastedText.trim())) {
+      // URL인 경우
+      event.preventDefault(); // 기본 붙여넣기 동작 방지
+      
+      // QuillEditor에 URL 삽입 (반응형 변수 업데이트)
+      insertUrlFromTitle = pastedText.trim();
+      
+      // 제목 입력란 비우기
+      title = '';
     }
   }
 
@@ -290,9 +324,26 @@
     >
       <input type="hidden" name="articleId" value={articleId} />
       <FormGroup floating label="제목">
-        <input type="text" id="title" name="title" class="form-control" bind:value={title} required autofocus placeholder=" " />
+        <input 
+          type="text" 
+          id="title" 
+          name="title" 
+          class="form-control" 
+          bind:value={title} 
+          onpaste={handleTitlePaste}
+          required 
+          autofocus 
+          placeholder=" " 
+        />
       </FormGroup>
-      <QuillEditor bind:editorData={content} {uploadPlus} {uploadMinus} onTitleUpdate={handleTitleUpdate} />
+      <QuillEditor 
+        bind:editorData={content} 
+        bind:insertUrlFromTitle={insertUrlFromTitle}
+        {uploadPlus} 
+        {uploadMinus} 
+        onTitleUpdate={handleTitleUpdate}
+        onLoadingChange={handleLoadingChange}
+      />
       <Row class="text-end pe-2 mt-4">
         <Col md="10" xs="8" class="text-end">
           <Button color="warning" onclick={list}>
@@ -301,8 +352,10 @@
           </Button>
         </Col>
         <Col md="2" xs="4">
-          <Button color="primary" role="submit" id="uploadBtn" disabled={uploading > 0}>
+          <Button color="primary" role="submit" id="uploadBtn" disabled={uploading > 0 || isLoadingOG}>
             {#if uploading > 0}
+              <Spinner color="info" size="sm" />
+            {:else if isLoadingOG}
               <Spinner color="info" size="sm" />
             {:else}
               <Icon name="pencil-fill" class="pe-2" />
@@ -311,6 +364,8 @@
           </Button>
           {#if uploading > 0}
             <Tooltip isOpen={uploading > 0} target="uploadBtn">이미지 업로드 중입니다.</Tooltip>
+          {:else if isLoadingOG}
+            <Tooltip isOpen={isLoadingOG} target="uploadBtn">링크 정보를 가져오는 중입니다.</Tooltip>
           {/if}
         </Col>
       </Row>
