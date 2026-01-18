@@ -21,10 +21,10 @@ function youtubeEmbeder(url) {
       const time = _match[2];
 
       const paddingBottom = i === 0 ? '176.6%' : '56.25%';
-      const maxWidth = i === 0 ? '470px' : '560px';
+      const width = i === 0 ? '470px' : '560px';
 
       return (
-        `<div style="max-width: ${maxWidth}">
+        `<div style="max-width: 100%; width: ${width}; margin: 0 auto;">
            <div style="position: relative; width: 100%; height: 0; padding-bottom: ${paddingBottom};">
             <iframe src="https://www.youtube.com/embed/${id}${time ? `?start=${time}` : ''}"
               style="position: absolute; width: 100%; height: 100%; top: 0; left: 0;"
