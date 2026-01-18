@@ -752,39 +752,40 @@
     // YouTube (일반 및 Shorts 및 Embed)
     if (url.includes('youtube.com') || url.includes('youtu.be')) {
       console.log('🎥 YouTube URL 감지');
-      let videoId;
-      // Shorts URL 우선 처리 (?si= 파라미터 포함)
+      let videoId = null;
+      let width = '560';
+      let height = '315';
+      
+      // Shorts URL 우선 처리
       if (url.includes('youtube.com/shorts/') || url.includes('/shorts/')) {
         const match = url.match(/\/shorts\/([\w-]+)/);
         videoId = match ? match[1] : null;
-        console.log('📱 Shorts videoId:', videoId);
-        if (videoId) {
-          embedHtml = `<div style="max-width: 100%; width: 470px; margin: 0 auto;"><div style="position: relative;width:100%;padding-bottom:176.6%;"><iframe src="https://www.youtube.com/embed/${videoId}" style="position: absolute; width: 100%; height: 100%; top: 0; left: 0;" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe></div></div>`;
-        }
+        width = '470';
+        height = '830';
+        console.log('📱 Shorts 감지됨:', videoId, `${width}x${height}`);
       } else if (url.includes('youtube.com/embed/')) {
         const match = url.match(/youtube\.com\/embed\/([\w-]+)/);
         videoId = match ? match[1] : null;
-        console.log('🔗 Embed videoId:', videoId);
-        if (videoId) {
-          embedHtml = `<div style="max-width: 560px"><div style="position: relative;width:100%;padding-bottom:56.25%;"><iframe src="https://www.youtube.com/embed/${videoId}" style="position: absolute; width: 100%; height: 100%; top: 0; left: 0;" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe></div></div>`;
-        }
       } else if (url.includes('youtube.com/watch')) {
         const match = url.match(/[?&]v=([^&]+)/);
         videoId = match ? match[1] : null;
-        console.log('▶️ Watch videoId:', videoId);
-        if (videoId) {
-          embedHtml = `<div style="max-width: 560px"><div style="position: relative;width:100%;padding-bottom:56.25%;"><iframe src="https://www.youtube.com/embed/${videoId}" style="position: absolute; width: 100%; height: 100%; top: 0; left: 0;" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe></div></div>`;
-          console.log('✅ embedHtml 생성됨:', embedHtml.substring(0, 100) + '...');
-        }
       } else if (url.includes('youtu.be/')) {
         const match = url.match(/youtu\.be\/([\w-]+)/);
         videoId = match ? match[1] : null;
-        console.log('📎 Short URL videoId:', videoId);
-        if (videoId) {
-          embedHtml = `<div style="max-width: 560px"><div style="position: relative;width:100%;padding-bottom:56.25%;"><iframe src="https://www.youtube.com/embed/${videoId}" style="position: absolute; width: 100%; height: 100%; top: 0; left: 0;" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe></div></div>`;
-        }
       }
-      console.log('📦 최종 embedHtml:', embedHtml ? 'OK' : 'EMPTY');
+
+      if (videoId) {
+        console.log('✅ YouTube 비디오 삽입:', videoId);
+        quillInstance.insertEmbed(range.index, 'iframe', {
+          src: `https://www.youtube.com/embed/${videoId}`,
+          width: width,
+          height: height
+        });
+        quillInstance.setSelection(range.index + 1);
+        quillInstance.focus();
+        scrollToInsertedContent(range.index + 1);
+        return; // 유튜브 처리 완료 후 종료
+      }
     }
     // Instagram - 원래 임베드 방식으로 복원
     else if (url.includes('instagram.com')) {
@@ -1013,12 +1014,27 @@
       class IFrameBlot extends BlockEmbed {
         static create(value) {
           const node = super.create();
-          node.setAttribute('src', value.src || value);
+          const src = value.src || value;
+          node.setAttribute('src', src);
           node.setAttribute('frameborder', '0');
           node.setAttribute('allowfullscreen', true);
-          node.setAttribute('style', 'max-width: 100%; height: 315px;');
-          if (value.width) node.setAttribute('width', value.width);
-          if (value.height) node.setAttribute('height', value.height);
+
+          // 기본값 설정
+          let width = value.width || '560';
+          let height = value.height || '315';
+
+          // YouTube Shorts 자동 감지 및 크기 설정 (470x830)
+          if (src.includes('youtube.com/shorts/') || src.includes('/shorts/')) {
+            width = '470';
+            height = '830';
+          }
+
+          node.setAttribute('width', width);
+          node.setAttribute('height', height);
+          
+          // 스타일 설정 (고정 높이 제거하고 제공된 크기 사용)
+          node.setAttribute('style', `max-width: 100%; width: ${width}px; height: ${height}px;`);
+          
           return node;
         }
 
