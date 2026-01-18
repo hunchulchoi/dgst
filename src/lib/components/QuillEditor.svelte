@@ -765,14 +765,14 @@
         videoId = match ? match[1] : null;
         console.log('🔗 Embed videoId:', videoId);
         if (videoId) {
-          embedHtml = `<iframe width="560" height="315" src="https://www.youtube.com/embed/${videoId}" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>`;
+          embedHtml = `<div style="max-width: 560px"><div style="position: relative;width:100%;padding-bottom:56.25%;"><iframe src="https://www.youtube.com/embed/${videoId}" style="position: absolute; width: 100%; height: 100%; top: 0; left: 0;" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe></div></div>`;
         }
       } else if (url.includes('youtube.com/watch')) {
         const match = url.match(/[?&]v=([^&]+)/);
         videoId = match ? match[1] : null;
         console.log('▶️ Watch videoId:', videoId);
         if (videoId) {
-          embedHtml = `<iframe width="560" height="315" src="https://www.youtube.com/embed/${videoId}" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>`;
+          embedHtml = `<div style="max-width: 560px"><div style="position: relative;width:100%;padding-bottom:56.25%;"><iframe src="https://www.youtube.com/embed/${videoId}" style="position: absolute; width: 100%; height: 100%; top: 0; left: 0;" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe></div></div>`;
           console.log('✅ embedHtml 생성됨:', embedHtml.substring(0, 100) + '...');
         }
       } else if (url.includes('youtu.be/')) {
@@ -780,7 +780,7 @@
         videoId = match ? match[1] : null;
         console.log('📎 Short URL videoId:', videoId);
         if (videoId) {
-          embedHtml = `<iframe width="560" height="315" src="https://www.youtube.com/embed/${videoId}" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>`;
+          embedHtml = `<div style="max-width: 560px"><div style="position: relative;width:100%;padding-bottom:56.25%;"><iframe src="https://www.youtube.com/embed/${videoId}" style="position: absolute; width: 100%; height: 100%; top: 0; left: 0;" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe></div></div>`;
         }
       }
       console.log('📦 최종 embedHtml:', embedHtml ? 'OK' : 'EMPTY');

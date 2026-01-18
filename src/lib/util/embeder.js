@@ -20,8 +20,8 @@ function youtubeEmbeder(url) {
       const id = _match[1];
       const time = _match[2];
 
-      const paddingBottom = i === 4 ? '176.6%' : '56.2493%';
-      const maxWidth = i === 4 ? '470px' : '320px';
+      const paddingBottom = i === 4 ? '176.6%' : '56.25%';
+      const maxWidth = i === 4 ? '470px' : '560px';
 
       return (
         `<div style="max-width: ${maxWidth}">
