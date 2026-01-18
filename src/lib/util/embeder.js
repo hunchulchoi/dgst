@@ -5,11 +5,11 @@ function youtubeEmbeder(url) {
   url = url.replace('https://', '').replace('http://', '').replace('www.', '');
 
   const youtubeUrls = [
+    /^youtube\.com\/shorts\/([\w-]+)(?:\?si=[\w-]+)?/, // Shorts 우선 처리
     /^(?:m\.)?youtube\.com\/watch\?v=([\w-]+)(?:&t=(\d+))?/,
     /^(?:m\.)?youtube\.com\/v\/([\w-]+)(?:\?t=(\d+))?/,
     /^youtube\.com\/embed\/([\w-]+)(?:\?start=(\d+))?/,
-    /^youtu\.be\/([\w-]+)(?:\?t=(\d+))?/,
-    /^youtube\.com\/shorts\/([\w-]+)(?:\/\?si=([\w-]+))?/
+    /^youtu\.be\/([\w-]+)(?:\?t=(\d+))?/
   ]
 
   for (let i = 0; i < youtubeUrls.length; i++) {
@@ -20,8 +20,8 @@ function youtubeEmbeder(url) {
       const id = _match[1];
       const time = _match[2];
 
-      const paddingBottom = i === 4 ? '176.6%' : '56.25%';
-      const maxWidth = i === 4 ? '470px' : '560px';
+      const paddingBottom = i === 0 ? '176.6%' : '56.25%';
+      const maxWidth = i === 0 ? '470px' : '560px';
 
       return (
         `<div style="max-width: ${maxWidth}">

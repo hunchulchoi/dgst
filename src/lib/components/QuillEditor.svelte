@@ -753,8 +753,9 @@
     if (url.includes('youtube.com') || url.includes('youtu.be')) {
       console.log('🎥 YouTube URL 감지');
       let videoId;
-      if (url.includes('youtube.com/shorts/')) {
-        const match = url.match(/youtube\.com\/shorts\/([\w-]+)/);
+      // Shorts URL 우선 처리 (?si= 파라미터 포함)
+      if (url.includes('youtube.com/shorts/') || url.includes('/shorts/')) {
+        const match = url.match(/\/shorts\/([\w-]+)/);
         videoId = match ? match[1] : null;
         console.log('📱 Shorts videoId:', videoId);
         if (videoId) {
