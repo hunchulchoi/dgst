@@ -9,7 +9,14 @@
   import imageCompression from 'browser-image-compression';
 
   // Svelte 5 Runes - Props
-  let { uploadPlus, uploadMinus, editorData = $bindable(), onTitleUpdate, onLoadingChange, insertUrlFromTitle = $bindable(/** @type {string | null} */ (null)) } = $props();
+  let {
+    uploadPlus,
+    uploadMinus,
+    editorData = $bindable(),
+    onTitleUpdate,
+    onLoadingChange,
+    insertUrlFromTitle = $bindable(/** @type {string | null} */ (null))
+  } = $props();
 
   // 로컬 상태
   /** @type {HTMLDivElement | null} */
@@ -601,7 +608,7 @@
   async function createOGCard(url) {
     try {
       loadingImage = true;
-      
+
       // OG 로딩 시작 알림
       if (onLoadingChange && typeof onLoadingChange === 'function') {
         onLoadingChange(true);
@@ -662,7 +669,7 @@
       scrollToInsertedContent(range.index + url.length + 1);
     } finally {
       loadingImage = false;
-      
+
       // OG 로딩 완료 알림
       if (onLoadingChange && typeof onLoadingChange === 'function') {
         onLoadingChange(false);
@@ -691,7 +698,7 @@
         if (onLoadingChange && typeof onLoadingChange === 'function') {
           onLoadingChange(true);
         }
-        
+
         const response = await fetch('/api/og', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -751,7 +758,7 @@
         videoId = match ? match[1] : null;
         console.log('📱 Shorts videoId:', videoId);
         if (videoId) {
-          embedHtml = `<div style="max-width: 494px"><div style="position: relative;width:100%;padding-bottom:300%;"><iframe src="https://www.youtube.com/embed/${videoId}" style="position: absolute; width: 100%; height: 100%; top: 0; left: 0;" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe></div></div>`;
+          embedHtml = `<div style="max-width: 470px"><div style="position: relative;width:100%;padding-bottom:176.6%;"><iframe src="https://www.youtube.com/embed/${videoId}" style="position: absolute; width: 100%; height: 100%; top: 0; left: 0;" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe></div></div>`;
         }
       } else if (url.includes('youtube.com/embed/')) {
         const match = url.match(/youtube\.com\/embed\/([\w-]+)/);
@@ -1313,12 +1320,12 @@
   $effect(() => {
     if (insertUrlFromTitle && quillInstance) {
       console.log('📝 제목에서 URL 삽입:', insertUrlFromTitle);
-      
+
       const url = insertUrlFromTitle;
-      
+
       // insertUrlFromTitle 초기화 (먼저 초기화하여 무한 루프 방지)
       insertUrlFromTitle = null;
-      
+
       // 자동 임베드 실행 (URL을 직접 전달)
       autoEmbedMedia(url);
     }
