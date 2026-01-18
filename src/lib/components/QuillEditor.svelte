@@ -755,7 +755,7 @@
       let videoId = null;
       let width = '560';
       let height = '315';
-      
+
       // Shorts URL 우선 처리
       if (url.includes('youtube.com/shorts/') || url.includes('/shorts/')) {
         const match = url.match(/\/shorts\/([\w-]+)/);
@@ -937,10 +937,46 @@
             return new Delta();
           }
         ],
-        // iframe 태그 허용
+        // iframe 태그 허용 및 속성 추출
         [
           'iframe',
           (node, delta) => {
+            const src = node.getAttribute('src');
+            if (src) {
+              const width = node.getAttribute('width') || node.style.width;
+              const height = node.getAttribute('height') || node.style.height;
+              
+              return new Delta().insert({
+                iframe: {
+                  src,
+                  width: width ? width.toString().replace('px', '') : null,
+                  height: height ? height.toString().replace('px', '') : null
+                }
+              });
+            }
+            return delta;
+          }
+        ],
+        // div 태그 내의 레거시 유튜브 쇼츠 감지
+        [
+          'div',
+          (node, delta) => {
+            // 구버전 유튜브 쇼츠 래퍼 구조 감지 (width 470px 또는 padding-bottom 176.6%)
+            if (node.style.width === '470px' || node.style.paddingBottom === '176.6%') {
+              const iframe = node.querySelector('iframe');
+              if (iframe) {
+                const src = iframe.getAttribute('src');
+                if (src && (src.includes('youtube.com') || src.includes('youtu.be'))) {
+                  return new Delta().insert({
+                    iframe: {
+                      src,
+                      width: '470',
+                      height: '830'
+                    }
+                  });
+                }
+              }
+            }
             return delta;
           }
         ],
@@ -1014,17 +1050,21 @@
       class IFrameBlot extends BlockEmbed {
         static create(value) {
           const node = super.create();
-          const src = value.src || value;
+          const src = (typeof value === 'string' ? value : value.src) || '';
           node.setAttribute('src', src);
           node.setAttribute('frameborder', '0');
-          node.setAttribute('allowfullscreen', true);
+          node.setAttribute('allowfullscreen', 'true');
 
           // 기본값 설정
-          let width = value.width || '560';
-          let height = value.height || '315';
+          let width = (value.width || '560').toString().replace('px', '');
+          let height = (value.height || '315').toString().replace('px', '');
 
-          // YouTube Shorts 자동 감지 및 크기 설정 (470x830)
-          if (src.includes('youtube.com/shorts/') || src.includes('/shorts/')) {
+          // YouTube Shorts 자동 감지 (URL에 shorts가 있거나 세로 비율인 경우)
+          const isShorts = src.includes('youtube.com/shorts/') || 
+                          src.includes('/shorts/') || 
+                          (parseInt(height) > parseInt(width));
+
+          if (isShorts && (src.includes('youtube.com') || src.includes('youtu.be'))) {
             width = '470';
             height = '830';
           }
@@ -1032,8 +1072,8 @@
           node.setAttribute('width', width);
           node.setAttribute('height', height);
           
-          // 스타일 설정 (고정 높이 제거하고 제공된 크기 사용)
-          node.setAttribute('style', `max-width: 100%; width: ${width}px; height: ${height}px;`);
+          // 스타일 설정 (px 중복 방지를 위해 이미 제거함)
+          node.setAttribute('style', `max-width: 100%; width: ${width}px; height: ${height}px; display: block; margin: 0 auto;`);
           
           return node;
         }
@@ -1158,8 +1198,8 @@
 
       // 초기 데이터 설정
       if (editorData) {
-        quillInstance.root.innerHTML = editorData;
-        console.log('✅ 초기 데이터 설정됨');
+        quillInstance.clipboard.dangerouslyPasteHTML(0, editorData);
+        console.log('✅ 초기 데이터 설정됨 (dangerouslyPasteHTML)');
       } else {
         editorData = '';
       }
@@ -1326,7 +1366,10 @@
   $effect(() => {
     if (quillInstance && editorData !== quillInstance.root.innerHTML) {
       const currentSelection = quillInstance.getSelection();
-      quillInstance.root.innerHTML = editorData;
+      // dangerouslyPasteHTML을 사용하여 매처가 작동하도록 함
+      quillInstance.setContents([]);
+      quillInstance.clipboard.dangerouslyPasteHTML(0, editorData);
+      
       if (currentSelection) {
         quillInstance.setSelection(currentSelection);
       }
