@@ -59,6 +59,18 @@ export function viewComment(comment) {
       'a': ['href', 'target', 'rel'],
       'img': ['src', 'alt', 'width', 'height', 'style'],
       'span': ['style']
+    },
+    allowedStyles: {
+      '*': {
+        'aspect-ratio': [/.*/],
+        'width': [/.*/],
+        'height': [/.*/],
+        'max-width': [/.*/],
+        'margin': [/.*/],
+        'display': [/.*/],
+        'position': [/.*/],
+        'padding-bottom': [/.*/]
+      }
     }
   });
 

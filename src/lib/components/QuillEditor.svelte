@@ -945,7 +945,7 @@
             if (src) {
               const width = node.getAttribute('width') || node.style.width;
               const height = node.getAttribute('height') || node.style.height;
-              
+
               return new Delta().insert({
                 iframe: {
                   src,
@@ -1060,9 +1060,10 @@
           let height = (value.height || '315').toString().replace('px', '');
 
           // YouTube Shorts 자동 감지 (URL에 shorts가 있거나 세로 비율인 경우)
-          const isShorts = src.includes('youtube.com/shorts/') || 
-                          src.includes('/shorts/') || 
-                          (parseInt(height) > parseInt(width));
+          const isShorts =
+            src.includes('youtube.com/shorts/') ||
+            src.includes('/shorts/') ||
+            parseInt(height) > parseInt(width);
 
           if (isShorts && (src.includes('youtube.com') || src.includes('youtu.be'))) {
             width = '470';
@@ -1071,10 +1072,14 @@
 
           node.setAttribute('width', width);
           node.setAttribute('height', height);
-          
+
           // 스타일 설정 (px 중복 방지를 위해 이미 제거함)
-          node.setAttribute('style', `max-width: 100%; width: ${width}px; height: ${height}px; display: block; margin: 0 auto;`);
-          
+          // aspect-ratio를 사용하여 모바일에서 너비가 줄어들 때 높이도 비례해서 줄어들도록 설정
+          node.setAttribute(
+            'style',
+            `max-width: 100%; width: ${width}px; aspect-ratio: ${width} / ${height}; height: auto; display: block; margin: 0 auto; border: none; padding: 0;`
+          );
+
           return node;
         }
 
@@ -1369,7 +1374,7 @@
       // dangerouslyPasteHTML을 사용하여 매처가 작동하도록 함
       quillInstance.setContents([]);
       quillInstance.clipboard.dangerouslyPasteHTML(0, editorData);
-      
+
       if (currentSelection) {
         quillInstance.setSelection(currentSelection);
       }

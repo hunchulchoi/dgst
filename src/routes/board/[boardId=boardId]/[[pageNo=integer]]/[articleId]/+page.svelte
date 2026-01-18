@@ -813,6 +813,24 @@
         'img': ['src', 'alt', 'width', 'height', 'style'],
         'div': ['class', 'style', 'position'],
         'span': ['style']
+      },
+      allowedStyles: {
+        '*': {
+          'text-align': [/^left$/, /^right$/, /^center$/, /^justify$/],
+          'color': [/^#(?:[0-9a-fA-F]{3,4}){1,2}$/, /^rgb\(/, /^rgba\(/, /^hsl\(/, /^hsla\(/, /^[a-z]+$/],
+          'background-color': [/^#(?:[0-9a-fA-F]{3,4}){1,2}$/, /^rgb\(/, /^rgba\(/, /^hsl\(/, /^hsla\(/, /^[a-z]+$/],
+          'font-size': [/^\d+(?:px|em|rem|%)$/],
+          'width': [/^\d+(?:px|em|rem|%)$/],
+          'height': [/^\d+(?:px|em|rem|%)$/],
+          'max-width': [/^\d+(?:px|em|rem|%)$/],
+          'aspect-ratio': [/.*/],
+          'margin': [/.*/],
+          'display': [/.*/],
+          'position': [/.*/],
+          'top': [/.*/],
+          'left': [/.*/],
+          'padding-bottom': [/.*/]
+        }
       }
     });
   }
