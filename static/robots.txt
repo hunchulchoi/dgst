@@ -1,3 +1,6 @@
+# https://www.robotstxt.org/robotstxt.html
 User-agent: *
-Disallow: /
-Allow: /index
+Allow: /
+
+# API 및 내부 경로 크롤링 제한 (필요시 경로 추가)
+Disallow: /api/

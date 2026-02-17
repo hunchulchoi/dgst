@@ -30,7 +30,7 @@ if (!hasKakaoCredentials) {
 import { MongoDBAdapter } from '@auth/mongodb-adapter';
 import clientPromise from '$lib/database/clientPromise.js';
 import crypto from 'crypto';
-import { error } from '@sveltejs/kit';
+import { error, redirect } from '@sveltejs/kit';
 import logger from '$lib/util/logger';
 
 const cache = new Map();
@@ -392,6 +392,11 @@ export async function handle({ event, resolve }) {
   const startTime = Date.now();
   const { pathname } = event.url;
 
+  // 브라우저가 /apple-touch-icon.png 로 요청하는 경우 favicon으로 리다이렉트
+  if (pathname === '/apple-touch-icon.png') {
+    return redirect(302, '/favicon/apple-icon-180x180.png');
+  }
+
   if (pathname.startsWith('/images/')) {
     depends('image-cache');
   }
@@ -428,6 +433,7 @@ export function handleError({ event, error }) {
   try {
     // apple-touch-icon 등 정상적인 404 요청은 로그하지 않음
     const pathname = event.url?.pathname || '';
+    /*
     if (
       pathname.includes('apple-touch-icon') ||
       pathname.includes('favicon') ||
@@ -435,17 +441,26 @@ export function handleError({ event, error }) {
     ) {
       return;
     }
+    */
 
+    const status = error?.status ?? 500;
     const clientIp = event.getClientAddress ? event.getClientAddress() : 'unknown';
+    const userAgent = event.request?.headers?.get?.('user-agent') ?? '';
+    const loggedAt = new Date().toISOString();
+    const causeMessage =
+      error?.cause instanceof Error ? error.cause.message : error?.cause != null ? String(error.cause) : undefined;
+    const message = causeMessage ?? error?.message ?? 'Unhandled server error';
+
     logger.error({
-      message: 'Unhandled server error',
+      loggedAt,
+      message,
       pathname,
       method: event.request?.method,
-      status: error?.status ?? 500,
+      status,
       name: error?.name,
-      error: error?.message,
-      stack: error?.stack,
-      clientIp
+      ...(status !== 404 && { stack: error?.stack }),
+      clientIp,
+      userAgent,
     });
   } catch (e) {
     console.error('Failed to log error', e);
