@@ -21,8 +21,7 @@ export const load = async (event) => {
   // 캐시 방지는 hooks.server.js에서 처리
   let alarmCount = null; // 초기값을 null로 설정하여 로딩 상태 표시
 
-  // 내용이 없는 알람 삭제
-  await Alarm.deleteMany({ comments: { $exists: true, $eq: [] } })
+  // 빈 알림 삭제는 /api/cron/cleanup-empty-alarms 배치로 이전됨
 
   // 알림이 있는 지 확인
   if (session?.user?.nickname) {

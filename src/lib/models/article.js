@@ -11,11 +11,11 @@ export const articleSchema = new Schema(
         title: { type: String, trim: true, required: true },
         content: { type: String, trim: true, required: true },
         state: { type: String, default: 'write' },
-        reads: [{ type: String, unique: true }],
-        likes: [{ type: String, unique: true }],
-        unlikes: [{ type: String, unique: true }],
+        reads: [{ type: String }],
+        likes: [{ type: String }],
+        unlikes: [{ type: String }],
         modified_email: { type: String },
-        comments: [{ type: Schema.Types.ObjectId, ref: 'comment', unique: true }]
+        comments: [{ type: Schema.Types.ObjectId, ref: 'comment' }]
     },
     {
         toObject: { virtuals: true },
@@ -42,5 +42,7 @@ export const articleSchema = new Schema(
 );
 
 articleSchema.index({ email: -1, createdAt: -1 });
+// 목록 조회: boardId, state, createdAt 조건·정렬 (COLLSCAN 방지)
+articleSchema.index({ boardId: 1, state: 1, createdAt: -1 });
 
 export const Article = models.article || model('article', articleSchema);

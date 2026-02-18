@@ -30,4 +30,7 @@ export const alarmSchema = new Schema(
   }
 );
 
+// 알림 목록: email + updatedAt 조건·정렬
+alarmSchema.index({ email: 1, updatedAt: -1 });
+
 export const Alarm = models.alarm || model('alarm', alarmSchema);
