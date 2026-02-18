@@ -486,12 +486,28 @@ export async function handle({ event, resolve }) {
         const ip =
           (rawIp ? String(rawIp).split(',')[0].trim() : '') || event.getClientAddress?.() || 'unknown';
         const userAgent = event.request?.headers?.get?.('user-agent') ?? '';
-        const deviceId = event.cookies.get(DEVICE_COOKIE_NAME) ?? '';
+
+        let userId = null;
+        try {
+          const prefix = `${AUTH_SESSION_COOKIE_NAME}=`;
+          const cookieStr = Array.from(setCookies).find(
+            (c) => typeof c === 'string' && c.startsWith(prefix)
+          );
+          if (cookieStr) {
+            const sessionToken = cookieStr.slice(prefix.length).split(';')[0].trim();
+            const adapter = getHybridAdapter(DB_NAME);
+            const sessionAndUser = await adapter.getSessionAndUser?.(sessionToken);
+            if (sessionAndUser?.user?.id) userId = sessionAndUser.user.id;
+          }
+        } catch (e) {
+          logger.warn({ message: 'login_logs: getSessionAndUser failed', error: e?.message });
+        }
 
         const client = await clientPromise;
         const db = client.db(DB_NAME);
         await db.collection('login_logs').insertOne({
           at: new Date(),
+          userId,
           ip,
           deviceId,
           userAgent,

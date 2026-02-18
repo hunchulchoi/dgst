@@ -291,7 +291,9 @@
       spinResolved = true;
       balance = nextBalance;
       message = nextMessage;
-      
+      // 스핀 후 랭킹 실시간 반영
+      loadRank();
+
       // Triple 체크 (3개 모두 같음)
       const isTriple = nextReels[0] === nextReels[1] && nextReels[1] === nextReels[2];
       const reelStr = `${nextReels[0]} ${nextReels[1]} ${nextReels[2]}`;
