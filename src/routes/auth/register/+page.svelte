@@ -25,6 +25,7 @@
   import { browser } from '$app/environment';
   import imageCompression from 'browser-image-compression';
   import Swal from 'sweetalert2';
+  import { isNicknameAllowed } from '$lib/util/nickname.js';
 
   // Svelte 5 Runes  
   let { data } = $props();
@@ -82,8 +83,8 @@
 
     if(files){
 
-      if(files[0].type.endsWith('.gif') || files[0].type.endsWith('.webp')){
-
+      // 움짤(GIF)·WebP는 압축 없이 원본 전송 (프로필 움짤 지원)
+      if (files[0].type === 'image/gif' || files[0].type === 'image/webp') {
         formData.append('photo', files[0]);
 
       }else{
@@ -157,7 +158,7 @@
   const changeHandler = async (target) => {
     switch (target.id) {
       case 'nickname':
-        invalids.nickname = !/^.{2,15}$/.test(target.value);
+        invalids.nickname = !/^.{2,15}$/.test(target.value) || !isNicknameAllowed(target.value);
 
         if (!invalids.nickname) {
           fetch(`/auth/register/${target.value}`).then((res) => {

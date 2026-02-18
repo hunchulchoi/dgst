@@ -138,12 +138,28 @@ export const load = async ({ params, locals }) => {
       (insta ? '<i class="bi bi-instagram text-warning px-2"></i>' : '');
   });
 
+  // 카카오톡 등 크롤러용 OG 메타 (SSR에서 안전하게 생성, HTML 제거·길이 제한)
+  /** @param {string | null | undefined} str @param {number} [maxLen=200] */
+  const safeText = (str, maxLen = 200) => {
+    if (str == null) return '';
+    const s = String(str).replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
+    return s.length > maxLen ? s.slice(0, maxLen) : s;
+  };
+  const ogTitle = `${safeText(articleJson.title, 60)} - ${safeText(articleJson.nickname, 30)}`;
+  const ogDescription = safeText(articleJson.content, 200) || `${articleJson.nickname}의 글`;
+  const ogUrl = `https://www.dgst.me/board/${params.boardId}/${params.articleId}`;
+  const ogImage = 'https://www.dgst.me/logo/twitter_header_photo_2.png';
+
   return {
     article: articleJson,
     photo: author.photo || '/icons/unknown-person-icon-4.jpg',
     introduction: author.introduction,
     insta,
     alarmCount,
-    pageNo, maxPage, startNo, endNo, articles: jsonArticles
+    pageNo, maxPage, startNo, endNo, articles: jsonArticles,
+    ogTitle,
+    ogDescription,
+    ogUrl,
+    ogImage
   };
 };

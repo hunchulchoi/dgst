@@ -1,7 +1,9 @@
 import connectDB from '$lib/database/mongoosePriomise.js';
 import { error, json } from '@sveltejs/kit';
 import { GameScore } from '$lib/models/gameScore.js';
+import { SlotUserBalance } from '$lib/models/slotUserBalance.js';
 import { getTodaySlotStats } from '$lib/server/slotStats.js';
+import { updateSlotUserBalance, getSlotBalance, ensureSlotUserBalanceFilled } from '$lib/server/slotUserBalance.js';
 
 /**
  * @typedef {import('mongoose').Types.ObjectId} ObjectId
@@ -74,11 +76,12 @@ function calcPayout(reels, bet) {
  * @param {string} email
  * @returns {Promise<number>}
  */
+/**
+ * @param {string} email
+ * @returns {Promise<number>}
+ */
 async function getBalance(email) {
-  const last = /** @type {(LeanGameScore | null)} */ (
-    await GameScore.findOne({ email }).sort({ createdAt: -1 }).select({ balance: 1 }).lean()
-  );
-  return last?.balance ?? 0;
+  return getSlotBalance(email);
 }
 
 // 잔액 0 상태가 5분 이상이면 700점 보충 (지연 지급)
@@ -137,6 +140,7 @@ async function maybeTopupAfterOOPS(email, nickname) {
         reels: ['-', '-', '-']
       })
     );
+    await updateSlotUserBalance(email, nickname, 700, { incSpin: false });
     return doc.balance;
   }
   return 0;
@@ -176,6 +180,7 @@ export async function POST({ request, locals }) {
       balance: 1000,
       reels: ['-', '-', '-']
     });
+    await updateSlotUserBalance(email, nickname, 1000, { incSpin: false });
     return json({ success: false, balance: 1000, message: '첫 1000점 지급! 다시 베팅해 주세요.' });
   }
   // 기록은 있지만 잔액 0인 경우: 5분 경과 시 100점 보충, 미경과 시 안내
@@ -206,6 +211,7 @@ export async function POST({ request, locals }) {
       reels,
     })
   );
+  await updateSlotUserBalance(email, nickname, balanceAfter, { incSpin: true });
   const extraMsg = balanceAfter === 0 ? '오링! 😵' : undefined;
   return json({ success: true, reels, payout, delta, balance: balanceAfter, id: docSpin._id, message: extraMsg });
 }
@@ -229,6 +235,7 @@ export async function GET({ locals, url }) {
       game: 'slot',
       bet: 0, payout: 0, delta: 0, balance: 1000, reels: ['-', '-', '-']
     });
+    await updateSlotUserBalance(email, nickname, 1000, { incSpin: false });
     balance = 1000;
   }
   let oopsInfo = null;
@@ -280,23 +287,20 @@ export async function GET({ locals, url }) {
   const todayStats = await getTodaySlotStats();
 
   if (url.searchParams.get('rank')) {
-    // 랭킹 처리: 각 user의 가장 최근 balance, 상위 10명
-    // (email: 1, createdAt: -1) 인덱스 활용: email별 정렬 후 $group $first로 COLLSCAN 방지
-    const balances = await GameScore.aggregate([
-      { $sort: { email: 1, createdAt: -1 } },
-      {
-        $group: {
-          _id: '$email',
-          nickname: { $first: '$nickname' },
-          balance: { $first: '$balance' },
-          totalSpin: { $sum: { $cond: [{ $gt: ['$bet', 0] }, 1, 0] } }
-        }
-      },
-      { $match: { totalSpin: { $gt: 0 } } },
-      { $sort: { balance: -1 } },
-      { $limit: 10 }
-    ]);
-    return json({ balance, rank: balances, oopsInfo, todayStats });
+    // slot_user_balance가 비어 있으면 기존 game_scores 기준으로 1회 자동 백필
+    await ensureSlotUserBalanceFilled();
+    const balances = await SlotUserBalance.find({ totalSpin: { $gt: 0 } })
+      .sort({ balance: -1 })
+      .limit(10)
+      .select({ email: 1, nickname: 1, balance: 1, totalSpin: 1 })
+      .lean();
+    const rank = balances.map((r) => ({
+      _id: r.email,
+      nickname: r.nickname,
+      balance: r.balance,
+      totalSpin: r.totalSpin ?? 0
+    }));
+    return json({ balance, rank, oopsInfo, todayStats });
   }
   return json({ balance, oopsInfo, todayStats });
 }

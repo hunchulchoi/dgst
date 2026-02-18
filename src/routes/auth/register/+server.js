@@ -1,8 +1,8 @@
 import { error, json } from '@sveltejs/kit';
 import connectDB from '$lib/database/mongoosePriomise.js';
 import { write } from '$lib/util/fileUpload.js';
-
 import { User } from '$lib/models/user.js';
+import { isNicknameAllowed } from '$lib/util/nickname.js';
 
 connectDB();
 
@@ -33,13 +33,18 @@ export async function PATCH({ request, locals }) {
     if (!storeFileName) return new Response('파일 저장에 실패 하였습니다.', { status: 500 });
   }
 
+  const nicknameRaw = String(formData.get('nickname') ?? '');
+  if (!isNicknameAllowed(nicknameRaw)) {
+    throw error(400, { message: '닉네임에 사용할 수 없는 문자가 포함되어 있습니다.' });
+  }
+
   const filter = {
     email: session.user.email,
     state: 'signup'
   };
 
   const update = {
-    nickname: formData.get('nickname'),
+    nickname: nicknameRaw,
     introduction: formData.get('introduction'),
     photo: storeFileName,
     state: 'registered',

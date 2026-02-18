@@ -15,7 +15,9 @@ export const gameScoreSchema = new Schema(
   { timestamps: true }
 );
 
-// 집계/통계: game, bet, createdAt 조건 (slotStats 등)
+// 집계/통계: 오늘 스핀 수·유저 수 (slotStats, KST 오늘 기준)
+gameScoreSchema.index({ game: 1, createdAt: -1 });
+// 집계: game + bet 조건
 gameScoreSchema.index({ game: 1, bet: 1, createdAt: -1 });
 // 최근 기록 조회: email + createdAt 정렬
 gameScoreSchema.index({ email: 1, createdAt: -1 });

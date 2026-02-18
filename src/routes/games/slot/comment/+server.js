@@ -5,6 +5,7 @@ import { Alarm } from '$lib/models/alarm.js';
 import { GameScore } from '$lib/models/gameScore.js';
 import convertToTree from '$lib/util/tree.js';
 import { checkAndLogSessionDevice } from '$lib/server/auth/checkSessionDevice.js';
+import { updateSlotUserBalance } from '$lib/server/slotUserBalance.js';
 
 connectDB();
 
@@ -234,6 +235,7 @@ export async function POST(event) {
     if (todayRewardCount < 10) {
       const lastScore = await GameScore.findOne({ email }).sort({ createdAt: -1 }).lean();
       const currentBalance = lastScore?.balance ?? 0;
+      const newBalance = currentBalance + 100;
       await GameScore.create({
         email,
         nickname,
@@ -241,9 +243,10 @@ export async function POST(event) {
         bet: 0,
         payout: 100,
         delta: 100,
-        balance: currentBalance + 100,
+        balance: newBalance,
         reels: ['-', '-', '-']
       });
+      await updateSlotUserBalance(email, nickname, newBalance, { incSpin: false });
       rewardGiven = true;
     }
 

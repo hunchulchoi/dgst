@@ -80,12 +80,12 @@
   <meta property="og:image" content="https://www.dgst.me/logo/twitter_header_photo_2.png" />
   <meta property="og:site_name" content="dgst.me" />
   
-  <!-- Twitter -->
-  <meta property="twitter:card" content="summary_large_image" />
-  <meta property="twitter:url" content="https://www.dgst.me/board/{boardId}{pageNo ? `/${pageNo}` : ''}" />
-  <meta property="twitter:title" content={pageTitle} />
-  <meta property="twitter:description" content={`${boardName}에서 최신 게시글을 확인하세요. ${data.articles?.length || 0}개의 게시글이 있습니다.`} />
-  <meta property="twitter:image" content="https://www.dgst.me/logo/twitter_header_photo_2.png" />
+  <!-- Twitter (name 사용이 스펙에 맞음) -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:url" content="https://www.dgst.me/board/{boardId}{pageNo ? `/${pageNo}` : ''}" />
+  <meta name="twitter:title" content={pageTitle} />
+  <meta name="twitter:description" content={`${boardName}에서 최신 게시글을 확인하세요. ${data.articles?.length || 0}개의 게시글이 있습니다.`} />
+  <meta name="twitter:image" content="https://www.dgst.me/logo/twitter_header_photo_2.png" />
 </svelte:head>
 
 <main class="container my-md-2" style="min-height: 50vh">

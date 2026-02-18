@@ -1,8 +1,9 @@
 import { error, json } from '@sveltejs/kit';
 import connectDB from '$lib/database/mongoosePriomise.js';
 import { write } from '$lib/util/fileUpload.js';
-
+import { invalidateUser } from '$lib/server/auth/userCache.js';
 import { User } from '$lib/models/user.js';
+import { isNicknameAllowed } from '$lib/util/nickname.js';
 
 connectDB();
 
@@ -69,11 +70,16 @@ export async function PATCH({ request, locals }) {
       state: { $ne: 'banned' }
     };
 
+    const nicknameRaw = String(formData.get('nickname') || '');
+    if (!isNicknameAllowed(nicknameRaw)) {
+      throw error(400, { message: '닉네임에 사용할 수 없는 문자가 포함되어 있습니다.' });
+    }
+
     /**
      * @type {{ nickname: string; introduction: string; state: string; last_modified: Date; photo?: string }}
      */
     const update = {
-      nickname: String(formData.get('nickname') || ''),
+      nickname: nicknameRaw,
       introduction: String(formData.get('introduction') || ''),
       state: 'registered',
       last_modified: new Date()
@@ -93,6 +99,8 @@ export async function PATCH({ request, locals }) {
       if (!registeredUser) {
         throw error(404, { message: '사용자를 찾을 수 없습니다.' });
       }
+
+      await invalidateUser(registeredUser._id?.toString?.() ?? String(registeredUser._id));
 
       // session은 직접 수정하지 않고 응답만 반환
       // 클라이언트에서 다시 로그인하도록 안내

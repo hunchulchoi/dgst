@@ -27,10 +27,12 @@ console.log('카카오 환경 변수 확인:', {
 if (!hasKakaoCredentials) {
   console.warn('⚠️ 카카오 로그인 비활성화: KAKAO_CLIENT_ID 또는 KAKAO_CLIENT_SECRET이 설정되지 않았습니다.');
 }
-import { MongoDBAdapter } from '@auth/mongodb-adapter';
 import clientPromise from '$lib/database/clientPromise.js';
+import { getHybridAdapter } from '$lib/server/auth/hybridAdapter.js';
+import { checkAuthRateLimit } from '$lib/server/auth/rateLimit.js';
+import * as redis from '$lib/server/redis/client.js';
 import crypto from 'crypto';
-import { error, redirect } from '@sveltejs/kit';
+import { error, redirect, json } from '@sveltejs/kit';
 import logger from '$lib/util/logger';
 
 const cache = new Map();
@@ -162,22 +164,20 @@ function KakaoProvider(options) {
     },
     profile(profile) {
       const kakaoAccount = profile.kakao_account || {};
-      // 이메일이나 닉네임 동의 없이도 기본 정보만으로 로그인 가능
-      // 카카오 ID를 이메일 대신 사용 (해시 처리)
       const kakaoId = String(profile.id);
       const emailHash = crypto.createHash('sha512').update(`kakao:${kakaoId}`).digest('base64url');
 
+      // 사용자 정보에 필요한 필드만 저장
       return {
         id: kakaoId,
         email: kakaoAccount?.email ? crypto.createHash('sha512').update(kakaoAccount.email).digest('base64url') : emailHash,
         nickname: kakaoAccount?.profile?.nickname || kakaoAccount?.name || `카카오${kakaoId.slice(-4)}`,
         introduction: '우리 자기',
-        photo: kakaoAccount?.profile?.profile_image_url || kakaoAccount?.profile?.thumbnail_image_url,
-        grade: 'user',
+        photo: (kakaoAccount?.profile?.profile_image_url || kakaoAccount?.profile?.thumbnail_image_url) ?? null,
+        emailVerified: true,
         state: 'registered',
-        created_at: new Date(),
-        latest_login_at: new Date(),
-        latest_modified_at: new Date()
+        grade: 'user',
+        last_modified: new Date()
       };
     }
   };
@@ -202,17 +202,17 @@ const providers = [
     clientId: GOOGLE_CLIENT_ID,
     clientSecret: GOOGLE_CLIENT_SECRET,
     profile(profile) {
+      // 사용자 정보에 필요한 필드만 저장 (name/image 등 불필요한 값 제외)
       return {
         id: profile.sub,
         email: crypto.createHash('sha512').update(profile.email).digest('base64url'),
-        nickname: profile.name,
+        nickname: profile.name ?? '',
         introduction: '우리 자기',
-        photo: profile.image,
-        grade: 'user',
+        photo: profile.picture ?? profile.image ?? null,
+        emailVerified: profile.email_verified ?? true,
         state: 'registered',
-        created_at: new Date(),
-        latest_login_at: new Date(),
-        latest_modified_at: new Date()
+        grade: 'user',
+        last_modified: new Date()
       };
     }
   }),
@@ -293,20 +293,11 @@ console.log('카카오 프로바이더 포함 여부:', providers.some(p => p.id
 
 export const { handle: authHandle, signIn, signOut } = SvelteKitAuth({
   providers,
-  adapter: MongoDBAdapter(clientPromise, { databaseName: DB_NAME }),
+  adapter: getHybridAdapter(DB_NAME),
   pages: {
     newUser: '/auth/profile'
   },
   callbacks: {
-    jwt(params) {
-      if (params.user) {
-        params.token.nickname = params.user.nickname;
-        params.token.introduction = params.user.introduction;
-        params.token.photo = params.user.photo;
-      }
-
-      return params.token;
-    },
     async signIn(params) {
       console.debug('=======auth callback signIn====');
       console.debug('params', params);
@@ -336,12 +327,11 @@ export const { handle: authHandle, signIn, signOut } = SvelteKitAuth({
       return false;
     },
     async session(params) {
-      if (params.token.nickname) {
-        params.session.user.nickname = params.token.nickname;
-        params.session.user.introduce = params.token.introduce;
-        params.session.user.photo = params.token.photo;
+      if (params.user) {
+        params.session.user.nickname = params.user.nickname ?? params.session.user.nickname;
+        params.session.user.introduce = params.user.introduce ?? params.session.user.introduce;
+        params.session.user.photo = params.user.photo ?? params.session.user.photo;
       }
-
       return params.session;
     },
     async updateUser(params) {
@@ -380,17 +370,62 @@ export const { handle: authHandle, signIn, signOut } = SvelteKitAuth({
     }
   },
   session: {
-    strategy: 'jwt'
+    strategy: 'database',
+    maxAge: 30 * 24 * 60 * 60,
+    updateAge: 24 * 60 * 60
+  },
+  cookies: {
+    sessionToken: {
+      name: NODE_ENV === 'production' ? '__Secure-authjs.session-token' : 'authjs.session-token',
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: NODE_ENV === 'production'
+      }
+    }
   },
   secret: NEXTAUTH_SECRET,
-  trustHost: true, // 프로덕션 환경에서 호스트 신뢰
+  trustHost: true,
   debug: false
 });
+
+const DEVICE_COOKIE_NAME = 'dgst_device';
+const DEVICE_COOKIE_MAX_AGE_DAYS = 365;
+const DEVICE_REDIS_TTL_SECONDS = DEVICE_COOKIE_MAX_AGE_DAYS * 24 * 60 * 60;
+const AUTH_SESSION_COOKIE_NAME =
+  NODE_ENV === 'production' ? '__Secure-authjs.session-token' : 'authjs.session-token';
 
 // 우리의 handle 함수 (Auth 핸들러와 함께 사용)
 export async function handle({ event, resolve }) {
   const startTime = Date.now();
   const { pathname } = event.url;
+
+  // 기기 식별용 UUID 쿠키 (없으면 생성 후 설정)
+  let deviceId = event.cookies.get(DEVICE_COOKIE_NAME);
+  if (!deviceId) {
+    deviceId = crypto.randomUUID();
+    event.cookies.set(DEVICE_COOKIE_NAME, deviceId, {
+      path: '/',
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: NODE_ENV === 'production',
+      maxAge: DEVICE_COOKIE_MAX_AGE_DAYS * 24 * 60 * 60
+    });
+  }
+  // cookie.get()은 string을 반환하므로 안전하게 문자열로 고정
+  deviceId = String(deviceId);
+
+  // 기기 ID Redis 저장 (마지막 접속 시각, Redis 미사용 시 무시)
+  try {
+    await redis.setJson(
+      `device:${deviceId}`,
+      { lastSeen: new Date().toISOString() },
+      DEVICE_REDIS_TTL_SECONDS
+    );
+  } catch {
+    // Redis 실패해도 요청은 계속 진행
+  }
 
   // 브라우저/클라이언트가 요청하는 아이콘 경로 → favicon으로 리다이렉트
   const faviconRedirects = [
@@ -406,6 +441,13 @@ export async function handle({ event, resolve }) {
 
   if (pathname.startsWith('/images/')) {
     depends('image-cache');
+  }
+
+  if (pathname.startsWith('/auth/') && event.request.method === 'POST') {
+    const allowed = await checkAuthRateLimit(event);
+    if (!allowed) {
+      return json({ error: 'Too Many Requests' }, { status: 429 });
+    }
   }
 
   logger.info(`📥 요청 시작: ${pathname} - ${new Date().toLocaleString()}`);
@@ -424,6 +466,47 @@ export async function handle({ event, resolve }) {
 
   // Auth 핸들러를 먼저 실행
   const authResponse = await authHandle({ event, resolve: customResolve });
+
+  // 로그인 성공 시(세션 쿠키 설정) login_logs 기록 (실패해도 인증 흐름 방해 금지)
+  try {
+    if (pathname.startsWith('/auth/callback/')) {
+      const setCookies =
+        authResponse?.headers?.getSetCookie?.() ??
+        (authResponse?.headers?.get?.('set-cookie') ? [authResponse.headers.get('set-cookie')] : []);
+
+      const didSetSessionCookie = Array.from(setCookies).some((c) =>
+        typeof c === 'string' ? c.includes(`${AUTH_SESSION_COOKIE_NAME}=`) : false
+      );
+
+      if (didSetSessionCookie) {
+        const rawIp =
+          event.request?.headers?.get?.('x-forwarded-for') ||
+          event.request?.headers?.get?.('x-real-ip') ||
+          '';
+        const ip =
+          (rawIp ? String(rawIp).split(',')[0].trim() : '') || event.getClientAddress?.() || 'unknown';
+        const userAgent = event.request?.headers?.get?.('user-agent') ?? '';
+        const deviceId = event.cookies.get(DEVICE_COOKIE_NAME) ?? '';
+
+        const client = await clientPromise;
+        const db = client.db(DB_NAME);
+        await db.collection('login_logs').insertOne({
+          at: new Date(),
+          ip,
+          deviceId,
+          userAgent,
+          provider: pathname.split('/').pop(),
+          path: pathname
+        });
+      }
+    }
+  } catch (e) {
+    logger.warn({
+      message: 'Failed to write login log',
+      error: e?.message ?? String(e),
+      pathname
+    });
+  }
 
   const endTime = Date.now();
   const executionTime = endTime - startTime;

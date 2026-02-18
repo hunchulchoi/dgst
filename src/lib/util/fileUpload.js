@@ -81,12 +81,12 @@ export async function write(file, email, preservePath = 'jjal') {
         message: 'fileUpload.write - image file received'
       });
 
-      // 모든 이미지는 jjal 경로에 저장 (댓글 이미지 포함)
-      // 이미지는 1MB 이상일 때 리사이즈
-      // 클라이언트에서 이미 WebP로 변환된 파일도 서버에서 크기가 1MB 이상이면 다시 변환
-      const isCommentImage = false; // 댓글 이미지도 jjal 경로에 저장하므로 항상 false
+      // 프로필 움짤(GIF): 변환하지 않고 원본 유지
+      const isProfileGif = preservePath === 'profiles' && (file.type === 'image/gif' || file.name.toLowerCase().endsWith('.gif'));
+      // 이미지는 1MB 이상일 때 리사이즈 (프로필 GIF 제외)
+      const isCommentImage = false;
       const isWebP = file.type === 'image/webp' || file.name.endsWith('.webp');
-      const shouldResize = isCommentImage || file.size > 1024 * 1024;
+      const shouldResize = !isProfileGif && (isCommentImage || file.size > 1024 * 1024);
 
       logger.info({
         type: file.type,
