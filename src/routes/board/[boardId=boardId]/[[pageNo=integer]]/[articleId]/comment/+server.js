@@ -5,6 +5,7 @@ import { Article } from '$lib/models/article.js';
 import { write } from '$lib/util/fileUpload.js';
 import { Alarm } from "$lib/models/alarm.js";
 import convertToTree from '$lib/util/tree.js';
+import { checkAndLogSessionDevice } from '$lib/server/auth/checkSessionDevice.js';
 
 connectDB();
 
@@ -60,8 +61,8 @@ export async function GET({ params, locals }) {
   return json(commentsTree);
 }
 
-export async function POST({ request, params, locals }) {
-
+export async function POST(event) {
+  const { request, params, locals } = event;
   const boardId = params.boardId;
   const articleId = params.articleId;
 
@@ -72,10 +73,11 @@ export async function POST({ request, params, locals }) {
 
   const session = await locals.auth();
 
-  // 권한 검사
   if (!session?.user?.nickname) {
     throw error(401, { message: '권한이 없습니다. 로그인 해주세요' });
   }
+
+  await checkAndLogSessionDevice(event, { action: 'board.comment' });
 
   const data = await request.formData();
 

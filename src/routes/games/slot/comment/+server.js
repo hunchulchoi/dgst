@@ -4,6 +4,7 @@ import { Comment } from '$lib/models/comment.js';
 import { Alarm } from '$lib/models/alarm.js';
 import { GameScore } from '$lib/models/gameScore.js';
 import convertToTree from '$lib/util/tree.js';
+import { checkAndLogSessionDevice } from '$lib/server/auth/checkSessionDevice.js';
 
 connectDB();
 
@@ -152,11 +153,14 @@ export async function GET({ locals, setHeaders, url }) {
   }
 }
 
-export async function POST({ request, locals }) {
+export async function POST(event) {
+  const { request, locals } = event;
   const session = await locals.auth();
   if (!session?.user?.email) {
     throw error(401, { message: '로그인이 필요합니다.' });
   }
+
+  await checkAndLogSessionDevice(event, { action: 'games.slot.comment' });
 
   try {
     const data = await request.formData();

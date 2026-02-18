@@ -1,21 +1,19 @@
 import { error, json } from '@sveltejs/kit';
 import { Article } from '$lib/models/article.js';
-
+import { checkAndLogSessionDevice } from '$lib/server/auth/checkSessionDevice.js';
 import connectDB from '$lib/database/mongoosePriomise.js';
 
 connectDB();
 export const actions = {
-  default: async ({ request, params, locals }) => {
-    //console.log('write.server default', request);
-
+  default: async (event) => {
+    const { request, params, locals } = event;
     const session = await locals.auth();
 
-    //console.debug('user', session);
-
-    // 권한 검사
     if (!session?.user?.nickname) {
       throw error(401, { message: '권한이 없습니다. 로그인 해 주세요' });
     }
+
+    await checkAndLogSessionDevice(event, { action: 'board.write' });
 
     const data = await request.formData();
 
