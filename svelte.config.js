@@ -10,11 +10,9 @@ const config = {
   },
   preprocess: vitePreprocess(),
   kit: {
-    adapter: adapter({
-      // Nginx가 보낸 헤더를 사용하도록 설정
-      addressHeader: 'x-forwarded-for'
-      // 프록시가 여러 단계라면: trustedProxies: ['127.0.0.1']
-    }),
+    // getClientAddress()가 실제 클라이언트 IP를 쓰려면 실행 시 환경변수 필요:
+    // ADDRESS_HEADER=x-forwarded-for, (프록시 1대면) XFF_DEPTH=2
+    adapter: adapter(),
     paths: {
       assets: '',
       relative: false

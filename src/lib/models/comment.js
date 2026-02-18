@@ -31,6 +31,9 @@ export const commentSchema = new Schema(
           }
         }
     }
-)
+);
+
+// 게시글별 댓글 목록: articleId + createdAt 정렬 (COLLSCAN·메모리 정렬 방지)
+commentSchema.index({ articleId: 1, createdAt: -1 });
 
 export const Comment = models.comment || model('comment', commentSchema);

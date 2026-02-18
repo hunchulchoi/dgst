@@ -32,5 +32,7 @@ export const alarmSchema = new Schema(
 
 // 알림 목록: email + updatedAt 조건·정렬
 alarmSchema.index({ email: 1, updatedAt: -1 });
+// 읽지 않은 알림 개수: layout/slot 등 countDocuments(email, readAt: null, createdAt 범위)
+alarmSchema.index({ email: 1, readAt: 1, createdAt: -1 });
 
 export const Alarm = models.alarm || model('alarm', alarmSchema);

@@ -281,8 +281,9 @@ export async function GET({ locals, url }) {
 
   if (url.searchParams.get('rank')) {
     // 랭킹 처리: 각 user의 가장 최근 balance, 상위 10명
+    // (email: 1, createdAt: -1) 인덱스 활용: email별 정렬 후 $group $first로 COLLSCAN 방지
     const balances = await GameScore.aggregate([
-      { $sort: { createdAt: -1 } },
+      { $sort: { email: 1, createdAt: -1 } },
       {
         $group: {
           _id: '$email',

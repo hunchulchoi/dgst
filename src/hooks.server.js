@@ -392,9 +392,16 @@ export async function handle({ event, resolve }) {
   const startTime = Date.now();
   const { pathname } = event.url;
 
-  // 브라우저가 /apple-touch-icon.png 로 요청하는 경우 favicon으로 리다이렉트
-  if (pathname === '/apple-touch-icon.png') {
-    return redirect(302, '/favicon/apple-icon-180x180.png');
+  // 브라우저/클라이언트가 요청하는 아이콘 경로 → favicon으로 리다이렉트
+  const faviconRedirects = [
+    '/apple-touch-icon.png',
+    '/apple-touch-icon-precomposed.png',
+    '/favicon.ico'
+  ];
+  if (faviconRedirects.includes(pathname)) {
+    const target =
+      pathname === '/favicon.ico' ? '/favicon/favicon.ico' : '/favicon/apple-icon-180x180.png';
+    return redirect(302, target);
   }
 
   if (pathname.startsWith('/images/')) {
@@ -444,7 +451,15 @@ export function handleError({ event, error }) {
     */
 
     const status = error?.status ?? 500;
-    const clientIp = event.getClientAddress ? event.getClientAddress() : 'unknown';
+    // adapter-node는 ADDRESS_HEADER env 미설정 시 연결 상대(프록시/내부 IP)만 반환함. 헤더 폴백 사용
+    const raw =
+      event.request?.headers?.get?.('x-forwarded-for') ||
+      event.request?.headers?.get?.('x-real-ip') ||
+      '';
+    const clientIp =
+      (raw ? String(raw).split(',')[0].trim() : null) ||
+      (event.getClientAddress ? event.getClientAddress() : null) ||
+      'unknown';
     const userAgent = event.request?.headers?.get?.('user-agent') ?? '';
     const loggedAt = new Date().toISOString();
     const causeMessage =
