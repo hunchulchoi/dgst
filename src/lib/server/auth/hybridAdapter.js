@@ -5,6 +5,7 @@
 import { MongoDBAdapter } from '@auth/mongodb-adapter';
 import clientPromise from '$lib/database/clientPromise.js';
 import * as userCache from '$lib/server/auth/userCache.js';
+import * as sessionCache from '$lib/server/auth/sessionCache.js';
 
 /** users 컬렉션에 허용하는 키만 저장 (name, image, latest_modified_at 등 제외) */
 const ALLOWED_USER_KEYS = new Set([
@@ -142,11 +143,20 @@ export function getHybridAdapter(databaseName) {
       return mongo.linkAccount(trimmed);
     },
     unlinkAccount: (providerAccountId) => mongo.unlinkAccount(providerAccountId),
-    // Session / VerificationToken은 MongoDBAdapter 기본 구현 사용 (재부팅에도 세션 유지)
+    // Session: Redis 캐시 우선 → 미스 시 MongoDB 조회 후 캐시 (요청마다 DB 부하 감소)
     createSession: (data) => mongo.createSession(data),
-    getSessionAndUser: (sessionToken) => mongo.getSessionAndUser(sessionToken),
+    async getSessionAndUser(sessionToken) {
+      const cached = await sessionCache.getCachedSessionAndUser(sessionToken);
+      if (cached) return cached;
+      const result = await mongo.getSessionAndUser(sessionToken);
+      if (result) await sessionCache.setCachedSessionAndUser(sessionToken, result);
+      return result;
+    },
     updateSession: (data) => mongo.updateSession(data),
-    deleteSession: (sessionToken) => mongo.deleteSession(sessionToken),
+    async deleteSession(sessionToken) {
+      await sessionCache.invalidateSession(sessionToken);
+      return mongo.deleteSession(sessionToken);
+    },
     createVerificationToken: (data) => mongo.createVerificationToken?.(data),
     useVerificationToken: (params) => mongo.useVerificationToken?.(params)
   };
