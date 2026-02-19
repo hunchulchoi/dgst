@@ -440,7 +440,7 @@
   <title>2048 드롭 | 데게실버타운</title>
 </svelte:head>
 
-<div class="container py-4">
+<div class="container py-4 watermelon-page">
   <div class="row justify-content-center">
     <!-- Game Column -->
     <div class="col-12 col-lg-8 d-flex flex-column align-items-center">
@@ -449,8 +449,8 @@
         style="max-width: {GAME_WIDTH}px;"
       >
         <div>
-          <h1 class="fw-bold mb-0 text-dark" style="font-size: 3rem;">2048 드롭</h1>
-          <p class="text-muted mb-0">과일을 합쳐 2048을 만드세요!</p>
+          <h1 class="fw-bold mb-0" style="font-size: 3rem;">2048 드롭</h1>
+          <p class="text-body-secondary mb-0">과일을 합쳐 2048을 만드세요!</p>
         </div>
         <div class="score-container">
           <div class="score-label">점수</div>
@@ -511,28 +511,28 @@
 
         {#if !isLoggedIn}
           <div
-            class="login-overlay position-absolute top-0 start-0 w-100 h-100 d-flex flex-column align-items-center justify-content-center bg-white bg-opacity-95 rounded"
+            class="login-overlay position-absolute top-0 start-0 w-100 h-100 d-flex flex-column align-items-center justify-content-center bg-body bg-opacity-95 rounded"
             style="z-index: 100;"
           >
-            <h3 class="fw-bold text-dark mb-3">로그인 후 이용 가능합니다</h3>
-            <p class="text-dark mb-4">점수를 기록하고 랭킹에 도전해보세요!</p>
+            <h3 class="fw-bold mb-3">로그인 후 이용 가능합니다</h3>
+            <p class="mb-4">점수를 기록하고 랭킹에 도전해보세요!</p>
             <a href="/auth/signin" class="btn btn-primary btn-lg px-5 shadow-sm">로그인하기</a>
           </div>
         {:else if !gameStarted}
           <div
-            class="start-overlay position-absolute top-0 start-0 w-100 h-100 d-flex flex-column align-items-center justify-content-center bg-white bg-opacity-95 rounded"
+            class="start-overlay position-absolute top-0 start-0 w-100 h-100 d-flex flex-column align-items-center justify-content-center bg-body bg-opacity-95 rounded"
             style="z-index: 100;"
           >
-            <h3 class="fw-bold text-dark mb-4">게임 안내</h3>
+            <h3 class="fw-bold mb-4">게임 안내</h3>
             <div class="text-start mb-4 px-4">
-              <p class="text-dark mb-2">🎯 <strong>목표</strong>: 과일을 합쳐 2048을 만드세요!</p>
-              <p class="text-dark mb-2">
+              <p class="mb-2">🎯 <strong>목표</strong>: 과일을 합쳐 2048을 만드세요!</p>
+              <p class="mb-2">
                 🖱️ <strong>조작</strong>: 마우스 이동/클릭 또는 방향키를 사용하세요.
               </p>
-              <p class="text-dark mb-2">
+              <p class="mb-2">
                 ⏱️ <strong>주의</strong>: 5초 동안 가만히 있으면 자동 드롭됩니다.
               </p>
-              <p class="text-dark mb-0">
+              <p class="mb-0">
                 🚫 <strong>종료</strong>: 과일이 빨간 점선 위로 쌓이면 게임 오버!
               </p>
             </div>
@@ -542,7 +542,7 @@
           </div>
         {:else if gameOver}
           <div
-            class="game-over-overlay position-absolute top-0 start-0 w-100 h-100 d-flex flex-column align-items-center justify-content-center bg-white bg-opacity-95 rounded"
+            class="game-over-overlay position-absolute top-0 start-0 w-100 h-100 d-flex flex-column align-items-center justify-content-center bg-body bg-opacity-95 rounded"
             style="z-index: 100;"
           >
             {#if isVictory}
@@ -550,14 +550,14 @@
             {:else}
               <h2 class="fw-bold text-danger mb-3">게임 오버!</h2>
             {/if}
-            <p class="fs-5 text-dark">최종 점수: {score}</p>
-            <p class="small text-dark fw-bold mb-3">랭킹에 점수가 등록되었습니다!</p>
+            <p class="fs-5">최종 점수: {score}</p>
+            <p class="small fw-bold mb-3">랭킹에 점수가 등록되었습니다!</p>
             <button class="btn btn-primary btn-lg" onclick={resetGame}>다시 하기</button>
           </div>
         {/if}
       </div>
 
-      <div class="mt-3 text-dark fw-bold small text-center" style="max-width: 400px;">
+      <div class="mt-3 fw-bold small text-center" style="max-width: 400px;">
         <p class="mb-1">클릭/터치하여 과일을 떨어뜨리세요. 같은 숫자가 합쳐집니다.</p>
         <p class="mb-0 {timeLeft <= 3 ? 'text-danger' : 'text-primary'}">
           {timeLeft}초 후 자동 드롭!
@@ -616,8 +616,7 @@
 </div>
 
 <style>
-  :global(body) {
-    background: #faf8ef;
+  .watermelon-page {
     font-family: 'Clear Sans', 'Helvetica Neue', Arial, sans-serif;
   }
   .game-container {
