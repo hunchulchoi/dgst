@@ -95,13 +95,20 @@ export async function ensureSlotUserBalanceFilled() {
  */
 export async function updateSlotUserBalance(email, nickname, balance, opts = {}) {
   try {
+    /** @type {Record<string, unknown>} */
+    const update = {
+      $set: { nickname, balance, updatedAt: new Date() },
+    };
+    if (opts.incSpin === true) {
+      // $inc는 insert 시에도 0 + 1 = 1로 설정되므로 $setOnInsert 불필요.
+      // 같은 필드에 $inc + $setOnInsert를 함께 쓰면 MongoDB conflict 에러.
+      update.$inc = { totalSpin: 1 };
+    } else {
+      update.$setOnInsert = { totalSpin: 0 };
+    }
     await SlotUserBalance.findOneAndUpdate(
       { email },
-      {
-        $set: { nickname, balance, updatedAt: new Date() },
-        ...(opts.incSpin === true ? { $inc: { totalSpin: 1 } } : {}),
-        $setOnInsert: { totalSpin: opts.incSpin ? 1 : 0 }
-      },
+      update,
       { upsert: true }
     );
   } catch (e) {
