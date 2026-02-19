@@ -179,7 +179,10 @@
             spawnEffectTimeout = null;
           }, SPAWN_BLING_MS);
         }
-        if (getEmptyIndices().length === 0 && !canMove()) gameOver = true;
+        if (getEmptyIndices().length === 0 && !canMove()) {
+          gameOver = true;
+          if (isLoggedIn) void submitGameOverScore(score);
+        }
         isAnimating = false;
         spawnTimeout = null;
       }, SPAWN_DELAY_MS);
@@ -233,7 +236,10 @@
             spawnEffectTimeout = null;
           }, SPAWN_BLING_MS);
         }
-        if (getEmptyIndices().length === 0 && !canMove()) gameOver = true;
+        if (getEmptyIndices().length === 0 && !canMove()) {
+          gameOver = true;
+          if (isLoggedIn) void submitGameOverScore(score);
+        }
         isAnimating = false;
         spawnTimeout = null;
       }, SPAWN_DELAY_MS);
@@ -277,7 +283,10 @@
             spawnEffectTimeout = null;
           }, SPAWN_BLING_MS);
         }
-        if (getEmptyIndices().length === 0 && !canMove()) gameOver = true;
+        if (getEmptyIndices().length === 0 && !canMove()) {
+          gameOver = true;
+          if (isLoggedIn) void submitGameOverScore(score);
+        }
         isAnimating = false;
         spawnTimeout = null;
       }, SPAWN_DELAY_MS);
@@ -322,7 +331,10 @@
             spawnEffectTimeout = null;
           }, SPAWN_BLING_MS);
         }
-        if (getEmptyIndices().length === 0 && !canMove()) gameOver = true;
+        if (getEmptyIndices().length === 0 && !canMove()) {
+          gameOver = true;
+          if (isLoggedIn) void submitGameOverScore(score);
+        }
         isAnimating = false;
         spawnTimeout = null;
       }, SPAWN_DELAY_MS);
@@ -417,18 +429,18 @@
     }
   }
 
-  async function submitScoreAndRefresh() {
-    if (loading) return;
-    loading = true;
+  /** 게임오버 시 자동 호출. 로그인 사용자만 점수 전송 후 랭킹 갱신(버튼 없이) */
+  async function submitGameOverScore(finalScore: number) {
+    if (!isLoggedIn || finalScore <= 0) return;
     try {
       const res = await fetch('/games/2048', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ score }),
+        body: JSON.stringify({ score: finalScore }),
       });
       if (res.ok) await loadRank();
-    } finally {
-      loading = false;
+    } catch (e) {
+      console.error('[2048 게임오버 점수 저장 실패]', e);
     }
   }
 
@@ -481,6 +493,70 @@
 
   const isLoggedIn = $derived(!!data.session?.user?.email);
 
+  const STORAGE_KEY = 'dgst_2048_state';
+  type SavedState = { mode: GameMode; grid: number[]; score: number; gameOver: boolean; beginnerTarget: number };
+
+  function getStateToSave(): SavedState | null {
+    if (mode == null) return null;
+    return { mode, grid: grid.slice(), score, gameOver, beginnerTarget };
+  }
+
+  function saveStateToStorage() {
+    const state = getStateToSave();
+    if (!state) return;
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    } catch (e) {
+      console.error('[2048 localStorage 저장 실패]', e);
+    }
+  }
+
+  function loadStateFromStorage(): SavedState | null {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw) as unknown;
+      if (!parsed || typeof parsed !== 'object') return null;
+      const m = (parsed as Record<string, unknown>).mode;
+      const modes: GameMode[] = ['beginner', 'easy', 'mid', 'normal'];
+      if (!modes.includes(m as GameMode)) return null;
+      const mode = m as GameMode;
+      const size = mode === 'beginner' || mode === 'easy' ? 5 : 4;
+      const len = size * size;
+      const g = (parsed as Record<string, unknown>).grid;
+      if (!Array.isArray(g) || g.length !== len || g.some((x: unknown) => typeof x !== 'number')) return null;
+      const score = Number((parsed as Record<string, unknown>).score);
+      const gameOver = Boolean((parsed as Record<string, unknown>).gameOver);
+      const beginnerTarget = Number((parsed as Record<string, unknown>).beginnerTarget) || 32;
+      return { mode, grid: g as number[], score: Number.isFinite(score) ? score : 0, gameOver, beginnerTarget };
+    } catch {
+      return null;
+    }
+  }
+
+  function restoreState(saved: SavedState) {
+    mode = saved.mode;
+    grid = saved.grid.slice();
+    score = saved.score;
+    gameOver = saved.gameOver;
+    beginnerTarget = saved.beginnerTarget;
+    passedFlash = 0;
+    justSwitchedToEasy = false;
+    spawnedIndex = null;
+    isAnimating = false;
+  }
+
+  /** 이탈 시(탭 닫기/새로고침/다른 페이지 이동) 점수 제출. keepalive로 페이지 종료 후에도 전송 시도 */
+  function submitScoreOnLeave(scoreToSubmit: number) {
+    if (!isLoggedIn || scoreToSubmit <= 0) return;
+    fetch('/games/2048', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ score: scoreToSubmit }),
+      keepalive: true,
+    }).catch((e) => console.error('[2048 이탈 시 점수 전송 실패]', e));
+  }
+
   $effect(() => {
     if (isLoggedIn) loadRank();
   });
@@ -490,9 +566,24 @@
   let cleanupTouchMove: (() => void) | null = null;
 
   onMount(() => {
+    const saved = loadStateFromStorage();
+    if (saved) restoreState(saved);
+
+    const handleBeforeUnload = () => {
+      saveStateToStorage();
+      const state = getStateToSave();
+      if (state && state.score > 0) submitScoreOnLeave(state.score);
+    };
+
     window.addEventListener('keydown', handleKeydown);
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
     return () => {
       window.removeEventListener('keydown', handleKeydown);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      saveStateToStorage();
+      const state = getStateToSave();
+      if (state && state.score > 0) submitScoreOnLeave(state.score);
       if (tickTimeout) clearTimeout(tickTimeout);
       if (spawnTimeout) clearTimeout(spawnTimeout);
       if (spawnEffectTimeout) clearTimeout(spawnEffectTimeout);
@@ -582,7 +673,7 @@
                 <button class="btn btn-sm btn-outline-secondary" onclick={initGrid} disabled={loading}>
                   새 게임
                 </button>
-                <button class="btn btn-sm btn-outline-dark" onclick={() => (mode = null)} disabled={loading}>
+                <button class="btn btn-sm btn-outline-dark" onclick={() => { try { localStorage.removeItem(STORAGE_KEY); } catch {} mode = null; }} disabled={loading}>
                   모드 변경
                 </button>
               </div>
@@ -639,20 +730,12 @@
             {#if gameOver}
               <div class="mt-3 p-3 bg-light rounded border text-center">
                 <p class="fw-bold mb-2">게임 오버</p>
-                <p class="mb-2">최종 점수: <strong>{score}</strong></p>
-                {#if isLoggedIn}
-                  <button
-                    class="btn btn-primary"
-                    onclick={() => submitScoreAndRefresh()}
-                    disabled={loading}
-                  >
-                    {loading ? '저장 중...' : '점수 제출하고 랭킹 보기'}
-                  </button>
-                {:else}
+                <p class="mb-2">최종 점수: <strong>{score}</strong> {#if isLoggedIn}<span class="small text-muted">(랭킹에 반영됨)</span>{/if}</p>
+                {#if !isLoggedIn}
                   <p class="small text-muted mb-2">로그인하면 점수를 랭킹에 올릴 수 있어요.</p>
-                  <a href="/auth/signin" class="btn btn-outline-primary">로그인</a>
+                  <a href="/auth/signin" class="btn btn-outline-primary mb-2">로그인</a>
                 {/if}
-                <button class="btn btn-outline-secondary ms-2" onclick={initGrid} disabled={loading}>
+                <button class="btn btn-outline-secondary ms-2" onclick={initGrid}>
                   다시 하기
                 </button>
               </div>
