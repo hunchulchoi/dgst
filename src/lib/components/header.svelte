@@ -185,13 +185,13 @@
           </NavLink>
         </NavItem>
         <NavItem>
-          <NavLink href="/games/2048" active={pathname?.startsWith('/games/2048')}>
-            <Icon name="grid-3x3-gap-fill" class="text-warning me-2" />2048
+          <NavLink href="/games/watermelon" active={pathname?.startsWith('/games/watermelon')}>
+            <Icon name="basket-fill" class="text-danger me-2" />과일
           </NavLink>
         </NavItem>
         <NavItem>
-          <NavLink href="/games/watermelon" active={pathname?.startsWith('/games/watermelon')}>
-            <Icon name="basket-fill" class="text-danger me-2" />과일
+          <NavLink href="/games/2048" active={pathname?.startsWith('/games/2048')}>
+            <Icon name="grid-3x3-gap-fill" class="text-warning me-2" />2048
           </NavLink>
         </NavItem>
       {/if}
