@@ -15,8 +15,6 @@
     Styles
   } from '@sveltestrap/sveltestrap';
 
-
-
   import theme from '$lib/shared/stores/theme.js';
 
   import { signIn, signOut } from '@auth/sveltekit/client';
@@ -27,9 +25,9 @@
 
   // Svelte 5 Runes - Props
   let { session, pathname } = $props();
-  
+
   let showSpinner = $state(false);
-  
+
   $effect(() => {
     if ($navigating) {
       showSpinner = true;
@@ -40,7 +38,7 @@
     }
   });
 
-    const handleGoogleSignIn = () => {
+  const handleGoogleSignIn = () => {
     //console.log('handleGoogleSignIn');
     signIn('google', { callbackUrl: '/' });
   };
@@ -71,91 +69,106 @@
   let loginButton = $derived(
     `/oauth/btn_google_signin_${$theme === 'light' ? 'light' : 'dark'}_normal_web.png`
   );
-
 </script>
 
 <Styles theme={$theme} />
 
 <Row class="m-0">
-<Navbar expand="md" class="m-0 rounded shadow text-secondary" style="background-color: #fafae4">
-  <NavbarBrand href="/" class="p-0">
-    {#if new Date().getMonth() === 3 && new Date().getDate() >= 15 && new Date().getDate() <= 17}
-      <img
-        title="잊지않을께"
-        alt="remember0416"
-        src="/icons/remember0416.png"
-        class="p-0"
-        style="height: 40px; width: auto;"
-      />
-    {:else}
-      <img
-        alt="dgst logo"
-        src="/logo/logo_transparent_100.png"
-        class="p-0"
-        style="height: 40px; width: auto;"
-      />
-    {/if}
-  </NavbarBrand>
-  <Nav>
-    <NavItem>
-      {#if session?.user?.nickname}
+  <Navbar expand="md" class="m-0 rounded shadow text-secondary" style="background-color: #fafae4">
+    <NavbarBrand href="/" class="p-0">
+      {#if new Date().getMonth() === 3 && new Date().getDate() >= 15 && new Date().getDate() <= 17}
         <img
-          alt="{session.user.nickname} 프로필 사진"
-          src={session.user.photo ?? '/icons/unknown-person-icon-4.jpg'}
-          class="p-0 rounded"
-          style="max-height: 30px;max-width: 30px; height: auto; width: auto;"
+          title="잊지않을께"
+          alt="remember0416"
+          src="/icons/remember0416.png"
+          class="p-0"
+          style="height: 40px; width: auto;"
         />
-        <button type="button" class="btn btn-link text-secondary p-0" onclick={()=>goto('/auth/profile')}>{session.user.nickname}</button>
       {:else}
-        <NavLink onclick={handleGoogleSignIn} class="p-0 m-0">
-          <img alt="google계정으로 로그인" src={loginButton} class="p-0" style="max-width:40vw; width: auto; height: auto;"/>
-        </NavLink>
+        <img
+          alt="dgst logo"
+          src="/logo/logo_transparent_100.png"
+          class="p-0"
+          style="height: 40px; width: auto;"
+        />
       {/if}
-    </NavItem>
-    <Dropdown nav class="col-xs-1">
-      <DropdownToggle nav caret class="text-secondary"><Icon name={colorModeIcon} /></DropdownToggle>
-      <DropdownMenu end>
-        <DropdownItem onclick={() => theme.set('auto')}
-        ><Icon name="circle-half" /> 자동</DropdownItem
-        >
-        <DropdownItem divider />
-        <DropdownItem onclick={() => theme.set('light')}
-        ><Icon name="sun-fill" /> 밝게</DropdownItem
-        >
-        <DropdownItem onclick={() => theme.set('dark')}
-        ><Icon name="moon-stars-fill" /> 어둡게</DropdownItem
-        >
-      {#if session?.user?.nickname}
-          <DropdownItem divider />
-          <DropdownItem onclick={signOut} class="text-bg-danger-subtle"
-          ><Icon name="door-closed" /> 로그아웃</DropdownItem
+    </NavbarBrand>
+    <Nav>
+      <NavItem>
+        {#if session?.user?.nickname}
+          <img
+            alt="{session.user.nickname} 프로필 사진"
+            src={session.user.photo ?? '/icons/unknown-person-icon-4.jpg'}
+            class="p-0 rounded"
+            style="max-height: 30px;max-width: 30px; height: auto; width: auto;"
+          />
+          <button
+            type="button"
+            class="btn btn-link text-secondary p-0"
+            onclick={() => goto('/auth/profile')}>{session.user.nickname}</button
           >
-      {/if}
-      </DropdownMenu>
-    </Dropdown>
-  </Nav>
-</Navbar>
+        {:else}
+          <NavLink onclick={handleGoogleSignIn} class="p-0 m-0">
+            <img
+              alt="google계정으로 로그인"
+              src={loginButton}
+              class="p-0"
+              style="max-width:40vw; width: auto; height: auto;"
+            />
+          </NavLink>
+        {/if}
+      </NavItem>
+      <Dropdown nav class="col-xs-1">
+        <DropdownToggle nav caret class="text-secondary"
+          ><Icon name={colorModeIcon} /></DropdownToggle
+        >
+        <DropdownMenu end>
+          <DropdownItem onclick={() => theme.set('auto')}
+            ><Icon name="circle-half" /> 자동</DropdownItem
+          >
+          <DropdownItem divider />
+          <DropdownItem onclick={() => theme.set('light')}
+            ><Icon name="sun-fill" /> 밝게</DropdownItem
+          >
+          <DropdownItem onclick={() => theme.set('dark')}
+            ><Icon name="moon-stars-fill" /> 어둡게</DropdownItem
+          >
+          {#if session?.user?.nickname}
+            <DropdownItem divider />
+            <DropdownItem onclick={signOut} class="text-bg-danger-subtle"
+              ><Icon name="door-closed" /> 로그아웃</DropdownItem
+            >
+          {/if}
+        </DropdownMenu>
+      </Dropdown>
+    </Nav>
+  </Navbar>
   <Navbar color="secondary-subtle" fixed="true" class="ms-auto pb-0">
-
     <Nav tabs data-svelteit-preload-data="false">
       <NavItem>
-        <NavLink 
-                 href="/board/free" 
-                 onclick={handleFreeBoardClick}
-                 active={pathname?.startsWith('/board/free')}>
+        <NavLink
+          href="/board/free"
+          onclick={handleFreeBoardClick}
+          active={pathname?.startsWith('/board/free')}
+        >
           자유게시판
           {#if showSpinner}
-            <span class="spinner-border spinner-border-sm ms-2 text-primary" role="status" aria-hidden="true"></span>
+            <span
+              class="spinner-border spinner-border-sm ms-2 text-primary"
+              role="status"
+              aria-hidden="true"
+            ></span>
           {/if}
         </NavLink>
       </NavItem>
       {#if session?.user?.nickname}
         <NavItem>
-          <NavLink 
-                  href="/board/alarm" 
-                  onclick={handleAlarmClick}
-                  active={pathname?.startsWith('/board/alarm')}>
-            <Icon name="megaphone" class="text-success me-2"/>알림
+          <NavLink
+            href="/board/alarm"
+            onclick={handleAlarmClick}
+            active={pathname?.startsWith('/board/alarm')}
+          >
+            <Icon name="megaphone" class="text-success me-2" />알림
             {#if $alarmCount && $alarmCount > 0}
               <Badge pill color="danger">{$alarmCount}</Badge>
             {/if}
@@ -168,12 +181,17 @@
         </NavItem> -->
         <NavItem>
           <NavLink href="/games/slot" active={pathname?.startsWith('/games/slot')}>
-            <Icon name="dice-3-fill" class="text-info me-2"/>뺑뺑이
+            <Icon name="dice-3-fill" class="text-info me-2" />뺑뺑이
           </NavLink>
         </NavItem>
         <NavItem>
           <NavLink href="/games/2048" active={pathname?.startsWith('/games/2048')}>
-            <Icon name="grid-3x3-gap-fill" class="text-warning me-2"/>2048
+            <Icon name="grid-3x3-gap-fill" class="text-warning me-2" />2048
+          </NavLink>
+        </NavItem>
+        <NavItem>
+          <NavLink href="/games/watermelon" active={pathname?.startsWith('/games/watermelon')}>
+            <Icon name="basket-fill" class="text-danger me-2" />과일
           </NavLink>
         </NavItem>
       {/if}
@@ -195,5 +213,3 @@
     </Nav>
   </Navbar>
 </Row>
-
-
