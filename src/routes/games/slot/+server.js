@@ -300,7 +300,10 @@ export async function GET({ locals, url }) {
       balance: r.balance,
       totalSpin: r.totalSpin ?? 0
     }));
-    return json({ balance, rank, oopsInfo, todayStats });
+    return json(
+      { balance, rank, oopsInfo, todayStats },
+      { headers: { 'Cache-Control': 'no-store, max-age=0' } }
+    );
   }
   return json({ balance, oopsInfo, todayStats });
 }

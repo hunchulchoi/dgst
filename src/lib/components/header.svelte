@@ -171,6 +171,11 @@
             <Icon name="dice-3-fill" class="text-info me-2"/>뺑뺑이
           </NavLink>
         </NavItem>
+        <NavItem>
+          <NavLink href="/games/2048" active={pathname?.startsWith('/games/2048')}>
+            <Icon name="grid-3x3-gap-fill" class="text-warning me-2"/>2048
+          </NavLink>
+        </NavItem>
       {/if}
       <!--<NavItem>
         <NavLink href="/game/56471" active={pathname?.startsWith('/game/56471')}>

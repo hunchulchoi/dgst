@@ -252,7 +252,7 @@
   };
 
   async function loadRank() {
-    const res = await fetch('/games/slot?rank=1');
+    const res = await fetch(`/games/slot?rank=1&_=${Date.now()}`, { cache: 'no-store' });
     if (res.ok) {
       const j = await res.json();
       rankList = j.rank || [];
