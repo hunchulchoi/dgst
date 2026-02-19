@@ -1,3 +1,4 @@
+import { error } from '@sveltejs/kit';
 import connectDB from '$lib/database/mongoosePriomise.js';
 import { Article } from '$lib/models/article.js';
 

@@ -42,8 +42,7 @@ export async function POST({ request, locals }) {
   } catch (err) {
     logger.error({
       message: 'Image upload failed',
-      error: err.message,
-      stack: err.stack,
+      error: err,
       user: session.user.email,
       fileName: uploadFile?.name
     });

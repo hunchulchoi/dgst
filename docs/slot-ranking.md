@@ -39,6 +39,17 @@
   `MONGODB_URI='...' node scripts/backfill-slot-user-balance.js`  
   로 같은 백필을 직접 실행할 수 있습니다.
 
+### 6. Top10 점수 초기화(재집계)
+
+- **원인**: `slot_user_balance`가 `game_scores`와 어긋나면 Top10이 잘못 보일 수 있음.
+- **방법 1 – MongoDB에서 비우기**  
+  `db.slot_user_balance.deleteMany({})` 또는 `db.slot_user_balance.drop()`  
+  → 다음에 누군가 랭킹(`?rank=1`) 조회 시 자동 백필로 다시 채워짐.
+- **방법 2 – 크론 API**  
+  `GET /api/cron/slot-rank-reset` + 헤더 `x-cron-secret: <CRON_SECRET>`  
+  → 컬렉션 삭제 후, 다음 랭킹 요청 시 백필됨.  
+  예: `curl -H "x-cron-secret: YOUR_CRON_SECRET" "https://your-domain/api/cron/slot-rank-reset"`
+
 ## 관련 파일
 
 | 파일 | 역할 |

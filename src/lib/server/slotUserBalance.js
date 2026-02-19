@@ -4,6 +4,17 @@ import { GameScore } from '$lib/models/gameScore.js';
 let backfillPromise = null;
 
 /**
+ * slot_user_balance 컬렉션 전체 삭제. 다음 랭킹 조회 시 game_scores 기준으로 자동 백필됨.
+ * Top10 점수가 어긋났을 때 재집계하려면 이 함수 호출 후 랭킹 페이지를 새로고침하면 됨.
+ * @returns {Promise<number>} 삭제된 문서 수
+ */
+export async function resetSlotUserBalance() {
+  backfillPromise = null;
+  const r = await SlotUserBalance.deleteMany({});
+  return r.deletedCount ?? 0;
+}
+
+/**
  * game_scores 집계 결과로 slot_user_balance를 채움. 컬렉션이 비었을 때 1회만 자동 호출됨.
  * @returns {Promise<number>} upsert된 행 수
  */

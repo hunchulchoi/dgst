@@ -500,7 +500,7 @@ export async function handle({ event, resolve }) {
             if (sessionAndUser?.user?.id) userId = sessionAndUser.user.id;
           }
         } catch (e) {
-          logger.warn({ message: 'login_logs: getSessionAndUser failed', error: e?.message });
+          logger.warn({ message: 'login_logs: getSessionAndUser failed', error: e });
         }
 
         const client = await clientPromise;
@@ -519,7 +519,7 @@ export async function handle({ event, resolve }) {
   } catch (e) {
     logger.warn({
       message: 'Failed to write login log',
-      error: e?.message ?? String(e),
+      error: e,
       pathname
     });
   }
@@ -573,6 +573,7 @@ export function handleError({ event, error }) {
       status,
       name: error?.name,
       ...(status !== 404 && { stack: error?.stack }),
+      error,
       clientIp,
       userAgent,
     });

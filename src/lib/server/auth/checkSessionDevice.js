@@ -42,6 +42,6 @@ export async function checkAndLogSessionDevice(event, meta = {}) {
     await redis.setJson(key, { deviceId, userAgent }, SESSION_DEVICE_TTL);
   } catch (e) {
     // Redis/로그 실패해도 요청은 방해하지 않음
-    logger.warn({ message: 'checkSessionDevice failed', error: e?.message });
+    logger.warn({ message: 'checkSessionDevice failed', error: e });
   }
 }

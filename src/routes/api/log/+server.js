@@ -27,8 +27,7 @@ export async function POST({ request }) {
   } catch (err) {
     logger.error({
       message: 'Failed to log client error',
-      error: err.message,
-      stack: err.stack
+      error: err
     });
     return json({ success: false }, { status: 500 });
   }

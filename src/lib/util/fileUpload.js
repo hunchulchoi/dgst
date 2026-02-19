@@ -243,7 +243,7 @@ export async function write(file, email, preservePath = 'jjal') {
             elapsedMs: convertElapsedMs
           });
         } catch (err) {
-          logger.error({ err, message: 'Image to WebP conversion failed' });
+          logger.error({ message: 'Image to WebP conversion failed', error: err });
           // 변환 실패 시 원본 파일 유지
         }
       }
@@ -277,16 +277,16 @@ export async function write(file, email, preservePath = 'jjal') {
         });
       } catch (dirErr) {
         logger.error({
+          message: 'File not found after save - could not read directory',
           finalPath,
-          dirError: dirErr.message,
-          message: 'File not found after save - could not read directory'
+          error: dirErr
         });
       }
       throw error(500, '파일 저장 중에 오류가 발생하였습니다. 쿠훕ㅠㅠ');
     }
   } catch (err) {
     console.error('File upload error:', err);
-    logger.error({ fileName: file.name, preservePath, err, message: '파일 저장 실패' });
+    logger.error({ message: '파일 저장 실패', fileName: file.name, preservePath, error: err });
     throw err;
   }
 }
