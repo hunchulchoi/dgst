@@ -74,11 +74,15 @@
   };
 
   onMount(async () => {
-    const { FFmpeg } = await import('@ffmpeg/ffmpeg');
-    const { fetchFile } = await import('@ffmpeg/util');
+    try {
+      const { FFmpeg } = await import('@ffmpeg/ffmpeg');
+      const { fetchFile } = await import('@ffmpeg/util');
 
-    ffmpeg = new FFmpeg();
-    await ffmpeg.load();
+      ffmpeg = new FFmpeg();
+      await ffmpeg.load();
+    } catch (e) {
+      console.error('[FFmpeg 로드 실패]', e);
+    }
     
     // 모바일에서 제목 입력칸으로 스크롤하고 포커스
     setTimeout(() => {
@@ -295,7 +299,14 @@
             const errorMessage = typeof result.data === 'object' && result.data?.message 
               ? String(result.data.message) 
               : '저장중에 오류가 발생하였습니다.';
+            console.error('[글쓰기 실패]', { type: result.type, status: result.status, data: result.data });
             await toast(errorMessage, {icon:'error', isToast: false});
+            return;
+          }
+
+          if (result.type === 'error') {
+            console.error('[글쓰기 에러]', result.error);
+            await toast(result.error?.message || '서버 오류가 발생하였습니다.', {icon:'error', isToast: false});
             return;
           }
           
@@ -303,6 +314,7 @@
             const data = result.data;
             
             if (!data?.success) {
+              console.error('[글쓰기 저장 실패]', data);
               await toast('저장중에 오류가 발생하였습니다.', {icon:'error', isToast: false});
             } else {
               await toast('저장되었습니다.', {icon:'success', timer: 1000});
