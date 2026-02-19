@@ -20,6 +20,14 @@
   let loading = $state(false);
   let gridTicked = $state(false);
   let tickTimeout: ReturnType<typeof setTimeout> | null = null;
+  let isAnimating = $state(false);
+  let spawnedIndex = $state<number | null>(null);
+  let spawnTimeout: ReturnType<typeof setTimeout> | null = null;
+  let spawnEffectTimeout: ReturnType<typeof setTimeout> | null = null;
+  let moveUnlockTimeout: ReturnType<typeof setTimeout> | null = null;
+  const MOVE_ANIM_MS = 150;
+  const SPAWN_DELAY_MS = 120;
+  const SPAWN_BLING_MS = 320;
   /** 쌩초보: 현재 목표 (32 → 64 → 128 …) */
   let beginnerTarget = $state(32);
   /** 쌩초보: 방금 통과한 목표, 잠깐 표시 후 0 */
@@ -33,13 +41,14 @@
     return grid.map((v, i) => (v === 0 ? i : -1)).filter((i) => i >= 0);
   }
 
-  function addRandomTile() {
-    if (grid.length !== SIZE * SIZE) return;
+  function addRandomTile(): number | null {
+    if (grid.length !== SIZE * SIZE) return null;
     const empty = getEmptyIndices();
-    if (empty.length === 0) return;
+    if (empty.length === 0) return null;
     const idx = empty[Math.floor(Math.random() * empty.length)];
     grid = grid.slice();
     grid[idx] = Math.random() < 0.9 ? 2 : 4;
+    return idx;
   }
 
   function startGame(m: GameMode) {
@@ -49,6 +58,11 @@
 
   function initGrid() {
     if (mode == null) return;
+    if (spawnTimeout) clearTimeout(spawnTimeout);
+    if (spawnEffectTimeout) clearTimeout(spawnEffectTimeout);
+    if (moveUnlockTimeout) clearTimeout(moveUnlockTimeout);
+    spawnedIndex = null;
+    isAnimating = false;
     grid = Array(SIZE * SIZE).fill(0);
     score = 0;
     gameOver = false;
@@ -62,15 +76,18 @@
   }
 
   function clearGridAndAddTwo() {
+    spawnedIndex = null;
     grid = Array(SIZE * SIZE).fill(0);
     addRandomTile();
     addRandomTile();
   }
 
-  function checkBeginnerPass() {
-    if (mode !== 'beginner') return;
+  function checkBeginnerPass(): boolean {
+    if (mode !== 'beginner') return false;
     const maxTile = grid.length ? Math.max(...grid) : 0;
-    if (maxTile < beginnerTarget) return;
+    if (maxTile < beginnerTarget) return false;
+    const scoreAtPass = score;
+    void submitLevelClearScore(scoreAtPass);
     passedFlash = beginnerTarget;
     if (passedFlashTimeout) clearTimeout(passedFlashTimeout);
     passedFlashTimeout = setTimeout(() => {
@@ -86,10 +103,11 @@
       }, 2500);
       mode = 'easy';
       initGrid();
-      return;
+      return true;
     }
     beginnerTarget *= 2;
     clearGridAndAddTwo();
+    return true;
   }
 
   function at(row: number, col: number): number {
@@ -125,7 +143,7 @@
   }
 
   function moveLeft() {
-    if (gameOver || mode == null) return;
+    if (gameOver || mode == null || isAnimating) return;
     let changed = false;
     let added = 0;
     const next = grid.slice();
@@ -139,12 +157,32 @@
       }
     }
     if (changed) {
+      isAnimating = true;
       grid = next;
       score += added;
-      addRandomTile();
       triggerTileTick();
-      checkBeginnerPass();
-      if (getEmptyIndices().length === 0 && !canMove()) gameOver = true;
+      const beginnerHandled = checkBeginnerPass();
+      if (beginnerHandled) {
+        moveUnlockTimeout = setTimeout(() => {
+          isAnimating = false;
+          moveUnlockTimeout = null;
+        }, MOVE_ANIM_MS);
+        return;
+      }
+      spawnTimeout = setTimeout(() => {
+        const idx = addRandomTile();
+        if (idx != null) {
+          spawnedIndex = idx;
+          if (spawnEffectTimeout) clearTimeout(spawnEffectTimeout);
+          spawnEffectTimeout = setTimeout(() => {
+            spawnedIndex = null;
+            spawnEffectTimeout = null;
+          }, SPAWN_BLING_MS);
+        }
+        if (getEmptyIndices().length === 0 && !canMove()) gameOver = true;
+        isAnimating = false;
+        spawnTimeout = null;
+      }, SPAWN_DELAY_MS);
     }
   }
 
@@ -154,11 +192,11 @@
     tickTimeout = setTimeout(() => {
       gridTicked = false;
       tickTimeout = null;
-    }, 220);
+    }, MOVE_ANIM_MS);
   }
 
   function moveRight() {
-    if (gameOver || mode == null) return;
+    if (gameOver || mode == null || isAnimating) return;
     let changed = false;
     let added = 0;
     const next = grid.slice();
@@ -173,17 +211,37 @@
       }
     }
     if (changed) {
+      isAnimating = true;
       grid = next;
       score += added;
-      addRandomTile();
       triggerTileTick();
-      checkBeginnerPass();
-      if (getEmptyIndices().length === 0 && !canMove()) gameOver = true;
+      const beginnerHandled = checkBeginnerPass();
+      if (beginnerHandled) {
+        moveUnlockTimeout = setTimeout(() => {
+          isAnimating = false;
+          moveUnlockTimeout = null;
+        }, MOVE_ANIM_MS);
+        return;
+      }
+      spawnTimeout = setTimeout(() => {
+        const idx = addRandomTile();
+        if (idx != null) {
+          spawnedIndex = idx;
+          if (spawnEffectTimeout) clearTimeout(spawnEffectTimeout);
+          spawnEffectTimeout = setTimeout(() => {
+            spawnedIndex = null;
+            spawnEffectTimeout = null;
+          }, SPAWN_BLING_MS);
+        }
+        if (getEmptyIndices().length === 0 && !canMove()) gameOver = true;
+        isAnimating = false;
+        spawnTimeout = null;
+      }, SPAWN_DELAY_MS);
     }
   }
 
   function moveUp() {
-    if (gameOver || mode == null) return;
+    if (gameOver || mode == null || isAnimating) return;
     let changed = false;
     let added = 0;
     const next = grid.slice();
@@ -197,17 +255,37 @@
       }
     }
     if (changed) {
+      isAnimating = true;
       grid = next;
       score += added;
-      addRandomTile();
       triggerTileTick();
-      checkBeginnerPass();
-      if (getEmptyIndices().length === 0 && !canMove()) gameOver = true;
+      const beginnerHandled = checkBeginnerPass();
+      if (beginnerHandled) {
+        moveUnlockTimeout = setTimeout(() => {
+          isAnimating = false;
+          moveUnlockTimeout = null;
+        }, MOVE_ANIM_MS);
+        return;
+      }
+      spawnTimeout = setTimeout(() => {
+        const idx = addRandomTile();
+        if (idx != null) {
+          spawnedIndex = idx;
+          if (spawnEffectTimeout) clearTimeout(spawnEffectTimeout);
+          spawnEffectTimeout = setTimeout(() => {
+            spawnedIndex = null;
+            spawnEffectTimeout = null;
+          }, SPAWN_BLING_MS);
+        }
+        if (getEmptyIndices().length === 0 && !canMove()) gameOver = true;
+        isAnimating = false;
+        spawnTimeout = null;
+      }, SPAWN_DELAY_MS);
     }
   }
 
   function moveDown() {
-    if (gameOver || mode == null) return;
+    if (gameOver || mode == null || isAnimating) return;
     let changed = false;
     let added = 0;
     const next = grid.slice();
@@ -222,12 +300,32 @@
       }
     }
     if (changed) {
+      isAnimating = true;
       grid = next;
       score += added;
-      addRandomTile();
       triggerTileTick();
-      checkBeginnerPass();
-      if (getEmptyIndices().length === 0 && !canMove()) gameOver = true;
+      const beginnerHandled = checkBeginnerPass();
+      if (beginnerHandled) {
+        moveUnlockTimeout = setTimeout(() => {
+          isAnimating = false;
+          moveUnlockTimeout = null;
+        }, MOVE_ANIM_MS);
+        return;
+      }
+      spawnTimeout = setTimeout(() => {
+        const idx = addRandomTile();
+        if (idx != null) {
+          spawnedIndex = idx;
+          if (spawnEffectTimeout) clearTimeout(spawnEffectTimeout);
+          spawnEffectTimeout = setTimeout(() => {
+            spawnedIndex = null;
+            spawnEffectTimeout = null;
+          }, SPAWN_BLING_MS);
+        }
+        if (getEmptyIndices().length === 0 && !canMove()) gameOver = true;
+        isAnimating = false;
+        spawnTimeout = null;
+      }, SPAWN_DELAY_MS);
     }
   }
 
@@ -334,6 +432,20 @@
     }
   }
 
+  async function submitLevelClearScore(scoreToSave: number) {
+    if (!isLoggedIn || scoreToSave <= 0) return;
+    try {
+      const res = await fetch('/games/2048', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ score: scoreToSave }),
+      });
+      if (res.ok) await loadRank();
+    } catch (e) {
+      console.error('[2048 레벨 통과 점수 저장 실패]', e);
+    }
+  }
+
   function formatScore(n: number): string {
     return n >= 1000 ? (n / 1000).toFixed(1).replace(/\.0$/, '') + 'k' : String(n);
   }
@@ -381,6 +493,12 @@
     window.addEventListener('keydown', handleKeydown);
     return () => {
       window.removeEventListener('keydown', handleKeydown);
+      if (tickTimeout) clearTimeout(tickTimeout);
+      if (spawnTimeout) clearTimeout(spawnTimeout);
+      if (spawnEffectTimeout) clearTimeout(spawnEffectTimeout);
+      if (moveUnlockTimeout) clearTimeout(moveUnlockTimeout);
+      if (passedFlashTimeout) clearTimeout(passedFlashTimeout);
+      if (switchedToEasyTimeout) clearTimeout(switchedToEasyTimeout);
       if (cleanupTouchMove) cleanupTouchMove();
     };
   });
@@ -476,7 +594,7 @@
               </p>
             {/if}
             <p class="small text-muted mb-3">
-              방향키 또는 그리드 위에서 스와이프로 이동. 같은 숫자가 만나면 합쳐집니다. 게임오버 시 점수만 랭킹에 기록됩니다. (3일 내 내 최고점)
+              방향키 또는 그리드 위에서 스와이프로 이동. 같은 숫자가 만나면 합쳐집니다. 레벨 통과 또는 게임오버 시 점수가 랭킹에 기록됩니다. (3일 내 내 최고점)
             </p>
             <div class="text-center">
               <div
@@ -507,6 +625,7 @@
                       <div
                         class="game-2048-tile"
                         class:game-2048-tile-tick={gridTicked}
+                        class:game-2048-tile-spawn={spawnedIndex === row * SIZE + col && at(row, col) !== 0}
                         style="background-color: {tileBg(at(row, col))}; font-size: {tileFontSize(at(row, col))};"
                       >
                         {at(row, col) === 0 ? '' : at(row, col)}
@@ -609,26 +728,46 @@
     border-radius: 6px;
     color: #776e65;
     transition:
-      background-color 0.12s ease-out,
-      font-size 0.12s ease-out,
-      transform 0.12s ease-out;
+      background-color 0.18s ease-out,
+      font-size 0.18s ease-out,
+      transform 0.18s cubic-bezier(0.2, 0.9, 0.2, 1);
   }
   .game-2048-tile:empty::before {
     content: '';
   }
   /* 움직일 때 타일 살짝 반응 */
   .game-2048-tile-tick {
-    animation: tile-pop 0.18s ease-out;
+    animation: tile-pop 0.16s ease-out;
   }
   @keyframes tile-pop {
     0% {
-      transform: scale(0.97);
+      transform: scale(0.985);
     }
     70% {
-      transform: scale(1.02);
+      transform: scale(1.015);
     }
     100% {
       transform: scale(1);
+    }
+  }
+  .game-2048-tile-spawn {
+    animation: tile-bling 0.32s ease-out;
+  }
+  @keyframes tile-bling {
+    0% {
+      transform: scale(0.6);
+      filter: brightness(1.45);
+      box-shadow: 0 0 0 rgba(255, 255, 255, 0);
+    }
+    45% {
+      transform: scale(1.08);
+      filter: brightness(1.18);
+      box-shadow: 0 0 14px rgba(255, 255, 255, 0.55);
+    }
+    100% {
+      transform: scale(1);
+      filter: brightness(1);
+      box-shadow: 0 0 0 rgba(255, 255, 255, 0);
     }
   }
   .game-2048-passed-overlay {
