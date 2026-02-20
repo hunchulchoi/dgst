@@ -1,7 +1,6 @@
 <script>
   import { signIn } from '@auth/sveltekit/client';
   import Swal from 'sweetalert2';
-  import { onMount } from 'svelte';
 
   let { data } = $props();
 
@@ -11,48 +10,66 @@
   let email = $state('');
   let password = $state('');
 
-  onMount(() => {
+  function showErrorAlert(errorCode) {
+    let errorMessage = '로그인 중 오류가 발생했습니다.';
+
+    switch (errorCode) {
+      case 'OAuthSignin':
+      case 'OAuthCallback':
+      case 'OAuthCreateAccount':
+      case 'EmailCreateAccount':
+      case 'Callback':
+        errorMessage = '소셜 로그인 연동 중 오류가 발생했습니다.';
+        break;
+      case 'OAuthAccountNotLinked':
+        errorMessage = '이미 다른 연동 방식으로 가입된 이메일입니다.';
+        break;
+      case 'EmailSignin':
+        errorMessage = '이메일 인증 링크 전송에 실패했습니다.';
+        break;
+      case 'CredentialsSignin':
+        errorMessage = '이메일 또는 비밀번호가 올바르지 않습니다.';
+        break;
+      case 'SessionRequired':
+        errorMessage = '로그인이 필요한 페이지입니다.';
+        break;
+      default:
+        errorMessage = `로그인 실패: ${errorCode}`;
+    }
+
+    Swal.fire({
+      icon: 'error',
+      title: '로그인 실패',
+      text: errorMessage,
+      confirmButtonColor: '#212529',
+      confirmButtonText: '확인'
+    });
+  }
+
+  $effect(() => {
+    // OAuth 등으로 리다이렉트되어 파라미터로 에러가 넘어온 경우 보여줌
     if (data.error) {
-      let errorMessage = '로그인 중 오류가 발생했습니다.';
-
-      switch (data.error) {
-        case 'OAuthSignin':
-        case 'OAuthCallback':
-        case 'OAuthCreateAccount':
-        case 'EmailCreateAccount':
-        case 'Callback':
-          errorMessage = '소셜 로그인 연동 중 오류가 발생했습니다.';
-          break;
-        case 'OAuthAccountNotLinked':
-          errorMessage = '이미 다른 연동 방식으로 가입된 이메일입니다.';
-          break;
-        case 'EmailSignin':
-          errorMessage = '이메일 인증 링크 전송에 실패했습니다.';
-          break;
-        case 'CredentialsSignin':
-          errorMessage = '이메일 또는 비밀번호가 올바르지 않습니다.';
-          break;
-        case 'SessionRequired':
-          errorMessage = '로그인이 필요한 페이지입니다.';
-          break;
-        default:
-          errorMessage = `로그인 실패: ${data.error}`;
-      }
-
-      Swal.fire({
-        icon: 'error',
-        title: '로그인 실패',
-        text: errorMessage,
-        confirmButtonColor: '#212529',
-        confirmButtonText: '확인'
-      });
+      showErrorAlert(data.error);
     }
   });
 
   async function handleEmailSignIn(e) {
     e.preventDefault();
     if (!email || !password) return;
-    await signIn('email-password-credential', { email, password, callbackUrl: '/' });
+
+    // 이메일 로그인은 페이지 리로드 없이 결과를 즉시 받아 처리합니다.
+    const res = await signIn('email-password-credential', {
+      email,
+      password,
+      redirect: false
+    });
+
+    if (res?.error) {
+      showErrorAlert(res.error);
+    } else if (res?.ok) {
+      // 로그인 성공 시 메인으로 이동
+      window.location.href = res?.url || '/';
+    }
   }
 </script>
 
