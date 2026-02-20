@@ -1,5 +1,7 @@
 <script>
   import { onMount, tick } from 'svelte';
+  import { beforeNavigate } from '$app/navigation';
+  import Swal from 'sweetalert2';
   let { data } = $props();
 
   let mode = $state(null);
@@ -20,6 +22,9 @@
 
   let timer = $state(0);
   let timerInterval = null;
+  let isPaused = $state(false);
+
+  const STORAGE_KEY = 'minesweeper_save';
 
   let rankList = $state([]);
   let myBestTime = $state(null);
@@ -86,6 +91,7 @@
       cols = 30;
       totalMines = 99;
     }
+    clearSave();
     initGrid();
   }
 
@@ -100,6 +106,7 @@
 
     if (timerInterval) clearInterval(timerInterval);
     timerInterval = null;
+    isPaused = false;
 
     const newGrid = [];
     for (let r = 0; r < rows; r++) {
@@ -117,6 +124,24 @@
       newGrid.push(row);
     }
     grid = newGrid;
+  }
+
+  async function handleReset() {
+    if (!gameOver && !firstClick) {
+      const result = await Swal.fire({
+        title: '재시작 하시겠습니까?',
+        text: '현재 진행 중인 게임이 사라집니다.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#0d6efd',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: '네, 다시 시작합니다',
+        cancelButtonText: '취소',
+        reverseButtons: true
+      });
+      if (!result.isConfirmed) return;
+    }
+    initGrid();
   }
 
   function placeMines(firstRow, firstCol) {
@@ -161,10 +186,7 @@
     if (firstClick) {
       firstClick = false;
       placeMines(r, c);
-      timerInterval = setInterval(() => {
-        timer++;
-        if (timer > 999) timer = 999;
-      }, 1000);
+      startTimer();
     }
 
     grid[r][c].isRevealed = true;
@@ -173,7 +195,8 @@
     if (grid[r][c].isMine) {
       gameOver = true;
       explodedMine = { row: r, col: c };
-      if (timerInterval) clearInterval(timerInterval);
+      stopTimer();
+      clearSave();
       revealAllMines();
       return;
     }
@@ -192,6 +215,87 @@
     }
 
     checkWinCondition();
+  }
+
+  function startTimer() {
+    if (timerInterval) return;
+    timerInterval = setInterval(() => {
+      if (!isPaused) {
+        timer++;
+        if (timer > 999) timer = 999;
+      }
+    }, 1000);
+  }
+
+  function stopTimer() {
+    if (timerInterval) {
+      clearInterval(timerInterval);
+      timerInterval = null;
+    }
+  }
+
+  function togglePause() {
+    if (gameOver || firstClick) return;
+    isPaused = !isPaused;
+    if (isPaused) {
+      saveGame();
+    }
+  }
+
+  function saveGame() {
+    if (gameOver || firstClick || !mode) return;
+    const saveData = {
+      mode,
+      rows,
+      cols,
+      totalMines,
+      grid,
+      gameOver,
+      gameWon,
+      firstClick,
+      flagsPlaced,
+      timer,
+      explodedMine,
+      timestamp: Date.now()
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(saveData));
+  }
+
+  function loadSavedGame() {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (!saved) return;
+    try {
+      const data = JSON.parse(saved);
+      // 24시간 이내의 저장 데이터만 유효하다고 가정 (선택 사항)
+      if (Date.now() - data.timestamp > 24 * 60 * 60 * 1000) {
+        localStorage.removeItem(STORAGE_KEY);
+        return;
+      }
+
+      mode = data.mode;
+      rows = data.rows;
+      cols = data.cols;
+      totalMines = data.totalMines;
+      grid = data.grid;
+      gameOver = data.gameOver;
+      gameWon = data.gameWon;
+      firstClick = data.firstClick;
+      flagsPlaced = data.flagsPlaced;
+      timer = data.timer;
+      explodedMine = data.explodedMine;
+      isPaused = true; // 불러오면 일단 일시정지 상태로
+      showHelp = false;
+
+      if (!gameOver && !firstClick) {
+        startTimer();
+      }
+    } catch (e) {
+      console.error('불러오기 실패', e);
+    }
+  }
+
+  function clearSave() {
+    localStorage.removeItem(STORAGE_KEY);
   }
 
   function toggleFlag(e, r, c) {
@@ -261,7 +365,8 @@
     if (unrevealedSafeCells === 0) {
       gameWon = true;
       gameOver = true;
-      if (timerInterval) clearInterval(timerInterval);
+      stopTimer();
+      clearSave();
       if (mode) void submitWinScore(timer, mode);
       // 다 이겼으면 남은 지뢰에 자동 깃발처리
       for (let r = 0; r < rows; r++) {
@@ -293,9 +398,15 @@
   }
 
   onMount(() => {
+    loadSavedGame();
     return () => {
-      if (timerInterval) clearInterval(timerInterval);
+      saveGame();
+      stopTimer();
     };
+  });
+
+  beforeNavigate(() => {
+    saveGame();
   });
 </script>
 
@@ -334,8 +445,8 @@
             </ul>
           </div>
           <div class="alert alert-info small mb-4 py-2">
-            💡 <strong>첫 클릭은 항상 안전합니다!</strong> 첫 타일은 지뢰가 아니니 안심하고 아무 곳이나
-            눌러보세요.
+            💡 <strong>팁:</strong> 첫 클릭은 항상 안전합니다! 게임 중 상단의
+            <strong>🙂 스마일 버튼</strong>을 누르면 언제든 다시 시작할 수 있습니다.
           </div>
           <button class="btn btn-primary w-100 py-2 fw-bold" onclick={() => (showHelp = false)}>
             알겠어요! 게임 시작하기
@@ -386,8 +497,16 @@
                 </span>
               </h4>
               <div class="d-flex align-items-center gap-2">
-                <button class="btn btn-sm btn-outline-secondary" onclick={initGrid}>
-                  다시 하기
+                {#if !gameOver}
+                  <button
+                    class="btn btn-sm {isPaused ? 'btn-success' : 'btn-warning'} shadow-sm"
+                    onclick={togglePause}
+                  >
+                    {isPaused ? '▶️ 재개' : '⏸️ 일시정지'}
+                  </button>
+                {/if}
+                <button class="btn btn-sm btn-outline-secondary" onclick={handleReset}>
+                  새 게임
                 </button>
                 <button
                   class="btn btn-sm btn-outline-dark"
@@ -414,9 +533,13 @@
                   {('00' + Math.max(0, minesLeft)).slice(-3)}
                 </div>
 
-                <!-- 가운데: 스마일 페이스 (새 게임) -->
+                <!-- 가운데: 스마일 페이스 (새 게임/재시작) -->
                 <div class="flex-fill text-center">
-                  <button class="btn p-0 face-btn" onclick={initGrid} title="새 게임">
+                  <button
+                    class="btn p-0 face-btn"
+                    onclick={handleReset}
+                    title="게임을 다시 시작합니다"
+                  >
                     {#if gameWon}😎{:else if gameOver}😵{:else}🙂{/if}
                   </button>
                 </div>
@@ -470,6 +593,7 @@
                         onmouseenter={() => setHighlight(cell.row, cell.col)}
                         onmouseleave={clearHighlight}
                         onclick={(e) => {
+                          if (isPaused) return;
                           if (cell.isRevealed) {
                             handleChord(cell.row, cell.col);
                             setHighlight(cell.row, cell.col);
@@ -498,6 +622,16 @@
                     {/each}
                   {/each}
                 </div>
+
+                {#if isPaused}
+                  <div class="pause-overlay" onclick={togglePause}>
+                    <div class="text-white text-center">
+                      <div class="fs-1 mb-2">⏸️</div>
+                      <div class="fw-bold">일시정지 중</div>
+                      <div class="small opacity-75">클릭하면 재개합니다</div>
+                    </div>
+                  </div>
+                {/if}
               </div>
             </div>
 
@@ -734,5 +868,21 @@
     justify-content: center;
     align-items: center;
     z-index: 1050;
+  }
+
+  .pause-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(8px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10;
+    cursor: pointer;
+    border-radius: inherit;
   }
 </style>
