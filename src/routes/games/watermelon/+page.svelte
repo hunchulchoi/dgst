@@ -15,7 +15,8 @@
   let score = $state(0);
   let gameOver = $state(false);
   let gameStarted = $state(false);
-  let isVictory = $state(false);
+  let hasReached2048 = $state(false);
+  let currentFruitIndex = $state(0);
   let nextFruitIndex = $state(0);
   let canvasEl = $state<HTMLCanvasElement | null>(null);
   let rankList = $state<Array<{ nickname: string; score: number; _id?: string }>>([]);
@@ -32,6 +33,7 @@
   let dropLineX = $state(GAME_WIDTH / 2);
   let currFruitBody: Matter.Body | null = null;
   let isDropping = $state(false); // Prevent spamming drops
+  let isClearing = $state(false); // Prevent interactions and game over while clearing
 
   const Engine = Matter.Engine,
     Render = Matter.Render,
@@ -53,13 +55,7 @@
       isStatic: isStatic,
       restitution: 0.2, // Bouncy
       render: {
-        fillStyle: fruit.color,
-        text: {
-          content: fruit.label,
-          color: '#776e65', // 2048 text color
-          size: fruit.radius, // rough scaling
-          family: 'Arial, sans-serif'
-        }
+        fillStyle: fruit.color
       }
     });
     // Add custom property for easy access to level
@@ -68,6 +64,7 @@
   }
 
   // Initial next fruit
+  currentFruitIndex = getRandomFruitIndex();
   nextFruitIndex = getRandomFruitIndex();
 
   onMount(() => {
@@ -148,12 +145,26 @@
               const points = FRUITS[level + 1].value;
               score += points;
 
-              // Check for Victory (reached 2048)
-              if (level + 1 === 10) {
-                isVictory = true;
-                gameOver = true;
-                stopAutoDrop();
-                submitGameOverScore(score);
+              // Check for 2048 Clear
+              if (level + 1 >= 10) {
+                hasReached2048 = true;
+                if (!isClearing) {
+                  isClearing = true;
+
+                  // Clear board after 1.5 seconds so user sees the 2048 fruit
+                  setTimeout(() => {
+                    if (engine && engine.world) {
+                      const allFruits = Composite.allBodies(engine.world).filter(
+                        (b) => (b as any).gameLevel !== undefined
+                      );
+                      Composite.remove(engine.world, allFruits);
+                    }
+                    isClearing = false;
+                    currentFruitIndex = getRandomFruitIndex();
+                    nextFruitIndex = getRandomFruitIndex();
+                    resetIdleTimer();
+                  }, 1500);
+                }
               }
 
               // Trigger Effect
@@ -228,7 +239,7 @@
 
     // 5. Game Over Check (afterUpdate)
     Events.on(engine, 'afterUpdate', () => {
-      if (gameOver) return;
+      if (gameOver || isClearing) return;
 
       // Check if any fruit is stationary above the line
       // Simple check: if a fruit's y < 100 and it's NOT the current lingering/dropping fruit
@@ -245,7 +256,8 @@
             Math.abs(body.velocity.x) < 0.2
           ) {
             gameOver = true;
-            stopAutoDrop();
+            if (idleSaveTimer) clearTimeout(idleSaveTimer);
+            clearGameState();
             submitGameOverScore(score);
           }
         }
@@ -257,9 +269,14 @@
 
     // 6. Event listeners
     window.addEventListener('keydown', handleKeydown);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Initial load
+    loadGameState();
 
     return () => {
-      stopAutoDrop();
+      if (idleSaveTimer) clearTimeout(idleSaveTimer);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('keydown', handleKeydown);
       if (render) {
         Render.stop(render);
@@ -275,7 +292,7 @@
     gameStarted = true;
     runner = Runner.create();
     Runner.run(runner, engine);
-    startAutoDrop();
+    resetIdleTimer();
   }
 
   $effect(() => {
@@ -327,78 +344,145 @@
     color: string;
   }[] = [];
 
-  // --- Auto Drop Logic ---
-  let autoDropInterval: NodeJS.Timeout | null = null;
-  let timeLeft = $state(5);
-  const AUTO_DROP_SECONDS = 5;
+  // --- Auto Save Logic ---
+  let idleSaveTimer: ReturnType<typeof setTimeout> | null = null;
+  const IDLE_SAVE_MS = 10000;
 
-  function startAutoDrop() {
-    stopAutoDrop();
-    if (!isLoggedIn || gameOver) return;
+  function resetIdleTimer() {
+    if (idleSaveTimer) clearTimeout(idleSaveTimer);
+    if (!gameStarted || gameOver) return;
 
-    timeLeft = AUTO_DROP_SECONDS;
-    autoDropInterval = setInterval(() => {
-      timeLeft -= 1;
-      if (timeLeft <= 0) {
-        dropFruit();
-      }
-    }, 1000);
+    idleSaveTimer = setTimeout(() => {
+      saveGameState();
+    }, IDLE_SAVE_MS);
   }
 
-  function stopAutoDrop() {
-    if (autoDropInterval) {
-      clearInterval(autoDropInterval);
-      autoDropInterval = null;
+  function saveGameState() {
+    if (!gameStarted || gameOver || !engine) return;
+    try {
+      const bodies = Composite.allBodies(engine.world).filter(
+        (b) => (b as any).gameLevel !== undefined && !b.isStatic
+      );
+      const fruitsData = bodies.map((b) => ({
+        x: b.position.x,
+        y: b.position.y,
+        vx: b.velocity.x,
+        vy: b.velocity.y,
+        angle: b.angle,
+        angularVelocity: b.angularVelocity,
+        gameLevel: (b as any).gameLevel
+      }));
+
+      const state = {
+        score,
+        currentFruitIndex,
+        nextFruitIndex,
+        fruits: fruitsData
+      };
+
+      localStorage.setItem('watermelonGameState', JSON.stringify(state));
+    } catch (e) {
+      console.error('Failed to save game state', e);
+    }
+  }
+
+  function loadGameState() {
+    const saved = localStorage.getItem('watermelonGameState');
+    if (!saved) return false;
+
+    try {
+      const state = JSON.parse(saved);
+      score = state.score || 0;
+      if (state.currentFruitIndex !== undefined) {
+        currentFruitIndex = state.currentFruitIndex;
+      }
+      if (state.nextFruitIndex !== undefined) {
+        nextFruitIndex = state.nextFruitIndex;
+      }
+
+      const existingFruits = Composite.allBodies(engine.world).filter(
+        (b) => (b as any).gameLevel !== undefined && !b.isStatic
+      );
+      Composite.remove(engine.world, existingFruits);
+
+      if (state.fruits && Array.isArray(state.fruits)) {
+        state.fruits.forEach((f: any) => {
+          const newFruit = createFruit(f.x, f.y, f.gameLevel);
+          Body.setAngle(newFruit, f.angle || 0);
+          Body.setVelocity(newFruit, { x: f.vx || 0, y: f.vy || 0 });
+          Body.setAngularVelocity(newFruit, f.angularVelocity || 0);
+          Composite.add(engine.world, newFruit);
+        });
+      }
+      return true;
+    } catch (e) {
+      console.error('Failed to load game state', e);
+      return false;
+    }
+  }
+
+  function clearGameState() {
+    localStorage.removeItem('watermelonGameState');
+  }
+
+  function handleVisibilityChange() {
+    if (document.hidden) {
+      saveGameState();
     }
   }
 
   function dropFruit() {
-    if (gameOver || isDropping) return;
+    if (gameOver || isDropping || isClearing) return;
 
-    stopAutoDrop(); // Stop current timer
     isDropping = true;
     const spawnX = dropLineX;
     const spawnY = 50; // Above the danger line
 
-    const newFruit = createFruit(spawnX, spawnY, nextFruitIndex);
+    const newFruit = createFruit(spawnX, spawnY, currentFruitIndex);
     Composite.add(engine.world, newFruit);
 
     // Cooldown & Next Fruit: wait longer (1s) to let current fruit fall
     setTimeout(() => {
       isDropping = false;
+      currentFruitIndex = nextFruitIndex;
       nextFruitIndex = getRandomFruitIndex();
-      startAutoDrop(); // Restart timer for next fruit
+      resetIdleTimer(); // Reset timer for save
     }, 1000); // 1.0s delay between drops
   }
 
   function getConstrainedX(rawX: number) {
-    const radius = FRUITS[nextFruitIndex].radius;
+    const radius = FRUITS[currentFruitIndex].radius;
     return Math.max(radius, Math.min(GAME_WIDTH - radius, rawX));
   }
 
   function handlePointerMove(e: PointerEvent) {
-    if (!isLoggedIn || !gameStarted || gameOver || isDropping) return;
+    if (!isLoggedIn || !gameStarted || gameOver || isDropping || isClearing) return;
     const rect = canvasEl?.getBoundingClientRect();
     if (!rect) return;
     const x = e.clientX - rect.left;
     dropLineX = getConstrainedX(x);
+    resetIdleTimer();
   }
 
   function handlePointerUp(e: PointerEvent) {
-    if (!isLoggedIn || !gameStarted || gameOver || isDropping) return;
+    if (!isLoggedIn || !gameStarted || gameOver || isDropping || isClearing) return;
     dropFruit();
+    resetIdleTimer();
   }
 
   function handleKeydown(e: KeyboardEvent) {
-    if (!isLoggedIn || !gameStarted || gameOver || isDropping) return;
+    if (!isLoggedIn || !gameStarted || gameOver || isDropping || isClearing) return;
 
     if (e.key === 'ArrowLeft') {
       dropLineX = getConstrainedX(dropLineX - 25);
+      resetIdleTimer();
     } else if (e.key === 'ArrowRight') {
       dropLineX = getConstrainedX(dropLineX + 25);
+      resetIdleTimer();
     } else if (e.key === ' ' || e.key === 'Enter' || e.key === 'ArrowDown') {
       e.preventDefault();
       dropFruit();
+      resetIdleTimer();
     }
   }
 
@@ -431,8 +515,13 @@
 
     score = 0;
     gameOver = false;
-    isVictory = false;
+    hasReached2048 = false;
+    isClearing = false;
+    currentFruitIndex = getRandomFruitIndex();
     nextFruitIndex = getRandomFruitIndex();
+
+    clearGameState();
+    resetIdleTimer();
   }
 </script>
 
@@ -494,17 +583,17 @@
             style="
                     left: {dropLineX}px;
                     top: 50px;
-                    width: {FRUITS[nextFruitIndex].radius * 2}px;
-                    height: {FRUITS[nextFruitIndex].radius * 2}px;
-                    margin-left: -{FRUITS[nextFruitIndex].radius}px;
-                    margin-top: -{FRUITS[nextFruitIndex].radius}px;
-                    background-color: {FRUITS[nextFruitIndex].color};
+                    width: {FRUITS[currentFruitIndex].radius * 2}px;
+                    height: {FRUITS[currentFruitIndex].radius * 2}px;
+                    margin-left: -{FRUITS[currentFruitIndex].radius}px;
+                    margin-top: -{FRUITS[currentFruitIndex].radius}px;
+                    background-color: {FRUITS[currentFruitIndex].color};
                     border: 2px solid rgba(0,0,0,0.2);
                     border-radius: 50%;
                 "
           >
-            <span style="line-height: {FRUITS[nextFruitIndex].radius * 2}px;"
-              >{FRUITS[nextFruitIndex].label}</span
+            <span style="line-height: {FRUITS[currentFruitIndex].radius * 2}px;"
+              >{FRUITS[currentFruitIndex].label}</span
             >
           </div>
         {/if}
@@ -530,7 +619,7 @@
                 🖱️ <strong>조작</strong>: 마우스 이동/클릭 또는 방향키를 사용하세요.
               </p>
               <p class="mb-2">
-                ⏱️ <strong>주의</strong>: 5초 동안 가만히 있으면 자동 드롭됩니다.
+                💾 <strong>저장</strong>: 10초간 조작이 없거나 창을 닫으면 자동 저장됩니다.
               </p>
               <p class="mb-0">
                 🚫 <strong>종료</strong>: 과일이 빨간 점선 위로 쌓이면 게임 오버!
@@ -545,8 +634,8 @@
             class="game-over-overlay position-absolute top-0 start-0 w-100 h-100 d-flex flex-column align-items-center justify-content-center bg-body bg-opacity-95 rounded"
             style="z-index: 100;"
           >
-            {#if isVictory}
-              <h2 class="fw-bold text-success mb-3">2048 달성! 축하합니다!</h2>
+            {#if hasReached2048}
+              <h2 class="fw-bold text-success mb-3">2048 달성! 게임 오버</h2>
             {:else}
               <h2 class="fw-bold text-danger mb-3">게임 오버!</h2>
             {/if}
@@ -559,9 +648,7 @@
 
       <div class="mt-3 fw-bold small text-center" style="max-width: 400px;">
         <p class="mb-1">클릭/터치하여 과일을 떨어뜨리세요. 같은 숫자가 합쳐집니다.</p>
-        <p class="mb-0 {timeLeft <= 3 ? 'text-danger' : 'text-primary'}">
-          {timeLeft}초 후 자동 드롭!
-        </p>
+        <p class="mb-0 text-primary">게임은 자동으로 저장됩니다.</p>
       </div>
     </div>
 

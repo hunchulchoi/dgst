@@ -20,6 +20,7 @@ async function main() {
   console.log('Connected. Aggregating game_scores...');
 
   const cursor = GameScore.aggregate([
+    { $match: { game: 'slot' } },
     { $sort: { email: 1, createdAt: -1 } },
     {
       $group: {
@@ -30,7 +31,7 @@ async function main() {
       }
     },
     { $match: { totalSpin: { $gt: 0 } } }
-  ]).cursor();
+  ]).allowDiskUse(true).cursor();
 
   let count = 0;
   const bulk = [];

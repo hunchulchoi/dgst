@@ -23,6 +23,7 @@ export async function backfillSlotUserBalance() {
   backfillPromise = (async () => {
     try {
       const cursor = GameScore.aggregate([
+        { $match: { game: 'slot' } },
         { $sort: { email: 1, createdAt: -1 } },
         {
           $group: {
@@ -33,7 +34,7 @@ export async function backfillSlotUserBalance() {
           }
         },
         { $match: { totalSpin: { $gt: 0 } } }
-      ]).cursor();
+      ]).allowDiskUse(true).cursor();
 
       const bulk = [];
       const BATCH = 500;
@@ -125,7 +126,7 @@ export async function updateSlotUserBalance(email, nickname, balance, opts = {})
 export async function getSlotBalance(email) {
   const row = await SlotUserBalance.findOne({ email }).select({ balance: 1 }).lean();
   if (row != null) return row.balance;
-  const last = await GameScore.findOne({ email }).sort({ createdAt: -1 }).select({ balance: 1, nickname: 1 }).lean();
+  const last = await GameScore.findOne({ email, game: 'slot' }).sort({ createdAt: -1 }).select({ balance: 1, nickname: 1 }).lean();
   const balance = last?.balance ?? 0;
   const nickname = (last && 'nickname' in last && last.nickname) ? last.nickname : 'anonymous';
   await updateSlotUserBalance(email, nickname, balance, {});
