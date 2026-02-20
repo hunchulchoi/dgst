@@ -5,28 +5,14 @@ import {
   NEXTAUTH_SECRET,
   GOOGLE_CLIENT_ID,
   GOOGLE_CLIENT_SECRET,
+  KAKAO_CLIENT_ID,
+  KAKAO_CLIENT_SECRET,
   NODE_ENV,
   DB_NAME,
   VIP_EMAIL,
   VIP_FAKE_EMAIL
 } from '$env/static/private';
 import { env as dynamicEnv } from '$env/dynamic/private';
-
-// 카카오 환경 변수 (선택적 - 환경 변수 파일에 추가 필요)
-const KAKAO_CLIENT_ID = dynamicEnv.KAKAO_CLIENT_ID;
-const KAKAO_CLIENT_SECRET = dynamicEnv.KAKAO_CLIENT_SECRET;
-
-// 디버깅: 카카오 환경 변수 확인
-const hasKakaoCredentials = !!KAKAO_CLIENT_ID && !!KAKAO_CLIENT_SECRET;
-console.log('카카오 환경 변수 확인:', {
-  hasClientId: !!KAKAO_CLIENT_ID,
-  hasClientSecret: !!KAKAO_CLIENT_SECRET,
-  clientIdLength: KAKAO_CLIENT_ID?.length || 0,
-  willRegister: hasKakaoCredentials
-});
-if (!hasKakaoCredentials) {
-  console.warn('⚠️ 카카오 로그인 비활성화: KAKAO_CLIENT_ID 또는 KAKAO_CLIENT_SECRET이 설정되지 않았습니다.');
-}
 import clientPromise from '$lib/database/clientPromise.js';
 import { getHybridAdapter } from '$lib/server/auth/hybridAdapter.js';
 import { checkAuthRateLimit } from '$lib/server/auth/rateLimit.js';
@@ -41,160 +27,7 @@ export function depends(key) {
   cache.set(key, new Date().getTime());
 }
 
-/**
- * 카카오 OAuth2 프로바이더
- */
-function KakaoProvider(options) {
-  // 클로저로 options 캡처
-  const { clientId, clientSecret } = options;
-
-  // 디버깅: clientId 확인
-  console.log('[KakaoProvider] 초기화:', {
-    hasClientId: !!clientId,
-    hasClientSecret: !!clientSecret,
-    clientIdLength: clientId?.length || 0
-  });
-
-  const provider = {
-    id: 'kakao',
-    name: 'Kakao',
-    type: 'oauth',
-    checks: ['state'],
-    clientId: clientId, // 명시적으로 설정
-    clientSecret: clientSecret, // 명시적으로 설정
-    authorization: {
-      url: 'https://kauth.kakao.com/oauth/authorize',
-      params: {
-        response_type: 'code',
-        scope: '' // 빈 scope 명시적 설정
-      },
-      async request(context) {
-        // @auth/core가 자동으로 추가한 scope를 제거하기 위해 완전히 커스텀 URL 생성
-        const { provider, options: authOptions } = context;
-        const url = new URL('https://kauth.kakao.com/oauth/authorize');
-
-        // 클로저에서 캡처한 clientId 사용
-        url.searchParams.set('client_id', clientId);
-        url.searchParams.set('redirect_uri', provider.callbackUrl);
-        url.searchParams.set('response_type', 'code');
-
-        // scope는 명시적으로 제외
-        // state 추가
-        if (authOptions.state) {
-          url.searchParams.set('state', authOptions.state);
-        }
-
-        // scope 파라미터가 있다면 제거
-        url.searchParams.delete('scope');
-
-        return { url: url.toString() };
-      }
-    },
-    token: {
-      url: 'https://kauth.kakao.com/oauth/token',
-      async request({ params, provider }) {
-        // 디버깅: 전달된 값 확인
-        console.log('[KakaoProvider] token.request 호출:', {
-          providerClientId: provider.clientId,
-          providerClientSecret: provider.clientSecret ? '***' : undefined,
-          closureClientId: clientId ? '***' : undefined,
-          closureClientSecret: clientSecret ? '***' : undefined,
-          hasCode: !!params.code,
-          redirectUri: provider.callbackUrl
-        });
-
-        // provider.clientId가 null이면 클로저 값 사용
-        const useClientId = provider.clientId || clientId;
-        const useClientSecret = provider.clientSecret || clientSecret;
-
-        if (!useClientId || !useClientSecret) {
-          console.error('[KakaoProvider] clientId or clientSecret is missing:', {
-            useClientId: !!useClientId,
-            useClientSecret: !!useClientSecret,
-            providerClientId: !!provider.clientId,
-            providerClientSecret: !!provider.clientSecret,
-            closureClientId: !!clientId,
-            closureClientSecret: !!clientSecret
-          });
-          throw new Error('Kakao clientId or clientSecret is missing');
-        }
-
-        // 카카오는 표준 OAuth2 형식 사용
-        const body = new URLSearchParams({
-          grant_type: 'authorization_code',
-          client_id: useClientId,
-          client_secret: useClientSecret,
-          code: params.code,
-          redirect_uri: provider.callbackUrl
-        });
-
-        const response = await fetch('https://kauth.kakao.com/oauth/token', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded'
-          },
-          body: body.toString()
-        });
-
-        const data = await response.json();
-
-        if (!response.ok) {
-          console.error('[KakaoProvider] 토큰 요청 실패:', {
-            status: response.status,
-            statusText: response.statusText,
-            data
-          });
-          throw new Error(`Kakao token error: ${JSON.stringify(data)}`);
-        }
-
-        console.log('[KakaoProvider] 토큰 요청 성공');
-        return data;
-      }
-    },
-    userinfo: {
-      url: 'https://kapi.kakao.com/v2/user/me',
-      async request({ tokens, provider }) {
-        const response = await fetch(provider.userinfo.url, {
-          headers: {
-            Authorization: `Bearer ${tokens.access_token}`
-          }
-        });
-        return await response.json();
-      }
-    },
-    profile(profile) {
-      const kakaoAccount = profile.kakao_account || {};
-      const kakaoId = String(profile.id);
-      const emailHash = crypto.createHash('sha512').update(`kakao:${kakaoId}`).digest('base64url');
-
-      // 사용자 정보에 필요한 필드만 저장
-      return {
-        id: kakaoId,
-        email: kakaoAccount?.email ? crypto.createHash('sha512').update(kakaoAccount.email).digest('base64url') : emailHash,
-        nickname: kakaoAccount?.profile?.nickname || kakaoAccount?.name || `카카오${kakaoId.slice(-4)}`,
-        introduction: '우리 자기',
-        photo: (kakaoAccount?.profile?.profile_image_url || kakaoAccount?.profile?.thumbnail_image_url) ?? null,
-        emailVerified: true,
-        state: 'registered',
-        grade: 'user',
-        last_modified: new Date()
-      };
-    }
-  };
-
-  // 디버깅: 프로바이더 객체 확인
-  console.log('[KakaoProvider] 반환 객체:', {
-    id: provider.id,
-    type: provider.type,
-    hasClientId: !!provider.clientId,
-    hasAuthorization: !!provider.authorization,
-    hasToken: !!provider.token,
-    hasUserinfo: !!provider.userinfo,
-    hasProfile: !!provider.profile
-  });
-
-  return provider;
-}
+import KakaoProvider from '@auth/core/providers/kakao';
 
 // SvelteKit 2 + @auth/sveltekit v1.x 호환
 const providers = [
@@ -216,22 +49,27 @@ const providers = [
       };
     }
   }),
-  // 카카오 프로바이더 (환경 변수가 설정되어 있을 때만 활성화)
-  ...(KAKAO_CLIENT_ID && KAKAO_CLIENT_SECRET ? [
-    KakaoProvider({
-      clientId: KAKAO_CLIENT_ID,
-      clientSecret: KAKAO_CLIENT_SECRET
-    })
-  ] : [])
-    .filter((p) => {
-      // 프로바이더가 유효한지 확인
-      if (!p) return false;
-      const isValid = p && typeof p === 'object' && p.id === 'kakao';
-      if (!isValid) {
-        console.error('[Providers] 카카오 프로바이더가 유효하지 않음:', p);
-      }
-      return isValid;
-    }),
+  KakaoProvider({
+    clientId: KAKAO_CLIENT_ID,
+    clientSecret: KAKAO_CLIENT_SECRET,
+    profile(profile) {
+      const kakaoAccount = profile.kakao_account || {};
+      const kakaoId = String(profile.id);
+      const emailHash = crypto.createHash('sha512').update(`kakao:${kakaoId}`).digest('base64url');
+
+      return {
+        id: kakaoId,
+        email: kakaoAccount?.email ? crypto.createHash('sha512').update(kakaoAccount.email).digest('base64url') : emailHash,
+        nickname: kakaoAccount?.profile?.nickname || kakaoAccount?.name || `카카오${kakaoId.slice(-4)}`,
+        introduction: '우리 자기',
+        photo: (kakaoAccount?.profile?.profile_image_url || kakaoAccount?.profile?.thumbnail_image_url) ?? null,
+        emailVerified: true,
+        state: 'registered',
+        grade: 'user',
+        last_modified: new Date()
+      };
+    }
+  }),
   Credentials({
     id: 'email-password-credential',
     name: 'Credentials',
@@ -295,7 +133,9 @@ export const { handle: authHandle, signIn, signOut } = SvelteKitAuth({
   providers,
   adapter: getHybridAdapter(DB_NAME),
   pages: {
-    newUser: '/auth/profile'
+    newUser: '/auth/profile',
+    signIn: '/login',
+    error: '/login'
   },
   callbacks: {
     async signIn(params) {
@@ -304,23 +144,27 @@ export const { handle: authHandle, signIn, signOut } = SvelteKitAuth({
       console.debug('=======//auth callback signIn====');
 
       if (!params.profile && params.user) return true;
+      if (params.account?.provider === 'kakao') return true;
 
-      if (params.profile?.email_verified) {
+      const emailVerified = params.profile?.email_verified ?? params.profile?.emailVerified;
+      if (emailVerified) {
         if (params.user) {
           if (params.user.state !== 'blocked') {
             return true;
           } else {
-            logger.warn({
-              message: 'Login denied - user blocked',
+            logger.error({
+              message: '로그인 실패: 차단된 사용자',
               email: params.profile?.email,
-              userId: params.user?.id
+              userId: params.user?.id,
+              provider: params.account?.provider
             });
           }
         } else return true;
       } else {
-        logger.warn({
-          message: 'Login denied - email not verified',
-          email: params.profile?.email
+        logger.error({
+          message: '로그인 실패: 이메일 미인증',
+          email: params.profile?.email,
+          provider: params.account?.provider
         });
       }
 
@@ -464,8 +308,41 @@ export async function handle({ event, resolve }) {
     });
   };
 
+  // 카카오 콜백 해킹 제거 (표준 KakaoProvider 사용)
+
   // Auth 핸들러를 먼저 실행
-  const authResponse = await authHandle({ event, resolve: customResolve });
+  let authResponse;
+  try {
+    authResponse = await authHandle({ event, resolve: customResolve });
+  } catch (authErr) {
+    logger.error({
+      message: 'Auth 처리 중 에러',
+      pathname,
+      error: authErr?.message ?? String(authErr),
+      stack: authErr?.stack
+    });
+    throw authErr;
+  }
+
+  // 로그인 에러 페이지로 리다이렉트된 경우 (callback 실패 등) 서버에 error 로그
+  try {
+    const status = authResponse?.status;
+    const location = authResponse?.headers?.get?.('location');
+    if (status === 302 && location && location.includes('/login') && location.includes('error=')) {
+      const url = new URL(location, event.url.origin);
+      const errorType = url.searchParams.get('error') ?? '';
+      const errorDescription = url.searchParams.get('error_description') ?? '';
+      logger.error({
+        message: '로그인 실패: Auth 리다이렉트',
+        pathname,
+        errorType,
+        errorDescription,
+        callbackPath: pathname.startsWith('/auth/callback/') ? pathname : undefined
+      });
+    }
+  } catch (e) {
+    // 로그 실패만 무시
+  }
 
   // 로그인 성공 시(세션 쿠키 설정) login_logs 기록 (실패해도 인증 흐름 방해 금지)
   try {
