@@ -12,7 +12,7 @@ const slotUserBalanceSchema = new Schema(
     email: { type: String, required: true, unique: true },
     nickname: { type: String, required: true },
     balance: { type: Number, required: true, default: 0 },
-    totalSpin: { type: Number, required: true, default: 0 },
+    totalSpin: { type: Number, required: true, default: 0 }
   },
   { timestamps: true, collection: 'slot_user_balance' }
 );

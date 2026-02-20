@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import sanitizeHtml from 'sanitize-html';
-  
+
   let { url } = $props();
   let ogData = $state(null);
   let loading = $state(true);
@@ -16,7 +16,10 @@
         ogData = await response.json();
         console.log('📊 OG 데이터:', ogData);
         if (!ogData.title || !ogData.description) {
-          console.error('❌ OG 데이터 부족:', { title: ogData.title, description: ogData.description });
+          console.error('❌ OG 데이터 부족:', {
+            title: ogData.title,
+            description: ogData.description
+          });
           error = true;
         }
       } else {
@@ -59,34 +62,45 @@
   </a>
 {:else}
   <!-- OG 미리보기 표시 -->
-  
-    <div class="og-preview border rounded my-2 shadow overflow-hidden" style="max-width: 500px; cursor: pointer; padding: 0; line-height: normal;">
-      <a href={url} target="dgst_out_link" rel="noopener noreferrer" class="text-decoration-none">
-        {#if ogData.image}
-          <img 
-            src={ogData.image} 
-            class="og-cover" 
-            alt="미리보기 이미지"
-            loading="lazy"
-          />
-        {/if}
-        <div class="og-body p-3">
-          <h6 class="mb-1" style="font-size: 14px; font-weight: 700; line-height: 1.25; color: var(--bs-body-color); margin-bottom: 4px;">
-            {@html sanitizeHtml(ogData.title, { allowedTags: [], allowedAttributes: {} })}
-          </h6>
-          <p class="mb-2" style="font-size: 12px; line-height: 1.35; color: var(--bs-secondary-color); opacity: 0.9; margin-bottom: 6px;">
-            {@html sanitizeHtml(ogData.description, { allowedTags: [], allowedAttributes: {} })}
-          </p>
-          <div class="d-flex align-items-center mb-1">
-            {#if ogData.favicon}
-              <img src={ogData.favicon} alt="favicon" class="me-1" style="width: 16px; height: 16px; border-radius: 2px;">
-            {/if}
-            <small style="color: var(--bs-secondary-color); font-weight: 600;">{ogData.siteName}</small>
-          </div>
-          <small class="og-url text-primary">{url}</small>
+
+  <div
+    class="og-preview border rounded my-2 shadow overflow-hidden"
+    style="max-width: 500px; cursor: pointer; padding: 0; line-height: normal;"
+  >
+    <a href={url} target="dgst_out_link" rel="noopener noreferrer" class="text-decoration-none">
+      {#if ogData.image}
+        <img src={ogData.image} class="og-cover" alt="미리보기 이미지" loading="lazy" />
+      {/if}
+      <div class="og-body p-3">
+        <h6
+          class="mb-1"
+          style="font-size: 14px; font-weight: 700; line-height: 1.25; color: var(--bs-body-color); margin-bottom: 4px;"
+        >
+          {@html sanitizeHtml(ogData.title, { allowedTags: [], allowedAttributes: {} })}
+        </h6>
+        <p
+          class="mb-2"
+          style="font-size: 12px; line-height: 1.35; color: var(--bs-secondary-color); opacity: 0.9; margin-bottom: 6px;"
+        >
+          {@html sanitizeHtml(ogData.description, { allowedTags: [], allowedAttributes: {} })}
+        </p>
+        <div class="d-flex align-items-center mb-1">
+          {#if ogData.favicon}
+            <img
+              src={ogData.favicon}
+              alt="favicon"
+              class="me-1"
+              style="width: 16px; height: 16px; border-radius: 2px;"
+            />
+          {/if}
+          <small style="color: var(--bs-secondary-color); font-weight: 600;"
+            >{ogData.siteName}</small
+          >
         </div>
-      </a>
-    </div>
+        <small class="og-url text-primary">{url}</small>
+      </div>
+    </a>
+  </div>
 {/if}
 
 <style>
@@ -94,7 +108,7 @@
     background-color: var(--bs-gray-50);
     transition: background-color 0.2s ease;
   }
-  
+
   .og-preview a {
     color: inherit;
     text-decoration: none;
@@ -102,7 +116,7 @@
     pointer-events: auto;
     cursor: pointer;
   }
-  
+
   .og-preview a:hover {
     color: inherit;
     text-decoration: none;

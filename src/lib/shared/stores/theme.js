@@ -3,7 +3,7 @@ import { writable } from 'svelte/store';
 
 const defaultValue = 'auto';
 
-const initialValue = browser ? window.localStorage.getItem('theme') || defaultValue : defaultValue ;
+const initialValue = browser ? window.localStorage.getItem('theme') || defaultValue : defaultValue;
 
 const theme = writable(initialValue);
 

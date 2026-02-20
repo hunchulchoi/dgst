@@ -30,17 +30,19 @@
   let reels = $state(['-', '-', '-']);
   let message = $state('');
   let rankList = $state<Array<{ nickname: string; balance: number; _id?: string }>>([]);
-  let comments = $state<Array<{ 
-    _id?: string; 
-    id?: string; 
-    nickname: string; 
-    content: string; 
-    createdAt: string; 
-    photo?: string; 
-    depth?: number; 
-    parentCommentNickname?: string; 
-    liked?: boolean;
-  }>>([]);
+  let comments = $state<
+    Array<{
+      _id?: string;
+      id?: string;
+      nickname: string;
+      content: string;
+      createdAt: string;
+      photo?: string;
+      depth?: number;
+      parentCommentNickname?: string;
+      liked?: boolean;
+    }>
+  >([]);
   let commentPage = $state(1);
   let commentPerPage = $state(50);
   let commentTotal = $state(0);
@@ -68,7 +70,7 @@
 
   const getReelSymbols = () => {
     let symbols = [...BASE_SYMBOLS];
-    
+
     if (balance >= HIGH_BALANCE_THRESHOLD) {
       // 30만점 이상: 💎, 🍀 추가
       symbols = [...symbols, '💎', '🍀'];
@@ -76,7 +78,7 @@
       // 10만점 이상: 🍀 추가
       symbols = [...symbols, '🍀'];
     }
-    
+
     return symbols;
   };
 
@@ -99,19 +101,19 @@
 
   async function refreshBalance() {
     try {
-    const res = await fetch('/games/slot');
-    if (res.ok) {
-      const j = await res.json();
-      balance = j.balance;
+      const res = await fetch('/games/slot');
+      if (res.ok) {
+        const j = await res.json();
+        balance = j.balance;
         const prevOopsInfo = oopsInfo;
-      oopsInfo = j.oopsInfo || null;
+        oopsInfo = j.oopsInfo || null;
         if (j.todayStats) {
           todayStats = {
             spins: Number(j.todayStats.spins ?? 0),
             users: Number(j.todayStats.users ?? 0)
           };
         }
-        
+
         // oopsInfo가 새로 설정되거나 업데이트되면 카운트다운 시작
         if (oopsInfo && (!prevOopsInfo || prevOopsInfo.createdAt !== oopsInfo.createdAt)) {
           updateOopsCountdown();
@@ -139,7 +141,7 @@
       console.error('잔액 새로고침 실패:', err);
     }
   }
-  
+
   function updateOopsCountdown() {
     if (!oopsInfo) {
       oopsCountdown = '';
@@ -150,7 +152,7 @@
     const WAIT_DURATION_MS = 5 * 60 * 1000;
     const elapsed = now - createdAt;
     const remaining = WAIT_DURATION_MS - elapsed;
-    
+
     if (remaining <= 0) {
       oopsInfo = null;
       oopsCountdown = '';
@@ -158,7 +160,7 @@
       refreshBalance();
       return;
     }
-    
+
     const minutes = Math.floor(remaining / (60 * 1000));
     const seconds = Math.floor((remaining % (60 * 1000)) / 1000);
     oopsCountdown = `${minutes}분 ${seconds}초`;
@@ -166,20 +168,20 @@
 
   const getRandomPhrase = () => {
     if (!dgstData) return null;
-    
+
     // 6개 카테고리 중 하나 무작위 선택
     const categories = ['여행일본어', '상식', '명언', '여행영어', '일본어단어', 'facts'];
     const randomCategory = categories[Math.floor(Math.random() * categories.length)];
     const categoryData = dgstData[randomCategory as keyof typeof dgstData];
-    
+
     if (!categoryData || !Array.isArray(categoryData) || categoryData.length === 0) {
       return null;
     }
-    
+
     // 선택된 카테고리에서 무작위 항목 선택
     const randomIndex = Math.floor(Math.random() * categoryData.length);
     const item = categoryData[randomIndex];
-    
+
     // 카테고리별로 적절한 필드 매핑
     switch (randomCategory) {
       case '여행일본어':
@@ -223,10 +225,10 @@
   const startReelAnimation = () => {
     try {
       stopReelAnimation();
-      
+
       // 스핀 시작 시 하나의 문장만 선택하여 표시
       currentSpinPhrase = getRandomPhrase();
-      
+
       spinAnimationInterval = setInterval(() => {
         const symbols = getReelSymbols();
         reels = Array.from({ length: 3 }, () => {
@@ -284,7 +286,7 @@
       // 최소 3초 오버레이 유지
       const elapsed = Date.now() - start;
       if (elapsed < 3000) {
-        await new Promise(r => setTimeout(r, 3000 - elapsed));
+        await new Promise((r) => setTimeout(r, 3000 - elapsed));
       }
       stopReelAnimation();
       reels = nextReels;
@@ -297,7 +299,7 @@
       // Triple 체크 (3개 모두 같음)
       const isTriple = nextReels[0] === nextReels[1] && nextReels[1] === nextReels[2];
       const reelStr = `${nextReels[0]} ${nextReels[1]} ${nextReels[2]}`;
-      
+
       if (isTriple && j.delta > 0) {
         // Triple 당첨 시 큰 alert
         const is777 = nextReels[0] === '7️⃣';
@@ -309,29 +311,25 @@
           confirmButtonText: '확인',
           width: '500px'
         });
-        
+
         // Triple 당첨 시 자동 댓글 작성
         try {
           const formattedDelta = formatNumber(j.delta);
-          const tripleComment = is777 
+          const tripleComment = is777
             ? `🎰 ${reelStr} 잭팟 당첨! +${formattedDelta} 🎰`
             : `🎉 ${reelStr} Triple 당첨! +${formattedDelta} 🎉`;
-          
+
           const formData = new FormData();
           formData.set('content', tripleComment);
-          
+
           const commentRes = await fetch('/games/slot/comment', {
             method: 'POST',
             body: formData
           });
-          
+
           if (commentRes.ok) {
             // 댓글 작성 성공 시 리스트 새로고침 (보상은 서버에서 처리)
-            await Promise.all([
-              loadComments(1),
-              refreshBalance(),
-              loadRank()
-            ]);
+            await Promise.all([loadComments(1), refreshBalance(), loadRank()]);
           }
         } catch (e) {
           // 댓글 작성 실패는 조용히 무시 (사용자 경험 방해 방지)
@@ -339,10 +337,11 @@
         }
       } else {
         // 일반 결과는 toast
-        const toastMessage = j.delta > 0 
-          ? `🎉 당첨! +${j.delta}점 (${reelStr})`
-          : `😢 -${Math.abs(j.delta)}점 (${reelStr})`;
-        
+        const toastMessage =
+          j.delta > 0
+            ? `🎉 당첨! +${j.delta}점 (${reelStr})`
+            : `😢 -${Math.abs(j.delta)}점 (${reelStr})`;
+
         Swal.fire({
           icon: j.delta > 0 ? 'success' : 'error',
           title: toastMessage,
@@ -353,30 +352,26 @@
           timerProgressBar: true
         });
       }
-      
+
       // 오링 상태 확인 (실제 스핀에서 balance가 0이 된 경우)
       if (nextBalance === 0 && j.delta < 0) {
         // 오링 시 자동 댓글 작성 (보상 있음)
         try {
           const formattedLoss = formatNumber(j.delta);
           const oopsComment = `😢 오링! 인생여전ㅜ... ${formattedLoss}`;
-          
+
           const formData = new FormData();
           formData.set('content', oopsComment);
-          
+
           const commentRes = await fetch('/games/slot/comment', {
             method: 'POST',
             body: formData
           });
-          
+
           if (commentRes.ok) {
             // 댓글 작성 성공 시 리스트 새로고침 (보상은 서버에서 처리)
             // refreshBalance()에서 자동으로 oopsInfo 확인 및 카운트다운 시작
-            await Promise.all([
-              loadComments(1),
-              refreshBalance(),
-              loadRank()
-            ]);
+            await Promise.all([loadComments(1), refreshBalance(), loadRank()]);
           }
         } catch (e) {
           // 댓글 작성 실패는 조용히 무시
@@ -385,11 +380,7 @@
       } else {
         oopsInfo = null;
       }
-      await Promise.all([
-        loadRank(),
-        loadComments(1),
-        refreshBalance()
-      ]);
+      await Promise.all([loadRank(), loadComments(1), refreshBalance()]);
     } catch (e: any) {
       stopReelAnimation();
       if (!spinResolved) {
@@ -437,20 +428,19 @@
         }
         commentPage = typeof data?.page === 'number' ? data.page : page;
         commentPerPage = typeof data?.perPage === 'number' ? data.perPage : commentPerPage;
-        commentTotal = typeof data?.total === 'number'
-          ? data.total
-          : (append ? commentTotal : list.length);
+        commentTotal =
+          typeof data?.total === 'number' ? data.total : append ? commentTotal : list.length;
         commentHasMore = Boolean(data?.hasMore);
 
         if (!append) {
-        // 알람이 읽음 처리되었으므로 레이아웃의 알람 카운트 갱신
-        await invalidateAll();
-        
-        // 댓글 로드 후 URL에 댓글 ID가 있으면 스크롤
-        const urlParams = new URLSearchParams(window.location.search);
-        const commentId = urlParams.get('cmt');
-        if (commentId) {
-          scrollToComment(commentId);
+          // 알람이 읽음 처리되었으므로 레이아웃의 알람 카운트 갱신
+          await invalidateAll();
+
+          // 댓글 로드 후 URL에 댓글 ID가 있으면 스크롤
+          const urlParams = new URLSearchParams(window.location.search);
+          const commentId = urlParams.get('cmt');
+          if (commentId) {
+            scrollToComment(commentId);
           } else if (window.location.hash.startsWith('#comment-')) {
             const hashComment = window.location.hash.slice('#comment-'.length);
             scrollToComment(hashComment);
@@ -492,12 +482,8 @@
         }
         // 댓글 작성 시 잔액과 랭킹 갱신
         const result = await res.json();
-        await Promise.all([
-          loadComments(1),
-          refreshBalance(),
-          loadRank()
-        ]);
-        
+        await Promise.all([loadComments(1), refreshBalance(), loadRank()]);
+
         // 댓글 작성 보상 toast 알림 (보상을 받은 경우에만)
         if (result.rewardGiven) {
           Swal.fire({
@@ -510,7 +496,7 @@
             timerProgressBar: true
           });
         }
-        
+
         // 알람 카운트 갱신
         await invalidateAll();
       } else {
@@ -544,11 +530,7 @@
   async function refreshAll() {
     refreshing = true;
     try {
-      await Promise.all([
-        refreshBalance(),
-        loadRank(),
-        loadComments(1)
-      ]);
+      await Promise.all([refreshBalance(), loadRank(), loadComments(1)]);
       // 오링 상태면 카운트다운 시작
       if (oopsInfo) {
         updateOopsCountdown();
@@ -686,44 +668,69 @@
     <div class="card shadow-sm border-0 bg-info-subtle rounded-4">
       <div class="card-body stats-banner py-2">
         <p class="mb-0 stats-inline">
-          <span class="stats-item">오늘의 참여 인원: <strong>{formatNumber(todayStats.users)}</strong></span>
-          <span class="stats-item">총 스핀 횟수: <strong>{formatNumber(todayStats.spins)}</strong></span>
+          <span class="stats-item"
+            >오늘의 참여 인원: <strong>{formatNumber(todayStats.users)}</strong></span
+          >
+          <span class="stats-item"
+            >총 스핀 횟수: <strong>{formatNumber(todayStats.spins)}</strong></span
+          >
         </p>
       </div>
     </div>
   </section>
   <div class="row justify-content-center">
     <div class="col-md-6 order-2 order-md-1">
-      <div class="card shadow rounded-4 position-relative overflow-hidden" class:overflow-visible={guideCollapsed && isMobile}>
-        <div class="alert alert-info mb-4 rounded-4 border-0 bg-gradient text-white slot-guide" data-collapsed={guideCollapsed && isMobile}>
-        <div class="slot-guide-inner">
-          <div class="slot-guide-header py-1">
-            <div class="slot-guide-title">
-              <span class="display-6 mb-0 flex-shrink-0" class:slot-guide-dice-clickable={guideCollapsed && isMobile} onclick={() => { if (guideCollapsed && isMobile) toggleGuideCollapse(); }} style={guideCollapsed && isMobile ? 'cursor: pointer;' : ''}>🎲</span>
-              <h6 class="fw-bold mb-0">뺑뺑이는 즐거운 놀이터입니다</h6>
+      <div
+        class="card shadow rounded-4 position-relative overflow-hidden"
+        class:overflow-visible={guideCollapsed && isMobile}
+      >
+        <div
+          class="alert alert-info mb-4 rounded-4 border-0 bg-gradient text-white slot-guide"
+          data-collapsed={guideCollapsed && isMobile}
+        >
+          <div class="slot-guide-inner">
+            <div class="slot-guide-header py-1">
+              <div class="slot-guide-title">
+                <span
+                  class="display-6 mb-0 flex-shrink-0"
+                  class:slot-guide-dice-clickable={guideCollapsed && isMobile}
+                  onclick={() => {
+                    if (guideCollapsed && isMobile) toggleGuideCollapse();
+                  }}
+                  style={guideCollapsed && isMobile ? 'cursor: pointer;' : ''}>🎲</span
+                >
+                <h6 class="fw-bold mb-0">뺑뺑이는 즐거운 놀이터입니다</h6>
+              </div>
+              <button
+                class="btn btn-sm btn-outline-light slot-guide-toggle"
+                type="button"
+                onclick={toggleGuideCollapse}
+                aria-expanded={!(guideCollapsed && isMobile)}
+                aria-controls="slot-guide-text"
+              >
+                <span class="slot-guide-toggle-icon" aria-hidden="true"
+                  >{guideCollapsed && isMobile ? '⌄' : '⌃'}</span
+                >
+                <span class="visually-hidden"
+                  >{guideCollapsed && isMobile ? '안내 펼치기' : '안내 접기'}</span
+                >
+              </button>
             </div>
-            <button
-              class="btn btn-sm btn-outline-light slot-guide-toggle"
-              type="button"
-              onclick={toggleGuideCollapse}
-              aria-expanded={! (guideCollapsed && isMobile)}
-              aria-controls="slot-guide-text"
-            >
-              <span class="slot-guide-toggle-icon" aria-hidden="true">{guideCollapsed && isMobile ? '⌄' : '⌃'}</span>
-              <span class="visually-hidden">{guideCollapsed && isMobile ? '안내 펼치기' : '안내 접기'}</span>
-            </button>
-          </div>
             <p
               id="slot-guide-text"
               class="slot-guide-text mb-0 small mt-3 mt-md-2"
               hidden={guideCollapsed && isMobile}
             >
-              뺑뺑이 점수는 무료로 무제한 제공되며 어떤 형태로든 타인에게 이전하거나 현금·재화로 전환되지 않는 순수한 놀이용 포인트입니다.
-                <br>오직 게임의 재미를 위해 활용해 주세요!
-              <br><strong>모든 확률은 어떠한 인위적 개입이 없는 기계적인 무작위의 결과입니다.</strong>
-              <br><strong class="text-danger">🥶현실의 도박세계는 훨씬 냉혹하고 무섭습니다.☠️</strong>
-
-              </p>
+              뺑뺑이 점수는 무료로 무제한 제공되며 어떤 형태로든 타인에게 이전하거나 현금·재화로
+              전환되지 않는 순수한 놀이용 포인트입니다.
+              <br />오직 게임의 재미를 위해 활용해 주세요!
+              <br /><strong
+                >모든 확률은 어떠한 인위적 개입이 없는 기계적인 무작위의 결과입니다.</strong
+              >
+              <br /><strong class="text-danger"
+                >🥶현실의 도박세계는 훨씬 냉혹하고 무섭습니다.☠️</strong
+              >
+            </p>
           </div>
         </div>
         {#if spinning || refreshing}
@@ -732,7 +739,12 @@
         <div class="card-body">
           <div class="d-flex justify-content-between align-items-center mb-3">
             <h4 class="mb-0">뺑뺑이</h4>
-            <button class="btn btn-sm btn-outline-secondary" onclick={refreshAll} title="새로고침" disabled={refreshing || spinning}>
+            <button
+              class="btn btn-sm btn-outline-secondary"
+              onclick={refreshAll}
+              title="새로고침"
+              disabled={refreshing || spinning}
+            >
               🔄
             </button>
           </div>
@@ -741,29 +753,62 @@
           </div>
           <div class="d-flex justify-content-between align-items-center mb-2">
             <div class="d-flex align-items-center gap-2">
-              <input type="tel" class="form-control form-control-sm bet-input" style="width: 100px;" 
-                bind:value={bet} 
-                oninput={(e) => { 
-                    const target = e.target as HTMLInputElement; 
-                    if (!target) return; const val = Number(target.value); 
-                    if (val > balance) bet = balance; 
-                    else if (val >= 1) bet = val; 
-                  }
-                } />
-              <button class="btn btn-sm btn-light" onclick={() => bet = Math.min(bet + 10, balance)} disabled={spinning || refreshing || balance < 10}>
-                 <em class="bi bi-dice-1 me-0 me-md-2"></em><span class="d-none d-lg-inline">10</span>
+              <input
+                type="tel"
+                class="form-control form-control-sm bet-input"
+                style="width: 100px;"
+                bind:value={bet}
+                oninput={(e) => {
+                  const target = e.target as HTMLInputElement;
+                  if (!target) return;
+                  const val = Number(target.value);
+                  if (val > balance) bet = balance;
+                  else if (val >= 1) bet = val;
+                }}
+              />
+              <button
+                class="btn btn-sm btn-light"
+                onclick={() => (bet = Math.min(bet + 10, balance))}
+                disabled={spinning || refreshing || balance < 10}
+              >
+                <em class="bi bi-dice-1 me-0 me-md-2"></em><span class="d-none d-lg-inline">10</span
+                >
               </button>
-              <button class="btn btn-sm btn-success" onclick={() => bet = Math.floor(balance * 0.05)} disabled={spinning || refreshing || balance < 20}>
-                 <em class="bi bi-5-square-fill me-0 me-md-2"></em><span class="d-none d-lg-inline">5%</span>
+              <button
+                class="btn btn-sm btn-success"
+                onclick={() => (bet = Math.floor(balance * 0.05))}
+                disabled={spinning || refreshing || balance < 20}
+              >
+                <em class="bi bi-5-square-fill me-0 me-md-2"></em><span class="d-none d-lg-inline"
+                  >5%</span
+                >
               </button>
-              <button class="btn btn-sm btn-info" onclick={() => bet = Math.floor(balance * 0.1)} disabled={spinning || refreshing || balance < 10}>
-                 <em class="bi bi-percent me-0 me-md-2"></em><span class="d-none d-lg-inline">10%</span>
+              <button
+                class="btn btn-sm btn-info"
+                onclick={() => (bet = Math.floor(balance * 0.1))}
+                disabled={spinning || refreshing || balance < 10}
+              >
+                <em class="bi bi-percent me-0 me-md-2"></em><span class="d-none d-lg-inline"
+                  >10%</span
+                >
               </button>
-              <button class="btn btn-sm btn-warning" onclick={() => bet = Math.floor(balance / 2)} disabled={spinning || refreshing || balance < 2}>
-                 <em class="bi bi-dice-3 me-0 me-md-2"></em><span class="d-none d-lg-inline">반틈</span>
+              <button
+                class="btn btn-sm btn-warning"
+                onclick={() => (bet = Math.floor(balance / 2))}
+                disabled={spinning || refreshing || balance < 2}
+              >
+                <em class="bi bi-dice-3 me-0 me-md-2"></em><span class="d-none d-lg-inline"
+                  >반틈</span
+                >
               </button>
-              <button class="btn btn-sm btn-danger" onclick={() => bet = balance} disabled={spinning || refreshing || balance < 1}>
-                <em class="bi bi-dice-6 me-0 me-md-2"></em><span class="d-none d-lg-inline">올인</span>
+              <button
+                class="btn btn-sm btn-danger"
+                onclick={() => (bet = balance)}
+                disabled={spinning || refreshing || balance < 1}
+              >
+                <em class="bi bi-dice-6 me-0 me-md-2"></em><span class="d-none d-lg-inline"
+                  >올인</span
+                >
               </button>
             </div>
           </div>
@@ -785,18 +830,26 @@
               {/each}
             </div>
           </div>
-              <button class="btn btn-lg btn-primary w-100" disabled={spinning || balance < bet || balance === 0} onclick={play}>
+          <button
+            class="btn btn-lg btn-primary w-100"
+            disabled={spinning || balance < bet || balance === 0}
+            onclick={play}
+          >
             {spinning ? '스핀 중...' : '🎁 ㄱㄱ'}
           </button>
           {#if message}
-          <div class="mt-3 fw-bold">{message}</div>
+            <div class="mt-3 fw-bold">{message}</div>
           {/if}
           {#if oopsInfo && oopsCountdown}
-          <div class="mt-3 p-3 bg-warning-subtle rounded border border-warning">
-            <div class="fw-bold text-danger mb-2">욕심은 화를 부릅니다</div>
-            <div class="mb-1">남은 시간: <strong class="text-danger" style="font-size: 1.2em;">{oopsCountdown}</strong></div>
-            <small class="text-muted">5분 후에 700점이 자동 지급됩니다.</small>
-          </div>
+            <div class="mt-3 p-3 bg-warning-subtle rounded border border-warning">
+              <div class="fw-bold text-danger mb-2">욕심은 화를 부릅니다</div>
+              <div class="mb-1">
+                남은 시간: <strong class="text-danger" style="font-size: 1.2em;"
+                  >{oopsCountdown}</strong
+                >
+              </div>
+              <small class="text-muted">5분 후에 700점이 자동 지급됩니다.</small>
+            </div>
           {/if}
         </div>
       </div>
@@ -811,7 +864,12 @@
         <div class="card-body">
           <div class="d-flex justify-content-between align-items-center mb-3">
             <h5 class="mb-0">랭킹 Top 10</h5>
-            <button class="btn btn-sm btn-outline-secondary" onclick={refreshAll} title="새로고침" disabled={refreshing || spinning}>
+            <button
+              class="btn btn-sm btn-outline-secondary"
+              onclick={refreshAll}
+              title="새로고침"
+              disabled={refreshing || spinning}
+            >
               🔄
             </button>
           </div>
@@ -827,7 +885,7 @@
       </div>
     </div>
   </div>
-  
+
   <!-- 댓글 섹션 -->
   <div class="row justify-content-center mt-4">
     <div class="col-md-10">
@@ -846,34 +904,41 @@
         <div class="card-body">
           <div class="d-flex justify-content-between align-items-center mb-3">
             <h5 class="mb-0">💬 리플 ({formatNumber(commentTotal)})</h5>
-            <button class="btn btn-sm btn-outline-secondary" onclick={refreshAll} title="새로고침" disabled={refreshing || spinning}>
+            <button
+              class="btn btn-sm btn-outline-secondary"
+              onclick={refreshAll}
+              title="새로고침"
+              disabled={refreshing || spinning}
+            >
               🔄
             </button>
           </div>
-          
+
           <!-- 댓글 작성 폼 (위) - 댓글이 있을 때만 표시 -->
           {#if data.session?.user && 'nickname' in data.session.user && comments.length > 0}
             <div class="comment-input-wrapper mb-3">
-                <textarea 
-                  class="form-control comment-textarea" 
-                  rows="3" 
-                  placeholder="리플 작성시 100점 줍니다 (하루 10개까지 보상)"
-                  bind:value={commentContent}
-                  disabled={commentLoading}
-                ></textarea>
-              <button 
-                class="btn btn-primary comment-submit-btn" 
+              <textarea
+                class="form-control comment-textarea"
+                rows="3"
+                placeholder="리플 작성시 100점 줍니다 (하루 10개까지 보상)"
+                bind:value={commentContent}
+                disabled={commentLoading}
+              ></textarea>
+              <button
+                class="btn btn-primary comment-submit-btn"
                 type="button"
                 onclick={() => writeComment()}
-                disabled={commentLoading || !commentContent.trim() || commentContent.trim().length < 2}
+                disabled={commentLoading ||
+                  !commentContent.trim() ||
+                  commentContent.trim().length < 2}
               >
                 {commentLoading ? '등록 중...' : '등록'}
               </button>
             </div>
- 
-            <hr>
+
+            <hr />
           {/if}
-          
+
           <!-- 댓글 목록 -->
           {#if comments.length > 0}
             <div class="mb-3">
@@ -895,7 +960,12 @@
                     {/if}
                     <div class="d-flex align-items-start gap-2 mb-2">
                       {#if comment.photo}
-                        <img src={comment.photo} alt="프로필" class="rounded-circle" style="width: 32px; height: 32px; object-fit: cover;" />
+                        <img
+                          src={comment.photo}
+                          alt="프로필"
+                          class="rounded-circle"
+                          style="width: 32px; height: 32px; object-fit: cover;"
+                        />
                       {/if}
                       <div class="flex-grow-1">
                         <div class="d-flex align-items-center gap-2">
@@ -921,24 +991,26 @@
                       <div class="mt-2">
                         {#if comment.id && replyingTo === comment.id}
                           <div class="comment-input-wrapper">
-                            <textarea 
-                              class="form-control comment-textarea" 
-                              rows="2" 
+                            <textarea
+                              class="form-control comment-textarea"
+                              rows="2"
                               placeholder="답글을 입력하세요..."
                               bind:value={replyContent[comment.id]}
                               disabled={commentLoading}
                             ></textarea>
                             <div class="d-flex gap-2">
-                              <button 
-                                class="btn btn-primary comment-submit-btn" 
+                              <button
+                                class="btn btn-primary comment-submit-btn"
                                 type="button"
                                 onclick={() => comment.id && writeComment(comment.id)}
-                                disabled={commentLoading || !replyContent[comment.id]?.trim() || (replyContent[comment.id]?.trim().length ?? 0) < 2}
+                                disabled={commentLoading ||
+                                  !replyContent[comment.id]?.trim() ||
+                                  (replyContent[comment.id]?.trim().length ?? 0) < 2}
                               >
                                 {commentLoading ? '등록 중...' : '등록'}
                               </button>
-                              <button 
-                                class="btn btn-secondary comment-submit-btn" 
+                              <button
+                                class="btn btn-secondary comment-submit-btn"
                                 type="button"
                                 onclick={() => {
                                   if (comment.id) {
@@ -953,7 +1025,7 @@
                             </div>
                           </div>
                         {:else if comment.id}
-                          <button 
+                          <button
                             class="btn btn-sm btn-outline-secondary"
                             onclick={() => {
                               if (comment.id) {
@@ -986,24 +1058,28 @@
               </div>
             {/if}
           {:else}
-            <div class="text-muted text-center py-3">아직 리플이 없습니다. 첫 리플을 남겨보세요! 💬</div>
+            <div class="text-muted text-center py-3">
+              아직 리플이 없습니다. 첫 리플을 남겨보세요! 💬
+            </div>
           {/if}
 
           <!-- 댓글 작성 폼 -->
           {#if data.session?.user && 'nickname' in data.session.user}
             <div class="comment-input-wrapper mt-3">
-                <textarea 
-                  class="form-control comment-textarea" 
-                  rows="3" 
-                  placeholder="리플 작성시 100점 줍니다 (하루 10개까지 보상)"
-                  bind:value={commentContent}
-                  disabled={commentLoading}
-                ></textarea>
-              <button 
-                class="btn btn-primary comment-submit-btn" 
+              <textarea
+                class="form-control comment-textarea"
+                rows="3"
+                placeholder="리플 작성시 100점 줍니다 (하루 10개까지 보상)"
+                bind:value={commentContent}
+                disabled={commentLoading}
+              ></textarea>
+              <button
+                class="btn btn-primary comment-submit-btn"
                 type="button"
                 onclick={() => writeComment()}
-                disabled={commentLoading || !commentContent.trim() || commentContent.trim().length < 2}
+                disabled={commentLoading ||
+                  !commentContent.trim() ||
+                  commentContent.trim().length < 2}
               >
                 {commentLoading ? '등록 중...' : '등록'}
               </button>
@@ -1051,7 +1127,11 @@
     --bs-alert-bg: transparent;
     --bs-alert-border-color: rgba(255, 255, 255, 0.2);
     --bs-alert-color: #fff;
-    background: linear-gradient(135deg, rgba(9, 132, 227, 0.95), rgba(45, 197, 253, 0.95)) !important;
+    background: linear-gradient(
+      135deg,
+      rgba(9, 132, 227, 0.95),
+      rgba(45, 197, 253, 0.95)
+    ) !important;
     border: none;
     color: #fff;
     box-shadow: 0 10px 30px rgba(9, 132, 227, 0.25);
@@ -1155,7 +1235,9 @@
   .slot.slot-spinning {
     border-color: var(--bs-warning);
     box-shadow: 0 0 18px rgba(255, 193, 7, 0.35);
-    transition: box-shadow 0.3s ease, border-color 0.3s ease;
+    transition:
+      box-shadow 0.3s ease,
+      border-color 0.3s ease;
   }
   .slot-phrase {
     display: block !important;
@@ -1180,7 +1262,9 @@
     width: 68px;
     height: 68px;
     border-radius: 16px;
-    transition: transform 0.2s ease, background-color 0.2s ease;
+    transition:
+      transform 0.2s ease,
+      background-color 0.2s ease;
   }
   .slot-reel-spinning {
     animation: reelBounce 0.32s ease-in-out infinite alternate;
@@ -1284,5 +1368,3 @@
     font-size: 16px !important;
   }
 </style>
-
-

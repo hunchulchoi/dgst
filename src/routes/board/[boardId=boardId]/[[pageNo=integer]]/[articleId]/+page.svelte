@@ -735,18 +735,30 @@
 
   <!-- Open Graph / Facebook / KakaoTalk -->
   <meta property="og:type" content="article" />
-  <meta property="og:url" content={data.ogUrl || `https://www.dgst.me/board/${boardId}/${data.article?._id}`} />
+  <meta
+    property="og:url"
+    content={data.ogUrl || `https://www.dgst.me/board/${boardId}/${data.article?._id}`}
+  />
   <meta property="og:title" content={data.ogTitle || ''} />
   <meta property="og:description" content={data.ogDescription || ''} />
-  <meta property="og:image" content={data.ogImage || 'https://www.dgst.me/logo/twitter_header_photo_2.png'} />
+  <meta
+    property="og:image"
+    content={data.ogImage || 'https://www.dgst.me/logo/twitter_header_photo_2.png'}
+  />
   <meta property="og:site_name" content="dgst.me" />
 
   <!-- Twitter (name 사용이 스펙에 맞음) -->
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:url" content={data.ogUrl || `https://www.dgst.me/board/${boardId}/${data.article?._id}`} />
+  <meta
+    name="twitter:url"
+    content={data.ogUrl || `https://www.dgst.me/board/${boardId}/${data.article?._id}`}
+  />
   <meta name="twitter:title" content={data.ogTitle || ''} />
   <meta name="twitter:description" content={data.ogDescription || ''} />
-  <meta name="twitter:image" content={data.ogImage || 'https://www.dgst.me/logo/twitter_header_photo_2.png'} />
+  <meta
+    name="twitter:image"
+    content={data.ogImage || 'https://www.dgst.me/logo/twitter_header_photo_2.png'}
+  />
 
   <!-- <script defer src="https://platform.instagram.com/en_US/embeds.js"></script> -->
   <script defer src="//www.tiktok.com/embed.js"></script>

@@ -1,6 +1,6 @@
-import { error } from "@sveltejs/kit";
+import { error } from '@sveltejs/kit';
 import { Alarm } from '$lib/models/alarm.js';
-import connectDB from "$lib/database/mongoosePriomise.js";
+import connectDB from '$lib/database/mongoosePriomise.js';
 
 connectDB();
 
@@ -26,7 +26,10 @@ export const load = async ({ locals, depends }) => {
 
   // 최신 알림 조회 (최근 24시간)
   const dbStartTime = Date.now();
-  let alarms = await Alarm.find({ email: session.user.email, updatedAt: { $gt: new Date(new Date() - 1000 * 60 * 60 * 24) } })
+  let alarms = await Alarm.find({
+    email: session.user.email,
+    updatedAt: { $gt: new Date(new Date() - 1000 * 60 * 60 * 24) }
+  })
     .select('boardId articleId title comments updatedAt comment commentContent readAt')
     .sort({ updatedAt: -1 })
     .limit(30);
@@ -48,6 +51,6 @@ export const load = async ({ locals, depends }) => {
   });
 
   return {
-    alarms,
-  }
-}
+    alarms
+  };
+};

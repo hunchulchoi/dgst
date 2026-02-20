@@ -19,16 +19,16 @@ async function getRankTop10() {
       $group: {
         _id: '$email',
         nickname: { $first: '$nickname' },
-        score: { $max: '$score' },
-      },
+        score: { $max: '$score' }
+      }
     },
     { $sort: { score: -1 } },
-    { $limit: 10 },
+    { $limit: 10 }
   ]);
   return rows.map((r) => ({
     _id: r._id,
     nickname: r.nickname,
-    score: r.score,
+    score: r.score
   }));
 }
 
@@ -48,7 +48,7 @@ export async function GET({ locals, url }) {
         ).lean();
         return myDoc?.score ?? null;
       })(),
-      getToday2048Stats(),
+      getToday2048Stats()
     ]);
     return json(
       { rank, myBest: myDocResult, todayStats },

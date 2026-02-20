@@ -34,7 +34,9 @@ export async function backfillSlotUserBalance() {
           }
         },
         { $match: { totalSpin: { $gt: 0 } } }
-      ]).allowDiskUse(true).cursor();
+      ])
+        .allowDiskUse(true)
+        .cursor();
 
       const bulk = [];
       const BATCH = 500;
@@ -98,7 +100,7 @@ export async function updateSlotUserBalance(email, nickname, balance, opts = {})
   try {
     /** @type {Record<string, unknown>} */
     const update = {
-      $set: { nickname, balance, updatedAt: new Date() },
+      $set: { nickname, balance, updatedAt: new Date() }
     };
     if (opts.incSpin === true) {
       // $inc는 insert 시에도 0 + 1 = 1로 설정되므로 $setOnInsert 불필요.
@@ -107,11 +109,7 @@ export async function updateSlotUserBalance(email, nickname, balance, opts = {})
     } else {
       update.$setOnInsert = { totalSpin: 0 };
     }
-    await SlotUserBalance.findOneAndUpdate(
-      { email },
-      update,
-      { upsert: true }
-    );
+    await SlotUserBalance.findOneAndUpdate({ email }, update, { upsert: true });
   } catch (e) {
     console.error('updateSlotUserBalance failed', email, e?.message);
   }
@@ -126,9 +124,12 @@ export async function updateSlotUserBalance(email, nickname, balance, opts = {})
 export async function getSlotBalance(email) {
   const row = await SlotUserBalance.findOne({ email }).select({ balance: 1 }).lean();
   if (row != null) return row.balance;
-  const last = await GameScore.findOne({ email, game: 'slot' }).sort({ createdAt: -1 }).select({ balance: 1, nickname: 1 }).lean();
+  const last = await GameScore.findOne({ email, game: 'slot' })
+    .sort({ createdAt: -1 })
+    .select({ balance: 1, nickname: 1 })
+    .lean();
   const balance = last?.balance ?? 0;
-  const nickname = (last && 'nickname' in last && last.nickname) ? last.nickname : 'anonymous';
+  const nickname = last && 'nickname' in last && last.nickname ? last.nickname : 'anonymous';
   await updateSlotUserBalance(email, nickname, balance, {});
   return balance;
 }

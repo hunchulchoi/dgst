@@ -31,7 +31,9 @@ async function main() {
       }
     },
     { $match: { totalSpin: { $gt: 0 } } }
-  ]).allowDiskUse(true).cursor();
+  ])
+    .allowDiskUse(true)
+    .cursor();
 
   let count = 0;
   const bulk = [];

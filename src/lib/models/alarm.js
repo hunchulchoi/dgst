@@ -5,7 +5,6 @@ import '$lib/models/article.js';
 
 export const alarmSchema = new Schema(
   {
-
     email: { type: String, required: true, index: true },
     boardId: { type: String, required: true },
     articleId: { type: String, required: true, index: true },
@@ -15,7 +14,6 @@ export const alarmSchema = new Schema(
     commentContent: { type: String },
     like: { type: Number },
     readAt: { type: Date }
-
   },
   {
     timestamps: true,
@@ -25,7 +23,7 @@ export const alarmSchema = new Schema(
         get() {
           return this.comments?.length || 0;
         }
-      },
+      }
     }
   }
 );

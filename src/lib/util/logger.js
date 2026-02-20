@@ -7,7 +7,7 @@ const isDevelopment = process.env.NODE_ENV !== 'production';
 // 한국시간 변환 함수
 const getKoreaTime = () => {
   const now = new Date();
-  const koreaTime = new Date(now.getTime() + (9 * 60 * 60 * 1000)); // UTC+9
+  const koreaTime = new Date(now.getTime() + 9 * 60 * 60 * 1000); // UTC+9
   const year = koreaTime.getUTCFullYear();
   const month = String(koreaTime.getUTCMonth() + 1).padStart(2, '0');
   const day = String(koreaTime.getUTCDate()).padStart(2, '0');
@@ -81,15 +81,15 @@ const logger = winston.createLogger({
   transports: [
     // 콘솔 출력
     new winston.transports.Console({
-      format: isDevelopment ? devFormat : prodFormat,
+      format: isDevelopment ? devFormat : prodFormat
     }),
     // 에러/경고 로그 파일 저장
     new winston.transports.File({
       filename: getErrorLogPath(),
       level: 'warn', // warn 이상만 저장
-      format: fileFormat,
-    }),
-  ],
+      format: fileFormat
+    })
+  ]
 });
 
 export default logger;

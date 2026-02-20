@@ -18,30 +18,43 @@ export async function GET({ locals, setHeaders, url }) {
   setHeaders({
     'Cache-Control': 'private, max-age=0, no-store, must-revalidate, proxy-revalidate'
   });
-  
+
   const session = await locals.auth();
   const perPageParam = Number(url.searchParams.get('limit') ?? '50');
   const pageParam = Number(url.searchParams.get('page') ?? '1');
-  const perPage = Number.isFinite(perPageParam) && perPageParam > 0 ? Math.min(perPageParam, 50) : 50;
+  const perPage =
+    Number.isFinite(perPageParam) && perPageParam > 0 ? Math.min(perPageParam, 50) : 50;
   const page = Number.isFinite(pageParam) && pageParam > 0 ? Math.floor(pageParam) : 1;
-  
+
   try {
     // 최근 24시간 내 댓글만 조회
     const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    
+
     const comments = await Comment.find(
-      { 
-        boardId: SLOT_BOARD_ID, 
+      {
+        boardId: SLOT_BOARD_ID,
         articleId: SLOT_ARTICLE_ID,
         createdAt: { $gte: oneDayAgo }
       },
-      { 
-        _id: 1, photo: 1, nickname: 1, createdAt: 1, image: 1, email: 1, 
-        content: 1, depth: 1, parentCommentId: 1, parentCommentNickname: 1, 
-        state: 1, likes: 1, like: 1 
+      {
+        _id: 1,
+        photo: 1,
+        nickname: 1,
+        createdAt: 1,
+        image: 1,
+        email: 1,
+        content: 1,
+        depth: 1,
+        parentCommentId: 1,
+        parentCommentNickname: 1,
+        state: 1,
+        likes: 1,
+        like: 1
       }
-    ).sort({ createdAt: -1 }).lean();
-    
+    )
+      .sort({ createdAt: -1 })
+      .lean();
+
     // ID를 문자열로 변환하고 트리 구조로 변환
     const commentsWithId = comments.map((c) => ({
       ...c,
@@ -127,7 +140,7 @@ export async function GET({ locals, setHeaders, url }) {
         c.liked = c.likes?.includes(session.user.email) || false;
         delete c.likes;
       });
-      
+
       // 알림 읽음 처리
       await Alarm.updateMany(
         { email: session.user.email, articleId: SLOT_ARTICLE_ID },
@@ -167,7 +180,7 @@ export async function POST(event) {
     const data = await request.formData();
     const content = data.get('content')?.toString()?.trim();
     const parentCommentId = data.get('parentCommentId')?.toString();
-    
+
     if (!content || content.length === 0) {
       throw error(400, { message: '댓글 내용을 입력해주세요.' });
     }
@@ -182,7 +195,7 @@ export async function POST(event) {
 
     const email = session.user.email;
     const nickname = session.user.nickname || 'anonymous';
-    
+
     // 한국 시간(KST, UTC+9) 기준으로 당일 0시 계산
     const now = new Date();
     const kstOffset = 9 * 60 * 60 * 1000; // UTC+9
@@ -190,12 +203,12 @@ export async function POST(event) {
     const kstYear = kstNow.getUTCFullYear();
     const kstMonth = kstNow.getUTCMonth();
     const kstDate = kstNow.getUTCDate();
-    
+
     // 한국 시간 기준 오늘 0시 (UTC로 변환)
     const todayStart = new Date(Date.UTC(kstYear, kstMonth, kstDate, 0, 0, 0, 0) - kstOffset);
     // 한국 시간 기준 오늘 23:59:59.999 (UTC로 변환)
     const todayEnd = new Date(Date.UTC(kstYear, kstMonth, kstDate, 23, 59, 59, 999) - kstOffset);
-    
+
     // 오늘 받은 댓글 보상 개수 체크 (100점 보상은 하루 10개까지만, 한국 시간 기준 당일 0시~23:59:59)
     const todayRewardCount = await GameScore.countDocuments({
       email,
@@ -210,7 +223,11 @@ export async function POST(event) {
     let parentComment = null;
     if (parentCommentId) {
       parentComment = await Comment.findById(parentCommentId).lean();
-      if (!parentComment || parentComment.boardId !== SLOT_BOARD_ID || parentComment.articleId !== SLOT_ARTICLE_ID) {
+      if (
+        !parentComment ||
+        parentComment.boardId !== SLOT_BOARD_ID ||
+        parentComment.articleId !== SLOT_ARTICLE_ID
+      ) {
         throw error(400, { message: '부모 댓글을 찾을 수 없습니다.' });
       }
     }
@@ -222,7 +239,7 @@ export async function POST(event) {
       boardId: SLOT_BOARD_ID,
       articleId: SLOT_ARTICLE_ID,
       content: content,
-      depth: parentComment ? (parentComment.depth + 1) : 1,
+      depth: parentComment ? parentComment.depth + 1 : 1,
       parentCommentId: parentCommentId || undefined,
       parentCommentNickname: parentComment?.nickname,
       state: 'write'
@@ -279,4 +296,3 @@ export async function POST(event) {
     throw error(500, { message: '댓글 저장 중 오류가 발생하였습니다.' });
   }
 }
-

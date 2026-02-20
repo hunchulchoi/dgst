@@ -21,10 +21,14 @@ export const load = async ({ params, depends }) => {
   // 한페이지에 보여주는 게시물
   const pageUnit = 30;
 
-  let pageNo = parseInt(params.pageNo || 1)
+  let pageNo = parseInt(params.pageNo || 1);
 
   try {
-    const filter = { boardId: params.boardId, state: 'write', createdAt: { $gt: new Date(new Date() - 1000 * 60 * 60 * 24 * 3) } };
+    const filter = {
+      boardId: params.boardId,
+      state: 'write',
+      createdAt: { $gt: new Date(new Date() - 1000 * 60 * 60 * 24 * 3) }
+    };
 
     const dbStartTime = Date.now();
     const total = await Article.countDocuments(filter);
@@ -36,7 +40,7 @@ export const load = async ({ params, depends }) => {
       return { articles: [] };
     }
 
-    const maxPage = parseInt(total / pageUnit + ((total % pageUnit) ? 1 : 0));
+    const maxPage = parseInt(total / pageUnit + (total % pageUnit ? 1 : 0));
 
     //
     if (maxPage < pageNo) {
@@ -47,22 +51,29 @@ export const load = async ({ params, depends }) => {
     let endNo = maxPage > 7 ? 7 : maxPage;
 
     if (maxPage > 7) {
-      if ((pageNo - 3) > 0) {
+      if (pageNo - 3 > 0) {
         startNo = pageNo - 3;
         endNo = startNo + 6;
       }
 
-      if ((pageNo + 3) > maxPage) {
+      if (pageNo + 3 > maxPage) {
         endNo = maxPage;
         startNo = endNo - 6;
       }
     }
 
-
     const articlesStartTime = Date.now();
-    const articles = await Article.find(filter,
-      { content: 1, createdAt: 1, nickname: 1, title: 1, read: 1, like: 1, reads: 1, comments: 1, likes: 1 }
-    )
+    const articles = await Article.find(filter, {
+      content: 1,
+      createdAt: 1,
+      nickname: 1,
+      title: 1,
+      read: 1,
+      like: 1,
+      reads: 1,
+      comments: 1,
+      likes: 1
+    })
       .sort({ createdAt: -1 })
       .skip((pageNo - 1) * pageUnit)
       .limit(pageUnit)
@@ -73,8 +84,9 @@ export const load = async ({ params, depends }) => {
     const jsonArticles = JSON.parse(JSON.stringify(articles));
 
     jsonArticles.forEach((article) => {
-
-      article.isNewComment = Math.max(...article.comments.map(a => new Date(a.createdAt))) > new Date() - 30 * 60 * 1000;
+      article.isNewComment =
+        Math.max(...article.comments.map((a) => new Date(a.createdAt))) >
+        new Date() - 30 * 60 * 1000;
 
       delete article.comments;
       delete article.reads;
@@ -82,8 +94,13 @@ export const load = async ({ params, depends }) => {
 
       const image = article.content.includes('<img ');
       const video = article.content.includes('<video ');
-      const youtube = article.content.includes('youtube.com') || article.content.includes('youtu.be') || article.content.includes('youtube.com/embed');
-      const insta = article.content.includes('instagram.com') || article.content.includes('blockquote class="instagram-media"');
+      const youtube =
+        article.content.includes('youtube.com') ||
+        article.content.includes('youtu.be') ||
+        article.content.includes('youtube.com/embed');
+      const insta =
+        article.content.includes('instagram.com') ||
+        article.content.includes('blockquote class="instagram-media"');
 
       article.content =
         (image ? '<i class="bi bi-card-image text-success px-2"></i>' : '') +
@@ -108,7 +125,6 @@ export const load = async ({ params, depends }) => {
     });
 
     return { pageNo, maxPage, startNo, endNo, articles: jsonArticles };
-
   } catch (err) {
     const endTime = Date.now();
     const executionTime = endTime - startTime;

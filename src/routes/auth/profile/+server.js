@@ -53,7 +53,9 @@ export async function PATCH({ request, locals }) {
         console.error('파일 업로드 오류:', uploadErr);
 
         if (uploadErr instanceof Error && uploadErr.message === '파일 업로드 타임아웃') {
-          throw error(408, { message: '파일 업로드 시간이 초과되었습니다. 파일 크기를 줄여주세요.' });
+          throw error(408, {
+            message: '파일 업로드 시간이 초과되었습니다. 파일 크기를 줄여주세요.'
+          });
         }
 
         // SvelteKit error는 그대로 throw

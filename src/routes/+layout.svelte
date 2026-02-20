@@ -7,7 +7,6 @@
 
   // Svelte 5 Runes
   let { data, children } = $props();
-
 </script>
 
 <Header session={data.session} pathname={data.pathname} />

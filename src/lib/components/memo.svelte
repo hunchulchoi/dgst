@@ -1,20 +1,22 @@
 <script>
   import {
-    Button, Col,
+    Button,
+    Col,
     Input,
     InputGroup,
     InputGroupText,
     Modal,
     ModalBody,
     ModalFooter,
-    ModalHeader, Row,
+    ModalHeader,
+    Row,
     Tooltip
   } from '@sveltestrap/sveltestrap';
 
   let memoModalOpen = false;
   const memoModalToggle = (evt) => {
-    (memoModalOpen = !memoModalOpen);
-  }
+    memoModalOpen = !memoModalOpen;
+  };
 </script>
 
 <div>

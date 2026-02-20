@@ -9,5 +9,5 @@ export const load = async (event) => {
   }
 
   // 로그인되지 않았으면 로그인 페이지로 이동
-  throw redirect(302, '/auth/signin');
+  throw redirect(302, '/login');
 };

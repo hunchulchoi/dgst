@@ -11,6 +11,7 @@ declare global {
     }
     interface PageData {
       session: Session | null;
+      kakaoEnabled?: boolean;
     }
     // interface Platform {}
   }

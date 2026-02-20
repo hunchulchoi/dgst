@@ -17,7 +17,8 @@ export async function checkAuthRateLimit(event) {
     event.request?.headers?.get?.('x-forwarded-for') ||
     event.request?.headers?.get?.('x-real-ip') ||
     '';
-  const ip = (raw ? String(raw).split(',')[0].trim() : '') || (event.getClientAddress?.() ?? 'unknown');
+  const ip =
+    (raw ? String(raw).split(',')[0].trim() : '') || (event.getClientAddress?.() ?? 'unknown');
   const key = AUTH_RATE_LIMIT_KEY_PREFIX + ip;
   const current = await redis.get(key);
   const count = parseInt(current ?? '0', 10);

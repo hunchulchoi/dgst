@@ -59,10 +59,16 @@ const providers = [
 
       return {
         id: kakaoId,
-        email: kakaoAccount?.email ? crypto.createHash('sha512').update(kakaoAccount.email).digest('base64url') : emailHash,
-        nickname: kakaoAccount?.profile?.nickname || kakaoAccount?.name || `카카오${kakaoId.slice(-4)}`,
+        email: kakaoAccount?.email
+          ? crypto.createHash('sha512').update(kakaoAccount.email).digest('base64url')
+          : emailHash,
+        nickname:
+          kakaoAccount?.profile?.nickname || kakaoAccount?.name || `카카오${kakaoId.slice(-4)}`,
         introduction: '우리 자기',
-        photo: (kakaoAccount?.profile?.profile_image_url || kakaoAccount?.profile?.thumbnail_image_url) ?? null,
+        photo:
+          (kakaoAccount?.profile?.profile_image_url ||
+            kakaoAccount?.profile?.thumbnail_image_url) ??
+          null,
         emailVerified: true,
         state: 'registered',
         grade: 'user',
@@ -85,20 +91,17 @@ const providers = [
 
       if (email === VIP_FAKE_EMAIL) {
         const user = await clientPromise.then((db) =>
-          db
-            .db(DB_NAME)
-            .collection('users')
-            .findOne(
-              { email: VIP_EMAIL, ccd: encPwd },
-              {
-                id: 1,
-                email: 1,
-                nickname: 1,
-                introduction: 1,
-                photo: 1,
-                state: 1
-              }
-            )
+          db.db(DB_NAME).collection('users').findOne(
+            { email: VIP_EMAIL, ccd: encPwd },
+            {
+              id: 1,
+              email: 1,
+              nickname: 1,
+              introduction: 1,
+              photo: 1,
+              state: 1
+            }
+          )
         );
 
         if (!user) {
@@ -122,14 +125,24 @@ const providers = [
 ];
 
 // 프로바이더 목록 로그 (상세)
-console.log('등록된 프로바이더:', providers.map(p => ({
-  id: p.id || p.name,
-  type: p.type,
-  name: p.name
-})));
-console.log('카카오 프로바이더 포함 여부:', providers.some(p => p.id === 'kakao'));
+console.log(
+  '등록된 프로바이더:',
+  providers.map((p) => ({
+    id: p.id || p.name,
+    type: p.type,
+    name: p.name
+  }))
+);
+console.log(
+  '카카오 프로바이더 포함 여부:',
+  providers.some((p) => p.id === 'kakao')
+);
 
-export const { handle: authHandle, signIn, signOut } = SvelteKitAuth({
+export const {
+  handle: authHandle,
+  signIn,
+  signOut
+} = SvelteKitAuth({
   providers,
   adapter: getHybridAdapter(DB_NAME),
   pages: {
@@ -349,7 +362,9 @@ export async function handle({ event, resolve }) {
     if (pathname.startsWith('/auth/callback/')) {
       const setCookies =
         authResponse?.headers?.getSetCookie?.() ??
-        (authResponse?.headers?.get?.('set-cookie') ? [authResponse.headers.get('set-cookie')] : []);
+        (authResponse?.headers?.get?.('set-cookie')
+          ? [authResponse.headers.get('set-cookie')]
+          : []);
 
       const didSetSessionCookie = Array.from(setCookies).some((c) =>
         typeof c === 'string' ? c.includes(`${AUTH_SESSION_COOKIE_NAME}=`) : false
@@ -361,7 +376,9 @@ export async function handle({ event, resolve }) {
           event.request?.headers?.get?.('x-real-ip') ||
           '';
         const ip =
-          (rawIp ? String(rawIp).split(',')[0].trim() : '') || event.getClientAddress?.() || 'unknown';
+          (rawIp ? String(rawIp).split(',')[0].trim() : '') ||
+          event.getClientAddress?.() ||
+          'unknown';
         const userAgent = event.request?.headers?.get?.('user-agent') ?? '';
 
         let userId = null;
@@ -405,7 +422,9 @@ export async function handle({ event, resolve }) {
   const executionTime = endTime - startTime;
   const status = authResponse?.status || 200;
 
-  logger.info(`📤 응답 완료: ${pathname} - Status: ${status}, Time: ${executionTime}ms - ${new Date().toISOString()}`);
+  logger.info(
+    `📤 응답 완료: ${pathname} - Status: ${status}, Time: ${executionTime}ms - ${new Date().toISOString()}`
+  );
 
   return authResponse;
 }
@@ -439,7 +458,11 @@ export function handleError({ event, error }) {
     const userAgent = event.request?.headers?.get?.('user-agent') ?? '';
     const loggedAt = new Date().toISOString();
     const causeMessage =
-      error?.cause instanceof Error ? error.cause.message : error?.cause != null ? String(error.cause) : undefined;
+      error?.cause instanceof Error
+        ? error.cause.message
+        : error?.cause != null
+          ? String(error.cause)
+          : undefined;
     const message = causeMessage ?? error?.message ?? 'Unhandled server error';
 
     logger.error({
@@ -452,7 +475,7 @@ export function handleError({ event, error }) {
       ...(status !== 404 && { stack: error?.stack }),
       error,
       clientIp,
-      userAgent,
+      userAgent
     });
   } catch (e) {
     console.error('Failed to log error', e);

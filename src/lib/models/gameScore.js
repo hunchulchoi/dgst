@@ -10,7 +10,7 @@ export const gameScoreSchema = new Schema(
     payout: { type: Number, required: true },
     delta: { type: Number, required: true },
     balance: { type: Number, required: true },
-    reels: [{ type: String, required: true }],
+    reels: [{ type: String, required: true }]
   },
   { timestamps: true }
 );
@@ -23,5 +23,3 @@ gameScoreSchema.index({ game: 1, bet: 1, createdAt: -1 });
 gameScoreSchema.index({ email: 1, createdAt: -1 });
 
 export const GameScore = models.game_score || model('game_score', gameScoreSchema);
-
-

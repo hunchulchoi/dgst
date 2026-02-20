@@ -418,7 +418,11 @@
         const j = await res.json();
         rankList = j.rank ?? [];
         myBestScore = j.myBest != null ? Number(j.myBest) : null;
-        if (j.todayStats && typeof j.todayStats.games === 'number' && typeof j.todayStats.users === 'number') {
+        if (
+          j.todayStats &&
+          typeof j.todayStats.games === 'number' &&
+          typeof j.todayStats.users === 'number'
+        ) {
           todayStats = { games: j.todayStats.games, users: j.todayStats.users };
         }
       }
@@ -436,7 +440,7 @@
       const res = await fetch('/games/2048', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ score: finalScore }),
+        body: JSON.stringify({ score: finalScore })
       });
       if (res.ok) await loadRank();
     } catch (e) {
@@ -450,7 +454,7 @@
       const res = await fetch('/games/2048', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ score: scoreToSave }),
+        body: JSON.stringify({ score: scoreToSave })
       });
       if (res.ok) await loadRank();
     } catch (e) {
@@ -476,7 +480,7 @@
     1024: '#edc53f',
     2048: '#edc22e',
     4096: '#edc22e',
-    8192: '#3c3a32',
+    8192: '#3c3a32'
   };
   function tileBg(n: number): string {
     return TILE_COLORS[n] ?? '#3c3a32';
@@ -494,7 +498,13 @@
   const isLoggedIn = $derived(!!data.session?.user?.email);
 
   const STORAGE_KEY = 'dgst_2048_state';
-  type SavedState = { mode: GameMode; grid: number[]; score: number; gameOver: boolean; beginnerTarget: number };
+  type SavedState = {
+    mode: GameMode;
+    grid: number[];
+    score: number;
+    gameOver: boolean;
+    beginnerTarget: number;
+  };
 
   function getStateToSave(): SavedState | null {
     if (mode == null) return null;
@@ -524,11 +534,18 @@
       const size = mode === 'beginner' || mode === 'easy' ? 5 : 4;
       const len = size * size;
       const g = (parsed as Record<string, unknown>).grid;
-      if (!Array.isArray(g) || g.length !== len || g.some((x: unknown) => typeof x !== 'number')) return null;
+      if (!Array.isArray(g) || g.length !== len || g.some((x: unknown) => typeof x !== 'number'))
+        return null;
       const score = Number((parsed as Record<string, unknown>).score);
       const gameOver = Boolean((parsed as Record<string, unknown>).gameOver);
       const beginnerTarget = Number((parsed as Record<string, unknown>).beginnerTarget) || 32;
-      return { mode, grid: g as number[], score: Number.isFinite(score) ? score : 0, gameOver, beginnerTarget };
+      return {
+        mode,
+        grid: g as number[],
+        score: Number.isFinite(score) ? score : 0,
+        gameOver,
+        beginnerTarget
+      };
     } catch {
       return null;
     }
@@ -553,7 +570,7 @@
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ score: scoreToSubmit }),
-      keepalive: true,
+      keepalive: true
     }).catch((e) => console.error('[2048 이탈 시 점수 전송 실패]', e));
   }
 
@@ -614,7 +631,7 @@
 </script>
 
 <svelte:head>
-  <title>2048 | 데게실버타운</title>
+  <title>2048 | dgst.me</title>
 </svelte:head>
 
 <div class="container py-4">
@@ -663,17 +680,44 @@
             </div>
           {:else}
             <div class="d-flex justify-content-between align-items-center mb-3">
-              <h4 class="mb-0">2048 <span class="badge bg-secondary ms-2">{mode === 'beginner' ? '쌩초보' : mode === 'easy' ? '쉬운' : mode === 'mid' ? '다음단계' : '보통'}</span></h4>
+              <h4 class="mb-0">
+                2048 <span class="badge bg-secondary ms-2"
+                  >{mode === 'beginner'
+                    ? '쌩초보'
+                    : mode === 'easy'
+                      ? '쉬운'
+                      : mode === 'mid'
+                        ? '다음단계'
+                        : '보통'}</span
+                >
+              </h4>
               <div class="d-flex align-items-center gap-2 flex-wrap">
                 <span class="fw-bold">현재 점수: {score}</span>
                 {#if isLoggedIn}
-                  <span class="small text-muted">3일 내 내 최고: {myBestScore != null ? formatScore(myBestScore) : '—'}</span>
+                  <span class="small text-muted"
+                    >3일 내 내 최고: {myBestScore != null ? formatScore(myBestScore) : '—'}</span
+                  >
                 {/if}
-                <span class="small text-muted">오늘 참여 {todayStats.users}명 · 게임 {todayStats.games}회</span>
-                <button class="btn btn-sm btn-outline-secondary" onclick={initGrid} disabled={loading}>
+                <span class="small text-muted"
+                  >오늘 참여 {todayStats.users}명 · 게임 {todayStats.games}회</span
+                >
+                <button
+                  class="btn btn-sm btn-outline-secondary"
+                  onclick={initGrid}
+                  disabled={loading}
+                >
                   새 게임
                 </button>
-                <button class="btn btn-sm btn-outline-dark" onclick={() => { try { localStorage.removeItem(STORAGE_KEY); } catch {} mode = null; }} disabled={loading}>
+                <button
+                  class="btn btn-sm btn-outline-dark"
+                  onclick={() => {
+                    try {
+                      localStorage.removeItem(STORAGE_KEY);
+                    } catch {}
+                    mode = null;
+                  }}
+                  disabled={loading}
+                >
                   모드 변경
                 </button>
               </div>
@@ -685,55 +729,59 @@
               </p>
             {/if}
             <p class="small text-muted mb-3">
-              방향키 또는 그리드 위에서 스와이프로 이동. 같은 숫자가 만나면 합쳐집니다. 레벨 통과 또는 게임오버 시 점수가 랭킹에 기록됩니다. (3일 내 내 최고점)
+              방향키 또는 그리드 위에서 스와이프로 이동. 같은 숫자가 만나면 합쳐집니다. 레벨 통과
+              또는 게임오버 시 점수가 랭킹에 기록됩니다. (3일 내 내 최고점)
             </p>
             <div class="text-center">
-              <div
-                class="game-2048-grid-wrapper"
-                class:game-2048-grid-5={SIZE === 5}
-              >
-              {#if passedFlash > 0}
-                <div class="game-2048-passed-overlay game-2048-passed">
-                  <span class="game-2048-passed-text">{passedFlash} 통과!</span>
-                </div>
-              {/if}
-              {#if justSwitchedToEasy}
-                <div class="game-2048-passed-overlay game-2048-passed">
-                  <span class="game-2048-passed-text">512 통과!<br />쉬운 모드로!</span>
-                </div>
-              {/if}
-              <div
-                class="game-2048-grid rounded-3 p-2 mb-0"
-                bind:this={gridEl}
-                ontouchstart={handleTouchStart}
-                ontouchend={handleTouchEnd}
-                role="application"
-                aria-label="2048 그리드, 스와이프로 이동"
-              >
-                {#each Array(SIZE) as _, row}
-                  <div class="game-2048-row">
-                    {#each Array(SIZE) as _, col}
-                      <div
-                        class="game-2048-tile"
-                        class:game-2048-tile-tick={gridTicked}
-                        class:game-2048-tile-spawn={spawnedIndex === row * SIZE + col && at(row, col) !== 0}
-                        style="background-color: {tileBg(at(row, col))}; font-size: {tileFontSize(at(row, col))};"
-                      >
-                        {at(row, col) === 0 ? '' : at(row, col)}
-                      </div>
-                    {/each}
+              <div class="game-2048-grid-wrapper" class:game-2048-grid-5={SIZE === 5}>
+                {#if passedFlash > 0}
+                  <div class="game-2048-passed-overlay game-2048-passed">
+                    <span class="game-2048-passed-text">{passedFlash} 통과!</span>
                   </div>
-                {/each}
-              </div>
+                {/if}
+                {#if justSwitchedToEasy}
+                  <div class="game-2048-passed-overlay game-2048-passed">
+                    <span class="game-2048-passed-text">512 통과!<br />쉬운 모드로!</span>
+                  </div>
+                {/if}
+                <div
+                  class="game-2048-grid rounded-3 p-2 mb-0"
+                  bind:this={gridEl}
+                  ontouchstart={handleTouchStart}
+                  ontouchend={handleTouchEnd}
+                  role="application"
+                  aria-label="2048 그리드, 스와이프로 이동"
+                >
+                  {#each Array(SIZE) as _, row}
+                    <div class="game-2048-row">
+                      {#each Array(SIZE) as _, col}
+                        <div
+                          class="game-2048-tile"
+                          class:game-2048-tile-tick={gridTicked}
+                          class:game-2048-tile-spawn={spawnedIndex === row * SIZE + col &&
+                            at(row, col) !== 0}
+                          style="background-color: {tileBg(at(row, col))}; font-size: {tileFontSize(
+                            at(row, col)
+                          )};"
+                        >
+                          {at(row, col) === 0 ? '' : at(row, col)}
+                        </div>
+                      {/each}
+                    </div>
+                  {/each}
+                </div>
               </div>
             </div>
             {#if gameOver}
               <div class="mt-3 p-3 bg-light rounded border text-center">
                 <p class="fw-bold mb-2">게임 오버</p>
-                <p class="mb-2">최종 점수: <strong>{score}</strong> {#if isLoggedIn}<span class="small text-muted">(랭킹에 반영됨)</span>{/if}</p>
+                <p class="mb-2">
+                  최종 점수: <strong>{score}</strong>
+                  {#if isLoggedIn}<span class="small text-muted">(랭킹에 반영됨)</span>{/if}
+                </p>
                 {#if !isLoggedIn}
                   <p class="small text-muted mb-2">로그인하면 점수를 랭킹에 올릴 수 있어요.</p>
-                  <a href="/auth/signin" class="btn btn-outline-primary mb-2">로그인</a>
+                  <a href="/login" class="btn btn-outline-primary mb-2">로그인</a>
                 {/if}
                 <button class="btn btn-outline-secondary ms-2" onclick={initGrid}>
                   다시 하기
@@ -750,15 +798,22 @@
           <div class="d-flex justify-content-between align-items-center mb-3">
             <h5 class="mb-0">랭킹 Top 10</h5>
             {#if isLoggedIn}
-              <button class="btn btn-sm btn-outline-secondary" onclick={loadRank} disabled={loading}>
+              <button
+                class="btn btn-sm btn-outline-secondary"
+                onclick={loadRank}
+                disabled={loading}
+              >
                 🔄
               </button>
             {:else}
-              <a href="/auth/signin" class="btn btn-sm btn-outline-primary">로그인</a>
+              <a href="/login" class="btn btn-sm btn-outline-primary">로그인</a>
             {/if}
           </div>
           <p class="small text-muted mb-1">3일 내 1인 1최고점 (뺑뺑이 점수와 별개)</p>
-          <p class="small text-muted mb-2">오늘 참여 <strong>{todayStats.users}</strong>명 · 게임 <strong>{todayStats.games}</strong>회</p>
+          <p class="small text-muted mb-2">
+            오늘 참여 <strong>{todayStats.users}</strong>명 · 게임
+            <strong>{todayStats.games}</strong>회
+          </p>
           {#if isLoggedIn}
             <ol class="list-group list-group-numbered">
               {#each rankList as r}

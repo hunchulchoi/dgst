@@ -44,5 +44,3 @@ export async function getTodaySlotStats() {
     return { spins: 0, users: 0 };
   }
 }
-
-

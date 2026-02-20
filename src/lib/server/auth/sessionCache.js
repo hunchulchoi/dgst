@@ -44,7 +44,8 @@ export async function setCachedSessionAndUser(sessionToken, data, ttlSeconds = S
     session: { ...data.session },
     user: { ...data.user }
   };
-  if (payload.session.expires instanceof Date) payload.session.expires = payload.session.expires.toISOString();
+  if (payload.session.expires instanceof Date)
+    payload.session.expires = payload.session.expires.toISOString();
   for (const k of USER_DATE_KEYS) {
     if (payload.user[k] instanceof Date) payload.user[k] = payload.user[k].toISOString();
   }

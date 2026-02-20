@@ -411,7 +411,7 @@
 </script>
 
 <svelte:head>
-  <title>지뢰찾기 | 데게실버타운</title>
+  <title>지뢰찾기 | dgst.me</title>
 </svelte:head>
 
 <div class="container py-4 position-relative">
@@ -667,7 +667,7 @@
                   🔄
                 </button>
               {:else}
-                <a href="/auth/signin" class="btn btn-sm btn-outline-primary">로그인</a>
+                <a href="/login" class="btn btn-sm btn-outline-primary">로그인</a>
               {/if}
             </div>
             <p class="small text-muted mb-1">3일 내 1인 1최단기록</p>

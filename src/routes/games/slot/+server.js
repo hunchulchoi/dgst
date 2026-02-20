@@ -3,7 +3,11 @@ import { error, json } from '@sveltejs/kit';
 import { GameScore } from '$lib/models/gameScore.js';
 import { SlotUserBalance } from '$lib/models/slotUserBalance.js';
 import { getTodaySlotStats } from '$lib/server/slotStats.js';
-import { updateSlotUserBalance, getSlotBalance, ensureSlotUserBalanceFilled } from '$lib/server/slotUserBalance.js';
+import {
+  updateSlotUserBalance,
+  getSlotBalance,
+  ensureSlotUserBalanceFilled
+} from '$lib/server/slotUserBalance.js';
 
 /**
  * @typedef {import('mongoose').Types.ObjectId} ObjectId
@@ -94,24 +98,32 @@ async function getBalance(email) {
  */
 async function maybeTopupAfterOOPS(email, nickname) {
   // 실제 스핀 기록(bet > 0) 중에서 balance가 0인 마지막 기록 찾기
-  const lastOopsSpin = /** @type {(LeanGameScore | null)} */ (await GameScore.findOne({
-    email,
-    bet: { $gt: 0 }, // 실제 스핀만 (댓글 보상 제외)
-    balance: 0
-  }).sort({ createdAt: -1 }).lean());
+  const lastOopsSpin = /** @type {(LeanGameScore | null)} */ (
+    await GameScore.findOne({
+      email,
+      bet: { $gt: 0 }, // 실제 스핀만 (댓글 보상 제외)
+      balance: 0
+    })
+      .sort({ createdAt: -1 })
+      .lean()
+  );
 
   if (!lastOopsSpin) {
     return 0; // 실제 스핀에서 오링이 발생하지 않았으면 0 반환
   }
 
   // 댓글 보상으로 받은 점수가 있는지 확인 (오링 이후에 댓글 보상이 있으면 오링이 아님)
-  const lastRewardAfterOops = /** @type {(LeanGameScore | null)} */ (await GameScore.findOne({
-    email,
-    bet: 0,
-    payout: 100,
-    delta: 100,
-    createdAt: { $gt: lastOopsSpin.createdAt }
-  }).sort({ createdAt: -1 }).lean());
+  const lastRewardAfterOops = /** @type {(LeanGameScore | null)} */ (
+    await GameScore.findOne({
+      email,
+      bet: 0,
+      payout: 100,
+      delta: 100,
+      createdAt: { $gt: lastOopsSpin.createdAt }
+    })
+      .sort({ createdAt: -1 })
+      .lean()
+  );
 
   // 오링 이후에 댓글 보상을 받았으면 오링이 아님 (balance > 0이 되었을 것)
   if (lastRewardAfterOops) {
@@ -157,9 +169,12 @@ export async function POST({ request, locals }) {
   }
 
   const email = session.user.email;
-  const nickname = typeof session.user === 'object' && 'nickname' in session.user && typeof session.user.nickname === 'string'
-    ? session.user.nickname
-    : 'anonymous';
+  const nickname =
+    typeof session.user === 'object' &&
+    'nickname' in session.user &&
+    typeof session.user.nickname === 'string'
+      ? session.user.nickname
+      : 'anonymous';
   const last = /** @type {(LeanGameScore | null)} */ (
     await GameScore.findOne({ email }).sort({ createdAt: -1 }).lean()
   );
@@ -208,21 +223,32 @@ export async function POST({ request, locals }) {
       payout,
       delta,
       balance: balanceAfter,
-      reels,
+      reels
     })
   );
   await updateSlotUserBalance(email, nickname, balanceAfter, { incSpin: true });
   const extraMsg = balanceAfter === 0 ? '오링! 😵' : undefined;
-  return json({ success: true, reels, payout, delta, balance: balanceAfter, id: docSpin._id, message: extraMsg });
+  return json({
+    success: true,
+    reels,
+    payout,
+    delta,
+    balance: balanceAfter,
+    id: docSpin._id,
+    message: extraMsg
+  });
 }
 
 export async function GET({ locals, url }) {
   const session = await locals.auth();
   if (!session?.user?.email) throw error(401, { message: '로그인이 필요합니다.' });
   const email = session.user.email;
-  const nickname = typeof session.user === 'object' && 'nickname' in session.user && typeof session.user.nickname === 'string'
-    ? session.user.nickname
-    : 'anonymous';
+  const nickname =
+    typeof session.user === 'object' &&
+    'nickname' in session.user &&
+    typeof session.user.nickname === 'string'
+      ? session.user.nickname
+      : 'anonymous';
   const last = /** @type {(LeanGameScore | null)} */ (
     await GameScore.findOne({ email }).sort({ createdAt: -1 }).lean()
   );
@@ -233,7 +259,11 @@ export async function GET({ locals, url }) {
       email,
       nickname,
       game: 'slot',
-      bet: 0, payout: 0, delta: 0, balance: 1000, reels: ['-', '-', '-']
+      bet: 0,
+      payout: 0,
+      delta: 0,
+      balance: 1000,
+      reels: ['-', '-', '-']
     });
     await updateSlotUserBalance(email, nickname, 1000, { incSpin: false });
     balance = 1000;
@@ -242,26 +272,37 @@ export async function GET({ locals, url }) {
   // 잔액 0인 경우 체크
   if (balance === 0 && last) {
     // 실제 스핀에서 오링이 발생한 경우인지 확인
-    const lastOopsSpin = /** @type {(LeanGameScore | null)} */ (await GameScore.findOne({
-      email,
-      bet: { $gt: 0 }, // 실제 스핀만
-      balance: 0
-    }).sort({ createdAt: -1 }).lean());
+    const lastOopsSpin = /** @type {(LeanGameScore | null)} */ (
+      await GameScore.findOne({
+        email,
+        bet: { $gt: 0 }, // 실제 스핀만
+        balance: 0
+      })
+        .sort({ createdAt: -1 })
+        .lean()
+    );
 
     if (lastOopsSpin) {
       // 오링 이후에 댓글 보상으로 받은 점수가 있는지 확인
-      const lastRewardAfterOops = /** @type {(LeanGameScore | null)} */ (await GameScore.findOne({
-        email,
-        bet: 0,
-        payout: 100,
-        delta: 100,
-        createdAt: { $gt: lastOopsSpin.createdAt }
-      }).sort({ createdAt: -1 }).lean());
+      const lastRewardAfterOops = /** @type {(LeanGameScore | null)} */ (
+        await GameScore.findOne({
+          email,
+          bet: 0,
+          payout: 100,
+          delta: 100,
+          createdAt: { $gt: lastOopsSpin.createdAt }
+        })
+          .sort({ createdAt: -1 })
+          .lean()
+      );
 
       // 댓글 보상으로 받은 점수가 있으면 오링이 아님 (balance > 0이 되어 있을 것)
       // 댓글 보상이 없거나, 받았지만 다시 0이 된 경우(10개 보상 다 받고 다시 스핀해서 0이 된 경우)에만 오링 처리
-      const shouldCountAsOops = !lastRewardAfterOops ||
-        (/** @type {(LeanGameScore | null)} */ (await GameScore.findOne({ email }).sort({ createdAt: -1 }).lean()))?.balance === 0;
+      const shouldCountAsOops =
+        !lastRewardAfterOops ||
+        /** @type {(LeanGameScore | null)} */ (
+          await GameScore.findOne({ email }).sort({ createdAt: -1 }).lean()
+        )?.balance === 0;
 
       if (shouldCountAsOops) {
         const topped = await maybeTopupAfterOOPS(email, nickname);
@@ -307,5 +348,3 @@ export async function GET({ locals, url }) {
   }
   return json({ balance, oopsInfo, todayStats });
 }
-
-

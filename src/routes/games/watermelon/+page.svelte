@@ -526,7 +526,7 @@
 </script>
 
 <svelte:head>
-  <title>2048 드롭 | 데게실버타운</title>
+  <title>2048 드롭 | dgst.me</title>
 </svelte:head>
 
 <div class="container py-4 watermelon-page">
@@ -605,7 +605,7 @@
           >
             <h3 class="fw-bold mb-3">로그인 후 이용 가능합니다</h3>
             <p class="mb-4">점수를 기록하고 랭킹에 도전해보세요!</p>
-            <a href="/auth/signin" class="btn btn-primary btn-lg px-5 shadow-sm">로그인하기</a>
+            <a href="/login" class="btn btn-primary btn-lg px-5 shadow-sm">로그인하기</a>
           </div>
         {:else if !gameStarted}
           <div
@@ -667,7 +667,7 @@
                 🔄
               </button>
             {:else}
-              <a href="/auth/signin" class="btn btn-sm btn-outline-primary">로그인</a>
+              <a href="/login" class="btn btn-sm btn-outline-primary">로그인</a>
             {/if}
           </div>
           <p class="small text-muted mb-3">최근 3일 내 최고 점수 (유저별)</p>

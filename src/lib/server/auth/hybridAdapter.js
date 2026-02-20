@@ -9,8 +9,17 @@ import * as sessionCache from '$lib/server/auth/sessionCache.js';
 
 /** users 컬렉션에 허용하는 키만 저장 (name, image, latest_modified_at 등 제외) */
 const ALLOWED_USER_KEYS = new Set([
-  'id', 'email', 'nickname', 'introduction', 'photo', 'emailVerified',
-  'state', 'grade', 'created_at', 'latest_login_at', 'last_modified'
+  'id',
+  'email',
+  'nickname',
+  'introduction',
+  'photo',
+  'emailVerified',
+  'state',
+  'grade',
+  'created_at',
+  'latest_login_at',
+  'last_modified'
 ]);
 
 /** 저장 시 제거할 키 (기존 문서에서도 $unset) */
@@ -21,7 +30,13 @@ const ALLOWED_ACCOUNT_KEYS = new Set(['userId', 'type', 'provider', 'providerAcc
 
 /** accounts에서 제거할 키 (기존 문서에서도 $unset) */
 const ACCOUNT_KEYS_TO_UNSET = [
-  'access_token', 'refresh_token', 'id_token', 'token_type', 'scope', 'session_state', 'expires_at'
+  'access_token',
+  'refresh_token',
+  'id_token',
+  'token_type',
+  'scope',
+  'session_state',
+  'expires_at'
 ];
 
 /**

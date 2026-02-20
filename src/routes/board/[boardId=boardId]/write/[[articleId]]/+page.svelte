@@ -22,7 +22,7 @@
 
   // Svelte 5 Runes
   let { data } = $props();
-  
+
   /**
    * Swal toast 메시지 표시
    * @param {string} message - 표시할 메시지
@@ -33,38 +33,33 @@
    * @param {boolean} [options.isToast=true] - 토스트 표시 여부
    */
   async function toast(message, options = {}) {
-    const {
-      icon = 'info',
-      position = 'center',
-      timer = 1000,
-      isToast = true
-    } = options;
+    const { icon = 'info', position = 'center', timer = 1000, isToast = true } = options;
 
-    if(icon === 'error'){
+    if (icon === 'error') {
       // error 타입은 일반 모달로 표시
       await Swal.fire({
         icon,
         title: message,
         confirmButtonColor: '#3085d6',
         confirmButtonText: '확인'
-      }); 
+      });
     } else {
       // 그 외 타입은 toast로 표시
       await Swal.fire({
         icon,
         title: message,
-        toast: isToast,  
+        toast: isToast,
         timer,
         timerProgressBar: timer > 0,
-        position,  
+        position
       });
     }
   }
-  
+
   const { boardId, articleId } = $page.params;
 
   let ffmpeg;
-  
+
   const uploadPlus = () => {
     uploading++;
   };
@@ -83,14 +78,14 @@
     } catch (e) {
       console.error('[FFmpeg 로드 실패]', e);
     }
-    
+
     // 모바일에서 제목 입력칸으로 스크롤하고 포커스
     setTimeout(() => {
       const titleInput = document.getElementById('title');
       if (titleInput) {
         // 제목 입력칸으로 스크롤
         titleInput.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        
+
         // 모바일에서만 포커스 (데스크톱에서는 autofocus가 이미 있음)
         if (window.innerWidth <= 768) {
           titleInput.focus();
@@ -111,7 +106,7 @@
         confirmButtonText: '취소',
         cancelButtonText: '계속 작성'
       });
-      
+
       if (!result.isConfirmed) return false;
     }
     goto(`/board/${boardId}`);
@@ -148,19 +143,19 @@
    */
   function handleTitlePaste(event) {
     const pastedText = event.clipboardData?.getData('text');
-    
+
     if (!pastedText) return;
-    
+
     // URL인지 확인 (http:// 또는 https://로 시작)
     const urlPattern = /^https?:\/\/.+/i;
-    
+
     if (urlPattern.test(pastedText.trim())) {
       // URL인 경우
       event.preventDefault(); // 기본 붙여넣기 동작 방지
-      
+
       // QuillEditor에 URL 삽입 (반응형 변수 업데이트)
       insertUrlFromTitle = pastedText.trim();
-      
+
       // 제목 입력란 비우기
       title = '';
     }
@@ -253,19 +248,19 @@
         // 동기 검증 (제출 전)
         const titleValue = title || '';
         const contentValue = content || '';
-        
+
         // 제목 검증
         if (titleValue.replace(/\s/g, '').length < 2) {
-          toast('제목이 너무 짧습니다.', {icon:'warning', isToast: false});
+          toast('제목이 너무 짧습니다.', { icon: 'warning', isToast: false });
           return cancel();
         }
-        
+
         // content 검증: 비어있거나 HTML 태그만 있는 경우 거부
         if (!contentValue || contentValue.trim().length === 0) {
-          toast('본문을 입력해주세요.', {icon:'warning', isToast: false});
+          toast('본문을 입력해주세요.', { icon: 'warning', isToast: false });
           return cancel();
         }
-        
+
         // HTML 태그 제거 후 실제 텍스트 내용 확인
         const textContent = contentValue
           //.replace(/<[^>]*>/g, '') // HTML 태그 제거
@@ -273,9 +268,12 @@
           .replace(/&nbsp;/g, ' ') // &nbsp;를 공백으로
           .replace(/[\s\u00A0]/g, '') // 모든 공백 및 줄바꿈 제거
           .trim();
-        
+
         if (textContent.length < 5) {
-          toast('본문이 너무 짧습니다. 최소 5자 이상 입력해주세요.', {icon:'warning', isToast: false});
+          toast('본문이 너무 짧습니다. 최소 5자 이상 입력해주세요.', {
+            icon: 'warning',
+            isToast: false
+          });
           return cancel();
         }
 
@@ -294,34 +292,42 @@
         // 결과 처리
         return async ({ result, update }) => {
           await update();
-          
+
           if (result.type === 'failure') {
-            const errorMessage = typeof result.data === 'object' && result.data?.message 
-              ? String(result.data.message) 
-              : '저장중에 오류가 발생하였습니다.';
-            console.error('[글쓰기 실패]', { type: result.type, status: result.status, data: result.data });
-            await toast(errorMessage, {icon:'error', isToast: false});
+            const errorMessage =
+              typeof result.data === 'object' && result.data?.message
+                ? String(result.data.message)
+                : '저장중에 오류가 발생하였습니다.';
+            console.error('[글쓰기 실패]', {
+              type: result.type,
+              status: result.status,
+              data: result.data
+            });
+            await toast(errorMessage, { icon: 'error', isToast: false });
             return;
           }
 
           if (result.type === 'error') {
             console.error('[글쓰기 에러]', result.error);
-            await toast(result.error?.message || '서버 오류가 발생하였습니다.', {icon:'error', isToast: false});
+            await toast(result.error?.message || '서버 오류가 발생하였습니다.', {
+              icon: 'error',
+              isToast: false
+            });
             return;
           }
-          
+
           if (result.type === 'success') {
             const data = result.data;
-            
+
             if (!data?.success) {
               console.error('[글쓰기 저장 실패]', data);
-              await toast('저장중에 오류가 발생하였습니다.', {icon:'error', isToast: false});
+              await toast('저장중에 오류가 발생하였습니다.', { icon: 'error', isToast: false });
             } else {
-              await toast('저장되었습니다.', {icon:'success', timer: 1000});
+              await toast('저장되었습니다.', { icon: 'success', timer: 1000 });
 
               title = '';
               content = '';
-              
+
               // 방금 작성/수정한 글의 상세 페이지로 이동
               const savedArticleId = data.articleId || articleId;
               if (savedArticleId) {
@@ -336,23 +342,23 @@
     >
       <input type="hidden" name="articleId" value={articleId} />
       <FormGroup floating label="제목">
-        <input 
-          type="text" 
-          id="title" 
-          name="title" 
-          class="form-control" 
-          bind:value={title} 
+        <input
+          type="text"
+          id="title"
+          name="title"
+          class="form-control"
+          bind:value={title}
           onpaste={handleTitlePaste}
-          required 
-          autofocus 
-          placeholder=" " 
+          required
+          autofocus
+          placeholder=" "
         />
       </FormGroup>
-      <QuillEditor 
-        bind:editorData={content} 
-        bind:insertUrlFromTitle={insertUrlFromTitle}
-        {uploadPlus} 
-        {uploadMinus} 
+      <QuillEditor
+        bind:editorData={content}
+        bind:insertUrlFromTitle
+        {uploadPlus}
+        {uploadMinus}
         onTitleUpdate={handleTitleUpdate}
         onLoadingChange={handleLoadingChange}
       />
@@ -364,7 +370,12 @@
           </Button>
         </Col>
         <Col md="2" xs="4">
-          <Button color="primary" role="submit" id="uploadBtn" disabled={uploading > 0 || isLoadingOG}>
+          <Button
+            color="primary"
+            role="submit"
+            id="uploadBtn"
+            disabled={uploading > 0 || isLoadingOG}
+          >
             {#if uploading > 0}
               <Spinner color="info" size="sm" />
             {:else if isLoadingOG}
@@ -377,7 +388,8 @@
           {#if uploading > 0}
             <Tooltip isOpen={uploading > 0} target="uploadBtn">이미지 업로드 중입니다.</Tooltip>
           {:else if isLoadingOG}
-            <Tooltip isOpen={isLoadingOG} target="uploadBtn">링크 정보를 가져오는 중입니다.</Tooltip>
+            <Tooltip isOpen={isLoadingOG} target="uploadBtn">링크 정보를 가져오는 중입니다.</Tooltip
+            >
           {/if}
         </Col>
       </Row>

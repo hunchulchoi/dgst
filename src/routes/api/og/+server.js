@@ -52,11 +52,11 @@ async function fetchOGData(targetUrl) {
     const response = await fetch(targetUrl, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (compatible; DGSTBot/1.0; +https://dgst.me)',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
         'Accept-Language': 'ko-KR,ko;q=0.9,en;q=0.8',
         'Accept-Encoding': 'gzip, deflate',
-        'DNT': '1',
-        'Connection': 'keep-alive',
+        DNT: '1',
+        Connection: 'keep-alive',
         'Upgrade-Insecure-Requests': '1'
       },
       timeout: 10000 // 10초 타임아웃
@@ -72,7 +72,6 @@ async function fetchOGData(targetUrl) {
     const ogData = parseOpenGraphData(html, targetUrl);
 
     return json(ogData);
-
   } catch (error) {
     console.error('OG 데이터 가져오기 실패:', error);
     return json({ error: 'Failed to fetch OG data' }, { status: 500 });
@@ -169,8 +168,6 @@ function parseOpenGraphData(html, baseUrl) {
   // favicon 추출
   const favicon = html.match(/<link[^>]+rel=["']icon["'][^>]+>/i);
   if (favicon) {
-
-
     console.log('favicon', favicon);
     ogData.favicon = resolveUrl(favicon[0].href, baseUrl);
   }

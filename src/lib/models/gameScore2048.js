@@ -9,7 +9,7 @@ const gameScore2048Schema = new Schema(
   {
     email: { type: String, required: true, index: true },
     nickname: { type: String, required: true },
-    score: { type: Number, required: true },
+    score: { type: Number, required: true }
   },
   { timestamps: true, collection: 'game_score_2048' }
 );

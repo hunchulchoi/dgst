@@ -80,16 +80,13 @@
 
     let files = document.querySelector('#photo').files;
 
+    console.log('files:', files);
 
-    console.log('files:', files)
-
-    if(files && files.length){
-
+    if (files && files.length) {
       // 움짤(GIF)·WebP는 압축 없이 원본 전송 (프로필 움짤 지원)
       if (files[0].type === 'image/gif' || files[0].type === 'image/webp') {
         formData.append('photo', files[0]);
-
-      }else{
+      } else {
         const fileSizeMB = files[0].size / (1024 * 1024);
         // 1MB 이하는 변환하지 않고 원본 유지
         if (fileSizeMB > 1) {
@@ -107,11 +104,14 @@
             formData.append('photo', files[0]); // 변환 실패 시 원본 사용
           }
         } else {
-          console.log('[browser-image-compression] 1MB 이하 이미지는 원본 유지:', fileSizeMB.toFixed(2), 'MB');
+          console.log(
+            '[browser-image-compression] 1MB 이하 이미지는 원본 유지:',
+            fileSizeMB.toFixed(2),
+            'MB'
+          );
           formData.append('photo', files[0]);
         }
       }
-
     }
 
     formData.append('nickname', nickname);
@@ -122,38 +122,40 @@
     const timeoutId = setTimeout(() => controller.abort(), 35000);
 
     try {
-      const res = await fetch('/auth/profile', { 
-        method: 'PATCH', 
+      const res = await fetch('/auth/profile', {
+        method: 'PATCH',
         body: formData,
         signal: controller.signal
       });
-      
-      clearTimeout(timeoutId);
-        console.log('res', res);
 
-        if (res.ok) {
+      clearTimeout(timeoutId);
+      console.log('res', res);
+
+      if (res.ok) {
         const data = await res.json();
-          Swal.fire({
-            icon: 'success',
-            title: '변경 완료',
+        Swal.fire({
+          icon: 'success',
+          title: '변경 완료',
           text: data.message || '변경 되었습니다.\n다시 로그인 해주세요.',
-            confirmButtonText: '확인'
-          });
-          signOut();
-          goto('/');
-        } else {
-        const errorData = await res.json().catch(() => ({ message: '저장 중에 오류가 발생하였습니다.' }));
-          Swal.fire({
-            icon: 'error',
-            title: '저장 실패',
+          confirmButtonText: '확인'
+        });
+        signOut();
+        goto('/');
+      } else {
+        const errorData = await res
+          .json()
+          .catch(() => ({ message: '저장 중에 오류가 발생하였습니다.' }));
+        Swal.fire({
+          icon: 'error',
+          title: '저장 실패',
           text: errorData.message || '저장 중에 오류가 발생하였습니다.',
-            confirmButtonText: '확인'
-          });
-        }
+          confirmButtonText: '확인'
+        });
+      }
     } catch (reason) {
       clearTimeout(timeoutId);
       console.error('프로필 업데이트 오류:', reason);
-      
+
       if (reason.name === 'AbortError') {
         Swal.fire({
           icon: 'error',
@@ -203,14 +205,9 @@
     }
   };
 
-  let isInvalid = $derived(!(
-    nickname &&
-    !invalids.nickname &&
-    introduction &&
-    !invalids.introduction
-  ));
-
-
+  let isInvalid = $derived(
+    !(nickname && !invalids.nickname && introduction && !invalids.introduction)
+  );
 </script>
 
 <svelte:head>
@@ -222,7 +219,7 @@
 <Row class="d-flex justify-content-center">
   <Card outline class="rounded rounded-4 shadow my-4" style="max-width: 500px">
     <CardHeader class="mt-3 text-center" style="background-color: #fafae4">
-      <img src="/logo/logo_transparent_120.png" alt="데게실버타운 로고" />
+      <img src="/logo/logo_transparent_120.png" alt="dgst.me 로고" />
     </CardHeader>
     <CardBody>
       <Row>
@@ -297,7 +294,7 @@
       </Row>
     </CardBody>
     <CardFooter class="mb-3">
-      <strong>데게실버타운은 개인정보를 수집하고 저장하지 않습니다.</strong>
+      <strong>dgst.me는 개인정보를 수집하고 저장하지 않습니다.</strong>
     </CardFooter>
   </Card>
 </Row>

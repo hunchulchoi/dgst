@@ -59,4 +59,3 @@ export async function GET({ params }) {
     throw err;
   }
 }
-

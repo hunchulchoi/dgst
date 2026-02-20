@@ -30,10 +30,10 @@ function calcPayout(reels, bet) {
 function runSlotProbabilityTest(spins = 1000, bet = 100) {
   const stats = {
     total: spins,
-    failure: 0,      // 배당 0 (실패)
-    x2: 0,          // ×2 (페어)
-    x10: 0,         // ×10 (트리플, 7️⃣7️⃣7️⃣ 제외)
-    x20: 0,         // ×20 (7️⃣7️⃣7️⃣ 잭팟)
+    failure: 0, // 배당 0 (실패)
+    x2: 0, // ×2 (페어)
+    x10: 0, // ×10 (트리플, 7️⃣7️⃣7️⃣ 제외)
+    x20: 0, // ×20 (7️⃣7️⃣7️⃣ 잭팟)
     totalBet: 0,
     totalPayout: 0,
     tripleDetails: {} // 트리플별 상세 (심볼별)
@@ -94,7 +94,9 @@ console.log(`RTP (Return to Player): ${result.rtp}%\n`);
 console.log('-'.repeat(60));
 console.log('🎲 승리 패턴별 통계:');
 console.log('-'.repeat(60));
-console.log(`실패 (×0):  ${result.failure.toString().padStart(4)}회 (${result.percentages.failure}%)`);
+console.log(
+  `실패 (×0):  ${result.failure.toString().padStart(4)}회 (${result.percentages.failure}%)`
+);
 console.log(`페어 (×2):  ${result.x2.toString().padStart(4)}회 (${result.percentages.x2}%)`);
 console.log(`트리플(×10): ${result.x10.toString().padStart(4)}회 (${result.percentages.x10}%)`);
 console.log(`잭팟 (×20): ${result.x20.toString().padStart(4)}회 (${result.percentages.x20}%)\n`);
@@ -105,7 +107,9 @@ if (Object.keys(result.tripleDetails).length > 0) {
   console.log('-'.repeat(60));
   for (const [symbol, count] of Object.entries(result.tripleDetails)) {
     const percentage = ((count / result.x10) * 100).toFixed(1);
-    console.log(`  ${symbol}${symbol}${symbol}: ${count.toString().padStart(3)}회 (${percentage}%)`);
+    console.log(
+      `  ${symbol}${symbol}${symbol}: ${count.toString().padStart(3)}회 (${percentage}%)`
+    );
   }
   console.log();
 }
@@ -148,4 +152,3 @@ if (process.env.RUN_MULTIPLE) {
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = { runSlotProbabilityTest, spinReels, calcPayout };
 }
-

@@ -3,7 +3,7 @@ import { error, json } from '@sveltejs/kit';
 import { Comment } from '$lib/models/comment.js';
 import { Article } from '$lib/models/article.js';
 import { write } from '$lib/util/fileUpload.js';
-import { Alarm } from "$lib/models/alarm.js";
+import { Alarm } from '$lib/models/alarm.js';
 import convertToTree from '$lib/util/tree.js';
 import { checkAndLogSessionDevice } from '$lib/server/auth/checkSessionDevice.js';
 
@@ -12,7 +12,6 @@ connectDB();
 export async function GET({ params, locals }) {
   const boardId = params.boardId;
   const articleId = params.articleId;
-
 
   if (!boardId || !articleId) {
     console.error('invalid', params);
@@ -28,17 +27,32 @@ export async function GET({ params, locals }) {
   try {
     comments = await Comment.find(
       { articleId: params.articleId, boardId: params.boardId },
-      { _id: 1, photo: 1, nickname: 1, createdAt: 1, image: 1, email: 1, content: 1, depth: 1, parentCommentId: 1, parentCommentNickname: 1, state: 1, likes: 1, like: 1 }
+      {
+        _id: 1,
+        photo: 1,
+        nickname: 1,
+        createdAt: 1,
+        image: 1,
+        email: 1,
+        content: 1,
+        depth: 1,
+        parentCommentId: 1,
+        parentCommentNickname: 1,
+        state: 1,
+        likes: 1,
+        like: 1
+      }
     ).sort('createdAt');
-
 
     // 알람 삭제
     if (session?.user?.nickname) {
-      const deleteAlarm = await Alarm.updateMany({ email: session.user.email, articleId: params.articleId }
-        , { $set: { readAt: new Date() } }, { timestamps: false });
+      const deleteAlarm = await Alarm.updateMany(
+        { email: session.user.email, articleId: params.articleId },
+        { $set: { readAt: new Date() } },
+        { timestamps: false }
+      );
       console.debug('delete alarm', deleteAlarm);
     }
-
   } catch (err) {
     console.error('댓글 목록 실패', err);
     throw error(500, { message: '데이터를 가져오는 중에 오류가 발생하였습니다.ㅜㅜ' });
@@ -46,16 +60,13 @@ export async function GET({ params, locals }) {
 
   const commentsTree = JSON.parse(JSON.stringify(convertToTree(comments)));
 
-
   if (session?.user?.nickname) {
     commentsTree.forEach((c) => {
-
-      console.debug(session.user.email, c.likes, c.likes.includes(session.user.email))
+      console.debug(session.user.email, c.likes, c.likes.includes(session.user.email));
 
       c.liked = c.likes.includes(session.user.email);
       delete c.likes;
-    })
-
+    });
   }
 
   return json(commentsTree);
@@ -128,26 +139,38 @@ export async function POST(event) {
     // 내글이 아닐때 알림
     if (article.email !== session.user.email) {
       if (!parentComment || parentComment.email !== article.email) {
-        const alarm = await Alarm.findOneAndUpdate({ email: article.email, articleId: articleId }
-          , { $set: { title: article.title, boardId: boardId, readAt: null }, $addToSet: { comments: comment._id } }
-          , { upsert: true, new: true }).lean();
+        const alarm = await Alarm.findOneAndUpdate(
+          { email: article.email, articleId: articleId },
+          {
+            $set: { title: article.title, boardId: boardId, readAt: null },
+            $addToSet: { comments: comment._id }
+          },
+          { upsert: true, new: true }
+        ).lean();
       }
     }
 
     // 내 댓글이 아닐때 알림
     if (parentComment) {
       if (parentComment.email !== session.user.email) {
-        const alarm = await Alarm.findOneAndUpdate({ email: parentComment.email, articleId: articleId, comment: parentComment.id }
-          , {
-            $set: { title: article.title, boardId: boardId, comment: parentComment.id, commentContent: parentComment.content, readAt: null }
-            , $addToSet: { comments: comment._id }
-          }
-          , { upsert: true, new: true }).lean();
+        const alarm = await Alarm.findOneAndUpdate(
+          { email: parentComment.email, articleId: articleId, comment: parentComment.id },
+          {
+            $set: {
+              title: article.title,
+              boardId: boardId,
+              comment: parentComment.id,
+              commentContent: parentComment.content,
+              readAt: null
+            },
+            $addToSet: { comments: comment._id }
+          },
+          { upsert: true, new: true }
+        ).lean();
 
         //console.log('alarm', alarm);
       }
     }
-
   } catch (err) {
     console.error('댓글 저장 실패', err);
     throw error(500, { message: '댓글 저장 중 오류가 발생하였습니다.ㅜㅜ' });
@@ -212,15 +235,15 @@ export async function PUT({ request, params, locals }) {
     }
 
     return json({ message: '댓글이 수정되었습니다.' });
-
   } catch (err) {
     console.error('댓글 수정 실패', err);
-    throw error(err.status || 500, { message: err.body?.message || '댓글 수정 중 오류가 발생하였습니다.' });
+    throw error(err.status || 500, {
+      message: err.body?.message || '댓글 수정 중 오류가 발생하였습니다.'
+    });
   }
 }
 
 export async function DELETE({ request, params, locals }) {
-
   const boardId = params.boardId;
   const articleId = params.articleId;
 
@@ -251,11 +274,11 @@ export async function DELETE({ request, params, locals }) {
     }
 
     //게시글 리플 목록에서 삭제
-    await Article.updateOne({ _id: articleId }
-      , { $pull: { comments: data.commentId } }
-      , { timestamps: false }
-    )
-
+    await Article.updateOne(
+      { _id: articleId },
+      { $pull: { comments: data.commentId } },
+      { timestamps: false }
+    );
   } catch (err) {
     console.error(err);
     throw error(err.status, err.body.message ?? '삭제 중에 오류가 발생하였습니다.');

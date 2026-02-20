@@ -32,7 +32,14 @@ function safeString(_name, _path) {
 
 export async function write(file, email, preservePath = 'jjal') {
   try {
-    logger.info({ fileName: file.name, preservePath, email, filesize: file.size, type: file.type, message: 'fileUpload.write called' });
+    logger.info({
+      fileName: file.name,
+      preservePath,
+      email,
+      filesize: file.size,
+      type: file.type,
+      message: 'fileUpload.write called'
+    });
 
     const now = new Date();
 
@@ -72,7 +79,6 @@ export async function write(file, email, preservePath = 'jjal') {
 
     // 이미지만 처리 (비디오는 제외)
     if (file.type.startsWith('image')) {
-
       logger.info({
         type: file.type,
         size: file.size,
@@ -82,7 +88,9 @@ export async function write(file, email, preservePath = 'jjal') {
       });
 
       // 프로필 움짤(GIF): 변환하지 않고 원본 유지
-      const isProfileGif = preservePath === 'profiles' && (file.type === 'image/gif' || file.name.toLowerCase().endsWith('.gif'));
+      const isProfileGif =
+        preservePath === 'profiles' &&
+        (file.type === 'image/gif' || file.name.toLowerCase().endsWith('.gif'));
       // 이미지는 1MB 이상일 때 리사이즈 (프로필 GIF 제외)
       const isCommentImage = false;
       const isWebP = file.type === 'image/webp' || file.name.endsWith('.webp');
@@ -100,13 +108,14 @@ export async function write(file, email, preservePath = 'jjal') {
       });
 
       if (shouldResize) {
-
         logger.info({
           type: file.type,
           size: file.size,
           name: file.name,
           isWebP,
-          message: isWebP ? 'Large WebP image - reprocessing with Sharp' : 'Large image - processing WebP conversion'
+          message: isWebP
+            ? 'Large WebP image - reprocessing with Sharp'
+            : 'Large image - processing WebP conversion'
         });
 
         try {
@@ -164,7 +173,11 @@ export async function write(file, email, preservePath = 'jjal') {
 
             // 임시 파일 존재 확인
             if (!fs.existsSync(tempWebpPath)) {
-              logger.error({ tempWebpPath, webpPath, message: 'tempWebpPath does not exist before rename' });
+              logger.error({
+                tempWebpPath,
+                webpPath,
+                message: 'tempWebpPath does not exist before rename'
+              });
               throw new Error('Temp WebP file not found before rename');
             }
 
@@ -185,7 +198,7 @@ export async function write(file, email, preservePath = 'jjal') {
               fileExists = fs.existsSync(finalWebpPath);
               if (!fileExists) {
                 // 10ms 대기 후 재시도
-                await new Promise(resolve => setTimeout(resolve, 10));
+                await new Promise((resolve) => setTimeout(resolve, 10));
                 retries--;
               }
             }

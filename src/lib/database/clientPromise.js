@@ -7,7 +7,6 @@ if (!MONGODB_CONNECTION_STRING) {
   throw new Error('Invalid/Missing environment variable: "MONGODB_CONNECTION_STRING"');
 }
 
-
 const uri = MONGODB_CONNECTION_STRING;
 const options = {};
 

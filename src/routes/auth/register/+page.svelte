@@ -18,7 +18,7 @@
     Label,
     Popover,
     Row
-  } from '@sveltestrap/sveltestrap'
+  } from '@sveltestrap/sveltestrap';
 
   import { PUBLIC_GOOGLE_RECAPTCHA_SITE_KEY } from '$env/static/public';
   import { goto } from '$app/navigation';
@@ -27,7 +27,7 @@
   import Swal from 'sweetalert2';
   import { isNicknameAllowed } from '$lib/util/nickname.js';
 
-  // Svelte 5 Runes  
+  // Svelte 5 Runes
   let { data } = $props();
 
   console.log('data.session', data);
@@ -81,13 +81,11 @@
 
     let files = document.querySelector('#photo').files;
 
-    if(files){
-
+    if (files) {
       // 움짤(GIF)·WebP는 압축 없이 원본 전송 (프로필 움짤 지원)
       if (files[0].type === 'image/gif' || files[0].type === 'image/webp') {
         formData.append('photo', files[0]);
-
-      }else{
+      } else {
         const fileSizeMB = files[0].size / (1024 * 1024);
         // 1MB 이하는 변환하지 않고 원본 유지
         if (fileSizeMB > 1) {
@@ -105,11 +103,14 @@
             formData.append('photo', files[0]); // 변환 실패 시 원본 사용
           }
         } else {
-          console.log('[browser-image-compression] 1MB 이하 이미지는 원본 유지:', fileSizeMB.toFixed(2), 'MB');
+          console.log(
+            '[browser-image-compression] 1MB 이하 이미지는 원본 유지:',
+            fileSizeMB.toFixed(2),
+            'MB'
+          );
           formData.append('photo', files[0]);
         }
       }
-
     }
 
     formData.append('nickname', nickname);
@@ -183,13 +184,9 @@
     }
   };
 
-  let isInvalid = $derived(!(
-    nickname &&
-    !invalids.nickname &&
-    introduction &&
-    !invalids.introduction &&
-    fight
-  ));
+  let isInvalid = $derived(
+    !(nickname && !invalids.nickname && introduction && !invalids.introduction && fight)
+  );
 </script>
 
 <svelte:head>
@@ -201,7 +198,7 @@
 <Row class="d-flex justify-content-center">
   <Card outline class="rounded rounded-4 shadow my-4" style="max-width: 500px">
     <CardHeader class="mt-3 text-center" style="background-color: #fafae4">
-      <img src="/logo/logo_transparent_120.png" alt="데게실버타운 로고" />
+      <img src="/logo/logo_transparent_120.png" alt="dgst.me 로고" />
     </CardHeader>
     <CardBody>
       <Row>
@@ -290,7 +287,7 @@
       </Row>
     </CardBody>
     <CardFooter class="mb-3">
-      <strong>데게실버타운은 개인정보를 수집하고 저장하지 않습니다.</strong>
+      <strong>dgst.me는 개인정보를 수집하고 저장하지 않습니다.</strong>
     </CardFooter>
   </Card>
 </Row>

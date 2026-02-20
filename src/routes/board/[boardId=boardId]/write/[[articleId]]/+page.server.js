@@ -31,7 +31,10 @@ export const actions = {
       throw error(400, { message: '본문을 입력해주세요.' });
     }
 
-    const processedContent = String(rawContent).replace(/<p>\s*<br\s*\/?>(\s|\u00A0)*<\/p>/g, '<br>');
+    const processedContent = String(rawContent).replace(
+      /<p>\s*<br\s*\/?>(\s|\u00A0)*<\/p>/g,
+      '<br>'
+    );
 
     try {
       if (params.articleId) {

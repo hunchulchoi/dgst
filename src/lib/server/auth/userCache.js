@@ -36,7 +36,8 @@ export async function getCachedUserByEmail(email) {
 export async function setCachedUser(user) {
   if (!user?.id) return;
   const payload = { ...user };
-  if (payload.emailVerified instanceof Date) payload.emailVerified = payload.emailVerified.toISOString();
+  if (payload.emailVerified instanceof Date)
+    payload.emailVerified = payload.emailVerified.toISOString();
   await redis.setJson(USER_ID_PREFIX + user.id, payload, USER_CACHE_TTL);
   if (user.email) await redis.setJson(USER_EMAIL_PREFIX + user.email, payload, USER_CACHE_TTL);
 }

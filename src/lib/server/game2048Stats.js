@@ -22,12 +22,12 @@ export async function getToday2048Stats() {
       GameScore2048.aggregate([
         { $match: baseFilter },
         { $group: { _id: '$email' } },
-        { $count: 'count' },
-      ]),
+        { $count: 'count' }
+      ])
     ]);
     return {
       games: games ?? 0,
-      users: distinctAgg?.[0]?.count ?? 0,
+      users: distinctAgg?.[0]?.count ?? 0
     };
   } catch (err) {
     console.error('2048 오늘 통계 산출 실패:', err);

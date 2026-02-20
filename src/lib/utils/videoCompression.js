@@ -19,8 +19,22 @@ export async function compressVideo(file) {
   }
 
   ffmpeg.FS('writeFile', 'input.mp4', await fetchFile(file));
-  await ffmpeg.run('-i', 'input.mp4', '-c:v', 'libx264', '-crf', '28', '-preset', 'medium', '-c:a', 'aac', '-b:a', '128k', 'output.mp4');
+  await ffmpeg.run(
+    '-i',
+    'input.mp4',
+    '-c:v',
+    'libx264',
+    '-crf',
+    '28',
+    '-preset',
+    'medium',
+    '-c:a',
+    'aac',
+    '-b:a',
+    '128k',
+    'output.mp4'
+  );
   const data = ffmpeg.FS('readFile', 'output.mp4');
   const compressedBlob = new Blob([data.buffer], { type: 'video/mp4' });
   return new File([compressedBlob], file.name, { type: 'video/mp4' });
-} 
+}

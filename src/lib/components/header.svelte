@@ -39,7 +39,6 @@
   });
 
   const handleGoogleSignIn = () => {
-    //console.log('handleGoogleSignIn');
     signIn('google', { callbackUrl: '/' });
   };
 
@@ -110,7 +109,7 @@
         {:else}
           <NavLink onclick={handleGoogleSignIn} class="p-0 m-0">
             <img
-              alt="google계정으로 로그인"
+              alt="Google 계정으로 로그인"
               src={loginButton}
               class="p-0"
               style="max-width:40vw; width: auto; height: auto;"

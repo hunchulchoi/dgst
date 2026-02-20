@@ -27,7 +27,11 @@ export async function createSession(data) {
     expires: data.expires instanceof Date ? data.expires.toISOString() : data.expires
   };
   const ttl = Math.max(1, Math.floor((new Date(data.expires) - Date.now()) / 1000));
-  const ok = await redis.setJson(sessionKey(data.sessionToken), payload, Math.min(ttl, SESSION_MAX_AGE_SECONDS));
+  const ok = await redis.setJson(
+    sessionKey(data.sessionToken),
+    payload,
+    Math.min(ttl, SESSION_MAX_AGE_SECONDS)
+  );
   if (!ok) return null;
   return { ...data, expires: data.expires };
 }
@@ -57,9 +61,10 @@ export async function updateSession(data) {
   const payload = {
     sessionToken: data.sessionToken,
     userId: data.userId ?? existing.userId,
-    expires: (data.expires ?? existing.expires) instanceof Date
-      ? (data.expires ?? existing.expires).toISOString()
-      : (data.expires ?? existing.expires)
+    expires:
+      (data.expires ?? existing.expires) instanceof Date
+        ? (data.expires ?? existing.expires).toISOString()
+        : (data.expires ?? existing.expires)
   };
   const expiresDate = new Date(payload.expires);
   const ttl = Math.max(1, Math.floor((expiresDate - Date.now()) / 1000));

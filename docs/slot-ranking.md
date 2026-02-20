@@ -52,12 +52,12 @@
 
 ## 관련 파일
 
-| 파일 | 역할 |
-|------|------|
-| `src/lib/models/slotUserBalance.js` | 요약 스키마·모델 |
-| `src/lib/server/slotUserBalance.js` | `updateSlotUserBalance`, `getSlotBalance` |
-| `src/routes/games/slot/+server.js` | 스핀·랭킹·잔액 조회, 보충 시 balance 반영 |
-| `src/routes/games/slot/comment/+server.js` | 댓글 보상 시 balance 반영 |
-| `src/lib/server/slotStats.js` | 오늘 스핀/유저 수 (game_scores + 인덱스) |
-| `src/lib/models/gameScore.js` | game_scores 인덱스 (`game`, `createdAt` 등) |
-| `scripts/backfill-slot-user-balance.js` | 1회 백필 스크립트 |
+| 파일                                       | 역할                                        |
+| ------------------------------------------ | ------------------------------------------- |
+| `src/lib/models/slotUserBalance.js`        | 요약 스키마·모델                            |
+| `src/lib/server/slotUserBalance.js`        | `updateSlotUserBalance`, `getSlotBalance`   |
+| `src/routes/games/slot/+server.js`         | 스핀·랭킹·잔액 조회, 보충 시 balance 반영   |
+| `src/routes/games/slot/comment/+server.js` | 댓글 보상 시 balance 반영                   |
+| `src/lib/server/slotStats.js`              | 오늘 스핀/유저 수 (game_scores + 인덱스)    |
+| `src/lib/models/gameScore.js`              | game_scores 인덱스 (`game`, `createdAt` 등) |
+| `scripts/backfill-slot-user-balance.js`    | 1회 백필 스크립트                           |
