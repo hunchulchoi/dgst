@@ -1,5 +1,7 @@
 <script>
   import { signIn } from '@auth/sveltekit/client';
+  import Swal from 'sweetalert2';
+  import { onMount } from 'svelte';
 
   let { data } = $props();
 
@@ -8,6 +10,44 @@
 
   let email = $state('');
   let password = $state('');
+
+  onMount(() => {
+    if (data.error) {
+      let errorMessage = '로그인 중 오류가 발생했습니다.';
+
+      switch (data.error) {
+        case 'OAuthSignin':
+        case 'OAuthCallback':
+        case 'OAuthCreateAccount':
+        case 'EmailCreateAccount':
+        case 'Callback':
+          errorMessage = '소셜 로그인 연동 중 오류가 발생했습니다.';
+          break;
+        case 'OAuthAccountNotLinked':
+          errorMessage = '이미 다른 연동 방식으로 가입된 이메일입니다.';
+          break;
+        case 'EmailSignin':
+          errorMessage = '이메일 인증 링크 전송에 실패했습니다.';
+          break;
+        case 'CredentialsSignin':
+          errorMessage = '이메일 또는 비밀번호가 올바르지 않습니다.';
+          break;
+        case 'SessionRequired':
+          errorMessage = '로그인이 필요한 페이지입니다.';
+          break;
+        default:
+          errorMessage = `로그인 실패: ${data.error}`;
+      }
+
+      Swal.fire({
+        icon: 'error',
+        title: '로그인 실패',
+        text: errorMessage,
+        confirmButtonColor: '#212529',
+        confirmButtonText: '확인'
+      });
+    }
+  });
 
   async function handleEmailSignIn(e) {
     e.preventDefault();
