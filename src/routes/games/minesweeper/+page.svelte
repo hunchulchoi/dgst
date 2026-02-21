@@ -95,6 +95,25 @@
     initGrid();
   }
 
+  async function confirmModeChange(newMode) {
+    if (mode === newMode) return;
+    if (!gameOver && !firstClick) {
+      const result = await Swal.fire({
+        title: '난이도를 변경하시겠습니까?',
+        text: '현재 진행 중인 게임이 사라지고 새로운 난이도로 시작됩니다.',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#0d6efd',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: '네, 변경합니다',
+        cancelButtonText: '취소',
+        reverseButtons: true
+      });
+      if (!result.isConfirmed) return;
+    }
+    startGame(newMode);
+  }
+
   function initGrid() {
     gameOver = false;
     gameWon = false;
@@ -508,6 +527,27 @@
                 <button class="btn btn-sm btn-outline-secondary" onclick={handleReset}>
                   새 게임
                 </button>
+                <div class="btn-group btn-group-sm shadow-sm">
+                  <button
+                    class="btn btn-outline-success {mode === 'beginner' ? 'active' : ''}"
+                    onclick={() => confirmModeChange('beginner')}
+                  >
+                    초급
+                  </button>
+                  <button
+                    class="btn btn-outline-warning {mode === 'intermediate' ? 'active' : ''}"
+                    onclick={() => confirmModeChange('intermediate')}
+                  >
+                    중급
+                  </button>
+                  <button
+                    class="btn btn-outline-danger {mode === 'expert' ? 'active' : ''}"
+                    onclick={() => confirmModeChange('expert')}
+                  >
+                    고급
+                  </button>
+                </div>
+                <!-- 
                 <button
                   class="btn btn-sm btn-outline-dark"
                   onclick={() => {
@@ -516,6 +556,7 @@
                 >
                   모드 변경
                 </button>
+                -->
               </div>
             </div>
 
