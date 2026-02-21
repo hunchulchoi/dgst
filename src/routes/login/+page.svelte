@@ -94,53 +94,8 @@
             </a>
           </div>
 
-          <form onsubmit={handleEmailSignIn} class="mb-4 mx-sm-3 mx-1">
-            <div class="form-floating mb-3">
-              <input
-                type="email"
-                class="form-control"
-                id="emailInput"
-                placeholder="name@example.com"
-                bind:value={email}
-                required
-              />
-              <label for="emailInput">이메일 주소</label>
-            </div>
-            <div class="form-floating mb-3">
-              <input
-                type="password"
-                class="form-control"
-                id="passwordInput"
-                placeholder="비밀번호"
-                bind:value={password}
-                required
-              />
-              <label for="passwordInput">비밀번호</label>
-            </div>
-            <button
-              class="btn w-100 py-2 fw-medium text-white"
-              style="background-color: #212529;"
-              type="submit">이메일로 로그인</button
-            >
-          </form>
-
-          <div class="d-flex align-items-center mb-4 mx-sm-3 mx-1">
-            <hr class="flex-grow-1" />
-            <span class="mx-3 text-muted small">또는</span>
-            <hr class="flex-grow-1" />
-          </div>
-
           <div class="text-center">
             <div class="d-flex flex-column gap-3 align-items-center">
-              <!-- 구글: 공식 규격 - Light Fill #FFFFFF, Stroke #747775, 텍스트 "Sign in with Google" / 구글 G 로고 -->
-              <button
-                type="button"
-                class="login-btn-google"
-                onclick={() => signIn('google', { callbackUrl: '/' })}
-                title="구글 계정으로 로그인"
-              >
-                <img src={googleBtnSrc} alt="구글 로그인" width="220" height="44" />
-              </button>
               <!-- 카카오: 공식 규격 - 컨테이너 #FEE500, radius 12px, 심볼(말풍선) #000, 레이블 "카카오 로그인" #000 85% -->
               <button
                 type="button"
@@ -165,6 +120,49 @@
                 </span>
                 <span class="login-btn-kakao-label">카카오 로그인</span>
               </button>
+
+              <!-- 구글: 공식 규격 - Light Fill #FFFFFF, Stroke #747775, 텍스트 "Sign in with Google" / 구글 G 로고 -->
+              <button
+                type="button"
+                class="login-btn-google"
+                onclick={() => signIn('google', { callbackUrl: '/' })}
+                title="구글 계정으로 로그인"
+              >
+                <img src={googleBtnSrc} alt="구글 로그인" width="220" height="44" />
+              </button>
+
+              <!-- 이메일/패스워드 로그인은 현재 비활성화 (요유청에 의해 숨김) -->
+              <!-- 
+              <form onsubmit={handleEmailSignIn} class="mt-4 mb-4 mx-sm-3 mx-1">
+                <div class="form-floating mb-3">
+                  <input
+                    type="email"
+                    class="form-control"
+                    id="emailInput"
+                    placeholder="name@example.com"
+                    bind:value={email}
+                    required
+                  />
+                  <label for="emailInput">이메일 주소</label>
+                </div>
+                <div class="form-floating mb-3">
+                  <input
+                    type="password"
+                    class="form-control"
+                    id="passwordInput"
+                    placeholder="비밀번호"
+                    bind:value={password}
+                    required
+                  />
+                  <label for="passwordInput">비밀번호</label>
+                </div>
+                <button
+                  class="btn w-100 py-2 fw-medium text-white"
+                  style="background-color: #212529;"
+                  type="submit">이메일로 로그인</button
+                >
+              </form>
+              -->
             </div>
           </div>
         </div>

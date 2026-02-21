@@ -433,7 +433,11 @@
   <title>지뢰찾기 | dgst.me</title>
 </svelte:head>
 
-<div class="container py-4 position-relative">
+<div
+  class={mode === 'expert'
+    ? 'container-fluid px-lg-5 py-4 position-relative'
+    : 'container py-4 position-relative'}
+>
   <!-- 도움말 오버레이 -->
   {#if showHelp}
     <div class="instructions-overlay">
@@ -714,7 +718,7 @@
             </div>
             <p class="small text-muted mb-1">3일 내 1인 1최단기록</p>
             <p class="small text-muted mb-3">
-              오늘 해당 게임 완료 <strong>{todayStats.games}</strong>회
+              오늘 참여 {todayStats.users}명 / 완료 {todayStats.games}회
             </p>
 
             {#if isLoggedIn}

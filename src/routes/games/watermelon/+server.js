@@ -1,9 +1,8 @@
 import connectDB from '$lib/database/mongoosePriomise.js';
 import { error, json } from '@sveltejs/kit';
 import { GameScoreWatermelon } from '$lib/models/gameScoreWatermelon.js';
-
-// No separate stats file for now, keeping it simple as requested.
-// If needed, we can add getTodayWatermelonStats later.
+import { GameLog } from '$lib/models/gameLog.js';
+import { getTodayWatermelonStats } from '$lib/server/gameWatermelonStats.js';
 
 connectDB();
 
@@ -37,23 +36,12 @@ async function getRankTop10() {
 export async function GET({ locals, url }) {
   const session = await locals.auth();
 
-  // Unlike 2048, we might allow viewing rank without login?
-  // But to be consistent with 2048 logic:
   if (!session?.user?.email) {
-    // Return empty rank if not logged in, or error? 2048 throws 401.
-    // Let's just return empty object if not logged in to be safe for public view,
-    // or follow 2048 pattern strictly.
-    // 2048 throws 401.
-    // But maybe we want public leaderboard?
-    // User said "show top 10". Usually leaderboards are public.
-    // However, the 2048 code throws 401. I'll stick to 2048 pattern to avoid auth issues if the frontend expects it.
-    // Wait, 2048 frontend handles "if isLoggedIn" before calling loadRank.
-    // Let's stick to 2048 pattern: secure endpoint.
     throw error(401, { message: 'Login required' });
   }
 
   if (url.searchParams.get('rank')) {
-    const [rank, myBest] = await Promise.all([
+    const [rank, myBest, todayStats] = await Promise.all([
       getRankTop10(),
       (async () => {
         const email = session.user.email;
@@ -63,10 +51,14 @@ export async function GET({ locals, url }) {
           { sort: { score: -1 }, projection: { score: 1 } }
         ).lean();
         return myDoc?.score ?? null;
-      })()
+      })(),
+      getTodayWatermelonStats()
     ]);
 
-    return json({ rank, myBest }, { headers: { 'Cache-Control': 'no-store, max-age=0' } });
+    return json(
+      { rank, myBest, todayStats },
+      { headers: { 'Cache-Control': 'no-store, max-age=0' } }
+    );
   }
   return json({});
 }
@@ -81,19 +73,32 @@ export async function POST({ locals, request }) {
   } catch {
     throw error(400, { message: 'Invalid JSON' });
   }
+
+  const email = session.user.email;
+  const nickname =
+    typeof session.user === 'object' &&
+      'nickname' in session.user &&
+      typeof session.user.nickname === 'string'
+      ? session.user.nickname
+      : 'anonymous';
+
+  // 게임 시작 로그 기록
+  if (body?.action === 'start') {
+    await GameLog.create({
+      game: 'watermelon',
+      action: 'start',
+      email: email,
+      meta: { nickname }
+    });
+    return json({ success: true });
+  }
+
   const score = Number(body?.score);
   if (!Number.isFinite(score) || score < 0) {
     throw error(400, { message: 'Invalid score' });
   }
 
-  const email = session.user.email;
-  const nickname =
-    typeof session.user === 'object' &&
-    'nickname' in session.user &&
-    typeof session.user.nickname === 'string'
-      ? session.user.nickname
-      : 'anonymous';
-
   await GameScoreWatermelon.create({ email, nickname, score });
   return json({ success: true, score });
 }
+

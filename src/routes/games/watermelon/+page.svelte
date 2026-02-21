@@ -22,6 +22,7 @@
   let rankList = $state<Array<{ nickname: string; score: number; _id?: string }>>([]);
   let myBestScore = $state<number | null>(null);
   let loading = $state(false);
+  let todayStats = $state({ games: 0, users: 0 });
 
   const isLoggedIn = $derived(!!data.session?.user?.email);
 
@@ -287,12 +288,25 @@
     };
   });
 
-  function startGame() {
+  async function startGame() {
     if (!engine || gameStarted) return;
     gameStarted = true;
     runner = Runner.create();
     Runner.run(runner, engine);
     resetIdleTimer();
+
+    // 게임 시작 로그 (오늘 참여 횟수 카운트용)
+    try {
+      await fetch('/games/watermelon', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'start' })
+      });
+      // 카운트 반영을 위해 통계 다시 불러오기
+      await loadRank();
+    } catch (e) {
+      console.error('Failed to log game start', e);
+    }
   }
 
   $effect(() => {
@@ -312,6 +326,7 @@
         const j = await res.json();
         rankList = j.rank ?? [];
         myBestScore = j.myBest != null ? Number(j.myBest) : null;
+        if (j.todayStats) todayStats = j.todayStats;
       }
     } catch (e) {
       console.error('Failed to load rank', e);
@@ -656,7 +671,7 @@
     <div class="col-12 col-lg-4 mt-4 mt-lg-0">
       <div class="card shadow rounded-4">
         <div class="card-body">
-          <div class="d-flex justify-content-between align-items-center mb-3">
+          <div class="d-flex justify-content-between align-items-center mb-1">
             <h5 class="mb-0">랭킹 Top 10</h5>
             {#if isLoggedIn}
               <button
@@ -669,6 +684,11 @@
             {:else}
               <a href="/login" class="btn btn-sm btn-outline-primary">로그인</a>
             {/if}
+          </div>
+          <div class="mb-3">
+            <span class="badge bg-light text-dark border fw-normal"
+              >오늘 참여 {todayStats.users}명 / {todayStats.games}회</span
+            >
           </div>
           <p class="small text-muted mb-3">최근 3일 내 최고 점수 (유저별)</p>
 
