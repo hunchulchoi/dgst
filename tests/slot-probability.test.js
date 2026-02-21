@@ -1,3 +1,5 @@
+import { describe, it, expect } from 'vitest';
+
 /**
  * 슬롯 머신 확률 테스트
  * 1000번 스핀을 돌려서 각 승리 패턴의 출현 횟수를 통계로 확인
@@ -78,77 +80,86 @@ function runSlotProbabilityTest(spins = 1000, bet = 100) {
   };
 }
 
-// 테스트 실행
-console.log('🎰 슬롯 머신 확률 테스트 시작...\n');
-const result = runSlotProbabilityTest(1000, 100);
+describe('Slot Machine Probability', () => {
+  it('1000회 스핀 시뮬레이션이 정상적으로 완료되어야 함', () => {
+    console.log('🎰 슬롯 머신 확률 테스트 시작...\n');
+    const result = runSlotProbabilityTest(1000, 100);
 
-console.log('='.repeat(60));
-console.log('📊 테스트 결과 (1000회 스핀, 베팅: 100점)');
-console.log('='.repeat(60));
-console.log(`\n총 스핀: ${result.total}회`);
-console.log(`총 베팅: ${result.totalBet.toLocaleString()}점`);
-console.log(`총 배당: ${result.totalPayout.toLocaleString()}점`);
-console.log(`순 손익: ${result.netResult >= 0 ? '+' : ''}${result.netResult.toLocaleString()}점`);
-console.log(`RTP (Return to Player): ${result.rtp}%\n`);
+    console.log('='.repeat(60));
+    console.log('📊 테스트 결과 (1000회 스핀, 베팅: 100점)');
+    console.log('='.repeat(60));
+    console.log(`\n총 스핀: ${result.total}회`);
+    console.log(`총 베팅: ${result.totalBet.toLocaleString()}점`);
+    console.log(`총 배당: ${result.totalPayout.toLocaleString()}점`);
+    console.log(`순 손익: ${result.netResult >= 0 ? '+' : ''}${result.netResult.toLocaleString()}점`);
+    console.log(`RTP (Return to Player): ${result.rtp}%\n`);
 
-console.log('-'.repeat(60));
-console.log('🎲 승리 패턴별 통계:');
-console.log('-'.repeat(60));
-console.log(
-  `실패 (×0):  ${result.failure.toString().padStart(4)}회 (${result.percentages.failure}%)`
-);
-console.log(`페어 (×2):  ${result.x2.toString().padStart(4)}회 (${result.percentages.x2}%)`);
-console.log(`트리플(×10): ${result.x10.toString().padStart(4)}회 (${result.percentages.x10}%)`);
-console.log(`잭팟 (×20): ${result.x20.toString().padStart(4)}회 (${result.percentages.x20}%)\n`);
-
-if (Object.keys(result.tripleDetails).length > 0) {
-  console.log('-'.repeat(60));
-  console.log('🎯 트리플 상세 (×10):');
-  console.log('-'.repeat(60));
-  for (const [symbol, count] of Object.entries(result.tripleDetails)) {
-    const percentage = ((count / result.x10) * 100).toFixed(1);
+    console.log('-'.repeat(60));
+    console.log('🎲 승리 패턴별 통계:');
+    console.log('-'.repeat(60));
     console.log(
-      `  ${symbol}${symbol}${symbol}: ${count.toString().padStart(3)}회 (${percentage}%)`
+      `실패 (×0):  ${result.failure.toString().padStart(4)}회 (${result.percentages.failure}%)`
     );
+    console.log(`페어 (×2):  ${result.x2.toString().padStart(4)}회 (${result.percentages.x2}%)`);
+    console.log(`트리플(×10): ${result.x10.toString().padStart(4)}회 (${result.percentages.x10}%)`);
+    console.log(`잭팟 (×20): ${result.x20.toString().padStart(4)}회 (${result.percentages.x20}%)\n`);
+
+    if (Object.keys(result.tripleDetails).length > 0) {
+      console.log('-'.repeat(60));
+      console.log('🎯 트리플 상세 (×10):');
+      console.log('-'.repeat(60));
+      for (const [symbol, count] of Object.entries(result.tripleDetails)) {
+        const percentage = ((count / result.x10) * 100).toFixed(1);
+        console.log(
+          `  ${symbol}${symbol}${symbol}: ${count.toString().padStart(3)}회 (${percentage}%)`
+        );
+      }
+      console.log();
+    }
+
+    console.log('='.repeat(60));
+
+    expect(Number(result.rtp)).toBeGreaterThan(0);
+    expect(result.total).toBe(1000);
+  });
+
+  // 여러 번 실행하여 평균 확률 확인 (선택적)
+  if (process.env.RUN_MULTIPLE) {
+    it('여러 번 실행하여 평균 확률 확인', () => {
+      console.log('\n🔄 여러 번 실행하여 평균 확률 확인 중...\n');
+      const iterations = 10;
+      const avgStats = {
+        failure: 0,
+        x2: 0,
+        x10: 0,
+        x20: 0,
+        rtp: 0
+      };
+
+      for (let i = 0; i < iterations; i++) {
+        const iterResult = runSlotProbabilityTest(1000, 100);
+        avgStats.failure += parseFloat(iterResult.percentages.failure);
+        avgStats.x2 += parseFloat(iterResult.percentages.x2);
+        avgStats.x10 += parseFloat(iterResult.percentages.x10);
+        avgStats.x20 += parseFloat(iterResult.percentages.x20);
+        avgStats.rtp += parseFloat(iterResult.rtp);
+      }
+
+      console.log('='.repeat(60));
+      console.log(`📈 ${iterations}회 평균 결과:`);
+      console.log('='.repeat(60));
+      console.log(`실패 (×0):  ${(avgStats.failure / iterations).toFixed(2)}%`);
+      console.log(`페어 (×2):  ${(avgStats.x2 / iterations).toFixed(2)}%`);
+      console.log(`트리플(×10): ${(avgStats.x10 / iterations).toFixed(2)}%`);
+      console.log(`잭팟 (×20): ${(avgStats.x20 / iterations).toFixed(2)}%`);
+      console.log(`평균 RTP: ${(avgStats.rtp / iterations).toFixed(2)}%`);
+      console.log('='.repeat(60));
+
+      expect(avgStats.rtp / iterations).toBeGreaterThan(0);
+    });
   }
-  console.log();
-}
-
-console.log('='.repeat(60));
-
-// 여러 번 실행하여 평균 확률 확인 (선택적)
-if (process.env.RUN_MULTIPLE) {
-  console.log('\n🔄 여러 번 실행하여 평균 확률 확인 중...\n');
-  const iterations = 10;
-  const avgStats = {
-    failure: 0,
-    x2: 0,
-    x10: 0,
-    x20: 0,
-    rtp: 0
-  };
-
-  for (let i = 0; i < iterations; i++) {
-    const iterResult = runSlotProbabilityTest(1000, 100);
-    avgStats.failure += parseFloat(iterResult.percentages.failure);
-    avgStats.x2 += parseFloat(iterResult.percentages.x2);
-    avgStats.x10 += parseFloat(iterResult.percentages.x10);
-    avgStats.x20 += parseFloat(iterResult.percentages.x20);
-    avgStats.rtp += parseFloat(iterResult.rtp);
-  }
-
-  console.log('='.repeat(60));
-  console.log(`📈 ${iterations}회 평균 결과:`);
-  console.log('='.repeat(60));
-  console.log(`실패 (×0):  ${(avgStats.failure / iterations).toFixed(2)}%`);
-  console.log(`페어 (×2):  ${(avgStats.x2 / iterations).toFixed(2)}%`);
-  console.log(`트리플(×10): ${(avgStats.x10 / iterations).toFixed(2)}%`);
-  console.log(`잭팟 (×20): ${(avgStats.x20 / iterations).toFixed(2)}%`);
-  console.log(`평균 RTP: ${(avgStats.rtp / iterations).toFixed(2)}%`);
-  console.log('='.repeat(60));
-}
+});
 
 // 모듈로 export (테스트 프레임워크 사용 시)
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { runSlotProbabilityTest, spinReels, calcPayout };
-}
+export { runSlotProbabilityTest, spinReels, calcPayout };
+

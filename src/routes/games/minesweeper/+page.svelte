@@ -586,6 +586,7 @@
                           explodedMine?.row === cell.row &&
                           explodedMine?.col === cell.col}
                         class:wrong-flag={gameOver && !gameWon && cell.isFlagged && !cell.isMine}
+                        class:flagged={cell.isFlagged}
                         class:neighbor-highlight={highlightCenter &&
                           Math.abs(cell.row - highlightCenter.row) <= 1 &&
                           Math.abs(cell.col - highlightCenter.col) <= 1}
@@ -758,6 +759,9 @@
     background-color: #c0c0c0;
     cursor: default;
     color: inherit;
+  }
+  .grid-cell.flagged {
+    color: #000;
   }
 
   .grid-cell.mine {
