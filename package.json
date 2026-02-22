@@ -44,6 +44,7 @@
     "@sveltejs/adapter-node": "^5.4.0",
     "@sveltestrap/sveltestrap": "^7.1.0",
     "browser-image-compression": "^2.0.2",
+    "cropperjs": "^1.6.1",
     "date-fns": "^4.1.0",
     "heic2any": "^0.0.4",
     "ioredis": "^5.9.3",

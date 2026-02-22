@@ -40,8 +40,28 @@ export async function PATCH({ request, locals, cookies }) {
       }
 
       try {
+        let fileToUpload = photoFile;
+        // 움짤 등 서버 크롭 파라미터가 있는지 확인
+        const cropX = formData.get('cropX');
+        if (cropX !== null) {
+          const x = parseInt(cropX);
+          const y = parseInt(formData.get('cropY'));
+          const w = parseInt(formData.get('cropW'));
+          const h = parseInt(formData.get('cropH'));
+
+          if (!isNaN(x) && !isNaN(y) && !isNaN(w) && !isNaN(h)) {
+            const sharp = (await import('sharp')).default;
+            const buffer = Buffer.from(await photoFile.arrayBuffer());
+            const croppedBuffer = await sharp(buffer, { animated: true })
+              .extract({ left: x, top: y, width: w, height: h })
+              .toBuffer();
+
+            fileToUpload = new File([croppedBuffer], photoFile.name, { type: photoFile.type });
+          }
+        }
+
         // 타임아웃 처리 (30초)
-        const uploadPromise = write(photoFile, session.user.email, 'profiles');
+        const uploadPromise = write(fileToUpload, session.user.email, 'profiles');
         const timeoutPromise = new Promise((_, reject) =>
           setTimeout(() => reject(new Error('파일 업로드 타임아웃')), 30000)
         );

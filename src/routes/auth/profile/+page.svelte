@@ -1,4 +1,6 @@
 <script>
+  import 'cropperjs/dist/cropper.css';
+  import Cropper from 'cropperjs';
   import {
     Button,
     Card,
@@ -14,21 +16,22 @@
     Input,
     InputGroup,
     InputGroupText,
-    Row
+    Row,
+    Modal,
+    ModalBody,
+    ModalFooter,
+    ModalHeader
   } from '@sveltestrap/sveltestrap';
 
   import { PUBLIC_GOOGLE_RECAPTCHA_SITE_KEY } from '$env/static/public';
   import { goto } from '$app/navigation';
   import { browser } from '$app/environment';
   import imageCompression from 'browser-image-compression';
-  import { signOut } from '@auth/sveltekit/client';
   import Swal from 'sweetalert2';
   import { isNicknameAllowed } from '$lib/util/nickname.js';
 
   // Svelte 5 Runes
   let { data } = $props();
-
-  //console.log('data.session', data);
 
   // 클라이언트에서만 세션 체크 및 리다이렉트
   $effect(() => {
@@ -45,20 +48,92 @@
         .then(function (_token) {
           console.debug('token: ' + _token);
           token = _token;
-          //document.querySelector('#grecaptcha')
         });
     });
   }
 
+  // Cropper 상태
+  let cropperOpen = $state(false);
+  let cropperImageSrc = $state('');
+  let cropper;
+  let originalFile = $state(null);
+  let croppedFile = $state(null); // 크롭된 파일
+  let serverCropData = $state(null); // 움짤용 크롭 파라미터
+  let previewSrc = $state(data.profile.photo || '/icons/unknown-person-icon-4.jpg');
+
   /**
-   * 파일 업로드시 미리보기
+   * 파일 업로드시 미리보기 및 크롭 모달 띄우기
    * @param fileEl {Input} 파일인풋
    */
   function preview(fileEl) {
-    console.log(fileEl);
+    const file = fileEl.files[0];
+    if (file) {
+      originalFile = file;
+      cropperImageSrc = window.URL.createObjectURL(file);
+      cropperOpen = true;
+    }
+  }
 
-    document.querySelector('#preview').src = window.URL.createObjectURL(fileEl.files[0]);
-    document.querySelector('#introduction').focus();
+  // 모달 켜진 후 크로퍼 초기화
+  function initCropper(node) {
+    if (cropper) cropper.destroy();
+    cropper = new Cropper(node, {
+      aspectRatio: 1, // 1:1 비율
+      viewMode: 1,
+      minCropBoxWidth: 100,
+      minCropBoxHeight: 100,
+      background: false
+    });
+    return {
+      destroy() {
+        if (cropper) {
+          cropper.destroy();
+          cropper = null;
+        }
+      }
+    };
+  }
+
+  // 크롭 적용
+  function applyCrop() {
+    if (!cropper || !originalFile) return;
+
+    if (originalFile.type === 'image/gif' || originalFile.type === 'image/webp') {
+      // 움짤 및 WebP 애니메이션은 서버에서 sharp로 가공하기 위해 파라미터만 저장
+      const cropData = cropper.getData(true); // {x, y, width, height...}
+      serverCropData = cropData;
+      croppedFile = originalFile; // 원본 파일을 폼에 첨부
+
+      // 미리보기는 단순히 크롭 영역을 나타내는 캔버스로 대체해서 보여줌
+      cropper.getCroppedCanvas({ width: 400, height: 400 }).toBlob((blob) => {
+        if (blob) {
+          previewSrc = window.URL.createObjectURL(blob);
+        }
+        cropperOpen = false;
+        document.querySelector('#introduction').focus();
+      });
+    } else {
+      // 일반 자르기는 브라우저에서 캔버스로 잘라버림
+      cropper.getCroppedCanvas({ width: 400, height: 400 }).toBlob((blob) => {
+        if (blob) {
+          croppedFile = new File([blob], 'profile.png', { type: 'image/png' });
+          previewSrc = window.URL.createObjectURL(blob);
+          serverCropData = null;
+        }
+        cropperOpen = false;
+        document.querySelector('#introduction').focus();
+      }, 'image/png');
+    }
+  }
+
+  function closeCropModal() {
+    cropperOpen = false;
+    // 파일 업로드 취소 시 초기화
+    document.querySelector('#photo').value = '';
+    croppedFile = null;
+    serverCropData = null;
+    originalFile = null;
+    previewSrc = data.profile.photo || '/icons/unknown-person-icon-4.jpg';
   }
 
   /**
@@ -78,39 +153,39 @@
 
     const formData = new FormData();
 
-    let files = document.querySelector('#photo').files;
-
-    console.log('files:', files);
-
-    if (files && files.length) {
-      // 움짤(GIF)·WebP는 압축 없이 원본 전송 (프로필 움짤 지원)
-      if (files[0].type === 'image/gif' || files[0].type === 'image/webp') {
-        formData.append('photo', files[0]);
+    if (croppedFile) {
+      const fileSizeMB = croppedFile.size / (1024 * 1024);
+      // 움짤이나 WebP, 가벼운 파일은 바로 사용
+      if (
+        croppedFile.type === 'image/gif' ||
+        croppedFile.type === 'image/webp' ||
+        fileSizeMB <= 1
+      ) {
+        formData.append('photo', croppedFile);
       } else {
-        const fileSizeMB = files[0].size / (1024 * 1024);
-        // 1MB 이하는 변환하지 않고 원본 유지
-        if (fileSizeMB > 1) {
-          try {
-            const webp = await imageCompression(files[0], {
-              maxSizeMB: 10,
-              maxWidthOrHeight: 400,
-              useWebWorker: true,
-              fileType: 'image/webp',
-              initialQuality: 0.85
-            });
-            formData.append('photo', webp);
-          } catch (error) {
-            console.error('[browser-image-compression] 이미지 변환 실패:', error);
-            formData.append('photo', files[0]); // 변환 실패 시 원본 사용
-          }
-        } else {
-          console.log(
-            '[browser-image-compression] 1MB 이하 이미지는 원본 유지:',
-            fileSizeMB.toFixed(2),
-            'MB'
-          );
-          formData.append('photo', files[0]);
+        try {
+          const webp = await imageCompression(croppedFile, {
+            maxSizeMB: 1,
+            maxWidthOrHeight: 400,
+            useWebWorker: true,
+            fileType: 'image/webp',
+            initialQuality: 0.85
+          });
+          formData.append('photo', webp);
+        } catch (error) {
+          console.error('[browser-image-compression] 변환 실패:', error);
+          formData.append('photo', croppedFile); // 실패 시 그대로
         }
+      }
+
+      if (
+        serverCropData &&
+        (croppedFile.type === 'image/gif' || croppedFile.type === 'image/webp')
+      ) {
+        formData.append('cropX', serverCropData.x);
+        formData.append('cropY', serverCropData.y);
+        formData.append('cropW', serverCropData.width);
+        formData.append('cropH', serverCropData.height);
       }
     }
 
@@ -228,7 +303,7 @@
             <Col xs="4" md="3" class="d-flex align-items-center">
               <img
                 id="preview"
-                src={data.profile.photo || '/icons/unknown-person-icon-4.jpg'}
+                src={previewSrc}
                 width="100"
                 height="100"
                 alt="프로필 사진"
@@ -298,3 +373,30 @@
     </CardFooter>
   </Card>
 </Row>
+
+<Modal isOpen={cropperOpen} toggle={closeCropModal} size="lg">
+  <ModalHeader toggle={closeCropModal}>프로필 사진 자르기</ModalHeader>
+  <ModalBody class="d-flex justify-content-center bg-dark">
+    {#if cropperOpen && cropperImageSrc}
+      <div style="max-height: 60vh; max-width: 100%;">
+        <img
+          use:initCropper
+          src={cropperImageSrc}
+          alt="자르기 원본"
+          style="display: block; max-width: 100%; object-fit: contain;"
+        />
+      </div>
+    {/if}
+  </ModalBody>
+  <ModalFooter>
+    <Button color="secondary" onclick={closeCropModal}>취소</Button>
+    <Button color="primary" onclick={applyCrop}>적용</Button>
+  </ModalFooter>
+</Modal>
+
+<style>
+  /* 크로퍼 컨테이너 강제 초기화 제거. sveltestrap modal과 호환되게 css 추가 */
+  :global(.cropper-container) {
+    max-width: 100% !important;
+  }
+</style>
