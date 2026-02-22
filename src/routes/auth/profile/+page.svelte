@@ -78,11 +78,25 @@
   function initCropper(node) {
     if (cropper) cropper.destroy();
     cropper = new Cropper(node, {
-      aspectRatio: 1, // 1:1 비율
+      aspectRatio: 1, // 1:1 비율 고정
       viewMode: 1,
-      minCropBoxWidth: 100,
+      minCropBoxWidth: 100, // 화면 표기상 최소 크기
       minCropBoxHeight: 100,
-      background: false
+      background: false,
+      crop(event) {
+        // 실제 이미지 데이터 기준으로 최소 100x100을 보장
+        const imgData = cropper.getImageData();
+        const minW = Math.min(100, Math.round(imgData.naturalWidth));
+        const minH = Math.min(100, Math.round(imgData.naturalHeight));
+        const { width, height } = event.detail;
+
+        if (Math.round(width) < minW || Math.round(height) < minH) {
+          cropper.setData({
+            width: Math.max(width, minW),
+            height: Math.max(height, minH)
+          });
+        }
+      }
     });
     return {
       destroy() {
