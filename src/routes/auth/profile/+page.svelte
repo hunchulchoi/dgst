@@ -136,11 +136,11 @@
         Swal.fire({
           icon: 'success',
           title: '변경 완료',
-          text: data.message || '변경 되었습니다.\n다시 로그인 해주세요.',
+          text: data.message || '프로필이 성공적으로 변경되었습니다.',
           confirmButtonText: '확인'
+        }).then(() => {
+          goto('/', { invalidateAll: true });
         });
-        signOut();
-        goto('/');
       } else {
         const errorData = await res
           .json()

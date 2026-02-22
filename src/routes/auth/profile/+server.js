@@ -5,9 +5,11 @@ import { invalidateUser } from '$lib/server/auth/userCache.js';
 import { User } from '$lib/models/user.js';
 import { isNicknameAllowed } from '$lib/util/nickname.js';
 
+import { invalidateSession } from '$lib/server/auth/sessionCache.js';
+
 connectDB();
 
-export async function PATCH({ request, locals }) {
+export async function PATCH({ request, locals, cookies }) {
   try {
     const session = await locals.auth();
 
@@ -103,6 +105,11 @@ export async function PATCH({ request, locals }) {
       }
 
       await invalidateUser(registeredUser._id?.toString?.() ?? String(registeredUser._id));
+
+      const sessionToken = cookies.get('__Secure-authjs.session-token') || cookies.get('authjs.session-token');
+      if (sessionToken) {
+        await invalidateSession(sessionToken);
+      }
 
       // session은 직접 수정하지 않고 응답만 반환
       // 클라이언트에서 다시 로그인하도록 안내
