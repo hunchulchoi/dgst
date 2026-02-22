@@ -1,6 +1,7 @@
 import { error } from '@sveltejs/kit';
 import connectDB from '$lib/database/mongoosePriomise.js';
 import { Article } from '$lib/models/article.js';
+import { User } from '$lib/models/user.js';
 
 connectDB();
 
@@ -67,6 +68,7 @@ export const load = async ({ params, depends }) => {
       content: 1,
       createdAt: 1,
       nickname: 1,
+      email: 1,
       title: 1,
       read: 1,
       like: 1,
@@ -83,7 +85,15 @@ export const load = async ({ params, depends }) => {
 
     const jsonArticles = JSON.parse(JSON.stringify(articles));
 
+    const emails = [...new Set(jsonArticles.map((a) => a.email))];
+    const users = await User.find({ email: { $in: emails } }, { email: 1, photo: 1 }).lean();
+    const userPhotoMap = users.reduce((acc, user) => {
+      acc[user.email] = user.photo;
+      return acc;
+    }, {});
+
     jsonArticles.forEach((article) => {
+      article.photo = userPhotoMap[article.email];
       article.isNewComment =
         Math.max(...article.comments.map((a) => new Date(a.createdAt))) >
         new Date() - 30 * 60 * 1000;

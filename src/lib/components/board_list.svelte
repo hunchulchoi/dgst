@@ -79,7 +79,21 @@
           {/if}
         </a>
       </Col>
-      <Col lg="2" md="2" xs="5" class="text-muted" style="font-size: small">
+      <Col
+        lg="2"
+        md="2"
+        xs="5"
+        class="text-muted text-truncate d-flex align-items-center"
+        style="font-size: small"
+      >
+        {#if article.photo}
+          <img
+            src={article.photo}
+            alt="Profile"
+            class="rounded-circle me-1"
+            style="width: 20px; height: 20px; object-fit: cover;"
+          />
+        {/if}
         {article.nickname}
       </Col>
       <Col lg="1" md="1" xs="1" class="text-muted text-end" style="font-size: small"

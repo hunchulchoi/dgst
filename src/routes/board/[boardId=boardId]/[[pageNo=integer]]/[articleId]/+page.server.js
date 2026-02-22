@@ -133,6 +133,7 @@ export const load = async ({ params, locals }) => {
     content: 1,
     createdAt: 1,
     nickname: 1,
+    email: 1,
     title: 1,
     read: 1,
     like: 1,
@@ -148,7 +149,15 @@ export const load = async ({ params, locals }) => {
 
   const jsonArticles = JSON.parse(JSON.stringify(articles));
 
+  const emails = [...new Set(jsonArticles.map((a) => a.email))];
+  const users = await User.find({ email: { $in: emails } }, { email: 1, photo: 1 }).lean();
+  const userPhotoMap = users.reduce((acc, user) => {
+    acc[user.email] = user.photo;
+    return acc;
+  }, {});
+
   jsonArticles.forEach((article) => {
+    article.photo = userPhotoMap[article.email];
     article.isNewComment =
       Math.max(...article.comments.map((a) => new Date(a.createdAt))) > new Date() - 30 * 60 * 1000;
 
@@ -188,8 +197,8 @@ export const load = async ({ params, locals }) => {
 
   return {
     article: articleJson,
-    photo: author.photo || '/icons/unknown-person-icon-4.jpg',
-    introduction: author.introduction,
+    photo: author?.photo || '/icons/unknown-person-icon-4.jpg',
+    introduction: author?.introduction,
     insta,
     alarmCount,
     pageNo,
