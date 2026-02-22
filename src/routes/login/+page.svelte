@@ -4,11 +4,7 @@
 
   let { data } = $props();
 
-  /** 구글 공식 버튼 이미지 - 로그인 페이지는 고정(light)으로 해서 hydration 불일치 방지 */
   const googleBtnSrc = '/oauth/btn_google_signin_light_normal_web.png';
-
-  let email = $state('');
-  let password = $state('');
 
   function showErrorAlert(errorCode) {
     let errorMessage = '로그인 중 오류가 발생했습니다.';
@@ -52,25 +48,6 @@
       showErrorAlert(data.error);
     }
   });
-
-  async function handleEmailSignIn(e) {
-    e.preventDefault();
-    if (!email || !password) return;
-
-    // 이메일 로그인은 페이지 리로드 없이 결과를 즉시 받아 처리합니다.
-    const res = await signIn('email-password-credential', {
-      email,
-      password,
-      redirect: false
-    });
-
-    if (res?.error) {
-      showErrorAlert(res.error);
-    } else if (res?.ok) {
-      // 로그인 성공 시 메인으로 이동
-      window.location.href = res?.url || '/';
-    }
-  }
 </script>
 
 <svelte:head>
@@ -130,39 +107,6 @@
               >
                 <img src={googleBtnSrc} alt="구글 로그인" width="220" height="44" />
               </button>
-
-              <!-- 이메일/패스워드 로그인은 현재 비활성화 (요유청에 의해 숨김) -->
-              <!-- 
-              <form onsubmit={handleEmailSignIn} class="mt-4 mb-4 mx-sm-3 mx-1">
-                <div class="form-floating mb-3">
-                  <input
-                    type="email"
-                    class="form-control"
-                    id="emailInput"
-                    placeholder="name@example.com"
-                    bind:value={email}
-                    required
-                  />
-                  <label for="emailInput">이메일 주소</label>
-                </div>
-                <div class="form-floating mb-3">
-                  <input
-                    type="password"
-                    class="form-control"
-                    id="passwordInput"
-                    placeholder="비밀번호"
-                    bind:value={password}
-                    required
-                  />
-                  <label for="passwordInput">비밀번호</label>
-                </div>
-                <button
-                  class="btn w-100 py-2 fw-medium text-white"
-                  style="background-color: #212529;"
-                  type="submit">이메일로 로그인</button
-                >
-              </form>
-              -->
             </div>
           </div>
         </div>

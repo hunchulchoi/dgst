@@ -1,6 +1,5 @@
 import { SvelteKitAuth } from '@auth/sveltekit';
 import GoogleProvider from '@auth/core/providers/google';
-import Credentials from '@auth/core/providers/credentials';
 import {
   NEXTAUTH_SECRET,
   GOOGLE_CLIENT_ID,
@@ -74,52 +73,6 @@ const providers = [
         grade: 'user',
         last_modified: new Date()
       };
-    }
-  }),
-  Credentials({
-    id: 'email-password-credential',
-    name: 'Credentials',
-    type: 'credentials',
-    credentials: {
-      email: { label: 'Email', type: 'email', placeholder: '이메일 입력하세요' },
-      password: { label: 'Password', type: 'password' }
-    },
-    async authorize(credentials) {
-      const { email, password } = credentials;
-
-      const encPwd = crypto.createHash('sha512').update(password).digest('base64url');
-
-      if (email === VIP_FAKE_EMAIL) {
-        const user = await clientPromise.then((db) =>
-          db.db(DB_NAME).collection('users').findOne(
-            { email: VIP_EMAIL, ccd: encPwd },
-            {
-              id: 1,
-              email: 1,
-              nickname: 1,
-              introduction: 1,
-              photo: 1,
-              state: 1
-            }
-          )
-        );
-
-        if (!user) {
-          logger.warn({
-            message: 'VIP login failed',
-            email: VIP_FAKE_EMAIL,
-            vipEmail: VIP_EMAIL
-          });
-        }
-
-        return user;
-      } else {
-        logger.warn({
-          message: 'Login failed - credentials provider not available',
-          email
-        });
-        throw error(405);
-      }
     }
   })
 ];
