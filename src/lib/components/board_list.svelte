@@ -91,7 +91,7 @@
             src={article.photo}
             alt="Profile"
             class="rounded-1 me-1"
-            style="width: 20px; height: 20px; object-fit: cover;"
+            style="width: 24px; height: 24px; object-fit: cover;"
           />
         {/if}
         {article.nickname}
