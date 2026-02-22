@@ -90,7 +90,7 @@
           <img
             src={article.photo}
             alt="Profile"
-            class="rounded-circle me-1"
+            class="rounded-1 me-1"
             style="width: 20px; height: 20px; object-fit: cover;"
           />
         {/if}

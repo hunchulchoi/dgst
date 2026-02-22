@@ -978,7 +978,7 @@
               alt="프로필 사진"
               class="card-img-left rounded-start"
               src={data.photo}
-              style="max-height: 100px;max-width:100px; width: 100%; height: auto;"
+              style="width: 100px; height: 100px; object-fit: cover;"
             />
           </Col>
           <Col>
