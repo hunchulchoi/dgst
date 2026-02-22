@@ -122,7 +122,10 @@ export const {
               message: '로그인 실패: 차단된 사용자',
               email: params.profile?.email,
               userId: params.user?.id,
-              provider: params.account?.provider
+              provider: params.account?.provider,
+              providerAccountId: params.account?.providerAccountId,
+              accountType: params.account?.type,
+              state: params.user?.state
             });
           }
         } else return true;
@@ -130,7 +133,10 @@ export const {
         logger.error({
           message: '로그인 실패: 이메일 미인증',
           email: params.profile?.email,
-          provider: params.account?.provider
+          provider: params.account?.provider,
+          providerAccountId: params.account?.providerAccountId,
+          accountType: params.account?.type,
+          emailVerifiedRaw: params.profile?.email_verified ?? params.profile?.emailVerified
         });
       }
 
@@ -205,6 +211,49 @@ const DEVICE_COOKIE_MAX_AGE_DAYS = 365;
 const DEVICE_REDIS_TTL_SECONDS = DEVICE_COOKIE_MAX_AGE_DAYS * 24 * 60 * 60;
 const AUTH_SESSION_COOKIE_NAME =
   NODE_ENV === 'production' ? '__Secure-authjs.session-token' : 'authjs.session-token';
+
+/** @param {import('@sveltejs/kit').RequestEvent} event */
+const getRequestMeta = (event) => {
+  const forwardedFor =
+    event.request?.headers?.get?.('x-forwarded-for') || event.request?.headers?.get?.('x-real-ip') || '';
+  const clientIp =
+    (forwardedFor ? String(forwardedFor).split(',')[0].trim() : '') ||
+    event.getClientAddress?.() ||
+    'unknown';
+
+  return {
+    method: event.request?.method,
+    clientIp,
+    userAgent: event.request?.headers?.get?.('user-agent') ?? '',
+    referer: event.request?.headers?.get?.('referer') ?? '',
+    requestUrl: event.url?.toString?.(),
+    search: event.url?.search ?? ''
+  };
+};
+
+/** @param {unknown} err */
+const serializeError = (err) => {
+  if (!err) return undefined;
+  const parsed =
+    typeof err === 'object' && err !== null
+      ? /** @type {{ name?: string; message?: string; stack?: string; cause?: unknown }} */ (err)
+      : { message: String(err) };
+  const cause =
+    parsed.cause instanceof Error
+      ? {
+          name: parsed.cause.name,
+          message: parsed.cause.message,
+          stack: parsed.cause.stack
+        }
+      : parsed.cause;
+
+  return {
+    name: parsed.name,
+    message: parsed.message ?? String(err),
+    stack: parsed.stack,
+    cause
+  };
+};
 
 // 우리의 handle 함수 (Auth 핸들러와 함께 사용)
 export async function handle({ event, resolve }) {
@@ -284,8 +333,8 @@ export async function handle({ event, resolve }) {
     logger.error({
       message: 'Auth 처리 중 에러',
       pathname,
-      error: authErr?.message ?? String(authErr),
-      stack: authErr?.stack
+      ...getRequestMeta(event),
+      error: serializeError(authErr)
     });
     throw authErr;
   }
@@ -298,12 +347,20 @@ export async function handle({ event, resolve }) {
       const url = new URL(location, event.url.origin);
       const errorType = url.searchParams.get('error') ?? '';
       const errorDescription = url.searchParams.get('error_description') ?? '';
+      const provider = pathname.startsWith('/auth/callback/') ? pathname.split('/').pop() : undefined;
+      const authQuery = Object.fromEntries(event.url.searchParams.entries());
+      const errorQuery = Object.fromEntries(url.searchParams.entries());
       logger.error({
         message: '로그인 실패: Auth 리다이렉트',
         pathname,
+        provider,
+        ...getRequestMeta(event),
         errorType,
         errorDescription,
-        callbackPath: pathname.startsWith('/auth/callback/') ? pathname : undefined
+        callbackPath: pathname.startsWith('/auth/callback/') ? pathname : undefined,
+        authQuery,
+        redirectLocation: location,
+        redirectQuery: errorQuery
       });
     }
   } catch (e) {

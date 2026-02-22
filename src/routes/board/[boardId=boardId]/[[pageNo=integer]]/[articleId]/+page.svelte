@@ -729,37 +729,6 @@
 </script>
 
 <svelte:head>
-  <!-- Open Graph 메타 태그 (서버에서 생성한 값 사용 → 카카오톡 등 크롤러 정상 노출) -->
-  <title>{data.ogTitle || `${data.article?.title ?? ''} - dgst.me`}</title>
-  <meta name="description" content={data.ogDescription || ''} />
-
-  <!-- Open Graph / Facebook / KakaoTalk -->
-  <meta property="og:type" content="article" />
-  <meta
-    property="og:url"
-    content={data.ogUrl || `https://www.dgst.me/board/${boardId}/${data.article?._id}`}
-  />
-  <meta property="og:title" content={data.ogTitle || ''} />
-  <meta property="og:description" content={data.ogDescription || ''} />
-  <meta
-    property="og:image"
-    content={data.ogImage || 'https://www.dgst.me/logo/twitter_header_photo_2.png'}
-  />
-  <meta property="og:site_name" content="dgst.me" />
-
-  <!-- Twitter (name 사용이 스펙에 맞음) -->
-  <meta name="twitter:card" content="summary_large_image" />
-  <meta
-    name="twitter:url"
-    content={data.ogUrl || `https://www.dgst.me/board/${boardId}/${data.article?._id}`}
-  />
-  <meta name="twitter:title" content={data.ogTitle || ''} />
-  <meta name="twitter:description" content={data.ogDescription || ''} />
-  <meta
-    name="twitter:image"
-    content={data.ogImage || 'https://www.dgst.me/logo/twitter_header_photo_2.png'}
-  />
-
   <!-- <script defer src="https://platform.instagram.com/en_US/embeds.js"></script> -->
   <script defer src="//www.tiktok.com/embed.js"></script>
   <style>

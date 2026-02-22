@@ -137,12 +137,23 @@
     isLoadingOG = loading;
   }
 
+  let prevTitleLength = 0;
+
   /**
-   * 제목 입력란에 URL 붙여넣기 처리
+   * 본문/제목 입력란에 URL 붙여넣기 처리
    * @param {ClipboardEvent} event - 붙여넣기 이벤트
    */
-  function handleTitlePaste(event) {
-    const pastedText = event.clipboardData?.getData('text');
+  async function handleTitlePaste(event) {
+    let pastedText = event.clipboardData?.getData('text');
+
+    // 안드로이드 일부 브라우저에서 clipboardData가 비어있는 경우
+    if (!pastedText && navigator.clipboard) {
+      try {
+        pastedText = await navigator.clipboard.readText();
+      } catch (e) {
+        console.warn('클립보드 읽기 권한 없음');
+      }
+    }
 
     if (!pastedText) return;
 
@@ -157,7 +168,41 @@
       insertUrlFromTitle = pastedText.trim();
 
       // 제목 입력란 비우기
-      title = '';
+      setTimeout(() => {
+        title = '';
+        prevTitleLength = 0;
+      }, 10);
+    }
+  }
+
+  /**
+   * 안드로이드에서 paste 이벤트에서 텍스트를 잡지 못할 때 동작하는 폴백
+   * @param {Event} event - input 이벤트
+   */
+  function handleTitleInput(event) {
+    const text = event.target.value;
+    const diff = text.length - prevTitleLength;
+    prevTitleLength = text.length;
+
+    const trimmed = text.trim();
+    const urlPattern = /^https?:\/\/.+/i;
+
+    if (urlPattern.test(trimmed)) {
+      // URL 내부에 공백이 없는 단일 주소인지 판단
+      if (trimmed.split(/\s+/).length === 1) {
+        // 타이핑이 아닌 한 번에 5글자 이상 들어온 경우(붙여넣기) 또는 명시적 붙여넣기 이벤트인 경우
+        if (
+          diff > 5 ||
+          event.inputType === 'insertFromPaste' ||
+          event.inputType === 'insertReplacementText'
+        ) {
+          insertUrlFromTitle = trimmed;
+          setTimeout(() => {
+            title = '';
+            prevTitleLength = 0;
+          }, 10);
+        }
+      }
     }
   }
 
@@ -349,6 +394,7 @@
           class="form-control"
           bind:value={title}
           onpaste={handleTitlePaste}
+          oninput={handleTitleInput}
           required
           autofocus
           placeholder=" "
@@ -396,3 +442,13 @@
     </form>
   </Row>
 </main>
+
+{#if isLoadingOG}
+  <div
+    class="position-fixed top-0 start-0 w-100 h-100 d-flex flex-column justify-content-center align-items-center bg-dark bg-opacity-50"
+    style="z-index: 9999; backdrop-filter: blur(2px);"
+  >
+    <Spinner color="light" style="width: 4rem; height: 4rem;" />
+    <span class="text-white mt-3 fw-bold fs-5">링크 정보를 분석 중입니다...</span>
+  </div>
+{/if}
