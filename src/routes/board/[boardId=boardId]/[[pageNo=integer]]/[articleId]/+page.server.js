@@ -7,7 +7,7 @@ import { Comment } from '$lib/models/comment.js';
 import convertToTree from '$lib/util/tree.js';
 
 connectDB();
-export const load = async ({ params, locals }) => {
+export const load = async ({ params, locals, cookies }) => {
   if (!params.articleId) {
     throw error(400, { message: '잘못된 접근입니다.' });
   }
@@ -46,9 +46,12 @@ export const load = async ({ params, locals }) => {
     });
   }
 
+  // 비로그인 사용자도 기기 ID로 조회수를 올릴 수 있도록 처리
+  const viewerId = session?.user?.email || cookies.get('dgst_device') || `guest-${Date.now()}`;
+
   const article = await Article.findOneAndUpdate(
     filter,
-    { $addToSet: { reads: session?.user?.email } },
+    { $addToSet: { reads: viewerId } },
     { new: true, timestamps: false, projection }
   );
 
