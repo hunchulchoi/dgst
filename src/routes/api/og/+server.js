@@ -59,7 +59,7 @@ async function fetchOGData(targetUrl) {
         Connection: 'keep-alive',
         'Upgrade-Insecure-Requests': '1'
       },
-      timeout: 10000 // 10초 타임아웃
+      signal: AbortSignal.timeout(3000) // 3초 타임아웃
     });
 
     if (!response.ok) {
@@ -73,8 +73,22 @@ async function fetchOGData(targetUrl) {
 
     return json(ogData);
   } catch (error) {
-    console.error('OG 데이터 가져오기 실패:', error);
-    return json({ error: 'Failed to fetch OG data' }, { status: 500 });
+    console.error(`OG 데이터 가져오기 실패 (${targetUrl}):`, error.message);
+
+    // 에러 발생 시 500 대신 기본 폴백 데이터를 반환하도록 수정 (의도적인 봇 차단 등 방어)
+    let hostname = targetUrl;
+    try {
+      hostname = new URL(targetUrl).hostname;
+    } catch (e) { }
+
+    return json({
+      title: hostname,
+      description: '접근이 제한되거나 정보를 가져올 수 없는 링크입니다.',
+      image: '',
+      url: targetUrl,
+      siteName: hostname,
+      favicon: ''
+    });
   }
 }
 
