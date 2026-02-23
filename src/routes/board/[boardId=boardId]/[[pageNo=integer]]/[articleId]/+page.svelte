@@ -473,7 +473,7 @@
       confirmButtonText: '삭제'
     }).then((result) => {
       if (result.isConfirmed) {
-        fetch(`/board/${boardId}/${articleId}`, {
+        fetch(`/board/${boardId}/${articleId}/delete`, {
           method: 'DELETE',
           body: JSON.stringify({ articleId })
         })
