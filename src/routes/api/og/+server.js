@@ -83,7 +83,7 @@ async function fetchOGData(targetUrl) {
 
     return json({
       title: hostname,
-      description: '접근이 제한되거나 정보를 가져올 수 없는 링크입니다.',
+      description: '',
       image: '',
       url: targetUrl,
       siteName: hostname,
