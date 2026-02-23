@@ -196,7 +196,15 @@ export const load = async ({ params, locals, cookies }) => {
   const ogTitle = `${safeText(articleJson.title, 60)} - ${safeText(articleJson.nickname, 30)}`;
   const ogDescription = safeText(articleJson.content, 200) || `${articleJson.nickname}의 글`;
   const ogUrl = `https://www.dgst.me/board/${params.boardId}/${params.articleId}`;
-  const ogImage = 'https://www.dgst.me/logo/twitter_header_photo_2.png';
+
+  // 본문에서 첫 번째 이미지 추출
+  const imgMatch = articleJson.content?.match(/<img[^>]+src=["']([^"']+)["']/i);
+  let firstImage = imgMatch ? imgMatch[1] : null;
+  // 상대 경로일 경우 절대 경로로 변환
+  if (firstImage && firstImage.startsWith('/')) {
+    firstImage = `https://www.dgst.me${firstImage}`;
+  }
+  const ogImage = firstImage || 'https://www.dgst.me/logo/twitter_header_photo_2.png';
 
   return {
     article: articleJson,
