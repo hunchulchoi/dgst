@@ -29,11 +29,14 @@ export async function getClient() {
         },
         lazyConnect: true
       });
-      c.on('error', () => { });
+      c.on('error', (err) => {
+        console.error('Redis connection error:', err instanceof Error ? err.message : err);
+      });
       await c.connect();
       client = c;
       return client;
-    } catch {
+    } catch (err) {
+      console.error('Failed to initialize Redis client:', err instanceof Error ? err.message : err);
       connectPromise = null;
       return null;
     }
