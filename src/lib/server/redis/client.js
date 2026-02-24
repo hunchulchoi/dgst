@@ -15,7 +15,7 @@ let connectPromise = null;
 /**
  * @returns {Promise<Redis | null>}
  */
-async function getClient() {
+export async function getClient() {
   if (!REDIS_URL) return null;
   if (client) return client;
   if (connectPromise) return connectPromise;
@@ -29,7 +29,7 @@ async function getClient() {
         },
         lazyConnect: true
       });
-      c.on('error', () => {});
+      c.on('error', () => { });
       await c.connect();
       client = c;
       return client;
@@ -41,7 +41,7 @@ async function getClient() {
   return connectPromise;
 }
 
-function key(name) {
+export function key(name) {
   return REDIS_PREFIX + name;
 }
 

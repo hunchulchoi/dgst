@@ -1,7 +1,7 @@
 import connectDB from '$lib/database/mongoosePriomise.js';
 import { error, json } from '@sveltejs/kit';
 import { Comment } from '$lib/models/comment.js';
-import { Alarm } from '$lib/models/alarm.js';
+import { markAsRead, upsertAlarm } from '$lib/server/redis/alarmService.js';
 import { GameScore } from '$lib/models/gameScore.js';
 import convertToTree from '$lib/util/tree.js';
 import { checkAndLogSessionDevice } from '$lib/server/auth/checkSessionDevice.js';
@@ -141,12 +141,8 @@ export async function GET({ locals, setHeaders, url }) {
         delete c.likes;
       });
 
-      // 알림 읽음 처리
-      await Alarm.updateMany(
-        { email: session.user.email, articleId: SLOT_ARTICLE_ID },
-        { $set: { readAt: new Date() } },
-        { timestamps: false }
-      );
+      // 알림 읽음 처리 (Redis)
+      await markAsRead(session.user.email, SLOT_ARTICLE_ID);
     } else {
       pagedComments.forEach((c) => {
         delete c.likes;
@@ -269,22 +265,17 @@ export async function POST(event) {
 
     const title = '뺑뺑이';
 
-    // 대댓글인 경우: 부모 댓글 작성자에게 알림
+    // 대댓글인 경우: 부모 댓글 작성자에게 알림 (Redis)
     if (parentComment && parentComment.email !== session.user.email) {
-      await Alarm.findOneAndUpdate(
-        { email: parentComment.email, articleId: SLOT_ARTICLE_ID, comment: parentCommentId },
-        {
-          $set: {
-            title,
-            boardId: SLOT_BOARD_ID,
-            comment: parentCommentId,
-            commentContent: parentComment.content,
-            readAt: null
-          },
-          $addToSet: { comments: comment._id.toString() }
-        },
-        { upsert: true, new: true }
-      );
+      await upsertAlarm({
+        email: parentComment.email,
+        articleId: SLOT_ARTICLE_ID,
+        title,
+        boardId: SLOT_BOARD_ID,
+        parentCommentId: parentCommentId,
+        parentCommentContent: parentComment.content,
+        newCommentId: comment._id.toString()
+      });
     }
 
     // 일반 댓글인 경우: 알림을 보내지 않음 (대댓글만 알림)

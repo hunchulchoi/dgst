@@ -2,7 +2,7 @@ import connectDB from '$lib/database/mongoosePriomise.js';
 import { Article } from '$lib/models/article.js';
 import { error } from '@sveltejs/kit';
 import { User } from '$lib/models/user.js';
-import { Alarm } from '$lib/models/alarm.js';
+import { getUnreadAlarmCount, markAsRead } from '$lib/server/redis/alarmService.js';
 import { Comment } from '$lib/models/comment.js';
 import convertToTree from '$lib/util/tree.js';
 
@@ -30,20 +30,10 @@ export const load = async ({ params, locals, cookies }) => {
 
   let alarmCount = 0;
 
-  // 알람 읽음 처리: 해당 글을 읽을 때만 처리
+  // 알람 읽음 처리 (Redis): 해당 글을 읽을 때만 처리
   if (session?.user?.nickname) {
-    const markAsRead = await Alarm.updateMany(
-      { email: session.user.email, articleId: params.articleId, readAt: null },
-      { $set: { readAt: new Date() } },
-      { timestamps: false }
-    );
-    console.log('mark alarm read', markAsRead?.modifiedCount ?? 0);
-
-    alarmCount = await Alarm.countDocuments({
-      email: session.user.email,
-      readAt: null,
-      updatedAt: { $gt: new Date(new Date() - 1000 * 60 * 60 * 24) }
-    });
+    await markAsRead(session.user.email, params.articleId);
+    alarmCount = await getUnreadAlarmCount(session.user.email);
   }
 
   // 비로그인 사용자도 기기 ID로 조회수를 올릴 수 있도록 처리

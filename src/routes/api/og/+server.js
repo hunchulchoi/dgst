@@ -2,8 +2,8 @@ import { json } from '@sveltejs/kit';
 
 /**
  * Open Graph 데이터를 가져오는 API
- * @param {Object} request - 요청 객체
- * @returns {Response} OG 데이터 JSON 응답
+ * @param {import('@sveltejs/kit').RequestEvent} event - 요청 이벤트 객체
+ * @returns {Promise<Response>} OG 데이터 JSON 응답
  */
 export async function GET({ url }) {
   const targetUrl = url.searchParams.get('url');
@@ -17,8 +17,8 @@ export async function GET({ url }) {
 
 /**
  * POST 요청으로 Open Graph 데이터를 가져오는 API
- * @param {Object} request - 요청 객체
- * @returns {Response} OG 데이터 JSON 응답
+ * @param {import('@sveltejs/kit').RequestEvent} event - 요청 이벤트 객체
+ * @returns {Promise<Response>} OG 데이터 JSON 응답
  */
 export async function POST({ request }) {
   try {
@@ -37,7 +37,7 @@ export async function POST({ request }) {
 /**
  * Open Graph 데이터를 실제로 가져오는 공통 함수
  * @param {string} targetUrl - 대상 URL
- * @returns {Response} OG 데이터 JSON 응답
+ * @returns {Promise<Response>} OG 데이터 JSON 응답
  */
 async function fetchOGData(targetUrl) {
   try {
@@ -73,7 +73,8 @@ async function fetchOGData(targetUrl) {
 
     return json(ogData);
   } catch (error) {
-    console.error(`OG 데이터 가져오기 실패 (${targetUrl}):`, error.message);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error(`OG 데이터 가져오기 실패 (${targetUrl}):`, errorMessage);
 
     // 에러 발생 시 500 대신 기본 폴백 데이터를 반환하도록 수정 (의도적인 봇 차단 등 방어)
     let hostname = targetUrl;
@@ -182,8 +183,10 @@ function parseOpenGraphData(html, baseUrl) {
   // favicon 추출
   const favicon = html.match(/<link[^>]+rel=["']icon["'][^>]+>/i);
   if (favicon) {
-    console.log('favicon', favicon);
-    ogData.favicon = resolveUrl(favicon[0].href, baseUrl);
+    const hrefMatch = favicon[0].match(/href=["']([^"']+)["']/i);
+    if (hrefMatch) {
+      ogData.favicon = resolveUrl(hrefMatch[1], baseUrl);
+    }
   }
 
   if (!ogData.siteName) {

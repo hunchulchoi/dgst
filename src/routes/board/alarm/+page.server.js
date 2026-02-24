@@ -1,5 +1,5 @@
 import { error } from '@sveltejs/kit';
-import { Alarm } from '$lib/models/alarm.js';
+import { getAlarmList } from '$lib/server/redis/alarmService.js';
 import connectDB from '$lib/database/mongoosePriomise.js';
 
 connectDB();
@@ -24,21 +24,10 @@ export const load = async ({ locals, depends }) => {
     throw error(401, { message: '로그인이 필요합니다.' });
   }
 
-  // 최신 알림 조회 (최근 24시간)
+  // 최신 알림 조회 (Redis)
   const dbStartTime = Date.now();
-  let alarms = await Alarm.find({
-    email: session.user.email,
-    updatedAt: { $gt: new Date(new Date() - 1000 * 60 * 60 * 24) }
-  })
-    .select('boardId articleId title comments updatedAt comment commentContent readAt')
-    .sort({ updatedAt: -1 })
-    .limit(30);
-
+  let alarms = await getAlarmList(session.user.email, 30);
   const dbEndTime = Date.now();
-
-  if (alarms && alarms.length) {
-    alarms = JSON.parse(JSON.stringify(alarms));
-  }
 
   const totalTime = Date.now() - loadStartTime;
 

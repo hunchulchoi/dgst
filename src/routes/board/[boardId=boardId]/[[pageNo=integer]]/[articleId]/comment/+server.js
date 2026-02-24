@@ -3,7 +3,7 @@ import { error, json } from '@sveltejs/kit';
 import { Comment } from '$lib/models/comment.js';
 import { Article } from '$lib/models/article.js';
 import { write } from '$lib/util/fileUpload.js';
-import { Alarm } from '$lib/models/alarm.js';
+import { upsertAlarm, markAsRead } from '$lib/server/redis/alarmService.js';
 import convertToTree from '$lib/util/tree.js';
 import { checkAndLogSessionDevice } from '$lib/server/auth/checkSessionDevice.js';
 
@@ -44,14 +44,9 @@ export async function GET({ params, locals }) {
       }
     ).sort('createdAt');
 
-    // 알람 삭제
-    if (session?.user?.nickname) {
-      const deleteAlarm = await Alarm.updateMany(
-        { email: session.user.email, articleId: params.articleId },
-        { $set: { readAt: new Date() } },
-        { timestamps: false }
-      );
-      console.debug('delete alarm', deleteAlarm);
+    // 알람 삭제 (Redis)
+    if (session?.user?.email) {
+      await markAsRead(session.user.email, params.articleId);
     }
   } catch (err) {
     console.error('댓글 목록 실패', err);
@@ -60,11 +55,10 @@ export async function GET({ params, locals }) {
 
   const commentsTree = JSON.parse(JSON.stringify(convertToTree(comments)));
 
-  if (session?.user?.nickname) {
+  if (session?.user?.email) {
     commentsTree.forEach((c) => {
-      console.debug(session.user.email, c.likes, c.likes.includes(session.user.email));
-
-      c.liked = c.likes.includes(session.user.email);
+      // likes 속성이 존재하는지 체크
+      c.liked = c.likes?.includes(session.user.email) || false;
       delete c.likes;
     });
   }
@@ -136,39 +130,31 @@ export async function POST(event) {
       $push: { comments: comment._id }
     }).lean();
 
-    // 내글이 아닐때 알림
+    // 내글이 아닐때 알림 (Redis)
     if (article.email !== session.user.email) {
       if (!parentComment || parentComment.email !== article.email) {
-        const alarm = await Alarm.findOneAndUpdate(
-          { email: article.email, articleId: articleId },
-          {
-            $set: { title: article.title, boardId: boardId, readAt: null },
-            $addToSet: { comments: comment._id }
-          },
-          { upsert: true, new: true }
-        ).lean();
+        await upsertAlarm({
+          email: article.email,
+          articleId: articleId,
+          title: article.title,
+          boardId: boardId,
+          newCommentId: comment._id.toString()
+        });
       }
     }
 
-    // 내 댓글이 아닐때 알림
+    // 내 댓글이 아닐때 알림 (Redis)
     if (parentComment) {
       if (parentComment.email !== session.user.email) {
-        const alarm = await Alarm.findOneAndUpdate(
-          { email: parentComment.email, articleId: articleId, comment: parentComment.id },
-          {
-            $set: {
-              title: article.title,
-              boardId: boardId,
-              comment: parentComment.id,
-              commentContent: parentComment.content,
-              readAt: null
-            },
-            $addToSet: { comments: comment._id }
-          },
-          { upsert: true, new: true }
-        ).lean();
-
-        //console.log('alarm', alarm);
+        await upsertAlarm({
+          email: parentComment.email,
+          articleId: articleId,
+          title: article.title,
+          boardId: boardId,
+          parentCommentId: parentComment._id.toString(),
+          parentCommentContent: parentComment.content,
+          newCommentId: comment._id.toString()
+        });
       }
     }
   } catch (err) {
