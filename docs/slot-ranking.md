@@ -7,6 +7,8 @@
 
 ## 대응
 
+<!-- @import "[TOC]" {cmd="toc" depthFrom=1 depthTo=6 orderedList=false} -->
+
 ### 1. `slot_user_balance` 요약 컬렉션
 
 - **역할**: 유저별 “현재 잔액·닉네임·총 스핀 수”만 보관.
