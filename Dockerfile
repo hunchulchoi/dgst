@@ -1,4 +1,4 @@
-FROM node AS build
+FROM node:22 AS build
 LABEL authors="hunchulchoi"
 
 # 앱디렉토리를 만듬
@@ -16,7 +16,7 @@ COPY . .
 # 앱 빌드
 RUN npm run build
 
-FROM node AS production
+FROM node:22 AS production
 
 WORKDIR /app
 
