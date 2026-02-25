@@ -5,6 +5,8 @@
 import Redis from 'ioredis';
 import { env as dynamicEnv } from '$env/dynamic/private';
 import logger from '$lib/util/logger.js';
+import * as dotenv from 'dotenv';
+dotenv.config();
 
 const REDIS_URL = dynamicEnv.REDIS_URL || (typeof process !== 'undefined' ? process.env.REDIS_URL : '') || '';
 const REDIS_PREFIX = (dynamicEnv.REDIS_PREFIX || (typeof process !== 'undefined' ? process.env.REDIS_PREFIX : '') || 'dgst:').toString();
