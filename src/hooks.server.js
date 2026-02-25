@@ -241,10 +241,10 @@ const serializeError = (err) => {
   const cause =
     parsed.cause instanceof Error
       ? {
-          name: parsed.cause.name,
-          message: parsed.cause.message,
-          stack: parsed.cause.stack
-        }
+        name: parsed.cause.name,
+        message: parsed.cause.message,
+        stack: parsed.cause.stack
+      }
       : parsed.cause;
 
   return {
@@ -432,9 +432,18 @@ export async function handle({ event, resolve }) {
   const executionTime = endTime - startTime;
   const status = authResponse?.status || 200;
 
-  logger.info(
-    `📤 응답 완료: ${pathname} - Status: ${status}, Time: ${executionTime}ms - ${new Date().toISOString()}`
-  );
+  if (executionTime > 100) {
+    logger.warn({
+      message: `🐌 지연 응답: ${pathname} - Status: ${status}, Time: ${executionTime}ms`,
+      pathname,
+      executionTime,
+      status
+    });
+  } else {
+    logger.info(
+      `📤 응답 완료: ${pathname} - Status: ${status}, Time: ${executionTime}ms - ${new Date().toISOString()}`
+    );
+  }
 
   return authResponse;
 }
