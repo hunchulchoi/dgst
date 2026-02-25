@@ -1,7 +1,7 @@
 import * as redis from './client.js';
 import logger from '$lib/util/logger.js';
 
-const ALARM_TTL = 60 * 60 * 24 * 30; // 30 일간 보관
+const ALARM_TTL = 60 * 60 * 24 * 3; // 3 일간 보관
 
 // Helper: 사용자별 알림 ZSET 키 (업데이트 시간순 정렬)
 function getZSetKey(email) {
