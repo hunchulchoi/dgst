@@ -1,4 +1,5 @@
 import sanitizeHtml from 'sanitize-html';
+import { marked } from 'marked';
 
 function youtubeEmbeder(url) {
   url = url.replace('https://', '').replace('http://', '').replace('www.', '');
@@ -36,9 +37,17 @@ function youtubeEmbeder(url) {
 }
 
 export function viewComment(comment) {
-  comment = comment.replace(/(?:\r\n|\r|\n)/g, '<br>');
+  // 마크다운 문법 감지
+  const isMarkdown = /^(#|##|###|- |\* |\d+\. |> |`|\[.*\]\(.*\)|_{1,2}\w+_{1,2}|\*{1,2}\w+\*{1,2})/m.test(comment);
 
-  // 안전 태그 (Instagram 임베드 허용)
+  if (isMarkdown) {
+    // 동기식 변환 지원
+    comment = marked.parse(comment, { breaks: true });
+  } else {
+    comment = comment.replace(/(?:\r\n|\r|\n)/g, '<br>');
+  }
+
+  // 안전 태그 (Instagram 임베드 허용 및 마크다운 관련 태그 추가)
   comment = sanitizeHtml(comment, {
     allowedTags: [
       'br',
@@ -52,7 +61,8 @@ export function viewComment(comment) {
       'img',
       'iframe',
       'a',
-      'span'
+      'span',
+      'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'code', 'pre', 'hr'
     ],
     allowedAttributes: {
       blockquote: ['class', 'data-instgrm-permalink', 'style'],
