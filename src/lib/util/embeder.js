@@ -36,9 +36,15 @@ function youtubeEmbeder(url) {
   return null;
 }
 
+export function isMarkdownContent(text) {
+  if (!text) return false;
+  // 제목, 리스트, 인용구, 코드, 볼드체/이탤릭체, 링크, 표 등 다양한 마크다운 식별 
+  return /(^#{1,6}\s+|^\s*[-*+]\s+|^>\s+|^\d+\.\s+|`[^`]+`|\*\*[^*]+\*\*|_[^_]+_|\[[^\]]+\]\([^)]+\)|!\[[^\]]*\]\([^)]+\)|\n\s*\|?.*\|\n\s*\|(?:-+:?\|)+)/m.test(text);
+}
+
 export function viewComment(comment) {
   // 마크다운 문법 감지
-  const isMarkdown = /^(#|##|###|- |\* |\d+\. |> |`|\[.*\]\(.*\)|_{1,2}\w+_{1,2}|\*{1,2}\w+\*{1,2})/m.test(comment);
+  const isMarkdown = isMarkdownContent(comment);
 
   if (isMarkdown) {
     // 동기식 변환 지원

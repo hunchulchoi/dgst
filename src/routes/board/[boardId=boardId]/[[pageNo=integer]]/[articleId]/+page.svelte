@@ -22,7 +22,7 @@
   import Swal from 'sweetalert2';
 
   import { alarmCount } from '$lib/util/store.js';
-  import { viewComment } from '$lib/util/embeder.js';
+  import { viewComment, isMarkdownContent } from '$lib/util/embeder.js';
   import { onMount } from 'svelte';
   import BoardList from '$lib/components/board_list.svelte';
   import OGPreview from '$lib/components/OGPreview.svelte';
@@ -597,14 +597,6 @@
     const urlRegex =
       /https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&\/=]*)/g;
     return text.match(urlRegex) || [];
-  }
-
-  // 마크다운 여부 감지 함수
-  function isMarkdownContent(text) {
-    if (!text) return false;
-    return /^(#|##|###|- |\* |\d+\. |> |`|\[.*\]\(.*\)|_{1,2}\w+_{1,2}|\*{1,2}\w+\*{1,2})/m.test(
-      text
-    );
   }
 
   // 게시물 내용에서 URL 추출하는 함수
