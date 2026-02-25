@@ -1185,8 +1185,9 @@
                           </div>
 
                           <!-- 마크다운일 때는 출처 등이 OG 카드로 도배되는 것을 막기 위해 렌더링 생략 -->
+                          <!-- 일반 글이더라도 URL이 여러개면 OG 폭탄 방지를 위해 첫번째 링크만 OG 렌더링 -->
                           {#if !isMarkdownContent(comment.content)}
-                            {#each extractUrls(comment.content) as url}
+                            {#each extractUrls(comment.content).slice(0, 1) as url}
                               {#if !url.includes('youtube.com') && !url.includes('youtu.be')}
                                 <OGPreview {url} />
                               {/if}

@@ -39,7 +39,7 @@ function youtubeEmbeder(url) {
 export function isMarkdownContent(text) {
   if (!text) return false;
   // 제목, 리스트, 인용구, 코드, 볼드체/이탤릭체, 링크, 표 등 다양한 마크다운 식별 
-  return /(^#{1,6}\s+|^\s*[-*+]\s+|^>\s+|^\d+\.\s+|`[^`]+`|\*\*[^*]+\*\*|_[^_]+_|\[[^\]]+\]\([^)]+\)|!\[[^\]]*\]\([^)]+\)|\n\s*\|?.*\|\n\s*\|(?:-+:?\|)+)/m.test(text);
+  return /(^#{1,6}\s+|^\s*[-*+]\s+|^>\s+|^\d+\.\s+|^\[[^\]]+\]\s+|`[^`]+`|\*\*[^*]+\*\*|_[^_]+_|\[[^\]]+\]\([^)]+\)|!\[[^\]]*\]\([^)]+\))/m.test(text);
 }
 
 export function viewComment(comment) {
