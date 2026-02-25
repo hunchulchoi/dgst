@@ -3,14 +3,11 @@
  * 연결 실패/미설정 시 graceful degrade: Redis 메서드는 no-op 또는 null 반환.
  */
 import Redis from 'ioredis';
-import { env as dynamicEnv } from '$env/dynamic/private';
+import { REDIS_URL } from '$env/static/private';
 import logger from '$lib/util/logger.js';
-import * as dotenv from 'dotenv';
-dotenv.config();
 
-const REDIS_URL = dynamicEnv.REDIS_URL || (typeof process !== 'undefined' ? process.env.REDIS_URL : '') || '';
-const REDIS_PREFIX = (dynamicEnv.REDIS_PREFIX || (typeof process !== 'undefined' ? process.env.REDIS_PREFIX : '') || 'dgst:').toString();
-const REDIS_TTL_SECONDS = parseInt(dynamicEnv.REDIS_TTL_SECONDS || '1800', 10); // 기본 30분
+const REDIS_PREFIX = 'dgst:';
+const REDIS_TTL_SECONDS = 1800;
 
 let client = null;
 let connectPromise = null;
@@ -22,8 +19,6 @@ export async function getClient() {
   if (!REDIS_URL) {
     logger.warn(`🚨 [Redis Config] REDIS_URL 환경변수가 전혀 없어서 연결을 시도하지 않습니다! (.env 파일이나 docker-compose 설정 확인 필요)`);
     logger.warn('dotenv loaded: ', process.env, 'process', process);
-    logger.warn('dynamic env: ', dynamicEnv);
-
     return null;
   }
   if (client) return client;
