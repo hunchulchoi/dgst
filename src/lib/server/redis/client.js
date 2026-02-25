@@ -6,9 +6,9 @@ import Redis from 'ioredis';
 import { env as dynamicEnv } from '$env/dynamic/private';
 import logger from '$lib/util/logger.js';
 
-const REDIS_URL = dynamicEnv.REDIS_URL ?? '';
-const REDIS_PREFIX = (dynamicEnv.REDIS_PREFIX ?? 'dgst:').toString();
-const REDIS_TTL_SECONDS = parseInt(dynamicEnv.REDIS_TTL_SECONDS ?? '1800', 10); // 기본 30분
+const REDIS_URL = dynamicEnv.REDIS_URL || (typeof process !== 'undefined' ? process.env.REDIS_URL : '') || '';
+const REDIS_PREFIX = (dynamicEnv.REDIS_PREFIX || (typeof process !== 'undefined' ? process.env.REDIS_PREFIX : '') || 'dgst:').toString();
+const REDIS_TTL_SECONDS = parseInt(dynamicEnv.REDIS_TTL_SECONDS || '1800', 10); // 기본 30분
 
 let client = null;
 let connectPromise = null;
@@ -17,7 +17,10 @@ let connectPromise = null;
  * @returns {Promise<Redis | null>}
  */
 export async function getClient() {
-  if (!REDIS_URL) return null;
+  if (!REDIS_URL) {
+    logger.warn(`🚨 [Redis Config] REDIS_URL 환경변수가 전혀 없어서 연결을 시도하지 않습니다! (.env 파일이나 docker-compose 설정 확인 필요)`);
+    return null;
+  }
   if (client) return client;
   if (connectPromise) return connectPromise;
   connectPromise = (async () => {
