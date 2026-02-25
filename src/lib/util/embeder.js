@@ -18,8 +18,8 @@ function youtubeEmbeder(url) {
       const id = _match[1];
       const time = _match[2];
 
-      const paddingBottom = i === 0 ? '176.6%' : '56.25%';
-      const width = i === 0 ? '470px' : '560px';
+      const paddingBottom = i === 0 ? '177.77%' : '56.25%';
+      const width = i === 0 ? '315px' : '560px';
 
       return `<div style="max-width: 100%; width: ${width}; margin: 0 auto;">
            <div style="position: relative; width: 100%; height: 0; padding-bottom: ${paddingBottom};">

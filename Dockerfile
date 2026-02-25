@@ -6,7 +6,7 @@ WORKDIR /app
 
 # 종속성 설치
 COPY ./package*.json ./
-COPY ./patches ./patches
+#COPY ./patches ./patches
 
 RUN npm install
 
@@ -26,7 +26,7 @@ WORKDIR /app
 COPY --from=build /app/build .
 COPY --from=build /app/package.json .
 COPY --from=build /app/package-lock.json .
-COPY --from=build /app/patches ./patches
+#COPY --from=build /app/patches ./patches
 
 RUN npm ci --omit dev
 

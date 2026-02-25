@@ -760,8 +760,8 @@
       if (url.includes('youtube.com/shorts/') || url.includes('/shorts/')) {
         const match = url.match(/\/shorts\/([\w-]+)/);
         videoId = match ? match[1] : null;
-        width = '470';
-        height = '830';
+        width = '315';
+        height = '560';
         console.log('📱 Shorts 감지됨:', videoId, `${width}x${height}`);
       } else if (url.includes('youtube.com/embed/')) {
         const match = url.match(/youtube\.com\/embed\/([\w-]+)/);
@@ -962,7 +962,12 @@
           'div',
           (node, delta) => {
             // 구버전 유튜브 쇼츠 래퍼 구조 감지 (width 470px 또는 padding-bottom 176.6%)
-            if (node.style.width === '470px' || node.style.paddingBottom === '176.6%') {
+            if (
+              node.style.width === '470px' ||
+              node.style.width === '315px' ||
+              node.style.paddingBottom === '176.6%' ||
+              node.style.paddingBottom === '177.77%'
+            ) {
               const iframe = node.querySelector('iframe');
               if (iframe) {
                 const src = iframe.getAttribute('src');
@@ -970,8 +975,8 @@
                   return new Delta().insert({
                     iframe: {
                       src,
-                      width: '470',
-                      height: '830'
+                      width: '315',
+                      height: '560'
                     }
                   });
                 }
@@ -1066,8 +1071,8 @@
             parseInt(height) > parseInt(width);
 
           if (isShorts && (src.includes('youtube.com') || src.includes('youtu.be'))) {
-            width = '470';
-            height = '830';
+            width = '315';
+            height = '560';
           }
 
           node.setAttribute('width', width);
