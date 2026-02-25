@@ -47,8 +47,8 @@ export function viewComment(comment) {
   const isMarkdown = isMarkdownContent(comment);
 
   if (isMarkdown) {
-    // 동기식 변환 지원
-    comment = marked.parse(comment, { breaks: true });
+    // 동기식 변환 지원 후 article 태그로 래핑
+    comment = `<article class="markdown-body">${marked.parse(comment, { breaks: true })}</article>`;
   } else {
     comment = comment.replace(/(?:\r\n|\r|\n)/g, '<br>');
   }
@@ -68,6 +68,7 @@ export function viewComment(comment) {
       'iframe',
       'a',
       'span',
+      'article',
       'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'code', 'pre', 'hr'
     ],
     allowedAttributes: {
@@ -83,6 +84,7 @@ export function viewComment(comment) {
         'position'
       ],
       div: ['style', 'class'],
+      article: ['class'],
       a: ['href', 'target', 'rel'],
       img: ['src', 'alt', 'width', 'height', 'style'],
       span: ['style']

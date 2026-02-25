@@ -6,6 +6,7 @@
   import { blur } from 'svelte/transition';
   import { page } from '$app/stores';
   import { afterNavigate } from '$app/navigation';
+  import '../app.css';
 
   // Svelte 5 Runes
   let { data, children } = $props();
