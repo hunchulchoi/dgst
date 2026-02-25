@@ -164,7 +164,6 @@ export async function upsertAlarm({ email, articleId, title, boardId, parentComm
         await client.setex(hk, ALARM_TTL, JSON.stringify(alarm));
         // 사용자 ZSET에 순위 업데이트 (최신 등록)
         await client.zadd(zsetKey, Date.now(), alarmId);
-        logger.info(`🔔 [Redis Alarm] ✅ 알림 저장 성공 - 대상: ${email}, 게시판: ${boardId}, 알람 ID: ${alarmId}`);
     } catch (error) {
         logger.error({
             message: `🚨 [Redis Alarm] ❌ 알림 저장 실패 - 대상: ${email}, 게시판: ${boardId}, 알람 ID: ${alarmId}`,
