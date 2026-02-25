@@ -1,4 +1,5 @@
 import { json } from '@sveltejs/kit';
+import { getJson, setJson } from '$lib/server/redis/client.js';
 
 /**
  * Open Graph 데이터를 가져오는 API
@@ -47,6 +48,17 @@ async function fetchOGData(targetUrl) {
     return json({ error: 'Invalid URL format' }, { status: 400 });
   }
 
+  const cacheKey = `og_cache:${targetUrl}`;
+  try {
+    const cached = await getJson(cacheKey);
+    if (cached) {
+      console.log(`✅ [Redis Cache Hit] OG 데이터 반환: ${targetUrl}`);
+      return json(cached);
+    }
+  } catch (error) {
+    console.error(`🚨 Redis 캐시 조회 실패 (${targetUrl}):`, error);
+  }
+
   try {
     // 타겟 URL에서 HTML 가져오기
     const response = await fetch(targetUrl, {
@@ -70,6 +82,14 @@ async function fetchOGData(targetUrl) {
 
     // Open Graph 메타 태그 파싱
     const ogData = parseOpenGraphData(html, targetUrl);
+
+    // 성공한 데이터에 한정해 레디스에 3시간(10800초) 캐시
+    try {
+      await setJson(cacheKey, ogData, 10800);
+      console.log(`💾 [Redis Cache Miss] OG 데이터 캐싱 완료: ${targetUrl}`);
+    } catch (e) {
+      console.error(`🚨 Redis 캐시 저장 실패 (${targetUrl}):`, e);
+    }
 
     return json(ogData);
   } catch (error) {
