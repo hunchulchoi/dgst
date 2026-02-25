@@ -120,8 +120,11 @@ export function viewComment(comment) {
         return;
       }
 
-      // 일반 링크는 제거 (OG 미리보기로 대체됨)
-      comment = comment.replace(m, '');
+      // 일반 링크는 마크다운이 아닐 때만 제거 (OG 미리보기로 대체됨)
+      // 마크다운에서는 a 태그가 그대로 동작해야 함
+      if (!isMarkdown) {
+        comment = comment.replace(m, '');
+      }
     });
   }
 
