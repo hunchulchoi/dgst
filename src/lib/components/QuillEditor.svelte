@@ -7,6 +7,7 @@
   import Loader from 'svelte-loading-overlay/Loader.svelte';
   import Swal from 'sweetalert2';
   import imageCompression from 'browser-image-compression';
+  import { marked } from 'marked';
 
   // Svelte 5 Runes - Props
   let {
@@ -1300,6 +1301,26 @@
           }
         } else {
           console.log('⚠️ 단일 URL 아님 또는 URL 없음');
+
+          // 마크다운 감지
+          const isMarkdown =
+            /^(#|##|###|- |\* |\d+\. |> |`|\[.*\]\(.*\)|_{1,2}\w+_{1,2}|\*{1,2}\w+\*{1,2})/m.test(
+              pastedText
+            );
+          if (isMarkdown && pastedText.split('\n').length > 0) {
+            e.preventDefault();
+            console.log('📝 마크다운 텍스트 감지, HTML로 변환합니다.');
+            const range = quillInstance.getSelection(true) || { index: quillInstance.getLength() };
+            // 비동기로 변환될 수도 있으니 await (marked 설정에 따라 다름, 기본은 동기)
+            const html = await marked.parse(pastedText);
+
+            quillInstance.clipboard.dangerouslyPasteHTML(range.index, html);
+
+            // 삽입된 콘텐츠 길이 계산을 정확하게 하기 어려우므로 끝으로 이동
+            quillInstance.setSelection(quillInstance.getLength());
+            quillInstance.focus();
+            scrollToInsertedContent(quillInstance.getLength());
+          }
         }
       });
 

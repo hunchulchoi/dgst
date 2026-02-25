@@ -49,6 +49,7 @@
     "heic2any": "^0.0.4",
     "ioredis": "^5.9.3",
     "link-preview-js": "^3.0.5",
+    "marked": "^17.0.3",
     "matter-js": "^0.20.0",
     "mime": "^4.0.4",
     "mongodb": "^6.11.0",
