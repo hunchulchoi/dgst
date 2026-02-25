@@ -18,7 +18,6 @@ let connectPromise = null;
 export async function getClient() {
   if (!REDIS_URL) {
     logger.warn(`🚨 [Redis Config] REDIS_URL 환경변수가 전혀 없어서 연결을 시도하지 않습니다! (.env 파일이나 docker-compose 설정 확인 필요)`);
-    logger.warn('dotenv loaded: ', process.env, 'process', process);
     return null;
   }
   if (client) return client;
