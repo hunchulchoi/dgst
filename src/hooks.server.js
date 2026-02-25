@@ -432,7 +432,7 @@ export async function handle({ event, resolve }) {
   const executionTime = endTime - startTime;
   const status = authResponse?.status || 200;
 
-  if (executionTime > 100) {
+  if (executionTime > 100 && !pathname.startsWith('/api/og')) {
     logger.warn({
       message: `🐌 지연 응답: ${pathname} - Status: ${status}, Time: ${executionTime}ms`,
       pathname,
