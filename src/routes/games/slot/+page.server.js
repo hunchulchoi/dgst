@@ -1,7 +1,7 @@
 import connectDB from '$lib/database/mongoosePriomise.js';
 import { GameScore } from '$lib/models/gameScore.js';
 import { getTodaySlotStats } from '$lib/server/slotStats.js';
-import { Alarm } from '$lib/models/alarm.js';
+import { getUnreadAlarmCount } from '$lib/server/redis/alarmService.js';
 
 connectDB();
 
@@ -21,11 +21,7 @@ export async function load({ locals, depends }) {
       .select({ balance: 1 })
       .lean();
     balance = last?.balance ?? 0;
-    unreadAlarmCount = await Alarm.countDocuments({
-      email,
-      readAt: null,
-      createdAt: { $gt: new Date(Date.now() - 24 * 60 * 60 * 1000) }
-    });
+    unreadAlarmCount = await getUnreadAlarmCount(email);
     hasUnreadAlarm = unreadAlarmCount > 0;
   }
   todayStats = await getTodaySlotStats();
