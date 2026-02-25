@@ -1,5 +1,6 @@
 import { json } from '@sveltejs/kit';
 import { getJson, setJson } from '$lib/server/redis/client.js';
+import logger from '$lib/util/logger.js';
 
 /**
  * Open Graph 데이터를 가져오는 API
@@ -54,6 +55,12 @@ async function fetchOGData(targetUrl) {
     if (cached) {
       console.log(`✅ [Redis Cache Hit] OG 데이터 반환: ${targetUrl}`);
       return json(cached);
+    } else {
+      logger.warn({
+        message: `🐌 [Redis Cache Miss] 캐시가 없습니다. 외부 서버 통신을 시도합니다.`,
+        targetUrl,
+        endpoint: '/api/og'
+      });
     }
   } catch (error) {
     console.error(`🚨 Redis 캐시 조회 실패 (${targetUrl}):`, error);
