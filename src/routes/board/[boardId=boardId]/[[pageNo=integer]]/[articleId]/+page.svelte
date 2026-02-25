@@ -599,6 +599,14 @@
     return text.match(urlRegex) || [];
   }
 
+  // 마크다운 여부 감지 함수
+  function isMarkdownContent(text) {
+    if (!text) return false;
+    return /^(#|##|###|- |\* |\d+\. |> |`|\[.*\]\(.*\)|_{1,2}\w+_{1,2}|\*{1,2}\w+\*{1,2})/m.test(
+      text
+    );
+  }
+
   // 게시물 내용에서 URL 추출하는 함수
   function extractUrlsFromArticle(htmlContent) {
     // HTML 태그를 제거하고 텍스트만 추출
@@ -1184,12 +1192,14 @@
                             {@html viewComment(comment.content)}
                           </div>
 
-                          <!-- OG 미리보기 처리 -->
-                          {#each extractUrls(comment.content) as url}
-                            {#if !url.includes('youtube.com') && !url.includes('youtu.be')}
-                              <OGPreview {url} />
-                            {/if}
-                          {/each}
+                          <!-- 마크다운일 때는 출처 등이 OG 카드로 도배되는 것을 막기 위해 렌더링 생략 -->
+                          {#if !isMarkdownContent(comment.content)}
+                            {#each extractUrls(comment.content) as url}
+                              {#if !url.includes('youtube.com') && !url.includes('youtu.be')}
+                                <OGPreview {url} />
+                              {/if}
+                            {/each}
+                          {/if}
                         </div>
                       {/if}
                     {/if}

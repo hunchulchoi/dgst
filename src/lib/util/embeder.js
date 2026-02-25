@@ -81,6 +81,11 @@ export function viewComment(comment) {
       img: ['src', 'alt', 'width', 'height', 'style'],
       span: ['style']
     },
+    // XSS 방지를 위한 프로토콜 철저한 차단 (javascript: 스키마 차단 등)
+    allowedSchemes: ['http', 'https', 'ftp', 'mailto', 'tel'],
+    allowedSchemesByTag: {
+      img: ['http', 'https', 'data']
+    },
     allowedStyles: {
       '*': {
         'aspect-ratio': [/.*/],
