@@ -116,7 +116,10 @@ export async function markAsRead(email, articleId) {
  */
 export async function upsertAlarm({ email, articleId, title, boardId, parentCommentId, parentCommentContent, newCommentId }) {
     const client = await redis.getClient();
-    if (!client) return;
+    if (!client) {
+        logger.warn(`🚨 [Redis Alarm] 비활성화 상태이거나 연결되지 않아 알림 생성을 건너뜁니다. (대상: ${email})`);
+        return;
+    }
 
     // 댓글에 달린 대댓글 알람이냐, 글에 달린 일반 댓글 알람이냐 구분
     const alarmId = parentCommentId ? `${articleId}_${parentCommentId}` : articleId;

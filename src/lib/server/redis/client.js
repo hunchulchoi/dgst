@@ -4,6 +4,7 @@
  */
 import Redis from 'ioredis';
 import { env as dynamicEnv } from '$env/dynamic/private';
+import logger from '$lib/util/logger.js';
 
 const REDIS_URL = dynamicEnv.REDIS_URL ?? '';
 const REDIS_PREFIX = (dynamicEnv.REDIS_PREFIX ?? 'dgst:').toString();
@@ -30,13 +31,13 @@ export async function getClient() {
         lazyConnect: true
       });
       c.on('error', (err) => {
-        console.error('Redis connection error:', err instanceof Error ? err.message : err);
+        logger.error({ message: 'Redis connection error', error: err instanceof Error ? err.message : err });
       });
       await c.connect();
       client = c;
       return client;
     } catch (err) {
-      console.error('Failed to initialize Redis client:', err instanceof Error ? err.message : err);
+      logger.error({ message: 'Failed to initialize Redis client', error: err instanceof Error ? err.message : err });
       connectPromise = null;
       return null;
     }

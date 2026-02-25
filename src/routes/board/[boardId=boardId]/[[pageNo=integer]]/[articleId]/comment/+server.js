@@ -6,6 +6,7 @@ import { write } from '$lib/util/fileUpload.js';
 import { upsertAlarm, markAsRead } from '$lib/server/redis/alarmService.js';
 import convertToTree from '$lib/util/tree.js';
 import { checkAndLogSessionDevice } from '$lib/server/auth/checkSessionDevice.js';
+import logger from '$lib/util/logger.js';
 
 connectDB();
 
@@ -141,6 +142,8 @@ export async function POST(event) {
           newCommentId: comment._id.toString()
         });
       }
+    } else {
+      logger.info(`🚨 [Redis Alarm SKIP] 본인 게시글에 작성된 댓글이므로 알람을 생성하지 않습니다.`);
     }
 
     // 내 댓글이 아닐때 알림 (Redis)
@@ -155,6 +158,8 @@ export async function POST(event) {
           parentCommentContent: parentComment.content,
           newCommentId: comment._id.toString()
         });
+      } else {
+        logger.info(`🚨 [Redis Alarm SKIP] 본인 대댓글이므로 알람을 생성하지 않습니다.`);
       }
     }
   } catch (err) {
