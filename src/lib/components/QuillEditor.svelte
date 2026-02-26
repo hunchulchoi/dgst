@@ -914,6 +914,7 @@
         ['image', 'video', 'link'], // 이미지, 비디오, 링크를 맨 앞으로
         [{ header: [1, 2, 3, false] }],
         ['bold', 'italic', 'underline', 'strike'],
+        ['blockquote', 'code-block'],
         [{ color: [] }, { background: [] }],
         [{ size: ['small', false, 'large', 'huge'] }],
         [{ list: 'ordered' }, { list: 'bullet' }],

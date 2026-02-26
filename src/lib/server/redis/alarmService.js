@@ -198,3 +198,42 @@ export async function deleteAlarmsByArticle(articleId) {
         console.error('deleteAlarmsByArticle error', e);
     }
 }
+
+/**
+ * 알람에서 특정 댓글을 제거하고, 빈 알람(댓글이 없는 상태)이 되면 알람을 완전히 삭제합니다.
+ * @param {Object} param0
+ */
+export async function removeCommentFromAlarm({ email, articleId, parentCommentId, commentId }) {
+    const client = await redis.getClient();
+    if (!client) return;
+
+    const alarmId = parentCommentId ? `${articleId}_${parentCommentId}` : articleId;
+    const hk = getHashKey(alarmId);
+    const zsetKey = getZSetKey(email);
+
+    const existingStr = await client.get(hk);
+    if (!existingStr) return;
+
+    try {
+        const alarm = JSON.parse(existingStr);
+        const commentIndex = alarm.comments.indexOf(commentId);
+
+        if (commentIndex !== -1) {
+            alarm.comments.splice(commentIndex, 1);
+
+            // 더 이상 남은 댓글이 없으면 알람 자체를 삭제
+            if (alarm.comments.length === 0) {
+                await client.del(hk);
+                await client.zrem(zsetKey, alarmId);
+            } else {
+                // 남은 댓글이 있으면 업데이트
+                await client.setex(hk, ALARM_TTL, JSON.stringify(alarm));
+            }
+        }
+    } catch (e) {
+        logger.error({
+            message: `🚨 [Redis Alarm] ❌ 알람 내 댓글 제거 실패 - 대상: ${email}, 알람 ID: ${alarmId}`,
+            error: e
+        });
+    }
+}

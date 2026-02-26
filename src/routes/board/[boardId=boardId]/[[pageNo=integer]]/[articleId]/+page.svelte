@@ -27,6 +27,11 @@
   import BoardList from '$lib/components/board_list.svelte';
   import OGPreview from '$lib/components/OGPreview.svelte';
   import sanitizeHtml from 'sanitize-html';
+  import Prism from 'prismjs';
+  import 'prismjs/components/prism-clike.js';
+  import 'prismjs/components/prism-javascript.js';
+  import 'prismjs/components/prism-css.js';
+  import 'prismjs/components/prism-markup.js';
   import { countEmojis } from '$lib/util/emoji.js';
 
   // Svelte 5 Runes - Props
@@ -634,7 +639,9 @@
         'video',
         'iframe',
         'div',
-        'span'
+        'span',
+        'pre',
+        'code'
       ],
       allowedAttributes: {
         blockquote: ['class', 'data-instgrm-permalink', 'style'],
@@ -652,7 +659,9 @@
         a: ['href', 'target', 'rel'],
         img: ['src', 'alt', 'width', 'height', 'style'],
         div: ['class', 'style', 'position'],
-        span: ['style']
+        span: ['style', 'class'],
+        pre: ['class'],
+        code: ['class']
       },
       allowedStyles: {
         '*': {
@@ -725,6 +734,60 @@
         500
       );
     }
+
+    // Quill ql-syntax 코드 하이라이트 적용 (PrismJS)
+    setTimeout(() => {
+      if (typeof document !== 'undefined') {
+        const qlBlocks = document.querySelectorAll('.ql-syntax');
+        qlBlocks.forEach((block) => {
+          if (!block.dataset.highlighted) {
+            block.dataset.highlighted = 'true';
+            const text = block.textContent || '';
+
+            // 언어 자동 추론 (간단한 휴리스틱)
+            let lang = 'javascript';
+            if (
+              text.includes('{') &&
+              text.includes('}') &&
+              (text.includes(';') || text.includes(':'))
+            ) {
+              if (
+                !text.includes('function') &&
+                !text.includes('const') &&
+                !text.includes('=>') &&
+                !text.includes('let ')
+              ) {
+                lang = 'css';
+              }
+            }
+            if (
+              text.includes('<html') ||
+              text.includes('</div>') ||
+              text.includes('</scr' + 'ipt>') ||
+              text.includes('</p>')
+            ) {
+              lang = 'markup';
+            }
+
+            // 코드 블록 변환 및 하이라이트
+            block.classList.remove('ql-syntax');
+            block.classList.add(`language-${lang}`);
+
+            block.innerHTML = `<code class="language-${lang}"></code>`;
+            // textContent로 주입하여 XSS 방지
+            // @ts-ignore
+            block.querySelector('code').textContent = text;
+
+            try {
+              // @ts-ignore
+              Prism.highlightElement(block.querySelector('code'));
+            } catch (e) {
+              console.warn('Prism highlighting failed:', e);
+            }
+          }
+        });
+      }
+    }, 100);
   });
 </script>
 

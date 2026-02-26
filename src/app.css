@@ -1,23 +1,57 @@
+@import 'prism-themes/themes/prism-dracula.css';
+
 /* Notion-like Markdown Theme */
+:root {
+  --notion-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, "Apple Color Emoji", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol";
+  --notion-text: #37352f;
+  --notion-bg: transparent;
+  --notion-border: rgba(55, 53, 47, 0.16);
+  --notion-quote-border: #37352f;
+  --notion-code-bg: #f7f6f3;
+  --notion-code-text: #eb5757;
+}
+
 .markdown-body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, "Arial", sans-serif;
-  color: #37352f;
-  line-height: 1.6;
+  font-family: var(--notion-font);
+  color: var(--notion-text);
+  line-height: 1.5;
   font-size: 16px;
   word-wrap: break-word;
 }
 
-.markdown-body > *:first-child {
+.markdown-body>*:first-child {
   margin-top: 0;
 }
 
-.markdown-body > *:last-child {
+.markdown-body>*:last-child {
   margin-bottom: 0;
 }
 
-.markdown-body h1,
-.markdown-body h2,
-.markdown-body h3,
+.markdown-body h1 {
+  font-size: 2.5em;
+  margin-bottom: 0.5em;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.markdown-body h2 {
+  font-size: 1.875em;
+  margin-top: 1.5em;
+  margin-bottom: 0.3em;
+  border-bottom: 1px solid var(--notion-border);
+  padding-bottom: 0.2em;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.markdown-body h3 {
+  font-size: 1.5em;
+  margin-top: 1.2em;
+  margin-bottom: 0.5em;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
 .markdown-body h4,
 .markdown-body h5,
 .markdown-body h6 {
@@ -27,66 +61,57 @@
   line-height: 1.25;
 }
 
-.markdown-body h1 {
-  font-size: 1.875em;
-  border-bottom: 1px solid #ebebeb;
-  padding-bottom: 4px;
-}
-
-.markdown-body h2 {
-  font-size: 1.5em;
-  border-bottom: 1px solid #ebebeb;
-  padding-bottom: 4px;
-}
-
-.markdown-body h3 {
-  font-size: 1.25em;
-}
-
 .markdown-body p,
-.markdown-body blockquote,
 .markdown-body ul,
 .markdown-body ol,
 .markdown-body dl,
-.markdown-body table,
-.markdown-body pre {
+.markdown-body table {
   margin-top: 0;
   margin-bottom: 1em;
 }
 
 .markdown-body blockquote {
-  padding: 0 1em;
-  color: #6a737d;
-  border-left: 0.25em solid #dfe2e5;
-  margin-left: 0;
-  margin-right: 0;
+  margin: 1em 0;
+  padding-left: 1em;
+  border-left: 3px solid var(--notion-quote-border);
+  font-size: 1.1em;
+  color: inherit;
 }
 
 .markdown-body code {
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
   padding: 0.2em 0.4em;
-  margin: 0;
-  font-size: 85%;
-  background-color: rgba(135,131,120,0.15);
   border-radius: 3px;
-  color: #eb5757;
-  font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
+  font-size: 85%;
   word-break: break-all;
+  background-color: var(--notion-code-bg);
+  color: var(--notion-code-text);
 }
 
 .markdown-body pre {
-  padding: 16px;
-  overflow: auto;
-  font-size: 85%;
-  line-height: 1.45;
-  background-color: #f7f6f3;
-  border-radius: 4px;
+  padding: 1rem 1.25rem !important;
+  border-radius: 8px !important;
+  overflow-x: auto;
+  margin-top: 0;
+  margin-bottom: 1em;
+  font-size: 13px !important;
+  line-height: 1.5 !important;
+  background-color: #1a1a1a !important;
+  /* 바탕색 더 짙고 확실한 대비를 주어 구별 */
 }
 
 .markdown-body pre code {
-  background-color: transparent;
   padding: 0;
-  color: #37352f;
   word-break: normal;
+}
+
+.markdown-body ul,
+.markdown-body ol {
+  padding-left: 1.5em;
+}
+
+.markdown-body li {
+  margin-bottom: 0.3em;
 }
 
 .markdown-body a {
@@ -110,32 +135,40 @@
   height: 1px;
   padding: 0;
   margin: 24px 0;
-  background-color: #e1e4e8;
+  background-color: var(--notion-border);
   border: 0;
 }
 
-.markdown-body ul,
-.markdown-body ol {
-  padding-left: 2em;
+.callout {
+  display: flex;
+  padding: 16px;
+  background: #f1f1ef;
+  border-radius: 3px;
+  border: 1px solid transparent;
+  margin: 1em 0;
 }
 
-/* Dark mode overrides if needed */
+/* Dark mode overrides */
 @media (prefers-color-scheme: dark) {
-  .markdown-body {
-    color: #e0e0e0;
+  :root {
+    --notion-text: #e0e0e0;
+    --notion-code-bg: #2d2d2d;
+    /* Keep for inline code if not overridden by Prism */
+    --notion-code-text: #ff7b72;
+    /* Keep for inline code if not overridden by Prism */
+    --notion-border: rgba(255, 255, 255, 0.16);
+    --notion-quote-border: #e0e0e0;
   }
-  .markdown-body h1,
+
   .markdown-body h2 {
     border-bottom: 1px solid #333;
   }
-  .markdown-body pre {
-    background-color: #2d2d2d;
-  }
-  .markdown-body pre code {
-    color: #e0e0e0;
-  }
+
   .markdown-body code {
-    background-color: rgba(255, 255, 255, 0.1);
-    color: #ff7b72;
+    /* Removed background-color override to allow Prism to style */
+  }
+
+  .callout {
+    background: #2f2f2f;
   }
 }

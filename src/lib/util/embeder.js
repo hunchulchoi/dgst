@@ -1,5 +1,31 @@
 import sanitizeHtml from 'sanitize-html';
 import { marked } from 'marked';
+import { markedHighlight } from 'marked-highlight';
+import Prism from 'prismjs';
+
+// Require core components first
+import 'prismjs/components/prism-clike.js';
+import 'prismjs/components/prism-javascript.js';
+import 'prismjs/components/prism-typescript.js';
+import 'prismjs/components/prism-python.js';
+import 'prismjs/components/prism-java.js';
+import 'prismjs/components/prism-bash.js';
+import 'prismjs/components/prism-yaml.js';
+import 'prismjs/components/prism-json.js';
+import 'prismjs/components/prism-css.js';
+import 'prismjs/components/prism-markup.js';
+import 'prismjs/components/prism-markdown.js';
+import 'prismjs/components/prism-sql.js';
+
+marked.use(markedHighlight({
+  langPrefix: 'language-',
+  highlight(code, lang) {
+    if (Prism.languages[lang]) {
+      return Prism.highlight(code, Prism.languages[lang], lang);
+    }
+    return code;
+  }
+}));
 
 function youtubeEmbeder(url) {
   url = url.replace('https://', '').replace('http://', '').replace('www.', '');
@@ -48,7 +74,10 @@ export function viewComment(comment) {
 
   if (isMarkdown) {
     // 동기식 변환 지원 후 article 태그로 래핑
-    comment = `<article class="markdown-body">${marked.parse(comment, { breaks: true })}</article>`;
+    let parsedHtml = /** @type {string} */ (marked.parse(comment, { breaks: true }));
+    // Prism-themes는 pre 태그에 'language-' 클래스가 있어야 배경색/패딩이 정상 적용되므로 클래스 복사
+    parsedHtml = parsedHtml.replace(/<pre><code class="([^"]+)">/g, '<pre class="$1"><code class="$1">');
+    comment = `<article class="markdown-body">${parsedHtml}</article>`;
   } else {
     comment = comment.replace(/(?:\r\n|\r|\n)/g, '<br>');
   }
@@ -85,9 +114,11 @@ export function viewComment(comment) {
       ],
       div: ['style', 'class'],
       article: ['class'],
+      pre: ['class'],
+      code: ['class'],
       a: ['href', 'target', 'rel'],
       img: ['src', 'alt', 'width', 'height', 'style'],
-      span: ['style']
+      span: ['style', 'class']
     },
     // XSS 방지를 위한 프로토콜 철저한 차단 (javascript: 스키마 차단 등)
     allowedSchemes: ['http', 'https', 'ftp', 'mailto', 'tel'],

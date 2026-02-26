@@ -3,7 +3,7 @@ import { error, json } from '@sveltejs/kit';
 import { Comment } from '$lib/models/comment.js';
 import { Article } from '$lib/models/article.js';
 import { write } from '$lib/util/fileUpload.js';
-import { upsertAlarm, markAsRead } from '$lib/server/redis/alarmService.js';
+import { upsertAlarm, markAsRead, removeCommentFromAlarm } from '$lib/server/redis/alarmService.js';
 import convertToTree from '$lib/util/tree.js';
 import { checkAndLogSessionDevice } from '$lib/server/auth/checkSessionDevice.js';
 import logger from '$lib/util/logger.js';
@@ -266,6 +266,32 @@ export async function DELETE({ request, params, locals }) {
       { $pull: { comments: data.commentId } },
       { timestamps: false }
     );
+
+    // 알림에서 삭제된 댓글 제거 처리 (Redis)
+    if (update) {
+      if (update.parentCommentId) {
+        const parentComment = await Comment.findById(update.parentCommentId);
+        if (parentComment) {
+          await removeCommentFromAlarm({
+            email: parentComment.email,
+            articleId,
+            parentCommentId: parentComment._id.toString(),
+            commentId: data.commentId
+          });
+        }
+      } else {
+        const article = await Article.findById(articleId);
+        if (article) {
+          await removeCommentFromAlarm({
+            email: article.email,
+            articleId,
+            parentCommentId: null,
+            commentId: data.commentId
+          });
+        }
+      }
+    }
+
   } catch (err) {
     console.error(err);
     throw error(err.status, err.body.message ?? '삭제 중에 오류가 발생하였습니다.');

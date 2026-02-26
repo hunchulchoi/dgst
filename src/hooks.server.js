@@ -40,7 +40,7 @@ const providers = [
         email: crypto.createHash('sha512').update(profile.email).digest('base64url'),
         nickname: profile.name ?? '',
         introduction: '우리 자기',
-        photo: profile.picture ?? profile.image ?? null,
+        photo: null, // 구글/카카오 로그인 시 기본 이미지를 가져오지 않음
         emailVerified: profile.email_verified ?? true,
         state: 'registered',
         grade: 'user',
@@ -64,10 +64,7 @@ const providers = [
         nickname:
           kakaoAccount?.profile?.nickname || kakaoAccount?.name || `카카오${kakaoId.slice(-4)}`,
         introduction: '우리 자기',
-        photo:
-          (kakaoAccount?.profile?.profile_image_url ||
-            kakaoAccount?.profile?.thumbnail_image_url) ??
-          null,
+        photo: null, // 구글/카카오 로그인 시 기본 이미지를 가져오지 않음
         emailVerified: true,
         state: 'registered',
         grade: 'user',
@@ -432,7 +429,7 @@ export async function handle({ event, resolve }) {
   const executionTime = endTime - startTime;
   const status = authResponse?.status || 200;
 
-  if (executionTime > 100 && !pathname.startsWith('/api/og')) {
+  if (executionTime > 100 && !pathname.startsWith('/api/og') && !pathname.startsWith('/auth/signin') && !pathname.startsWith('/auth/callback')) {
     logger.warn({
       message: `🐌 지연 응답: ${pathname} - Status: ${status}, Time: ${executionTime}ms`,
       pathname,

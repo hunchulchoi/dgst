@@ -34,13 +34,16 @@ const koreaTimeFormat = winston.format.printf(({ level, message, timestamp, ...m
   const koreaTime = getKoreaTime();
   const levelUpper = level.toUpperCase();
 
-  // clientIp 제외
-  const { clientIp, ...rest } = metadata;
+  const { clientIp, pathname, path, status, ...rest } = metadata;
 
-  // 나머지 메타데이터 포맷팅
+  let prefix = `[${koreaTime}] [${levelUpper}]`;
+  const reqPath = pathname || path;
+  if (reqPath) prefix += ` [${reqPath}]`;
+  if (status) prefix += ` [${status}]`;
+
   const metaString = Object.keys(rest).length > 0 ? ' ' + JSON.stringify(rest) : '';
 
-  return `[${koreaTime}] [${levelUpper}] ${message}${metaString}`;
+  return `${prefix} ${message}${metaString}`;
 });
 
 // 개발 환경 포맷터 (컬러 + 한국시간)
@@ -48,9 +51,15 @@ const devFormat = winston.format.combine(
   winston.format.colorize(),
   winston.format.printf(({ level, message, ...metadata }) => {
     const koreaTime = getKoreaTime();
-    const { clientIp, ...rest } = metadata;
+    const { clientIp, pathname, path, status, ...rest } = metadata;
+
+    let prefix = `[${koreaTime}] ${level}`;
+    const reqPath = pathname || path;
+    if (reqPath) prefix += ` [${reqPath}]`;
+    if (status) prefix += ` [${status}]`;
+
     const metaString = Object.keys(rest).length > 0 ? ' ' + JSON.stringify(rest) : '';
-    return `[${koreaTime}] ${level} ${message}${metaString}`;
+    return `${prefix} ${message}${metaString}`;
   })
 );
 
@@ -58,11 +67,21 @@ const devFormat = winston.format.combine(
 const prodFormat = winston.format.combine(
   winston.format.timestamp({ format: () => getKoreaTime() }),
   winston.format.printf(({ timestamp, level, message, ...metadata }) => {
-    const { clientIp, ...rest } = metadata;
-    return JSON.stringify({
-      time: timestamp,
+    const { clientIp, pathname, path, status, ...rest } = metadata;
+    /** @type {Record<string, any>} */
+    const output = {
       level: level.toUpperCase(),
-      message,
+      time: timestamp
+    };
+
+    const reqPath = pathname || path;
+    if (reqPath !== undefined) output.path = reqPath;
+    if (status !== undefined) output.status = status;
+
+    output.message = message;
+
+    return JSON.stringify({
+      ...output,
       ...rest
     });
   })
@@ -71,7 +90,25 @@ const prodFormat = winston.format.combine(
 // 파일 포맷터 (error/warn 로그용)
 const fileFormat = winston.format.combine(
   winston.format.timestamp({ format: () => getKoreaTime() }),
-  winston.format.json()
+  winston.format.printf(({ timestamp, level, message, ...metadata }) => {
+    const { clientIp, pathname, path, status, ...rest } = metadata;
+    /** @type {Record<string, any>} */
+    const output = {
+      level: level.toUpperCase(),
+      time: timestamp
+    };
+
+    const reqPath = pathname || path;
+    if (reqPath !== undefined) output.path = reqPath;
+    if (status !== undefined) output.status = status;
+
+    output.message = message;
+
+    return JSON.stringify({
+      ...output,
+      ...rest
+    });
+  })
 );
 
 // Winston logger 생성
