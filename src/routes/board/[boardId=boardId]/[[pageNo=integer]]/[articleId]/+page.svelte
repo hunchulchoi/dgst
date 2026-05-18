@@ -1076,35 +1076,29 @@
           {/if}
 
           <Col class="p-0 m-0">
-            <Row class="mx-0">
+            <Row class="mx-0 align-items-start">
               {#if comment.photo}
-                <Col xs="auto m-0 p-0">
-                  <Card class="p-0 border-0">
-                    <Row class="g-1 mx-0">
-                      <Col xs="auto">
-                        <img
-                          alt="프로필 사진"
-                          class="card-img-left rounded-start"
-                          style="max-height: 40px; width: 100%; height: auto;"
-                          src={comment.photo}
-                        />
-                      </Col>
-                      <Col xs="auto">
-                        <CardBody class="px-1 py-1 border-0">
-                          <CardSubtitle>{comment.nickname}</CardSubtitle>
-                          <div class="text-muted text-break" style="font-size:smaller">
-                            {formatDistanceToNowStrict(parseISO(comment.createdAt), {
-                              locale: ko,
-                              addSuffix: true
-                            })}
-                          </div>
-                        </CardBody>
-                      </Col>
-                    </Row>
-                  </Card>
+                <Col xs="auto" class="m-0 p-0 flex-shrink-0">
+                  <div class="d-flex align-items-center gap-2">
+                    <img
+                      alt="프로필 사진"
+                      class="rounded-circle flex-shrink-0"
+                      style="width: 40px; height: 40px; object-fit: cover;"
+                      src={comment.photo}
+                    />
+                    <div class="py-0">
+                      <CardSubtitle class="mb-0">{comment.nickname}</CardSubtitle>
+                      <div class="text-muted text-break small">
+                        {formatDistanceToNowStrict(parseISO(comment.createdAt), {
+                          locale: ko,
+                          addSuffix: true
+                        })}
+                      </div>
+                    </div>
+                  </div>
                 </Col>
               {:else}
-                <Col xs="auto" class="border-end p-0">
+                <Col xs="auto" class="border-end p-0 flex-shrink-0">
                   {comment.nickname}
                   <span class="text-muted ps-2" style="font-size: smaller"
                     >{formatDistanceToNowStrict(parseISO(comment.createdAt), {
@@ -1115,7 +1109,7 @@
                 </Col>
               {/if}
 
-              <Col xs="12" md="*" class="mt-2 mt-md-0 p-0">
+              <Col xs="12" md={true} class="mt-2 mt-md-0 p-0 min-w-0">
                 <Row class="mx-0">
                   <Col class="text-break p-0 m-0" style="max-width: 98%">
                     {#if editingCommentId === comment._id}
