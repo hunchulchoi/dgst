@@ -3,6 +3,7 @@
   import { page } from '$app/stores';
 
   import BoardList from '$lib/components/board_list.svelte';
+  import LottoFreeBanner from '$lib/components/lotto_free_banner.svelte';
 
   import { alarmCount } from '$lib/util/store.js';
   import { goto } from '$app/navigation';
@@ -100,6 +101,9 @@
 
 <main class="container my-md-2" style="min-height: 50vh">
   <Row class="py-2 shadow rounded-4 mx-0">
+    {#if boardId === 'free'}
+      <LottoFreeBanner lottoHistory={data.lottoHistory ?? []} session={data.session} />
+    {/if}
     {#if data.session?.user?.nickname}
       <Row class="px-0 mx-0 pe-3 mt-2 pb-3 border-bottom border-secondary-subtle">
         <Col class="d-flex justify-content-end p-0">

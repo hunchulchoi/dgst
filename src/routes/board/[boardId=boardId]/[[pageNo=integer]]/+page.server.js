@@ -2,6 +2,7 @@ import { error } from '@sveltejs/kit';
 import connectDB from '$lib/database/mongoosePriomise.js';
 import { Article } from '$lib/models/article.js';
 import { User } from '$lib/models/user.js';
+import { fetchLottoHistory } from '$lib/server/lotto.js';
 
 connectDB();
 
@@ -38,7 +39,8 @@ export const load = async ({ params, depends }) => {
     console.debug('total', total);
 
     if (!total) {
-      return { articles: [] };
+      const lottoHistory = params.boardId === 'free' ? await fetchLottoHistory() : [];
+      return { articles: [], lottoHistory };
     }
 
     const maxPage = parseInt(total / pageUnit + (total % pageUnit ? 1 : 0));
@@ -134,7 +136,9 @@ export const load = async ({ params, depends }) => {
       fromCache: false // 항상 DB에서 조회
     });
 
-    return { pageNo, maxPage, startNo, endNo, articles: jsonArticles };
+    const lottoHistory = params.boardId === 'free' ? await fetchLottoHistory() : [];
+
+    return { pageNo, maxPage, startNo, endNo, articles: jsonArticles, lottoHistory };
   } catch (err) {
     const endTime = Date.now();
     const executionTime = endTime - startTime;
