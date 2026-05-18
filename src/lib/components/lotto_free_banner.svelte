@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Badge, Button, Col, Row } from '@sveltestrap/sveltestrap';
+  import { Badge, Button, Col, Icon, Row } from '@sveltestrap/sveltestrap';
   import { invalidate } from '$app/navigation';
   import { format, parseISO } from 'date-fns';
   import Swal from 'sweetalert2';
@@ -9,6 +9,7 @@
     nickname: string;
     numbers: number[];
     createdAt: string;
+    mine?: boolean;
   }
 
   interface LottoOfficial {
@@ -40,9 +41,16 @@
     session?: { user?: { nickname?: string | null; email?: string | null } } | null;
     /** 직전 주 뽑기 vs 저장된 최신 동행복권 회차 매칭 */
     lottoWeekMatch?: LottoWeekMatchSummary | null;
+    /** 로그인 사용자 기준 마지막 24시간 인생역전 클릭(저장) 횟수 */
+    lottoMyPickCount24h?: number;
   }
 
-  let { lottoHistory, session = null, lottoWeekMatch = null }: Props = $props();
+  let {
+    lottoHistory,
+    session = null,
+    lottoWeekMatch = null,
+    lottoMyPickCount24h = 0
+  }: Props = $props();
 
   /** 1..45 에 따른 번호별 색(그라데이션 볼) */
   function ballStyle(n: number): string {
@@ -74,7 +82,19 @@
 
   let expanded = $state(true);
   let loading = $state(false);
+  let refreshing = $state(false);
   let lastPick = $state<number[] | null>(null);
+
+  async function refreshBanner() {
+    refreshing = true;
+    try {
+      await invalidate('board-list');
+    } catch (err) {
+      console.error('lotto banner refresh failed', err);
+    } finally {
+      refreshing = false;
+    }
+  }
 
   /** 로또 6개 발급 저장 */
   async function handlePick() {
@@ -153,18 +173,36 @@
   <Col xs="12" class="d-flex flex-wrap align-items-center gap-2">
     <Button
       color="warning"
-      class="fw-semibold"
+      class="fw-semibold d-inline-flex align-items-center gap-1"
       disabled={loading}
       onclick={handlePick}
       type="button"
     >
       {#if loading}
-        <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+        <span class="spinner-border spinner-border-sm" role="status"></span>
       {/if}
-      💵인생역전❤️
+      <span>💵인생역전❤️</span>
+      {#if lottoMyPickCount24h > 0}
+        <Badge pill color="danger" class="align-middle">{lottoMyPickCount24h}</Badge>
+      {/if}
     </Button>
     <Button color="outline-secondary" size="sm" onclick={() => (expanded = !expanded)} type="button">
       {expanded ? '접기' : '펼치기'}
+    </Button>
+    <Button
+      color="outline-secondary"
+      size="sm"
+      onclick={refreshBanner}
+      disabled={refreshing || loading}
+      type="button"
+      title="기록 새로고침"
+    >
+      {#if refreshing}
+        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+      {:else}
+        <Icon name="arrow-clockwise" class="me-1" aria-hidden="true" />
+      {/if}
+      새로고침
     </Button>
     <small class="text-muted ms-auto"
       >무작위 뽑기(1–45)·24시간 기록 + 직전 주 공식 결과 비교(참고용)</small
@@ -265,8 +303,13 @@
       <h4 class="h6 text-secondary mb-2">최근 24시간</h4>
       <ul class="list-unstyled small mb-0 pe-1" style="max-height: 220px; overflow-y: auto">
         {#each lottoHistory as row (row.id)}
-          <li class="mb-2 pb-2 border-bottom border-secondary-subtle">
-            <span class="fw-medium">{row.nickname}</span><span class="text-muted"
+          <li
+            class={`mb-2 pb-2 ${row.mine === true ? 'rounded-3 px-2 py-2 border border-warning border-2 bg-warning bg-opacity-10 shadow-sm' : 'border-bottom border-secondary-subtle'}`}
+          >
+            {#if row.mine === true}
+              <Badge color="warning" class="me-1">나</Badge>
+            {/if}
+            <span class={`fw-medium ${row.mine === true ? 'text-dark' : ''}`}>{row.nickname}</span><span class="text-muted"
               >[{format(parseISO(row.createdAt), 'HH:mm')}]</span
             >
             <span class="text-muted"> - </span>

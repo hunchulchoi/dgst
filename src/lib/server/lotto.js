@@ -28,9 +28,11 @@ export function generateLottoNumbers() {
 
 /**
  * 마지막 24시간 로또 기록 목록 (최신순)
- * @returns {Promise<Array<{ id: string, nickname: string, numbers: number[], createdAt: string }>>}
+ *
+ * @param {string | null | undefined} viewerEmail 현재 사용자 이메일(있으면 `mine` 플래그 및 본인 식별)
+ * @returns {Promise<Array<{ id: string, nickname: string, numbers: number[], createdAt: string, mine: boolean }>>}
  */
-export async function fetchLottoHistory() {
+export async function fetchLottoHistory(viewerEmail) {
   const since = new Date(Date.now() - LOTTO_HISTORY_MS);
   try {
     const logs = await GameLog.find({
@@ -42,8 +44,13 @@ export async function fetchLottoHistory() {
       .limit(LOTTO_HISTORY_LIMIT)
       .lean();
 
-    /** @type {Array<{ id: string, nickname: string, numbers: number[], createdAt: string }>} */
+    /** @type {Array<{ id: string, nickname: string, numbers: number[], createdAt: string, mine: boolean }>} */
     const out = [];
+
+    const self =
+      viewerEmail != null &&
+      viewerEmail !== '' &&
+      typeof viewerEmail === 'string';
 
     for (const log of logs) {
       const nickname =
@@ -52,16 +59,40 @@ export async function fetchLottoHistory() {
           : null;
       const raw = log.meta?.numbers;
       if (!nickname || !isValidLottoNumbers(raw)) continue;
+
+      const logEmail = typeof log.email === 'string' ? log.email : '';
+      const mine = self && logEmail !== '' && logEmail === viewerEmail;
+
       out.push({
         id: String(log._id),
         nickname,
         numbers: [...raw].sort((a, b) => a - b),
-        createdAt: new Date(log.createdAt).toISOString()
+        createdAt: new Date(log.createdAt).toISOString(),
+        mine
       });
     }
 
     return out;
   } catch {
     return [];
+  }
+}
+
+/**
+ * 로그인 사용자가 마지막 24시간 동안 인생역전을 누른 횟수
+ *
+ * @param {string | null | undefined} viewerEmail
+ */
+export async function countMyLottoPicks24h(viewerEmail) {
+  if (viewerEmail == null || viewerEmail === '' || typeof viewerEmail !== 'string') return 0;
+  try {
+    return await GameLog.countDocuments({
+      game: 'lotto',
+      action: 'pick',
+      email: viewerEmail,
+      createdAt: { $gte: new Date(Date.now() - LOTTO_HISTORY_MS) }
+    });
+  } catch {
+    return 0;
   }
 }

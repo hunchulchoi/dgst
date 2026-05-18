@@ -2,17 +2,20 @@ import { error } from '@sveltejs/kit';
 import connectDB from '$lib/database/mongoosePriomise.js';
 import { Article } from '$lib/models/article.js';
 import { User } from '$lib/models/user.js';
-import { fetchLottoHistory } from '$lib/server/lotto.js';
+import { fetchLottoHistory, countMyLottoPicks24h } from '$lib/server/lotto.js';
 import { computeLottoWeekMatchSummary } from '$lib/server/lottoOfficial.js';
 
 connectDB();
 
-export const load = async ({ params, depends }) => {
+export const load = async ({ params, depends, locals }) => {
   const startTime = Date.now();
   const timestamp = new Date().toISOString();
 
   // 캐시 키를 매번 다르게 생성하여 캐시 방지
   depends('board-list');
+
+  const session = await locals.auth();
+  const viewerEmail = session?.user?.email ?? null;
 
   console.log('📊 [자유게시판] load 함수 시작:', {
     boardId: params.boardId,
@@ -41,11 +44,12 @@ export const load = async ({ params, depends }) => {
 
     if (!total) {
       if (params.boardId === 'free') {
-        const [lottoHistory, lottoWeekMatch] = await Promise.all([
-          fetchLottoHistory(),
-          computeLottoWeekMatchSummary()
+        const [lottoHistory, lottoWeekMatch, lottoMyPickCount24h] = await Promise.all([
+          fetchLottoHistory(viewerEmail),
+          computeLottoWeekMatchSummary(),
+          countMyLottoPicks24h(viewerEmail)
         ]);
-        return { articles: [], lottoHistory, lottoWeekMatch };
+        return { articles: [], lottoHistory, lottoWeekMatch, lottoMyPickCount24h };
       }
       return { articles: [] };
     }
@@ -145,15 +149,26 @@ export const load = async ({ params, depends }) => {
 
     let lottoHistory = [];
     let lottoWeekMatch = null;
+    let lottoMyPickCount24h = 0;
 
     if (params.boardId === 'free') {
-      [lottoHistory, lottoWeekMatch] = await Promise.all([
-        fetchLottoHistory(),
-        computeLottoWeekMatchSummary()
+      [lottoHistory, lottoWeekMatch, lottoMyPickCount24h] = await Promise.all([
+        fetchLottoHistory(viewerEmail),
+        computeLottoWeekMatchSummary(),
+        countMyLottoPicks24h(viewerEmail)
       ]);
     }
 
-    return { pageNo, maxPage, startNo, endNo, articles: jsonArticles, lottoHistory, lottoWeekMatch };
+    return {
+      pageNo,
+      maxPage,
+      startNo,
+      endNo,
+      articles: jsonArticles,
+      lottoHistory,
+      lottoWeekMatch,
+      lottoMyPickCount24h
+    };
   } catch (err) {
     const endTime = Date.now();
     const executionTime = endTime - startTime;

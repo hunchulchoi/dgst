@@ -106,6 +106,7 @@
         lottoHistory={data.lottoHistory ?? []}
         session={data.session}
         lottoWeekMatch={data.lottoWeekMatch ?? null}
+        lottoMyPickCount24h={data.lottoMyPickCount24h ?? 0}
       />
     {/if}
     {#if data.session?.user?.nickname}
