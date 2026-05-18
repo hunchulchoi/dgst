@@ -98,18 +98,8 @@
     }
   }
 
-  /** 로또 6개 발급 저장 */
+  /** 로또 6개 발급 저장(API 호출). 로그인 여부는 호출 전에 검사할 것. */
   async function handlePick() {
-    if (!session?.user?.email) {
-      await Swal.fire({
-        icon: 'info',
-        title: '로그인이 필요합니다',
-        text: '로그인 후 번호를 뽑을 수 있어요.',
-        confirmButtonText: '확인'
-      });
-      return;
-    }
-
     loading = true;
     try {
       const res = await fetch('/board/lotto', {
@@ -169,6 +159,41 @@
       loading = false;
     }
   }
+
+  /** 메인 버튼: 접힌 상태에서는 생성 여부 확인 후 분기 */
+  async function onLottoMainClick() {
+    if (!session?.user?.email) {
+      await Swal.fire({
+        icon: 'info',
+        title: '로그인이 필요합니다',
+        text: '로그인 후 번호를 뽑을 수 있어요.',
+        confirmButtonText: '확인'
+      });
+      return;
+    }
+
+    if (!expanded) {
+      const result = await Swal.fire({
+        icon: 'question',
+        title: '인생을 역전할 로또번호를 생성하시겠습니까?',
+        showCancelButton: true,
+        confirmButtonText: '생성',
+        cancelButtonText: '아니요'
+      });
+
+      if (result.isConfirmed) {
+        expanded = true;
+        await handlePick();
+        return;
+      }
+      if (result.dismiss === Swal.DismissReason.cancel) {
+        expanded = true;
+      }
+      return;
+    }
+
+    await handlePick();
+  }
 </script>
 
 <Row class="px-3 py-3 mx-0 border-bottom border-secondary-subtle bg-body-secondary bg-opacity-25 rounded-top-4">
@@ -177,7 +202,7 @@
       color="warning"
       class="fw-semibold d-inline-flex align-items-center gap-1"
       disabled={loading}
-      onclick={handlePick}
+      onclick={onLottoMainClick}
       type="button"
     >
       {#if loading}
@@ -185,7 +210,7 @@
       {/if}
       <span>💵인생역전❤️</span>
       {#if lottoTotalPicks24h > 0}
-        <Badge pill color="success" class="align-middle">{lottoTotalPicks24h}</Badge>
+        <span class="badge rounded-pill badge-success align-middle">{lottoTotalPicks24h}</span>
       {/if}
     </Button>
     <Button color="outline-secondary" size="sm" onclick={() => (expanded = !expanded)} type="button">

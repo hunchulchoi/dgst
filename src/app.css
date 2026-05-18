@@ -148,6 +148,11 @@
   margin: 1em 0;
 }
 
+.badge.badge-success {
+  color: #fff;
+  background-color: var(--bs-success);
+}
+
 /* Dark mode overrides */
 @media (prefers-color-scheme: dark) {
   :root {
