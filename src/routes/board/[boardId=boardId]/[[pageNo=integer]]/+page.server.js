@@ -2,7 +2,7 @@ import { error } from '@sveltejs/kit';
 import connectDB from '$lib/database/mongoosePriomise.js';
 import { Article } from '$lib/models/article.js';
 import { User } from '$lib/models/user.js';
-import { fetchLottoHistory, countMyLottoPicks24h } from '$lib/server/lotto.js';
+import { fetchLottoHistory, countAllLottoPicks24h } from '$lib/server/lotto.js';
 import { computeLottoWeekMatchSummary } from '$lib/server/lottoOfficial.js';
 
 connectDB();
@@ -44,12 +44,12 @@ export const load = async ({ params, depends, locals }) => {
 
     if (!total) {
       if (params.boardId === 'free') {
-        const [lottoHistory, lottoWeekMatch, lottoMyPickCount24h] = await Promise.all([
+        const [lottoHistory, lottoWeekMatch, lottoTotalPicks24h] = await Promise.all([
           fetchLottoHistory(viewerEmail),
           computeLottoWeekMatchSummary(),
-          countMyLottoPicks24h(viewerEmail)
+          countAllLottoPicks24h()
         ]);
-        return { articles: [], lottoHistory, lottoWeekMatch, lottoMyPickCount24h };
+        return { articles: [], lottoHistory, lottoWeekMatch, lottoTotalPicks24h };
       }
       return { articles: [] };
     }
@@ -149,13 +149,13 @@ export const load = async ({ params, depends, locals }) => {
 
     let lottoHistory = [];
     let lottoWeekMatch = null;
-    let lottoMyPickCount24h = 0;
+    let lottoTotalPicks24h = 0;
 
     if (params.boardId === 'free') {
-      [lottoHistory, lottoWeekMatch, lottoMyPickCount24h] = await Promise.all([
+      [lottoHistory, lottoWeekMatch, lottoTotalPicks24h] = await Promise.all([
         fetchLottoHistory(viewerEmail),
         computeLottoWeekMatchSummary(),
-        countMyLottoPicks24h(viewerEmail)
+        countAllLottoPicks24h()
       ]);
     }
 
@@ -167,7 +167,7 @@ export const load = async ({ params, depends, locals }) => {
       articles: jsonArticles,
       lottoHistory,
       lottoWeekMatch,
-      lottoMyPickCount24h
+      lottoTotalPicks24h
     };
   } catch (err) {
     const endTime = Date.now();

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { Badge, Button, Col, Icon, Row } from '@sveltestrap/sveltestrap';
-  import { invalidate } from '$app/navigation';
+  import { invalidateAll } from '$app/navigation';
   import { format, parseISO } from 'date-fns';
   import Swal from 'sweetalert2';
 
@@ -10,6 +10,7 @@
     numbers: number[];
     createdAt: string;
     mine?: boolean;
+    photo?: string;
   }
 
   interface LottoOfficial {
@@ -25,6 +26,7 @@
     numbers: number[];
     createdAt: string;
     pickId: string;
+    photo?: string;
   }
 
   interface LottoWeekMatchSummary {
@@ -41,15 +43,15 @@
     session?: { user?: { nickname?: string | null; email?: string | null } } | null;
     /** 직전 주 뽑기 vs 저장된 최신 동행복권 회차 매칭 */
     lottoWeekMatch?: LottoWeekMatchSummary | null;
-    /** 로그인 사용자 기준 마지막 24시간 인생역전 클릭(저장) 횟수 */
-    lottoMyPickCount24h?: number;
+    /** 최근 24시간 동안 저장된 인생역전 전체 뽑기 건수(뱃지) */
+    lottoTotalPicks24h?: number;
   }
 
   let {
     lottoHistory,
     session = null,
     lottoWeekMatch = null,
-    lottoMyPickCount24h = 0
+    lottoTotalPicks24h = 0
   }: Props = $props();
 
   /** 1..45 에 따른 번호별 색(그라데이션 볼) */
@@ -80,7 +82,7 @@
     return 'success';
   }
 
-  let expanded = $state(true);
+  let expanded = $state(false);
   let loading = $state(false);
   let refreshing = $state(false);
   let lastPick = $state<number[] | null>(null);
@@ -88,7 +90,7 @@
   async function refreshBanner() {
     refreshing = true;
     try {
-      await invalidate('board-list');
+      await invalidateAll();
     } catch (err) {
       console.error('lotto banner refresh failed', err);
     } finally {
@@ -154,7 +156,7 @@
         lastPick = [...numbers].sort((a, b) => a - b);
       }
 
-      await invalidate('board-list');
+      await invalidateAll();
     } catch (err) {
       console.error('lotto pick failed', err);
       await Swal.fire({
@@ -182,8 +184,8 @@
         <span class="spinner-border spinner-border-sm" role="status"></span>
       {/if}
       <span>💵인생역전❤️</span>
-      {#if lottoMyPickCount24h > 0}
-        <Badge pill color="danger" class="align-middle">{lottoMyPickCount24h}</Badge>
+      {#if lottoTotalPicks24h > 0}
+        <Badge pill color="success" class="align-middle">{lottoTotalPicks24h}</Badge>
       {/if}
     </Button>
     <Button color="outline-secondary" size="sm" onclick={() => (expanded = !expanded)} type="button">
@@ -204,17 +206,14 @@
       {/if}
       새로고침
     </Button>
-    <small class="text-muted ms-auto"
-      >무작위 뽑기(1–45)·24시간 기록 + 직전 주 공식 결과 비교(참고용)</small
-    >
+    <small class="text-muted ms-auto">무작위 뽑기(1–45)·최근 24시간 기록</small>
   </Col>
 
   {#if expanded}
     <Col xs="12" class="mt-3">
-      <h4 class="h6 text-secondary mb-2">직전 주 &amp; 공식 당첨 비교</h4>
-
       {#if lottoWeekMatch?.hasOfficial && lottoWeekMatch.official}
         {@const dr = lottoWeekMatch.official}
+        <h4 class="h6 text-secondary mb-2">직전 주 &amp; 공식 당첨 비교</h4>
         <div class="small text-muted mb-1">
           비교 구간 · <strong>{lottoWeekMatch.weekLabel}</strong> 서울 기준월~일 /
           참고 회차 동행복권 <strong>{dr.drwNo}회</strong>
@@ -250,6 +249,16 @@
               {#each lottoWeekMatch.winners as w (w.pickId)}
                 <li class="mb-2 pb-2 border-bottom border-secondary-subtle">
                   <Badge color={rankBadgeColor(w.rank)} class="me-1">{rankToLabel(w.rank)}</Badge>
+                  {#if w.photo && w.photo.trim() !== ''}
+                    <img
+                      src={w.photo}
+                      alt=""
+                      width="22"
+                      height="22"
+                      class="rounded-1 me-1 flex-shrink-0 align-middle object-fit-cover"
+                      loading="lazy"
+                    />
+                  {/if}
                   <span class="fw-medium">{w.nickname}</span>
                   <span class="text-muted"
                     >[{format(parseISO(w.createdAt), 'M/d HH:mm')}]</span
@@ -273,15 +282,6 @@
             위 회차 규칙(3개 이상 일치) 기준 해당 주에 뽑은 번호 중 당첨 구간 없음 · 뽑기 {lottoWeekMatch.picksInWeek}건
           </p>
         {/if}
-      {:else}
-        <p class="small text-muted mb-3">
-          저장된 동행복권 당첨 데이터가 없어 비교 생략. 매주 크론에서
-          <code class="user-select-all">GET /api/cron/lotto-official-sync</code>
-          (<code>x-cron-secret</code> = 서버 환경변수
-          <code class="text-nowrap">CRON_SECRET</code>)을 호출하세요.
-          호스팅 IP가 동행복권에 막히면 로컬/국내 브라우저에서 회차 확인 후
-          <code class="user-select-all">.../lotto-official-sync?drwNo=회차번호</code>로 같은 시크릿 헤더와 함께 호출하면 저장됩니다.
-        </p>
       {/if}
 
       {#if lastPick?.length === 6}
@@ -306,23 +306,40 @@
           <li
             class={`mb-2 pb-2 ${row.mine === true ? 'rounded-3 px-2 py-2 border border-warning border-2 bg-warning bg-opacity-10 shadow-sm' : 'border-bottom border-secondary-subtle'}`}
           >
-            {#if row.mine === true}
-              <Badge color="warning" class="me-1">나</Badge>
-            {/if}
-            <span class={`fw-medium ${row.mine === true ? 'text-dark' : ''}`}>{row.nickname}</span><span class="text-muted"
-              >[{format(parseISO(row.createdAt), 'HH:mm')}]</span
-            >
-            <span class="text-muted"> - </span>
-            <span class="d-inline-flex flex-wrap gap-1 align-middle">
-              {#each row.numbers as n (n)}
-                <span
-                  class="d-inline-flex align-items-center justify-content-center rounded-circle text-white fw-bold"
-                  style={`${ballStyle(n)}min-width:1.6rem;height:1.6rem;font-size:0.75rem;`}
+            <div class="d-flex align-items-start flex-wrap gap-1">
+              {#if row.photo != null && String(row.photo).trim() !== ''}
+                <img
+                  src={String(row.photo).trim()}
+                  alt=""
+                  width="26"
+                  height="26"
+                  class="rounded-1 mt-1 flex-shrink-0 object-fit-cover align-top"
+                  loading="lazy"
+                  decoding="async"
+                />
+              {/if}
+              <span class="d-inline-flex flex-wrap align-items-center flex-grow-1 min-w-0">
+                {#if row.mine === true}
+                  <Badge color="warning" class="me-1">나</Badge>
+                {/if}
+                <span class={`fw-medium align-middle ${row.mine === true ? 'text-dark' : ''}`}
+                  >{row.nickname}</span
+                ><span class="text-muted align-middle"
+                  >[{format(parseISO(row.createdAt), 'HH:mm')}]</span
                 >
-                  {n}
+                <span class="text-muted align-middle"> - </span>
+                <span class="d-inline-flex flex-wrap gap-1 align-middle">
+                  {#each row.numbers as n (n)}
+                    <span
+                      class="d-inline-flex align-items-center justify-content-center rounded-circle text-white fw-bold"
+                      style={`${ballStyle(n)}min-width:1.6rem;height:1.6rem;font-size:0.75rem;`}
+                    >
+                      {n}
+                    </span>
+                  {/each}
                 </span>
-              {/each}
-            </span>
+              </span>
+            </div>
           </li>
         {:else}
           <li class="text-muted">아직 기록이 없어요. 첫 주인공이 되어 보세요.</li>

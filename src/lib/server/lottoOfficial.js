@@ -3,7 +3,8 @@
  */
 import { z } from 'zod';
 import { GameLog } from '$lib/models/gameLog.js';
-import { isValidLottoNumbers } from '$lib/server/lotto.js';
+import { User } from '$lib/models/user.js';
+import { isValidLottoNumbers, normalizeLottoEmail } from '$lib/server/lotto.js';
 
 const DH_ENDPOINT = 'https://www.dhlottery.co.kr/common.do';
 
@@ -386,8 +387,8 @@ export async function computeLottoWeekMatchSummary(opts = {}) {
       .limit(5000)
       .lean();
 
-    /** @type {Array<{ rank: number, nickname: string, numbers: number[], createdAt: string, pickId: string }>} */
-    const winners = [];
+    /** @type {Array<{ rank: number, nickname: string, numbers: number[], createdAt: string, pickId: string, emailNorm: string }>} */
+    const winnersDraft = [];
     let validPickCount = 0;
 
     for (const doc of logs) {
@@ -403,20 +404,66 @@ export async function computeLottoWeekMatchSummary(opts = {}) {
 
       const r = rankKoLotto645(nums, official.mains, official.bonus);
       if (r != null && r <= 5) {
-        winners.push({
+        winnersDraft.push({
           rank: r,
           nickname,
           numbers: nums,
           createdAt: new Date(doc.createdAt).toISOString(),
-          pickId: String(doc._id)
+          pickId: String(doc._id),
+          emailNorm: normalizeLottoEmail(typeof doc.email === 'string' ? doc.email : '')
         });
       }
     }
 
-    winners.sort((a, b) => {
+    winnersDraft.sort((a, b) => {
       if (a.rank !== b.rank) return a.rank - b.rank;
       return a.createdAt.localeCompare(b.createdAt);
     });
+
+    /** @type {Map<string, string>} */
+    const winnerPhotoByNorm = new Map();
+    const winnerNorms = [...new Set(winnersDraft.map((w) => w.emailNorm).filter(Boolean))];
+
+    if (winnerNorms.length > 0) {
+      /** @type {Array<{ photo?: string | null; lowerEmail: string }>} */
+      const uph = await User.aggregate([
+        {
+          $match: {
+            $expr: {
+              $in: [{ $toLower: { $ifNull: ['$email', ''] } }, winnerNorms]
+            }
+          }
+        },
+        {
+          $project: {
+            photo: 1,
+            lowerEmail: { $toLower: { $ifNull: ['$email', ''] } }
+          }
+        }
+      ]).exec();
+
+      for (const row of uph) {
+        const p = typeof row.photo === 'string' && row.photo.trim() ? row.photo.trim() : '';
+        if (p && row.lowerEmail) winnerPhotoByNorm.set(row.lowerEmail, p);
+      }
+    }
+
+    /** @type {Array<{ rank: number, nickname: string, numbers: number[], createdAt: string, pickId: string, photo?: string }>} */
+    const winners = [];
+
+    for (const w of winnersDraft) {
+      /** @type {{ rank: number, nickname: string, numbers: number[], createdAt: string, pickId: string, photo?: string }} */
+      const pub = {
+        rank: w.rank,
+        nickname: w.nickname,
+        numbers: w.numbers,
+        createdAt: w.createdAt,
+        pickId: w.pickId
+      };
+      const ph = winnerPhotoByNorm.get(w.emailNorm);
+      if (ph) pub.photo = ph;
+      winners.push(pub);
+    }
 
     return {
       hasOfficial: true,
