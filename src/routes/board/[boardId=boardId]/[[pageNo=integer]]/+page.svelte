@@ -102,7 +102,11 @@
 <main class="container my-md-2" style="min-height: 50vh">
   <Row class="py-2 shadow rounded-4 mx-0">
     {#if boardId === 'free'}
-      <LottoFreeBanner lottoHistory={data.lottoHistory ?? []} session={data.session} />
+      <LottoFreeBanner
+        lottoHistory={data.lottoHistory ?? []}
+        session={data.session}
+        lottoWeekMatch={data.lottoWeekMatch ?? null}
+      />
     {/if}
     {#if data.session?.user?.nickname}
       <Row class="px-0 mx-0 pe-3 mt-2 pb-3 border-bottom border-secondary-subtle">

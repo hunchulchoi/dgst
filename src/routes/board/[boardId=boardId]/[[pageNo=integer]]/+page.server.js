@@ -3,6 +3,7 @@ import connectDB from '$lib/database/mongoosePriomise.js';
 import { Article } from '$lib/models/article.js';
 import { User } from '$lib/models/user.js';
 import { fetchLottoHistory } from '$lib/server/lotto.js';
+import { computeLottoWeekMatchSummary } from '$lib/server/lottoOfficial.js';
 
 connectDB();
 
@@ -39,8 +40,14 @@ export const load = async ({ params, depends }) => {
     console.debug('total', total);
 
     if (!total) {
-      const lottoHistory = params.boardId === 'free' ? await fetchLottoHistory() : [];
-      return { articles: [], lottoHistory };
+      if (params.boardId === 'free') {
+        const [lottoHistory, lottoWeekMatch] = await Promise.all([
+          fetchLottoHistory(),
+          computeLottoWeekMatchSummary()
+        ]);
+        return { articles: [], lottoHistory, lottoWeekMatch };
+      }
+      return { articles: [] };
     }
 
     const maxPage = parseInt(total / pageUnit + (total % pageUnit ? 1 : 0));
@@ -136,9 +143,17 @@ export const load = async ({ params, depends }) => {
       fromCache: false // 항상 DB에서 조회
     });
 
-    const lottoHistory = params.boardId === 'free' ? await fetchLottoHistory() : [];
+    let lottoHistory = [];
+    let lottoWeekMatch = null;
 
-    return { pageNo, maxPage, startNo, endNo, articles: jsonArticles, lottoHistory };
+    if (params.boardId === 'free') {
+      [lottoHistory, lottoWeekMatch] = await Promise.all([
+        fetchLottoHistory(),
+        computeLottoWeekMatchSummary()
+      ]);
+    }
+
+    return { pageNo, maxPage, startNo, endNo, articles: jsonArticles, lottoHistory, lottoWeekMatch };
   } catch (err) {
     const endTime = Date.now();
     const executionTime = endTime - startTime;
