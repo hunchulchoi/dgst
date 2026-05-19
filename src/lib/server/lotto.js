@@ -1,5 +1,6 @@
 import { GameLog } from '$lib/models/gameLog.js';
 import { User } from '$lib/models/user.js';
+import { currentSeoulWeekSunSatRangeUtc } from '$lib/server/lottoOfficial.js';
 
 export const LOTTO_HISTORY_MS = 24 * 60 * 60 * 1000;
 export const LOTTO_HISTORY_LIMIT = 300;
@@ -38,15 +39,78 @@ export function generateLottoNumbers() {
 }
 
 /**
- * 마지막 24시간 로또 기록 목록 (최신순)
+ * @param {{ _id: unknown, email?: unknown, createdAt: unknown, meta?: { nickname?: unknown, numbers?: unknown } }} log
+ * @param {string} viewerNorm
+ */
+function draftFromLottoLog(log, viewerNorm) {
+  const nickname =
+    typeof log.meta?.nickname === 'string' && log.meta.nickname.trim()
+      ? log.meta.nickname.trim()
+      : null;
+  const raw = log.meta?.numbers;
+  if (!nickname || !isValidLottoNumbers(raw)) return null;
+
+  const pickEmailNorm = normalizeLottoEmail(typeof log.email === 'string' ? log.email : '');
+  const mine = viewerNorm !== '' && pickEmailNorm !== '' && pickEmailNorm === viewerNorm;
+
+  return {
+    id: String(log._id),
+    nickname,
+    numbers: [...raw].sort((a, b) => a - b),
+    createdAt: new Date(log.createdAt).toISOString(),
+    mine,
+    pickEmailNorm
+  };
+}
+
+/**
+ * 로그인 사용자 본인 뽑기 — 서울 기준 이번 주(일~토), 24시간 초과분 포함
+ *
+ * @param {string} viewerNorm
+ */
+async function fetchMyLottoPicksCurrentWeek(viewerNorm) {
+  const { weekStartUtc, weekEndUtc } = currentSeoulWeekSunSatRangeUtc();
+  const since24h = new Date(Date.now() - LOTTO_HISTORY_MS);
+
+  try {
+    const logs = await GameLog.find({
+      game: 'lotto',
+      action: 'pick',
+      createdAt: {
+        $gte: new Date(weekStartUtc),
+        $lte: new Date(weekEndUtc),
+        $lt: since24h
+      }
+    })
+      .sort({ createdAt: -1 })
+      .limit(LOTTO_HISTORY_LIMIT)
+      .lean();
+
+    /** @type {Array<NonNullable<ReturnType<typeof draftFromLottoLog>>>} */
+    const out = [];
+    for (const log of logs) {
+      const d = draftFromLottoLog(log, viewerNorm);
+      if (d?.mine) out.push(d);
+    }
+    return out;
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * 마지막 24시간 로또 기록 목록 (최신순).
+ * 로그인 사용자 본인 뽑기는 24시간이 지나도 서울 기준 이번 주(일~토) 말까지 목록에 유지.
  *
  * @param {string | null | undefined} viewerEmail 현재 사용자 이메일(있으면 `mine` 플래그 및 본인 식별)
  * @returns {Promise<Array<{ id: string, nickname: string, numbers: number[], createdAt: string, mine: boolean, photo?: string }>>}
  */
 export async function fetchLottoHistory(viewerEmail) {
   const since = new Date(Date.now() - LOTTO_HISTORY_MS);
+  const viewerNorm = normalizeLottoEmail(viewerEmail);
+
   try {
-    const logs = await GameLog.find({
+    const logs24hPromise = GameLog.find({
       game: 'lotto',
       action: 'pick',
       createdAt: { $gte: since }
@@ -55,32 +119,23 @@ export async function fetchLottoHistory(viewerEmail) {
       .limit(LOTTO_HISTORY_LIMIT)
       .lean();
 
-    /** @type {Array<{ id: string, nickname: string, numbers: number[], createdAt: string, mine: boolean, pickEmailNorm: string }>} */
-    const drafts = [];
+    const weekMinePromise =
+      viewerNorm !== '' ? fetchMyLottoPicksCurrentWeek(viewerNorm) : Promise.resolve([]);
 
-    const viewerNorm = normalizeLottoEmail(viewerEmail);
-    const self = viewerNorm !== '';
+    const [logs24h, weekMineDrafts] = await Promise.all([logs24hPromise, weekMinePromise]);
 
-    for (const log of logs) {
-      const nickname =
-        typeof log.meta?.nickname === 'string' && log.meta.nickname.trim()
-          ? log.meta.nickname.trim()
-          : null;
-      const raw = log.meta?.numbers;
-      if (!nickname || !isValidLottoNumbers(raw)) continue;
+    /** @type {Map<string, NonNullable<ReturnType<typeof draftFromLottoLog>>>} */
+    const byId = new Map();
 
-      const pickEmailNorm = normalizeLottoEmail(typeof log.email === 'string' ? log.email : '');
-      const mine = self && pickEmailNorm !== '' && pickEmailNorm === viewerNorm;
-
-      drafts.push({
-        id: String(log._id),
-        nickname,
-        numbers: [...raw].sort((a, b) => a - b),
-        createdAt: new Date(log.createdAt).toISOString(),
-        mine,
-        pickEmailNorm
-      });
+    for (const log of logs24h) {
+      const d = draftFromLottoLog(log, viewerNorm);
+      if (d) byId.set(d.id, d);
     }
+    for (const d of weekMineDrafts) {
+      if (!byId.has(d.id)) byId.set(d.id, d);
+    }
+
+    const drafts = [...byId.values()].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
     /** @type {Map<string, string>} */
     const photoByNorm = new Map();

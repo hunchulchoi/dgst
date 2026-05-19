@@ -87,6 +87,29 @@ function weekdayIndexSeoul(ms) {
 }
 
 /**
+ * Anchor 시각 기준 "이번 주"(일요일 00:00 ~ 토요일 23:59:59.999, Asia/Seoul)
+ *
+ * @param {number} [anchorMs]
+ */
+export function currentSeoulWeekSunSatRangeUtc(anchorMs = Date.now()) {
+  const ymd = formatYmdSeoul(anchorMs);
+  const dow = weekdayIndexSeoul(anchorMs);
+  const midday = Date.parse(`${ymd}T12:00:00+09:00`);
+  const thisSundayMidday = midday - dow * 86400000;
+  const satMidday = thisSundayMidday + 6 * 86400000;
+  const sunYmd = formatYmdSeoul(thisSundayMidday);
+  const satYmd = formatYmdSeoul(satMidday);
+  const weekStartUtc = Date.parse(`${sunYmd}T00:00:00+09:00`);
+  const weekEndUtc = Date.parse(`${satYmd}T23:59:59.999+09:00`);
+  return {
+    weekStartUtc,
+    weekEndUtc,
+    labelStartYmd: sunYmd,
+    labelEndYmd: satYmd
+  };
+}
+
+/**
  * Anchor 시각 기준 "직전 한 주"(월요일 00:00 ~ 일요일 23:59:59.999, Asia/Seoul)
  *
  * @param {number} [anchorMs]

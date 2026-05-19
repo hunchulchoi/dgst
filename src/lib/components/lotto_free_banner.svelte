@@ -82,10 +82,27 @@
     return 'success';
   }
 
+  const LOTTO_HISTORY_MS = 24 * 60 * 60 * 1000;
+
   let expanded = $state(false);
   let loading = $state(false);
   let refreshing = $state(false);
   let lastPick = $state<number[] | null>(null);
+
+  /** 방금 뽑은 번호 우선, 없으면 이번 주(일~토) 내 최신 뽑기 */
+  let myDisplayNumbers = $derived.by(() => {
+    if (lastPick?.length === 6) return lastPick;
+    const mine = lottoHistory.find((r) => r.mine === true);
+    return mine?.numbers?.length === 6 ? mine.numbers : null;
+  });
+
+  function formatHistoryTime(iso: string): string {
+    const at = parseISO(iso);
+    if (Date.now() - at.getTime() > LOTTO_HISTORY_MS) {
+      return format(at, 'M/d HH:mm');
+    }
+    return format(at, 'HH:mm');
+  }
 
   async function refreshBanner() {
     refreshing = true;
@@ -309,10 +326,10 @@
         {/if}
       {/if}
 
-      {#if lastPick?.length === 6}
-        <h3 class="h5 mb-2">내번호 {lastPick.join(',')}</h3>
-        <div class="d-flex flex-wrap gap-1 mb-3" aria-label="방금 뽑은 번호">
-          {#each lastPick as n (n)}
+      {#if myDisplayNumbers?.length === 6}
+        <h3 class="h5 mb-2">내번호 {myDisplayNumbers.join(',')}</h3>
+        <div class="d-flex flex-wrap gap-1 mb-3" aria-label="내 로또 번호">
+          {#each myDisplayNumbers as n (n)}
             <span
               class="d-inline-flex align-items-center justify-content-center rounded-circle text-white fw-bold"
               style={ballStyle(n)}
@@ -350,7 +367,7 @@
                 <span class={`fw-medium align-middle ${row.mine === true ? 'text-dark' : ''}`}
                   >{row.nickname}</span
                 ><span class="text-muted align-middle"
-                  >[{format(parseISO(row.createdAt), 'HH:mm')}]</span
+                  >[{formatHistoryTime(row.createdAt)}]</span
                 >
                 <span class="text-muted align-middle"> - </span>
                 <span class="d-inline-flex flex-wrap gap-1 align-middle">
