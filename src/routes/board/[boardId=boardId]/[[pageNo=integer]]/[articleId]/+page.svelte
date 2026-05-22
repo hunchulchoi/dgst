@@ -1682,6 +1682,43 @@
     .comment-actions {
       gap: 0.45rem;
     }
+
+    /* 제목 — 목록과 동일 1.2rem */
+    :global(.article-title) {
+      font-size: 1.2rem !important;
+      line-height: 1.45;
+    }
+
+    /* 본문·리플 — 1.1rem (Quill 인라인 font-size 덮어씀) */
+    .article-content {
+      font-size: 1.1rem !important;
+      line-height: 1.55;
+    }
+
+    .article-content :global(p),
+    .article-content :global(li),
+    .article-content :global(blockquote),
+    .article-content :global(span),
+    .article-content :global(div),
+    .article-content :global(.markdown-body) {
+      font-size: 1.1rem !important;
+      line-height: 1.55;
+    }
+
+    .comment-content-wrap,
+    .comment-body-line,
+    .comment-text,
+    .comment-text :global(p),
+    .comment-text :global(span),
+    .comment-text :global(div),
+    .comment-text :global(.markdown-body) {
+      font-size: 1.1rem !important;
+      line-height: 1.55;
+    }
+
+    .comment-body-line :global(.display-1) {
+      font-size: 1.1rem !important;
+    }
   }
 
   /* 댓글 좋아요 애니메이션 */

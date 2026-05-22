@@ -64,9 +64,9 @@
         <a
           data-sveltekit-preload-data="hover"
           href={`/board/${boardId}/${currentPageNo}/${article._id}`}
-          class="board-list-title link-underline link-underline-opacity-0 link-offset-2 link-underline-opacity-50-hover stretched-link"
+          class="board-list-link link-underline link-underline-opacity-0 link-offset-2 link-underline-opacity-50-hover stretched-link"
         >
-          {article.title}
+          <span class="board-list-title">{article.title}</span>
           {@html article.content}
           {#if article.comment}
             {#if article.isNewComment}
@@ -155,15 +155,23 @@
 {/if}
 
 <style>
-  .board-list-title {
+  .board-list-link {
     cursor: pointer;
-    font-size: 1.05rem;
-    line-height: 1.4;
     color: var(--bs-body-color) !important;
   }
 
-  .board-list-title:hover {
+  .board-list-link:hover {
     color: var(--bs-link-hover-color) !important;
+  }
+
+  .board-list-link:visited {
+    color: var(--bs-secondary-color) !important;
+  }
+
+  .board-list-title {
+    font-size: 1.05rem;
+    line-height: 1.4;
+    font-weight: 400;
   }
 
   .board-list-meta {
@@ -177,10 +185,6 @@
     border-radius: var(--dgst-radius) !important;
   }
 
-  .board-list-title:visited {
-    color: var(--bs-secondary-color) !important;
-  }
-
   /* 모바일(md 미만): 제목·메타 가독성 */
   @media (max-width: 767.98px) {
     .board-list-row {
@@ -188,8 +192,9 @@
     }
 
     .board-list-title {
-      font-size: 1.4rem;
-      line-height: 1.5;
+      font-size: 1.2rem !important;
+      line-height: 1.45;
+      font-weight: 500;
     }
 
     .board-list-meta {
