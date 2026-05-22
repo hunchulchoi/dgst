@@ -34,7 +34,7 @@ const koreaTimeFormat = winston.format.printf(({ level, message, timestamp, ...m
   const koreaTime = getKoreaTime();
   const levelUpper = level.toUpperCase();
 
-  const { clientIp, pathname, path, status, ...rest } = metadata;
+  const { clientIp, pathname, path, status, trace, ...rest } = metadata;
 
   let prefix = `[${koreaTime}] [${levelUpper}]`;
   const reqPath = pathname || path;
@@ -42,8 +42,10 @@ const koreaTimeFormat = winston.format.printf(({ level, message, timestamp, ...m
   if (status) prefix += ` [${status}]`;
 
   const metaString = Object.keys(rest).length > 0 ? ' ' + JSON.stringify(rest) : '';
+  const traceBlock =
+    typeof trace === 'string' && trace.trim() ? `\n[trace]\n${trace.trimEnd()}` : '';
 
-  return `${prefix} ${message}${metaString}`;
+  return `${prefix} ${message}${metaString}${traceBlock}`;
 });
 
 // 개발 환경 포맷터 (컬러 + 한국시간)
@@ -51,7 +53,7 @@ const devFormat = winston.format.combine(
   winston.format.colorize(),
   winston.format.printf(({ level, message, ...metadata }) => {
     const koreaTime = getKoreaTime();
-    const { clientIp, pathname, path, status, ...rest } = metadata;
+    const { clientIp, pathname, path, status, trace, ...rest } = metadata;
 
     let prefix = `[${koreaTime}] ${level}`;
     const reqPath = pathname || path;
@@ -59,7 +61,9 @@ const devFormat = winston.format.combine(
     if (status) prefix += ` [${status}]`;
 
     const metaString = Object.keys(rest).length > 0 ? ' ' + JSON.stringify(rest) : '';
-    return `${prefix} ${message}${metaString}`;
+    const traceBlock =
+      typeof trace === 'string' && trace.trim() ? `\n[trace]\n${trace.trimEnd()}` : '';
+    return `${prefix} ${message}${metaString}${traceBlock}`;
   })
 );
 
@@ -67,7 +71,7 @@ const devFormat = winston.format.combine(
 const prodFormat = winston.format.combine(
   winston.format.timestamp({ format: () => getKoreaTime() }),
   winston.format.printf(({ timestamp, level, message, ...metadata }) => {
-    const { clientIp, pathname, path, status, ...rest } = metadata;
+    const { clientIp, pathname, path, status, trace, ...rest } = metadata;
     /** @type {Record<string, any>} */
     const output = {
       level: level.toUpperCase(),
@@ -79,6 +83,7 @@ const prodFormat = winston.format.combine(
     if (status !== undefined) output.status = status;
 
     output.message = message;
+    if (typeof trace === 'string' && trace.trim()) output.trace = trace;
 
     return JSON.stringify({
       ...output,
@@ -91,7 +96,7 @@ const prodFormat = winston.format.combine(
 const fileFormat = winston.format.combine(
   winston.format.timestamp({ format: () => getKoreaTime() }),
   winston.format.printf(({ timestamp, level, message, ...metadata }) => {
-    const { clientIp, pathname, path, status, ...rest } = metadata;
+    const { clientIp, pathname, path, status, trace, ...rest } = metadata;
     /** @type {Record<string, any>} */
     const output = {
       level: level.toUpperCase(),
@@ -103,6 +108,7 @@ const fileFormat = winston.format.combine(
     if (status !== undefined) output.status = status;
 
     output.message = message;
+    if (typeof trace === 'string' && trace.trim()) output.trace = trace;
 
     return JSON.stringify({
       ...output,

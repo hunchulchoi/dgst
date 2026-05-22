@@ -14,7 +14,14 @@
       reportClientPageError({
         status: $page.status,
         pathname: $page.url.pathname,
-        message: $page.error?.message
+        search: $page.url.search,
+        href: $page.url.href,
+        routeId: $page.route?.id,
+        referer: document.referrer,
+        message: $page.error?.message,
+        stack: $page.error?.stack,
+        name: $page.error?.name,
+        cause: $page.error?.cause
       });
     }
 

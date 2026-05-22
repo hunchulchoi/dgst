@@ -19,6 +19,7 @@ import * as redis from '$lib/server/redis/client.js';
 import crypto from 'crypto';
 import { error, redirect, json } from '@sveltejs/kit';
 import logger from '$lib/util/logger';
+import { serializeError, traceFromUnknown } from '$lib/util/formatErrorTrace.js';
 
 const cache = new Map();
 
@@ -225,30 +226,6 @@ const getRequestMeta = (event) => {
     referer: event.request?.headers?.get?.('referer') ?? '',
     requestUrl: event.url?.toString?.(),
     search: event.url?.search ?? ''
-  };
-};
-
-/** @param {unknown} err */
-const serializeError = (err) => {
-  if (!err) return undefined;
-  const parsed =
-    typeof err === 'object' && err !== null
-      ? /** @type {{ name?: string; message?: string; stack?: string; cause?: unknown }} */ (err)
-      : { message: String(err) };
-  const cause =
-    parsed.cause instanceof Error
-      ? {
-        name: parsed.cause.name,
-        message: parsed.cause.message,
-        stack: parsed.cause.stack
-      }
-      : parsed.cause;
-
-  return {
-    name: parsed.name,
-    message: parsed.message ?? String(err),
-    stack: parsed.stack,
-    cause
   };
 };
 
@@ -488,16 +465,21 @@ export function handleError({ event, error }) {
           ? String(error.cause)
           : undefined;
     const message = causeMessage ?? error?.message ?? 'Unhandled server error';
+    const referer = event.request?.headers?.get?.('referer') ?? '';
+    const search = event.url?.search ?? '';
+    const trace = traceFromUnknown(error);
 
     logger.error({
       loggedAt,
-      message,
+      message: `[server-page-error] ${status} ${pathname}${search} | msg=${message}`,
       pathname,
+      search: search || undefined,
+      referer: referer || undefined,
       method: event.request?.method,
       status,
       name: error?.name,
-      ...(status !== 404 && { stack: error?.stack }),
-      error,
+      trace: trace || undefined,
+      error: serializeError(error),
       clientIp,
       userAgent
     });
