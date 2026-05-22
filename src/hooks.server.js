@@ -429,7 +429,15 @@ export async function handle({ event, resolve }) {
   const executionTime = endTime - startTime;
   const status = authResponse?.status || 200;
 
-  if (executionTime > 100 && !pathname.startsWith('/api/og') && !pathname.startsWith('/auth/signin') && !pathname.startsWith('/auth/callback')) {
+  if (executionTime >= 2000 && !pathname.startsWith('/api/og') && !pathname.startsWith('/auth/signin') && !pathname.startsWith('/auth/callback')) {
+    logger.warn({
+      message: `🐢 매우 느린 응답: ${pathname} - Status: ${status}, Time: ${executionTime}ms`,
+      pathname,
+      executionTime,
+      status,
+      slowResponse: true
+    });
+  } else if (executionTime > 100 && !pathname.startsWith('/api/og') && !pathname.startsWith('/auth/signin') && !pathname.startsWith('/auth/callback')) {
     logger.warn({
       message: `🐌 지연 응답: ${pathname} - Status: ${status}, Time: ${executionTime}ms`,
       pathname,

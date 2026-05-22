@@ -6,9 +6,21 @@
   import { blur } from 'svelte/transition';
   import { page } from '$app/stores';
   import { afterNavigate, beforeNavigate } from '$app/navigation';
+  import { browser } from '$app/environment';
+  import { onMount } from 'svelte';
+  import { reportSlowInitialLoad, reportSlowLoad } from '$lib/util/logSlowLoad.js';
   import '../app.css';
 
   let { data, children } = $props();
+
+  /** @type {number} */
+  let navigationStartedAt = 0;
+
+  /** @type {string | undefined} */
+  let navigationFromPath;
+
+  /** @type {string | undefined} */
+  let navigationToPath;
 
   /** 게시판 목록 → 글 상세 이동 시 blur (beforeNavigate에서 미리 켬 — 첫 클릭부터 적용) */
   let boardListToDetailBlur = $state(false);
@@ -26,13 +38,28 @@
   const blurTransition = { amount: 40, duration: 400 };
 
   beforeNavigate(({ from, to }) => {
+    navigationStartedAt = performance.now();
+    navigationFromPath = from?.url?.pathname;
+    navigationToPath = to?.url?.pathname;
+
     if (from && to) {
       boardListToDetailBlur =
         isBoardListPath(from.url.pathname) && isBoardDetailPath(to.url.pathname);
     }
   });
 
-  afterNavigate(() => {
+  afterNavigate(({ to }) => {
+    if (navigationStartedAt > 0) {
+      reportSlowLoad({
+        type: 'navigation',
+        durationMs: performance.now() - navigationStartedAt,
+        pathname: to?.url?.pathname,
+        from: navigationFromPath,
+        to: navigationToPath ?? to?.url?.pathname
+      });
+      navigationStartedAt = 0;
+    }
+
     boardListToDetailBlur = false;
 
     const viewportMeta = document.querySelector('meta[name="viewport"]');
@@ -42,6 +69,20 @@
       setTimeout(() => {
         viewportMeta.content = 'width=device-width, initial-scale=1.0';
       }, 50);
+    }
+  });
+
+  onMount(() => {
+    if (!browser) return;
+
+    const measureInitialLoad = () => {
+      reportSlowInitialLoad(window.location.pathname);
+    };
+
+    if (document.readyState === 'complete') {
+      measureInitialLoad();
+    } else {
+      window.addEventListener('load', measureInitialLoad, { once: true });
     }
   });
 </script>

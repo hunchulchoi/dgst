@@ -30,7 +30,13 @@ export async function POST(event) {
       level: logLevel,
       client: true,
       userAgent: request.headers.get('user-agent'),
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      ...(typeof logData.type === 'string' && { type: logData.type.slice(0, 32) }),
+      ...(typeof logData.pathname === 'string' && { pathname: logData.pathname.slice(0, 256) }),
+      ...(typeof logData.from === 'string' && { from: logData.from.slice(0, 256) }),
+      ...(typeof logData.to === 'string' && { to: logData.to.slice(0, 256) }),
+      ...(Number.isFinite(logData.durationMs) && { durationMs: logData.durationMs }),
+      ...(logData.slowLoad === true && { slowLoad: true })
     };
 
     // 로그 레벨에 따라 다른 logger 메서드 호출
