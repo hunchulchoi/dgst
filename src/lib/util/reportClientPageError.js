@@ -84,7 +84,9 @@ export function reportClientPageError(payload) {
     `clientAt=${clientAt}`
   ].filter(Boolean);
 
-  const summary = `[client-page-error] ${status} ${pathname}`;
+  const summary = errorId
+    ? `[client-page-error] errorId=${errorId} ${status} ${pathname}`
+    : `[client-page-error] ${status} ${pathname}`;
   const logLine = `${summary} | ${detailParts.join(' | ')}`;
 
   console.error(logLine);

@@ -414,6 +414,13 @@ export async function handle({ event, resolve }) {
       status,
       slowResponse: true
     });
+  } else if (status >= 500 && !pathname.startsWith('/api/log')) {
+    logger.error({
+      message: `[http-500-response] ${status} ${pathname} - Time: ${executionTime}ms`,
+      pathname,
+      executionTime,
+      status
+    });
   } else if (executionTime > 100 && !pathname.startsWith('/api/og') && !pathname.startsWith('/auth/signin') && !pathname.startsWith('/auth/callback')) {
     logger.warn({
       message: `🐌 지연 응답: ${pathname} - Status: ${status}, Time: ${executionTime}ms`,
@@ -442,6 +449,7 @@ export function handleError({ event, error }) {
   const errorId = body?.errorId ?? crypto.randomUUID();
   const status = error?.status ?? 500;
   const message =
+    body?.message ??
     (error?.cause instanceof Error
       ? error.cause.message
       : error?.cause != null

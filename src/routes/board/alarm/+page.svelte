@@ -34,7 +34,7 @@
     {:else}
       {#each data.alarms as alarm, index}
         <Row
-          class="py-2 border-bottom border-secondary-subtle m-0 {index % 2 === 1
+          class="py-2 max-md:!py-3 border-bottom border-secondary-subtle m-0 {index % 2 === 1
             ? 'bg-secondary bg-opacity-25'
             : ''}"
         >
@@ -58,8 +58,7 @@
                     ? `/games/slot?cmt=${commentId}`
                     : `/games/slot`
                   : `/board/${alarm.boardId}/${alarm.articleId}?a=cmt${alarm.comment}`}
-                style="cursor: pointer; font-size: 1.1em"
-                class="link-underline link-underline-opacity-0 link-offset-2 link-underline-opacity-50-hover stretched-link"
+                class="alarm-list-link !text-[1.5rem] !leading-[1.45] font-medium link-underline link-underline-opacity-0 link-offset-2 link-underline-opacity-50-hover stretched-link"
               >
                 {#if alarm.readAt}
                   <span class="text-muted">
@@ -74,7 +73,7 @@
                 {/if}
               </a>
             </Col>
-            <Col lg="1" md="2" xs="3" class="text-muted text-end px-0" style="font-size: small"
+            <Col lg="1" md="2" xs="3" class="!text-[1.05rem] !leading-[1.35] max-md:pt-1 text-muted text-end px-0"
               >{formatDistanceToNowStrict(parseISO(alarm.updatedAt), {
                 locale: ko,
                 addSuffix: true
@@ -99,8 +98,7 @@
                     ? `/games/slot?cmt=${commentIdForGeneral}`
                     : `/games/slot`
                   : `/board/${alarm.boardId}/${alarm.articleId}`}
-                style="cursor: pointer; font-size: 1.1em"
-                class="link-underline link-underline-opacity-0 link-offset-2 link-underline-opacity-50-hover stretched-link"
+                class="alarm-list-link !text-[1.5rem] !leading-[1.45] font-medium link-underline link-underline-opacity-0 link-offset-2 link-underline-opacity-50-hover stretched-link"
               >
                 {#if alarm.readAt}
                   <span class="text-muted d-inline-block"
@@ -115,7 +113,7 @@
                 {/if}
               </a>
             </Col>
-            <Col lg="1" md="2" xs="4" class="text-muted text-end" style="font-size: small"
+            <Col lg="1" md="2" xs="4" class="!text-[1.05rem] !leading-[1.35] max-md:pt-1 text-muted text-end"
               >{formatDistanceToNowStrict(parseISO(alarm.updatedAt), {
                 locale: ko,
                 addSuffix: true
@@ -127,3 +125,18 @@
     {/if}
   </Row>
 </main>
+
+<style>
+  .alarm-list-link {
+    cursor: pointer;
+    color: var(--bs-body-color) !important;
+  }
+
+  .alarm-list-link:hover {
+    color: var(--bs-link-hover-color) !important;
+  }
+
+  .alarm-list-link:visited {
+    color: var(--bs-secondary-color) !important;
+  }
+</style>
