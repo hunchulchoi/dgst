@@ -5,7 +5,7 @@
    */
   import { onMount, onDestroy } from 'svelte';
   import Loader from 'svelte-loading-overlay/Loader.svelte';
-  import Swal from 'sweetalert2';
+  import { swalFire } from '$lib/util/swal.js';
   import imageCompression from 'browser-image-compression';
   import { marked } from 'marked';
 
@@ -420,7 +420,7 @@
               // 보상 호출: 이미 uploadPlus 한 경우 감소
               if (uploadMinus) uploadMinus();
               uploadPlusCount = Math.max(0, uploadPlusCount - 1);
-              await Swal.fire({
+              await swalFire({
                 icon: 'warning',
                 title: 'HEIC 변환 실패',
                 html: 'iPhone 사진(HEIC)을 변환하지 못했습니다. JPG/PNG로 저장 후 업로드해 주세요.',
@@ -557,7 +557,7 @@
       console.log(`모든 파일 업로드 완료: ${totalFiles}개`);
     } catch (error) {
       console.error('Image upload failed:', error);
-      Swal.fire({
+      await swalFire({
         icon: 'error',
         title: '업로드 실패',
         text: '이미지 업로드에 실패했습니다.',

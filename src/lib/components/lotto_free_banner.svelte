@@ -1,8 +1,8 @@
 <script lang="ts">
-  import { Badge, Button, Col, Icon, Row } from '@sveltestrap/sveltestrap';
-  import { invalidateAll } from '$app/navigation';
+  import { Badge, Button, Col, Icon, Row } from '$lib/components/ui/index.js';
   import { format, parseISO } from 'date-fns';
-  import Swal from 'sweetalert2';
+  import { onMount } from 'svelte';
+  import { swalFire } from '$lib/util/swal.js';
 
   interface LottoHistoryEntry {
     id: string;
@@ -38,23 +38,15 @@
   }
 
   interface Props {
-    /** 최근 24시간 로또 기록, 최신순 */
-    lottoHistory: LottoHistoryEntry[];
     session?: { user?: { nickname?: string | null; email?: string | null } } | null;
-    /** 직전 주 뽑기 vs 저장된 최신 동행복권 회차 매칭 */
-    lottoWeekMatch?: LottoWeekMatchSummary | null;
-    /** 최근 24시간 동안 저장된 인생역전 전체 뽑기 건수(뱃지) */
-    lottoTotalPicks24h?: number;
   }
 
-  let {
-    lottoHistory,
-    session = null,
-    lottoWeekMatch = null,
-    lottoTotalPicks24h = 0
-  }: Props = $props();
+  let { session = null }: Props = $props();
 
-  /** 1..45 에 따른 번호별 색(그라데이션 볼) */
+  let lottoHistory = $state<LottoHistoryEntry[]>([]);
+  let lottoWeekMatch = $state<LottoWeekMatchSummary | null>(null);
+  let lottoTotalPicks24h = $state(0);
+
   function ballStyle(n: number): string {
     const t = (n - 1) / 44;
     const h1 = Math.round(10 + t * 300);
@@ -87,9 +79,9 @@
   let expanded = $state(false);
   let loading = $state(false);
   let refreshing = $state(false);
+  let summaryLoading = $state(true);
   let lastPick = $state<number[] | null>(null);
 
-  /** 방금 뽑은 번호 우선, 없으면 이번 주(일~토) 내 최신 뽑기 */
   let myDisplayNumbers = $derived.by(() => {
     if (lastPick?.length === 6) return lastPick;
     const mine = lottoHistory.find((r) => r.mine === true);
@@ -104,18 +96,30 @@
     return format(at, 'HH:mm');
   }
 
+  async function loadLottoSummary() {
+    try {
+      const res = await fetch('/api/board/lotto-summary');
+      if (!res.ok) return;
+      const body = await res.json();
+      lottoHistory = body.lottoHistory ?? [];
+      lottoWeekMatch = body.lottoWeekMatch ?? null;
+      lottoTotalPicks24h = body.lottoTotalPicks24h ?? 0;
+    } catch (err) {
+      console.error('lotto summary load failed', err);
+    } finally {
+      summaryLoading = false;
+    }
+  }
+
   async function refreshBanner() {
     refreshing = true;
     try {
-      await invalidateAll();
-    } catch (err) {
-      console.error('lotto banner refresh failed', err);
+      await loadLottoSummary();
     } finally {
       refreshing = false;
     }
   }
 
-  /** 로또 6개 발급 저장(API 호출). 로그인 여부는 호출 전에 검사할 것. */
   async function handlePick() {
     loading = true;
     try {
@@ -140,7 +144,7 @@
           typeof (json as { message: unknown }).message === 'string'
             ? (json as { message: string }).message
             : `요청 실패 (${res.status})`;
-        await Swal.fire({
+        await swalFire({
           icon: 'error',
           title: '앗!',
           text: msg,
@@ -163,10 +167,10 @@
         lastPick = [...numbers].sort((a, b) => a - b);
       }
 
-      await invalidateAll();
+      await loadLottoSummary();
     } catch (err) {
       console.error('lotto pick failed', err);
-      await Swal.fire({
+      await swalFire({
         icon: 'error',
         title: '오류',
         text: '네트워크 오류로 번호를 받지 못했습니다.',
@@ -177,10 +181,9 @@
     }
   }
 
-  /** 메인 버튼: 접힌 상태에서는 생성 여부 확인 후 분기 */
   async function onLottoMainClick() {
     if (!session?.user?.email) {
-      await Swal.fire({
+      await swalFire({
         icon: 'info',
         title: '로그인이 필요합니다',
         text: '로그인 후 번호를 뽑을 수 있어요.',
@@ -190,7 +193,7 @@
     }
 
     if (!expanded) {
-      const result = await Swal.fire({
+      const result = await swalFire({
         icon: 'question',
         title: '인생을 역전할 로또번호를 생성하시겠습니까?',
         showCancelButton: true,
@@ -203,7 +206,7 @@
         await handlePick();
         return;
       }
-      if (result.dismiss === Swal.DismissReason.cancel) {
+      if (result.dismiss === 'cancel') {
         expanded = true;
       }
       return;
@@ -211,13 +214,17 @@
 
     await handlePick();
   }
+
+  onMount(() => {
+    loadLottoSummary();
+  });
 </script>
 
 <Row class="px-3 py-3 mx-0 border-bottom border-secondary-subtle bg-body-secondary bg-opacity-25 rounded-top-4">
   <Col xs="12" class="d-flex flex-wrap align-items-center gap-2">
     <Button
       color="warning"
-      class="fw-semibold d-inline-flex align-items-center gap-1"
+      class="lotto-main-btn fw-semibold d-inline-flex align-items-center gap-2"
       disabled={loading}
       onclick={onLottoMainClick}
       type="button"
@@ -227,15 +234,19 @@
       {/if}
       <span>💵인생역전❤️</span>
       {#if lottoTotalPicks24h > 0}
-        <span class="badge rounded-pill badge-success align-middle">{lottoTotalPicks24h}</span>
+        <Badge color="success" class="align-middle">{lottoTotalPicks24h}</Badge>
       {/if}
     </Button>
-    <Button color="outline-secondary" size="sm" onclick={() => (expanded = !expanded)} type="button">
+    <Button
+      color="outline-secondary"
+      onclick={() => (expanded = !expanded)}
+      type="button"
+    >
       {expanded ? '접기' : '펼치기'}
     </Button>
     <Button
       color="outline-secondary"
-      size="sm"
+      class="d-inline-flex align-items-center gap-1"
       onclick={refreshBanner}
       disabled={refreshing || loading}
       type="button"
@@ -253,7 +264,9 @@
 
   {#if expanded}
     <Col xs="12" class="mt-3">
-      {#if lottoWeekMatch?.hasOfficial && lottoWeekMatch.official}
+      {#if summaryLoading}
+        <p class="text-muted small mb-0">로또 기록 불러오는 중…</p>
+      {:else if lottoWeekMatch?.hasOfficial && lottoWeekMatch.official}
         {@const dr = lottoWeekMatch.official}
         <h4 class="h6 text-secondary mb-2">직전 주 &amp; 공식 당첨 비교</h4>
         <div class="small text-muted mb-1">
@@ -338,7 +351,7 @@
             </span>
           {/each}
         </div>
-      {:else}
+      {:else if !summaryLoading}
         <p class="text-muted small mb-2">버튼을 누르면 여기에 방금 뽑은 번호가 표시돼요.</p>
       {/if}
 
@@ -390,3 +403,11 @@
     </Col>
   {/if}
 </Row>
+
+<style>
+  :global(.lotto-main-btn) {
+    min-height: 2.5rem;
+    gap: 0.5rem;
+  }
+
+</style>

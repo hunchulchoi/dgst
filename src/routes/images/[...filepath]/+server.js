@@ -1,6 +1,7 @@
 import { error } from '@sveltejs/kit';
 import * as fs from 'fs';
 import { UPLOAD_PATH } from '$env/static/private';
+import { isPathUnderRoot } from '$lib/server/pathSafety.js';
 import path from 'path';
 
 /**
@@ -11,25 +12,21 @@ import path from 'path';
 export async function GET({ params }) {
   try {
     const { filepath } = params;
-    const filePath = path.join(UPLOAD_PATH, filepath);
+    const candidatePath = path.join(UPLOAD_PATH, filepath);
 
-    console.log('Serving file:', filePath);
-
-    // 경로 안전성 체크
-    const normalizedPath = path.normalize(filePath);
-    if (!normalizedPath.startsWith(UPLOAD_PATH)) {
-      console.error('Path traversal attempt:', filePath);
+    if (!isPathUnderRoot(candidatePath, UPLOAD_PATH)) {
+      console.error('Path traversal attempt:', candidatePath);
       throw error(403, '접근이 거부되었습니다.');
     }
 
-    // 파일 존재 확인
-    if (!fs.existsSync(filePath)) {
-      console.error('File not found:', filePath);
+    const resolvedPath = path.resolve(candidatePath);
+
+    if (!fs.existsSync(resolvedPath)) {
+      console.error('File not found:', resolvedPath);
       throw error(404, '파일을 찾을 수 없습니다.');
     }
 
-    // 파일 읽기
-    const fileBuffer = fs.readFileSync(filePath);
+    const fileBuffer = fs.readFileSync(resolvedPath);
     const ext = path.extname(filepath).toLowerCase();
 
     // MIME 타입 결정

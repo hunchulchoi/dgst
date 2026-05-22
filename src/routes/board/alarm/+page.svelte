@@ -1,5 +1,5 @@
 <script>
-  import { Badge, Col, Icon, Row } from '@sveltestrap/sveltestrap';
+  import { Badge, Col, Icon, Row } from '$lib/components/ui/index.js';
   import { formatDistanceToNowStrict, parseISO } from 'date-fns';
   import { ko } from 'date-fns/locale';
   import { alarmCount } from '$lib/util/store.js';

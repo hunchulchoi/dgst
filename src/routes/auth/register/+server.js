@@ -1,5 +1,6 @@
 import { error, json } from '@sveltejs/kit';
 import connectDB from '$lib/database/mongoosePriomise.js';
+import { verifyRecaptchaToken } from '$lib/server/recaptcha.js';
 import { write } from '$lib/util/fileUpload.js';
 import { User } from '$lib/models/user.js';
 import { isNicknameAllowed } from '$lib/util/nickname.js';
@@ -14,6 +15,14 @@ export async function PATCH({ request, locals }) {
   }
 
   const formData = await request.formData();
+
+  const captcha = await verifyRecaptchaToken(
+    formData.get('recaptchaToken')?.toString(),
+    'register'
+  );
+  if (!captcha.ok) {
+    throw error(400, { message: captcha.message });
+  }
 
   console.debug('formData', formData, 'session', session);
 

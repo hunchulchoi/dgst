@@ -8,30 +8,30 @@
     PaginationItem,
     PaginationLink,
     Row
-  } from '@sveltestrap/sveltestrap';
+  } from '$lib/components/ui/index.js';
 
   import { formatDistanceToNowStrict, parseISO } from 'date-fns';
   import { ko } from 'date-fns/locale';
   import { goto } from '$app/navigation';
 
   // Svelte 5 Runes - Props
-  let { data, write, boardId, pageNo = 1, session } = $props();
+  let { data, write, boardId, session } = $props();
+
+  /** 서버 load의 pageNo — $page.params destructuring은 네비 후 갱신되지 않을 수 있음 */
+  const currentPageNo = $derived(Number(data.pageNo) || 1);
 
   // 페이지 네이션 클릭 핸들러 - 중복 클릭 방지
   function handlePageClick(targetPage, e) {
-    const currentPage = pageNo || 1;
+    const target = Number(targetPage);
 
-    // 같은 페이지 클릭 시 무시
-    if (targetPage === currentPage) {
+    if (target === currentPageNo) {
       e.preventDefault();
-      console.log('⚠️ 이미 현재 페이지입니다:', targetPage);
       return;
     }
 
-    // 다른 페이지로 이동 시 invalidateAll로 강제 새로고침
     e.preventDefault();
-    console.log('📄 페이지 이동:', currentPage, '->', targetPage);
-    goto(`/board/${boardId}/${targetPage}`, { invalidateAll: true });
+    const path = target === 1 ? `/board/${boardId}` : `/board/${boardId}/${target}`;
+    goto(path);
   }
 </script>
 
@@ -62,9 +62,8 @@
     >
       <Col lg="7" md="5" xs="12" class="text-break link-opacity-hover-50 pb-1 position-relative">
         <a
-          data-sveltekit-preload-data="tap"
-          data-sveltekit-invalidate="all"
-          href={`/board/${boardId}/${pageNo || 1}/${article._id}`}
+          data-sveltekit-preload-data="hover"
+          href={`/board/${boardId}/${currentPageNo}/${article._id}`}
           style="cursor: pointer; font-size: 1.1em"
           class="link-underline link-underline-opacity-0 link-offset-2 link-underline-opacity-50-hover stretched-link"
         >

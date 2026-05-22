@@ -1,21 +1,42 @@
 <script>
+  import { ThemeSync } from '$lib/components/ui/index.js';
   import Header from '$lib/components/header.svelte';
   import Footer from '$lib/components/footer.svelte';
-  import Banner from '$lib/components/banner.svelte';
   import Memo from '$lib/components/memo.svelte';
   import { blur } from 'svelte/transition';
   import { page } from '$app/stores';
-  import { afterNavigate } from '$app/navigation';
+  import { afterNavigate, beforeNavigate } from '$app/navigation';
   import '../app.css';
 
-  // Svelte 5 Runes
   let { data, children } = $props();
 
-  // 강제 확대 초기화 (모바일 환경에서 글을 읽다 이동/뒤로가기 시 100% 화면 배율로 원복)
+  /** 게시판 목록 → 글 상세 이동 시 blur (beforeNavigate에서 미리 켬 — 첫 클릭부터 적용) */
+  let boardListToDetailBlur = $state(false);
+
+  /** @param {string} pathname */
+  function isBoardListPath(pathname) {
+    return /^\/board\/[^/]+(\/\d+)?$/.test(pathname);
+  }
+
+  /** @param {string} pathname */
+  function isBoardDetailPath(pathname) {
+    return /^\/board\/[^/]+\/\d+\/[^/]+$/.test(pathname);
+  }
+
+  const blurTransition = { amount: 40, duration: 400 };
+
+  beforeNavigate(({ from, to }) => {
+    if (from && to) {
+      boardListToDetailBlur =
+        isBoardListPath(from.url.pathname) && isBoardDetailPath(to.url.pathname);
+    }
+  });
+
   afterNavigate(() => {
+    boardListToDetailBlur = false;
+
     const viewportMeta = document.querySelector('meta[name="viewport"]');
     if (viewportMeta) {
-      // user-scalable=0을 줘서 강제로 배율을 원복하고 잠시 후에 풀어줌 (접근성 유지 목적)
       viewportMeta.content =
         'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0';
       setTimeout(() => {
@@ -64,12 +85,16 @@
   />
 </svelte:head>
 
+<ThemeSync />
 <Header session={data.session} pathname={data.pathname} />
-<Banner />
 <Memo />
 
 {#key data.pathname}
-  <div transition:blur={{ amount: 40, duration: 400 }}>
+  <div
+    class="page-transition"
+    in:blur={boardListToDetailBlur ? blurTransition : undefined}
+    out:blur={boardListToDetailBlur ? blurTransition : undefined}
+  >
     {@render children()}
   </div>
 {/key}

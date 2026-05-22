@@ -1,5 +1,5 @@
 <script>
-  import { Offcanvas } from '@sveltestrap/sveltestrap';
+  import { Offcanvas } from '$lib/components/ui/index.js';
   import { Confetti } from 'svelte-confetti';
 
   import ccd from '$lib/shared/stores/ccd.js';
@@ -20,7 +20,7 @@
   style="background: linear-gradient(90deg, rgba(211,209,247,1) 0%, rgba(150,150,146,1) 70%,rgba(111,112,101,1) 100%);"
   placement="top"
 >
-  <div class="neon">{@html bannerContent}</div>
+  <div class="neon">{@html  bannerContent}</div>
   <div
     style="
  position: fixed;

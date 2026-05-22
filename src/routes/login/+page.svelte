@@ -1,12 +1,12 @@
 <script>
   import { signIn } from '@auth/sveltekit/client';
-  import Swal from 'sweetalert2';
+  import { swalFire } from '$lib/util/swal.js';
 
   let { data } = $props();
 
   const googleBtnSrc = '/oauth/btn_google_signin_light_normal_web.png';
 
-  function showErrorAlert(errorCode) {
+  async function showErrorAlert(errorCode) {
     let errorMessage = '로그인 중 오류가 발생했습니다.';
 
     switch (errorCode) {
@@ -33,7 +33,7 @@
         errorMessage = `로그인 실패: ${errorCode}`;
     }
 
-    Swal.fire({
+    await swalFire({
       icon: 'error',
       title: '로그인 실패',
       text: errorMessage,

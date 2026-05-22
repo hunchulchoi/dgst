@@ -1,5 +1,5 @@
 <script>
-  import { Button, Col, Icon, Row } from '@sveltestrap/sveltestrap';
+  import { Button, Col, Icon, Row } from '$lib/components/ui/index.js';
 
   // Svelte 5 Runes - Props
   let { dialog = $bindable(), children } = $props();

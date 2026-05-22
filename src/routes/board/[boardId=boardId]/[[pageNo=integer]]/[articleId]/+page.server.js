@@ -2,7 +2,6 @@ import connectDB from '$lib/database/mongoosePriomise.js';
 import { Article } from '$lib/models/article.js';
 import { error } from '@sveltejs/kit';
 import { User } from '$lib/models/user.js';
-import { getUnreadAlarmCount, markAsRead } from '$lib/server/redis/alarmService.js';
 import { Comment } from '$lib/models/comment.js';
 import convertToTree from '$lib/util/tree.js';
 
@@ -27,14 +26,6 @@ export const load = async ({ params, locals, cookies }) => {
     read: 1,
     like: 1
   };
-
-  let alarmCount = 0;
-
-  // 알람 읽음 처리 (Redis): 해당 글을 읽을 때만 처리
-  if (session?.user?.nickname) {
-    await markAsRead(session.user.email, params.articleId);
-    alarmCount = await getUnreadAlarmCount(session.user.email);
-  }
 
   // 비로그인 사용자도 기기 ID로 조회수를 올릴 수 있도록 처리
   const viewerId = session?.user?.email || cookies.get('dgst_device') || `guest-${Date.now()}`;
@@ -201,7 +192,6 @@ export const load = async ({ params, locals, cookies }) => {
     photo: author?.photo || '/icons/unknown-person-icon-4.jpg',
     introduction: author?.introduction,
     insta,
-    alarmCount,
     pageNo,
     maxPage,
     startNo,

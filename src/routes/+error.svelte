@@ -1,5 +1,5 @@
 <script>
-  import { Button, Card, CardBody, CardFooter, CardHeader, Icon } from '@sveltestrap/sveltestrap';
+  import { Button, Card, CardBody, CardFooter, CardHeader, Icon } from '$lib/components/ui/index.js';
 
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';

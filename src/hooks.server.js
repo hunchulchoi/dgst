@@ -272,15 +272,15 @@ export async function handle({ event, resolve }) {
   // cookie.get()은 string을 반환하므로 안전하게 문자열로 고정
   deviceId = String(deviceId);
 
-  // 기기 ID Redis 저장 (마지막 접속 시각, Redis 미사용 시 무시)
-  try {
-    await redis.setJson(
-      `device:${deviceId}`,
-      { lastSeen: new Date().toISOString() },
-      DEVICE_REDIS_TTL_SECONDS
-    );
-  } catch {
-    // Redis 실패해도 요청은 계속 진행
+  // 기기 ID Redis 저장 — 요청을 막지 않음 (fire-and-forget)
+  if (!pathname.startsWith('/_app/') && !pathname.includes('.')) {
+    redis
+      .setJson(
+        `device:${deviceId}`,
+        { lastSeen: new Date().toISOString() },
+        DEVICE_REDIS_TTL_SECONDS
+      )
+      .catch(() => {});
   }
 
   // 브라우저/클라이언트가 요청하는 아이콘 경로 → favicon으로 리다이렉트

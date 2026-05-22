@@ -1,14 +1,33 @@
-import { json } from '@sveltejs/kit';
+import { error, json } from '@sveltejs/kit';
+import { checkRateLimit } from '$lib/server/apiRateLimit.js';
 import logger from '$lib/util/logger.js';
 
-export async function POST({ request }) {
+const MAX_BODY_BYTES = 8 * 1024;
+
+export async function POST(event) {
+  const { request } = event;
+
+  const rate = await checkRateLimit(event, {
+    bucket: 'api-log',
+    limit: 30,
+    windowSeconds: 60
+  });
+  if (!rate.allowed) {
+    throw error(429, { message: '요청이 너무 많습니다.' });
+  }
+
+  const contentLength = Number(request.headers.get('content-length') ?? 0);
+  if (contentLength > MAX_BODY_BYTES) {
+    throw error(413, { message: '요청 본문이 너무 큽니다.' });
+  }
+
   try {
     const logData = await request.json();
 
-    const logLevel = logData.level || 'warn';
+    const logLevel = logData.level === 'error' || logData.level === 'warn' ? logData.level : 'warn';
     const logMessage = {
-      message: logData.message || 'Client error',
-      ...logData,
+      message: typeof logData.message === 'string' ? logData.message.slice(0, 500) : 'Client error',
+      level: logLevel,
       client: true,
       userAgent: request.headers.get('user-agent'),
       timestamp: new Date().toISOString()

@@ -1,8 +1,1 @@
-<script>
-  import { goto } from '$app/navigation';
-  import { browser } from '$app/environment';
-
-  if (browser) {
-    goto('/board/free');
-  }
-</script>
+<!-- / → +page.server.js 서버 리다이렉트 -->

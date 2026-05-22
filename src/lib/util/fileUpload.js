@@ -3,6 +3,7 @@ import mime from 'mime';
 import { format } from 'date-fns';
 
 import { UPLOAD_PATH } from '$env/static/private';
+import { isPathUnderRoot } from '$lib/server/pathSafety.js';
 import { error } from '@sveltejs/kit';
 import path from 'path';
 import sharp from 'sharp';
@@ -22,10 +23,10 @@ function safeString(_name, _path) {
 
   _path = decodeURIComponent(_path);
 
-  const normalizedPath = path.normalize(path.join(UPLOAD_PATH, _path, _name));
-  const isPathSafe = normalizedPath.startsWith(UPLOAD_PATH);
+  const candidatePath = path.join(UPLOAD_PATH, _path, _name);
+  const isPathSafe = isPathUnderRoot(candidatePath, UPLOAD_PATH);
 
-  console.debug('Path safety check:', { normalizedPath, UPLOAD_PATH, isPathSafe });
+  console.debug('Path safety check:', { candidatePath, UPLOAD_PATH, isPathSafe });
 
   return isPathSafe;
 }

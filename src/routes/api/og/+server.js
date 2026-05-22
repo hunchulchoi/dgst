@@ -1,4 +1,5 @@
-import { json } from '@sveltejs/kit';
+import { error, json } from '@sveltejs/kit';
+import { assertSafeFetchUrl } from '$lib/server/fetchUrlSafety.js';
 import { getJson, setJson } from '$lib/server/redis/client.js';
 import logger from '$lib/util/logger.js';
 
@@ -7,7 +8,12 @@ import logger from '$lib/util/logger.js';
  * @param {import('@sveltejs/kit').RequestEvent} event - 요청 이벤트 객체
  * @returns {Promise<Response>} OG 데이터 JSON 응답
  */
-export async function GET({ url }) {
+export async function GET({ url, locals }) {
+  const session = await locals.auth();
+  if (!session?.user?.nickname) {
+    throw error(401, { message: '로그인이 필요합니다.' });
+  }
+
   const targetUrl = url.searchParams.get('url');
 
   if (!targetUrl) {
@@ -22,7 +28,12 @@ export async function GET({ url }) {
  * @param {import('@sveltejs/kit').RequestEvent} event - 요청 이벤트 객체
  * @returns {Promise<Response>} OG 데이터 JSON 응답
  */
-export async function POST({ request }) {
+export async function POST({ request, locals }) {
+  const session = await locals.auth();
+  if (!session?.user?.nickname) {
+    throw error(401, { message: '로그인이 필요합니다.' });
+  }
+
   try {
     const { url: targetUrl } = await request.json();
 
@@ -31,7 +42,7 @@ export async function POST({ request }) {
     }
 
     return await fetchOGData(targetUrl);
-  } catch (error) {
+  } catch (err) {
     return json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 }
@@ -42,33 +53,32 @@ export async function POST({ request }) {
  * @returns {Promise<Response>} OG 데이터 JSON 응답
  */
 async function fetchOGData(targetUrl) {
-  try {
-    // URL 유효성 검사
-    new URL(targetUrl);
-  } catch (error) {
-    return json({ error: 'Invalid URL format' }, { status: 400 });
+  const urlCheck = await assertSafeFetchUrl(targetUrl);
+  if (!urlCheck.ok) {
+    return json({ error: urlCheck.message }, { status: urlCheck.status });
   }
+  const safeUrl = urlCheck.url.href;
 
-  const cacheKey = `og_cache:${targetUrl}`;
+  const cacheKey = `og_cache:${safeUrl}`;
   try {
     const cached = await getJson(cacheKey);
     if (cached) {
-      console.log(`✅ [Redis Cache Hit] OG 데이터 반환: ${targetUrl}`);
+      console.log(`✅ [Redis Cache Hit] OG 데이터 반환: ${safeUrl}`);
       return json(cached);
     } else {
       logger.warn({
         message: `🐌 [Redis Cache Miss] 캐시가 없습니다. 외부 서버 통신을 시도합니다.`,
-        targetUrl,
+        targetUrl: safeUrl,
         endpoint: '/api/og'
       });
     }
-  } catch (error) {
-    console.error(`🚨 Redis 캐시 조회 실패 (${targetUrl}):`, error);
+  } catch (err) {
+    console.error(`🚨 Redis 캐시 조회 실패 (${safeUrl}):`, err);
   }
 
   try {
     // 타겟 URL에서 HTML 가져오기
-    const response = await fetch(targetUrl, {
+    const response = await fetch(safeUrl, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (compatible; DGSTBot/1.0; +https://dgst.me)',
         Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
@@ -88,32 +98,32 @@ async function fetchOGData(targetUrl) {
     const html = await response.text();
 
     // Open Graph 메타 태그 파싱
-    const ogData = parseOpenGraphData(html, targetUrl);
+    const ogData = parseOpenGraphData(html, safeUrl);
 
     // 성공한 데이터에 한정해 레디스에 3시간(10800초) 캐시
     try {
       await setJson(cacheKey, ogData, 10800);
-      console.log(`💾 [Redis Cache Miss] OG 데이터 캐싱 완료: ${targetUrl}`);
+      console.log(`💾 [Redis Cache Miss] OG 데이터 캐싱 완료: ${safeUrl}`);
     } catch (e) {
-      console.error(`🚨 Redis 캐시 저장 실패 (${targetUrl}):`, e);
+      console.error(`🚨 Redis 캐시 저장 실패 (${safeUrl}):`, e);
     }
 
     return json(ogData);
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error(`OG 데이터 가져오기 실패 (${targetUrl}):`, errorMessage);
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    console.error(`OG 데이터 가져오기 실패 (${safeUrl}):`, errorMessage);
 
     // 에러 발생 시 500 대신 기본 폴백 데이터를 반환하도록 수정 (의도적인 봇 차단 등 방어)
-    let hostname = targetUrl;
+    let hostname = safeUrl;
     try {
-      hostname = new URL(targetUrl).hostname;
+      hostname = new URL(safeUrl).hostname;
     } catch (e) { }
 
     return json({
       title: hostname,
       description: '',
       image: '',
-      url: targetUrl,
+      url: safeUrl,
       siteName: hostname,
       favicon: ''
     });

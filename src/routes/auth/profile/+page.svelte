@@ -21,13 +21,13 @@
     ModalBody,
     ModalFooter,
     ModalHeader
-  } from '@sveltestrap/sveltestrap';
+  } from '$lib/components/ui/index.js';
 
   import { PUBLIC_GOOGLE_RECAPTCHA_SITE_KEY } from '$env/static/public';
   import { goto } from '$app/navigation';
   import { browser } from '$app/environment';
   import imageCompression from 'browser-image-compression';
-  import Swal from 'sweetalert2';
+  import { swalFire } from '$lib/util/swal.js';
   import { isNicknameAllowed } from '$lib/util/nickname.js';
 
   // Svelte 5 Runes
@@ -40,15 +40,15 @@
     }
   });
 
-  let token = '';
-  function checkRecaptcha() {
-    grecaptcha.ready(function () {
-      grecaptcha
-        .execute(PUBLIC_GOOGLE_RECAPTCHA_SITE_KEY, { action: 'register' })
-        .then(function (_token) {
-          console.debug('token: ' + _token);
-          token = _token;
-        });
+  /** @returns {Promise<string>} */
+  async function getRecaptchaToken() {
+    return new Promise((resolve, reject) => {
+      grecaptcha.ready(() => {
+        grecaptcha
+          .execute(PUBLIC_GOOGLE_RECAPTCHA_SITE_KEY, { action: 'register' })
+          .then(resolve)
+          .catch(reject);
+      });
     });
   }
 
@@ -160,10 +160,7 @@
   let introduction = data.profile.introduction;
 
   const doSubmit = async () => {
-    // validation
     doValidate();
-    // recaptcha
-    checkRecaptcha();
 
     const formData = new FormData();
 
@@ -211,6 +208,8 @@
     const timeoutId = setTimeout(() => controller.abort(), 35000);
 
     try {
+      formData.append('recaptchaToken', await getRecaptchaToken());
+
       const res = await fetch('/auth/profile', {
         method: 'PATCH',
         body: formData,
@@ -222,7 +221,7 @@
 
       if (res.ok) {
         const data = await res.json();
-        Swal.fire({
+        await swalFire({
           icon: 'success',
           title: '변경 완료',
           text: data.message || '프로필이 성공적으로 변경되었습니다.',
@@ -234,7 +233,7 @@
         const errorData = await res
           .json()
           .catch(() => ({ message: '저장 중에 오류가 발생하였습니다.' }));
-        Swal.fire({
+        await swalFire({
           icon: 'error',
           title: '저장 실패',
           text: errorData.message || '저장 중에 오류가 발생하였습니다.',
@@ -246,14 +245,14 @@
       console.error('프로필 업데이트 오류:', reason);
 
       if (reason.name === 'AbortError') {
-        Swal.fire({
+        await swalFire({
           icon: 'error',
           title: '타임아웃',
           text: '요청 시간이 초과되었습니다. 파일 크기를 확인해주세요.',
           confirmButtonText: '확인'
         });
       } else {
-        Swal.fire({
+        await swalFire({
           icon: 'error',
           title: '저장 실패',
           text: '저장에 실패했습니다.',
@@ -275,9 +274,9 @@
         invalids.nickname = !/^.{2,15}$/.test(target.value) || !isNicknameAllowed(target.value);
 
         if (!invalids.nickname) {
-          fetch(`/auth/register/${target.value}`).then((res) => {
+          fetch(`/auth/register/${target.value}`).then(async (res) => {
             if (res.status !== 204) {
-              Swal.fire({
+              await swalFire({
                 icon: 'warning',
                 title: '아이디 중복',
                 text: '사용중인 아이디 입니다.',
@@ -339,11 +338,10 @@
       <hr />
       <Row>
         <Form>
-          <Input type="hidden" name="token" bind:value={token} />
-          <FormGroup floating label="닉네임">
+          <FormGroup floating label="닉네임" labelFor="nickname">
             <Input
               id="nickname"
-              on:change={(evt) => changeHandler(evt.target)}
+              onchange={(evt) => changeHandler(evt.currentTarget)}
               bind:value={nickname}
               bind:invalid={invalids.nickname}
               feedback="2~15글자 사이 닉네임을 써주세요"
@@ -353,20 +351,20 @@
             />
           </FormGroup>
           <InputGroup class="mb-3">
-            <InputGroupText><Icon name="image me-2" />사진</InputGroupText>
+            <InputGroupText><Icon name="image" class="me-2" />사진</InputGroupText>
             <input
               id="photo"
               type="file"
-              on:change={(evt) => preview(evt.target)}
+              onchange={(evt) => preview(evt.currentTarget)}
               class="form-control"
               accept="image/*"
             />
           </InputGroup>
-          <FormGroup floating label="자기소개">
+          <FormGroup floating label="자기소개" labelFor="introduction">
             <Input
               id="introduction"
               bind:value={introduction}
-              on:change={(evt) => changeHandler(evt.target)}
+              onchange={(evt) => changeHandler(evt.currentTarget)}
               bind:invalid={invalids.introduction}
               type="textarea"
               feedback="간단히 뜬구름 잡는 얘기 써주세요^^"
@@ -375,8 +373,8 @@
           </FormGroup>
           <hr />
           <div class="text-end">
-            <Button size="lg" onclick={doSubmit} color="success" bind:disabled={isInvalid}>
-              <Icon name="arrow-through-heart-fill pe-2" />수정
+            <Button size="lg" onclick={doSubmit} color="success" disabled={isInvalid}>
+              <Icon name="arrow-through-heart-fill" class="pe-2" />수정
             </Button>
           </div>
         </Form>

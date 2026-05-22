@@ -10,16 +10,15 @@
     Navbar,
     NavbarBrand,
     NavItem,
-    NavLink,
-    Row,
-    Styles
-  } from '@sveltestrap/sveltestrap';
+    NavLink
+  } from '$lib/components/ui/index.js';
 
   import theme from '$lib/shared/stores/theme.js';
 
   import { signIn, signOut } from '@auth/sveltekit/client';
-  import { goto, invalidateAll } from '$app/navigation';
+  import { goto } from '$app/navigation';
   import { navigating } from '$app/stores';
+  import { browser } from '$app/environment';
 
   import { alarmCount } from '$lib/util/store.js';
 
@@ -42,25 +41,30 @@
     signIn('google', { callbackUrl: '/' });
   };
 
-  // 자유게시판 클릭 핸들러 - 항상 캐시 무효화
-  const handleFreeBoardClick = (e) => {
-    e.preventDefault();
-    console.log('📌 [자유게시판] 링크 클릭 - 강제 새로고침:', {
-      currentPath: pathname,
-      timestamp: new Date().toISOString()
-    });
-    goto('/board/free', { invalidateAll: true });
-  };
+  /** 알림 뱃지 — 레이아웃 blocking 제거 후 클라이언트에서 조회 */
+  $effect(() => {
+    if (!browser) return;
 
-  // 알림 클릭 핸들러 - 항상 캐시 무효화
-  const handleAlarmClick = (e) => {
-    e.preventDefault();
-    console.log('🔔 [알림] 링크 클릭 - 강제 새로고침:', {
-      currentPath: pathname,
-      timestamp: new Date().toISOString()
-    });
-    goto('/board/alarm', { invalidateAll: true });
-  };
+    if (!session?.user?.nickname) {
+      alarmCount.set(0);
+      return;
+    }
+
+    let cancelled = false;
+
+    fetch('/api/alarm/unread-count')
+      .then((res) => (res.ok ? res.json() : { count: 0 }))
+      .then((body) => {
+        if (!cancelled) alarmCount.set(body.count ?? 0);
+      })
+      .catch(() => {
+        if (!cancelled) alarmCount.set(0);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  });
 
   let colorModeIcon = $derived(
     $theme === 'light' ? 'sun-fill' : $theme === 'dark' ? 'moon-stars-fill' : 'circle-half'
@@ -70,10 +74,8 @@
   );
 </script>
 
-<Styles theme={$theme} />
-
-<Row class="m-0">
-  <Navbar expand="md" class="m-0 rounded shadow text-secondary" style="background-color: #fafae4">
+<header class="site-header w-100 m-0">
+  <Navbar expand="md" class="m-0 rounded-top shadow-sm text-secondary" style="background-color: #fafae4">
     <NavbarBrand href="/" class="p-0">
       {#if new Date().getMonth() === 3 && new Date().getDate() >= 15 && new Date().getDate() <= 17}
         <img
@@ -92,7 +94,7 @@
         />
       {/if}
     </NavbarBrand>
-    <Nav>
+    <Nav navbar class="ms-auto flex-row align-items-center gap-2">
       <NavItem>
         {#if session?.user?.nickname}
           <img
@@ -142,14 +144,10 @@
       </Dropdown>
     </Nav>
   </Navbar>
-  <Navbar color="secondary-subtle" fixed="true" class="ms-auto pb-0">
-    <Nav tabs data-svelteit-preload-data="false">
+  <Navbar color="secondary-subtle" class="w-100 pb-0 rounded-bottom shadow-sm tab-nav-bar">
+    <Nav tabs class="w-100 flex-nowrap" data-sveltekit-preload-data="false">
       <NavItem>
-        <NavLink
-          href="/board/free"
-          onclick={handleFreeBoardClick}
-          active={pathname?.startsWith('/board/free')}
-        >
+        <NavLink href="/board/free" active={pathname?.startsWith('/board/free')}>
           자유게시판
           {#if showSpinner}
             <span
@@ -164,7 +162,6 @@
         <NavItem>
           <NavLink
             href="/board/alarm"
-            onclick={handleAlarmClick}
             active={pathname?.startsWith('/board/alarm')}
             class="px-3 text-center"
           >
@@ -172,7 +169,7 @@
               >알림</span
             >
             {#if $alarmCount && $alarmCount > 0}
-              <Badge pill color="danger" class="ms-1">{$alarmCount}</Badge>
+              <Badge color="danger" class="ms-1">{$alarmCount}</Badge>
             {/if}
           </NavLink>
         </NavItem>
@@ -239,4 +236,15 @@
       </NavItem>-->
     </Nav>
   </Navbar>
-</Row>
+</header>
+
+<style>
+  .site-header :global(.tab-nav-bar .nav-tabs) {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+  }
+
+  .site-header :global(.tab-nav-bar .nav-link) {
+    white-space: nowrap;
+  }
+</style>

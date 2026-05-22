@@ -9,7 +9,7 @@
     Row,
     Spinner,
     Tooltip
-  } from '@sveltestrap/sveltestrap';
+  } from '$lib/components/ui/index.js';
   import QuillEditor from '$lib/components/QuillEditor.svelte';
   import { goto } from '$app/navigation';
   /**
@@ -18,7 +18,7 @@
    */
   import { page } from '$app/stores';
   import { enhance } from '$app/forms';
-  import Swal from 'sweetalert2';
+  import { swalFire } from '$lib/util/swal.js';
 
   // Svelte 5 Runes
   let { data } = $props();
@@ -37,7 +37,7 @@
 
     if (icon === 'error') {
       // error 타입은 일반 모달로 표시
-      await Swal.fire({
+      await swalFire({
         icon,
         title: message,
         confirmButtonColor: '#3085d6',
@@ -45,7 +45,7 @@
       });
     } else {
       // 그 외 타입은 toast로 표시
-      await Swal.fire({
+      await swalFire({
         icon,
         title: message,
         toast: isToast,
@@ -96,7 +96,7 @@
 
   async function list() {
     if (title || content) {
-      const result = await Swal.fire({
+      const result = await swalFire({
         title: '작성 취소',
         text: '취소 하시겠습니까? 작성하던 글은 사라집니다.',
         icon: 'warning',
@@ -386,7 +386,7 @@
       }}
     >
       <input type="hidden" name="articleId" value={articleId} />
-      <FormGroup floating label="제목">
+      <FormGroup floating label="제목" labelFor="title">
         <input
           type="text"
           id="title"

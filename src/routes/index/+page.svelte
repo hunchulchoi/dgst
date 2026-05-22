@@ -1,5 +1,5 @@
 <script>
-  import { Card, CardBody, CardFooter, CardText } from '@sveltestrap/sveltestrap';
+  import { Card, CardBody, CardFooter, CardText } from '$lib/components/ui/index.js';
 </script>
 
 <Card class="m-5 w-75 shadow rounded-4" style="width: 350px">

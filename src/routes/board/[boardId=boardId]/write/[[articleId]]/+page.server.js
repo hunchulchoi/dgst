@@ -1,6 +1,7 @@
 import { error, json } from '@sveltejs/kit';
 import { Article } from '$lib/models/article.js';
 import { checkAndLogSessionDevice } from '$lib/server/auth/checkSessionDevice.js';
+import { sanitizeArticleContent } from '$lib/server/sanitizeArticleContent.js';
 import connectDB from '$lib/database/mongoosePriomise.js';
 
 connectDB();
@@ -31,10 +32,11 @@ export const actions = {
       throw error(400, { message: '본문을 입력해주세요.' });
     }
 
-    const processedContent = String(rawContent).replace(
+    const normalizedContent = String(rawContent).replace(
       /<p>\s*<br\s*\/?>(\s|\u00A0)*<\/p>/g,
       '<br>'
     );
+    const processedContent = sanitizeArticleContent(normalizedContent);
 
     try {
       if (params.articleId) {

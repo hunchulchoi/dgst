@@ -1,18 +1,13 @@
-import connectDB from '$lib/database/mongoosePriomise.js';
 import { env as dynamicEnv } from '$env/dynamic/private';
-import { getUnreadAlarmCount } from '$lib/server/redis/alarmService.js';
-
-connectDB();
 
 export const load = async (event) => {
-  // 캐시 방지 헤더 설정 (이미 설정된 경우 무시)
   try {
     event.setHeaders({
-      'Cache-Control': 'private, max-age=0, no-store, must-revalidate, proxy-revalidate'
+      'Cache-Control': 'private, no-cache'
     });
   } catch (err) {
-    // 헤더가 이미 설정된 경우 무시
-    if (!err.message?.includes('already set')) {
+    const message = err instanceof Error ? err.message : '';
+    if (!message.includes('already set')) {
       throw err;
     }
   }
@@ -26,21 +21,8 @@ export const load = async (event) => {
     (typeof process !== 'undefined' ? process.env?.KAKAO_CLIENT_SECRET : undefined);
   const kakaoEnabled = !!(kakaoId && kakaoSecret);
 
-  // 캐시 방지는 hooks.server.js에서 처리
-  let alarmCount = null; // 초기값을 null로 설정하여 로딩 상태 표시
-
-  // 알림이 있는 지 확인
-  if (session?.user?.nickname) {
-    alarmCount = await getUnreadAlarmCount(session.user.email);
-  } else {
-    alarmCount = 0; // 로그인하지 않은 경우 0으로 설정
-  }
-
-  console.log('layout server alarmCount', alarmCount);
-
   return {
     session,
-    alarmCount,
     kakaoEnabled
   };
 };

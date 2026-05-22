@@ -1,5 +1,5 @@
 <script>
-  import { Col, Row } from '@sveltestrap/sveltestrap';
+  import { Col, Row } from '$lib/components/ui/index.js';
 </script>
 
 <footer class="mt-4" style="font-size: 12px;">

@@ -3,7 +3,7 @@
   import { formatDistanceToNowStrict, parseISO } from 'date-fns';
   import { ko } from 'date-fns/locale';
   import { invalidateAll } from '$app/navigation';
-  import Swal from 'sweetalert2';
+  import { swalFire } from '$lib/util/swal.js';
   import { isOnlyOneEmoji } from '$lib/util/emoji.js';
   import type { PageData } from './$types';
   import dgstData from '$lib/data/dgst_data.json';
@@ -303,7 +303,7 @@
       if (isTriple && j.delta > 0) {
         // Triple 당첨 시 큰 alert
         const is777 = nextReels[0] === '7️⃣';
-        Swal.fire({
+        await swalFire({
           icon: 'success',
           title: is777 ? '🎰 7️⃣7️⃣7️⃣ 잭팟! 20배! 🎰' : '🎉 Triple! 10배! 🎉',
           html: `<div style="font-size: 48px; margin: 20px 0;">${reelStr}</div><div style="font-size: 24px; font-weight: bold;">+${j.delta}점</div>`,
@@ -342,7 +342,7 @@
             ? `🎉 당첨! +${j.delta}점 (${reelStr})`
             : `😢 -${Math.abs(j.delta)}점 (${reelStr})`;
 
-        Swal.fire({
+        await swalFire({
           icon: j.delta > 0 ? 'success' : 'error',
           title: toastMessage,
           toast: true,
@@ -387,7 +387,7 @@
         reels = previousReels;
       }
       message = e?.message || '오류';
-      Swal.fire({
+      await swalFire({
         icon: 'error',
         title: e?.message || '오류가 발생했습니다.',
         toast: true,
@@ -486,7 +486,7 @@
 
         // 댓글 작성 보상 toast 알림 (보상을 받은 경우에만)
         if (result.rewardGiven) {
-          Swal.fire({
+          await swalFire({
             icon: 'success',
             title: '💬 댓글 작성 보상 +100점',
             toast: true,
@@ -501,7 +501,7 @@
         await invalidateAll();
       } else {
         const err = await res.json();
-        Swal.fire({
+        await swalFire({
           icon: 'error',
           title: err?.message || '댓글 작성 실패',
           toast: true,
@@ -513,7 +513,7 @@
       }
     } catch (e) {
       console.error('댓글 작성 실패:', e);
-      Swal.fire({
+      await swalFire({
         icon: 'error',
         title: '댓글 작성 중 오류가 발생했습니다.',
         toast: true,

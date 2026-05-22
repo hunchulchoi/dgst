@@ -1,7 +1,7 @@
 <script>
   import { onMount, tick } from 'svelte';
   import { beforeNavigate } from '$app/navigation';
-  import Swal from 'sweetalert2';
+  import { swalFire } from '$lib/util/swal.js';
   let { data } = $props();
 
   let mode = $state(null);
@@ -98,7 +98,7 @@
   async function confirmModeChange(newMode) {
     if (mode === newMode) return;
     if (!gameOver && !firstClick) {
-      const result = await Swal.fire({
+      const result = await swalFire({
         title: '난이도를 변경하시겠습니까?',
         text: '현재 진행 중인 게임이 사라지고 새로운 난이도로 시작됩니다.',
         icon: 'question',
@@ -147,7 +147,7 @@
 
   async function handleReset() {
     if (!gameOver && !firstClick) {
-      const result = await Swal.fire({
+      const result = await swalFire({
         title: '재시작 하시겠습니까?',
         text: '현재 진행 중인 게임이 사라집니다.',
         icon: 'warning',

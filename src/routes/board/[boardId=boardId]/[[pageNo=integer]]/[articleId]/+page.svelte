@@ -9,7 +9,7 @@
     Icon,
     InputGroup,
     Row
-  } from '@sveltestrap/sveltestrap';
+  } from '$lib/components/ui/index.js';
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
   import { browser } from '$app/environment';
@@ -19,7 +19,7 @@
   import { ko } from 'date-fns/locale';
 
   import imageCompression from 'browser-image-compression';
-  import Swal from 'sweetalert2';
+  import { swalFire } from '$lib/util/swal.js';
 
   import { alarmCount } from '$lib/util/store.js';
   import { viewComment, isMarkdownContent } from '$lib/util/embeder.js';
@@ -37,7 +37,9 @@
   // Svelte 5 Runes - Props
   let { data } = $props();
 
-  const { boardId, articleId, pageNo } = $page.params;
+  const boardId = $derived($page.params.boardId);
+  const articleId = $derived($page.params.articleId);
+  const pageNo = $derived($page.params.pageNo);
 
   // 애니메이션 관련 상태
   let likeAnimation = $state(false);
@@ -273,8 +275,8 @@
       });
   }
 
-  function deleteComment(commentId) {
-    Swal.fire({
+  async function deleteComment(commentId) {
+    const result = await swalFire({
       title: '삭제 하시겠습니까?',
       text: '삭제 하시겠습니까?',
       icon: 'warning',
@@ -282,8 +284,9 @@
       confirmButtonColor: '#3085d6',
       cancelButtonColor: '#d33',
       confirmButtonText: '삭제'
-    }).then((result) => {
-      if (result.isConfirmed) {
+    });
+
+    if (result.isConfirmed) {
         commentLoading = true;
 
         fetch(`/board/${boardId}/${articleId}/comment`, {
@@ -312,8 +315,7 @@
           .finally(() => {
             commentLoading = false;
           });
-      }
-    });
+    }
   }
 
   // 댓글 수정 시작
@@ -466,41 +468,37 @@
     };
   }
 
-  function remove(articleId) {
-    Swal.fire({
+  async function remove(articleId) {
+    const result = await swalFire({
       icon: 'warning',
       title: '삭제 하시겠습니까?',
       text: '삭제 하시겠습니까?',
-      icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#3085d6',
       cancelButtonColor: '#d33',
       confirmButtonText: '삭제'
-    }).then((result) => {
-      if (result.isConfirmed) {
-        fetch(`/board/${boardId}/${articleId}/delete`, {
-          method: 'DELETE',
-          body: JSON.stringify({ articleId })
-        })
-          .then(async (res) => {
-            if (res.status !== 200) {
-              const { message } = await res.json();
-
-              toast(message, 'error');
-              return;
-            }
-
-            await toast('삭제되었습니다', 'success');
-
-            list();
-          })
-          .catch((err) => {
-            console.error(err);
-
-            toast(err.message ?? '삭제 중 오류가 발생했습니다.', 'error');
-          });
-      }
     });
+
+    if (!result.isConfirmed) return;
+
+    try {
+      const res = await fetch(`/board/${boardId}/${articleId}/delete`, {
+        method: 'DELETE',
+        body: JSON.stringify({ articleId })
+      });
+
+      if (res.status !== 200) {
+        const { message } = await res.json();
+        await toast(message, 'error');
+        return;
+      }
+
+      await toast('삭제되었습니다', 'success');
+      list();
+    } catch (err) {
+      console.error(err);
+      await toast(err instanceof Error ? err.message : '삭제 중 오류가 발생했습니다.', 'error');
+    }
   }
 
   function edit(articleId) {
@@ -560,7 +558,7 @@
 
     if (type === 'error') {
       // error 타입은 일반 모달로 표시
-      return await Swal.fire({
+      return await swalFire({
         icon: 'error',
         title: message,
         confirmButtonColor: '#3085d6',
@@ -568,7 +566,7 @@
       });
     } else {
       // 그 외 타입은 toast로 표시
-      return await Swal.fire({
+      return await swalFire({
         icon: icon,
         title: message,
         toast: true,
@@ -580,7 +578,29 @@
     }
   }
 
-  alarmCount.update((alarmCount) => data.alarmCount);
+  /** 게시글 열람 시 알림 읽음 + 헤더 뱃지 갱신 (SSR blocking 제거) */
+  $effect(() => {
+    if (!browser || !articleId || !data.session?.user?.nickname) return;
+
+    let cancelled = false;
+
+    fetch('/api/alarm/mark-read', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ articleId })
+    })
+      .then((res) => (res.ok ? res.json() : { count: 0 }))
+      .then((body) => {
+        if (!cancelled) alarmCount.set(body.count ?? 0);
+      })
+      .catch(() => {
+        if (!cancelled) alarmCount.set(0);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  });
 
   let visibleReply = $state('');
 
@@ -795,6 +815,36 @@
   <!-- <script defer src="https://platform.instagram.com/en_US/embeds.js"></script> -->
   <script defer src="//www.tiktok.com/embed.js"></script>
   <style>
+    .article-header {
+      row-gap: 0.35rem;
+    }
+
+    .article-header .article-title {
+      line-height: 1.35;
+      margin-bottom: 0.15rem;
+    }
+
+    .article-header .article-meta,
+    .article-header .article-stats {
+      font-size: 0.875rem;
+      line-height: 1.45;
+    }
+
+    .article-header .article-author {
+      margin-right: 0.5rem;
+    }
+
+    .article-header .article-date {
+      display: inline-block;
+    }
+
+    .article-header .article-stat {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.15rem;
+      white-space: nowrap;
+    }
+
     .image img {
       max-width: 100% !important;
       max-height: 50vh !important;
@@ -981,18 +1031,20 @@
   </div>-->
 
   <Row class="mt-4 shadow rounded-bottom-4 p-1 m-0">
-    <Row class="border-bottom border-secondary-subtle pt-2 p-0 m-0">
-      <h5 class="ps-2">{data.article.title}</h5>
-      <Col md="6" xs="8" class="px-2"
-        >{data.article.nickname}
-        <span class="text-muted ps-1" style="font-size: small"
-          >{formatISO9075(parseISO(data.article.createdAt))}</span
-        ></Col
-      >
-      <Col class="text-end text-muted" md="6" xs="4" style="font-size: small">
-        <Icon class="pe-1" name="eye" />{data.article.read}
-        <Icon class="text-success pe-1" name="hand-thumbs-up" />{data.article.like}</Col
-      >
+    <Row class="article-header border-bottom border-secondary-subtle pt-2 pb-2 px-2 m-0 gy-1">
+      <Col xs="12" class="px-0">
+        <h5 class="article-title mb-0">{data.article.title}</h5>
+      </Col>
+      <Col md="6" xs="8" class="px-0 article-meta text-secondary">
+        <span class="article-author">{data.article.nickname}</span>
+        <span class="article-date text-muted">{formatISO9075(parseISO(data.article.createdAt))}</span>
+      </Col>
+      <Col class="text-end text-muted article-stats" md="6" xs="4">
+        <span class="article-stat"><Icon class="pe-1" name="eye" />{data.article.read}</span>
+        <span class="article-stat ms-2"
+          ><Icon class="text-success pe-1" name="hand-thumbs-up" />{data.article.like}</span
+        >
+      </Col>
     </Row>
     <Row class="py-3 px-2 mx-0">
       <div style="max-width: 100%;" class="text-break px-2 article-content">
@@ -1068,7 +1120,7 @@
 
     <Row class="mb-5 mx-0">
       {#each commentData as comment}
-        <Row class="pt-3 pb-2 px-0 border-bottom border-gray-subtle mx-0" id="cmt{comment.id}">
+        <Row class="comment-item pt-3 pb-2 px-0 border-bottom border-gray-subtle mx-0" id="cmt{comment.id}">
           {#if comment.parentCommentNickname}
             <Col xs="auto" class="m-0 pe-1">
               <Icon name="arrow-return-right" class="text-success"></Icon>
@@ -1077,39 +1129,29 @@
 
           <Col class="p-0 m-0">
             <Row class="mx-0 align-items-start">
-              {#if comment.photo}
-                <Col xs="auto" class="m-0 p-0 flex-shrink-0">
-                  <div class="d-flex align-items-center gap-2">
-                    <img
-                      alt="프로필 사진"
-                      class="rounded-circle flex-shrink-0"
-                      style="width: 40px; height: 40px; object-fit: cover;"
-                      src={comment.photo}
-                    />
-                    <div class="py-0">
-                      <CardSubtitle class="mb-0">{comment.nickname}</CardSubtitle>
-                      <div class="text-muted text-break small">
-                        {formatDistanceToNowStrict(parseISO(comment.createdAt), {
-                          locale: ko,
-                          addSuffix: true
-                        })}
-                      </div>
+              <Col xs="12" class="comment-item-header p-0 m-0 mb-2">
+                <div class="d-flex align-items-center gap-2">
+                  <img
+                    alt=""
+                    class="comment-avatar rounded-circle flex-shrink-0"
+                    src={comment.photo || '/icons/unknown-person-icon-4.jpg'}
+                    width="40"
+                    height="40"
+                    loading="lazy"
+                  />
+                  <div class="comment-meta">
+                    <div class="comment-nickname-line">{comment.nickname}</div>
+                    <div class="comment-time-line text-muted">
+                      {formatDistanceToNowStrict(parseISO(comment.createdAt), {
+                        locale: ko,
+                        addSuffix: true
+                      })}
                     </div>
                   </div>
-                </Col>
-              {:else}
-                <Col xs="auto" class="border-end p-0 flex-shrink-0">
-                  {comment.nickname}
-                  <span class="text-muted ps-2" style="font-size: smaller"
-                    >{formatDistanceToNowStrict(parseISO(comment.createdAt), {
-                      locale: ko,
-                      addSuffix: true
-                    })}</span
-                  >
-                </Col>
-              {/if}
+                </div>
+              </Col>
 
-              <Col xs="12" md={true} class="mt-2 mt-md-0 p-0 min-w-0">
+              <Col xs="12" class="p-0 min-w-0">
                 <Row class="mx-0">
                   <Col class="text-break p-0 m-0" style="max-width: 98%">
                     {#if editingCommentId === comment._id}
@@ -1218,27 +1260,34 @@
                       {/if}
 
                       {#if !/[0-9a-zA-Z가-힣_-]/.test(comment.content) && countEmojis(comment.content) === 1}
-                        {#if comment.parentCommentNickname}
-                          <span
-                            class="text-bg-secondary p-1 rounded-2 align-top"
-                            style="font-size: small"
-                            ><span class="text-warning">@</span
-                            >{comment.parentCommentNickname}</span
-                          >
-                        {/if}
-                        <span class="display-1">{comment.content}</span>
+                        <div class="comment-content-wrap">
+                          <div class="comment-body-line">
+                            {#if comment.parentCommentNickname}
+                              <span class="comment-mention text-bg-secondary rounded-2"
+                                ><span class="text-warning">@</span
+                                >{comment.parentCommentNickname}</span
+                              >
+                            {/if}
+                            <span class="display-1">{comment.content}</span>
+                          </div>
+                        </div>
                       {:else if comment.state !== 'write'}
-                        <div class="px-2 text-muted"><em>{comment.content}</em></div>
+                        <div class="comment-content-wrap text-muted"><em>{comment.content}</em></div>
                       {:else}
-                        <div class="px-2">
-                          {#if comment.parentCommentNickname}
-                            <span class="text-bg-secondary p-1 rounded-2" style="font-size: small"
-                              ><span class="text-warning">@</span
-                              >{comment.parentCommentNickname}</span
+                        <div class="comment-content-wrap">
+                          <div class="comment-body-line">
+                            {#if comment.parentCommentNickname}
+                              <span class="comment-mention text-bg-secondary rounded-2">
+                                <span class="text-warning">@</span>{comment.parentCommentNickname}
+                              </span>
+                            {/if}
+                            <span
+                              class="comment-text"
+                              bind:this={commentDiv}
+                              data-comment-id={comment._id}
                             >
-                          {/if}
-                          <div bind:this={commentDiv} data-comment-id={comment._id}>
-                            {@html viewComment(comment.content)}
+                              {@html viewComment(comment.content)}
+                            </span>
                           </div>
 
                           <!-- 마크다운일 때는 출처 등이 OG 카드로 도배되는 것을 막기 위해 렌더링 생략 -->
@@ -1477,11 +1526,92 @@
 
   <!-- 목록-->
   <Row class="mt-4 shadow rounded-4 p-1 m-0">
-    <BoardList {data} {write} {boardId} {pageNo} session={data.session} />
+    <BoardList {data} {write} {boardId} session={data.session} />
   </Row>
 </main>
 
 <style>
+  .comment-item-header {
+    margin-bottom: 0.5rem;
+  }
+
+  .comment-avatar {
+    width: 40px;
+    height: 40px;
+    object-fit: cover;
+  }
+
+  .comment-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    line-height: 1.35;
+  }
+
+  .comment-nickname-line {
+    font-weight: 600;
+    font-size: 0.95rem;
+    line-height: 1.3;
+  }
+
+  .comment-time-line {
+    font-size: 0.8125rem;
+    line-height: 1.3;
+  }
+
+  .comment-content-wrap {
+    padding: 0 0.25rem;
+  }
+
+  .comment-body-line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.35rem;
+    line-height: 1.55;
+  }
+
+  .comment-mention {
+    display: inline-block;
+    flex-shrink: 0;
+    font-size: 0.8125rem;
+    line-height: 1.4;
+    padding: 0.2rem 0.5rem !important;
+    margin: 0;
+    vertical-align: baseline;
+  }
+
+  .comment-text {
+    display: inline;
+    line-height: 1.55;
+    margin: 0;
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+
+  .comment-text :global(p) {
+    display: inline;
+    margin: 0;
+    line-height: inherit;
+  }
+
+  .comment-text :global(p:last-child) {
+    margin-bottom: 0;
+  }
+
+  .comment-text :global(.markdown-body) {
+    display: inline;
+    line-height: 1.55;
+  }
+
+  .comment-text :global(.markdown-body > * + *) {
+    margin-top: 0.35rem;
+  }
+
+  .comment-text :global(.markdown-body > :first-child) {
+    display: inline;
+  }
+
   /* 댓글 좋아요 애니메이션 */
   .comment-like-btn {
     position: relative;
