@@ -249,8 +249,19 @@
 </header>
 
 <style>
+  .site-header :global(.site-header-top .container-fluid) {
+    padding: 0.55rem 0.75rem !important;
+  }
+
   .site-header-tabs-wrap {
     margin-top: 0.75rem;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+
+  .site-header :global(.tab-nav-bar .container-fluid) {
+    padding-left: 0.35rem !important;
+    padding-right: 0.35rem !important;
   }
 
   .site-header :global(.tab-nav-bar-attached) {
@@ -266,10 +277,25 @@
     white-space: nowrap;
   }
 
+  @media (min-width: 768px) {
+    .site-header :global(.site-header-top .container-fluid) {
+      padding: 0.65rem 1rem !important;
+    }
+
+    .site-header-tabs-wrap {
+      padding-left: 0.75rem;
+      padding-right: 0.75rem;
+    }
+  }
+
   @media (max-width: 767.98px) {
-    .site-header :global(.tab-nav-bar) {
-      padding-left: 0.25rem;
-      padding-right: 0.25rem;
+    .site-header :global(.site-header-top .container-fluid) {
+      padding: 0.5rem 0.65rem !important;
+    }
+
+    .site-header-tabs-wrap {
+      padding-left: 0.35rem;
+      padding-right: 0.35rem;
     }
 
     .site-header :global(.tab-nav-bar .nav-item) {
