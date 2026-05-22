@@ -286,7 +286,8 @@
     <form
       method="POST"
       use:enhance={({ formElement, formData, action, cancel, submitter }) => {
-        if (!submitter || submitter.role !== 'submit') {
+        /* 취소 등 type="button"만 클릭한 경우 — Enter 제출(submitter null)은 허용 */
+        if (submitter && submitter.type !== 'submit') {
           return cancel();
         }
 
@@ -410,15 +411,15 @@
       />
       <Row class="text-end pe-2 mt-4">
         <Col md="10" xs="8" class="text-end">
-          <Button color="warning" onclick={list}>
+          <Button type="button" color="warning" onclick={list}>
             <Icon name="x-lg" class="pe-2" />
             취소
           </Button>
         </Col>
         <Col md="2" xs="4">
           <Button
+            type="submit"
             color="primary"
-            role="submit"
             id="uploadBtn"
             disabled={uploading > 0 || isLoadingOG}
           >
