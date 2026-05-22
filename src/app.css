@@ -26,7 +26,7 @@
   --notion-code-text: #eb5757;
 }
 
-/* 라이트 모드: bootstrap.min.css 기본이 DOS 파란 배경(#0000aa) → 흰 배경 */
+/* 라이트 모드: Notion 스타일 톤 보강 */
 [data-bs-theme='light'] {
   --bs-body-bg: #ffffff;
   --bs-body-bg-rgb: 255, 255, 255;
@@ -345,7 +345,18 @@
 
 .form-floating > .form-control,
 .form-floating > .form-select {
+  height: calc(3.5rem + calc(var(--bs-border-width) * 2));
+  min-height: calc(3.5rem + calc(var(--bs-border-width) * 2));
+  padding: 1rem 0.75rem !important;
+  line-height: 1.25 !important;
   border-radius: var(--dgst-radius) !important;
+}
+
+.form-floating > .form-control:focus,
+.form-floating > .form-control:not(:placeholder-shown),
+.form-floating > .form-control:-webkit-autofill {
+  padding-top: 1.625rem !important;
+  padding-bottom: 0.625rem !important;
 }
 
 .form-check-input {

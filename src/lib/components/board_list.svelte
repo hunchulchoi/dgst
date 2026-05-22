@@ -188,8 +188,8 @@
     }
 
     .board-list-title {
-      font-size: 1.2rem;
-      line-height: 1.45;
+      font-size: 1.4rem;
+      line-height: 1.5;
     }
 
     .board-list-meta {
