@@ -78,7 +78,7 @@
 </script>
 
 <header class="site-header w-100 m-0">
-  <Navbar expand="md" class="site-header-top m-0 rounded-top shadow-sm">
+  <Navbar expand="md" class="site-header-top m-0 rounded-top">
     <NavbarBrand href="/" class="p-0">
       {#if new Date().getMonth() === 3 && new Date().getDate() >= 15 && new Date().getDate() <= 17}
         <img
@@ -249,14 +249,28 @@
 </header>
 
 <style>
+  .site-header :global(.site-header-top) {
+    box-shadow: none !important;
+    border-top-left-radius: var(--dgst-radius) !important;
+    border-top-right-radius: var(--dgst-radius) !important;
+    overflow: hidden;
+  }
+
+  .site-header :global(.site-header-top .container-fluid),
+  .site-header :global(.site-header-top .navbar-brand) {
+    background-color: transparent;
+  }
+
   .site-header :global(.site-header-top .container-fluid) {
     padding: 0.55rem 0.75rem !important;
   }
 
   .site-header-tabs-wrap {
-    margin-top: 0.75rem;
+    margin-top: 0;
+    padding-top: 0.75rem;
     padding-left: 0.5rem;
     padding-right: 0.5rem;
+    background-color: var(--bs-body-bg);
   }
 
   .site-header :global(.tab-nav-bar .container-fluid) {

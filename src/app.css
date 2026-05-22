@@ -50,6 +50,7 @@
 .site-footer-chrome {
   background-color: var(--dgst-chrome-bg) !important;
   color: var(--dgst-chrome-text) !important;
+  box-shadow: none !important;
 }
 
 .site-header-top :global(.btn-link),
