@@ -1030,7 +1030,7 @@
   <Row class="mt-4 shadow rounded-bottom-4 p-1 m-0">
     <Row class="article-header border-bottom border-secondary-subtle pt-2 pb-2 px-2 m-0 gy-1">
       <Col xs="12" class="px-0">
-        <h5 class="article-title mb-0">{data.article.title}</h5>
+        <h5 class="article-title mb-0 !text-[1.35rem] !leading-[1.45] font-semibold">{data.article.title}</h5>
       </Col>
       <Col md="6" xs="8" class="px-0 article-meta text-secondary">
         <span class="article-author">{data.article.nickname}</span>
@@ -1044,7 +1044,7 @@
       </Col>
     </Row>
     <Row class="py-3 px-2 mx-0">
-      <div style="max-width: 100%;" class="text-break px-2 article-content">
+      <div class="text-break px-2 article-content max-w-full dgst-rich-text">
         {@html processArticleContent(
           data.article.content.replace(/<p>\s*<br\s*\/?>(\s|\u00A0)*<\/p>/g, '<br>')
         )}
@@ -1140,8 +1140,8 @@
                     loading="lazy"
                   />
                   <div class="comment-meta">
-                    <div class="comment-nickname-line">{comment.nickname}</div>
-                    <div class="comment-time-line text-muted">
+                    <div class="comment-nickname-line font-semibold !text-[1.05rem] !leading-snug">{comment.nickname}</div>
+                    <div class="comment-time-line !text-[0.9375rem] !leading-snug text-muted">
                       {formatDistanceToNowStrict(parseISO(comment.createdAt), {
                         locale: ko,
                         addSuffix: true
@@ -1259,7 +1259,7 @@
                       {/if}
 
                       {#if !/[0-9a-zA-Z가-힣_-]/.test(comment.content) && countEmojis(comment.content) === 1}
-                        <div class="comment-content-wrap">
+                        <div class="comment-content-wrap dgst-rich-text">
                           <div class="comment-body-line">
                             {#if comment.parentCommentNickname}
                               <span class="comment-mention text-bg-secondary rounded-2"
@@ -1271,9 +1271,9 @@
                           </div>
                         </div>
                       {:else if comment.state !== 'write'}
-                        <div class="comment-content-wrap text-muted"><em>{comment.content}</em></div>
+                        <div class="comment-content-wrap text-muted dgst-rich-text"><em>{comment.content}</em></div>
                       {:else}
-                        <div class="comment-content-wrap">
+                        <div class="comment-content-wrap dgst-rich-text">
                           <div class="comment-body-line">
                             {#if comment.parentCommentNickname}
                               <span class="comment-mention text-bg-secondary rounded-2">
@@ -1576,17 +1576,6 @@
     line-height: 1.35;
   }
 
-  .comment-nickname-line {
-    font-weight: 600;
-    font-size: 0.95rem;
-    line-height: 1.3;
-  }
-
-  .comment-time-line {
-    font-size: 0.8125rem;
-    line-height: 1.3;
-  }
-
   .comment-content-wrap {
     padding: 0 0.25rem;
   }
@@ -1602,7 +1591,7 @@
   .comment-mention {
     display: inline-block;
     flex-shrink: 0;
-    font-size: 0.8125rem;
+    font-size: 0.8125rem !important;
     line-height: 1.4;
     padding: 0.2rem 0.5rem !important;
     margin: 0;
@@ -1681,43 +1670,6 @@
 
     .comment-actions {
       gap: 0.45rem;
-    }
-
-    /* 제목 — 목록과 동일 1.2rem */
-    :global(.article-title) {
-      font-size: 1.2rem !important;
-      line-height: 1.45;
-    }
-
-    /* 본문·리플 — 1.1rem (Quill 인라인 font-size 덮어씀) */
-    .article-content {
-      font-size: 1.1rem !important;
-      line-height: 1.55;
-    }
-
-    .article-content :global(p),
-    .article-content :global(li),
-    .article-content :global(blockquote),
-    .article-content :global(span),
-    .article-content :global(div),
-    .article-content :global(.markdown-body) {
-      font-size: 1.1rem !important;
-      line-height: 1.55;
-    }
-
-    .comment-content-wrap,
-    .comment-body-line,
-    .comment-text,
-    .comment-text :global(p),
-    .comment-text :global(span),
-    .comment-text :global(div),
-    .comment-text :global(.markdown-body) {
-      font-size: 1.1rem !important;
-      line-height: 1.55;
-    }
-
-    .comment-body-line :global(.display-1) {
-      font-size: 1.1rem !important;
     }
   }
 

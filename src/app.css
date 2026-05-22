@@ -1,3 +1,16 @@
+@import 'tailwindcss';
+
+/* Svelte class 속성에서 [&_p] 등 & 이스케이프됨 → @utility로 Quill 본문·리플 타이포 통일 */
+@utility dgst-rich-text {
+  font-size: 1.2rem !important;
+  line-height: 1.55 !important;
+
+  & :is(p, li, blockquote, span, div, em, strong, a, pre, code, ul, ol, h1, h2, h3, h4, h5, h6, .markdown-body, .display-1) {
+    font-size: inherit !important;
+    line-height: inherit !important;
+  }
+}
+
 @import 'prism-themes/themes/prism-dracula.css';
 @import 'sweetalert2/dist/sweetalert2.min.css';
 
