@@ -66,7 +66,7 @@
           href={`/board/${boardId}/${currentPageNo}/${article._id}`}
           class="board-list-link link-underline link-underline-opacity-0 link-offset-2 link-underline-opacity-50-hover stretched-link"
         >
-          <span class="!text-[1.35rem] !leading-[1.45] font-medium">{article.title}</span>
+          <span class="!text-[1.5rem] !leading-[1.45] font-medium">{article.title}</span>
           {@html article.content}
           {#if article.comment}
             {#if article.isNewComment}
@@ -81,7 +81,7 @@
         lg="2"
         md="2"
         xs="5"
-        class="text-base leading-[1.35] max-md:pt-1 text-muted text-truncate d-flex align-items-center"
+        class="!text-[1.05rem] !leading-[1.35] max-md:pt-1 text-muted text-truncate d-flex align-items-center"
       >
         {#if article.photo}
           <img
@@ -92,13 +92,13 @@
         {/if}
         {article.nickname}
       </Col>
-      <Col lg="1" md="1" xs="1" class="text-base leading-[1.35] max-md:pt-1 text-muted text-end">{article.read}</Col>
-      <Col lg="1" md="1" xs="2" class="text-base leading-[1.35] max-md:pt-1 text-muted text-end">
+      <Col lg="1" md="1" xs="1" class="!text-[1.05rem] !leading-[1.35] max-md:pt-1 text-muted text-end">{article.read}</Col>
+      <Col lg="1" md="1" xs="2" class="!text-[1.05rem] !leading-[1.35] max-md:pt-1 text-muted text-end">
         {#if article.like > 0}
           <Icon name="hand-thumbs-up" class="text-success pe-1" />{article.like}
         {/if}
       </Col>
-      <Col lg="1" md="2" xs="4" class="text-base leading-[1.35] max-md:pt-1 text-muted text-end"
+      <Col lg="1" md="2" xs="4" class="!text-[1.05rem] !leading-[1.35] max-md:pt-1 text-muted text-end"
         >{formatDistanceToNowStrict(parseISO(article.createdAt), {
           locale: ko,
           addSuffix: true
