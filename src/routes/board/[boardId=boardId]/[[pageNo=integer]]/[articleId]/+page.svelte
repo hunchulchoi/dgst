@@ -2,9 +2,6 @@
   import {
     Badge,
     Button,
-    Card,
-    CardBody,
-    CardSubtitle,
     Col,
     Icon,
     InputGroup,
@@ -1053,28 +1050,31 @@
         )}
       </div>
     </Row>
-    <Row class="p-md-3 p-xs-1 mb-3 mx-0">
-      <!--프로필-->
-      <Card class="p-2">
-        <Row class="g-1 d-flex align-items-center">
-          <Col xs="auto">
-            <img
-              alt="프로필 사진"
-              class="card-img-left rounded-start"
-              src={data.photo}
-              style="width: 100px; height: 100px; object-fit: cover;"
-            />
-          </Col>
-          <Col>
-            <CardBody class="px-2">
-              <CardSubtitle>{data.article.nickname}</CardSubtitle>
-              <div class="text-muted pt-2">
-                <pre style="white-space: pre-line">{data.introduction}</pre>
+    <Row class="mb-3 mx-0">
+      <Col xs="12" class="px-2">
+        <!--프로필-->
+        <div class="article-author-panel rounded-3">
+          <Row class="g-2 d-flex align-items-center m-0">
+            <Col xs="auto">
+              <img
+                alt=""
+                class="article-author-photo"
+                src={data.photo || '/icons/unknown-person-icon-4.jpg'}
+                width="100"
+                height="100"
+              />
+            </Col>
+            <Col>
+              <div class="article-author-body">
+                <div class="article-author-name fw-semibold">{data.article.nickname}</div>
+                <div class="text-muted pt-2">
+                  <pre class="article-author-intro mb-0">{data.introduction}</pre>
+                </div>
               </div>
-            </CardBody>
-          </Col>
-        </Row>
-      </Card>
+            </Col>
+          </Row>
+        </div>
+      </Col>
     </Row>
     <Row class="mx-0">
       <!--버튼-->
@@ -1530,6 +1530,35 @@
 </main>
 
 <style>
+  /* 글 상세 글쓴이 프로필 박스 (main > .row.mt-4 > :nth-child(3) .article-author-panel) */
+  .article-author-panel {
+    width: 100%;
+    padding: 0.65rem 0.85rem;
+    background-color: var(--bs-body-bg);
+  }
+
+  .article-author-body {
+    color: var(--bs-body-color);
+  }
+
+  .article-author-name {
+    font-size: 1rem;
+    line-height: 1.35;
+  }
+
+  .article-author-intro {
+    white-space: pre-line;
+    font-family: inherit;
+    font-size: inherit;
+  }
+
+  .article-author-photo {
+    width: 100px;
+    height: 100px;
+    object-fit: cover;
+    display: block;
+  }
+
   .comment-item-header {
     margin-bottom: 0.5rem;
   }

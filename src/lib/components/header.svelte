@@ -126,7 +126,7 @@
         <DropdownToggle nav caret class="text-secondary"
           ><Icon name={colorModeIcon} /></DropdownToggle
         >
-        <DropdownMenu end>
+        <DropdownMenu end class="site-header-dropdown-menu">
           <DropdownItem onclick={() => theme.set('auto')}
             ><Icon name="circle-half" /> 자동</DropdownItem
           >
@@ -253,7 +253,6 @@
     box-shadow: none !important;
     border-top-left-radius: var(--dgst-radius) !important;
     border-top-right-radius: var(--dgst-radius) !important;
-    overflow: hidden;
   }
 
   .site-header :global(.site-header-top .container-fluid),

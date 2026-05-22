@@ -11,10 +11,21 @@
   } = $props();
 
   const ctx = getContext(DROPDOWN_CTX);
+
+  /** @param {HTMLButtonElement} node */
+  function anchorRef(node) {
+    ctx.setAnchor(node);
+    return {
+      destroy() {
+        ctx.setAnchor(null);
+      }
+    };
+  }
 </script>
 
 <button
   type="button"
+  use:anchorRef
   class="{nav ? 'nav-link' : 'btn btn-link'} dropdown-toggle {className}"
   aria-expanded={ctx.getOpen()}
   onclick={(e) => {

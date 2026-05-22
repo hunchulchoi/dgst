@@ -87,7 +87,7 @@
           <img
             src={article.photo}
             alt="Profile"
-            class="board-list-avatar rounded-1 me-1"
+            class="board-list-avatar me-1"
           />
         {/if}
         {article.nickname}
@@ -174,6 +174,7 @@
     width: 24px;
     height: 24px;
     object-fit: cover;
+    border-radius: var(--dgst-radius) !important;
   }
 
   .board-list-title:visited {

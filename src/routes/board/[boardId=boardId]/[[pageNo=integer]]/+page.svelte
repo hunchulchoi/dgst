@@ -78,7 +78,7 @@
 </svelte:head>
 
 <main class="container board-chrome-connect mt-0 mb-md-2" style="min-height: 50vh">
-  <Row class="board-panel py-2 shadow rounded-4 rounded-top-0 mx-0">
+  <Row class="board-panel py-2 mx-0">
     {#if boardId === 'free'}
       <LottoFreeBanner session={data.session} />
     {/if}

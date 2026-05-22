@@ -11,7 +11,7 @@
 </script>
 
 <main class="container board-chrome-connect mt-0 mb-md-2" style="min-height: 60vh">
-  <Row class="board-panel py-2 shadow rounded-4 rounded-top-0 mx-0">
+  <Row class="board-panel py-2 mx-0">
     {#if !data.alarms?.length}
       <Row class="mt-2 mx-0">
         <Row>

@@ -60,6 +60,36 @@
   color: var(--dgst-chrome-text) !important;
 }
 
+/* 헤더 테마 메뉴 — body 포털, 크림 배경·진한 글자 */
+.site-header-dropdown-menu {
+  --bs-dropdown-bg: var(--dgst-chrome-bg);
+  --bs-dropdown-color: var(--dgst-chrome-text);
+  --bs-dropdown-link-color: var(--dgst-chrome-text);
+  --bs-dropdown-link-hover-color: var(--dgst-chrome-text);
+  --bs-dropdown-link-hover-bg: rgba(55, 53, 47, 0.08);
+  --bs-dropdown-link-active-color: var(--dgst-chrome-text);
+  --bs-dropdown-link-active-bg: rgba(55, 53, 47, 0.12);
+  --bs-dropdown-divider-bg: rgba(55, 53, 47, 0.2);
+  background-color: var(--dgst-chrome-bg) !important;
+  color: var(--dgst-chrome-text) !important;
+  border-color: rgba(55, 53, 47, 0.2) !important;
+  border-radius: var(--dgst-radius) !important;
+}
+
+.site-header-dropdown-menu .dropdown-item {
+  color: var(--dgst-chrome-text) !important;
+}
+
+.site-header-dropdown-menu .dropdown-item:hover,
+.site-header-dropdown-menu .dropdown-item:focus {
+  color: var(--dgst-chrome-text) !important;
+  background-color: rgba(55, 53, 47, 0.08) !important;
+}
+
+.site-header-dropdown-menu .dropdown-item .bi {
+  color: inherit;
+}
+
 .site-footer-chrome :global(.text-muted) {
   color: var(--dgst-chrome-muted) !important;
 }
@@ -77,6 +107,29 @@
 .board-chrome-connect .board-panel {
   border-top: 0 !important;
   margin-top: 0 !important;
+}
+
+/* 게시판 본문 패널 — bootstrap shadow:none 대응 */
+.board-panel {
+  background-color: var(--bs-body-bg) !important;
+  border-radius: var(--bs-border-radius-xl) !important;
+  border-top-left-radius: 0 !important;
+  border-top-right-radius: 0 !important;
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.12),
+    0 2px 6px rgba(0, 0, 0, 0.08) !important;
+  overflow: hidden;
+}
+
+/* 글 상세 글쓴이 프로필 박스 */
+.article-author-panel {
+  border-radius: var(--bs-border-radius-xl) !important;
+  border: none !important;
+  overflow: hidden;
+}
+
+.article-author-panel .article-author-photo {
+  border-radius: var(--dgst-radius) !important;
 }
 
 .markdown-body {

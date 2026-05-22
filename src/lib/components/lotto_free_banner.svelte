@@ -310,7 +310,7 @@
                       alt=""
                       width="22"
                       height="22"
-                      class="rounded-1 me-1 flex-shrink-0 align-middle object-fit-cover"
+                      class="lotto-history-avatar me-1 flex-shrink-0 align-middle object-fit-cover"
                       loading="lazy"
                     />
                   {/if}
@@ -368,7 +368,7 @@
                   alt=""
                   width="26"
                   height="26"
-                  class="rounded-1 mt-1 flex-shrink-0 object-fit-cover align-top"
+                  class="lotto-history-avatar mt-1 flex-shrink-0 object-fit-cover align-top"
                   loading="lazy"
                   decoding="async"
                 />
@@ -405,9 +405,12 @@
 </Row>
 
 <style>
+  .lotto-history-avatar {
+    border-radius: var(--dgst-radius) !important;
+  }
+
   :global(.lotto-main-btn) {
     min-height: 2.5rem;
     gap: 0.5rem;
   }
-
 </style>
