@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import { MONGODB_CONNECTION_STRING, DB_NAME } from '$env/static/private';
+import { isDbConnectSkipped } from '$lib/database/skipDbConnect.js';
 
 const uri = MONGODB_CONNECTION_STRING;
 const connectOptions = {
@@ -27,6 +28,10 @@ mongoose.connection.on('disconnected', () => {
  * @returns {Promise<typeof mongoose>}
  */
 export default function connectDB() {
+  if (isDbConnectSkipped()) {
+    return Promise.resolve(mongoose);
+  }
+
   if (mongoose.connection.readyState === 1) {
     return Promise.resolve(mongoose);
   }

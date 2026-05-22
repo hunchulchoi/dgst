@@ -13,7 +13,8 @@ RUN npm install
 # 앱 소스 코드를 복사
 COPY . .
 
-# 앱 빌드
+# 앱 빌드 (MongoDB 없이 — 런타임에만 연결)
+ENV SKIP_DB_CONNECT=true
 RUN npm run build
 
 FROM node:22 AS production
