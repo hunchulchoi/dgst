@@ -1394,6 +1394,15 @@
     }
   });
 
+  /** 에디터 본문(.ql-editor)으로 포커스 이동 — 툴바 건너뜀 */
+  export function focusEditor() {
+    try {
+      quillInstance?.focus();
+    } catch (error) {
+      console.error('에디터 포커스 실패:', error);
+    }
+  }
+
   // editorData prop 변경 감지 (외부에서 변경 시)
   $effect(() => {
     if (quillInstance && editorData !== quillInstance.root.innerHTML) {

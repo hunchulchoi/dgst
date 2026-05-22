@@ -118,6 +118,22 @@
   let isLoadingOG = $state(false); // OG 정보 로딩 중 상태
   let insertUrlFromTitle = $state(null); // 제목에서 본문으로 이동할 URL
 
+  /** @type {{ focusEditor: () => void } | null} */
+  let quillEditorRef = $state(null);
+
+  /**
+   * 제목 입력에서 Tab → 에디터 본문으로 포커스 (툴바 건너뜀)
+   * @param {KeyboardEvent} event
+   */
+  function handleTitleKeydown(event) {
+    if (event.key !== 'Tab' || event.shiftKey || event.altKey || event.ctrlKey || event.metaKey) {
+      return;
+    }
+
+    event.preventDefault();
+    quillEditorRef?.focusEditor();
+  }
+
   /**
    * URL 붙여넣기 시 제목 업데이트 콜백
    * @param {string} newTitle - 새로운 제목
@@ -396,12 +412,14 @@
           bind:value={title}
           onpaste={handleTitlePaste}
           oninput={handleTitleInput}
+          onkeydown={handleTitleKeydown}
           required
           autofocus
           placeholder=" "
         />
       </FormGroup>
       <QuillEditor
+        bind:this={quillEditorRef}
         bind:editorData={content}
         bind:insertUrlFromTitle
         {uploadPlus}
