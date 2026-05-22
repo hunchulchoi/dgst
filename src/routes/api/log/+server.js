@@ -49,7 +49,8 @@ export async function POST(event) {
       ...(typeof logData.referer === 'string' && { referer: logData.referer.slice(0, 512) }),
       ...(typeof logData.routeId === 'string' && { routeId: logData.routeId.slice(0, 128) }),
       ...(typeof logData.viewport === 'string' && { viewport: logData.viewport.slice(0, 32) }),
-      ...(typeof logData.clientAt === 'string' && { clientAt: logData.clientAt.slice(0, 32) })
+      ...(typeof logData.clientAt === 'string' && { clientAt: logData.clientAt.slice(0, 32) }),
+      ...(typeof logData.errorId === 'string' && { errorId: logData.errorId.slice(0, 64) })
     };
 
     // 로그 레벨에 따라 다른 logger 메서드 호출

@@ -433,6 +433,23 @@ export async function handle({ event, resolve }) {
 // 전역 에러 로깅
 /** @type {import('@sveltejs/kit').HandleServerError} */
 export function handleError({ event, error }) {
+  /** @type {{ message?: string; errorId?: string } | undefined} */
+  const body =
+    typeof error === 'object' && error !== null && 'body' in error
+      ? /** @type {{ message?: string; errorId?: string }} */ (error.body)
+      : undefined;
+
+  const errorId = body?.errorId ?? crypto.randomUUID();
+  const status = error?.status ?? 500;
+  const message =
+    (error?.cause instanceof Error
+      ? error.cause.message
+      : error?.cause != null
+        ? String(error.cause)
+        : undefined) ??
+    error?.message ??
+    'Unhandled server error';
+
   try {
     // apple-touch-icon 등 정상적인 404 요청은 로그하지 않음
     const pathname = event.url?.pathname || '';
@@ -458,19 +475,13 @@ export function handleError({ event, error }) {
       'unknown';
     const userAgent = event.request?.headers?.get?.('user-agent') ?? '';
     const loggedAt = new Date().toISOString();
-    const causeMessage =
-      error?.cause instanceof Error
-        ? error.cause.message
-        : error?.cause != null
-          ? String(error.cause)
-          : undefined;
-    const message = causeMessage ?? error?.message ?? 'Unhandled server error';
     const referer = event.request?.headers?.get?.('referer') ?? '';
     const search = event.url?.search ?? '';
     const trace = traceFromUnknown(error);
 
     logger.error({
       loggedAt,
+      errorId,
       message: `[server-page-error] ${status} ${pathname}${search} | msg=${message}`,
       pathname,
       search: search || undefined,
@@ -486,4 +497,9 @@ export function handleError({ event, error }) {
   } catch (e) {
     console.error('Failed to log error', e);
   }
+
+  return {
+    message: status >= 500 ? 'Internal Error' : message,
+    errorId
+  };
 }

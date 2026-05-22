@@ -11,6 +11,7 @@ import { captureClientCallTrace, formatErrorTrace } from '$lib/util/formatErrorT
  * @property {string} [search]
  * @property {string} [routeId]
  * @property {string} [referer]
+ * @property {string} [errorId]
  */
 
 const MAX_LEN = {
@@ -37,7 +38,7 @@ function clip(value, max) {
  * @param {ClientPageErrorPayload} payload
  */
 export function reportClientPageError(payload) {
-  const { status, pathname, message, stack, name, cause, href, search, routeId, referer } =
+  const { status, pathname, message, stack, name, cause, href, search, routeId, referer, errorId } =
     payload;
 
   if (!Number.isFinite(status) || status < 500) return;
@@ -72,6 +73,7 @@ export function reportClientPageError(payload) {
   /** @type {string[]} */
   const detailParts = [
     `msg=${errorMessage}`,
+    errorId && `errorId=${errorId}`,
     name && `name=${name}`,
     safeHref && `href=${safeHref}`,
     safeSearch && `search=${safeSearch}`,
@@ -104,6 +106,7 @@ export function reportClientPageError(payload) {
         pathname,
         errorMessage,
         trace,
+        ...(errorId && { errorId }),
         ...(name && { errorName: name }),
         ...(safeHref && { href: safeHref }),
         ...(safeSearch && { search: safeSearch }),

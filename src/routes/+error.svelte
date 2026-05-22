@@ -21,7 +21,8 @@
         message: $page.error?.message,
         stack: $page.error?.stack,
         name: $page.error?.name,
-        cause: $page.error?.cause
+        cause: $page.error?.cause,
+        errorId: $page.error?.errorId
       });
     }
 

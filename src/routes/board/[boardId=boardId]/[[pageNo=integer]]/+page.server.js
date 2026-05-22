@@ -1,7 +1,10 @@
 import { error } from '@sveltejs/kit';
+import crypto from 'crypto';
 import connectDB from '$lib/database/mongoosePriomise.js';
 import { Article } from '$lib/models/article.js';
 import { fetchBoardArticleList } from '$lib/server/boardArticleList.js';
+import logger from '$lib/util/logger.js';
+import { traceFromUnknown } from '$lib/util/formatErrorTrace.js';
 
 connectDB();
 
@@ -12,6 +15,8 @@ export const load = async ({ params, depends }) => {
   let pageNo = parseInt(params.pageNo || 1);
 
   try {
+    await connectDB();
+
     const filter = {
       boardId: params.boardId,
       state: 'write',
@@ -55,12 +60,22 @@ export const load = async ({ params, depends }) => {
       articles
     };
   } catch (err) {
-    console.error('게시판 목록 로드 실패:', {
+    const errorId = crypto.randomUUID();
+    const trace = traceFromUnknown(err);
+    const errMessage = err instanceof Error ? err.message : String(err);
+
+    logger.error({
+      errorId,
+      message: `[board-list-load] ${params.boardId} page=${pageNo} | msg=${errMessage}`,
+      pathname: `/board/${params.boardId}${pageNo > 1 ? `/${pageNo}` : ''}`,
       boardId: params.boardId,
       pageNo,
-      error: err instanceof Error ? err.message : err
+      trace: trace || undefined
     });
 
-    throw error(500, '목록을 가져오는 중에 오류가 발생하였습니다.');
+    throw error(500, {
+      message: '목록을 가져오는 중에 오류가 발생하였습니다.',
+      errorId
+    });
   }
 };
