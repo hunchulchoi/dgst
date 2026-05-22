@@ -1030,7 +1030,7 @@
   <Row class="mt-4 shadow rounded-bottom-4 p-1 m-0">
     <Row class="article-header border-bottom border-secondary-subtle pt-2 pb-2 px-2 m-0 gy-1">
       <Col xs="12" class="px-0">
-        <h5 class="article-title mb-0 !text-[1.3rem] !leading-[1.45] font-semibold">{data.article.title}</h5>
+        <h5 class="article-title mb-0 !text-[1.3rem] max-md:!text-[1.4rem] !leading-[1.45] font-semibold">{data.article.title}</h5>
       </Col>
       <Col md="6" xs="8" class="px-0 article-meta text-secondary">
         <span class="article-author">{data.article.nickname}</span>

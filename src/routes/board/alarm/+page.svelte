@@ -155,6 +155,12 @@
     font-weight: 500 !important;
   }
 
+  @media (max-width: 767.98px) {
+    .alarm-list-title {
+      font-size: 1.4rem !important;
+    }
+  }
+
   .alarm-list-title :global(em) {
     font-size: inherit !important;
     line-height: inherit !important;
