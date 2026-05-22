@@ -66,7 +66,7 @@
           href={`/board/${boardId}/${currentPageNo}/${article._id}`}
           class="board-list-link link-underline link-underline-opacity-0 link-offset-2 link-underline-opacity-50-hover stretched-link"
         >
-          <span class="!text-[1.5rem] !leading-[1.45] font-medium">{article.title}</span>
+          <span class="!text-[1.3rem] !leading-[1.45] font-medium">{article.title}</span>
           {@html article.content}
           {#if article.comment}
             {#if article.isNewComment}

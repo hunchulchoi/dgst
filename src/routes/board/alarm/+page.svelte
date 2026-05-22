@@ -150,7 +150,7 @@
 
   /* Bootstrap 전역 16px !important — 목록과 동일 타이포 */
   .alarm-list-title {
-    font-size: 1.5rem !important;
+    font-size: 1.3rem !important;
     line-height: 1.45 !important;
     font-weight: 500 !important;
   }

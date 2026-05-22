@@ -109,17 +109,19 @@
     <Nav navbar class="ms-auto flex-row align-items-center gap-2">
       <NavItem>
         {#if session?.user?.nickname}
-          <img
-            alt="{session.user.nickname} 프로필 사진"
-            src={session.user.photo ?? '/icons/unknown-person-icon-4.jpg'}
-            class="p-0 rounded"
-            style="max-height: 30px;max-width: 30px; height: auto; width: auto;"
-          />
-          <button
-            type="button"
-            class="btn btn-link text-secondary p-0"
-            onclick={() => goto('/auth/profile')}>{session.user.nickname}</button
-          >
+          <div class="inline-flex items-center gap-1 flex-nowrap">
+            <img
+              alt="{session.user.nickname} 프로필 사진"
+              src={session.user.photo ?? '/icons/unknown-person-icon-4.jpg'}
+              class="p-0 rounded shrink-0"
+              style="max-height: 30px;max-width: 30px; height: auto; width: auto;"
+            />
+            <button
+              type="button"
+              class="btn btn-link text-secondary p-0 text-nowrap leading-none"
+              onclick={() => goto('/auth/profile')}>{session.user.nickname}</button
+            >
+          </div>
         {:else}
           <NavLink onclick={handleGoogleSignIn} class="p-0 m-0">
             <img
