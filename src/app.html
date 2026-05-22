@@ -2,33 +2,67 @@
 <html lang="ko">
   <head>
     <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
     <script>
       (function () {
+        var resolved = 'light';
         try {
-          const stored = localStorage.getItem('theme') || 'auto';
-          let resolved = stored;
+          var stored = localStorage.getItem('theme') || 'auto';
+          resolved = stored;
           if (stored !== 'dark' && stored !== 'light') {
             resolved = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
           }
-          document.documentElement.setAttribute('data-bs-theme', resolved);
         } catch (_) {
-          document.documentElement.setAttribute('data-bs-theme', 'light');
+          resolved = 'light';
         }
+
+        var root = document.documentElement;
+        root.setAttribute('data-bs-theme', resolved);
+
+        var isLight = resolved === 'light';
+        var bg = isLight ? '#ffffff' : '#212529';
+        var color = isLight ? '#37352f' : '#dee2e6';
+        var bgRgb = isLight ? '255, 255, 255' : '33, 37, 41';
+
+        root.style.setProperty('--bs-body-bg', bg, 'important');
+        root.style.setProperty('--bs-body-bg-rgb', bgRgb, 'important');
+        root.style.setProperty('--bs-body-color', color, 'important');
+        root.style.backgroundColor = bg;
+        root.style.color = color;
       })();
     </script>
     <style>
       html {
         color-scheme: light dark;
       }
+
+      /* bootstrap·app.css 로드 전 첫 페인트 — DOS 파란 배경 FOUC 방지 */
+      html[data-bs-theme='light'],
       html[data-bs-theme='light'] body {
-        background-color: #ffffff;
-        color: #37352f;
+        background-color: #ffffff !important;
+        color: #37352f !important;
       }
+
+      html[data-bs-theme='dark'],
       html[data-bs-theme='dark'] body {
-        background-color: #212529;
-        color: #dee2e6;
+        background-color: #212529 !important;
+        color: #dee2e6 !important;
+      }
+
+      html[data-bs-theme='light'] {
+        --bs-body-bg: #ffffff !important;
+        --bs-body-bg-rgb: 255, 255, 255 !important;
+        --bs-body-color: #37352f !important;
+      }
+
+      html[data-bs-theme='dark'] {
+        --bs-body-bg: #212529 !important;
+        --bs-body-bg-rgb: 33, 37, 41 !important;
+        --bs-body-color: #dee2e6 !important;
       }
     </style>
+
+    <link rel="stylesheet" href="%sveltekit.assets%/css/bootstrap.min.css?v=20260522" />
 
     <link rel="shortcut icon" href="https://www.dgst.me/favicon/favicon.ico" type="image/x-icon" />
 
@@ -136,11 +170,8 @@
       href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"
     />
 
-    <meta name="viewport" content="width=device-width" />
     <meta name="robots" content="noindex, nofollow" />
     <meta name="charset" content="UTF-8" />
-
-    <link rel="stylesheet" href="%sveltekit.assets%/css/bootstrap.min.css" />
 
     <title>dgst.me</title>
 
