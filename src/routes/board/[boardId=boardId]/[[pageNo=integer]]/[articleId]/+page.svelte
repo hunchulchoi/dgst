@@ -1111,14 +1111,14 @@
           <Badge color="primary">{commentData.length}</Badge>
         </Col>
         <Col class="text-end">
-          <Button class="fw-bolder py-0" onclick={comments} outline>
+          <Button class="comment-toolbar-btn fw-bolder" onclick={comments} outline>
             <Icon name="arrow-repeat" />
           </Button>
         </Col>
       </Row>
     </Row>
 
-    <Row class="mb-5 mx-0">
+    <Row class="comment-section mb-5 mx-0">
       {#each commentData as comment}
         <Row class="comment-item pt-3 pb-2 px-0 border-bottom border-gray-subtle mx-0" id="cmt{comment.id}">
           {#if comment.parentCommentNickname}
@@ -1183,10 +1183,9 @@
                           {#if editPreviewEl && editPreviewEl.src}
                             <Button
                               color="danger"
-                              size="sm"
                               outline
                               onclick={removeEditCommentImage}
-                              class="ms-2"
+                              class="comment-form-btn ms-2"
                             >
                               <Icon name="trash" />
                               이미지 삭제
@@ -1217,7 +1216,7 @@
                           <Button
                             color="success"
                             onclick={saveEditComment}
-                            class="z-2"
+                            class="comment-form-btn z-2"
                             disabled={commentLoading}
                           >
                             <Icon name="check" />
@@ -1226,7 +1225,7 @@
                           <Button
                             color="secondary"
                             onclick={cancelEditComment}
-                            class="z-2"
+                            class="comment-form-btn z-2"
                             disabled={commentLoading}
                           >
                             <Icon name="x" />
@@ -1309,22 +1308,22 @@
 
             {#if data.session?.user.nickname && comment.state === 'write'}
               <Row class="mt-2">
-                <Col class="text-end pe-2 m-0">
+                <Col class="comment-actions text-end pe-2 m-0">
                   {#if comment.email === data.session?.user.email}
                     <Button
                       onclick={() => deleteComment(comment._id)}
-                      size="sm"
                       outline
-                      color="danger px-2 py-0"
+                      color="danger"
+                      class="comment-action-btn"
                     >
                       <Icon name="trash" />
                       삭제
                     </Button>
                     <Button
                       onclick={() => startEditComment(comment)}
-                      size="sm"
                       outline
-                      color="primary px-2 py-0"
+                      color="primary"
+                      class="comment-action-btn"
                       disabled={editingCommentId !== ''}
                     >
                       <Icon name="pencil" />
@@ -1332,12 +1331,11 @@
                     </Button>
                   {/if}
                   <Button
-                    on:click|once={() => likeComment(comment._id)}
-                    size="sm"
+                    onclick={() => likeComment(comment._id)}
                     outline
                     color="primary"
                     disabled={comment.liked}
-                    class="px-3 py-0 comment-like-btn {commentLikeAnimations.has(comment._id)
+                    class="comment-action-btn comment-like-btn {commentLikeAnimations.has(comment._id)
                       ? 'like-animation'
                       : ''}"
                     data-comment-id={comment._id}
@@ -1347,9 +1345,9 @@
                   </Button>
                   <Button
                     onclick={() => (visibleReply = comment._id)}
-                    size="sm"
                     outline
-                    color="info px-2 py-0"
+                    color="info"
+                    class="comment-action-btn"
                   >
                     <Icon name="chat-square-dots" />
                     답글
@@ -1415,6 +1413,7 @@
                   outline
                   onclick={() => writeComment(comment._id)}
                   disabled={commentLoading}
+                  class="comment-form-btn"
                 >
                   <Icon name="pencil-fill" />
                   등록
@@ -1436,7 +1435,7 @@
             <Badge color="primary">{commentData.length}</Badge>
           </Col>
           <Col class="text-end">
-            <Button class="fw-bolder py-0" onclick={comments} outline>
+            <Button class="comment-toolbar-btn fw-bolder" onclick={comments} outline>
               <Icon name="arrow-repeat" />
             </Button>
           </Col>
@@ -1488,7 +1487,7 @@
               color="primary"
               outline
               onclick={() => writeComment()}
-              class="z-2"
+              class="comment-form-btn z-2"
               disabled={commentLoading}
             >
               <Icon name="pencil-fill" />
@@ -1610,6 +1609,50 @@
 
   .comment-text :global(.markdown-body > :first-child) {
     display: inline;
+  }
+
+  /* 댓글 버튼 — 터치 영역 확대 */
+  .comment-section :global(.comment-action-btn),
+  .comment-section :global(.comment-form-btn),
+  .comment-section :global(.comment-toolbar-btn) {
+    padding: 0.4rem 0.85rem;
+    font-size: 0.875rem;
+    line-height: 1.25;
+  }
+
+  .comment-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    justify-content: flex-end;
+    align-items: center;
+  }
+
+  .comment-section :global(.input-group .comment-form-btn) {
+    align-self: stretch;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  @media (max-width: 767.98px) {
+    .comment-section :global(.comment-action-btn),
+    .comment-section :global(.comment-form-btn),
+    .comment-section :global(.comment-toolbar-btn) {
+      min-height: 44px;
+      min-width: 44px;
+      padding: 0.5rem 1rem !important;
+      font-size: 0.9375rem !important;
+    }
+
+    .comment-section :global(.input-group .comment-form-btn) {
+      min-width: 4.25rem;
+      padding: 0.5rem 0.75rem !important;
+    }
+
+    .comment-actions {
+      gap: 0.45rem;
+    }
   }
 
   /* 댓글 좋아요 애니메이션 */

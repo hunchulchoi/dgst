@@ -220,7 +220,7 @@
   });
 </script>
 
-<Row class="px-3 py-3 mx-0 border-bottom border-secondary-subtle bg-body-secondary bg-opacity-25 rounded-top-4">
+<Row class="px-3 py-3 mx-0 border-bottom border-secondary-subtle bg-body-secondary bg-opacity-25">
   <Col xs="12" class="d-flex flex-wrap align-items-center gap-2">
     <Button
       color="warning"

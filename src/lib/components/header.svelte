@@ -72,10 +72,13 @@
   let loginButton = $derived(
     `/oauth/btn_google_signin_${$theme === 'light' ? 'light' : 'dark'}_normal_web.png`
   );
+
+  /** 게시판·알림: 탭과 본문 패널을 한 덩어리로 붙임 */
+  const boardChromeConnect = $derived(Boolean(pathname?.startsWith('/board')));
 </script>
 
 <header class="site-header w-100 m-0">
-  <Navbar expand="md" class="m-0 rounded-top shadow-sm text-secondary bg-body">
+  <Navbar expand="md" class="site-header-top m-0 rounded-top shadow-sm">
     <NavbarBrand href="/" class="p-0">
       {#if new Date().getMonth() === 3 && new Date().getDate() >= 15 && new Date().getDate() <= 17}
         <img
@@ -144,7 +147,13 @@
       </Dropdown>
     </Nav>
   </Navbar>
-  <Navbar color="secondary-subtle" class="w-100 pb-0 rounded-bottom shadow-sm tab-nav-bar">
+  <div class="site-header-tabs-wrap">
+    <Navbar
+      color="secondary-subtle"
+      class="w-100 pb-0 tab-nav-bar bg-body {boardChromeConnect
+        ? 'tab-nav-bar-attached rounded-0 shadow-sm mb-0'
+        : 'rounded-bottom shadow-sm'}"
+    >
     <Nav tabs class="w-100 flex-nowrap" data-sveltekit-preload-data="false">
       <NavItem>
         <NavLink href="/board/free" active={pathname?.startsWith('/board/free')}>
@@ -235,10 +244,19 @@
         </NavLink>
       </NavItem>-->
     </Nav>
-  </Navbar>
+    </Navbar>
+  </div>
 </header>
 
 <style>
+  .site-header-tabs-wrap {
+    margin-top: 0.75rem;
+  }
+
+  .site-header :global(.tab-nav-bar-attached) {
+    border-bottom: 1px solid var(--bs-border-color);
+  }
+
   .site-header :global(.tab-nav-bar .nav-tabs) {
     flex-wrap: nowrap;
     overflow-x: auto;

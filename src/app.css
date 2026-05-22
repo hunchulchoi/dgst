@@ -6,6 +6,9 @@
   --dgst-radius: 0.5rem;
   --dgst-radius-sm: 0.375rem;
   --dgst-radius-pill: 2rem;
+  --dgst-chrome-bg: #fafae4;
+  --dgst-chrome-text: #37352f;
+  --dgst-chrome-muted: rgba(55, 53, 47, 0.65);
 
   /* static/bootstrap.min.css 는 radius 0 — 입력·카드 등 Bootstrap 컴포넌트용 */
   --bs-border-radius: var(--dgst-radius);
@@ -40,6 +43,39 @@
   --bs-link-hover-color-rgb: 11, 94, 215;
   --bs-primary: #6c757d;
   --bs-primary-rgb: 108, 117, 125;
+}
+
+/* 헤더 상단·푸터: 라이트/다크 공통 크림 배경 */
+.site-header-top,
+.site-footer-chrome {
+  background-color: var(--dgst-chrome-bg) !important;
+  color: var(--dgst-chrome-text) !important;
+}
+
+.site-header-top :global(.btn-link),
+.site-header-top :global(.dropdown-toggle),
+.site-header-top :global(.text-secondary),
+.site-header-top :global(.navbar-brand) {
+  color: var(--dgst-chrome-text) !important;
+}
+
+.site-footer-chrome :global(.text-muted) {
+  color: var(--dgst-chrome-muted) !important;
+}
+
+.site-footer-chrome :global(.border-secondary-subtle) {
+  border-color: rgba(55, 53, 47, 0.2) !important;
+}
+
+/* 게시판: 탭 바로 아래 패널 붙임 */
+.board-chrome-connect {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+}
+
+.board-chrome-connect .board-panel {
+  border-top: 0 !important;
+  margin-top: 0 !important;
 }
 
 .markdown-body {

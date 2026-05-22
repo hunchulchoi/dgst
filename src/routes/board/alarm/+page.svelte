@@ -10,8 +10,8 @@
   alarmCount.update((alarmCount) => Array.from(data.alarms)?.filter((a) => !a.readAt).length);
 </script>
 
-<main class="container my-md-2" style="min-height: 60vh">
-  <Row class="py-2 shadow rounded-4 mx-0">
+<main class="container board-chrome-connect mt-0 mb-md-2" style="min-height: 60vh">
+  <Row class="board-panel py-2 shadow rounded-4 rounded-top-0 mx-0">
     {#if !data.alarms?.length}
       <Row class="mt-2 mx-0">
         <Row>
