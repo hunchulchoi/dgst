@@ -4,11 +4,20 @@
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
   import { onMount } from 'svelte';
+  import { reportClientPageError } from '$lib/util/reportClientPageError.js';
 
   // Svelte 5 Runes - page store 필요 (error page는 예외)
 
   // 404, 502 에러 시 자동으로 /board/free로 리다이렉트
   onMount(() => {
+    if ($page.status >= 500) {
+      reportClientPageError({
+        status: $page.status,
+        pathname: $page.url.pathname,
+        message: $page.error?.message
+      });
+    }
+
     if ($page.status === 404 || $page.status === 502) {
       // 404 에러이고 경로에 admin이 포함된 경우 fmkorea로 리다이렉트
       if ($page.status === 404 && $page.url.pathname.includes('admin')) {

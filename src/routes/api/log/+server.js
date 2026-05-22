@@ -36,7 +36,12 @@ export async function POST(event) {
       ...(typeof logData.from === 'string' && { from: logData.from.slice(0, 256) }),
       ...(typeof logData.to === 'string' && { to: logData.to.slice(0, 256) }),
       ...(Number.isFinite(logData.durationMs) && { durationMs: logData.durationMs }),
-      ...(logData.slowLoad === true && { slowLoad: true })
+      ...(logData.slowLoad === true && { slowLoad: true }),
+      ...(logData.clientPageError === true && { clientPageError: true }),
+      ...(Number.isFinite(logData.status) && { status: logData.status }),
+      ...(typeof logData.errorMessage === 'string' && {
+        errorMessage: logData.errorMessage.slice(0, 500)
+      })
     };
 
     // 로그 레벨에 따라 다른 logger 메서드 호출
