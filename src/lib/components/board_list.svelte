@@ -56,7 +56,7 @@
 {:else}
   {#each data.articles as article, index}
     <Row
-      class="p-2 border-bottom border-secondary-subtle m-0 {index % 2 === 1
+      class="board-list-row p-2 border-bottom border-secondary-subtle m-0 {index % 2 === 1
         ? 'bg-secondary bg-opacity-25'
         : ''}"
     >
@@ -64,8 +64,7 @@
         <a
           data-sveltekit-preload-data="hover"
           href={`/board/${boardId}/${currentPageNo}/${article._id}`}
-          style="cursor: pointer; font-size: 1.1em"
-          class="link-underline link-underline-opacity-0 link-offset-2 link-underline-opacity-50-hover stretched-link"
+          class="board-list-title link-underline link-underline-opacity-0 link-offset-2 link-underline-opacity-50-hover stretched-link"
         >
           {article.title}
           {@html article.content}
@@ -82,28 +81,24 @@
         lg="2"
         md="2"
         xs="5"
-        class="text-muted text-truncate d-flex align-items-center"
-        style="font-size: small"
+        class="board-list-meta text-muted text-truncate d-flex align-items-center"
       >
         {#if article.photo}
           <img
             src={article.photo}
             alt="Profile"
-            class="rounded-1 me-1"
-            style="width: 24px; height: 24px; object-fit: cover;"
+            class="board-list-avatar rounded-1 me-1"
           />
         {/if}
         {article.nickname}
       </Col>
-      <Col lg="1" md="1" xs="1" class="text-muted text-end" style="font-size: small"
-        >{article.read}</Col
-      >
-      <Col lg="1" md="1" xs="2" class="text-muted text-end" style="font-size: small">
+      <Col lg="1" md="1" xs="1" class="board-list-meta text-muted text-end">{article.read}</Col>
+      <Col lg="1" md="1" xs="2" class="board-list-meta text-muted text-end">
         {#if article.like > 0}
           <Icon name="hand-thumbs-up" class="text-success pe-1" />{article.like}
         {/if}
       </Col>
-      <Col lg="1" md="2" xs="4" class="text-muted text-end" style="font-size: small"
+      <Col lg="1" md="2" xs="4" class="board-list-meta text-muted text-end"
         >{formatDistanceToNowStrict(parseISO(article.createdAt), {
           locale: ko,
           addSuffix: true
@@ -152,15 +147,59 @@
 {#if session?.user?.nickname}
   <Row class="px-0 mx-0 pe-3 pb-4 mt-2">
     <Col class="d-flex justify-content-end p-0">
-      <Button class="px-2" color="primary" onclick={write}>
-        <Icon name="pencil-fill" class="pe-2 " />글쓰기
+      <Button size="lg" class="px-3 fw-semibold" color="primary" onclick={write}>
+        <Icon name="pencil-fill" class="pe-2" />글쓰기
       </Button>
     </Col>
   </Row>
 {/if}
 
 <style>
-  a:visited {
-    color: var(--bs-gray);
+  .board-list-title {
+    cursor: pointer;
+    font-size: 1.05rem;
+    line-height: 1.4;
+    color: var(--bs-body-color) !important;
+  }
+
+  .board-list-title:hover {
+    color: var(--bs-link-hover-color) !important;
+  }
+
+  .board-list-meta {
+    font-size: 0.8125rem;
+  }
+
+  .board-list-avatar {
+    width: 24px;
+    height: 24px;
+    object-fit: cover;
+  }
+
+  .board-list-title:visited {
+    color: var(--bs-secondary-color) !important;
+  }
+
+  /* 모바일(md 미만): 제목·메타 가독성 */
+  @media (max-width: 767.98px) {
+    .board-list-row {
+      padding: 0.75rem 0.5rem !important;
+    }
+
+    .board-list-title {
+      font-size: 1.2rem;
+      line-height: 1.45;
+    }
+
+    .board-list-meta {
+      font-size: 0.9375rem;
+      line-height: 1.35;
+      padding-top: 0.25rem;
+    }
+
+    .board-list-avatar {
+      width: 28px;
+      height: 28px;
+    }
   }
 </style>

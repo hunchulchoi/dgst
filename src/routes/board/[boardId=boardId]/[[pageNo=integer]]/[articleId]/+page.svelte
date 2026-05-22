@@ -1512,8 +1512,8 @@
             수정
           </Button>
         {/if}
-        <Button class="ps-1 pe-2" color="primary" onclick={write}>
-          <Icon name="pencil-fill" />
+        <Button size="lg" class="px-3 fw-semibold" color="primary" onclick={write}>
+          <Icon name="pencil-fill" class="pe-1" />
           글쓰기
         </Button>
         <Button class="ps-1 pe-2 " color="secondary" onclick={list}>

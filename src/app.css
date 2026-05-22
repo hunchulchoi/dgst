@@ -1,4 +1,5 @@
 @import 'prism-themes/themes/prism-dracula.css';
+@import 'sweetalert2/dist/sweetalert2.min.css';
 
 /* Notion-like Markdown Theme */
 :root {
@@ -20,6 +21,25 @@
   --notion-quote-border: #37352f;
   --notion-code-bg: #f7f6f3;
   --notion-code-text: #eb5757;
+}
+
+/* 라이트 모드: bootstrap.min.css 기본이 DOS 파란 배경(#0000aa) → 흰 배경 */
+[data-bs-theme='light'] {
+  --bs-body-bg: #ffffff;
+  --bs-body-bg-rgb: 255, 255, 255;
+  --bs-body-color: #37352f;
+  --bs-body-color-rgb: 55, 53, 47;
+  --bs-secondary-color: rgba(55, 53, 47, 0.7);
+  --bs-secondary-bg: #f8f9fa;
+  --bs-tertiary-bg: #f1f3f5;
+  --bs-emphasis-color: #212529;
+  --bs-border-color: rgba(0, 0, 0, 0.12);
+  --bs-link-color: #212529;
+  --bs-link-color-rgb: 33, 37, 41;
+  --bs-link-hover-color: #0b5ed7;
+  --bs-link-hover-color-rgb: 11, 94, 215;
+  --bs-primary: #6c757d;
+  --bs-primary-rgb: 108, 117, 125;
 }
 
 .markdown-body {
@@ -315,6 +335,36 @@
   border-radius: var(--dgst-radius-pill) !important;
 }
 
+/* SweetAlert2 — Bootstrap·입력폼과 동일 radius */
+.swal2-popup {
+  border-radius: var(--dgst-radius) !important;
+}
+
+.swal2-popup.swal2-toast {
+  border-radius: var(--dgst-radius) !important;
+}
+
+.swal2-styled,
+.swal2-actions .swal2-styled {
+  border-radius: var(--dgst-radius) !important;
+  padding: 0.3rem 0.9rem !important;
+}
+
+.swal2-input,
+.swal2-textarea,
+.swal2-select,
+.swal2-file {
+  border-radius: var(--dgst-radius) !important;
+}
+
+.swal2-validation-message {
+  border-radius: var(--dgst-radius-sm) !important;
+}
+
+.swal2-icon {
+  border-radius: 50% !important;
+}
+
 .nav-tabs {
   border-bottom: 0;
   gap: 0.25rem;
@@ -325,11 +375,31 @@
   margin-bottom: 0;
   border: 1px solid transparent;
   border-radius: var(--dgst-radius) var(--dgst-radius) 0 0 !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .nav-tabs .nav-link.active,
 .nav-tabs .nav-item.show .nav-link {
   border-radius: var(--dgst-radius) var(--dgst-radius) 0 0 !important;
+}
+
+/* 모바일 탭: 터치 영역 최소 44px (Apple HIG) */
+@media (max-width: 767.98px) {
+  .tab-nav-bar .nav-tabs {
+    gap: 0.35rem;
+    padding-bottom: 0.25rem;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .tab-nav-bar .nav-tabs .nav-link {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 0.6rem 1rem !important;
+    font-size: 1rem;
+    line-height: 1.2;
+  }
 }
 
 /* 스피너는 항상 원형 (전역 border-radius 규칙과 분리) */

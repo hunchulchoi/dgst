@@ -306,7 +306,7 @@
 
 <Row class="d-flex justify-content-center">
   <Card outline class="rounded rounded-4 shadow my-4" style="max-width: 500px">
-    <CardHeader class="mt-3 text-center" style="background-color: #fafae4">
+    <CardHeader class="mt-3 text-center bg-body">
       <img src="/logo/logo_transparent_120.png" alt="dgst.me 로고" />
     </CardHeader>
     <CardBody>

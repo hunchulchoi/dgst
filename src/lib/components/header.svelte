@@ -75,7 +75,7 @@
 </script>
 
 <header class="site-header w-100 m-0">
-  <Navbar expand="md" class="m-0 rounded-top shadow-sm text-secondary" style="background-color: #fafae4">
+  <Navbar expand="md" class="m-0 rounded-top shadow-sm text-secondary bg-body">
     <NavbarBrand href="/" class="p-0">
       {#if new Date().getMonth() === 3 && new Date().getDate() >= 15 && new Date().getDate() <= 17}
         <img
@@ -246,5 +246,16 @@
 
   .site-header :global(.tab-nav-bar .nav-link) {
     white-space: nowrap;
+  }
+
+  @media (max-width: 767.98px) {
+    .site-header :global(.tab-nav-bar) {
+      padding-left: 0.25rem;
+      padding-right: 0.25rem;
+    }
+
+    .site-header :global(.tab-nav-bar .nav-item) {
+      flex-shrink: 0;
+    }
   }
 </style>
