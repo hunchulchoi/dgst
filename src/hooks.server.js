@@ -206,7 +206,8 @@ export const {
 
 const DEVICE_COOKIE_NAME = 'dgst_device';
 const DEVICE_COOKIE_MAX_AGE_DAYS = 365;
-const DEVICE_REDIS_TTL_SECONDS = DEVICE_COOKIE_MAX_AGE_DAYS * 24 * 60 * 60;
+/** Redis device 키 TTL — 쿠키보다 짧게 (키 누적 방지) */
+const DEVICE_REDIS_TTL_SECONDS = 30 * 24 * 60 * 60;
 const AUTH_SESSION_COOKIE_NAME =
   NODE_ENV === 'production' ? '__Secure-authjs.session-token' : 'authjs.session-token';
 
@@ -236,6 +237,7 @@ export async function handle({ event, resolve }) {
 
   // 기기 식별용 UUID 쿠키 (없으면 생성 후 설정)
   let deviceId = event.cookies.get(DEVICE_COOKIE_NAME);
+  const hadDeviceCookie = Boolean(deviceId);
   if (!deviceId) {
     deviceId = crypto.randomUUID();
     event.cookies.set(DEVICE_COOKIE_NAME, deviceId, {
@@ -249,8 +251,8 @@ export async function handle({ event, resolve }) {
   // cookie.get()은 string을 반환하므로 안전하게 문자열로 고정
   deviceId = String(deviceId);
 
-  // 기기 ID Redis 저장 — 요청을 막지 않음 (fire-and-forget)
-  if (!pathname.startsWith('/_app/') && !pathname.includes('.')) {
+  // 재방문(기존 쿠키)만 Redis 갱신 — 봇·최초 방문마다 키 생성되는 것 방지
+  if (hadDeviceCookie && !pathname.startsWith('/_app/') && !pathname.includes('.')) {
     redis
       .setJson(
         `device:${deviceId}`,
