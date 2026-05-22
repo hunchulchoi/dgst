@@ -445,6 +445,14 @@
   vertical-align: middle;
 }
 
+/* Bootstrap text-bg-* 기본 #000 — 반투명·다크 배경에서 대비 부족 */
+.badge.text-bg-primary,
+.badge.text-bg-warning,
+.badge.text-bg-success,
+.badge.text-bg-info {
+  color: #fff !important;
+}
+
 .btn.rounded-pill {
   border-radius: var(--dgst-radius-pill) !important;
 }
