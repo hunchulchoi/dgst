@@ -1078,27 +1078,38 @@
     </Row>
     <Row class="mx-0">
       <!--버튼-->
-      <Col class="text-end pe-md-3 p-xs-0 m-xs-0">
+      <Col class="article-toolbar text-end pe-md-3 p-xs-0 m-xs-0">
         {#if data.session?.user?.email && data.article.email === data.session.user.email}
-          <Button color="danger" onclick={() => remove(data.article._id)} class="ps-1 pe-2">
+          <Button
+            size="lg"
+            color="danger"
+            onclick={() => remove(data.article._id)}
+            class="article-action-btn"
+          >
             <Icon name="trash" />
             삭제
           </Button>
-          <Button color="success" onclick={() => edit(data.article._id)} class="ps-1 pe-2">
+          <Button
+            size="lg"
+            color="success"
+            onclick={() => edit(data.article._id)}
+            class="article-action-btn"
+          >
             <Icon name="pencil" />
             수정
           </Button>
         {/if}
         <Button
+          size="lg"
           color="primary"
           onclick={like}
-          class="px-3 {likeAnimation ? 'like-animation' : ''}"
+          class="article-action-btn px-3 {likeAnimation ? 'like-animation' : ''}"
           disabled={articleLiked}
         >
           <Icon name={articleLiked ? 'hand-thumbs-up-fill' : 'hand-thumbs-up'} />
           {articleLike || ''}
         </Button>
-        <Button color="secondary" onclick={list} class="ps-1 pe-2">
+        <Button size="lg" color="secondary" onclick={list} class="article-action-btn">
           <Icon name="list" />
           목록
         </Button>
@@ -1110,8 +1121,8 @@
           의견남기기
           <Badge color="primary">{commentData.length}</Badge>
         </Col>
-        <Col class="text-end">
-          <Button class="comment-toolbar-btn fw-bolder" onclick={comments} outline>
+        <Col class="text-end article-comment-refresh">
+          <Button class="comment-toolbar-btn fw-bolder" onclick={comments} outline size="lg">
             <Icon name="arrow-repeat" />
           </Button>
         </Col>
@@ -1500,22 +1511,22 @@
 
     <Row class="mx-0 mb-3">
       <!--버튼-->
-      <Col class="text-end pe-1">
+      <Col class="article-toolbar text-end pe-1">
         {#if data.article.email === data.session?.user.email}
-          <Button class="ps-1 pe-2" color="danger" onclick={() => remove(data.article._id)}>
+          <Button size="lg" class="article-action-btn" color="danger" onclick={() => remove(data.article._id)}>
             <Icon name="trash" />
             삭제
           </Button>
-          <Button class="ps-1 pe-2" color="success" onclick={() => edit(data.article._id)}>
+          <Button size="lg" class="article-action-btn" color="success" onclick={() => edit(data.article._id)}>
             <Icon name="pencil" />
             수정
           </Button>
         {/if}
-        <Button size="lg" class="px-3 fw-semibold" color="primary" onclick={write}>
+        <Button size="lg" class="article-action-btn px-3 fw-semibold" color="primary" onclick={write}>
           <Icon name="pencil-fill" class="pe-1" />
           글쓰기
         </Button>
-        <Button class="ps-1 pe-2 " color="secondary" onclick={list}>
+        <Button size="lg" class="article-action-btn" color="secondary" onclick={list}>
           <Icon name="list" />
           목록
         </Button>
@@ -1557,6 +1568,47 @@
     height: 100px;
     object-fit: cover;
     display: block;
+  }
+
+  /* 글 상세 액션 버튼 — 터치 영역·글씨 확대 */
+  .article-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.45rem;
+  }
+
+  .article-toolbar :global(.article-action-btn) {
+    padding: 0.45rem 1rem !important;
+    font-size: 1rem !important;
+    line-height: 1.35 !important;
+  }
+
+  .article-comment-refresh :global(.comment-toolbar-btn) {
+    padding: 0.45rem 0.9rem !important;
+    font-size: 1rem !important;
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+  }
+
+  @media (max-width: 767.98px) {
+    .article-toolbar {
+      gap: 0.5rem;
+    }
+
+    .article-toolbar :global(.article-action-btn) {
+      min-height: 44px;
+      min-width: 44px;
+      padding: 0.5rem 1.1rem !important;
+      font-size: 1.05rem !important;
+    }
+
+    .article-comment-refresh :global(.comment-toolbar-btn) {
+      min-height: 44px;
+      min-width: 44px;
+      padding: 0.5rem 1rem !important;
+      font-size: 1.05rem !important;
+    }
   }
 
   .comment-item-header {

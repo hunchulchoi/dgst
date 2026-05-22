@@ -16,7 +16,7 @@
   import theme from '$lib/shared/stores/theme.js';
 
   import { signIn, signOut } from '@auth/sveltekit/client';
-  import { goto } from '$app/navigation';
+  import { goto, invalidate } from '$app/navigation';
   import { navigating } from '$app/stores';
   import { browser } from '$app/environment';
 
@@ -75,6 +75,15 @@
 
   /** 게시판·알림: 탭과 본문 패널을 한 덩어리로 붙임 */
   const boardChromeConnect = $derived(Boolean(pathname?.startsWith('/board')));
+
+  /** 자유게시판 탭 — SvelteKit load 캐시(board-list) 무효화 */
+  /** @param {MouseEvent} e */
+  function handleFreeBoardTabClick(e) {
+    if (pathname === '/board/free') {
+      e.preventDefault();
+      void invalidate('board-list');
+    }
+  }
 </script>
 
 <header class="site-header w-100 m-0">
@@ -156,7 +165,12 @@
     >
     <Nav tabs class="w-100 flex-nowrap" data-sveltekit-preload-data="false">
       <NavItem>
-        <NavLink href="/board/free" active={pathname?.startsWith('/board/free')}>
+        <NavLink
+          href="/board/free"
+          active={pathname?.startsWith('/board/free')}
+          data-sveltekit-invalidate="board-list"
+          onclick={handleFreeBoardTabClick}
+        >
           자유게시판
           {#if showSpinner}
             <span

@@ -58,22 +58,28 @@
                     ? `/games/slot?cmt=${commentId}`
                     : `/games/slot`
                   : `/board/${alarm.boardId}/${alarm.articleId}?a=cmt${alarm.comment}`}
-                class="alarm-list-link !text-[1.5rem] !leading-[1.45] font-medium link-underline link-underline-opacity-0 link-offset-2 link-underline-opacity-50-hover stretched-link"
+                class="alarm-list-link link-underline link-underline-opacity-0 link-offset-2 link-underline-opacity-50-hover stretched-link"
               >
                 {#if alarm.readAt}
-                  <span class="text-muted">
+                  <span class="alarm-list-title text-muted">
                     <Icon name="chat-square-dots" class="text-info" />
                     <em>{alarm.commentContent}</em>
                     <Badge color="secondary">{alarm.commentCount}</Badge>
                   </span>
                 {:else}
-                  <Icon name="chat-square-dots" class="text-info" />
-                  {alarm.commentContent}
-                  <Badge color="danger" class="bg-opacity-50">{alarm.commentCount}</Badge>
+                  <span class="alarm-list-title">
+                    <Icon name="chat-square-dots" class="text-info" />
+                    {alarm.commentContent}
+                    <Badge color="danger" class="bg-opacity-50">{alarm.commentCount}</Badge>
+                  </span>
                 {/if}
               </a>
             </Col>
-            <Col lg="1" md="2" xs="3" class="!text-[1.05rem] !leading-[1.35] max-md:pt-1 text-muted text-end px-0"
+            <Col
+              lg="1"
+              md="2"
+              xs="3"
+              class="alarm-list-meta max-md:pt-1 text-muted text-end px-0"
               >{formatDistanceToNowStrict(parseISO(alarm.updatedAt), {
                 locale: ko,
                 addSuffix: true
@@ -98,22 +104,24 @@
                     ? `/games/slot?cmt=${commentIdForGeneral}`
                     : `/games/slot`
                   : `/board/${alarm.boardId}/${alarm.articleId}`}
-                class="alarm-list-link !text-[1.5rem] !leading-[1.45] font-medium link-underline link-underline-opacity-0 link-offset-2 link-underline-opacity-50-hover stretched-link"
+                class="alarm-list-link link-underline link-underline-opacity-0 link-offset-2 link-underline-opacity-50-hover stretched-link"
               >
                 {#if alarm.readAt}
-                  <span class="text-muted d-inline-block"
-                    ><em>
+                  <span class="alarm-list-title text-muted d-inline-block">
+                    <em>
                       {alarm.title}
                       <Badge color="secondary">{alarm.commentCount}</Badge>
-                    </em></span
-                  >
+                    </em>
+                  </span>
                 {:else}
-                  {alarm.title}
-                  <Badge color="danger" class="bg-opacity-50">{alarm.commentCount}</Badge>
+                  <span class="alarm-list-title">
+                    {alarm.title}
+                    <Badge color="danger" class="bg-opacity-50">{alarm.commentCount}</Badge>
+                  </span>
                 {/if}
               </a>
             </Col>
-            <Col lg="1" md="2" xs="4" class="!text-[1.05rem] !leading-[1.35] max-md:pt-1 text-muted text-end"
+            <Col lg="1" md="2" xs="4" class="alarm-list-meta max-md:pt-1 text-muted text-end"
               >{formatDistanceToNowStrict(parseISO(alarm.updatedAt), {
                 locale: ko,
                 addSuffix: true
@@ -138,5 +146,22 @@
 
   .alarm-list-link:visited {
     color: var(--bs-secondary-color) !important;
+  }
+
+  /* Bootstrap 전역 16px !important — 목록과 동일 타이포 */
+  .alarm-list-title {
+    font-size: 1.5rem !important;
+    line-height: 1.45 !important;
+    font-weight: 500 !important;
+  }
+
+  .alarm-list-title :global(em) {
+    font-size: inherit !important;
+    line-height: inherit !important;
+  }
+
+  .alarm-list-meta {
+    font-size: 1.05rem !important;
+    line-height: 1.35 !important;
   }
 </style>
