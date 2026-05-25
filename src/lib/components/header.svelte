@@ -76,13 +76,19 @@
   /** 게시판·알림: 탭과 본문 패널을 한 덩어리로 붙임 */
   const boardChromeConnect = $derived(Boolean(pathname?.startsWith('/board')));
 
-  /** 자유게시판 탭 — SvelteKit load 캐시(board-list) 무효화 */
+  /** 자유게시판 탭 — 목록 캐시(board-list) 갱신 */
   /** @param {MouseEvent} e */
-  function handleFreeBoardTabClick(e) {
-    if (pathname === '/board/free') {
-      e.preventDefault();
-      void invalidate('board-list');
+  async function handleFreeBoardTabClick(e) {
+    e.preventDefault();
+
+    const currentPath = pathname?.split('?')[0] ?? '';
+
+    if (currentPath === '/board/free') {
+      await invalidate('board-list');
+      return;
     }
+
+    await goto('/board/free', { invalidateAll: true });
   }
 </script>
 
