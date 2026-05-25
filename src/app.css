@@ -54,8 +54,17 @@
   --bs-link-color-rgb: 33, 37, 41;
   --bs-link-hover-color: #0b5ed7;
   --bs-link-hover-color-rgb: 11, 94, 215;
-  --bs-primary: #6c757d;
-  --bs-primary-rgb: 108, 117, 125;
+  --bs-primary: #0d6efd;
+  --bs-primary-rgb: 13, 110, 253;
+}
+
+/* 다크 모드: Bootstrap primary 파란색 (bootstrap.min.css 회색 emphasis 덮어씀) */
+[data-bs-theme='dark'] {
+  --bs-primary: #0d6efd;
+  --bs-primary-rgb: 13, 110, 253;
+  --bs-primary-text-emphasis: #6ea8fe;
+  --bs-primary-bg-subtle: #031633;
+  --bs-primary-border-subtle: #084298;
 }
 
 /* 헤더 상단·푸터: 라이트/다크 공통 크림 배경 */
