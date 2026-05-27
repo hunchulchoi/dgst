@@ -1,4 +1,5 @@
 @import 'tailwindcss';
+@import './styles/bootstrap-btn-defaults.css';
 
 /* Svelte class 속성에서 [&_p] 등 & 이스케이프됨 → @utility로 Quill 본문·리플 타이포 통일 */
 @utility dgst-rich-text {
@@ -426,18 +427,14 @@
   z-index: 3;
 }
 
-.btn {
-  padding: 0.3rem 0.9rem;
-}
+/* btn 패딩·색상은 styles/bootstrap-btn-defaults.css (Bootstrap 5.3 기본) */
 
 .btn-sm {
   border-radius: var(--dgst-radius-sm) !important;
-  padding: 0.2rem 0.75rem;
 }
 
 .btn-lg {
   border-radius: calc(var(--dgst-radius) + 0.125rem) !important;
-  padding: 0.45rem 1.1rem;
 }
 
 /* 모든 뱃지: 원형(한 자리) 또는 캡슐형(긴 텍스트) */
