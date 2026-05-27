@@ -1,5 +1,5 @@
 /**
- * bootstrap.min.css(DOS 테마)가 btn 색·패딩을 덮어씀 → Bootstrap 5.3 기본값 복원
+ * bootstrap.min.css(DOS 테마)가 btn·pagination 색·패딩을 덮어씀 → Bootstrap 5.3 기본값 복원
  * :root 의 --bs-primary 등 테마 변수와 동일한 팔레트 사용
  */
 
@@ -299,4 +299,30 @@
   --bs-btn-focus-shadow-rgb: 49, 132, 253;
   text-decoration: underline;
   text-underline-offset: 0.125em;
+}
+
+/* Pagination — DOS 테마 active #aaaaaa → primary */
+.pagination {
+  --bs-pagination-color: var(--bs-primary);
+  --bs-pagination-bg: var(--bs-body-bg);
+  --bs-pagination-border-color: var(--bs-border-color);
+  --bs-pagination-hover-color: var(--bs-primary);
+  --bs-pagination-hover-bg: var(--bs-tertiary-bg);
+  --bs-pagination-hover-border-color: var(--bs-border-color);
+  --bs-pagination-focus-color: var(--bs-primary);
+  --bs-pagination-focus-bg: var(--bs-secondary-bg);
+  --bs-pagination-focus-box-shadow: 0 0 0 0.25rem rgba(var(--bs-primary-rgb), 0.25);
+  --bs-pagination-active-color: #fff;
+  --bs-pagination-active-bg: var(--bs-primary);
+  --bs-pagination-active-border-color: var(--bs-primary);
+  --bs-pagination-disabled-color: var(--bs-secondary-color);
+  --bs-pagination-disabled-bg: var(--bs-secondary-bg);
+  --bs-pagination-disabled-border-color: var(--bs-border-color);
+}
+
+.active > .page-link,
+.page-link.active {
+  color: var(--bs-pagination-active-color);
+  background-color: var(--bs-pagination-active-bg);
+  border-color: var(--bs-pagination-active-border-color);
 }
