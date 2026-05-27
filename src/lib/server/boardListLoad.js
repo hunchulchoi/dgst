@@ -3,11 +3,13 @@ import crypto from 'crypto';
 import connectDB from '$lib/database/mongoosePriomise.js';
 import { Article } from '$lib/models/article.js';
 import { fetchBoardArticleList } from '$lib/server/boardArticleList.js';
+import * as redis from '$lib/server/redis/client.js';
 import logger from '$lib/util/logger.js';
 import { traceFromUnknown } from '$lib/util/formatErrorTrace.js';
 
 const PAGE_UNIT = 30;
 const THREE_DAYS_MS = 1000 * 60 * 60 * 24 * 3;
+const TOTAL_CACHE_TTL_SECONDS = 60;
 
 /**
  * @param {number} pageNo
@@ -33,6 +35,25 @@ export function computePaginationWindow(pageNo, maxPage) {
 }
 
 /**
+ * boardId별 최근 3일 게시글 수 — Redis 60초 캐시 (목록 페이지마다 countDocuments 회피)
+ *
+ * @param {string} boardId
+ * @param {import('mongoose').FilterQuery<object>} filter
+ */
+async function getCachedTotal(boardId, filter) {
+  const cacheKey = `boardlist:total:${boardId}`;
+  const cached = await redis.get(cacheKey);
+  if (cached !== null) {
+    const n = parseInt(cached, 10);
+    if (Number.isFinite(n) && n >= 0) return n;
+  }
+
+  const total = await Article.countDocuments(filter);
+  await redis.set(cacheKey, String(total), TOTAL_CACHE_TTL_SECONDS);
+  return total;
+}
+
+/**
  * @param {import('@sveltejs/kit').ServerLoadEvent} event
  * @param {string} boardId
  */
@@ -42,8 +63,11 @@ export async function loadBoardList(event, boardId) {
   let pageNo = parseInt(event.params.pageNo || '1', 10);
   if (!Number.isFinite(pageNo) || pageNo < 1) pageNo = 1;
 
+  const t0 = performance.now();
+
   try {
     await connectDB();
+    const tConnected = performance.now();
 
     const filter = {
       boardId,
@@ -51,7 +75,8 @@ export async function loadBoardList(event, boardId) {
       createdAt: { $gt: new Date(Date.now() - THREE_DAYS_MS) }
     };
 
-    const total = await Article.countDocuments(filter);
+    const total = await getCachedTotal(boardId, filter);
+    const tCounted = performance.now();
 
     if (!total) {
       return { articles: [], boardId, pageNo: 1, maxPage: 0, startNo: 1, endNo: 1 };
@@ -64,7 +89,23 @@ export async function loadBoardList(event, boardId) {
     }
 
     const articles = await fetchBoardArticleList({ filter, pageNo, pageUnit: PAGE_UNIT });
+    const tFetched = performance.now();
     const { startNo, endNo } = computePaginationWindow(pageNo, maxPage);
+
+    const totalMs = Math.round(tFetched - t0);
+    if (totalMs > 500) {
+      logger.warn({
+        message: `[board-list-timing] ${boardId} total=${totalMs}ms connect=${Math.round(tConnected - t0)}ms count=${Math.round(tCounted - tConnected)}ms list=${Math.round(tFetched - tCounted)}ms`,
+        boardId,
+        pageNo,
+        timings: {
+          connect: Math.round(tConnected - t0),
+          count: Math.round(tCounted - tConnected),
+          list: Math.round(tFetched - tCounted),
+          total: totalMs
+        }
+      });
+    }
 
     return {
       boardId,
