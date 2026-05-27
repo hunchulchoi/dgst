@@ -74,7 +74,10 @@
   );
 
   /** 게시판·알림: 탭과 본문 패널을 한 덩어리로 붙임 */
-  const boardChromeConnect = $derived(Boolean(pathname?.startsWith('/board')));
+  const isFreeBoardPath = $derived(
+    pathname === '/' || Boolean(pathname?.startsWith('/board/free'))
+  );
+  const boardChromeConnect = $derived(Boolean(pathname?.startsWith('/board')) || pathname === '/');
 
   /** 자유게시판 탭 — 목록 캐시(board-list) 갱신 */
   /** @param {MouseEvent} e */
@@ -83,12 +86,12 @@
 
     const currentPath = pathname?.split('?')[0] ?? '';
 
-    if (currentPath === '/board/free') {
+    if (currentPath === '/board/free' || currentPath === '/') {
       await invalidate('board-list');
       return;
     }
 
-    await goto('/board/free', { invalidateAll: true });
+    await goto('/', { invalidateAll: true });
   }
 </script>
 
@@ -174,8 +177,8 @@
     <Nav tabs class="w-100 flex-nowrap" data-sveltekit-preload-data="false">
       <NavItem>
         <NavLink
-          href="/board/free"
-          active={pathname?.startsWith('/board/free')}
+          href="/"
+          active={isFreeBoardPath}
           data-sveltekit-invalidate="board-list"
           onclick={handleFreeBoardTabClick}
         >

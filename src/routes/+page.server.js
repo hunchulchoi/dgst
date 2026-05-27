@@ -1,6 +1,13 @@
-import { redirect } from '@sveltejs/kit';
+import connectDB from '$lib/database/mongoosePriomise.js';
+import { loadBoardList } from '$lib/server/boardListLoad.js';
 
-/** 루트는 서버에서 바로 자유게시판으로 이동 (클라이언트 이중 로딩 방지) */
-export function load() {
-  throw redirect(302, '/board/free');
-}
+connectDB();
+
+/** 루트(/)에서 리다이렉트 없이 자유게시판 SSR (초기 로딩 RTT 1회 절약) */
+export const load = async (event) => {
+  const result = await loadBoardList(
+    { ...event, params: { ...event.params, pageNo: undefined } },
+    'free'
+  );
+  return result;
+};
