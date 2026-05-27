@@ -20,11 +20,13 @@
     ...rest
   } = $props();
 
-  const colClasses = [resolve('', xs), resolve('sm', sm), resolve('md', md), resolve('lg', lg), resolve('xl', xl)]
-    .filter(Boolean)
-    .join(' ');
+  const colClasses = $derived(
+    [resolve('', xs), resolve('sm', sm), resolve('md', md), resolve('lg', lg), resolve('xl', xl)]
+      .filter(Boolean)
+      .join(' ')
+  );
 
-  const col = colClasses || 'col';
+  const col = $derived(colClasses || 'col');
 </script>
 
 <div class="{col} {className}" {...rest}>

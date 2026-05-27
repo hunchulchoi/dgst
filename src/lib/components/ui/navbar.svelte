@@ -9,14 +9,15 @@
     ...rest
   } = $props();
 
-  const expandClass = expand ? `navbar-expand-${expand}` : '';
-  const bgClass = color ? `bg-${color}` : '';
-  const fixedClass =
+  const expandClass = $derived(expand ? `navbar-expand-${expand}` : '');
+  const bgClass = $derived(color ? `bg-${color}` : '');
+  const fixedClass = $derived(
     fixed === 'top' || fixed === true
       ? 'fixed-top w-100'
       : fixed === 'bottom'
         ? 'fixed-bottom w-100'
-        : '';
+        : ''
+  );
 </script>
 
 <nav class="navbar {expandClass} {bgClass} {fixedClass} {className}" {...rest}>

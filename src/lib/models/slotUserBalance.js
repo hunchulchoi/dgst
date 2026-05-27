@@ -18,7 +18,6 @@ const slotUserBalanceSchema = new Schema(
 );
 
 slotUserBalanceSchema.index({ balance: -1 });
-slotUserBalanceSchema.index({ email: 1 }, { unique: true });
 
 export const SlotUserBalance =
   models.slot_user_balance || model('slot_user_balance', slotUserBalanceSchema);

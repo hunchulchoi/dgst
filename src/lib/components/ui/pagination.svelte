@@ -1,6 +1,6 @@
 <script>
   let { size = '', class: className = '', children, ...rest } = $props();
-  const sizeClass = size ? `pagination-${size}` : '';
+  const sizeClass = $derived(size ? `pagination-${size}` : '');
 </script>
 
 <nav aria-label="페이지 네이션">

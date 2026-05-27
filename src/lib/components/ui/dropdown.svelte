@@ -43,7 +43,8 @@
 
 <div
   class="{(nav ? 'nav-item ' : '')}dropdown {nav ? '' : 'position-relative'} {className}"
-  onclick={(e) => e.stopPropagation()}
+  role="group"
+  onpointerdown={(e) => e.stopPropagation()}
 >
   {@render children()}
 </div>

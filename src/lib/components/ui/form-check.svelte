@@ -11,8 +11,10 @@
     ...rest
   } = $props();
 
-  const switchClass = type === 'switch' ? 'form-switch' : '';
-  const sizeClass = size === 'lg' ? 'form-check-lg' : size === 'sm' ? 'form-check-sm' : '';
+  const switchClass = $derived(type === 'switch' ? 'form-switch' : '');
+  const sizeClass = $derived(
+    size === 'lg' ? 'form-check-lg' : size === 'sm' ? 'form-check-sm' : ''
+  );
 </script>
 
 <div class="form-check {switchClass} {sizeClass} {className}">

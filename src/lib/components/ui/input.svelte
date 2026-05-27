@@ -11,7 +11,7 @@
     ...rest
   } = $props();
 
-  const controlClass = `form-control ${invalid ? 'is-invalid' : ''} ${className}`.trim();
+  const controlClass = $derived(`form-control ${invalid ? 'is-invalid' : ''} ${className}`.trim());
 </script>
 
 {#if type === 'textarea'}

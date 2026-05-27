@@ -26,5 +26,17 @@
       {@render children()}
     </div>
   </div>
-  <div class="offcanvas-backdrop fade show" onclick={toggle}></div>
+  <div
+    class="offcanvas-backdrop fade show"
+    role="button"
+    tabindex="0"
+    aria-label="닫기"
+    onclick={toggle}
+    onkeydown={(e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        toggle();
+      }
+    }}
+  ></div>
 {/if}

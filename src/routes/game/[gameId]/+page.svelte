@@ -4,6 +4,7 @@
 </script>
 
 <iframe
+  title="게임 플레이"
   src="https://retropang.daonamu.com/embed/{data.gameId}"
   width="100%"
   height="500"

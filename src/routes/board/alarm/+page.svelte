@@ -166,7 +166,7 @@
     line-height: inherit !important;
   }
 
-  .alarm-list-meta {
+  :global(.alarm-list-meta) {
     font-size: 1.05rem !important;
     line-height: 1.35 !important;
   }

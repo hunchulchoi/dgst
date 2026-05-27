@@ -6,7 +6,7 @@
     style: styleAttr = ''
   } = $props();
 
-  const sizeClass = size ? `spinner-border-${size}` : '';
+  const sizeClass = $derived(size ? `spinner-border-${size}` : '');
 </script>
 
 <span

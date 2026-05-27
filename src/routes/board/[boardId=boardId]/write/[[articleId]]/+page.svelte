@@ -10,7 +10,6 @@
     Spinner,
     Tooltip
   } from '$lib/components/ui/index.js';
-  import QuillEditor from '$lib/components/QuillEditor.svelte';
   import { goto } from '$app/navigation';
   /**
    * SvelteKit page store import for accessing current route info
@@ -69,6 +68,8 @@
   };
 
   onMount(async () => {
+    QuillEditor = (await import('$lib/components/QuillEditor.svelte')).default;
+
     try {
       const { FFmpeg } = await import('@ffmpeg/ffmpeg');
       const { fetchFile } = await import('@ffmpeg/util');
@@ -85,11 +86,7 @@
       if (titleInput) {
         // 제목 입력칸으로 스크롤
         titleInput.scrollIntoView({ behavior: 'smooth', block: 'start' });
-
-        // 모바일에서만 포커스 (데스크톱에서는 autofocus가 이미 있음)
-        if (window.innerWidth <= 768) {
-          titleInput.focus();
-        }
+        titleInput.focus();
       }
     }, 100); // DOM 렌더링 완료 후 실행
   });
@@ -112,11 +109,19 @@
     goto(`/board/${boardId}`);
   }
 
-  let title = $state(data.title || '');
-  let content = $state(data.content || '');
+  let title = $state('');
+  let content = $state('');
+
+  $effect.pre(() => {
+    title = data.title || '';
+    content = data.content || '';
+  });
   let uploading = $state(0);
   let isLoadingOG = $state(false); // OG 정보 로딩 중 상태
   let insertUrlFromTitle = $state(null); // 제목에서 본문으로 이동할 URL
+
+  /** @type {import('svelte').Component | null} */
+  let QuillEditor = $state(null);
 
   /** @type {{ focusEditor: () => void } | null} */
   let quillEditorRef = $state(null);
@@ -414,19 +419,24 @@
           oninput={handleTitleInput}
           onkeydown={handleTitleKeydown}
           required
-          autofocus
           placeholder=" "
         />
       </FormGroup>
-      <QuillEditor
-        bind:this={quillEditorRef}
-        bind:editorData={content}
-        bind:insertUrlFromTitle
-        {uploadPlus}
-        {uploadMinus}
-        onTitleUpdate={handleTitleUpdate}
-        onLoadingChange={handleLoadingChange}
-      />
+      {#if QuillEditor}
+        <QuillEditor
+          bind:this={quillEditorRef}
+          bind:editorData={content}
+          bind:insertUrlFromTitle
+          {uploadPlus}
+          {uploadMinus}
+          onTitleUpdate={handleTitleUpdate}
+          onLoadingChange={handleLoadingChange}
+        />
+      {:else}
+        <div class="text-center py-5">
+          <Spinner />
+        </div>
+      {/if}
       <Row class="text-end pe-2 mt-4">
         <Col md="10" xs="8" class="text-end">
           <Button type="button" color="warning" onclick={list}>

@@ -29,11 +29,28 @@ export default defineConfig({
   // 프로덕션 빌드 설정
   build: {
     target: 'esnext',
+    // heic2any WASM (~1.35MB) — QuillEditor에서 dynamic import, 추가 분할 불가
+    chunkSizeWarningLimit: 1400,
     rollupOptions: {
       output: {
         manualChunks: (id) => {
           if (id.includes('@ffmpeg')) {
             return 'ffmpeg';
+          }
+          if (id.includes('node_modules/heic2any')) {
+            return 'heic2any';
+          }
+          if (id.includes('node_modules/quill')) {
+            return 'quill';
+          }
+          if (id.includes('node_modules/prismjs')) {
+            return 'prism';
+          }
+          if (id.includes('node_modules/marked')) {
+            return 'marked';
+          }
+          if (id.includes('node_modules/sanitize-html')) {
+            return 'sanitize-html';
           }
         }
       }

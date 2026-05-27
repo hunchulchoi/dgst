@@ -28,8 +28,12 @@
 
   let rankList = $state([]);
   let myBestTime = $state(null);
-  let todayStats = $state(data.todayStats || { games: 0, users: 0 });
+  let todayStats = $state({ games: 0, users: 0 });
   let rankLoading = $state(false);
+
+  $effect.pre(() => {
+    todayStats = data.todayStats || { games: 0, users: 0 };
+  });
 
   const isLoggedIn = $derived(!!data.session?.user?.email);
 
@@ -670,7 +674,19 @@
                 </div>
 
                 {#if isPaused}
-                  <div class="pause-overlay" onclick={togglePause}>
+                  <div
+                    class="pause-overlay"
+                    role="button"
+                    tabindex="0"
+                    aria-label="게임 재개"
+                    onclick={togglePause}
+                    onkeydown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        togglePause();
+                      }
+                    }}
+                  >
                     <div class="text-white text-center">
                       <div class="fs-1 mb-2">⏸️</div>
                       <div class="fw-bold">일시정지 중</div>

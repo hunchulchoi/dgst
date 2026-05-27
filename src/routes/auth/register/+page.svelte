@@ -29,11 +29,11 @@
   // Svelte 5 Runes
   let { data } = $props();
 
-  console.log('data.session', data);
-
-  if (!data.session || data.session.nickname) {
-    if (browser) goto('/', { replaceState: true });
-  }
+  $effect(() => {
+    if (!data.session || data.session.nickname) {
+      if (browser) goto('/', { replaceState: true });
+    }
+  });
 
   /** @returns {Promise<string>} */
   async function getRecaptchaToken() {
@@ -58,16 +58,13 @@
     document.querySelector('#introduction').focus();
   }
 
-  /**
-   * nickname {string} 닉네임
-   */
-  let nickname = '';
+  let nickname = $state('');
   /**
    * intro {string} 자기소개
    */
-  let introduction = '';
+  let introduction = $state('');
 
-  let fight = false;
+  let fight = $state(false);
 
   const doSubmit = async () => {
     doValidate();

@@ -13,8 +13,8 @@
     children
   } = $props();
 
-  const sizeClass = size ? `btn-${size}` : '';
-  const colorClass = outline ? `btn-outline-${color}` : `btn-${color}`;
+  const sizeClass = $derived(size ? `btn-${size}` : '');
+  const colorClass = $derived(outline ? `btn-outline-${color}` : `btn-${color}`);
 </script>
 
 <button

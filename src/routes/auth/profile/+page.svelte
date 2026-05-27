@@ -59,7 +59,11 @@
   let originalFile = $state(null);
   let croppedFile = $state(null); // 크롭된 파일
   let serverCropData = $state(null); // 움짤용 크롭 파라미터
-  let previewSrc = $state(data.profile.photo || '/icons/unknown-person-icon-4.jpg');
+  let previewSrc = $state('/icons/unknown-person-icon-4.jpg');
+
+  $effect.pre(() => {
+    previewSrc = data.profile.photo || '/icons/unknown-person-icon-4.jpg';
+  });
 
   /**
    * 파일 업로드시 미리보기 및 크롭 모달 띄우기
@@ -150,14 +154,16 @@
     previewSrc = data.profile.photo || '/icons/unknown-person-icon-4.jpg';
   }
 
-  /**
-   * nickname {string} 닉네임
-   */
-  let nickname = data.profile.nickname;
+  let nickname = $state('');
   /**
    * intro {string} 자기소개
    */
-  let introduction = data.profile.introduction;
+  let introduction = $state('');
+
+  $effect.pre(() => {
+    nickname = data.profile.nickname;
+    introduction = data.profile.introduction;
+  });
 
   const doSubmit = async () => {
     doValidate();

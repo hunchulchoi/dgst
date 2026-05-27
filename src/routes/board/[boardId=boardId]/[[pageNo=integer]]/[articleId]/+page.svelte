@@ -19,17 +19,14 @@
   import { swalFire } from '$lib/util/swal.js';
 
   import { alarmCount } from '$lib/util/store.js';
-  import { viewComment, isMarkdownContent } from '$lib/util/embeder.js';
   import { onMount } from 'svelte';
   import BoardList from '$lib/components/board_list.svelte';
   import OGPreview from '$lib/components/OGPreview.svelte';
   import sanitizeHtml from 'sanitize-html';
-  import Prism from 'prismjs';
-  import 'prismjs/components/prism-clike.js';
-  import 'prismjs/components/prism-javascript.js';
-  import 'prismjs/components/prism-css.js';
-  import 'prismjs/components/prism-markup.js';
   import { countEmojis } from '$lib/util/emoji.js';
+
+  /** @type {typeof import('$lib/util/embeder.js') | null} */
+  let embeder = $state(null);
 
   // Svelte 5 Runes - Props
   let { data } = $props();
@@ -179,16 +176,21 @@
     };
   }
 
-  let reCommentDiv;
+  let reCommentDiv = $state(null);
   let reCommentContent = $state('');
-  let rePreviewEl;
-  let reCommentImageEl;
+  /** @type {HTMLImageElement | null} */
+  let rePreviewEl = $state(null);
+  /** @type {HTMLInputElement | null} */
+  let reCommentImageEl = $state(null);
 
-  let commentDiv;
+  /** @type {HTMLDivElement | null} */
+  let commentDiv = $state(null);
   let commentContent = $state('');
   let commentImage = $state(null);
-  let previewEl;
-  let commentImageEl;
+  /** @type {HTMLImageElement | null} */
+  let previewEl = $state(null);
+  /** @type {HTMLInputElement | null} */
+  let commentImageEl = $state(null);
 
   let commentLoading = $state(false);
 
@@ -196,8 +198,10 @@
   let editingCommentId = $state('');
   let editCommentContent = $state('');
   let editCommentImage = $state(null);
-  let editPreviewEl;
-  let editCommentImageEl;
+  /** @type {HTMLImageElement | null} */
+  let editPreviewEl = $state(null);
+  /** @type {HTMLInputElement | null} */
+  let editCommentImageEl = $state(null);
 
   async function writeComment(parentCommentId) {
     //console.log(commentContent, parentCommentId, reCommentContent)
@@ -602,11 +606,15 @@
   let visibleReply = $state('');
 
   // 댓글 데이터를 $state로 관리
-  let commentData = $state(data.article.comments);
+  let commentData = $state([]);
+  let articleLike = $state(0);
+  let articleLiked = $state(false);
 
-  // 게시물 좋아요 데이터를 $state로 관리
-  let articleLike = $state(data.article.like);
-  let articleLiked = $state(data.article.liked);
+  $effect.pre(() => {
+    commentData = data.article.comments;
+    articleLike = data.article.like;
+    articleLiked = data.article.liked;
+  });
 
   $effect(() => {
     console.log('🔄 게시글 상세 페이지 - articleId:', articleId);
@@ -715,7 +723,8 @@
     });
   }
 
-  onMount(() => {
+  onMount(async () => {
+    embeder = await import('$lib/util/embeder.js');
     // 인스타그램 임베드 처리
     setTimeout(() => {
       console.log('인스타그램 임베드 확인:', document.querySelector('blockquote.instagram-media'));
@@ -753,8 +762,14 @@
     }
 
     // Quill ql-syntax 코드 하이라이트 적용 (PrismJS)
-    setTimeout(() => {
+    setTimeout(async () => {
       if (typeof document !== 'undefined') {
+        const { default: Prism } = await import('prismjs');
+        await import('prismjs/components/prism-clike.js');
+        await import('prismjs/components/prism-javascript.js');
+        await import('prismjs/components/prism-css.js');
+        await import('prismjs/components/prism-markup.js');
+
         const qlBlocks = document.querySelectorAll('.ql-syntax');
         qlBlocks.forEach((block) => {
           if (!block.dataset.highlighted) {
@@ -1296,13 +1311,13 @@
                               bind:this={commentDiv}
                               data-comment-id={comment._id}
                             >
-                              {@html viewComment(comment.content)}
+                              {@html embeder ? embeder.viewComment(comment.content) : comment.content}
                             </span>
                           </div>
 
                           <!-- 마크다운일 때는 출처 등이 OG 카드로 도배되는 것을 막기 위해 렌더링 생략 -->
                           <!-- 일반 글이더라도 URL이 여러개면 OG 폭탄 방지를 위해 첫번째 링크만 OG 렌더링 -->
-                          {#if !isMarkdownContent(comment.content)}
+                          {#if embeder && !embeder.isMarkdownContent(comment.content)}
                             {#each extractUrls(comment.content).slice(0, 1) as url}
                               {#if !url.includes('youtube.com') && !url.includes('youtu.be')}
                                 <OGPreview {url} />
@@ -1571,20 +1586,20 @@
   }
 
   /* 글 상세 액션 버튼 — 터치 영역·글씨 확대 */
-  .article-toolbar {
+  :global(.article-toolbar) {
     display: flex;
     flex-wrap: wrap;
     justify-content: flex-end;
     gap: 0.45rem;
   }
 
-  .article-toolbar :global(.article-action-btn) {
+  :global(.article-toolbar .article-action-btn) {
     padding: 0.45rem 1rem !important;
     font-size: 1rem !important;
     line-height: 1.35 !important;
   }
 
-  .article-comment-refresh :global(.comment-toolbar-btn) {
+  :global(.article-comment-refresh .comment-toolbar-btn) {
     padding: 0.45rem 0.9rem !important;
     font-size: 1rem !important;
     min-width: 2.75rem;
@@ -1592,18 +1607,18 @@
   }
 
   @media (max-width: 767.98px) {
-    .article-toolbar {
+    :global(.article-toolbar) {
       gap: 0.5rem;
     }
 
-    .article-toolbar :global(.article-action-btn) {
+    :global(.article-toolbar .article-action-btn) {
       min-height: 44px;
       min-width: 44px;
       padding: 0.5rem 1.1rem !important;
       font-size: 1.05rem !important;
     }
 
-    .article-comment-refresh :global(.comment-toolbar-btn) {
+    :global(.article-comment-refresh .comment-toolbar-btn) {
       min-height: 44px;
       min-width: 44px;
       padding: 0.5rem 1rem !important;
@@ -1611,7 +1626,7 @@
     }
   }
 
-  .comment-item-header {
+  :global(.comment-item-header) {
     margin-bottom: 0.5rem;
   }
 
@@ -1682,15 +1697,15 @@
   }
 
   /* 댓글 버튼 — 터치 영역 확대 */
-  .comment-section :global(.comment-action-btn),
-  .comment-section :global(.comment-form-btn),
-  .comment-section :global(.comment-toolbar-btn) {
+  :global(.comment-section .comment-action-btn),
+  :global(.comment-section .comment-form-btn),
+  :global(.comment-section .comment-toolbar-btn) {
     padding: 0.4rem 0.85rem;
     font-size: 0.875rem;
     line-height: 1.25;
   }
 
-  .comment-actions {
+  :global(.comment-actions) {
     display: flex;
     flex-wrap: wrap;
     gap: 0.35rem;
@@ -1698,7 +1713,7 @@
     align-items: center;
   }
 
-  .comment-section :global(.input-group .comment-form-btn) {
+  :global(.comment-section .input-group .comment-form-btn) {
     align-self: stretch;
     display: inline-flex;
     align-items: center;
@@ -1706,33 +1721,33 @@
   }
 
   @media (max-width: 767.98px) {
-    .comment-section :global(.comment-action-btn),
-    .comment-section :global(.comment-form-btn),
-    .comment-section :global(.comment-toolbar-btn) {
+    :global(.comment-section .comment-action-btn),
+    :global(.comment-section .comment-form-btn),
+    :global(.comment-section .comment-toolbar-btn) {
       min-height: 44px;
       min-width: 44px;
       padding: 0.5rem 1rem !important;
       font-size: 0.9375rem !important;
     }
 
-    .comment-section :global(.input-group .comment-form-btn) {
+    :global(.comment-section .input-group .comment-form-btn) {
       min-width: 4.25rem;
       padding: 0.5rem 0.75rem !important;
     }
 
-    .comment-actions {
+    :global(.comment-actions) {
       gap: 0.45rem;
     }
   }
 
   /* 댓글 좋아요 애니메이션 */
-  .comment-like-btn {
+  :global(.comment-like-btn) {
     position: relative;
     transition: all 0.3s ease;
     overflow: hidden;
   }
 
-  .comment-like-btn.like-animation {
+  :global(.comment-like-btn.like-animation) {
     animation: likePulse 0.6s ease-in-out;
     transform: scale(1.2);
     background-color: #ff6b6b !important;
@@ -1756,7 +1771,7 @@
   }
 
   /* 하트 파티클 효과 */
-  .comment-like-btn.like-animation::before {
+  :global(.comment-like-btn.like-animation::before) {
     content: '❤️';
     position: absolute;
     top: -20px;
@@ -1768,7 +1783,7 @@
     z-index: 1000;
   }
 
-  .comment-like-btn.like-animation::after {
+  :global(.comment-like-btn.like-animation::after) {
     content: '✨';
     position: absolute;
     top: -15px;
@@ -1811,18 +1826,18 @@
   }
 
   /* 호버 효과 */
-  .comment-like-btn:hover:not(:disabled) {
+  :global(.comment-like-btn:hover:not(:disabled)) {
     transform: scale(1.05);
     box-shadow: 0 4px 8px rgba(0, 123, 255, 0.3);
   }
 
-  .comment-like-btn:disabled {
+  :global(.comment-like-btn:disabled) {
     opacity: 0.6;
     cursor: not-allowed;
   }
 
   /* 좋아요 버튼 아이콘 애니메이션 */
-  .comment-like-btn.like-animation svg {
+  :global(.comment-like-btn.like-animation svg) {
     animation: iconBounce 0.6s ease-in-out;
   }
 

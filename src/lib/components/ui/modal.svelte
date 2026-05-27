@@ -11,12 +11,9 @@
     children
   } = $props();
 
-  const dialogClass = [
-    size ? `modal-${size}` : '',
-    fullscreen ? 'modal-fullscreen' : ''
-  ]
-    .filter(Boolean)
-    .join(' ');
+  const dialogClass = $derived(
+    [size ? `modal-${size}` : '', fullscreen ? 'modal-fullscreen' : ''].filter(Boolean).join(' ')
+  );
 </script>
 
 {#if isOpen}

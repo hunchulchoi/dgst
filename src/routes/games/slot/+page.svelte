@@ -22,9 +22,9 @@
   }
 
   let { data }: SlotPageProps = $props();
-  let balance = $state(data.balance || 0);
-  let hasUnreadAlarm = $state(data.hasUnreadAlarm ?? false);
-  let unreadAlarmCount = $state(data.unreadAlarmCount ?? 0);
+  let balance = $state(0);
+  let hasUnreadAlarm = $state(false);
+  let unreadAlarmCount = $state(0);
   let bet = $state(10);
   let spinning = $state(false);
   let reels = $state(['-', '-', '-']);
@@ -57,12 +57,19 @@
   let refreshing = $state(false);
   let spinAnimationInterval: ReturnType<typeof setInterval> | null = null;
   let currentSpinPhrase = $state<{ top: string; middle?: string; bottom: string } | null>(null);
-  let todayStats = $state<SlotTodayStats>({
-    spins: data.todayStats?.spins ?? 0,
-    users: data.todayStats?.users ?? 0
-  });
+  let todayStats = $state<SlotTodayStats>({ spins: 0, users: 0 });
   let isMobile = $state(false);
   let guideCollapsed = $state(false);
+
+  $effect.pre(() => {
+    balance = data.balance || 0;
+    hasUnreadAlarm = data.hasUnreadAlarm ?? false;
+    unreadAlarmCount = data.unreadAlarmCount ?? 0;
+    todayStats = {
+      spins: data.todayStats?.spins ?? 0,
+      users: data.todayStats?.users ?? 0
+    };
+  });
 
   const BASE_SYMBOLS = ['🍒', '🍋', '🔔', '⭐', '7️⃣'];
   const MEDIUM_BALANCE_THRESHOLD = 100_000; // 10만점
@@ -691,14 +698,16 @@
           <div class="slot-guide-inner">
             <div class="slot-guide-header py-1">
               <div class="slot-guide-title">
-                <span
-                  class="display-6 mb-0 flex-shrink-0"
+                <button
+                  type="button"
+                  class="display-6 mb-0 flex-shrink-0 border-0 bg-transparent p-0"
                   class:slot-guide-dice-clickable={guideCollapsed && isMobile}
                   onclick={() => {
                     if (guideCollapsed && isMobile) toggleGuideCollapse();
                   }}
-                  style={guideCollapsed && isMobile ? 'cursor: pointer;' : ''}>🎲</span
-                >
+                  style={guideCollapsed && isMobile ? 'cursor: pointer;' : ''}
+                  aria-label="가이드 펼치기"
+                >🎲</button>
                 <h6 class="fw-bold mb-0">뺑뺑이는 즐거운 놀이터입니다</h6>
               </div>
               <button
