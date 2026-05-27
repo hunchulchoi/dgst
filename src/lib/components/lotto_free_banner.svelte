@@ -238,14 +238,16 @@
       {/if}
     </Button>
     <Button
-      color="outline-secondary"
+      color="primary"
+      outline
       onclick={() => (expanded = !expanded)}
       type="button"
     >
       {expanded ? '접기' : '펼치기'}
     </Button>
     <Button
-      color="outline-secondary"
+      color="primary"
+      outline
       class="d-inline-flex align-items-center gap-1"
       onclick={refreshBanner}
       disabled={refreshing || loading}

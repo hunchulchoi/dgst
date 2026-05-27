@@ -110,7 +110,7 @@
 {#if data.maxPage > 1}
   <Row class="mt-3 mx-0">
     <Col xs="12">
-      <Pagination size="md" arialabel="페이지 네이션" class="d-flex justify-content-center">
+      <Pagination size="md" arialabel="페이지 네이션" class="board-list-pagination d-flex justify-content-center">
         <PaginationItem
           ><PaginationLink
             first
@@ -157,14 +157,28 @@
 <style>
   .board-list-link {
     cursor: pointer;
-    color: var(--bs-body-color) !important;
+    color: var(--bs-primary) !important;
   }
 
   .board-list-link:hover {
-    color: var(--bs-link-hover-color) !important;
+    color: var(--bs-link-hover-color, #0b5ed7) !important;
   }
 
   .board-list-link:visited {
-    color: var(--bs-secondary-color) !important;
+    color: var(--bs-primary) !important;
+  }
+
+  .board-list-pagination :global(.page-link) {
+    color: var(--bs-primary) !important;
+  }
+
+  .board-list-pagination :global(.page-item.active .page-link) {
+    background-color: var(--bs-primary) !important;
+    border-color: var(--bs-primary) !important;
+    color: #fff !important;
+  }
+
+  .board-list-pagination :global(.page-link:hover) {
+    color: var(--bs-link-hover-color, #0b5ed7) !important;
   }
 </style>
