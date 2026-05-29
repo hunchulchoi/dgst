@@ -1,6 +1,13 @@
 import mongoose from 'mongoose';
 import { MONGODB_CONNECTION_STRING, DB_NAME } from '$env/static/private';
 import { isDbConnectSkipped } from '$lib/database/skipDbConnect.js';
+import logger from '$lib/util/logger.js';
+import {
+  buildMongoFailureLog,
+  extractMongoErrorMeta,
+  redactConnectionUrl
+} from '$lib/util/connectionLog.js';
+import { traceFromUnknown } from '$lib/util/formatErrorTrace.js';
 
 const uri = MONGODB_CONNECTION_STRING;
 const connectOptions = {
@@ -17,10 +24,30 @@ if (process.env.NODE_ENV === 'development' && global.__mongooseConnectionPromise
 }
 
 mongoose.connection.on('disconnected', () => {
+  logger.warn({
+    message: `[mongo] disconnected | db=${DB_NAME}`,
+    dbName: DB_NAME,
+    readyState: mongoose.connection.readyState,
+    host: mongoose.connection.host || undefined,
+    uri: redactConnectionUrl(uri)
+  });
+
   connectionPromise = null;
   if (process.env.NODE_ENV === 'development') {
     global.__mongooseConnectionPromise = null;
   }
+});
+
+mongoose.connection.on('error', (err) => {
+  logger.error({
+    message: `[mongo] connection error event | db=${DB_NAME}`,
+    dbName: DB_NAME,
+    readyState: mongoose.connection.readyState,
+    host: mongoose.connection.host || undefined,
+    uri: redactConnectionUrl(uri),
+    ...extractMongoErrorMeta(err),
+    trace: traceFromUnknown(err)
+  });
 });
 
 /**
@@ -37,10 +64,24 @@ export default function connectDB() {
   }
 
   if (!connectionPromise) {
+    logger.info({
+      message: `[mongo] connecting | db=${DB_NAME}`,
+      dbName: DB_NAME,
+      uri: redactConnectionUrl(uri),
+      serverSelectionTimeoutMS: connectOptions.serverSelectionTimeoutMS,
+      connectTimeoutMS: connectOptions.connectTimeoutMS
+    });
+
     connectionPromise = mongoose
       .connect(uri, connectOptions)
       .then((m) => {
-        console.log(DB_NAME, 'DB ready');
+        logger.info({
+          message: `[mongo] connected | db=${DB_NAME}`,
+          dbName: DB_NAME,
+          host: m.connection.host,
+          readyState: m.connection.readyState,
+          uri: redactConnectionUrl(uri)
+        });
         return m;
       })
       .catch((err) => {
@@ -48,7 +89,17 @@ export default function connectDB() {
         if (process.env.NODE_ENV === 'development') {
           global.__mongooseConnectionPromise = null;
         }
-        console.error(DB_NAME, 'DB connection failed', err);
+
+        logger.error(
+          buildMongoFailureLog(`[mongo] connect failed | db=${DB_NAME}`, err, {
+            dbName: DB_NAME,
+            uri: redactConnectionUrl(uri),
+            readyState: mongoose.connection.readyState,
+            serverSelectionTimeoutMS: connectOptions.serverSelectionTimeoutMS,
+            connectTimeoutMS: connectOptions.connectTimeoutMS
+          })
+        );
+
         throw err;
       });
 

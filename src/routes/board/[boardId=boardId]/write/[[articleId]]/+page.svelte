@@ -10,7 +10,8 @@
     Spinner,
     Tooltip
   } from '$lib/components/ui/index.js';
-  import { goto } from '$app/navigation';
+  import { goto, invalidate } from '$app/navigation';
+  import { boardListPath } from '$lib/util/boardPaths.js';
   /**
    * SvelteKit page store import for accessing current route info
    * @see https://kit.svelte.dev/docs/modules#$app-stores
@@ -106,7 +107,7 @@
 
       if (!result.isConfirmed) return false;
     }
-    goto(`/board/${boardId}`);
+    goto(boardListPath(boardId));
   }
 
   let title = $state('');
@@ -394,6 +395,8 @@
 
               title = '';
               content = '';
+
+              await invalidate('board-list');
 
               // 방금 작성/수정한 글의 상세 페이지로 이동
               const savedArticleId = data.articleId || articleId;

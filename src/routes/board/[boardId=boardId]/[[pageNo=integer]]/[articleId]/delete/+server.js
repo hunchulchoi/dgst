@@ -1,6 +1,7 @@
 import { error } from '@sveltejs/kit';
 import { Article } from '$lib/models/article.js';
 import { deleteAlarmsByArticle } from '$lib/server/redis/alarmService.js';
+import { bustBoardListCache } from '$lib/server/boardListLoad.js';
 
 export async function DELETE({ request, params, locals }) {
   console.debug('request', params);
@@ -43,6 +44,7 @@ export async function DELETE({ request, params, locals }) {
 
     // 알람 삭제 (Redis)
     await deleteAlarmsByArticle(params.articleId);
+    await bustBoardListCache(boardId);
   } catch (err) {
     console.error(err);
     throw error(err.status, err.body.message ?? '삭제 중에 오류가 발생하였습니다.');

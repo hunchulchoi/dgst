@@ -1,4 +1,3 @@
-import { error } from '@sveltejs/kit';
 import crypto from 'crypto';
 import connectDB from '$lib/database/mongoosePriomise.js';
 import { Article } from '$lib/models/article.js';
@@ -10,6 +9,120 @@ import { traceFromUnknown } from '$lib/util/formatErrorTrace.js';
 const PAGE_UNIT = 30;
 const THREE_DAYS_MS = 1000 * 60 * 60 * 24 * 3;
 const TOTAL_CACHE_TTL_SECONDS = 60;
+/** 성공 응답 Redis 캐시 — DB 일시 장애 시 stale fallback */
+const LIST_PAYLOAD_TTL_SECONDS = 300;
+
+/**
+ * @param {string} boardId
+ * @param {number} pageNo
+ */
+function listPayloadCacheKey(boardId, pageNo) {
+  return `boardlist:payload:${boardId}:${pageNo}`;
+}
+
+/**
+ * 글 작성·수정·삭제 후 목록 Redis 캐시 무효화
+ *
+ * @param {string} boardId
+ */
+export async function bustBoardListCache(boardId) {
+  try {
+    await redis.del(`boardlist:total:${boardId}`);
+    await redis.delByPrefix(`boardlist:payload:${boardId}:`);
+  } catch {
+    // 캐시 bust 실패는 본 요청을 막지 않음
+  }
+}
+
+/**
+ * @param {string} boardId
+ * @param {number} pageNo
+ * @param {Record<string, unknown>} payload
+ */
+async function cacheListPayload(boardId, pageNo, payload) {
+  try {
+    await redis.setJson(
+      listPayloadCacheKey(boardId, pageNo),
+      payload,
+      LIST_PAYLOAD_TTL_SECONDS
+    );
+  } catch {
+    // 캐시 실패는 목록 응답을 막지 않음
+  }
+}
+
+/**
+ * @param {string} boardId
+ * @param {number} pageNo
+ * @returns {Promise<Record<string, unknown> | null>}
+ */
+async function getStaleListPayload(boardId, pageNo) {
+  try {
+    const cached = await redis.getJson(listPayloadCacheKey(boardId, pageNo));
+    if (!cached || typeof cached !== 'object' || !Array.isArray(cached.articles)) {
+      return null;
+    }
+    return /** @type {Record<string, unknown>} */ (cached);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * DB 장애 시 500 대신 빈 목록 또는 stale 캐시 반환
+ *
+ * @param {import('@sveltejs/kit').ServerLoadEvent} event
+ * @param {string} boardId
+ * @param {number} pageNo
+ * @param {unknown} err
+ * @param {string} errorId
+ */
+async function buildDegradedListResponse(event, boardId, pageNo, err, errorId) {
+  const trace = traceFromUnknown(err);
+  const errMessage = err instanceof Error ? err.message : String(err);
+  const pathname = event.url?.pathname ?? `/board/${boardId}`;
+
+  const stale = await getStaleListPayload(boardId, pageNo);
+
+  if (stale) {
+    logger.warn({
+      errorId,
+      message: `[board-list-load] stale fallback ${boardId} page=${pageNo} | msg=${errMessage}`,
+      pathname,
+      boardId,
+      pageNo,
+      degraded: 'stale',
+      trace: trace || undefined
+    });
+
+    return {
+      ...stale,
+      boardId,
+      pageNo: typeof stale.pageNo === 'number' ? stale.pageNo : pageNo,
+      listLoadDegraded: 'stale'
+    };
+  }
+
+  logger.error({
+    errorId,
+    message: `[board-list-load] unavailable ${boardId} page=${pageNo} | msg=${errMessage}`,
+    pathname,
+    boardId,
+    pageNo,
+    degraded: 'unavailable',
+    trace: trace || undefined
+  });
+
+  return {
+    articles: [],
+    boardId,
+    pageNo,
+    maxPage: 0,
+    startNo: 1,
+    endNo: 1,
+    listLoadDegraded: 'unavailable'
+  };
+}
 
 /**
  * @param {number} pageNo
@@ -107,7 +220,7 @@ export async function loadBoardList(event, boardId) {
       });
     }
 
-    return {
+    const payload = {
       boardId,
       pageNo,
       maxPage,
@@ -115,23 +228,12 @@ export async function loadBoardList(event, boardId) {
       endNo,
       articles
     };
+
+    await cacheListPayload(boardId, pageNo, payload);
+
+    return payload;
   } catch (err) {
     const errorId = crypto.randomUUID();
-    const trace = traceFromUnknown(err);
-    const errMessage = err instanceof Error ? err.message : String(err);
-
-    logger.error({
-      errorId,
-      message: `[board-list-load] ${boardId} page=${pageNo} | msg=${errMessage}`,
-      pathname: `/board/${boardId}${pageNo > 1 ? `/${pageNo}` : ''}`,
-      boardId,
-      pageNo,
-      trace: trace || undefined
-    });
-
-    throw error(500, {
-      message: '목록을 가져오는 중에 오류가 발생하였습니다.',
-      errorId
-    });
+    return buildDegradedListResponse(event, boardId, pageNo, err, errorId);
   }
 }

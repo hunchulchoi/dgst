@@ -9,6 +9,8 @@
   import { browser } from '$app/environment';
   import { onMount } from 'svelte';
   import { reportSlowInitialLoad, reportSlowLoad } from '$lib/util/logSlowLoad.js';
+  import { isFreeBoardLegacyPath } from '$lib/util/boardPaths.js';
+  import { boardListReloadKey, boardListReloading } from '$lib/util/store.js';
   import '../app.css';
 
   let { data, children } = $props();
@@ -37,6 +39,15 @@
 
   const blurTransition = { amount: 40, duration: 400 };
 
+  /** @param {string} pathname */
+  function layoutPageKey(pathname) {
+    return pathname.split('?')[0];
+  }
+
+  const pageTransitionBlur = $derived(
+    $boardListReloading || boardListToDetailBlur ? blurTransition : undefined
+  );
+
   beforeNavigate(({ from, to }) => {
     navigationStartedAt = performance.now();
     navigationFromPath = from?.url?.pathname;
@@ -60,6 +71,11 @@
       navigationStartedAt = 0;
     }
 
+    // 레거시 URL 주소창만 `/` 로 교체 — 네트워크·load 재실행 없음
+    if (to && isFreeBoardLegacyPath(to.url.pathname)) {
+      history.replaceState(history.state, '', `/${to.url.search}`);
+    }
+
     boardListToDetailBlur = false;
 
     const viewportMeta = document.querySelector('meta[name="viewport"]');
@@ -74,6 +90,10 @@
 
   onMount(() => {
     if (!browser) return;
+
+    if (isFreeBoardLegacyPath(window.location.pathname)) {
+      history.replaceState(history.state, '', `/${window.location.search}`);
+    }
 
     const measureInitialLoad = () => {
       reportSlowInitialLoad(window.location.pathname);
@@ -130,14 +150,26 @@
 <Header session={data.session} pathname={data.pathname} />
 <Memo />
 
-{#key data.pathname}
+{#key `${layoutPageKey(data.pathname)}-${$boardListReloadKey}`}
   <div
     class="page-transition"
-    in:blur={boardListToDetailBlur ? blurTransition : undefined}
-    out:blur={boardListToDetailBlur ? blurTransition : undefined}
+    class:page-transition-reloading={$boardListReloading}
+    in:blur={pageTransitionBlur}
+    out:blur={pageTransitionBlur}
   >
     {@render children()}
   </div>
 {/key}
 
 <Footer />
+
+<style>
+  .page-transition-reloading {
+    filter: blur(6px);
+    opacity: 0.88;
+    pointer-events: none;
+    transition:
+      filter 0.25s ease,
+      opacity 0.25s ease;
+  }
+</style>

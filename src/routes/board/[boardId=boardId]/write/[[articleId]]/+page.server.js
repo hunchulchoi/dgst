@@ -3,6 +3,7 @@ import { Article } from '$lib/models/article.js';
 import { checkAndLogSessionDevice } from '$lib/server/auth/checkSessionDevice.js';
 import { sanitizeArticleContent } from '$lib/server/sanitizeArticleContent.js';
 import connectDB from '$lib/database/mongoosePriomise.js';
+import { bustBoardListCache } from '$lib/server/boardListLoad.js';
 
 connectDB();
 export const actions = {
@@ -56,6 +57,8 @@ export const actions = {
           });
         }
 
+        await bustBoardListCache(params.boardId);
+
         // 글 수정 시 기존 articleId 반환
         return { success: true, articleId: params.articleId };
       } else {
@@ -71,6 +74,8 @@ export const actions = {
 
         const inserted = await article.save();
         //console.log('inserted', inserted);
+
+        await bustBoardListCache(params.boardId);
 
         // 새 글 작성 시 articleId 반환
         return { success: true, articleId: inserted._id.toString() };

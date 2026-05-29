@@ -1,10 +1,20 @@
 import { env as dynamicEnv } from '$env/dynamic/private';
+import { isBoardHtmlPath } from '$lib/util/boardPaths.js';
 
 export const load = async (event) => {
+  const boardRoute = isBoardHtmlPath(event.url.pathname);
+
   try {
-    event.setHeaders({
-      'Cache-Control': 'private, no-cache'
-    });
+    event.setHeaders(
+      boardRoute
+        ? {
+            'Cache-Control': 'private, no-store, must-revalidate, max-age=0',
+            'CDN-Cache-Control': 'no-store'
+          }
+        : {
+            'Cache-Control': 'private, no-cache'
+          }
+    );
   } catch (err) {
     const message = err instanceof Error ? err.message : '';
     if (!message.includes('already set')) {

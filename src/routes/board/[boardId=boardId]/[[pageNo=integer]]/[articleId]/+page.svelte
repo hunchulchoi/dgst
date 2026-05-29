@@ -7,7 +7,8 @@
     InputGroup,
     Row
   } from '$lib/components/ui/index.js';
-  import { goto } from '$app/navigation';
+  import { goto, invalidate } from '$app/navigation';
+  import { boardListPath } from '$lib/util/boardPaths.js';
   import { page } from '$app/stores';
   import { browser } from '$app/environment';
   import { scale } from 'svelte/transition';
@@ -103,10 +104,11 @@
       });
   }
 
-  function list() {
+  async function list() {
     const currentPageNo = pageNo || 1;
 
-    goto(`/board/${boardId}/${currentPageNo}`, { invalidateAll: true, replaceState: true });
+    await invalidate('board-list');
+    goto(boardListPath(boardId, currentPageNo), { replaceState: true });
   }
 
   async function preview(event, el) {

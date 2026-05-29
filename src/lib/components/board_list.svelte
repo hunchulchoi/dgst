@@ -12,10 +12,23 @@
 
   import { formatDistanceToNowStrict, parseISO } from 'date-fns';
   import { ko } from 'date-fns/locale';
-  import { goto } from '$app/navigation';
+  import { goto, invalidateAll } from '$app/navigation';
+  import { boardListPath } from '$lib/util/boardPaths.js';
 
   // Svelte 5 Runes - Props
   let { data, write, boardId, session } = $props();
+
+  let retrying = $state(false);
+
+  async function retryListLoad() {
+    if (retrying) return;
+    retrying = true;
+    try {
+      await invalidateAll();
+    } finally {
+      retrying = false;
+    }
+  }
 
   /** 서버 load의 pageNo — $page.params destructuring은 네비 후 갱신되지 않을 수 있음 */
   const currentPageNo = $derived(Number(data.pageNo) || 1);
@@ -30,12 +43,36 @@
     }
 
     e.preventDefault();
-    const path = target === 1 ? `/board/${boardId}` : `/board/${boardId}/${target}`;
+    const path = boardListPath(boardId, target);
     goto(path);
   }
 </script>
 
-{#if !data.articles.length}
+{#if data.listLoadDegraded === 'stale'}
+  <Row class="mx-0 mb-2">
+    <Col>
+      <div class="alert alert-warning mb-0 d-flex flex-wrap align-items-center gap-2" role="alert">
+        <span>게시글 목록을 최근 캐시로 표시 중입니다. 최신 글이 보이지 않을 수 있습니다.</span>
+        <Button size="sm" color="warning" outline disabled={retrying} onclick={retryListLoad}>
+          {retrying ? '새로고침 중…' : '다시 불러오기'}
+        </Button>
+      </div>
+    </Col>
+  </Row>
+{:else if data.listLoadDegraded === 'unavailable'}
+  <Row class="mx-0 mb-2">
+    <Col>
+      <div class="alert alert-danger mb-0 d-flex flex-wrap align-items-center gap-2" role="alert">
+        <span>게시글 목록을 일시적으로 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</span>
+        <Button size="sm" color="danger" outline disabled={retrying} onclick={retryListLoad}>
+          {retrying ? '새로고침 중…' : '다시 불러오기'}
+        </Button>
+      </div>
+    </Col>
+  </Row>
+{/if}
+
+{#if !data.articles.length && data.listLoadDegraded !== 'unavailable'}
   <Row class="my-5 mx-0">
     <Row>
       <Col class="text-center">
@@ -114,7 +151,7 @@
         <PaginationItem
           ><PaginationLink
             first
-            href={`/board/${boardId}`}
+            href={boardListPath(boardId, 1)}
             onclick={(e) => handlePageClick(1, e)}
             data-sveltekit-preload-data="hover"
           /></PaginationItem
@@ -123,7 +160,7 @@
           {@const targetPage = i + data.startNo}
           <PaginationItem active={(!data.pageNo && targetPage === 1) || targetPage == data.pageNo}>
             <PaginationLink
-              href={`/board/${boardId}/${targetPage}`}
+              href={boardListPath(boardId, targetPage)}
               onclick={(e) => handlePageClick(targetPage, e)}
               data-sveltekit-preload-data="hover"
             >
@@ -133,7 +170,7 @@
         {/each}
         <PaginationItem
           ><PaginationLink
-            href={`/board/${boardId}/${data.maxPage}`}
+            href={boardListPath(boardId, data.maxPage)}
             onclick={(e) => handlePageClick(data.maxPage, e)}
             data-sveltekit-preload-data="hover"
             last
@@ -157,14 +194,14 @@
 <style>
   .board-list-link {
     cursor: pointer;
-    color: var(--bs-primary) !important;
+    color: var(--bs-body-color) !important;
   }
 
   .board-list-link:hover {
-    color: var(--bs-link-hover-color, #0b5ed7) !important;
+    color: var(--bs-link-hover-color) !important;
   }
 
   .board-list-link:visited {
-    color: var(--bs-primary) !important;
+    color: var(--bs-secondary-color) !important;
   }
 </style>

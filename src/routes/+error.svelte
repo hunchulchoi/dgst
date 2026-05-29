@@ -8,7 +8,7 @@
 
   // Svelte 5 Runes - page store 필요 (error page는 예외)
 
-  // 404, 502 에러 시 자동으로 /board/free로 리다이렉트
+  // 404, 502 에러 시 자동으로 홈(자유게시판)으로 리다이렉트
   onMount(() => {
     if ($page.status >= 500) {
       reportClientPageError({
@@ -33,8 +33,8 @@
         return;
       }
 
-      // 그 외의 경우 /board/free로 리다이렉트
-      goto('/board/free');
+      // 그 외의 경우 홈(자유게시판)으로 리다이렉트
+      goto('/');
     }
   });
 </script>

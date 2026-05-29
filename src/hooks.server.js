@@ -21,6 +21,7 @@ import { error, redirect, json } from '@sveltejs/kit';
 import logger from '$lib/util/logger';
 import { serializeError, traceFromUnknown } from '$lib/util/formatErrorTrace.js';
 import { warmupConnections } from '$lib/server/warmup.js';
+import { isBoardHtmlPath } from '$lib/util/boardPaths.js';
 
 warmupConnections();
 
@@ -437,6 +438,21 @@ export async function handle({ event, resolve }) {
     logger.info(
       `📤 응답 완료: ${pathname} - Status: ${status}, Time: ${executionTime}ms - ${new Date().toISOString()}`
     );
+  }
+
+  if (authResponse instanceof Response && isBoardHtmlPath(pathname)) {
+    const contentType = authResponse.headers.get('content-type') ?? '';
+    if (contentType.includes('text/html')) {
+      const headers = new Headers(authResponse.headers);
+      headers.set('Cache-Control', 'private, no-store, must-revalidate, max-age=0');
+      headers.set('CDN-Cache-Control', 'no-store');
+
+      return new Response(authResponse.body, {
+        status: authResponse.status,
+        statusText: authResponse.statusText,
+        headers
+      });
+    }
   }
 
   return authResponse;

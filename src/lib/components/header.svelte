@@ -20,22 +20,26 @@
   import { navigating } from '$app/stores';
   import { browser } from '$app/environment';
 
-  import { alarmCount } from '$lib/util/store.js';
+  import { alarmCount, boardListReloading, boardListReloadKey } from '$lib/util/store.js';
+  import { isFreeBoardHomePath } from '$lib/util/boardPaths.js';
 
   // Svelte 5 Runes - Props
   let { session, pathname } = $props();
 
-  let showSpinner = $state(false);
+  let navigatingSpinner = $state(false);
 
   $effect(() => {
     if ($navigating) {
-      showSpinner = true;
+      navigatingSpinner = true;
     } else {
-      setTimeout(() => {
-        showSpinner = false;
+      const timer = setTimeout(() => {
+        navigatingSpinner = false;
       }, 500);
+      return () => clearTimeout(timer);
     }
   });
+
+  const showSpinner = $derived(navigatingSpinner || $boardListReloading);
 
   const handleGoogleSignIn = () => {
     signIn('google', { callbackUrl: '/' });
@@ -79,19 +83,26 @@
   );
   const boardChromeConnect = $derived(Boolean(pathname?.startsWith('/board')) || pathname === '/');
 
-  /** 자유게시판 탭 — 목록 캐시(board-list) 갱신 */
+  /** 자유게시판 탭 — 목록 reload + blur */
   /** @param {MouseEvent} e */
   async function handleFreeBoardTabClick(e) {
     e.preventDefault();
 
     const currentPath = pathname?.split('?')[0] ?? '';
+    const onHome = isFreeBoardHomePath(currentPath);
 
-    if (currentPath === '/board/free' || currentPath === '/') {
+    boardListReloading.set(true);
+    boardListReloadKey.update((n) => n + 1);
+
+    try {
+      if (!onHome) {
+        await goto('/', { invalidateAll: false, replaceState: true });
+      }
+
       await invalidate('board-list');
-      return;
+    } finally {
+      boardListReloading.set(false);
     }
-
-    await goto('/', { invalidateAll: true });
   }
 </script>
 
@@ -187,7 +198,7 @@
             <span
               class="spinner-border spinner-border-sm ms-2 text-primary"
               role="status"
-              aria-hidden="true"
+              aria-label="목록 불러오는 중"
             ></span>
           {/if}
         </NavLink>
