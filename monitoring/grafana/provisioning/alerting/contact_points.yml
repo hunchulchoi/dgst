@@ -1,5 +1,19 @@
 apiVersion: 1
 
-# 알림 채널은 Grafana UI → Alerting → Contact points 에서 추가하세요.
-# 추가 후 policies.yml 의 receiver 이름을 맞추면 됩니다.
-contactPoints: []
+# Telegram 알림 — docker-compose 환경변수
+#   TELEGRAM_BOT_TOKEN         : @BotFather 토큰
+#   TELEGRAM_CHAT_ID           : 그룹/채널 ID (예: -1001234567890)
+#   TELEGRAM_MESSAGE_THREAD_ID : 포럼(토픽) 스레드 ID. 토픽 미사용 시 0
+contactPoints:
+  - orgId: 1
+    name: telegram-dgst
+    receivers:
+      - uid: dgst-telegram
+        type: telegram
+        disableResolveMessage: false
+        settings:
+          bottoken: $TELEGRAM_BOT_TOKEN
+          chatid: $TELEGRAM_CHAT_ID
+          message_thread_id: $TELEGRAM_MESSAGE_THREAD_ID
+          message: |
+            {{ template "default.message" . }}
