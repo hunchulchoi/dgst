@@ -1,6 +1,7 @@
 apiVersion: 1
 
 # DGST Grafana Alerting rules (Loki + Prometheus)
+# Telegram 알림: examples/alerting/*.yml 을 provisioning/alerting/ 로 복사 + env 설정
 # service 라벨: Promtail json.labels 의 service (기본 dgst, SERVICE_NAME env)
 # compose_service 가 다르면 stream selector 를 {compose_service="..."} 로 바꾸세요.
 
