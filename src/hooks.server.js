@@ -212,6 +212,8 @@ const DEVICE_COOKIE_NAME = 'dgst_device';
 const DEVICE_COOKIE_MAX_AGE_DAYS = 365;
 /** Redis device 키 TTL — 쿠키보다 짧게 (키 누적 방지) */
 const DEVICE_REDIS_TTL_SECONDS = 30 * 24 * 60 * 60;
+/** DAU Redis 키 TTL — KST 자정 경계 여유 */
+const DAU_REDIS_TTL_SECONDS = 48 * 60 * 60;
 const AUTH_SESSION_COOKIE_NAME =
   NODE_ENV === 'production' ? '__Secure-authjs.session-token' : 'authjs.session-token';
 
@@ -232,6 +234,42 @@ const getRequestMeta = (event) => {
     requestUrl: event.url?.toString?.(),
     search: event.url?.search ?? ''
   };
+};
+
+/** @param {string} pathname */
+const isDauTrackablePath = (pathname) =>
+  !pathname.startsWith('/_app/') &&
+  !pathname.startsWith('/favicon') &&
+  !pathname.startsWith('/api/log') &&
+  !pathname.includes('.');
+
+/** KST 기준 YYYY-MM-DD */
+const getKstDateKey = () =>
+  new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' });
+
+/**
+ * 로그인 사용자 DAU — KST 기준 하루 1회 user.active 로그
+ *
+ * @param {string} userId
+ * @param {string} pathname
+ */
+const recordDailyActiveUser = (userId, pathname) => {
+  const dauDate = getKstDateKey();
+  const redisKey = `dau:${dauDate}:${userId}`;
+
+  redis
+    .setNx(redisKey, '1', DAU_REDIS_TTL_SECONDS)
+    .then((isFirstToday) => {
+      if (!isFirstToday) return;
+      logger.info({
+        message: 'user active',
+        event: 'user.active',
+        user_id: userId,
+        dau_date: dauDate,
+        pathname
+      });
+    })
+    .catch(() => {});
 };
 
 // 우리의 handle 함수 (Auth 핸들러와 함께 사용)
@@ -411,6 +449,18 @@ export async function handle({ event, resolve }) {
       error: e,
       pathname
     });
+  }
+
+  if (isDauTrackablePath(pathname)) {
+    try {
+      const session = await event.locals.auth();
+      const userId = session?.user?.id;
+      if (userId) {
+        recordDailyActiveUser(String(userId), pathname);
+      }
+    } catch {
+      // DAU 기록 실패는 요청 처리에 영향 없음
+    }
   }
 
   const endTime = Date.now();

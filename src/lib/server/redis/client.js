@@ -244,6 +244,30 @@ export async function set(k, v, ttlSeconds = REDIS_TTL_SECONDS) {
 }
 
 /**
+ * 키가 없을 때만 SET (NX). 성공 시 true.
+ *
+ * @param {string} k
+ * @param {string} v
+ * @param {number} [ttlSeconds]
+ * @returns {Promise<boolean>}
+ */
+export async function setNx(k, v, ttlSeconds = REDIS_TTL_SECONDS) {
+  const c = await getClient();
+  if (!c) return false;
+  try {
+    const fullKey = key(k);
+    const result =
+      ttlSeconds > 0
+        ? await c.set(fullKey, v, 'EX', ttlSeconds, 'NX')
+        : await c.set(fullKey, v, 'NX');
+    return result === 'OK';
+  } catch (err) {
+    logRedisCommandFailure('setNx', k, err);
+    return false;
+  }
+}
+
+/**
  * @param {string} k
  * @returns {Promise<boolean>}
  */
