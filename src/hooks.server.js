@@ -289,7 +289,12 @@ export async function handle({ event, resolve }) {
     }
   }
 
-  logger.info(`📥 요청 시작: ${pathname} - ${new Date().toLocaleString()}`);
+  logger.debug({
+    message: 'http request',
+    event: 'http.request',
+    pathname,
+    ...getRequestMeta(event)
+  });
 
   // 파일 업로드 경로에 대해서는 본문 크기 제한 증가 (100MB)
   const maxBodySize = pathname.includes('/board/upload') ? 100 * 1024 * 1024 : undefined;
@@ -412,32 +417,49 @@ export async function handle({ event, resolve }) {
   const executionTime = endTime - startTime;
   const status = authResponse?.status || 200;
 
-  if (executionTime >= 2000 && !pathname.startsWith('/api/og') && !pathname.startsWith('/auth/signin') && !pathname.startsWith('/auth/callback')) {
+  const httpLogBase = {
+    event: 'http.response',
+    method: event.request.method,
+    pathname,
+    status,
+    duration_ms: executionTime,
+    ...getRequestMeta(event)
+  };
+
+  if (
+    executionTime >= 2000 &&
+    !pathname.startsWith('/api/og') &&
+    !pathname.startsWith('/auth/signin') &&
+    !pathname.startsWith('/auth/callback')
+  ) {
     logger.warn({
-      message: `🐢 매우 느린 응답: ${pathname} - Status: ${status}, Time: ${executionTime}ms`,
-      pathname,
-      executionTime,
-      status,
-      slowResponse: true
+      message: 'http slow response',
+      ...httpLogBase,
+      slow_response: true,
+      slow_tier: 'critical'
     });
   } else if (status >= 500 && !pathname.startsWith('/api/log')) {
     logger.error({
-      message: `[http-500-response] ${status} ${pathname} - Time: ${executionTime}ms`,
-      pathname,
-      executionTime,
-      status
+      message: 'http server error',
+      ...httpLogBase
     });
-  } else if (executionTime > 100 && !pathname.startsWith('/api/og') && !pathname.startsWith('/auth/signin') && !pathname.startsWith('/auth/callback')) {
+  } else if (
+    executionTime > 100 &&
+    !pathname.startsWith('/api/og') &&
+    !pathname.startsWith('/auth/signin') &&
+    !pathname.startsWith('/auth/callback')
+  ) {
     logger.warn({
-      message: `🐌 지연 응답: ${pathname} - Status: ${status}, Time: ${executionTime}ms`,
-      pathname,
-      executionTime,
-      status
+      message: 'http slow response',
+      ...httpLogBase,
+      slow_response: true,
+      slow_tier: 'warn'
     });
   } else {
-    logger.info(
-      `📤 응답 완료: ${pathname} - Status: ${status}, Time: ${executionTime}ms - ${new Date().toISOString()}`
-    );
+    logger.info({
+      message: 'http response',
+      ...httpLogBase
+    });
   }
 
   if (authResponse instanceof Response && isBoardHtmlPath(pathname)) {

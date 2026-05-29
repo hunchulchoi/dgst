@@ -15,16 +15,17 @@ export function warmupConnections() {
 
   void connectDB().catch((err) => {
     logger.error({
-      message: '[warmup] mongoose connect failed',
-      subsystem: 'mongo-mongoose',
+      message: '[warmup] mongo connect failed',
+      subsystem: 'mongo',
       trace: traceFromUnknown(err)
     });
   });
 
+  /** Auth adapter·login_logs — Mongoose와 동일 풀 */
   void clientPromise.catch((err) => {
     logger.error({
-      message: '[warmup] mongo-native connect failed',
-      subsystem: 'mongo-native',
+      message: '[warmup] mongo shared client failed',
+      subsystem: 'mongo',
       trace: traceFromUnknown(err)
     });
   });

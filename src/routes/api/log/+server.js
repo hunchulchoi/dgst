@@ -27,8 +27,8 @@ export async function POST(event) {
     const logLevel = logData.level === 'error' || logData.level === 'warn' ? logData.level : 'warn';
     const logMessage = {
       message: typeof logData.message === 'string' ? logData.message.slice(0, 1000) : 'Client error',
-      level: logLevel,
-      client: true,
+      event: 'client.log',
+      source: 'browser',
       userAgent: request.headers.get('user-agent'),
       timestamp: new Date().toISOString(),
       ...(typeof logData.type === 'string' && { type: logData.type.slice(0, 32) }),

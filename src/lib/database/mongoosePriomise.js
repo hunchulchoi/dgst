@@ -10,11 +10,18 @@ import {
 import { traceFromUnknown } from '$lib/util/formatErrorTrace.js';
 
 const uri = MONGODB_CONNECTION_STRING;
-const connectOptions = {
+
+/** @type {import('mongoose').ConnectOptions} */
+export const mongoConnectOptions = {
   dbName: DB_NAME,
   serverSelectionTimeoutMS: 10_000,
-  connectTimeoutMS: 10_000
+  connectTimeoutMS: 10_000,
+  minPoolSize: 3,
+  maxPoolSize: 10,
+  maxIdleTimeMS: 0
 };
+
+const connectOptions = mongoConnectOptions;
 
 /** @type {Promise<typeof mongoose> | null} */
 let connectionPromise = null;
@@ -69,18 +76,22 @@ export default function connectDB() {
       dbName: DB_NAME,
       uri: redactConnectionUrl(uri),
       serverSelectionTimeoutMS: connectOptions.serverSelectionTimeoutMS,
-      connectTimeoutMS: connectOptions.connectTimeoutMS
+      connectTimeoutMS: connectOptions.connectTimeoutMS,
+      minPoolSize: connectOptions.minPoolSize,
+      maxPoolSize: connectOptions.maxPoolSize
     });
 
     connectionPromise = mongoose
       .connect(uri, connectOptions)
       .then((m) => {
         logger.info({
-          message: `[mongo] connected | db=${DB_NAME}`,
+          message: `[mongo] connected | db=${DB_NAME} (Auth·native adapter 풀 공유)`,
           dbName: DB_NAME,
           host: m.connection.host,
           readyState: m.connection.readyState,
-          uri: redactConnectionUrl(uri)
+          uri: redactConnectionUrl(uri),
+          minPoolSize: connectOptions.minPoolSize,
+          maxPoolSize: connectOptions.maxPoolSize
         });
         return m;
       })

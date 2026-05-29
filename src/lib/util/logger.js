@@ -1,136 +1,141 @@
 import winston from 'winston';
 import * as fs from 'fs';
+import * as os from 'os';
 import * as path from 'path';
 
-const isDevelopment = process.env.NODE_ENV !== 'production';
+const environment = process.env.NODE_ENV || 'development';
+const isProduction = environment === 'production';
+const serviceName = process.env.SERVICE_NAME || 'dgst';
+const hostname = os.hostname();
 
-// 한국시간 변환 함수
-const getKoreaTime = () => {
-  const now = new Date();
-  const koreaTime = new Date(now.getTime() + 9 * 60 * 60 * 1000); // UTC+9
-  const year = koreaTime.getUTCFullYear();
-  const month = String(koreaTime.getUTCMonth() + 1).padStart(2, '0');
-  const day = String(koreaTime.getUTCDate()).padStart(2, '0');
-  const hours = String(koreaTime.getUTCHours()).padStart(2, '0');
-  const minutes = String(koreaTime.getUTCMinutes()).padStart(2, '0');
-  const seconds = String(koreaTime.getUTCSeconds()).padStart(2, '0');
-  const milliseconds = String(koreaTime.getUTCMilliseconds()).padStart(3, '0');
-  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}.${milliseconds}`;
-};
+/** @type {'json' | 'pretty'} */
+const logFormat =
+  process.env.LOG_FORMAT === 'json' || process.env.LOG_FORMAT === 'pretty'
+    ? process.env.LOG_FORMAT
+    : isProduction
+      ? 'json'
+      : 'pretty';
 
-// 로그 디렉토리 생성
 const logDir = process.env.LOG_DIR || './logs';
 if (!fs.existsSync(logDir)) {
   fs.mkdirSync(logDir, { recursive: true });
 }
 
-// 실패 로그 파일 경로 (매일 로테이션)
-const getErrorLogPath = () => {
-  return path.join(logDir, `error-${new Date().toISOString().split('T')[0]}.log`);
-};
+const getErrorLogPath = () =>
+  path.join(logDir, `error-${new Date().toISOString().split('T')[0]}.log`);
 
-// 커스텀 포맷터: 한국시간 + 메시지 포맷 (clientIp 제외)
-const koreaTimeFormat = winston.format.printf(({ level, message, timestamp, ...metadata }) => {
-  const koreaTime = getKoreaTime();
-  const levelUpper = level.toUpperCase();
+/**
+ * @param {unknown} value
+ * @param {number} [depth]
+ */
+function serializeLogValue(value, depth = 0) {
+  if (value == null) return value;
 
-  const { clientIp, pathname, path, status, trace, ...rest } = metadata;
-
-  let prefix = `[${koreaTime}] [${levelUpper}]`;
-  const reqPath = pathname || path;
-  if (reqPath) prefix += ` [${reqPath}]`;
-  if (status) prefix += ` [${status}]`;
-
-  const metaString = Object.keys(rest).length > 0 ? ' ' + JSON.stringify(rest) : '';
-  const traceBlock =
-    typeof trace === 'string' && trace.trim() ? `\n[trace]\n${trace.trimEnd()}` : '';
-
-  return `${prefix} ${message}${metaString}${traceBlock}`;
-});
-
-// 개발 환경 포맷터 (컬러 + 한국시간)
-const devFormat = winston.format.combine(
-  winston.format.colorize(),
-  winston.format.printf(({ level, message, ...metadata }) => {
-    const koreaTime = getKoreaTime();
-    const { clientIp, pathname, path, status, trace, ...rest } = metadata;
-
-    let prefix = `[${koreaTime}] ${level}`;
-    const reqPath = pathname || path;
-    if (reqPath) prefix += ` [${reqPath}]`;
-    if (status) prefix += ` [${status}]`;
-
-    const metaString = Object.keys(rest).length > 0 ? ' ' + JSON.stringify(rest) : '';
-    const traceBlock =
-      typeof trace === 'string' && trace.trim() ? `\n[trace]\n${trace.trimEnd()}` : '';
-    return `${prefix} ${message}${metaString}${traceBlock}`;
-  })
-);
-
-// 프로덕션 환경 포맷터 (JSON + 한국시간)
-const prodFormat = winston.format.combine(
-  winston.format.timestamp({ format: () => getKoreaTime() }),
-  winston.format.printf(({ timestamp, level, message, ...metadata }) => {
-    const { clientIp, pathname, path, status, trace, ...rest } = metadata;
-    /** @type {Record<string, any>} */
-    const output = {
-      level: level.toUpperCase(),
-      time: timestamp
+  if (value instanceof Error) {
+    return {
+      name: value.name,
+      message: value.message,
+      stack: value.stack
     };
+  }
 
-    const reqPath = pathname || path;
-    if (reqPath !== undefined) output.path = reqPath;
-    if (status !== undefined) output.status = status;
+  if (Array.isArray(value)) {
+    if (depth > 2) return '[Array]';
+    return value.map((item) => serializeLogValue(item, depth + 1));
+  }
 
-    output.message = message;
-    if (typeof trace === 'string' && trace.trim()) output.trace = trace;
+  if (typeof value === 'object') {
+    if (depth > 2) return String(value);
+    /** @type {Record<string, unknown>} */
+    const out = {};
+    for (const [key, nested] of Object.entries(value)) {
+      out[key] = serializeLogValue(nested, depth + 1);
+    }
+    return out;
+  }
 
-    return JSON.stringify({
-      ...output,
-      ...rest
-    });
-  })
-);
+  return value;
+}
 
-// 파일 포맷터 (error/warn 로그용)
-const fileFormat = winston.format.combine(
-  winston.format.timestamp({ format: () => getKoreaTime() }),
-  winston.format.printf(({ timestamp, level, message, ...metadata }) => {
-    const { clientIp, pathname, path, status, trace, ...rest } = metadata;
-    /** @type {Record<string, any>} */
-    const output = {
-      level: level.toUpperCase(),
-      time: timestamp
-    };
+/**
+ * Grafana/Loki용 단일 JSON 레코드 (한 줄 = 한 이벤트)
+ *
+ * @param {string} level
+ * @param {unknown} message
+ * @param {Record<string, unknown>} [metadata]
+ */
+export function toGrafanaLogRecord(level, message, metadata = {}) {
+  const {
+    trace,
+    pathname,
+    path: pathField,
+    status,
+    clientIp,
+    error,
+    level: _ignoredLevel,
+    message: _ignoredMessage,
+    timestamp: _ignoredTimestamp,
+    ...rest
+  } = metadata;
 
-    const reqPath = pathname || path;
-    if (reqPath !== undefined) output.path = reqPath;
-    if (status !== undefined) output.status = status;
+  /** @type {Record<string, unknown>} */
+  const record = {
+    timestamp: new Date().toISOString(),
+    level: String(level).replace(/\u001b\[[0-9;]*m/g, '').toLowerCase(),
+    message: typeof message === 'string' ? message : JSON.stringify(message),
+    service: serviceName,
+    environment,
+    hostname
+  };
 
-    output.message = message;
-    if (typeof trace === 'string' && trace.trim()) output.trace = trace;
+  const reqPath = pathname ?? pathField;
+  if (reqPath !== undefined) record.pathname = reqPath;
+  if (status !== undefined) record.status = status;
+  if (clientIp) record.client_ip = clientIp;
+  if (typeof trace === 'string' && trace.trim()) record.trace = trace.trim();
+  if (error !== undefined) record.error = serializeLogValue(error);
 
-    return JSON.stringify({
-      ...output,
-      ...rest
-    });
-  })
-);
+  for (const [key, value] of Object.entries(rest)) {
+    if (value !== undefined) record[key] = serializeLogValue(value);
+  }
 
-// Winston logger 생성
+  return record;
+}
+
+/** @param {import('logform').TransformableInfo} info */
+function formatGrafanaJson(info) {
+  const { level, message, ...metadata } = info;
+  return JSON.stringify(toGrafanaLogRecord(level, message, metadata));
+}
+
+/** @param {import('logform').TransformableInfo} info */
+function formatPretty(info) {
+  const { level, message, ...metadata } = info;
+  const record = toGrafanaLogRecord(level, message, metadata);
+  const kst = new Date(record.timestamp).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' });
+  const reqPath = record.pathname ? ` [${record.pathname}]` : '';
+  const status = record.status ? ` [${record.status}]` : '';
+  const { trace, timestamp, level: lvl, message: msg, ...rest } = record;
+  const metaString = Object.keys(rest).length > 0 ? ` ${JSON.stringify(rest)}` : '';
+  const traceBlock = typeof trace === 'string' && trace ? `\n[trace]\n${trace}` : '';
+  return `[${kst}] ${String(lvl).toUpperCase()}${reqPath}${status} ${msg}${metaString}${traceBlock}`;
+}
+
+const grafanaJsonFormat = winston.format.printf(formatGrafanaJson);
+const prettyFormat = winston.format.combine(winston.format.colorize(), winston.format.printf(formatPretty));
+
+const activeFormat = logFormat === 'json' ? grafanaJsonFormat : prettyFormat;
+
 const logger = winston.createLogger({
-  level: isDevelopment ? 'debug' : 'info',
-  format: isDevelopment ? devFormat : prodFormat,
+  level: process.env.LOG_LEVEL || (isProduction ? 'info' : 'debug'),
   transports: [
-    // 콘솔 출력
     new winston.transports.Console({
-      format: isDevelopment ? devFormat : prodFormat
+      format: activeFormat
     }),
-    // 에러/경고 로그 파일 저장
     new winston.transports.File({
       filename: getErrorLogPath(),
-      level: 'warn', // warn 이상만 저장
-      format: fileFormat
+      level: 'warn',
+      format: grafanaJsonFormat
     })
   ]
 });
