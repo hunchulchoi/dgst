@@ -1131,14 +1131,14 @@
           목록
         </Button>
       </Col>
-      <Row class="my-3 bg-warning-subtle p-2 rounded-3 mb-1 mx-0">
+      <Row class="comment-heading-bar my-3 bg-warning-subtle p-2 rounded-3 mb-1 mx-2 align-items-center">
         <!--리플-->
-        <Col>
+        <Col class="d-flex align-items-center gap-2 flex-wrap">
           <Icon name="chat" />
-          의견남기기
+          <span>의견남기기</span>
           <Badge color="primary">{commentData.length}</Badge>
         </Col>
-        <Col class="text-end article-comment-refresh">
+        <Col class="text-end article-comment-refresh d-flex align-items-center justify-content-end">
           <Button class="comment-toolbar-btn fw-bolder" onclick={comments} outline size="lg">
             <Icon name="arrow-repeat" />
           </Button>
@@ -1146,9 +1146,9 @@
       </Row>
     </Row>
 
-    <Row class="comment-section mb-5 mx-0">
+    <Row class="comment-section mb-5 mx-0 px-2">
       {#each commentData as comment}
-        <Row class="comment-item pt-3 pb-2 px-0 border-bottom border-gray-subtle mx-0" id="cmt{comment.id}">
+        <Row class="comment-item pt-3 pb-2 border-bottom border-gray-subtle mx-0" id="cmt{comment.id}">
           {#if comment.parentCommentNickname}
             <Col xs="auto" class="m-0 pe-1">
               <Icon name="arrow-return-right" class="text-success"></Icon>
@@ -1455,14 +1455,14 @@
       <!--목록 끝-->
 
       {#if commentData?.length}
-        <Row class="my-3 bg-warning-subtle p-2 rounded-3 mb-1 mx-0">
+        <Row class="comment-heading-bar my-3 bg-warning-subtle p-2 rounded-3 mb-1 mx-0 align-items-center">
           <!--리플-->
-          <Col>
+          <Col class="d-flex align-items-center gap-2 flex-wrap">
             <Icon name="chat" />
-            의견남기기
+            <span>의견남기기</span>
             <Badge color="primary">{commentData.length}</Badge>
           </Col>
-          <Col class="text-end">
+          <Col class="text-end d-flex align-items-center justify-content-end">
             <Button class="comment-toolbar-btn fw-bolder" onclick={comments} outline>
               <Icon name="arrow-repeat" />
             </Button>
