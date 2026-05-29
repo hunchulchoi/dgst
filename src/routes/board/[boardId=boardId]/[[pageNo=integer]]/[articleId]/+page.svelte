@@ -1033,7 +1033,7 @@
   </script>
 </svelte:head>
 
-<main class="container my-md-5">
+<main class="container board-page-inset my-md-5">
   <!-- 댓글 수정 modal -->
   <!-- <div class="d-flex justify-content-center align-item-center w-100 p-0 m-0">
     <Button color="danger" onclick={commentModalToggle}>Open Modal</Button>

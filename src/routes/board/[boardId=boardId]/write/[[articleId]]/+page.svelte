@@ -303,7 +303,7 @@
   </style>
 </svelte:head>
 
-<main class="container my-1">
+<main class="container board-page-inset my-1">
   <Row class="border border-secondary-subtle rounded-4 py-5 shadow">
     <form
       method="POST"

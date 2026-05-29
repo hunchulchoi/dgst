@@ -49,8 +49,8 @@ body {
 
 .site-header,
 .page-transition,
-.board-chrome-connect,
-.container {
+/* 게시판 목록·읽기·쓰기는 Bootstrap .container breakpoint(672/960/1152px) 유지 */
+.container:not(.board-chrome-connect):not(.board-page-inset) {
   max-width: 100%;
 }
 
