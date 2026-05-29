@@ -520,25 +520,50 @@
     goto(`/board/${boardId}/${pageNo}?v=${new Date().getSeconds()}`, { invalidateAll: true });
   }
 
-  // 이미지 비율 확인 함수
+  /** 세로가 가로의 2배를 초과하는 긴 이미지(긴짤) */
   function isLongImage(img) {
-    if (!img) return false;
+    if (!img?.naturalWidth || !img?.naturalHeight) return false;
     return img.naturalHeight > img.naturalWidth * 2;
   }
 
-  // 이미지가 세로로 긴지 확인하는 함수
-  function isPortraitImage(img) {
-    if (!img) return false;
-    return img.naturalHeight > img.naturalWidth;
+  /**
+   * 첨부 이미지 max-height — 긴짤은 80vh, 그 외는 뷰포트 높이를 넘지 않음
+   * @param {HTMLImageElement | null | undefined} img
+   */
+  function getImageMaxHeight(img) {
+    if (!img) return '100vh';
+    if (isLongImage(img)) {
+      return '80vh';
+    }
+    return '100vh';
   }
 
-  // 이미지 높이 계산 함수
-  function getImageMaxHeight(img) {
-    if (!img) return '500px';
-    if (isLongImage(img)) {
-      return '80vh'; // 긴짤인 경우 화면 높이의 80%
-    }
-    return '500px'; // 일반 이미지는 기존 제한 유지
+  /** OG 카드 썸네일 등 레이아웃 고정 이미지는 제외 */
+  function isBoardAttachmentImage(img) {
+    return img instanceof HTMLImageElement && !img.closest('.og-card-blot, .og-preview');
+  }
+
+  /**
+   * @param {HTMLImageElement} img
+   */
+  function applyAttachmentImageMaxHeight(img) {
+    if (!isBoardAttachmentImage(img)) return;
+    img.style.maxWidth = '100%';
+    img.style.maxHeight = getImageMaxHeight(img);
+  }
+
+  /**
+   * @param {ParentNode} [root]
+   */
+  function applyAttachmentImagesIn(root = document) {
+    root.querySelectorAll('.article-content img, .comment-section img').forEach((img) => {
+      if (!(img instanceof HTMLImageElement)) return;
+      if (img.complete && img.naturalWidth > 0) {
+        applyAttachmentImageMaxHeight(img);
+      } else {
+        img.addEventListener('load', () => applyAttachmentImageMaxHeight(img), { once: true });
+      }
+    });
   }
 
   /**
@@ -822,6 +847,15 @@
         });
       }
     }, 100);
+
+    applyAttachmentImagesIn(document);
+  });
+
+  $effect(() => {
+    if (!browser || !data.article?._id) return;
+    const articleId = data.article._id;
+    void articleId;
+    queueMicrotask(() => applyAttachmentImagesIn(document));
   });
 </script>
 
@@ -989,9 +1023,15 @@
 
     .article-content img {
       max-width: 100%;
+      max-height: 100vh;
       height: auto;
       display: block;
       margin: 0.5rem 0;
+    }
+
+    .article-content .og-preview img,
+    .article-content .og-card-blot a > img {
+      max-height: none;
     }
 
     .article-content video {
@@ -1272,8 +1312,8 @@
                               style="max-width: 100%;max-height: {browser
                                 ? getImageMaxHeight(
                                     document.querySelector(`img[src='${comment.image}']`)
-                                  ) || '500px'
-                                : '500px'};"
+                                  ) || '100vh'
+                                : '100vh'};"
                               onload={async (e) => {
                                 const img = e.target;
 

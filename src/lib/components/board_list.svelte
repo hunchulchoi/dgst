@@ -192,6 +192,13 @@
 {/if}
 
 <style>
+  /* 목록 미리보기 첨부 이미지 — 뷰포트 높이 초과 방지 */
+  .board-list-link :global(img) {
+    max-width: 100%;
+    max-height: 100vh;
+    height: auto;
+  }
+
   .board-list-link {
     cursor: pointer;
     color: var(--bs-body-color) !important;
