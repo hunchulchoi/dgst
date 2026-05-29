@@ -248,18 +248,19 @@
     <Button
       color="primary"
       outline
-      class="d-inline-flex align-items-center gap-1"
+      class="d-inline-flex align-items-center justify-content-center gap-1 lotto-refresh-btn"
       onclick={refreshBanner}
       disabled={refreshing || loading}
       type="button"
       title="기록 새로고침"
+      aria-label="기록 새로고침"
     >
       {#if refreshing}
-        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+        <span class="spinner-border spinner-border-sm" role="status" aria-label="새로고침 중"></span>
       {:else}
-        <Icon name="arrow-clockwise" class="me-1" aria-hidden="true" />
+        <Icon name="arrow-clockwise" aria-hidden="true" />
       {/if}
-      새로고침
+      <span class="lotto-refresh-label">새로고침</span>
     </Button>
     <small class="text-muted ms-auto">무작위 뽑기(1–45)·최근 24시간 기록</small>
   </Col>
@@ -414,5 +415,28 @@
   :global(.lotto-main-btn) {
     min-height: 2.5rem;
     gap: 0.5rem;
+  }
+
+  .lotto-refresh-label {
+    display: none;
+  }
+
+  @media (min-width: 768px) {
+    .lotto-refresh-label {
+      display: inline;
+    }
+  }
+
+  @media (max-width: 767.98px) {
+    :global(.lotto-refresh-btn) {
+      min-width: 44px;
+      min-height: 44px;
+      padding: 0.6rem 0.9rem;
+      flex-shrink: 0;
+    }
+
+    :global(.lotto-refresh-btn .bi) {
+      font-size: 1.15rem;
+    }
   }
 </style>
