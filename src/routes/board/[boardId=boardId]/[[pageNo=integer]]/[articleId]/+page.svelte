@@ -171,7 +171,7 @@
 
       // WebP 변환 시 이미 회전이 적용됨
 
-      el.style.maxHeight = getImageMaxHeight(el);
+      applyAttachmentImageMaxHeight(el);
       el.classList.remove('d-none');
 
       commentLoading = false;
@@ -466,7 +466,7 @@
 
       // WebP 변환 시 이미 회전이 적용됨
 
-      el.style.maxHeight = getImageMaxHeight(el);
+      applyAttachmentImageMaxHeight(el);
       el.classList.remove('d-none');
     };
   }
@@ -520,22 +520,14 @@
     goto(`/board/${boardId}/${pageNo}?v=${new Date().getSeconds()}`, { invalidateAll: true });
   }
 
-  /** 세로가 가로의 2배를 초과하는 긴 이미지(긴짤) */
-  function isLongImage(img) {
-    if (!img?.naturalWidth || !img?.naturalHeight) return false;
-    return img.naturalHeight > img.naturalWidth * 2;
-  }
-
   /**
-   * 첨부 이미지 max-height — 긴짤은 80vh, 그 외는 뷰포트 높이를 넘지 않음
+   * 첨부 이미지 max-height — 긴짤(세로>가로×2)은 제한 없음, 그 외 80vh
    * @param {HTMLImageElement | null | undefined} img
    */
   function getImageMaxHeight(img) {
-    if (!img) return '100vh';
-    if (isLongImage(img)) {
-      return '80vh';
-    }
-    return '100vh';
+    if (!img?.naturalWidth || !img?.naturalHeight) return undefined;
+    if (img.naturalHeight > img.naturalWidth * 2) return undefined;
+    return '80vh';
   }
 
   /** OG 카드 썸네일 등 레이아웃 고정 이미지는 제외 */
@@ -549,7 +541,12 @@
   function applyAttachmentImageMaxHeight(img) {
     if (!isBoardAttachmentImage(img)) return;
     img.style.maxWidth = '100%';
-    img.style.maxHeight = getImageMaxHeight(img);
+    const maxHeight = getImageMaxHeight(img);
+    if (maxHeight) {
+      img.style.maxHeight = maxHeight;
+    } else {
+      img.style.removeProperty('max-height');
+    }
   }
 
   /**
@@ -1023,7 +1020,6 @@
 
     .article-content img {
       max-width: 100%;
-      max-height: 100vh;
       height: auto;
       display: block;
       margin: 0.5rem 0;
@@ -1309,17 +1305,10 @@
                             <img
                               src={comment.image}
                               alt="리플 짤"
-                              style="max-width: 100%;max-height: {browser
-                                ? getImageMaxHeight(
-                                    document.querySelector(`img[src='${comment.image}']`)
-                                  ) || '100vh'
-                                : '100vh'};"
-                              onload={async (e) => {
+                              style="max-width: 100%;"
+                              onload={(e) => {
                                 const img = e.target;
-
-                                // 서버에 저장된 이미지는 이미 올바른 방향으로 회전됨
-
-                                img.style.maxHeight = getImageMaxHeight(img);
+                                applyAttachmentImageMaxHeight(img);
                               }}
                             />
                           </Col>
