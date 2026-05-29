@@ -1,0 +1,5 @@
+apiVersion: 1
+
+# 알림 채널은 Grafana UI → Alerting → Contact points 에서 추가하세요.
+# 추가 후 policies.yml 의 receiver 이름을 맞추면 됩니다.
+contactPoints: []

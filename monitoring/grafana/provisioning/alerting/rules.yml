@@ -1,0 +1,614 @@
+apiVersion: 1
+
+# DGST Grafana Alerting rules (Loki + Prometheus)
+# service 라벨: Promtail json.labels 의 service (기본 dgst, SERVICE_NAME env)
+# compose_service 가 다르면 stream selector 를 {compose_service="..."} 로 바꾸세요.
+
+groups:
+  - orgId: 1
+    name: dgst-http
+    folder: DGST Alerts
+    interval: 1m
+    rules:
+      - uid: dgst-5xx-count
+        title: DGST HTTP 5xx 급증
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: loki-dgst
+            model:
+              datasource:
+                type: loki
+                uid: loki-dgst
+              editorMode: code
+              expr: sum(count_over_time({service=~"dgst", event="http.response"} | json | __error__="" | status >= 500 [5m]))
+              instant: true
+              queryType: instant
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 5
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              expression: A
+              refId: C
+              type: threshold
+        noDataState: OK
+        execErrState: Error
+        for: 2m
+        annotations:
+          summary: DGST 5xx 응답이 5분간 5건을 초과했습니다
+          description: 최근 5분 HTTP 5xx 건수가 {{ $values.A }} 입니다. Grafana Explore에서 `{event="http.response"} | json | status >= 500` 로 확인하세요.
+        labels:
+          severity: critical
+          service: dgst
+
+      - uid: dgst-5xx-rate
+        title: DGST HTTP 5xx 비율 > 5%
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: loki-dgst
+            model:
+              datasource:
+                type: loki
+                uid: loki-dgst
+              editorMode: code
+              expr: sum(count_over_time({service=~"dgst", event="http.response"} | json | __error__="" | status >= 500 [5m]))
+              instant: true
+              queryType: instant
+              refId: A
+          - refId: B
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: loki-dgst
+            model:
+              datasource:
+                type: loki
+                uid: loki-dgst
+              editorMode: code
+              expr: sum(count_over_time({service=~"dgst", event="http.response"}[5m]))
+              instant: true
+              queryType: instant
+              refId: B
+          - refId: D
+            datasourceUid: __expr__
+            model:
+              expression: ($A / $B) || 0
+              refId: D
+              type: math
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 0.05
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              expression: D
+              refId: C
+              type: threshold
+        noDataState: OK
+        execErrState: Error
+        for: 5m
+        annotations:
+          summary: DGST 5xx 비율이 5%를 초과했습니다
+          description: 5xx 비율 {{ $values.D }} (5xx {{ $values.A }} / 전체 {{ $values.B }})
+        labels:
+          severity: critical
+          service: dgst
+
+      - uid: dgst-p95-slow
+        title: DGST HTTP p95 > 2s
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: loki-dgst
+            model:
+              datasource:
+                type: loki
+                uid: loki-dgst
+              editorMode: code
+              expr: quantile_over_time(0.95, {service=~"dgst", event="http.response"} | json | __error__="" | method="GET" | pathname !~ "/_app/.*" | pathname !~ "/favicon.*" | pathname !~ "/images/.*" | pathname !~ "/api/.*" | unwrap duration_ms [5m]) by ()
+              instant: true
+              queryType: instant
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 2000
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              expression: A
+              refId: C
+              type: threshold
+        noDataState: OK
+        execErrState: Error
+        for: 5m
+        annotations:
+          summary: DGST 페이지 응답 p95가 2초를 초과했습니다
+          description: p95 duration_ms = {{ $values.A }}ms
+        labels:
+          severity: warning
+          service: dgst
+
+      - uid: dgst-slow-critical
+        title: DGST critical slow response (>2s)
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: loki-dgst
+            model:
+              datasource:
+                type: loki
+                uid: loki-dgst
+              editorMode: code
+              expr: sum(count_over_time({service=~"dgst", event="http.response"} | json | __error__="" | slow_tier="critical" [5m]))
+              instant: true
+              queryType: instant
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 10
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              expression: A
+              refId: C
+              type: threshold
+        noDataState: OK
+        execErrState: Error
+        for: 3m
+        annotations:
+          summary: DGST 2초 초과 slow response가 다수 발생했습니다
+          description: slow_tier=critical 건수(5분) = {{ $values.A }}
+        labels:
+          severity: warning
+          service: dgst
+
+  - orgId: 1
+    name: dgst-errors
+    folder: DGST Alerts
+    interval: 1m
+    rules:
+      - uid: dgst-error-log-spike
+        title: DGST error 로그 급증
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: loki-dgst
+            model:
+              datasource:
+                type: loki
+                uid: loki-dgst
+              editorMode: code
+              expr: sum(count_over_time({service=~"dgst", level="error"}[5m]))
+              instant: true
+              queryType: instant
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 15
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              expression: A
+              refId: C
+              type: threshold
+        noDataState: OK
+        execErrState: Error
+        for: 3m
+        annotations:
+          summary: DGST error 레벨 로그가 급증했습니다
+          description: 5분간 error 로그 {{ $values.A }}건
+        labels:
+          severity: warning
+          service: dgst
+
+      - uid: dgst-mongo-error
+        title: DGST MongoDB 연결/에러
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: loki-dgst
+            model:
+              datasource:
+                type: loki
+                uid: loki-dgst
+              editorMode: code
+              expr: sum(count_over_time({service=~"dgst"} | json | __error__="" | message =~ "\\[mongo\\].*(error|failed|disconnected)" [5m]))
+              instant: true
+              queryType: instant
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 0
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              expression: A
+              refId: C
+              type: threshold
+        noDataState: OK
+        execErrState: Error
+        for: 1m
+        annotations:
+          summary: DGST MongoDB 에러 로그가 발생했습니다
+          description: '[mongo] 관련 에러 {{ $values.A }}건 — Explore `{service=~"dgst"} | json | message =~ "\\[mongo\\]"`'
+        labels:
+          severity: critical
+          service: dgst
+
+      - uid: dgst-redis-error
+        title: DGST Redis 연결/에러
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: loki-dgst
+            model:
+              datasource:
+                type: loki
+                uid: loki-dgst
+              editorMode: code
+              expr: sum(count_over_time({service=~"dgst"} | json | __error__="" | message =~ "\\[redis\\].*(failed|error|retry limit|giving up|connection error)" [5m]))
+              instant: true
+              queryType: instant
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 0
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              expression: A
+              refId: C
+              type: threshold
+        noDataState: OK
+        execErrState: Error
+        for: 1m
+        annotations:
+          summary: DGST Redis 에러 로그가 발생했습니다
+          description: '[redis] 관련 에러 {{ $values.A }}건'
+        labels:
+          severity: critical
+          service: dgst
+
+      - uid: dgst-warmup-failed
+        title: DGST warmup 실패
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: loki-dgst
+            model:
+              datasource:
+                type: loki
+                uid: loki-dgst
+              editorMode: code
+              expr: sum(count_over_time({service=~"dgst"} | json | __error__="" | message =~ "\\[warmup\\].*(failed|unavailable)" [10m]))
+              instant: true
+              queryType: instant
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 0
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              expression: A
+              refId: C
+              type: threshold
+        noDataState: OK
+        execErrState: Error
+        for: 0s
+        annotations:
+          summary: DGST startup warmup 실패
+          description: '[warmup] 실패 로그 {{ $values.A }}건'
+        labels:
+          severity: critical
+          service: dgst
+
+      - uid: dgst-client-error
+        title: DGST 클라이언트 에러 급증
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: loki-dgst
+            model:
+              datasource:
+                type: loki
+                uid: loki-dgst
+              editorMode: code
+              expr: sum(count_over_time({service=~"dgst", event="client.log"} | json | __error__="" | source="browser" | level="error" [5m]))
+              instant: true
+              queryType: instant
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 5
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              expression: A
+              refId: C
+              type: threshold
+        noDataState: OK
+        execErrState: Error
+        for: 3m
+        annotations:
+          summary: 브라우저 클라이언트 에러가 증가했습니다
+          description: client.log error {{ $values.A }}건 / 5분
+        labels:
+          severity: warning
+          service: dgst
+
+  - orgId: 1
+    name: dgst-host
+    folder: DGST Alerts
+    interval: 1m
+    rules:
+      - uid: dgst-cpu-busy
+        title: DGST 서버 CPU Busy > 85%
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus-dgst
+            model:
+              datasource:
+                type: prometheus
+                uid: prometheus-dgst
+              editorMode: code
+              expr: 100 - (avg(rate(node_cpu_seconds_total{job="node", mode="idle"}[5m])) * 100)
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 85
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              expression: A
+              refId: C
+              type: threshold
+        noDataState: OK
+        execErrState: Error
+        for: 5m
+        annotations:
+          summary: 서버 CPU 사용률이 85%를 초과했습니다
+          description: CPU Busy {{ $values.A }}%
+        labels:
+          severity: warning
+          service: dgst
+
+      - uid: dgst-ram-used
+        title: DGST 서버 RAM > 90%
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus-dgst
+            model:
+              datasource:
+                type: prometheus
+                uid: prometheus-dgst
+              editorMode: code
+              expr: 100 * (1 - (node_memory_MemAvailable_bytes{job="node"} / node_memory_MemTotal_bytes{job="node"}))
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 90
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              expression: A
+              refId: C
+              type: threshold
+        noDataState: OK
+        execErrState: Error
+        for: 5m
+        annotations:
+          summary: 서버 RAM 사용률이 90%를 초과했습니다
+          description: RAM Used {{ $values.A }}%
+        labels:
+          severity: warning
+          service: dgst
+
+      - uid: dgst-disk-used
+        title: DGST Root 디스크 > 85%
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus-dgst
+            model:
+              datasource:
+                type: prometheus
+                uid: prometheus-dgst
+              editorMode: code
+              expr: 100 - ((node_filesystem_avail_bytes{job="node", mountpoint="/", fstype!="rootfs"} * 100) / node_filesystem_size_bytes{job="node", mountpoint="/", fstype!="rootfs"})
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 85
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              expression: A
+              refId: C
+              type: threshold
+        noDataState: OK
+        execErrState: Error
+        for: 10m
+        annotations:
+          summary: Root 파일시스템 사용률이 85%를 초과했습니다
+          description: Disk Used {{ $values.A }}%
+        labels:
+          severity: critical
+          service: dgst
