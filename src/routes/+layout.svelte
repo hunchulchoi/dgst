@@ -59,6 +59,24 @@
     }
   });
 
+  /** 모바일에서 네비 후 layout viewport 폭 틀어짐 완화 (meta viewport 토글 대신) */
+  function normalizeMobileLayoutWidth() {
+    if (!browser) return;
+    if (!window.matchMedia('(max-width: 767.98px)').matches) return;
+
+    window.scrollTo(0, 0);
+
+    const root = document.documentElement;
+    const body = document.body;
+    root.style.width = '100%';
+    body.style.width = '100%';
+
+    requestAnimationFrame(() => {
+      root.style.removeProperty('width');
+      body.style.removeProperty('width');
+    });
+  }
+
   afterNavigate(({ to }) => {
     if (navigationStartedAt > 0) {
       reportSlowLoad({
@@ -78,14 +96,7 @@
 
     boardListToDetailBlur = false;
 
-    const viewportMeta = document.querySelector('meta[name="viewport"]');
-    if (viewportMeta) {
-      viewportMeta.content =
-        'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0';
-      setTimeout(() => {
-        viewportMeta.content = 'width=device-width, initial-scale=1.0';
-      }, 50);
-    }
+    normalizeMobileLayoutWidth();
   });
 
   onMount(() => {
@@ -164,12 +175,15 @@
 <Footer />
 
 <style>
+  .page-transition {
+    max-width: 100%;
+    overflow-x: hidden;
+    isolation: isolate;
+  }
+
   .page-transition-reloading {
-    filter: blur(6px);
     opacity: 0.88;
     pointer-events: none;
-    transition:
-      filter 0.25s ease,
-      opacity 0.25s ease;
+    transition: opacity 0.25s ease;
   }
 </style>

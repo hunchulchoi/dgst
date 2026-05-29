@@ -285,6 +285,11 @@
 </header>
 
 <style>
+  .site-header {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
   .site-header :global(.site-header-top) {
     box-shadow: none !important;
     border-top-left-radius: var(--dgst-radius) !important;
@@ -306,6 +311,9 @@
     padding-left: 0.5rem;
     padding-right: 0.5rem;
     background-color: var(--bs-body-bg);
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   .site-header :global(.tab-nav-bar .container-fluid) {
@@ -319,7 +327,7 @@
 
   .site-header :global(.tab-nav-bar .nav-tabs) {
     flex-wrap: nowrap;
-    overflow-x: auto;
+    overflow-x: visible;
   }
 
   .site-header :global(.tab-nav-bar .nav-link) {

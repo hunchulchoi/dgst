@@ -40,6 +40,24 @@
   --notion-code-text: #eb5757;
 }
 
+/* 모바일 네비 후 가로 스크롤·100% 초과 폭 방지 */
+html,
+body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.site-header,
+.page-transition,
+.board-chrome-connect,
+.container {
+  max-width: 100%;
+}
+
+.board-list-row :global([class*='col']) {
+  min-width: 0;
+}
+
 /* 라이트 모드: Notion 스타일 톤 보강 */
 [data-bs-theme='light'] {
   --bs-body-bg: #ffffff;
