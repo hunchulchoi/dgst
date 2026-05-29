@@ -1,9 +1,11 @@
 apiVersion: 1
 
-# Telegram 알림 — docker-compose 환경변수
-#   TELEGRAM_BOT_TOKEN         : @BotFather 토큰
-#   TELEGRAM_CHAT_ID           : 그룹/채널 ID (예: -1001234567890)
-#   TELEGRAM_MESSAGE_THREAD_ID : 포럼(토픽) 스레드 ID. 토픽 미사용 시 0
+# docker-compose 환경변수 (3개 모두 필수)
+#   TELEGRAM_BOT_TOKEN
+#   TELEGRAM_CHAT_ID           (그룹 ID, 예: -1001234567890)
+#   TELEGRAM_MESSAGE_THREAD_ID (토픽 ID, 토픽 없으면 0)
+#
+# chatid / message_thread_id 는 |- 블록으로 문자열 처리 (음수 chat ID 파싱 오류 방지)
 contactPoints:
   - orgId: 1
     name: telegram-dgst
@@ -13,7 +15,9 @@ contactPoints:
         disableResolveMessage: false
         settings:
           bottoken: $TELEGRAM_BOT_TOKEN
-          chatid: $TELEGRAM_CHAT_ID
-          message_thread_id: $TELEGRAM_MESSAGE_THREAD_ID
+          chatid: |-
+            $TELEGRAM_CHAT_ID
+          message_thread_id: |-
+            $TELEGRAM_MESSAGE_THREAD_ID
           message: |
             {{ template "default.message" . }}
