@@ -1,6 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { beforeNavigate } from '$app/navigation';
+  import { browser } from '$app/environment';
   import { swalFire } from '$lib/util/swal.js';
   let { data } = $props();
 
@@ -431,6 +432,30 @@
   beforeNavigate(() => {
     saveGame();
   });
+
+  /** 게임 중 보드 전체를 페이지 스크롤로 탐색 (보드 내부 스크롤 없음) */
+  $effect(() => {
+    if (!browser) return;
+
+    const root = document.documentElement;
+    const body = document.body;
+    const pageTransition = document.querySelector('.page-transition');
+
+    if (mode != null) {
+      root.classList.add('minesweeper-page-scroll');
+      body.classList.add('minesweeper-page-scroll');
+      pageTransition?.classList.add('minesweeper-page-scroll');
+      return () => {
+        root.classList.remove('minesweeper-page-scroll');
+        body.classList.remove('minesweeper-page-scroll');
+        pageTransition?.classList.remove('minesweeper-page-scroll');
+      };
+    }
+
+    root.classList.remove('minesweeper-page-scroll');
+    body.classList.remove('minesweeper-page-scroll');
+    pageTransition?.classList.remove('minesweeper-page-scroll');
+  });
 </script>
 
 <svelte:head>
@@ -469,7 +494,7 @@
             <ul class="list-unstyled small mb-0">
               <li class="mb-2">⛏️ <strong>기본 모드:</strong> 터치해서 땅 파기</li>
               <li class="mb-2">🚩 <strong>깃발 모드:</strong> 상단 스위치를 켜고 터치해서 깃발 꽂기</li>
-              <li class="mb-2">👆 <strong>보드가 크면:</strong> 손가락으로 밀어서 스크롤할 수 있어요</li>
+              <li class="mb-2">👆 <strong>보드가 크면:</strong> 페이지를 스크롤해서 이동할 수 있어요</li>
               <li>🔍 <strong>전체 보기:</strong> 두 손가락으로 핀치해서 축소·확대할 수 있어요</li>
             </ul>
           </div>
@@ -487,8 +512,8 @@
 
   <div class="row justify-content-center">
     <!-- 게임 보드 영역 -->
-    <div class="col-12 col-md-8 col-lg-auto text-center minesweeper-game-col">
-      <div class="card shadow rounded-4 mb-3 {mode != null ? 'minesweeper-game-card' : 'd-inline-flex'}">
+    <div class="col-12 col-md-8 col-lg-auto text-center">
+      <div class="card shadow rounded-4 mb-3 d-inline-flex">
         <div class="card-body">
           {#if mode == null}
             <div class="text-center py-4 px-2 px-md-5">
@@ -570,7 +595,7 @@
               </div>
             </div>
 
-            <div class="minesweeper-wrapper rounded p-3">
+            <div class="minesweeper-wrapper d-inline-block rounded p-3">
               <!-- 클래식 느낌의 상단 상태 표시줄 -->
               <div
                 class="minesweeper-header bg-dark text-white rounded p-2 mb-3 d-flex justify-content-between align-items-center fw-bold fs-4 shadow-inner"
@@ -621,11 +646,10 @@
               </div>
 
               <!-- 게임 보드 -->
-              <div class="minesweeper-board-scroll">
-                <div
-                  class="minesweeper-board d-inline-block p-1 bg-secondary rounded user-select-none shadow"
-                >
-                  <div class="grid-container" style="--cols: {cols};">
+              <div
+                class="minesweeper-board d-inline-block p-1 bg-secondary rounded user-select-none shadow"
+              >
+                <div class="grid-container" style="--cols: {cols};">
                   {#each grid as row}
                     {#each row as cell}
                       <button
@@ -696,13 +720,12 @@
                     </div>
                   </div>
                 {/if}
-                </div>
               </div>
             </div>
 
             <p class="small text-muted text-center mt-3 mb-0">
               모바일에서는 우측 상단 토글로 🚩깃발 모드를 쓸 수 있어요.<br />
-              보드가 화면보다 크면 스크롤하거나 핀치로 축소·확대할 수 있어요.<br />
+              보드가 화면보다 크면 페이지를 스크롤하거나 핀치로 축소·확대할 수 있어요.<br />
               컴퓨터에서는 우클릭으로 깃발을 꽂고 숫자 클릭 시 나머지를 한번에 팔 수 있어요!<br />
               {#if isLoggedIn && gameWon}
                 <span class="text-success fw-bold"
@@ -772,35 +795,25 @@
 </div>
 
 <style>
-  .minesweeper-game-col {
-    min-width: 0;
-    max-width: 100%;
+  :global(html.minesweeper-page-scroll),
+  :global(body.minesweeper-page-scroll) {
+    overflow: auto !important;
+    -webkit-overflow-scrolling: touch;
   }
 
-  .minesweeper-game-card {
-    width: 100%;
-    max-width: 100%;
+  :global(.page-transition.minesweeper-page-scroll) {
+    overflow: visible !important;
+    max-width: none !important;
   }
 
   .minesweeper-wrapper {
     background-color: #e0e0e0;
     border: 3px outset #fcfcfc;
-    width: 100%;
-    max-width: 100%;
-  }
-
-  .minesweeper-board-scroll {
-    max-width: 100%;
-    overflow: auto;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior: contain;
-    touch-action: pan-x pan-y pinch-zoom;
   }
 
   .minesweeper-board {
     border: 3px inset #808080;
     display: table; /* 컨텐츠 크기에 딱 맞게 조절 */
-    width: max-content;
     margin: 0 auto;
     position: relative;
   }
