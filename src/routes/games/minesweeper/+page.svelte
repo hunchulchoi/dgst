@@ -543,7 +543,11 @@
     </div>
   {/if}
 
-  <div class="row {mode != null ? 'g-0 justify-content-start' : 'justify-content-center'}">
+  <div
+    class="row {mode != null
+      ? 'g-0 justify-content-start minesweeper-game-row'
+      : 'justify-content-center'}"
+  >
     <!-- 게임 보드 영역 -->
     <div
       class="col-12 col-md-8 col-lg-auto {mode != null
@@ -829,14 +833,16 @@
 <style>
   :global(html.minesweeper-page-scroll),
   :global(body.minesweeper-page-scroll) {
-    overflow: auto !important;
+    overflow-x: auto !important;
+    overflow-y: auto !important;
     max-width: none !important;
     -webkit-overflow-scrolling: touch;
     touch-action: pan-x pan-y pinch-zoom;
   }
 
   :global(.page-transition.minesweeper-page-scroll) {
-    overflow: visible !important;
+    overflow-x: auto !important;
+    overflow-y: visible !important;
     max-width: none !important;
     width: max-content;
     min-width: 100%;
@@ -849,11 +855,20 @@
   }
 
   .minesweeper-game-root.minesweeper-game-active {
+    width: max-content !important;
+    min-width: 100%;
+    max-width: none !important;
+    overflow: visible;
+    touch-action: pan-x pan-y pinch-zoom;
+  }
+
+  .minesweeper-game-root.minesweeper-game-active > .minesweeper-game-row {
     width: max-content;
     min-width: 100%;
     max-width: none;
-    overflow: visible;
-    touch-action: pan-x pan-y pinch-zoom;
+    margin-left: 0;
+    margin-right: 0;
+    flex-wrap: wrap;
   }
 
   .minesweeper-rank-col {
@@ -880,9 +895,9 @@
   }
 
   .minesweeper-game-active .minesweeper-game-col {
-    width: max-content;
-    max-width: none;
-    flex: 0 0 auto;
+    width: max-content !important;
+    max-width: none !important;
+    flex: 0 0 auto !important;
     padding-left: 0;
     padding-right: 0;
   }
@@ -913,6 +928,11 @@
     .minesweeper-game-active .minesweeper-wrapper {
       padding: 1rem;
     }
+  }
+
+  .minesweeper-game-active .minesweeper-game-card {
+    width: max-content;
+    max-width: none;
   }
 
   .minesweeper-game-active .minesweeper-game-card,
