@@ -332,6 +332,32 @@
     checkWinCondition();
   }
 
+  /** @param {number} r @param {number} c */
+  function activateCell(r, c) {
+    if (isPaused) return;
+    const cell = grid[r][c];
+    if (cell.isRevealed) {
+      handleChord(r, c);
+      setHighlight(r, c);
+    } else if (useFlagMode) {
+      grid[r][c].isFlagged = !grid[r][c].isFlagged;
+      flagsPlaced += grid[r][c].isFlagged ? 1 : -1;
+      grid = [...grid];
+      checkWinCondition();
+    } else {
+      clearHighlight();
+      revealCell(r, c);
+    }
+  }
+
+  /** @param {KeyboardEvent} e @param {number} r @param {number} c */
+  function handleCellKeydown(e, r, c) {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      activateCell(r, c);
+    }
+  }
+
   function handleChord(r, c) {
     if (!grid[r][c].isRevealed || grid[r][c].neighborMines === 0) return;
     let flaggedNeighbors = 0;
@@ -462,11 +488,17 @@
 
 <svelte:head>
   <title>지뢰찾기 | dgst.me</title>
+  {#if mode != null}
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, minimum-scale=0.25, maximum-scale=5, user-scalable=yes, viewport-fit=cover"
+    />
+  {/if}
 </svelte:head>
 
 <div
   class="minesweeper-game-root py-4 position-relative {mode != null
-    ? 'minesweeper-game-active container-fluid px-2 px-lg-5'
+    ? 'minesweeper-game-active container-fluid px-0 px-md-2 px-lg-5'
     : 'container'}"
 >
   <!-- 도움말 오버레이 -->
@@ -512,13 +544,15 @@
     </div>
   {/if}
 
-  <div class="row justify-content-center">
+  <div class="row {mode != null ? 'g-0 justify-content-start' : 'justify-content-center'}">
     <!-- 게임 보드 영역 -->
     <div
-      class="col-12 col-md-8 col-lg-auto text-center {mode != null ? 'minesweeper-game-col' : ''}"
+      class="col-12 col-md-8 col-lg-auto {mode != null
+        ? 'minesweeper-game-col text-start'
+        : 'text-center'}"
     >
       <div class="card shadow rounded-4 mb-3 d-inline-flex minesweeper-game-card">
-        <div class="card-body">
+        <div class="card-body {mode != null ? 'minesweeper-game-card-body' : ''}">
           {#if mode == null}
             <div class="text-center py-4 px-2 px-md-5">
               <h4 class="mb-3">지뢰찾기 💣</h4>
@@ -547,7 +581,9 @@
           {:else}
             <!-- 헤더 툴바 -->
             <div
-              class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2 text-start px-2 px-md-0"
+              class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2 text-start {mode != null
+                ? 'minesweeper-toolbar'
+                : 'px-2 px-md-0'}"
             >
               <h4 class="mb-0 fw-bold">
                 지뢰찾기 <span class="badge bg-secondary ms-2 fw-normal">
@@ -599,7 +635,7 @@
               </div>
             </div>
 
-            <div class="minesweeper-wrapper d-inline-block rounded p-3">
+            <div class="minesweeper-wrapper d-inline-block rounded">
               <!-- 클래식 느낌의 상단 상태 표시줄 -->
               <div
                 class="minesweeper-header bg-dark text-white rounded p-2 mb-3 d-flex justify-content-between align-items-center fw-bold fs-4 shadow-inner"
@@ -656,7 +692,9 @@
                 <div class="grid-container" style="--cols: {cols};">
                   {#each grid as row}
                     {#each row as cell}
-                      <button
+                      <div
+                        role="button"
+                        tabindex="0"
                         class="grid-cell"
                         class:revealed={cell.isRevealed}
                         class:mine={cell.isRevealed && cell.isMine}
@@ -669,21 +707,12 @@
                         class:neighbor-highlight={highlightCenter &&
                           Math.abs(cell.row - highlightCenter.row) <= 1 &&
                           Math.abs(cell.col - highlightCenter.col) <= 1}
+                        aria-label="칸 ({cell.row + 1}, {cell.col + 1})"
                         oncontextmenu={(e) => toggleFlag(e, cell.row, cell.col)}
                         onmouseenter={() => setHighlight(cell.row, cell.col)}
                         onmouseleave={clearHighlight}
-                        onclick={(e) => {
-                          if (isPaused) return;
-                          if (cell.isRevealed) {
-                            handleChord(cell.row, cell.col);
-                            setHighlight(cell.row, cell.col);
-                          } else if (useFlagMode) {
-                            toggleFlag(e, cell.row, cell.col);
-                          } else {
-                            clearHighlight();
-                            revealCell(cell.row, cell.col);
-                          }
-                        }}
+                        onclick={() => activateCell(cell.row, cell.col)}
+                        onkeydown={(e) => handleCellKeydown(e, cell.row, cell.col)}
                       >
                         {#if cell.isRevealed}
                           {#if cell.isMine}
@@ -698,7 +727,7 @@
                             🚩
                           {/if}
                         {/if}
-                      </button>
+                      </div>
                     {/each}
                   {/each}
                 </div>
@@ -804,6 +833,7 @@
     overflow: auto !important;
     max-width: none !important;
     -webkit-overflow-scrolling: touch;
+    touch-action: pan-x pan-y pinch-zoom;
   }
 
   :global(.page-transition.minesweeper-page-scroll) {
@@ -824,13 +854,43 @@
     min-width: 100%;
     max-width: none;
     overflow: visible;
+    touch-action: pan-x pan-y pinch-zoom;
   }
 
   .minesweeper-game-active .minesweeper-game-col {
     width: max-content;
-    min-width: 100%;
     max-width: none;
     flex: 0 0 auto;
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .minesweeper-game-active .minesweeper-game-card-body {
+    padding: 0.5rem;
+  }
+
+  .minesweeper-game-active .minesweeper-toolbar {
+    padding-left: 0.25rem;
+    padding-right: 0.25rem;
+  }
+
+  .minesweeper-game-active .minesweeper-wrapper {
+    padding: 0.25rem;
+  }
+
+  @media (min-width: 768px) {
+    .minesweeper-game-active .minesweeper-game-card-body {
+      padding: 1rem;
+    }
+
+    .minesweeper-game-active .minesweeper-toolbar {
+      padding-left: 0;
+      padding-right: 0;
+    }
+
+    .minesweeper-game-active .minesweeper-wrapper {
+      padding: 1rem;
+    }
   }
 
   .minesweeper-game-active .minesweeper-game-card,
@@ -852,6 +912,7 @@
     margin: 0 auto;
     position: relative;
     overflow: visible;
+    touch-action: pan-x pan-y pinch-zoom;
   }
   .grid-container {
     --cell-size: 32px;
@@ -871,6 +932,8 @@
     min-height: var(--cell-size);
     flex-shrink: 0;
     box-sizing: border-box;
+    touch-action: pan-x pan-y pinch-zoom;
+    -webkit-tap-highlight-color: transparent;
     padding: 0;
     margin: 0;
     border: 3px outset #eeeeee;
@@ -970,12 +1033,6 @@
 
   .grid-cell.neighbor-highlight:not(.revealed) {
     border-color: #fff #bbb #bbb #fff;
-  }
-
-  @media (max-width: 576px) {
-    .minesweeper-wrapper {
-      padding: 8px !important;
-    }
   }
 
   .instructions-overlay {
