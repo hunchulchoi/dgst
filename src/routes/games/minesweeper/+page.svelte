@@ -1,5 +1,5 @@
 <script>
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import { beforeNavigate } from '$app/navigation';
   import { browser } from '$app/environment';
   import { swalFire } from '$lib/util/swal.js';
@@ -435,26 +435,28 @@
 
   /** 게임 중 보드 전체를 페이지 스크롤로 탐색 (보드 내부 스크롤 없음) */
   $effect(() => {
-    if (!browser) return;
+    if (!browser || mode == null) return;
 
-    const root = document.documentElement;
-    const body = document.body;
-    const pageTransition = document.querySelector('.page-transition');
+    /** @type {Element | null | undefined} */
+    let pageTransition;
 
-    if (mode != null) {
-      root.classList.add('minesweeper-page-scroll');
-      body.classList.add('minesweeper-page-scroll');
+    const enablePageScroll = async () => {
+      await tick();
+      pageTransition = document.querySelector('.page-transition');
+      document.documentElement.classList.add('minesweeper-page-scroll');
+      document.body.classList.add('minesweeper-page-scroll');
       pageTransition?.classList.add('minesweeper-page-scroll');
-      return () => {
-        root.classList.remove('minesweeper-page-scroll');
-        body.classList.remove('minesweeper-page-scroll');
-        pageTransition?.classList.remove('minesweeper-page-scroll');
-      };
-    }
+    };
 
-    root.classList.remove('minesweeper-page-scroll');
-    body.classList.remove('minesweeper-page-scroll');
-    pageTransition?.classList.remove('minesweeper-page-scroll');
+    void enablePageScroll();
+
+    return () => {
+      document.documentElement.classList.remove('minesweeper-page-scroll');
+      document.body.classList.remove('minesweeper-page-scroll');
+      (pageTransition ?? document.querySelector('.page-transition'))?.classList.remove(
+        'minesweeper-page-scroll'
+      );
+    };
   });
 </script>
 
@@ -463,9 +465,9 @@
 </svelte:head>
 
 <div
-  class={mode === 'expert'
-    ? 'container-fluid px-lg-5 py-4 position-relative'
-    : 'container py-4 position-relative'}
+  class="minesweeper-game-root py-4 position-relative {mode != null
+    ? 'minesweeper-game-active container-fluid px-2 px-lg-5'
+    : 'container'}"
 >
   <!-- 도움말 오버레이 -->
   {#if showHelp}
@@ -512,8 +514,10 @@
 
   <div class="row justify-content-center">
     <!-- 게임 보드 영역 -->
-    <div class="col-12 col-md-8 col-lg-auto text-center">
-      <div class="card shadow rounded-4 mb-3 d-inline-flex">
+    <div
+      class="col-12 col-md-8 col-lg-auto text-center {mode != null ? 'minesweeper-game-col' : ''}"
+    >
+      <div class="card shadow rounded-4 mb-3 d-inline-flex minesweeper-game-card">
         <div class="card-body">
           {#if mode == null}
             <div class="text-center py-4 px-2 px-md-5">
@@ -798,36 +802,75 @@
   :global(html.minesweeper-page-scroll),
   :global(body.minesweeper-page-scroll) {
     overflow: auto !important;
+    max-width: none !important;
     -webkit-overflow-scrolling: touch;
   }
 
   :global(.page-transition.minesweeper-page-scroll) {
     overflow: visible !important;
     max-width: none !important;
+    width: max-content;
+    min-width: 100%;
+  }
+
+  :global(.page-transition.minesweeper-page-scroll) .minesweeper-game-root,
+  :global(.page-transition.minesweeper-page-scroll) .container,
+  :global(.page-transition.minesweeper-page-scroll) .container-fluid {
+    max-width: none !important;
+  }
+
+  .minesweeper-game-root.minesweeper-game-active {
+    width: max-content;
+    min-width: 100%;
+    max-width: none;
+    overflow: visible;
+  }
+
+  .minesweeper-game-active .minesweeper-game-col {
+    width: max-content;
+    min-width: 100%;
+    max-width: none;
+    flex: 0 0 auto;
+  }
+
+  .minesweeper-game-active .minesweeper-game-card,
+  .minesweeper-game-active .minesweeper-game-card :global(.card-body) {
+    overflow: visible;
+    max-width: none;
   }
 
   .minesweeper-wrapper {
     background-color: #e0e0e0;
     border: 3px outset #fcfcfc;
+    overflow: visible;
   }
 
   .minesweeper-board {
     border: 3px inset #808080;
-    display: table; /* 컨텐츠 크기에 딱 맞게 조절 */
+    display: block;
+    width: max-content;
     margin: 0 auto;
     position: relative;
+    overflow: visible;
   }
   .grid-container {
+    --cell-size: 32px;
     display: grid;
-    grid-template-columns: repeat(var(--cols), 1fr);
+    grid-template-columns: repeat(var(--cols), var(--cell-size));
+    grid-auto-rows: var(--cell-size);
+    width: max-content;
     background: #808080;
     gap: 1px;
     border-top: 1px solid #808080;
     border-left: 1px solid #808080;
   }
   .grid-cell {
-    width: 32px;
-    height: 32px;
+    width: var(--cell-size);
+    height: var(--cell-size);
+    min-width: var(--cell-size);
+    min-height: var(--cell-size);
+    flex-shrink: 0;
+    box-sizing: border-box;
     padding: 0;
     margin: 0;
     border: 3px outset #eeeeee;
@@ -929,32 +972,9 @@
     border-color: #fff #bbb #bbb #fff;
   }
 
-  /* 반응형: 모바일에서 터치가 원활하도록 칸 크기 유지 및 최적화 */
-  @media (max-width: 768px) {
-    .grid-cell {
-      width: 32px; /* 모바일에서도 가급적 32px 유지 */
-      height: 32px;
-      font-size: 18px;
-    }
-  }
-
   @media (max-width: 576px) {
-    .grid-cell {
-      width: 30px; /* 아주 좁은 화면에서만 살짝 줄임 */
-      height: 30px;
-      font-size: 16px;
-      border-width: 2px;
-    }
     .minesweeper-wrapper {
       padding: 8px !important;
-    }
-  }
-
-  @media (max-width: 360px) {
-    .grid-cell {
-      width: 28px;
-      height: 28px;
-      font-size: 14px;
     }
   }
 
