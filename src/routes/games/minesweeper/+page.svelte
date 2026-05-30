@@ -503,15 +503,12 @@
 >
   <!-- 도움말 오버레이 -->
   {#if showHelp}
-    <div class="instructions-overlay">
-      <div
-        class="card shadow-lg border-0 rounded-4 overflow-hidden"
-        style="max-width: 500px; width: 90%;"
-      >
-        <div class="card-header bg-primary text-white text-center py-3">
-          <h5 class="mb-0">지뢰찾기 가이드 💣</h5>
+    <div class="instructions-overlay" role="dialog" aria-modal="true" aria-labelledby="minesweeper-help-title">
+      <div class="instructions-overlay-panel card shadow-lg border-0 rounded-4 overflow-hidden">
+        <div class="card-header bg-primary text-white text-center py-3 flex-shrink-0">
+          <h5 class="mb-0" id="minesweeper-help-title">지뢰찾기 가이드 💣</h5>
         </div>
-        <div class="card-body p-4">
+        <div class="instructions-overlay-body card-body p-4">
           <div class="mb-4">
             <h6 class="fw-bold mb-3"><i class="bi bi-pc-display me-2"></i>PC 조작법</h6>
             <ul class="list-unstyled small mb-0">
@@ -532,10 +529,12 @@
               <li>🔍 <strong>전체 보기:</strong> 두 손가락으로 핀치해서 축소·확대할 수 있어요</li>
             </ul>
           </div>
-          <div class="alert alert-info small mb-4 py-2">
+          <div class="alert alert-info small mb-0 py-2">
             💡 <strong>팁:</strong> 첫 클릭은 항상 안전합니다! 게임 중 상단의
             <strong>🙂 스마일 버튼</strong>을 누르면 언제든 다시 시작할 수 있습니다.
           </div>
+        </div>
+        <div class="instructions-overlay-footer card-footer bg-white border-top-0 pt-0 pb-3 px-4">
           <button class="btn btn-primary w-100 py-2 fw-bold" onclick={() => (showHelp = false)}>
             알겠어요! 게임 시작하기
           </button>
@@ -1037,16 +1036,38 @@
 
   .instructions-overlay {
     position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.75);
-    backdrop-filter: blur(4px);
+    inset: 0;
+    z-index: 1050;
     display: flex;
     justify-content: center;
     align-items: center;
-    z-index: 1050;
+    padding: max(0.75rem, env(safe-area-inset-top, 0px))
+      max(0.75rem, env(safe-area-inset-right, 0px))
+      max(0.75rem, env(safe-area-inset-bottom, 0px))
+      max(0.75rem, env(safe-area-inset-left, 0px));
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(4px);
+    overflow: hidden;
+    touch-action: pan-y;
+  }
+
+  .instructions-overlay-panel {
+    width: min(500px, 100%);
+    max-height: min(92dvh, 100%);
+    display: flex;
+    flex-direction: column;
+    margin: auto;
+  }
+
+  .instructions-overlay-body {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    min-height: 0;
+  }
+
+  .instructions-overlay-footer {
+    flex-shrink: 0;
   }
 
   .pause-overlay {
