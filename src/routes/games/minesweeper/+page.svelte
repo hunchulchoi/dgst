@@ -31,6 +31,14 @@
   let todayStats = $state({ games: 0, users: 0 });
   let rankLoading = $state(false);
 
+  /** @type {HTMLDivElement | null} */
+  let boardViewportEl = $state(null);
+  /** @type {HTMLDivElement | null} */
+  let boardEl = $state(null);
+  let boardScale = $state(1);
+  let boardNaturalWidth = $state(0);
+  let boardNaturalHeight = $state(0);
+
   $effect.pre(() => {
     todayStats = data.todayStats || { games: 0, users: 0 };
   });
@@ -420,6 +428,51 @@
     }
   }
 
+  /** 좁은 화면에서 보드가 잘리지 않도록 가로 폭에 맞춰 축소 */
+  function updateBoardScale() {
+    if (!boardViewportEl || !boardEl) {
+      boardScale = 1;
+      boardNaturalWidth = 0;
+      boardNaturalHeight = 0;
+      return;
+    }
+
+    boardNaturalWidth = boardEl.offsetWidth;
+    boardNaturalHeight = boardEl.offsetHeight;
+
+    const available = boardViewportEl.clientWidth;
+    if (available <= 0 || boardNaturalWidth <= 0) {
+      boardScale = 1;
+      return;
+    }
+
+    boardScale = Math.min(1, available / boardNaturalWidth);
+  }
+
+  $effect(() => {
+    if (!mode || !boardViewportEl || !boardEl) return;
+
+    void cols;
+    void rows;
+
+    let cancelled = false;
+    const scheduleUpdate = () => {
+      if (!cancelled) updateBoardScale();
+    };
+
+    const ro = new ResizeObserver(scheduleUpdate);
+    ro.observe(boardViewportEl);
+    ro.observe(boardEl);
+
+    void tick().then(scheduleUpdate);
+    requestAnimationFrame(scheduleUpdate);
+
+    return () => {
+      cancelled = true;
+      ro.disconnect();
+    };
+  });
+
   onMount(() => {
     loadSavedGame();
     return () => {
@@ -485,8 +538,8 @@
 
   <div class="row justify-content-center">
     <!-- 게임 보드 영역 -->
-    <div class="col-12 col-md-8 col-lg-auto text-center">
-      <div class="card shadow rounded-4 mb-3 d-inline-flex">
+    <div class="col-12 col-md-8 col-lg-auto text-center" style="min-width: 0;">
+      <div class="card shadow rounded-4 mb-3 {mode != null ? 'w-100' : 'd-inline-flex'}">
         <div class="card-body">
           {#if mode == null}
             <div class="text-center py-4 px-2 px-md-5">
@@ -619,11 +672,18 @@
               </div>
 
               <!-- 게임 보드 -->
-              <div
-                class="minesweeper-board d-inline-block p-1 bg-secondary rounded user-select-none shadow"
-                style="touch-action: none;"
-              >
-                <div class="grid-container" style="--cols: {cols};">
+              <div class="board-viewport" bind:this={boardViewportEl}>
+                <div
+                  class="board-scale-shell"
+                  style="width: {boardNaturalWidth * boardScale}px; height: {boardNaturalHeight *
+                    boardScale}px;"
+                >
+                  <div
+                    class="minesweeper-board d-inline-block p-1 bg-secondary rounded user-select-none shadow"
+                    bind:this={boardEl}
+                    style="transform: scale({boardScale}); transform-origin: top left; touch-action: none;"
+                  >
+                    <div class="grid-container" style="--cols: {cols};">
                   {#each grid as row}
                     {#each row as cell}
                       <button
@@ -673,27 +733,29 @@
                   {/each}
                 </div>
 
-                {#if isPaused}
-                  <div
-                    class="pause-overlay"
-                    role="button"
-                    tabindex="0"
-                    aria-label="게임 재개"
-                    onclick={togglePause}
-                    onkeydown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        togglePause();
-                      }
-                    }}
-                  >
-                    <div class="text-white text-center">
-                      <div class="fs-1 mb-2">⏸️</div>
-                      <div class="fw-bold">일시정지 중</div>
-                      <div class="small opacity-75">클릭하면 재개합니다</div>
-                    </div>
+                    {#if isPaused}
+                      <div
+                        class="pause-overlay"
+                        role="button"
+                        tabindex="0"
+                        aria-label="게임 재개"
+                        onclick={togglePause}
+                        onkeydown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            togglePause();
+                          }
+                        }}
+                      >
+                        <div class="text-white text-center">
+                          <div class="fs-1 mb-2">⏸️</div>
+                          <div class="fw-bold">일시정지 중</div>
+                          <div class="small opacity-75">클릭하면 재개합니다</div>
+                        </div>
+                      </div>
+                    {/if}
                   </div>
-                {/if}
+                </div>
               </div>
             </div>
 
@@ -772,8 +834,15 @@
     background-color: #e0e0e0;
     border: 3px outset #fcfcfc;
     max-width: 100%;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
+    width: 100%;
+  }
+  .board-viewport {
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+  }
+  .board-scale-shell {
+    margin: 0 auto;
   }
   .minesweeper-board {
     border: 3px inset #808080;
