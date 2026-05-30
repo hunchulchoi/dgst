@@ -617,7 +617,7 @@
             "uid": "${DS_LOKI}"
           },
           "editorMode": "code",
-          "expr": "avg_over_time({compose_service=~\"$compose_service\", event=\"http.response\"} | json | __error__=\"\" | method=\"GET\" | pathname !~ \"/_app/.*\" | pathname !~ \"/favicon.*\" | pathname !~ \"/images/.*\" | pathname !~ \"/api/.*\" | unwrap duration_ms [$__interval]) by ()",
+          "expr": "avg_over_time({service=~\"$service\", event=\"http.response\"} | json | __error__=\"\" | method=\"GET\" | pathname !~ \"/_app/.*\" | pathname !~ \"/favicon.*\" | pathname !~ \"/images/.*\" | pathname !~ \"/api/.*\" | unwrap duration_ms [$__interval]) by ()",
           "legendFormat": "서버 avg",
           "queryType": "range",
           "refId": "A"
@@ -628,7 +628,7 @@
             "uid": "${DS_LOKI}"
           },
           "editorMode": "code",
-          "expr": "quantile_over_time(0.95, {compose_service=~\"$compose_service\", event=\"http.response\"} | json | __error__=\"\" | method=\"GET\" | pathname !~ \"/_app/.*\" | pathname !~ \"/favicon.*\" | pathname !~ \"/images/.*\" | pathname !~ \"/api/.*\" | unwrap duration_ms [$__interval]) by ()",
+          "expr": "quantile_over_time(0.95, {service=~\"$service\", event=\"http.response\"} | json | __error__=\"\" | method=\"GET\" | pathname !~ \"/_app/.*\" | pathname !~ \"/favicon.*\" | pathname !~ \"/images/.*\" | pathname !~ \"/api/.*\" | unwrap duration_ms [$__interval]) by ()",
           "legendFormat": "서버 p95",
           "queryType": "range",
           "refId": "B"
@@ -639,7 +639,7 @@
             "uid": "${DS_LOKI}"
           },
           "editorMode": "code",
-          "expr": "avg_over_time({compose_service=~\"$compose_service\", event=\"client.log\"} | json | __error__=\"\" | source=\"browser\" | unwrap durationMs [$__interval]) by ()",
+          "expr": "avg_over_time({service=~\"$service\", event=\"client.log\"} | json | __error__=\"\" | source=\"browser\" | unwrap durationMs [$__interval]) by ()",
           "legendFormat": "클라이언트 slow load avg (≥2s)",
           "queryType": "range",
           "refId": "C"
@@ -714,7 +714,7 @@
             "uid": "${DS_LOKI}"
           },
           "editorMode": "code",
-          "expr": "sum(count_over_time({compose_service=~\"$compose_service\", event=\"http.response\"}[$__interval]))",
+          "expr": "sum(count_over_time({service=~\"$service\", event=\"http.response\"}[$__interval]))",
           "legendFormat": "req/min",
           "queryType": "range",
           "refId": "A"
@@ -785,7 +785,7 @@
             "uid": "${DS_LOKI}"
           },
           "editorMode": "code",
-          "expr": "sum(count_over_time({compose_service=~\"$compose_service\", event=\"http.response\"} | json | __error__=\"\" | status >= 500 [$__interval])) / sum(count_over_time({compose_service=~\"$compose_service\", event=\"http.response\"}[$__interval]))",
+          "expr": "sum(count_over_time({service=~\"$service\", event=\"http.response\"} | json | __error__=\"\" | status >= 500 [$__interval])) / sum(count_over_time({service=~\"$service\", event=\"http.response\"}[$__interval]))",
           "legendFormat": "5xx ratio",
           "queryType": "range",
           "refId": "A"
@@ -854,7 +854,7 @@
             "uid": "${DS_LOKI}"
           },
           "editorMode": "code",
-          "expr": "quantile_over_time(0.95, {compose_service=~\"$compose_service\", event=\"http.response\"} | json | __error__=\"\" | method=\"GET\" | pathname !~ \"/_app/.*\" | pathname !~ \"/favicon.*\" | pathname !~ \"/images/.*\" | pathname !~ \"/api/.*\" | unwrap duration_ms [$__interval]) by ()",
+          "expr": "quantile_over_time(0.95, {service=~\"$service\", event=\"http.response\"} | json | __error__=\"\" | method=\"GET\" | pathname !~ \"/_app/.*\" | pathname !~ \"/favicon.*\" | pathname !~ \"/images/.*\" | pathname !~ \"/api/.*\" | unwrap duration_ms [$__interval]) by ()",
           "legendFormat": "p95",
           "queryType": "range",
           "refId": "A"
@@ -923,7 +923,7 @@
             "uid": "${DS_LOKI}"
           },
           "editorMode": "code",
-          "expr": "sum(count_over_time({compose_service=~\"$compose_service\", level=\"error\"}[$__interval]))",
+          "expr": "sum(count_over_time({service=~\"$service\", level=\"error\"}[$__interval]))",
           "legendFormat": "errors",
           "queryType": "range",
           "refId": "A"
@@ -1017,7 +1017,7 @@
             "uid": "${DS_LOKI}"
           },
           "editorMode": "code",
-          "expr": "sum(count_over_time({compose_service=~\"$compose_service\", event=\"http.response\"}[$__interval]))",
+          "expr": "sum(count_over_time({service=~\"$service\", event=\"http.response\"}[$__interval]))",
           "legendFormat": "total",
           "queryType": "range",
           "refId": "A"
@@ -1028,7 +1028,7 @@
             "uid": "${DS_LOKI}"
           },
           "editorMode": "code",
-          "expr": "sum(count_over_time({compose_service=~\"$compose_service\", event=\"http.response\"} | json | __error__=\"\" | status >= 500 [$__interval]))",
+          "expr": "sum(count_over_time({service=~\"$service\", event=\"http.response\"} | json | __error__=\"\" | status >= 500 [$__interval]))",
           "legendFormat": "5xx",
           "queryType": "range",
           "refId": "B"
@@ -1039,7 +1039,7 @@
             "uid": "${DS_LOKI}"
           },
           "editorMode": "code",
-          "expr": "sum(count_over_time({compose_service=~\"$compose_service\", level=\"error\"}[$__interval]))",
+          "expr": "sum(count_over_time({service=~\"$service\", level=\"error\"}[$__interval]))",
           "legendFormat": "error logs",
           "queryType": "range",
           "refId": "C"
@@ -1144,7 +1144,7 @@
             "uid": "${DS_LOKI}"
           },
           "editorMode": "code",
-          "expr": "sum by (status) (count_over_time({compose_service=~\"$compose_service\", event=\"http.response\"} | json | __error__=\"\" [$__interval]))",
+          "expr": "sum by (status) (count_over_time({service=~\"$service\", event=\"http.response\"} | json | __error__=\"\" [$__interval]))",
           "legendFormat": "{{status}}",
           "queryType": "range",
           "refId": "A"
@@ -1229,7 +1229,7 @@
             "uid": "${DS_LOKI}"
           },
           "editorMode": "code",
-          "expr": "topk(10, sum by (pathname) (count_over_time({compose_service=~\"$compose_service\", event=\"http.response\"} | json | __error__=\"\" | slow_tier=~\"warn|critical\" | pathname != \"\" [$__range])))",
+          "expr": "topk(10, sum by (pathname) (count_over_time({service=~\"$service\", event=\"http.response\"} | json | __error__=\"\" | slow_tier=~\"warn|critical\" | pathname != \"\" [$__range])))",
           "legendFormat": "{{pathname}}",
           "queryType": "instant",
           "refId": "A"
@@ -1333,7 +1333,7 @@
             "uid": "${DS_LOKI}"
           },
           "editorMode": "code",
-          "expr": "sum(count_over_time({compose_service=~\"$compose_service\", event=\"http.response\"} | json | __error__=\"\" | slow_tier=\"warn\" [$__interval]))",
+          "expr": "sum(count_over_time({service=~\"$service\", event=\"http.response\"} | json | __error__=\"\" | slow_tier=\"warn\" [$__interval]))",
           "legendFormat": "slow >100ms",
           "queryType": "range",
           "refId": "A"
@@ -1344,7 +1344,7 @@
             "uid": "${DS_LOKI}"
           },
           "editorMode": "code",
-          "expr": "sum(count_over_time({compose_service=~\"$compose_service\", event=\"http.response\"} | json | __error__=\"\" | slow_tier=\"critical\" [$__interval]))",
+          "expr": "sum(count_over_time({service=~\"$service\", event=\"http.response\"} | json | __error__=\"\" | slow_tier=\"critical\" [$__interval]))",
           "legendFormat": "slow >2s",
           "queryType": "range",
           "refId": "B"
@@ -1382,7 +1382,7 @@
             "uid": "${DS_LOKI}"
           },
           "editorMode": "code",
-          "expr": "{compose_service=~\"$compose_service\", event=\"http.response\"} | json | __error__=\"\" | status >= 500 | line_format \"{{.status}} {{.method}} {{.pathname}} {{.duration_ms}}ms | {{.message}}\"",
+          "expr": "{service=~\"$service\", event=\"http.response\"} | json | __error__=\"\" | status >= 500 | line_format \"{{.status}} {{.method}} {{.pathname}} {{.duration_ms}}ms | {{.message}}\"",
           "queryType": "range",
           "refId": "A"
         }
@@ -1419,7 +1419,7 @@
             "uid": "${DS_LOKI}"
           },
           "editorMode": "code",
-          "expr": "{compose_service=~\"$compose_service\"} | json | __error__=\"\" | message =~ \"로그인 실패\" | line_format \"provider={{.provider}} {{.pathname}} | {{.errorType}} {{.errorDescription}}\"",
+          "expr": "{service=~\"$service\"} | json | __error__=\"\" | message =~ \"로그인 실패\" | line_format \"provider={{.provider}} {{.pathname}} | {{.errorType}} {{.errorDescription}}\"",
           "queryType": "range",
           "refId": "A"
         }
@@ -1521,7 +1521,7 @@
             "uid": "${DS_LOKI}"
           },
           "editorMode": "code",
-          "expr": "sum(count_over_time({compose_service=~\"$compose_service\", event=\"client.log\"} | json | __error__=\"\" | source=\"browser\" |~ \"durationMs\" [$__interval]))",
+          "expr": "sum(count_over_time({service=~\"$service\", event=\"client.log\"} | json | __error__=\"\" | source=\"browser\" |~ \"durationMs\" [$__interval]))",
           "legendFormat": "slow load",
           "queryType": "range",
           "refId": "A"
@@ -1590,7 +1590,7 @@
             "uid": "${DS_LOKI}"
           },
           "editorMode": "code",
-          "expr": "avg_over_time({compose_service=~\"$compose_service\", event=\"client.log\"} | json | __error__=\"\" | source=\"browser\" | unwrap durationMs [$__interval]) by ()",
+          "expr": "avg_over_time({service=~\"$service\", event=\"client.log\"} | json | __error__=\"\" | source=\"browser\" | unwrap durationMs [$__interval]) by ()",
           "legendFormat": "avg durationMs",
           "queryType": "range",
           "refId": "A"
@@ -1659,7 +1659,7 @@
             "uid": "${DS_LOKI}"
           },
           "editorMode": "code",
-          "expr": "sum(count_over_time({compose_service=~\"$compose_service\", event=\"client.log\"} | json | __error__=\"\" | source=\"browser\" | level=\"error\" [$__interval]))",
+          "expr": "sum(count_over_time({service=~\"$service\", event=\"client.log\"} | json | __error__=\"\" | source=\"browser\" | level=\"error\" [$__interval]))",
           "legendFormat": "client errors",
           "queryType": "range",
           "refId": "A"
@@ -1743,7 +1743,7 @@
             "uid": "${DS_LOKI}"
           },
           "editorMode": "code",
-          "expr": "topk(10, sum by (pathname, type) (count_over_time({compose_service=~\"$compose_service\", event=\"client.log\"} | json | __error__=\"\" | source=\"browser\" |~ \"durationMs\" | pathname != \"\" [$__range])))",
+          "expr": "topk(10, sum by (pathname, type) (count_over_time({service=~\"$service\", event=\"client.log\"} | json | __error__=\"\" | source=\"browser\" |~ \"durationMs\" | pathname != \"\" [$__range])))",
           "legendFormat": "{{type}} {{pathname}}",
           "queryType": "instant",
           "refId": "A"
@@ -1781,7 +1781,7 @@
             "uid": "${DS_LOKI}"
           },
           "editorMode": "code",
-          "expr": "{compose_service=~\"$compose_service\", event=\"client.log\"} | json | __error__=\"\" | source=\"browser\" | level=\"error\" | line_format \"{{.pathname}} | {{.errorMessage}} | {{.message}}\"",
+          "expr": "{service=~\"$service\", event=\"client.log\"} | json | __error__=\"\" | source=\"browser\" | level=\"error\" | line_format \"{{.pathname}} | {{.errorMessage}} | {{.message}}\"",
           "queryType": "range",
           "refId": "A"
         }
@@ -1883,7 +1883,7 @@
             "uid": "${DS_LOKI}"
           },
           "editorMode": "code",
-          "expr": "sum(count_over_time({compose_service=~\"$compose_service\"} | json | __error__=\"\" | message =~ \"\\\\[mongo\\\\]\" [$__interval]))",
+          "expr": "sum(count_over_time({service=~\"$service\"} | json | __error__=\"\" | message =~ \"\\\\[mongo\\\\]\" [$__interval]))",
           "legendFormat": "mongo logs",
           "queryType": "range",
           "refId": "A"
@@ -1973,7 +1973,7 @@
             "uid": "${DS_LOKI}"
           },
           "editorMode": "code",
-          "expr": "sum(count_over_time({compose_service=~\"$compose_service\"} | json | __error__=\"\" | message =~ \"\\\\[redis\\\\]\" [$__interval]))",
+          "expr": "sum(count_over_time({service=~\"$service\"} | json | __error__=\"\" | message =~ \"\\\\[redis\\\\]\" [$__interval]))",
           "legendFormat": "redis logs",
           "queryType": "range",
           "refId": "A"
@@ -2063,7 +2063,7 @@
             "uid": "${DS_LOKI}"
           },
           "editorMode": "code",
-          "expr": "sum(count_over_time({compose_service=~\"$compose_service\"} | json | __error__=\"\" | message =~ \"\\\\[warmup\\\\]\" [$__interval]))",
+          "expr": "sum(count_over_time({service=~\"$service\"} | json | __error__=\"\" | message =~ \"\\\\[warmup\\\\]\" [$__interval]))",
           "legendFormat": "warmup logs",
           "queryType": "range",
           "refId": "A"
@@ -2101,7 +2101,7 @@
             "uid": "${DS_LOKI}"
           },
           "editorMode": "code",
-          "expr": "{compose_service=~\"$compose_service\"} | json | __error__=\"\" | message =~ \"\\\\[server-page-error\\\\]\" | line_format \"errorId={{.errorId}} {{.status}} {{.pathname}}{{.search}} | {{.message}}\"",
+          "expr": "{service=~\"$service\"} | json | __error__=\"\" | message =~ \"\\\\[server-page-error\\\\]\" | line_format \"errorId={{.errorId}} {{.status}} {{.pathname}}{{.search}} | {{.message}}\"",
           "queryType": "range",
           "refId": "A"
         }
@@ -2138,7 +2138,7 @@
             "uid": "${DS_LOKI}"
           },
           "editorMode": "code",
-          "expr": "{compose_service=~\"$compose_service\", level=\"error\"} | json | __error__=\"\" | line_format \"{{.event}} {{.pathname}} | {{.message}}\"",
+          "expr": "{service=~\"$service\", level=\"error\"} | json | __error__=\"\" | line_format \"{{.event}} {{.pathname}} | {{.message}}\"",
           "queryType": "range",
           "refId": "A"
         }
@@ -2211,7 +2211,7 @@
             "uid": "${DS_LOKI}"
           },
           "editorMode": "code",
-          "expr": "count(sum by (user_id) (count_over_time({compose_service=~\"$compose_service\", event=\"user.active\"} | json | __error__=\"\" | user_id != \"\" [24h])))",
+          "expr": "count(sum by (user_id) (count_over_time({service=~\"$service\", event=\"user.active\"} | json | __error__=\"\" | user_id != \"\" [24h])))",
           "legendFormat": "DAU (24h)",
           "queryType": "instant",
           "refId": "A"
@@ -2303,7 +2303,7 @@
             "uid": "${DS_LOKI}"
           },
           "editorMode": "code",
-          "expr": "sum(count_over_time({compose_service=~\"$compose_service\", event=\"user.active\"}[$__interval]))",
+          "expr": "sum(count_over_time({service=~\"$service\", event=\"user.active\"}[$__interval]))",
           "legendFormat": "user.active events",
           "queryType": "range",
           "refId": "A"
@@ -2341,7 +2341,7 @@
             "uid": "${DS_LOKI}"
           },
           "editorMode": "code",
-          "expr": "{compose_service=~\"$compose_service\", event=\"user.active\"} | json | __error__=\"\" | line_format \"dau_date={{.dau_date}} user_id={{.user_id}} {{.pathname}}\"",
+          "expr": "{service=~\"$service\", event=\"user.active\"} | json | __error__=\"\" | line_format \"dau_date={{.dau_date}} user_id={{.user_id}} {{.pathname}}\"",
           "queryType": "range",
           "refId": "A"
         }
@@ -2449,14 +2449,14 @@
           "type": "loki",
           "uid": "${DS_LOKI}"
         },
-        "definition": "label_values({compose_service=~\".+\"}, compose_service)",
+        "definition": "label_values({service=~\".+\"}, service)",
         "hide": 0,
         "includeAll": true,
-        "label": "compose_service",
+        "label": "Service",
         "multi": true,
-        "name": "compose_service",
+        "name": "service",
         "options": [],
-        "query": "label_values({compose_service=~\".+\"}, compose_service)",
+        "query": "label_values({service=~\".+\"}, service)",
         "refresh": 2,
         "regex": "",
         "skipUrlSync": false,
