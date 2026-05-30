@@ -545,13 +545,67 @@
 
   <div
     class="row {mode != null
-      ? 'g-0 justify-content-start minesweeper-game-row'
+      ? 'g-0 justify-content-start align-items-start minesweeper-game-row'
       : 'justify-content-center'}"
   >
+    <!-- 랭킹 영역 (md 이상: 왼쪽) -->
+    {#if mode != null}
+      <div class="col-12 col-md-4 order-2 order-md-1 mt-3 mt-md-0 minesweeper-rank-col">
+        <div class="card shadow rounded-4 h-100">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <h5 class="mb-0">
+                {mode === 'beginner' ? '초급' : mode === 'intermediate' ? '중급' : '고급'} Top 10
+              </h5>
+              {#if isLoggedIn}
+                <button
+                  class="btn btn-sm btn-outline-secondary"
+                  onclick={loadRank}
+                  disabled={rankLoading}
+                >
+                  🔄
+                </button>
+              {:else}
+                <a href="/login" class="btn btn-sm btn-outline-primary">로그인</a>
+              {/if}
+            </div>
+            <p class="small text-muted mb-1">3일 내 1인 1최단기록</p>
+            <p class="small text-muted mb-3">
+              오늘 참여 {todayStats.users}명 / 완료 {todayStats.games}회
+            </p>
+
+            {#if isLoggedIn}
+              {#if myBestTime != null}
+                <div class="alert alert-info py-2 px-3 mb-3 small">
+                  내 최고 기록: <strong>{myBestTime}</strong>초
+                </div>
+              {/if}
+              {#if rankList.length > 0}
+                <ol class="list-group list-group-numbered">
+                  {#each rankList as r}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                      <span>{r.nickname}</span>
+                      <span class="fw-bold font-monospace text-danger">{r.time}초</span>
+                    </li>
+                  {/each}
+                </ol>
+              {:else}
+                <p class="small text-muted text-center py-3">아직 등록된 랭킹이 없습니다.</p>
+              {/if}
+            {:else}
+              <div class="alert alert-light text-center">
+                <p class="small text-muted mb-2">로그인 후 랭킹을 확인할 수 있습니다.</p>
+              </div>
+            {/if}
+          </div>
+        </div>
+      </div>
+    {/if}
+
     <!-- 게임 보드 영역 -->
     <div
       class="col-12 col-md-8 col-lg-auto {mode != null
-        ? 'minesweeper-game-col text-start'
+        ? 'order-1 order-md-2 minesweeper-game-col text-start'
         : 'text-center'}"
     >
       <div class="card shadow rounded-4 mb-3 d-inline-flex minesweeper-game-card">
@@ -773,60 +827,6 @@
         </div>
       </div>
     </div>
-
-    <!-- 랭킹 영역 -->
-    {#if mode != null}
-      <div class="col-12 col-md-4 mt-3 mt-md-0 minesweeper-rank-col">
-        <div class="card shadow rounded-4 h-100">
-          <div class="card-body">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-              <h5 class="mb-0">
-                {mode === 'beginner' ? '초급' : mode === 'intermediate' ? '중급' : '고급'} Top 10
-              </h5>
-              {#if isLoggedIn}
-                <button
-                  class="btn btn-sm btn-outline-secondary"
-                  onclick={loadRank}
-                  disabled={rankLoading}
-                >
-                  🔄
-                </button>
-              {:else}
-                <a href="/login" class="btn btn-sm btn-outline-primary">로그인</a>
-              {/if}
-            </div>
-            <p class="small text-muted mb-1">3일 내 1인 1최단기록</p>
-            <p class="small text-muted mb-3">
-              오늘 참여 {todayStats.users}명 / 완료 {todayStats.games}회
-            </p>
-
-            {#if isLoggedIn}
-              {#if myBestTime != null}
-                <div class="alert alert-info py-2 px-3 mb-3 small">
-                  내 최고 기록: <strong>{myBestTime}</strong>초
-                </div>
-              {/if}
-              {#if rankList.length > 0}
-                <ol class="list-group list-group-numbered">
-                  {#each rankList as r}
-                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                      <span>{r.nickname}</span>
-                      <span class="fw-bold font-monospace text-danger">{r.time}초</span>
-                    </li>
-                  {/each}
-                </ol>
-              {:else}
-                <p class="small text-muted text-center py-3">아직 등록된 랭킹이 없습니다.</p>
-              {/if}
-            {:else}
-              <div class="alert alert-light text-center">
-                <p class="small text-muted mb-2">로그인 후 랭킹을 확인할 수 있습니다.</p>
-              </div>
-            {/if}
-          </div>
-        </div>
-      </div>
-    {/if}
   </div>
 </div>
 
@@ -873,17 +873,28 @@
 
   .minesweeper-rank-col {
     min-width: 300px;
+    max-width: 300px;
+    flex: 0 0 auto !important;
+    width: max-content !important;
+    align-self: flex-start;
+    padding-left: 0;
+    padding-right: 0.75rem;
+  }
+
+  @media (min-width: 768px) {
+    .minesweeper-rank-col {
+      margin-right: 0.75rem;
+    }
   }
 
   @media (max-width: 767.98px) {
     .minesweeper-rank-col {
-      width: 100vw;
-      max-width: 100vw;
-      min-width: 100vw;
-      flex: 0 0 100vw;
-      margin-left: calc(50% - 50vw);
-      margin-right: calc(50% - 50vw);
-      box-sizing: border-box;
+      width: 100% !important;
+      max-width: 100% !important;
+      min-width: 0;
+      flex: 0 0 100% !important;
+      margin-left: 0;
+      margin-right: 0;
       padding-left: 0.5rem;
       padding-right: 0.5rem;
     }
