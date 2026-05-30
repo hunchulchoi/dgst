@@ -872,31 +872,34 @@
   }
 
   .minesweeper-rank-col {
-    min-width: 300px;
-    max-width: 300px;
-    flex: 0 0 auto !important;
-    width: max-content !important;
     align-self: flex-start;
     padding-left: 0;
     padding-right: 0.75rem;
+    box-sizing: border-box;
+    max-width: 100vw;
   }
 
   @media (min-width: 768px) {
     .minesweeper-rank-col {
+      min-width: 300px;
+      max-width: 300px;
+      width: max-content !important;
+      flex: 0 0 auto !important;
       margin-right: 0.75rem;
     }
   }
 
   @media (max-width: 767.98px) {
     .minesweeper-rank-col {
-      width: 100% !important;
-      max-width: 100% !important;
-      min-width: 0;
-      flex: 0 0 100% !important;
+      width: 100vw !important;
+      max-width: 100vw !important;
+      min-width: 0 !important;
+      flex: 0 0 auto !important;
       margin-left: 0;
       margin-right: 0;
-      padding-left: 0.5rem;
-      padding-right: 0.5rem;
+      padding-left: max(0.5rem, env(safe-area-inset-left, 0px));
+      padding-right: max(0.5rem, env(safe-area-inset-right, 0px));
+      overflow-x: hidden;
     }
 
     .minesweeper-rank-col :global(.card) {
