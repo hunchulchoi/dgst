@@ -772,7 +772,7 @@
 
     <!-- 랭킹 영역 -->
     {#if mode != null}
-      <div class="col-12 col-md-4 mt-3 mt-md-0" style="min-width: 300px;">
+      <div class="col-12 col-md-4 mt-3 mt-md-0 minesweeper-rank-col">
         <div class="card shadow rounded-4 h-100">
           <div class="card-body">
             <div class="d-flex justify-content-between align-items-center mb-3">
@@ -854,6 +854,29 @@
     max-width: none;
     overflow: visible;
     touch-action: pan-x pan-y pinch-zoom;
+  }
+
+  .minesweeper-rank-col {
+    min-width: 300px;
+  }
+
+  @media (max-width: 767.98px) {
+    .minesweeper-rank-col {
+      width: 100vw;
+      max-width: 100vw;
+      min-width: 100vw;
+      flex: 0 0 100vw;
+      margin-left: calc(50% - 50vw);
+      margin-right: calc(50% - 50vw);
+      box-sizing: border-box;
+      padding-left: 0.5rem;
+      padding-right: 0.5rem;
+    }
+
+    .minesweeper-rank-col :global(.card) {
+      width: 100%;
+      max-width: 100%;
+    }
   }
 
   .minesweeper-game-active .minesweeper-game-col {
