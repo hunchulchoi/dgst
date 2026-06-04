@@ -19,6 +19,7 @@
   import { page } from '$app/stores';
   import { enhance } from '$app/forms';
   import { swalFire } from '$lib/util/swal.js';
+  import { validateArticleContent } from '$lib/util/articleContentValidation.js';
 
   // Svelte 5 Runes
   let { data } = $props();
@@ -338,27 +339,10 @@
           return cancel();
         }
 
-        // content 검증: 비어있거나 HTML 태그만 있는 경우 거부
-        if (!contentValue || contentValue.trim().length === 0) {
+        const contentCheck = validateArticleContent(contentValue, { minTextLength: 5 });
+        if (!contentCheck.ok) {
           formSubmitting = false;
-          toast('본문을 입력해주세요.', { icon: 'warning', isToast: false });
-          return cancel();
-        }
-
-        // HTML 태그 제거 후 실제 텍스트 내용 확인
-        const textContent = contentValue
-          //.replace(/<[^>]*>/g, '') // HTML 태그 제거
-          .replace(/<p>\s*<br\s*\/?>(\s|\u00A0)*<\/p>/g, '<br>') // <p><br></p>를 <br>로 변환
-          .replace(/&nbsp;/g, ' ') // &nbsp;를 공백으로
-          .replace(/[\s\u00A0]/g, '') // 모든 공백 및 줄바꿈 제거
-          .trim();
-
-        if (textContent.length < 5) {
-          formSubmitting = false;
-          toast('본문이 너무 짧습니다. 최소 5자 이상 입력해주세요.', {
-            icon: 'warning',
-            isToast: false
-          });
+          toast(contentCheck.message, { icon: 'warning', isToast: false });
           return cancel();
         }
 

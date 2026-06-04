@@ -11,6 +11,7 @@ import {
   findRecentDuplicateArticle,
   tryAcquireSubmitDedup
 } from '$lib/server/submitDedup.js';
+import { validateArticleContent } from '$lib/util/articleContentValidation.js';
 
 export const actions = {
   default: async (event) => {
@@ -37,17 +38,18 @@ export const actions = {
       throw error(400, { message: '제목을 입력해주세요.' });
     }
 
-    // content 검증 (null, undefined 체크)
     const rawContent = data.get('content');
-    if (!rawContent || String(rawContent).trim().length === 0) {
-      throw error(400, { message: '본문을 입력해주세요.' });
-    }
-
-    const normalizedContent = String(rawContent).replace(
+    const normalizedContent = String(rawContent ?? '').replace(
       /<p>\s*<br\s*\/?>(\s|\u00A0)*<\/p>/g,
       '<br>'
     );
     const processedContent = sanitizeArticleContent(normalizedContent);
+
+    const contentCheck = validateArticleContent(processedContent);
+    if (!contentCheck.ok) {
+      throw error(400, { message: contentCheck.message });
+    }
+
     const titleTrim = String(rawTitle).trim();
 
     try {
