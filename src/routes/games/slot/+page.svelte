@@ -469,8 +469,9 @@
   async function writeComment(parentId?: string) {
     const content = parentId ? replyContent[parentId] : commentContent;
     if (!content?.trim() || commentLoading) return;
+
+    commentLoading = true;
     try {
-      commentLoading = true;
       const formData = new FormData();
       formData.set('content', content.trim());
       if (parentId) {

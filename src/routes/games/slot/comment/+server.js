@@ -6,6 +6,11 @@ import { GameScore } from '$lib/models/gameScore.js';
 import convertToTree from '$lib/util/tree.js';
 import { checkAndLogSessionDevice } from '$lib/server/auth/checkSessionDevice.js';
 import { updateSlotUserBalance } from '$lib/server/slotUserBalance.js';
+import {
+  buildSubmitFingerprint,
+  findRecentDuplicateComment,
+  tryAcquireSubmitDedup
+} from '$lib/server/submitDedup.js';
 
 connectDB();
 
@@ -187,6 +192,26 @@ export async function POST(event) {
 
     if (content.length > 1000) {
       throw error(400, { message: '댓글은 1000자 이하여야 합니다.' });
+    }
+
+    const fingerprint = buildSubmitFingerprint([
+      SLOT_BOARD_ID,
+      SLOT_ARTICLE_ID,
+      parentCommentId ?? '',
+      content
+    ]);
+    const acquired = await tryAcquireSubmitDedup('comment', session.user.email, fingerprint, 8);
+    if (!acquired) {
+      const dup = await findRecentDuplicateComment({
+        email: session.user.email,
+        articleId: SLOT_ARTICLE_ID,
+        boardId: SLOT_BOARD_ID,
+        content,
+        parentCommentId: parentCommentId ?? ''
+      });
+      if (dup) {
+        return json({ success: true, rewardGiven: false, duplicate: true });
+      }
     }
 
     const email = session.user.email;

@@ -206,11 +206,7 @@
   let editCommentImageEl = $state(null);
 
   async function writeComment(parentCommentId) {
-    //console.log(commentContent, parentCommentId, reCommentContent)
-
-    // 중복 클릭 방지
     if (commentLoading) {
-      console.log('⚠️ 이미 댓글 저장 중입니다.');
       return;
     }
 
@@ -219,63 +215,64 @@
       return;
     }
 
-    // 댓글 저장 시작 시 즉시 오버레이 표시
-    console.log('🔄 댓글 저장 시작 - commentLoading:', commentLoading);
     commentLoading = true;
-    console.log('✅ commentLoading = true로 설정');
 
-    const formData = new FormData();
+    try {
+      const formData = new FormData();
 
-    if (!parentCommentId) {
-      formData.append('content', commentContent);
-      if (commentImage) formData.append('image', commentImage);
-    } else {
-      formData.append('content', reCommentContent);
-      formData.append('parentCommentId', parentCommentId);
-      if (commentImage) formData.append('image', commentImage);
-    }
+      if (!parentCommentId) {
+        formData.append('content', commentContent);
+        if (commentImage) formData.append('image', commentImage);
+      } else {
+        formData.append('content', reCommentContent);
+        formData.append('parentCommentId', parentCommentId);
+        if (commentImage) formData.append('image', commentImage);
+      }
 
-    fetch(`/board/${boardId}/${articleId}/comment`, {
-      method: 'POST',
-      body: formData
-    })
-      .then(async (res) => {
-        console.debug('res', res);
+      const res = await fetch(`/board/${boardId}/${articleId}/comment`, {
+        method: 'POST',
+        body: formData
+      });
 
-        if (res.status !== 201) {
-          const { message } = await res.json();
-          toast(message, 'error');
-          return;
+      if (res.status !== 201) {
+        let message = '저장 중 오류가 발생했습니다.';
+        try {
+          const body = await res.json();
+          if (body?.message) message = body.message;
+        } catch {
+          /* empty */
         }
+        toast(message, 'error');
+        return;
+      }
 
-        commentContent = '';
-        commentImage = null;
-        commentImageEl.value = '';
+      commentContent = '';
+      commentImage = null;
+      if (commentImageEl) commentImageEl.value = '';
+      if (previewEl) {
         previewEl.src = '';
         previewEl.classList.add('d-none');
+      }
 
-        visibleReply = '';
-        reCommentContent = '';
-        if (parentCommentId) {
-          reCommentImageEl.value = '';
+      visibleReply = '';
+      reCommentContent = '';
+      if (parentCommentId) {
+        commentImage = null;
+        if (reCommentImageEl) reCommentImageEl.value = '';
+        if (rePreviewEl) {
           rePreviewEl.src = '';
           rePreviewEl.classList.add('d-none');
         }
+      }
 
-        toast('저장 되었습니다.', 'success');
-
-        comments();
-      })
-      .catch((error) => {
-        console.error('❌ 댓글 저장 실패:', error);
-        //toast(error.message ?? '저장 중 오류가 발생했습니다.', 'danger');
-
-        toast(error.message ?? '저장 중 오류가 발생했습니다.', 'error');
-      })
-      .finally(() => {
-        console.log('🏁 댓글 저장 완료 - commentLoading을 false로 설정');
-        commentLoading = false;
-      });
+      toast('저장 되었습니다.', 'success');
+      comments();
+    } catch (error) {
+      console.error('❌ 댓글 저장 실패:', error);
+      toast(error instanceof Error ? error.message : '저장 중 오류가 발생했습니다.', 'error');
+    } finally {
+      commentLoading = false;
+    }
   }
 
   async function deleteComment(commentId) {

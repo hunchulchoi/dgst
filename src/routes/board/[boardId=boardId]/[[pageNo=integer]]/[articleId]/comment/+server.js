@@ -7,6 +7,11 @@ import { upsertAlarm, markAsRead, removeCommentFromAlarm } from '$lib/server/red
 import convertToTree from '$lib/util/tree.js';
 import { checkAndLogSessionDevice } from '$lib/server/auth/checkSessionDevice.js';
 import logger from '$lib/util/logger.js';
+import {
+  buildSubmitFingerprint,
+  findRecentDuplicateComment,
+  tryAcquireSubmitDedup
+} from '$lib/server/submitDedup.js';
 
 connectDB();
 
@@ -104,16 +109,34 @@ export async function POST(event) {
     parentComment = await Comment.findById(parentCommentId);
   }
 
-  //console.log('parentComment', parentComment);
+  const contentText = String(data.get('content') ?? '').trim();
+  const parentKey = parentCommentId ? String(parentCommentId) : '';
 
   try {
+    await connectDB();
+
+    const fingerprint = buildSubmitFingerprint([boardId, articleId, parentKey, contentText]);
+    const acquired = await tryAcquireSubmitDedup('comment', session.user.email, fingerprint, 8);
+    if (!acquired) {
+      const dup = await findRecentDuplicateComment({
+        email: session.user.email,
+        articleId,
+        boardId,
+        content: contentText,
+        parentCommentId: parentKey
+      });
+      if (dup) {
+        return new Response('ok', { status: 201 });
+      }
+    }
+
     const comment = new Comment({
       email: session.user.email,
       nickname: session.user.nickname,
       photo: session.user.photo,
       boardId,
       articleId: articleId,
-      content: data.get('content'),
+      content: contentText,
       parentCommentId,
       depth: parentComment?.depth + 1 || 1,
       parentCommentNickname: parentComment?.nickname

@@ -6,6 +6,11 @@ import connectDB from '$lib/database/mongoosePriomise.js';
 import { bustBoardListCache } from '$lib/server/boardListLoad.js';
 import logger from '$lib/util/logger.js';
 import { traceFromUnknown } from '$lib/util/formatErrorTrace.js';
+import {
+  buildSubmitFingerprint,
+  findRecentDuplicateArticle,
+  tryAcquireSubmitDedup
+} from '$lib/server/submitDedup.js';
 
 export const actions = {
   default: async (event) => {
@@ -43,6 +48,7 @@ export const actions = {
       '<br>'
     );
     const processedContent = sanitizeArticleContent(normalizedContent);
+    const titleTrim = String(rawTitle).trim();
 
     try {
       await connectDB();
@@ -51,7 +57,7 @@ export const actions = {
         const update = await Article.findOneAndUpdate(
           { _id: params.articleId, email: session.user.email, state: 'write' },
           {
-            title: String(rawTitle).trim(),
+            title: titleTrim,
             content: processedContent,
             modified_email: session.user.email
           },
@@ -69,11 +75,28 @@ export const actions = {
         return { success: true, articleId: params.articleId };
       }
 
+      const fingerprint = buildSubmitFingerprint([
+        params.boardId,
+        titleTrim,
+        processedContent
+      ]);
+      const acquired = await tryAcquireSubmitDedup('article', session.user.email, fingerprint, 15);
+      if (!acquired) {
+        const dup = await findRecentDuplicateArticle({
+          email: session.user.email,
+          boardId: params.boardId,
+          title: titleTrim
+        });
+        if (dup?._id) {
+          return { success: true, articleId: dup._id.toString() };
+        }
+      }
+
       const article = new Article({
         email: session.user.email,
         nickname: session.user.nickname,
         boardId: params.boardId,
-        title: String(rawTitle).trim(),
+        title: titleTrim,
         content: processedContent
       });
 

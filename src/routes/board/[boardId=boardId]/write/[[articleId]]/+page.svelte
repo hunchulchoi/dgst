@@ -113,11 +113,19 @@
   let title = $state('');
   let content = $state('');
 
+  /** 수정 글 로드 시에만 서버 data 반영 (저장 실패 후 update()로 본문이 지워지지 않게) */
+  let hydratedEditArticleId = $state(null);
+
   $effect.pre(() => {
-    title = data.title || '';
-    content = data.content || '';
+    if (!articleId) return;
+    if (hydratedEditArticleId === articleId) return;
+    hydratedEditArticleId = articleId;
+    title = data.title ?? '';
+    content = data.content ?? '';
   });
+
   let uploading = $state(0);
+  let formSubmitting = $state(false);
   let isLoadingOG = $state(false); // OG 정보 로딩 중 상태
   let insertUrlFromTitle = $state(null); // 제목에서 본문으로 이동할 URL
 
@@ -313,18 +321,26 @@
           return cancel();
         }
 
+        if (formSubmitting) {
+          cancel();
+          return;
+        }
+        formSubmitting = true;
+
         // 동기 검증 (제출 전)
         const titleValue = title || '';
         const contentValue = content || '';
 
         // 제목 검증
         if (titleValue.replace(/\s/g, '').length < 2) {
+          formSubmitting = false;
           toast('제목이 너무 짧습니다.', { icon: 'warning', isToast: false });
           return cancel();
         }
 
         // content 검증: 비어있거나 HTML 태그만 있는 경우 거부
         if (!contentValue || contentValue.trim().length === 0) {
+          formSubmitting = false;
           toast('본문을 입력해주세요.', { icon: 'warning', isToast: false });
           return cancel();
         }
@@ -338,6 +354,7 @@
           .trim();
 
         if (textContent.length < 5) {
+          formSubmitting = false;
           toast('본문이 너무 짧습니다. 최소 5자 이상 입력해주세요.', {
             icon: 'warning',
             isToast: false
@@ -357,40 +374,43 @@
           console.error('formData 주입 실패:', e);
         }
 
-        // 결과 처리
+        // 결과 처리 — 실패 시 update() 생략해 작성 중 제목·본문 유지
         return async ({ result, update }) => {
-          await update();
+          try {
+            if (result.type === 'failure') {
+              const errorMessage =
+                typeof result.data === 'object' && result.data?.message
+                  ? String(result.data.message)
+                  : '저장중에 오류가 발생하였습니다.';
+              console.error('[글쓰기 실패]', {
+                type: result.type,
+                status: result.status,
+                data: result.data
+              });
+              await toast(errorMessage, { icon: 'error', isToast: false });
+              return;
+            }
 
-          if (result.type === 'failure') {
-            const errorMessage =
-              typeof result.data === 'object' && result.data?.message
-                ? String(result.data.message)
-                : '저장중에 오류가 발생하였습니다.';
-            console.error('[글쓰기 실패]', {
-              type: result.type,
-              status: result.status,
-              data: result.data
-            });
-            await toast(errorMessage, { icon: 'error', isToast: false });
-            return;
-          }
+            if (result.type === 'error') {
+              console.error('[글쓰기 에러]', result.error);
+              await toast(result.error?.message || '서버 오류가 발생하였습니다.', {
+                icon: 'error',
+                isToast: false
+              });
+              return;
+            }
 
-          if (result.type === 'error') {
-            console.error('[글쓰기 에러]', result.error);
-            await toast(result.error?.message || '서버 오류가 발생하였습니다.', {
-              icon: 'error',
-              isToast: false
-            });
-            return;
-          }
+            if (result.type === 'success') {
+              const actionData = result.data;
 
-          if (result.type === 'success') {
-            const data = result.data;
+              if (!actionData?.success) {
+                console.error('[글쓰기 저장 실패]', actionData);
+                await toast('저장중에 오류가 발생하였습니다.', { icon: 'error', isToast: false });
+                return;
+              }
 
-            if (!data?.success) {
-              console.error('[글쓰기 저장 실패]', data);
-              await toast('저장중에 오류가 발생하였습니다.', { icon: 'error', isToast: false });
-            } else {
+              await update();
+
               await toast('저장되었습니다.', { icon: 'success', timer: 1000 });
 
               title = '';
@@ -398,13 +418,19 @@
 
               await invalidate('board-list');
 
-              // 방금 작성/수정한 글의 상세 페이지로 이동
-              const savedArticleId = data.articleId || articleId;
+              const savedArticleId = actionData.articleId || articleId;
               if (savedArticleId) {
                 goto(`/board/${boardId}/${savedArticleId}`);
               } else {
                 await list();
               }
+            }
+          } finally {
+            formSubmitting = false;
+            // 업로드/OG 카운터 꼬임 시 저장 버튼·오버레이가 풀리지 않는 것 방지
+            isLoadingOG = false;
+            if (uploading !== 0) {
+              uploading = 0;
             }
           }
         };
@@ -452,7 +478,7 @@
             type="submit"
             color="primary"
             id="uploadBtn"
-            disabled={uploading > 0 || isLoadingOG}
+            disabled={formSubmitting || uploading > 0 || isLoadingOG}
           >
             {#if uploading > 0}
               <Spinner color="info" size="sm" />
