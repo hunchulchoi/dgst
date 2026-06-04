@@ -1,7 +1,23 @@
 import * as redis from './client.js';
 import logger from '$lib/util/logger.js';
+import { normalizeToIsoString } from '$lib/util/formatRelativeTime.js';
 
 const ALARM_TTL = 60 * 60 * 24 * 3; // 3 일간 보관
+
+/**
+ * @param {Record<string, unknown>} alarm
+ */
+function normalizeAlarmRecord(alarm) {
+    if (!Array.isArray(alarm.comments)) {
+        alarm.comments = [];
+    }
+    alarm.updatedAt = normalizeToIsoString(alarm.updatedAt ?? alarm.createdAt);
+    if (alarm.createdAt != null) {
+        alarm.createdAt = normalizeToIsoString(alarm.createdAt);
+    }
+    alarm.commentCount = alarm.comments.length;
+    return alarm;
+}
 
 // Helper: 사용자별 알림 ZSET 키 (업데이트 시간순 정렬)
 function getZSetKey(email) {
@@ -22,28 +38,37 @@ export async function getUnreadAlarmCount(email, hours = 24) {
     const client = await redis.getClient();
     if (!client) return 0; // Redis 연결 실패 시 0 반환
 
-    const zsetKey = getZSetKey(email);
-    const timeLimit = Date.now() - (1000 * 60 * 60 * hours);
+    try {
+        const zsetKey = getZSetKey(email);
+        const timeLimit = Date.now() - (1000 * 60 * 60 * hours);
 
-    // 지정된 시간 이후에 업데이트된 알람 ID 조회
-    const alarmIds = await client.zrevrangebyscore(zsetKey, '+inf', timeLimit);
-    if (!alarmIds || alarmIds.length === 0) return 0;
+        // 지정된 시간 이후에 업데이트된 알람 ID 조회
+        const alarmIds = await client.zrevrangebyscore(zsetKey, '+inf', timeLimit);
+        if (!alarmIds || alarmIds.length === 0) return 0;
 
-    const hashKeys = alarmIds.map(getHashKey);
-    const dataList = await client.mget(...hashKeys);
+        const hashKeys = alarmIds.map(getHashKey);
+        const dataList = await client.mget(...hashKeys);
 
-    let unreadCount = 0;
-    for (const item of dataList) {
-        if (item) {
-            try {
-                const parsed = JSON.parse(item);
-                if (parsed.readAt == null) unreadCount++;
-            } catch (e) {
-                console.error('JSON Parse Error inside AlarmService', e);
+        let unreadCount = 0;
+        for (const item of dataList) {
+            if (item) {
+                try {
+                    const parsed = JSON.parse(item);
+                    if (parsed.readAt == null) unreadCount++;
+                } catch (e) {
+                    console.error('JSON Parse Error inside AlarmService', e);
+                }
             }
         }
+        return unreadCount;
+    } catch (err) {
+        logger.warn({
+            message: '[redis alarm] getUnreadAlarmCount failed',
+            email,
+            errorMessage: err instanceof Error ? err.message : String(err)
+        });
+        return 0;
     }
-    return unreadCount;
 }
 
 /**
@@ -55,29 +80,36 @@ export async function getAlarmList(email, limit = 30) {
     const client = await redis.getClient();
     if (!client) return [];
 
-    const zsetKey = getZSetKey(email);
-    const alarmIds = await client.zrevrange(zsetKey, 0, limit - 1);
-    if (!alarmIds || alarmIds.length === 0) return [];
+    try {
+        const zsetKey = getZSetKey(email);
+        const alarmIds = await client.zrevrange(zsetKey, 0, limit - 1);
+        if (!alarmIds || alarmIds.length === 0) return [];
 
-    const hashKeys = alarmIds.map(getHashKey);
-    const dataList = await client.mget(...hashKeys);
+        const hashKeys = alarmIds.map(getHashKey);
+        const dataList = await client.mget(...hashKeys);
 
-    const result = [];
-    for (let i = 0; i < dataList.length; i++) {
-        const item = dataList[i];
-        if (item) {
-            try {
-                const parsed = JSON.parse(item);
-                // commentCount virtual field 처리
-                parsed.commentCount = parsed.comments?.length || 0;
-                result.push(parsed);
-            } catch (e) { }
-        } else {
-            // 존재하지 않는 알림이면 zset에서도 정리
-            client.zrem(zsetKey, alarmIds[i]).catch(() => { });
+        const result = [];
+        for (let i = 0; i < dataList.length; i++) {
+            const item = dataList[i];
+            if (item) {
+                try {
+                    const parsed = JSON.parse(item);
+                    result.push(normalizeAlarmRecord(parsed));
+                } catch (e) { }
+            } else {
+                // 존재하지 않는 알림이면 zset에서도 정리
+                client.zrem(zsetKey, alarmIds[i]).catch(() => { });
+            }
         }
+        return result;
+    } catch (err) {
+        logger.warn({
+            message: '[redis alarm] getAlarmList failed',
+            email,
+            errorMessage: err instanceof Error ? err.message : String(err)
+        });
+        return [];
     }
-    return result;
 }
 
 /**
@@ -132,6 +164,9 @@ export async function upsertAlarm({ email, articleId, title, boardId, parentComm
     if (existingStr) {
         try {
             alarm = JSON.parse(existingStr);
+            if (!Array.isArray(alarm.comments)) {
+                alarm.comments = [];
+            }
             if (newCommentId && !alarm.comments.includes(newCommentId)) {
                 alarm.comments.push(newCommentId);
             }

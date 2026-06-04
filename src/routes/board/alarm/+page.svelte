@@ -1,13 +1,16 @@
 <script>
   import { Badge, Col, Icon, Row } from '$lib/components/ui/index.js';
-  import { formatDistanceToNowStrict, parseISO } from 'date-fns';
   import { ko } from 'date-fns/locale';
+  import { formatRelativeTime } from '$lib/util/formatRelativeTime.js';
   import { alarmCount } from '$lib/util/store.js';
 
   // Svelte 5 Runes
   let { data } = $props();
 
-  alarmCount.update((alarmCount) => Array.from(data.alarms)?.filter((a) => !a.readAt).length);
+  $effect(() => {
+    const unread = (data.alarms ?? []).filter((a) => !a.readAt).length;
+    alarmCount.set(unread);
+  });
 </script>
 
 <main class="container board-chrome-connect mt-0 mb-md-2" style="min-height: 60vh">
@@ -80,7 +83,7 @@
               md="2"
               xs="3"
               class="alarm-list-meta max-md:pt-1 text-muted text-end px-0"
-              >{formatDistanceToNowStrict(parseISO(alarm.updatedAt), {
+              >{formatRelativeTime(alarm.updatedAt, {
                 locale: ko,
                 addSuffix: true
               })}</Col
@@ -122,7 +125,7 @@
               </a>
             </Col>
             <Col lg="1" md="2" xs="4" class="alarm-list-meta max-md:pt-1 text-muted text-end"
-              >{formatDistanceToNowStrict(parseISO(alarm.updatedAt), {
+              >{formatRelativeTime(alarm.updatedAt, {
                 locale: ko,
                 addSuffix: true
               })}</Col
