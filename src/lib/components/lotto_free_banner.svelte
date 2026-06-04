@@ -1,6 +1,6 @@
 <script lang="ts">
   import { Badge, Button, Col, Icon, Row } from '$lib/components/ui/index.js';
-  import { format, parseISO } from 'date-fns';
+  import { formatAbsoluteTime, parseSafeDate } from '$lib/util/formatRelativeTime.js';
   import { onMount } from 'svelte';
   import { swalFire } from '$lib/util/swal.js';
 
@@ -89,11 +89,12 @@
   });
 
   function formatHistoryTime(iso: string): string {
-    const at = parseISO(iso);
+    const at = parseSafeDate(iso);
+    if (!at) return '';
     if (Date.now() - at.getTime() > LOTTO_HISTORY_MS) {
-      return format(at, 'M/d HH:mm');
+      return formatAbsoluteTime(at, 'M/d HH:mm');
     }
-    return format(at, 'HH:mm');
+    return formatAbsoluteTime(at, 'HH:mm');
   }
 
   async function loadLottoSummary() {
@@ -319,7 +320,7 @@
                   {/if}
                   <span class="fw-medium">{w.nickname}</span>
                   <span class="text-muted"
-                    >[{format(parseISO(w.createdAt), 'M/d HH:mm')}]</span
+                    >[{formatAbsoluteTime(w.createdAt, 'M/d HH:mm')}]</span
                   >
                   <span class="d-inline-flex flex-wrap gap-1 align-middle mt-1 d-block ms-0 ps-0">
                     {#each w.numbers as n (n)}

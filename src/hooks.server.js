@@ -334,8 +334,13 @@ export async function handle({ event, resolve }) {
     ...getRequestMeta(event)
   });
 
-  // 파일 업로드 경로에 대해서는 본문 크기 제한 증가 (100MB)
-  const maxBodySize = pathname.includes('/board/upload') ? 100 * 1024 * 1024 : undefined;
+  // 본문 크기: 업로드 100MB, 글쓰기·댓글 POST 10MB (기본 512KB 초과 HTML 방지)
+  const maxBodySize = pathname.includes('/board/upload')
+    ? 100 * 1024 * 1024
+    : event.request.method === 'POST' &&
+        (pathname.includes('/write') || pathname.endsWith('/comment'))
+      ? 10 * 1024 * 1024
+      : undefined;
 
   // 커스텀 resolve 함수 생성
   const customResolve = async (event) => {

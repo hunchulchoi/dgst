@@ -10,8 +10,8 @@
     Row
   } from '$lib/components/ui/index.js';
 
-  import { formatDistanceToNowStrict, parseISO } from 'date-fns';
   import { ko } from 'date-fns/locale';
+  import { formatRelativeTime } from '$lib/util/formatRelativeTime.js';
   import { goto, invalidateAll } from '$app/navigation';
   import { boardListPath } from '$lib/util/boardPaths.js';
 
@@ -136,7 +136,7 @@
         {/if}
       </Col>
       <Col lg="1" md="2" xs="4" class="!text-[1.05rem] !leading-[1.35] max-md:pt-1 text-muted text-end"
-        >{formatDistanceToNowStrict(parseISO(article.createdAt), {
+        >{formatRelativeTime(article.createdAt, {
           locale: ko,
           addSuffix: true
         })}</Col

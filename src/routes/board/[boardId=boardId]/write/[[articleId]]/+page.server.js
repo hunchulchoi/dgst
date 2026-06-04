@@ -1,11 +1,12 @@
-import { error, json } from '@sveltejs/kit';
+import { error, isHttpError } from '@sveltejs/kit';
 import { Article } from '$lib/models/article.js';
 import { checkAndLogSessionDevice } from '$lib/server/auth/checkSessionDevice.js';
 import { sanitizeArticleContent } from '$lib/server/sanitizeArticleContent.js';
 import connectDB from '$lib/database/mongoosePriomise.js';
 import { bustBoardListCache } from '$lib/server/boardListLoad.js';
+import logger from '$lib/util/logger.js';
+import { traceFromUnknown } from '$lib/util/formatErrorTrace.js';
 
-connectDB();
 export const actions = {
   default: async (event) => {
     const { request, params, locals } = event;
@@ -13,6 +14,10 @@ export const actions = {
 
     if (!session?.user?.nickname) {
       throw error(401, { message: '권한이 없습니다. 로그인 해 주세요' });
+    }
+
+    if (!session.user.email) {
+      throw error(401, { message: '계정 정보가 올바르지 않습니다. 다시 로그인해 주세요.' });
     }
 
     await checkAndLogSessionDevice(event, { action: 'board.write' });
@@ -40,6 +45,8 @@ export const actions = {
     const processedContent = sanitizeArticleContent(normalizedContent);
 
     try {
+      await connectDB();
+
       if (params.articleId) {
         const update = await Article.findOneAndUpdate(
           { _id: params.articleId, email: session.user.email, state: 'write' },
@@ -59,30 +66,34 @@ export const actions = {
 
         await bustBoardListCache(params.boardId);
 
-        // 글 수정 시 기존 articleId 반환
         return { success: true, articleId: params.articleId };
-      } else {
-        const article = new Article({
-          email: session.user.email,
-          nickname: session.user.nickname,
-          boardId: params.boardId,
-          title: String(rawTitle).trim(),
-          content: processedContent
-        });
-
-        //console.log(article);
-
-        const inserted = await article.save();
-        //console.log('inserted', inserted);
-
-        await bustBoardListCache(params.boardId);
-
-        // 새 글 작성 시 articleId 반환
-        return { success: true, articleId: inserted._id.toString() };
       }
+
+      const article = new Article({
+        email: session.user.email,
+        nickname: session.user.nickname,
+        boardId: params.boardId,
+        title: String(rawTitle).trim(),
+        content: processedContent
+      });
+
+      const inserted = await article.save();
+
+      await bustBoardListCache(params.boardId);
+
+      return { success: true, articleId: inserted._id.toString() };
     } catch (err) {
-      console.error('게시글 저장 실패', err);
-      throw error(500, { message: '저장 중 오류가 발생하였습니다.ㅜㅜ' });
+      if (isHttpError(err)) throw err;
+
+      logger.error({
+        message: '[board.write] save failed',
+        boardId: params.boardId,
+        articleId: params.articleId ?? null,
+        email: session.user.email,
+        errorMessage: err instanceof Error ? err.message : String(err),
+        trace: traceFromUnknown(err)
+      });
+      throw error(500, { message: '저장 중 오류가 발생하였습니다. 잠시 후 다시 시도해 주세요.' });
     }
   }
 };
@@ -94,16 +105,35 @@ export const load = async ({ params, locals }) => {
     throw error(401, { message: '권한이 없습니다. 로그인 해 주세요' });
   }
 
-  if (params.articleId) {
+  if (!params.articleId) {
+    return {};
+  }
+
+  try {
+    await connectDB();
+
     const article = await Article.findById(params.articleId)
       .where('state')
       .equals('write')
       .where('email')
       .equals(session.user.email)
+      .lean()
       .exec();
 
-    return JSON.parse(JSON.stringify(article));
-  }
+    if (!article) {
+      throw error(404, { message: '글을 찾을 수 없습니다.' });
+    }
 
-  return {};
+    return JSON.parse(JSON.stringify(article));
+  } catch (err) {
+    if (isHttpError(err)) throw err;
+
+    logger.error({
+      message: '[board.write] load failed',
+      articleId: params.articleId,
+      errorMessage: err instanceof Error ? err.message : String(err),
+      trace: traceFromUnknown(err)
+    });
+    throw error(500, { message: '글을 불러오지 못했습니다.' });
+  }
 };

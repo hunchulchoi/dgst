@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { formatDistanceToNowStrict, parseISO } from 'date-fns';
   import { ko } from 'date-fns/locale';
+  import { formatRelativeTime } from '$lib/util/formatRelativeTime.js';
   import { invalidateAll } from '$app/navigation';
   import { swalFire } from '$lib/util/swal.js';
   import { isOnlyOneEmoji } from '$lib/util/emoji.js';
@@ -980,7 +980,7 @@
                         <div class="d-flex align-items-center gap-2">
                           <span class="fw-bold">{comment.nickname}</span>
                           <small class="text-muted">
-                            {formatDistanceToNowStrict(parseISO(comment.createdAt), {
+                            {formatRelativeTime(comment.createdAt, {
                               locale: ko,
                               addSuffix: true
                             })}

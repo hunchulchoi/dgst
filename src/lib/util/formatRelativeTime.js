@@ -1,4 +1,4 @@
-import { formatDistanceToNowStrict, isValid, parseISO } from 'date-fns';
+import { format, formatDistanceToNowStrict, formatISO9075, isValid, parseISO } from 'date-fns';
 
 /**
  * 알림·게시글 등 다양한 저장 형식의 시각을 상대 시간 문자열로 변환한다.
@@ -22,7 +22,7 @@ export function formatRelativeTime(value, options = {}) {
  * @param {unknown} value
  * @returns {Date | null}
  */
-function coerceToDate(value) {
+export function parseSafeDate(value) {
   if (value instanceof Date) return value;
   if (typeof value === 'number' && Number.isFinite(value)) return new Date(value);
   if (typeof value === 'string' && value) {
@@ -36,6 +36,41 @@ function coerceToDate(value) {
     return isValid(parsed) ? parsed : null;
   }
   return null;
+}
+
+/** @param {unknown} value */
+function coerceToDate(value) {
+  return parseSafeDate(value);
+}
+
+/**
+ * @param {unknown} value
+ * @param {string} formatStr
+ * @param {import('date-fns').FormatOptions} [options]
+ * @returns {string}
+ */
+export function formatAbsoluteTime(value, formatStr, options = {}) {
+  try {
+    const date = coerceToDate(value);
+    if (!date || !isValid(date)) return '';
+    return format(date, formatStr, options);
+  } catch {
+    return '';
+  }
+}
+
+/**
+ * @param {unknown} value
+ * @returns {string}
+ */
+export function formatIso9075Safe(value) {
+  try {
+    const date = coerceToDate(value);
+    if (!date || !isValid(date)) return '';
+    return formatISO9075(date);
+  } catch {
+    return '';
+  }
 }
 
 /**

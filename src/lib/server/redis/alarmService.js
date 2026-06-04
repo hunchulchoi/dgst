@@ -121,24 +121,33 @@ export async function markAsRead(email, articleId) {
     const client = await redis.getClient();
     if (!client) return;
 
-    const zsetKey = getZSetKey(email);
-    const alarmIds = await client.zrange(zsetKey, 0, -1);
+    try {
+        const zsetKey = getZSetKey(email);
+        const alarmIds = await client.zrange(zsetKey, 0, -1);
 
-    for (const id of alarmIds) {
-        // alarmId 규칙: `${articleId}` 또는 `${articleId}_${parentCommentId}`
-        if (id === articleId || id.startsWith(`${articleId}_`)) {
-            const hk = getHashKey(id);
-            const str = await client.get(hk);
-            if (str) {
-                try {
-                    const alarm = JSON.parse(str);
-                    if (alarm.readAt == null) {
-                        alarm.readAt = new Date().toISOString();
-                        await client.setex(hk, ALARM_TTL, JSON.stringify(alarm));
-                    }
-                } catch (e) { }
+        for (const id of alarmIds) {
+            // alarmId 규칙: `${articleId}` 또는 `${articleId}_${parentCommentId}`
+            if (id === articleId || id.startsWith(`${articleId}_`)) {
+                const hk = getHashKey(id);
+                const str = await client.get(hk);
+                if (str) {
+                    try {
+                        const alarm = JSON.parse(str);
+                        if (alarm.readAt == null) {
+                            alarm.readAt = new Date().toISOString();
+                            await client.setex(hk, ALARM_TTL, JSON.stringify(alarm));
+                        }
+                    } catch (e) { }
+                }
             }
         }
+    } catch (err) {
+        logger.warn({
+            message: '[redis alarm] markAsRead failed',
+            email,
+            articleId,
+            errorMessage: err instanceof Error ? err.message : String(err)
+        });
     }
 }
 

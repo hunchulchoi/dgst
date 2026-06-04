@@ -13,8 +13,8 @@
   import { browser } from '$app/environment';
   import { scale } from 'svelte/transition';
 
-  import { formatDistanceToNowStrict, formatISO9075, parseISO } from 'date-fns';
   import { ko } from 'date-fns/locale';
+  import { formatIso9075Safe, formatRelativeTime } from '$lib/util/formatRelativeTime.js';
 
   import imageCompression from 'browser-image-compression';
   import { swalFire } from '$lib/util/swal.js';
@@ -1087,7 +1087,7 @@
       </Col>
       <Col md="6" xs="8" class="px-0 article-meta text-secondary">
         <span class="article-author">{data.article.nickname}</span>
-        <span class="article-date text-muted">{formatISO9075(parseISO(data.article.createdAt))}</span>
+        <span class="article-date text-muted">{formatIso9075Safe(data.article.createdAt)}</span>
       </Col>
       <Col class="text-end text-muted article-stats" md="6" xs="4">
         <span class="article-stat"><Icon class="pe-1" name="eye" />{data.article.read}</span>
@@ -1206,7 +1206,7 @@
                   <div class="comment-meta">
                     <div class="comment-nickname-line font-semibold !text-[1.05rem] !leading-snug">{comment.nickname}</div>
                     <div class="comment-time-line !text-[0.9375rem] !leading-snug text-muted">
-                      {formatDistanceToNowStrict(parseISO(comment.createdAt), {
+                      {formatRelativeTime(comment.createdAt, {
                         locale: ko,
                         addSuffix: true
                       })}
