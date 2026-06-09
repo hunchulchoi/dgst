@@ -6,6 +6,7 @@ import { MongoDBAdapter } from '@auth/mongodb-adapter';
 import clientPromise from '$lib/database/clientPromise.js';
 import * as userCache from '$lib/server/auth/userCache.js';
 import * as sessionCache from '$lib/server/auth/sessionCache.js';
+import logger from '$lib/util/logger.js';
 
 /** users 컬렉션에 허용하는 키만 저장 (name, image, latest_modified_at 등 제외) */
 const ALLOWED_USER_KEYS = new Set([
@@ -161,11 +162,19 @@ export function getHybridAdapter(databaseName) {
     // Session: Redis 캐시 우선 → 미스 시 MongoDB 조회 후 캐시 (요청마다 DB 부하 감소)
     createSession: (data) => mongo.createSession(data),
     async getSessionAndUser(sessionToken) {
-      const cached = await sessionCache.getCachedSessionAndUser(sessionToken);
-      if (cached) return cached;
-      const result = await mongo.getSessionAndUser(sessionToken);
-      if (result) await sessionCache.setCachedSessionAndUser(sessionToken, result);
-      return result;
+      try {
+        const cached = await sessionCache.getCachedSessionAndUser(sessionToken);
+        if (cached) return cached;
+        const result = await mongo.getSessionAndUser(sessionToken);
+        if (result) await sessionCache.setCachedSessionAndUser(sessionToken, result);
+        return result;
+      } catch (err) {
+        logger.warn({
+          message: '[auth] getSessionAndUser failed — treating as logged out',
+          errorMessage: err instanceof Error ? err.message : String(err)
+        });
+        return null;
+      }
     },
     updateSession: (data) => mongo.updateSession(data),
     async deleteSession(sessionToken) {

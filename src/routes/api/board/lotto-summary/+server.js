@@ -24,8 +24,11 @@ export async function GET({ locals }) {
   } catch (err) {
     console.error('lotto-summary failed', err);
     return json(
-      { lottoHistory: [], lottoWeekMatch: null, lottoTotalPicks24h: 0 },
-      { status: 500 }
+      { lottoHistory: [], lottoWeekMatch: null, lottoTotalPicks24h: 0, degraded: true },
+      {
+        status: 200,
+        headers: { 'Cache-Control': 'private, no-cache' }
+      }
     );
   }
 }

@@ -16,9 +16,13 @@ export const mongoConnectOptions = {
   dbName: DB_NAME,
   serverSelectionTimeoutMS: 10_000,
   connectTimeoutMS: 10_000,
-  minPoolSize: 3,
+  socketTimeoutMS: 0,
+  heartbeatFrequencyMS: 10_000,
+  minPoolSize: 2,
   maxPoolSize: 10,
-  maxIdleTimeMS: 0
+  maxIdleTimeMS: 0,
+  retryWrites: true,
+  retryReads: true
 };
 
 const connectOptions = mongoConnectOptions;
@@ -29,6 +33,26 @@ let connectionPromise = null;
 if (process.env.NODE_ENV === 'development' && global.__mongooseConnectionPromise) {
   connectionPromise = global.__mongooseConnectionPromise;
 }
+
+mongoose.connection.on('connected', () => {
+  logger.info({
+    message: `[mongo] connected event | db=${DB_NAME}`,
+    dbName: DB_NAME,
+    readyState: mongoose.connection.readyState,
+    host: mongoose.connection.host || undefined,
+    uri: redactConnectionUrl(uri)
+  });
+});
+
+mongoose.connection.on('reconnected', () => {
+  logger.info({
+    message: `[mongo] reconnected | db=${DB_NAME}`,
+    dbName: DB_NAME,
+    readyState: mongoose.connection.readyState,
+    host: mongoose.connection.host || undefined,
+    uri: redactConnectionUrl(uri)
+  });
+});
 
 mongoose.connection.on('disconnected', () => {
   logger.warn({
@@ -66,8 +90,13 @@ export default function connectDB() {
     return Promise.resolve(mongoose);
   }
 
-  if (mongoose.connection.readyState === 1) {
+  const readyState = mongoose.connection.readyState;
+  // 1=connected, 2=connecting — 진행 중 연결 재사용
+  if (readyState === 1) {
     return Promise.resolve(mongoose);
+  }
+  if (readyState === 2 && connectionPromise) {
+    return connectionPromise;
   }
 
   if (!connectionPromise) {

@@ -1,5 +1,7 @@
 import { env as dynamicEnv } from '$env/dynamic/private';
 import { isBoardHtmlPath } from '$lib/util/boardPaths.js';
+import logger from '$lib/util/logger.js';
+import { traceFromUnknown } from '$lib/util/formatErrorTrace.js';
 
 export const load = async (event) => {
   const boardRoute = isBoardHtmlPath(event.url.pathname);
@@ -22,7 +24,19 @@ export const load = async (event) => {
     }
   }
 
-  const session = await event.locals.auth();
+  /** @type {import('@auth/sveltekit').Session | null} */
+  let session = null;
+  try {
+    session = await event.locals.auth();
+  } catch (err) {
+    logger.warn({
+      message: '[layout] auth() failed — continuing without session',
+      pathname: event.url.pathname,
+      errorMessage: err instanceof Error ? err.message : String(err),
+      trace: traceFromUnknown(err)
+    });
+  }
+
   const kakaoId =
     dynamicEnv.KAKAO_CLIENT_ID ??
     (typeof process !== 'undefined' ? process.env?.KAKAO_CLIENT_ID : undefined);
