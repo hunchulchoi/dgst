@@ -1,6 +1,8 @@
 import { error, json } from '@sveltejs/kit';
 import { assertSafeFetchUrl } from '$lib/server/fetchUrlSafety.js';
-import { getJson, setJson } from '$lib/server/redis/client.js';
+import { getJson, setJson } from '$lib/server/cache/pgCache.js';
+
+const OG_NS = 'og';
 import logger from '$lib/util/logger.js';
 
 /**
@@ -61,19 +63,19 @@ async function fetchOGData(targetUrl) {
 
   const cacheKey = `og_cache:${safeUrl}`;
   try {
-    const cached = await getJson(cacheKey);
+    const cached = await getJson(cacheKey, OG_NS);
     if (cached) {
-      console.log(`✅ [Redis Cache Hit] OG 데이터 반환: ${safeUrl}`);
+      console.log(`✅ [pgCache Hit] OG 데이터 반환: ${safeUrl}`);
       return json(cached);
     } else {
       logger.warn({
-        message: `🐌 [Redis Cache Miss] 캐시가 없습니다. 외부 서버 통신을 시도합니다.`,
+        message: `🐌 [pgCache Miss] 캐시가 없습니다. 외부 서버 통신을 시도합니다.`,
         targetUrl: safeUrl,
         endpoint: '/api/og'
       });
     }
   } catch (err) {
-    console.error(`🚨 Redis 캐시 조회 실패 (${safeUrl}):`, err);
+    console.error(`🚨 pgCache 조회 실패 (${safeUrl}):`, err);
   }
 
   try {
@@ -102,10 +104,10 @@ async function fetchOGData(targetUrl) {
 
     // 성공한 데이터에 한정해 레디스에 3시간(10800초) 캐시
     try {
-      await setJson(cacheKey, ogData, 10800);
-      console.log(`💾 [Redis Cache Miss] OG 데이터 캐싱 완료: ${safeUrl}`);
+      await setJson(cacheKey, ogData, 10800, OG_NS);
+      console.log(`💾 [pgCache Miss] OG 데이터 캐싱 완료: ${safeUrl}`);
     } catch (e) {
-      console.error(`🚨 Redis 캐시 저장 실패 (${safeUrl}):`, e);
+      console.error(`🚨 pgCache 저장 실패 (${safeUrl}):`, e);
     }
 
     return json(ogData);

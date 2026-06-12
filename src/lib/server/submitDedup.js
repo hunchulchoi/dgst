@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import * as redis from '$lib/server/redis/client.js';
+import { tryAcquire } from '$lib/server/cache/pgDedup.js';
 import { findRecentDuplicateArticle } from '$lib/server/board/articleRepo.js';
 import { findRecentDuplicateComment } from '$lib/server/board/commentRepo.js';
 
@@ -21,7 +21,7 @@ export function buildSubmitFingerprint(parts) {
 
 /**
  * 동일 내용의 연속 제출(더블클릭·재시도)을 짧은 TTL 동안 차단한다.
- * Redis 미연결 시 true(허용) — 본 기능만 graceful degrade.
+ * Postgres 미연결 시 true(허용) — 본 기능만 graceful degrade.
  *
  * @param {'article' | 'comment'} scope
  * @param {string} email
@@ -31,8 +31,11 @@ export function buildSubmitFingerprint(parts) {
  */
 export async function tryAcquireSubmitDedup(scope, email, fingerprint, ttlSeconds = 8) {
   const key = `${DEDUP_PREFIX}${scope}:${email}:${fingerprint}`;
-  const acquired = await redis.setNx(key, '1', ttlSeconds);
-  return acquired;
+  try {
+    return await tryAcquire(key, ttlSeconds);
+  } catch {
+    return true;
+  }
 }
 
 export { findRecentDuplicateArticle, findRecentDuplicateComment };

@@ -1,7 +1,9 @@
 import crypto from 'crypto';
 import { countArticles } from '$lib/server/board/articleRepo.js';
 import { fetchBoardArticleList } from '$lib/server/boardArticleList.js';
-import * as redis from '$lib/server/redis/client.js';
+import * as pgCache from '$lib/server/cache/pgCache.js';
+
+const BOARDLIST_NS = 'boardlist';
 import logger from '$lib/util/logger.js';
 import { traceFromUnknown } from '$lib/util/formatErrorTrace.js';
 
@@ -26,8 +28,8 @@ function listPayloadCacheKey(boardId, pageNo) {
  */
 export async function bustBoardListCache(boardId) {
   try {
-    await redis.del(`boardlist:total:${boardId}`);
-    await redis.delByPrefix(`boardlist:payload:${boardId}:`);
+    await pgCache.del(`boardlist:total:${boardId}`, BOARDLIST_NS);
+    await pgCache.delByPrefix(`boardlist:payload:${boardId}:`, BOARDLIST_NS);
   } catch {
     // 캐시 bust 실패는 본 요청을 막지 않음
   }
@@ -40,10 +42,11 @@ export async function bustBoardListCache(boardId) {
  */
 async function cacheListPayload(boardId, pageNo, payload) {
   try {
-    await redis.setJson(
+    await pgCache.setJson(
       listPayloadCacheKey(boardId, pageNo),
       payload,
-      LIST_PAYLOAD_TTL_SECONDS
+      LIST_PAYLOAD_TTL_SECONDS,
+      BOARDLIST_NS
     );
   } catch {
     // 캐시 실패는 목록 응답을 막지 않음
@@ -57,7 +60,7 @@ async function cacheListPayload(boardId, pageNo, payload) {
  */
 async function getStaleListPayload(boardId, pageNo) {
   try {
-    const cached = await redis.getJson(listPayloadCacheKey(boardId, pageNo));
+    const cached = await pgCache.getJson(listPayloadCacheKey(boardId, pageNo), BOARDLIST_NS);
     if (!cached || typeof cached !== 'object' || !Array.isArray(cached.articles)) {
       return null;
     }
@@ -154,14 +157,14 @@ export function computePaginationWindow(pageNo, maxPage) {
  */
 async function getCachedTotal(boardId, filter) {
   const cacheKey = `boardlist:total:${boardId}`;
-  const cached = await redis.get(cacheKey);
+  const cached = await pgCache.get(cacheKey, BOARDLIST_NS);
   if (cached !== null) {
     const n = parseInt(cached, 10);
     if (Number.isFinite(n) && n >= 0) return n;
   }
 
   const total = await countArticles(filter);
-  await redis.set(cacheKey, String(total), TOTAL_CACHE_TTL_SECONDS);
+  await pgCache.set(cacheKey, String(total), TOTAL_CACHE_TTL_SECONDS, BOARDLIST_NS);
   return total;
 }
 

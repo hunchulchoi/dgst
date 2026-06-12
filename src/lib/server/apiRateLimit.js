@@ -1,10 +1,10 @@
-import { getClient, key } from '$lib/server/redis/client.js';
+import { incrementRateLimit } from '$lib/server/cache/pgRateLimit.js';
 
 /** @type {Map<string, { count: number, resetAt: number }>} */
 const memoryBuckets = new Map();
 
 /**
- * IP 기준 간단 rate limit (Redis 우선, 없으면 메모리).
+ * IP 기준 간단 rate limit (Postgres 우선, 없으면 메모리).
  * @param {import('@sveltejs/kit').RequestEvent} event
  * @param {{ limit: number, windowSeconds: number, bucket: string }} options
  * @returns {Promise<{ allowed: true } | { allowed: false }>}
@@ -19,21 +19,11 @@ export async function checkRateLimit(
     'unknown';
   const rateKey = `ratelimit:${bucket}:${ip}`;
 
-  const redis = await getClient();
-  if (redis) {
-    try {
-      const fullKey = key(rateKey);
-      const count = await redis.incr(fullKey);
-      if (count === 1) {
-        await redis.expire(fullKey, windowSeconds);
-      }
-      if (count > limit) {
-        return { allowed: false };
-      }
-      return { allowed: true };
-    } catch {
-      /* fall through to memory */
-    }
+  try {
+    const allowed = await incrementRateLimit(rateKey, windowSeconds, limit);
+    return allowed ? { allowed: true } : { allowed: false };
+  } catch {
+    /* fall through to memory */
   }
 
   const now = Date.now();

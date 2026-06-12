@@ -1,13 +1,10 @@
 import { json } from '@sveltejs/kit';
 import { env as dynamicEnv } from '$env/dynamic/private';
-import connectDB from '$lib/database/mongoosePriomise.js';
 import {
   fetchOfficialDrawJson,
   storeOfficialDraw,
   syncOfficialDrawFromDhlottery
 } from '$lib/server/lottoOfficial.js';
-
-connectDB();
 
 /**
  * 동행복권 최신(또는 갱신 필요) 회차 당첨번호를 받아 GameLog에 저장합니다.

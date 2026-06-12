@@ -14,7 +14,8 @@ import { env as dynamicEnv } from '$env/dynamic/private';
 import { getPrisma } from '$lib/database/prisma.js';
 import { getPrismaAdapter } from '$lib/server/auth/prismaAdapter.js';
 import { checkAuthRateLimit } from '$lib/server/auth/rateLimit.js';
-import * as redis from '$lib/server/redis/client.js';
+import * as pgCache from '$lib/server/cache/pgCache.js';
+import { tryAcquire } from '$lib/server/cache/pgDedup.js';
 import crypto from 'crypto';
 import { error, redirect, json } from '@sveltejs/kit';
 import logger from '$lib/util/logger';
@@ -209,10 +210,11 @@ export const {
 
 const DEVICE_COOKIE_NAME = 'dgst_device';
 const DEVICE_COOKIE_MAX_AGE_DAYS = 365;
-/** Redis device 키 TTL — 쿠키보다 짧게 (키 누적 방지) */
-const DEVICE_REDIS_TTL_SECONDS = 30 * 24 * 60 * 60;
-/** DAU Redis 키 TTL — KST 자정 경계 여유 */
-const DAU_REDIS_TTL_SECONDS = 48 * 60 * 60;
+/** pgCache device 키 TTL — 쿠키보다 짧게 (키 누적 방지) */
+const DEVICE_CACHE_TTL_SECONDS = 30 * 24 * 60 * 60;
+/** DAU dedup 키 TTL — KST 자정 경계 여유 */
+const DAU_TTL_SECONDS = 48 * 60 * 60;
+const DEVICE_NS = 'device';
 const AUTH_SESSION_COOKIE_NAME =
   NODE_ENV === 'production' ? '__Secure-authjs.session-token' : 'authjs.session-token';
 
@@ -254,10 +256,9 @@ const getKstDateKey = () =>
  */
 const recordDailyActiveUser = (userId, pathname) => {
   const dauDate = getKstDateKey();
-  const redisKey = `dau:${dauDate}:${userId}`;
+  const dauKey = `dau:${dauDate}:${userId}`;
 
-  redis
-    .setNx(redisKey, '1', DAU_REDIS_TTL_SECONDS)
+  tryAcquire(dauKey, DAU_TTL_SECONDS)
     .then((isFirstToday) => {
       if (!isFirstToday) return;
       logger.info({
@@ -292,13 +293,14 @@ export async function handle({ event, resolve }) {
   // cookie.get()은 string을 반환하므로 안전하게 문자열로 고정
   deviceId = String(deviceId);
 
-  // 재방문(기존 쿠키)만 Redis 갱신 — 봇·최초 방문마다 키 생성되는 것 방지
+  // 재방문(기존 쿠키)만 pgCache 갱신 — 봇·최초 방문마다 키 생성되는 것 방지
   if (hadDeviceCookie && !pathname.startsWith('/_app/') && !pathname.includes('.')) {
-    redis
+    pgCache
       .setJson(
         `device:${deviceId}`,
         { lastSeen: new Date().toISOString() },
-        DEVICE_REDIS_TTL_SECONDS
+        DEVICE_CACHE_TTL_SECONDS,
+        DEVICE_NS
       )
       .catch(() => {});
   }
