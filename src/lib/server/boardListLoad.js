@@ -1,6 +1,5 @@
 import crypto from 'crypto';
-import connectDB from '$lib/database/mongoosePriomise.js';
-import { Article } from '$lib/models/article.js';
+import { countArticles } from '$lib/server/board/articleRepo.js';
 import { fetchBoardArticleList } from '$lib/server/boardArticleList.js';
 import * as redis from '$lib/server/redis/client.js';
 import logger from '$lib/util/logger.js';
@@ -148,10 +147,10 @@ export function computePaginationWindow(pageNo, maxPage) {
 }
 
 /**
- * boardId별 최근 3일 게시글 수 — Redis 60초 캐시 (목록 페이지마다 countDocuments 회피)
+ * boardId별 최근 3일 게시글 수 — Redis 60초 캐시 (목록 페이지마다 count 회피)
  *
  * @param {string} boardId
- * @param {import('mongoose').FilterQuery<object>} filter
+ * @param {import('@prisma/client').Prisma.ArticleWhereInput} filter
  */
 async function getCachedTotal(boardId, filter) {
   const cacheKey = `boardlist:total:${boardId}`;
@@ -161,7 +160,7 @@ async function getCachedTotal(boardId, filter) {
     if (Number.isFinite(n) && n >= 0) return n;
   }
 
-  const total = await Article.countDocuments(filter);
+  const total = await countArticles(filter);
   await redis.set(cacheKey, String(total), TOTAL_CACHE_TTL_SECONDS);
   return total;
 }
@@ -179,13 +178,13 @@ export async function loadBoardList(event, boardId) {
   const t0 = performance.now();
 
   try {
-    await connectDB();
     const tConnected = performance.now();
+    const createdAfter = new Date(Date.now() - THREE_DAYS_MS);
 
     const filter = {
       boardId,
       state: 'write',
-      createdAt: { $gt: new Date(Date.now() - THREE_DAYS_MS) }
+      createdAt: { gt: createdAfter }
     };
 
     const total = await getCachedTotal(boardId, filter);
@@ -201,7 +200,12 @@ export async function loadBoardList(event, boardId) {
       pageNo = maxPage;
     }
 
-    const articles = await fetchBoardArticleList({ filter, pageNo, pageUnit: PAGE_UNIT });
+    const articles = await fetchBoardArticleList({
+      boardId,
+      pageNo,
+      pageUnit: PAGE_UNIT,
+      createdAfter
+    });
     const tFetched = performance.now();
     const { startNo, endNo } = computePaginationWindow(pageNo, maxPage);
 

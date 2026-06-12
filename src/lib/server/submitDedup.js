@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import * as redis from '$lib/server/redis/client.js';
-import { Article } from '$lib/models/article.js';
-import { Comment } from '$lib/models/comment.js';
+import { findRecentDuplicateArticle } from '$lib/server/board/articleRepo.js';
+import { findRecentDuplicateComment } from '$lib/server/board/commentRepo.js';
 
 const DEDUP_PREFIX = 'submit:dedup:';
 
@@ -35,65 +35,4 @@ export async function tryAcquireSubmitDedup(scope, email, fingerprint, ttlSecond
   return acquired;
 }
 
-/**
- * @param {object} param
- * @param {string} param.email
- * @param {string} param.boardId
- * @param {string} param.title
- * @param {number} [param.withinMs=15000]
- * @returns {Promise<{ _id: import('mongoose').Types.ObjectId } | null>}
- */
-export async function findRecentDuplicateArticle({ email, boardId, title, withinMs = 15000 }) {
-  try {
-    return await Article.findOne({
-      email,
-      boardId,
-      title,
-      state: 'write',
-      createdAt: { $gte: new Date(Date.now() - withinMs) }
-    })
-      .sort({ createdAt: -1 })
-      .select({ _id: 1 })
-      .lean();
-  } catch {
-    return null;
-  }
-}
-
-/**
- * @param {object} param
- * @param {string} param.email
- * @param {string} param.articleId
- * @param {string} param.boardId
- * @param {string} param.content
- * @param {string} [param.parentCommentId]
- * @param {number} [param.withinMs=12000]
- * @returns {Promise<{ _id: import('mongoose').Types.ObjectId } | null>}
- */
-export async function findRecentDuplicateComment({
-  email,
-  articleId,
-  boardId,
-  content,
-  parentCommentId = '',
-  withinMs = 12000
-}) {
-  try {
-    const filter = {
-      email,
-      articleId,
-      boardId,
-      content,
-      state: 'write',
-      createdAt: { $gte: new Date(Date.now() - withinMs) }
-    };
-    if (parentCommentId) {
-      filter.parentCommentId = parentCommentId;
-    } else {
-      filter.$or = [{ parentCommentId: null }, { parentCommentId: { $exists: false } }];
-    }
-    return await Comment.findOne(filter).sort({ createdAt: -1 }).select({ _id: 1 }).lean();
-  } catch {
-    return null;
-  }
-}
+export { findRecentDuplicateArticle, findRecentDuplicateComment };

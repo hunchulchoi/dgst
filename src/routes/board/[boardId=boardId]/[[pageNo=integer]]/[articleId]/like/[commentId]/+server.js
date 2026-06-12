@@ -1,9 +1,7 @@
-import connectDB from '$lib/database/mongoosePriomise.js';
-import { error, json } from '@sveltejs/kit';
-import { Comment } from '$lib/models/comment.js';
+import { error } from '@sveltejs/kit';
+import { toggleCommentLike, toCommentJson } from '$lib/server/board/commentRepo.js';
 
-connectDB();
-
+/** @param {import('@sveltejs/kit').RequestEvent} event */
 export async function POST({ params, locals }) {
   const boardId = params.boardId;
   const articleId = params.articleId;
@@ -15,35 +13,24 @@ export async function POST({ params, locals }) {
 
   const session = await locals.auth();
 
-  // 권한 검사
   if (!session?.user?.nickname) {
     throw error(401, { message: '권한이 없습니다. 로그인 해주세요' });
   }
 
-  const filter = {
-    _id: params.commentId,
-    boardId: params.boardId,
-    articleId: params.articleId,
-    state: 'write'
-  };
+  try {
+    const comment = await toggleCommentLike(params.commentId, session.user.email, 'like');
 
-  const projection = { likes: 1, like: 1 };
+    if (!comment || comment.boardId !== boardId || comment.articleId !== articleId || comment.state !== 'write') {
+      throw error(410, { message: '삭제되었거나 존지하지 않는 댓글입니다.' });
+    }
 
-  const comment = await Comment.findOneAndUpdate(
-    filter,
-    { $addToSet: { likes: session.user.email } },
-    { new: true, timestamps: false, projection }
-  );
+    const commentJson = toCommentJson(comment);
+    commentJson.liked = comment.likes.includes(session.user.email);
+    delete commentJson.likes;
 
-  if (!comment) {
-    throw error(410, { message: `삭제되었거나 존지하지 않는 댓글입니다.` });
+    return new Response(JSON.stringify(commentJson), { status: 200 });
+  } catch (err) {
+    if (err && typeof err === 'object' && 'status' in err) throw err;
+    throw error(500, { message: '좋아요 처리 중 오류가 발생하였습니다.' });
   }
-
-  const commentJson = JSON.parse(JSON.stringify(comment));
-  commentJson.liked = comment.likes.includes(session.user.email);
-
-  delete commentJson.likes;
-  delete commentJson.reads;
-
-  return new Response(JSON.stringify(commentJson), { status: 200 });
 }

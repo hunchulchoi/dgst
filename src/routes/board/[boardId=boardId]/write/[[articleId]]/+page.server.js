@@ -1,8 +1,11 @@
 import { error, isHttpError } from '@sveltejs/kit';
-import { Article } from '$lib/models/article.js';
+import {
+  createArticle,
+  findArticleById,
+  updateArticleByOwner
+} from '$lib/server/board/articleRepo.js';
 import { checkAndLogSessionDevice } from '$lib/server/auth/checkSessionDevice.js';
 import { sanitizeArticleContent } from '$lib/server/sanitizeArticleContent.js';
-import connectDB from '$lib/database/mongoosePriomise.js';
 import { bustBoardListCache } from '$lib/server/boardListLoad.js';
 import logger from '$lib/util/logger.js';
 import { traceFromUnknown } from '$lib/util/formatErrorTrace.js';
@@ -30,9 +33,6 @@ export const actions = {
 
     const data = await request.formData();
 
-    //console.log(data);
-
-    // title 검증
     const rawTitle = data.get('title');
     if (!rawTitle || String(rawTitle).trim().length === 0) {
       throw error(400, { message: '제목을 입력해주세요.' });
@@ -53,17 +53,16 @@ export const actions = {
     const titleTrim = String(rawTitle).trim();
 
     try {
-      await connectDB();
-
       if (params.articleId) {
-        const update = await Article.findOneAndUpdate(
-          { _id: params.articleId, email: session.user.email, state: 'write' },
+        const update = await updateArticleByOwner(
+          params.articleId,
+          session.user.email,
+          params.boardId,
           {
             title: titleTrim,
             content: processedContent,
-            modified_email: session.user.email
-          },
-          { timestamps: true }
+            modifiedEmail: session.user.email
+          }
         );
 
         if (!update) {
@@ -90,11 +89,11 @@ export const actions = {
           title: titleTrim
         });
         if (dup?._id) {
-          return { success: true, articleId: dup._id.toString() };
+          return { success: true, articleId: dup._id };
         }
       }
 
-      const article = new Article({
+      const inserted = await createArticle({
         email: session.user.email,
         nickname: session.user.nickname,
         boardId: params.boardId,
@@ -102,11 +101,9 @@ export const actions = {
         content: processedContent
       });
 
-      const inserted = await article.save();
-
       await bustBoardListCache(params.boardId);
 
-      return { success: true, articleId: inserted._id.toString() };
+      return { success: true, articleId: inserted.id };
     } catch (err) {
       if (isHttpError(err)) throw err;
 
@@ -123,6 +120,7 @@ export const actions = {
   }
 };
 
+/** @param {import('@sveltejs/kit').ServerLoadEvent} event */
 export const load = async ({ params, locals }) => {
   const session = await locals.auth();
 
@@ -135,21 +133,23 @@ export const load = async ({ params, locals }) => {
   }
 
   try {
-    await connectDB();
+    const article = await findArticleById(params.articleId, params.boardId, 'write');
 
-    const article = await Article.findById(params.articleId)
-      .where('state')
-      .equals('write')
-      .where('email')
-      .equals(session.user.email)
-      .lean()
-      .exec();
-
-    if (!article) {
+    if (!article || article.email !== session.user.email) {
       throw error(404, { message: '글을 찾을 수 없습니다.' });
     }
 
-    return JSON.parse(JSON.stringify(article));
+    return {
+      _id: article.id,
+      email: article.email,
+      nickname: article.nickname,
+      boardId: article.boardId,
+      title: article.title,
+      content: article.content,
+      state: article.state,
+      createdAt: article.createdAt.toISOString(),
+      updatedAt: article.updatedAt.toISOString()
+    };
   } catch (err) {
     if (isHttpError(err)) throw err;
 
