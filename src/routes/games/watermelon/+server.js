@@ -31,8 +31,10 @@ async function getRankTop10() {
 
 export async function GET({ locals, url }) {
   const session = await locals.auth();
+  const user = session?.user;
+  const email = typeof user?.email === 'string' ? user.email : '';
 
-  if (!session?.user?.email) {
+  if (!email) {
     throw error(401, { message: 'Login required' });
   }
 
@@ -40,7 +42,6 @@ export async function GET({ locals, url }) {
     const [rank, myBest, todayStats] = await Promise.all([
       getRankTop10(),
       (async () => {
-        const email = session.user.email;
         const since = new Date(Date.now() - THREE_DAYS_MS);
         const myDoc = await getPrisma().gameScoreWatermelon.findFirst({
           where: { email, createdAt: { gte: since } },
@@ -62,7 +63,9 @@ export async function GET({ locals, url }) {
 
 export async function POST({ locals, request }) {
   const session = await locals.auth();
-  if (!session?.user?.email) throw error(401, { message: 'Login required' });
+  const user = session?.user;
+  const email = typeof user?.email === 'string' ? user.email : '';
+  if (!email) throw error(401, { message: 'Login required' });
 
   let body;
   try {
@@ -71,12 +74,9 @@ export async function POST({ locals, request }) {
     throw error(400, { message: 'Invalid JSON' });
   }
 
-  const email = session.user.email;
   const nickname =
-    typeof session.user === 'object' &&
-    'nickname' in session.user &&
-    typeof session.user.nickname === 'string'
-      ? session.user.nickname
+    typeof user === 'object' && 'nickname' in user && typeof user.nickname === 'string'
+      ? user.nickname
       : 'anonymous';
 
   // 게임 시작 로그 기록

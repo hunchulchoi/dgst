@@ -31,13 +31,14 @@ async function getRankTop10() {
 
 export async function GET({ locals, url }) {
   const session = await locals.auth();
-  if (!session?.user?.email) throw error(401, { message: '로그인이 필요합니다.' });
+  const user = session?.user;
+  const email = typeof user?.email === 'string' ? user.email : '';
+  if (!email) throw error(401, { message: '로그인이 필요합니다.' });
 
   if (url.searchParams.get('rank')) {
     const [rank, myDocResult, todayStats] = await Promise.all([
       getRankTop10(),
       (async () => {
-        const email = session.user.email;
         const since = new Date(Date.now() - THREE_DAYS_MS);
         const myDoc = await getPrisma().gameScore2048.findFirst({
           where: { email, createdAt: { gte: since } },
@@ -58,7 +59,9 @@ export async function GET({ locals, url }) {
 
 export async function POST({ locals, request }) {
   const session = await locals.auth();
-  if (!session?.user?.email) throw error(401, { message: '로그인이 필요합니다.' });
+  const user = session?.user;
+  const email = typeof user?.email === 'string' ? user.email : '';
+  if (!email) throw error(401, { message: '로그인이 필요합니다.' });
 
   let body;
   try {
@@ -71,12 +74,9 @@ export async function POST({ locals, request }) {
     throw error(400, { message: '유효한 점수를 보내 주세요.' });
   }
 
-  const email = session.user.email;
   const nickname =
-    typeof session.user === 'object' &&
-    'nickname' in session.user &&
-    typeof session.user.nickname === 'string'
-      ? session.user.nickname
+    typeof user === 'object' && 'nickname' in user && typeof user.nickname === 'string'
+      ? user.nickname
       : 'anonymous';
 
   await getPrisma().gameScore2048.create({ data: { email, nickname, score } });

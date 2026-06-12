@@ -6,6 +6,8 @@ const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
 
 /**
  * 3일 내 id(email)별 최고 기록 모드별 Top10. 시간(초) 기준이므로 낮을수록 좋음.
+ *
+ * @param {string} mode
  */
 async function getRankTop10(mode) {
   const since = new Date(Date.now() - THREE_DAYS_MS);
@@ -31,14 +33,15 @@ async function getRankTop10(mode) {
 
 export async function GET({ locals, url }) {
   const session = await locals.auth();
-  if (!session?.user?.email) throw error(401, { message: '로그인이 필요합니다.' });
+  const user = session?.user;
+  const email = typeof user?.email === 'string' ? user.email : '';
+  if (!email) throw error(401, { message: '로그인이 필요합니다.' });
 
   if (url.searchParams.get('rank')) {
     const mode = url.searchParams.get('mode') || 'beginner';
     const [rank, myDocResult, todayStats] = await Promise.all([
       getRankTop10(mode),
       (async () => {
-        const email = session.user.email;
         const since = new Date(Date.now() - THREE_DAYS_MS);
         const myDoc = await getPrisma().gameScoreMinesweeper.findFirst({
           where: { email, createdAt: { gte: since }, mode },
@@ -59,7 +62,9 @@ export async function GET({ locals, url }) {
 
 export async function POST({ locals, request }) {
   const session = await locals.auth();
-  if (!session?.user?.email) throw error(401, { message: '로그인이 필요합니다.' });
+  const user = session?.user;
+  const email = typeof user?.email === 'string' ? user.email : '';
+  if (!email) throw error(401, { message: '로그인이 필요합니다.' });
 
   let body;
   try {
@@ -79,12 +84,9 @@ export async function POST({ locals, request }) {
     throw error(400, { message: '유효한 모드와 점수(시간)를 보내 주세요.' });
   }
 
-  const email = session.user.email;
   const nickname =
-    typeof session.user === 'object' &&
-    'nickname' in session.user &&
-    typeof session.user.nickname === 'string'
-      ? session.user.nickname
+    typeof user === 'object' && 'nickname' in user && typeof user.nickname === 'string'
+      ? user.nickname
       : 'anonymous';
 
   await getPrisma().gameScoreMinesweeper.create({ data: { email, nickname, time, mode } });
