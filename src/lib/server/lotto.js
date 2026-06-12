@@ -25,6 +25,14 @@ export function isValidLottoNumbers(numbers) {
   return set.size === 6;
 }
 
+/**
+ * @param {unknown} value
+ * @returns {value is { nickname?: unknown, numbers?: unknown }}
+ */
+function isLottoPickMeta(value) {
+  return Boolean(value && typeof value === 'object' && !Array.isArray(value));
+}
+
 /** @returns {number[]} ascending unique 6 from 1..45 */
 export function generateLottoNumbers() {
   const pool = Array.from({ length: 45 }, (_, i) => i + 1);
@@ -38,11 +46,11 @@ export function generateLottoNumbers() {
 }
 
 /**
- * @param {{ id: unknown, email?: unknown, createdAt: unknown, meta?: { nickname?: unknown, numbers?: unknown } | null }} log
+ * @param {{ id: unknown, email?: unknown, createdAt: unknown, meta?: unknown }} log
  * @param {string} viewerNorm
  */
 function draftFromLottoLog(log, viewerNorm) {
-  const meta = log.meta && typeof log.meta === 'object' ? log.meta : null;
+  const meta = isLottoPickMeta(log.meta) ? log.meta : null;
   const nickname =
     typeof meta?.nickname === 'string' && meta.nickname.trim() ? meta.nickname.trim() : null;
   const raw = meta?.numbers;
@@ -54,8 +62,10 @@ function draftFromLottoLog(log, viewerNorm) {
   return {
     id: String(log.id),
     nickname,
-    numbers: [...raw].sort((a, b) => a - b),
-    createdAt: new Date(log.createdAt).toISOString(),
+    numbers: [.../** @type {number[]} */ (raw)].sort((a, b) => a - b),
+    createdAt: new Date(
+      /** @type {string | number | Date} */ (log.createdAt)
+    ).toISOString(),
     mine,
     pickEmailNorm
   };

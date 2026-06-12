@@ -67,6 +67,7 @@ export function rankLabel(rank) {
   return '-';
 }
 
+/** @param {number} ms */
 function formatYmdSeoul(ms) {
   return new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Asia/Seoul',
@@ -76,13 +77,14 @@ function formatYmdSeoul(ms) {
   }).format(new Date(ms));
 }
 
+/** @param {number} ms */
 function weekdayIndexSeoul(ms) {
   const w = new Intl.DateTimeFormat('en-US', {
     timeZone: 'Asia/Seoul',
     weekday: 'short'
   }).format(new Date(ms));
   const map = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
-  return map[w] ?? 0;
+  return map[/** @type {keyof typeof map} */ (w)] ?? 0;
 }
 
 /**
@@ -139,6 +141,14 @@ export function previousSeoulWeekInclusiveRangeUtc(anchorMs = Date.now()) {
 /** @typedef {{ mains: unknown, bonus?: unknown, drwNo?: unknown, drwNoDate?: unknown }} MetaLike */
 
 /**
+ * @param {unknown} value
+ * @returns {value is Record<string, unknown>}
+ */
+function isPlainRecord(value) {
+  return Boolean(value && typeof value === 'object' && !Array.isArray(value));
+}
+
+/**
  * meta 문서 직렬화 (불변)
  * @param {ParsedOfficialDraw} draw
  */
@@ -160,7 +170,6 @@ function metaFromParsed(draw) {
  */
 function parsedFromStoredMeta(meta) {
   const drwNo = typeof meta?.drwNo === 'number' ? meta.drwNo : Number(meta?.drwNo);
-  /** @type {unknown} */
   const mainsUnknown = Array.isArray(meta?.mains) ? meta.mains : null;
   const bonusNum = typeof meta?.bonus === 'number' ? meta.bonus : Number(meta?.bonus);
   const mainsRaw = mainsUnknown ? mainsUnknown.map((x) => Number(x)) : [];
@@ -284,7 +293,7 @@ export async function officialDrawStored(drwNo) {
       take: 400
     });
     return docs.some((d) => {
-      const meta = d.meta && typeof d.meta === 'object' ? d.meta : null;
+      const meta = isPlainRecord(d.meta) ? d.meta : null;
       return Number(meta?.drwNo) === drwNo;
     });
   } catch {
@@ -417,7 +426,7 @@ export async function computeLottoWeekMatchSummary(opts = {}) {
     let validPickCount = 0;
 
     for (const doc of logs) {
-      const m = doc.meta && typeof doc.meta === 'object' ? doc.meta : null;
+      const m = isPlainRecord(doc.meta) ? doc.meta : null;
       if (!m) continue;
       const nickname =
         typeof m.nickname === 'string' && m.nickname.trim() ? m.nickname.trim() : null;
