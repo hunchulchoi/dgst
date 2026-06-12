@@ -1,6 +1,5 @@
 import prismaPkg from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
-import { DATABASE_URL } from '$env/static/private';
 import logger from '$lib/util/logger.js';
 
 const { PrismaClient } = prismaPkg;
@@ -8,7 +7,7 @@ const { PrismaClient } = prismaPkg;
 const DEFAULT_SLOW_QUERY_THRESHOLD_MS = 500;
 const DEFAULT_SLOW_QUERY_MAX_SQL_LENGTH = 4000;
 
-/** @type {typeof globalThis & { prisma?: PrismaClient }} */
+/** @type {typeof globalThis & { prisma?: import('@prisma/client').PrismaClient }} */
 const globalForPrisma = globalThis;
 
 /**
@@ -80,7 +79,7 @@ function summarizeQueryParams(params) {
 }
 
 /**
- * @param {PrismaClient} client
+ * @param {import('@prisma/client').PrismaClient} client
  * @returns {void}
  */
 function attachSlowQueryLogging(client) {
@@ -90,7 +89,7 @@ function attachSlowQueryLogging(client) {
   }
 
   const queryClient =
-    /** @type {PrismaClient & { $on: (event: 'query', callback: (event: PrismaQueryEvent) => void) => void }} */ (
+    /** @type {import('@prisma/client').PrismaClient & { $on: (event: 'query', callback: (event: PrismaQueryEvent) => void) => void }} */ (
       client
     );
 
@@ -112,9 +111,9 @@ function attachSlowQueryLogging(client) {
   });
 }
 
-/** @returns {PrismaClient} */
+/** @returns {import('@prisma/client').PrismaClient} */
 export function getPrisma() {
-  const connectionString = DATABASE_URL || process.env.DATABASE_URL;
+  const connectionString = process.env.DATABASE_URL;
   if (!connectionString) {
     throw new Error('DATABASE_URL is required to initialize Prisma');
   }

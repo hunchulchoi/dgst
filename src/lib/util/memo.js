@@ -5,5 +5,6 @@ function createMemo() {
 
   let isOpen = false;
 
+  /** @param {unknown} memo */
   const memoModal = (memo) => {};
 }

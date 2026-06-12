@@ -26,11 +26,17 @@
   import { swalFire } from '$lib/util/swal.js';
   import { isNicknameAllowed } from '$lib/util/nickname.js';
 
+  /** @typedef {{ ready: (callback: () => void) => void; execute: (siteKey: string, options: { action: string }) => Promise<string> }} Grecaptcha */
+  /** @type {Grecaptcha | undefined} */
+  const grecaptcha = browser
+    ? /** @type {Window & { grecaptcha?: Grecaptcha }} */ (window).grecaptcha
+    : undefined;
+
   // Svelte 5 Runes
   let { data } = $props();
 
   $effect(() => {
-    if (!data.session || data.session.nickname) {
+    if (!data.session || data.session.user?.nickname) {
       if (browser) goto('/', { replaceState: true });
     }
   });
@@ -38,6 +44,10 @@
   /** @returns {Promise<string>} */
   async function getRecaptchaToken() {
     return new Promise((resolve, reject) => {
+      if (!grecaptcha) {
+        reject(new Error('reCAPTCHA not loaded'));
+        return;
+      }
       grecaptcha.ready(() => {
         grecaptcha
           .execute(PUBLIC_GOOGLE_RECAPTCHA_SITE_KEY, { action: 'register' })
@@ -51,11 +61,18 @@
    * 파일 업로드시 미리보기
    * @param fileEl {Input} 파일인풋
    */
+  /** @param {HTMLInputElement} fileEl */
   function preview(fileEl) {
     console.log(fileEl);
-
-    document.querySelector('#preview').src = window.URL.createObjectURL(fileEl.files[0]);
-    document.querySelector('#introduction').focus();
+    const file = fileEl.files?.[0];
+    const previewImage = /** @type {HTMLImageElement | null} */ (document.querySelector('#preview'));
+    const introInput = /** @type {HTMLInputElement | HTMLTextAreaElement | null} */ (
+      document.querySelector('#introduction')
+    );
+    if (file && previewImage) {
+      previewImage.src = window.URL.createObjectURL(file);
+    }
+    introInput?.focus();
   }
 
   let nickname = $state('');
@@ -71,7 +88,7 @@
 
     const formData = new FormData();
 
-    let files = document.querySelector('#photo').files;
+    const files = /** @type {HTMLInputElement | null} */ (document.querySelector('#photo'))?.files;
 
     if (files) {
       // 움짤(GIF)·WebP는 압축 없이 원본 전송 (프로필 움짤 지원)
@@ -141,11 +158,14 @@
   };
 
   const doValidate = () => {
-    document.querySelectorAll('.needs-validation').forEach((el) => changeHandler(el));
+    document.querySelectorAll('.needs-validation').forEach((el) =>
+      changeHandler(/** @type {HTMLInputElement | HTMLTextAreaElement} */ (el))
+    );
   };
 
   const invalids = { nickname: false, introduction: false };
 
+  /** @param {HTMLInputElement | HTMLTextAreaElement} target */
   const changeHandler = async (target) => {
     switch (target.id) {
       case 'nickname':
@@ -170,7 +190,7 @@
         invalids.introduction = !target.value;
         break;
       case 'fight':
-        if (target.checked) doValidate();
+        if (/** @type {HTMLInputElement} */ (target).checked) doValidate();
     }
   };
 
@@ -222,7 +242,10 @@
           <FormGroup floating label="닉네임" labelFor="nickname">
             <Input
               id="nickname"
-              onchange={(evt) => changeHandler(evt.currentTarget)}
+              onchange={(/** @type {Event & { currentTarget: HTMLInputElement }} */ evt) =>
+                changeHandler(evt.currentTarget)}
+              oninput={(/** @type {Event & { currentTarget: HTMLInputElement }} */ evt) =>
+                changeHandler(evt.currentTarget)}
               bind:value={nickname}
               bind:invalid={invalids.nickname}
               feedback="2~15글자 사이 닉네임을 써주세요"
@@ -245,7 +268,10 @@
             <Input
               id="introduction"
               bind:value={introduction}
-              onchange={(evt) => changeHandler(evt.currentTarget)}
+              onchange={(/** @type {Event & { currentTarget: HTMLTextAreaElement }} */ evt) =>
+                changeHandler(evt.currentTarget)}
+              oninput={(/** @type {Event & { currentTarget: HTMLTextAreaElement }} */ evt) =>
+                changeHandler(evt.currentTarget)}
               bind:invalid={invalids.introduction}
               type="textarea"
               feedback="간단히 뜬구름 잡는 얘기 써주세요^^"
@@ -259,7 +285,8 @@
               type="switch"
               label="네"
               bind:checked={fight}
-              onchange={(evt) => changeHandler(evt.currentTarget)}
+              onchange={(/** @type {Event & { currentTarget: HTMLInputElement }} */ evt) =>
+                changeHandler(evt.currentTarget)}
               feedback="체크해 주세요^^"
               size="lg"
               class="needs-validation"

@@ -70,7 +70,6 @@ export function reportClientPageError(payload) {
 
   trace = clip(trace, MAX_LEN.trace) ?? '';
 
-  /** @type {string[]} */
   const detailParts = [
     `msg=${errorMessage}`,
     errorId && `errorId=${errorId}`,
@@ -82,7 +81,7 @@ export function reportClientPageError(payload) {
     viewport && `viewport=${viewport}`,
     userAgent && `ua=${userAgent}`,
     `clientAt=${clientAt}`
-  ].filter(Boolean);
+  ].filter((part) => typeof part === 'string');
 
   const summary = errorId
     ? `[client-page-error] errorId=${errorId} ${status} ${pathname}`

@@ -1,6 +1,13 @@
 import { describe, it, expect } from 'vitest';
 
+/** @typedef {{ row: number; col: number; isMine: boolean; neighborMines: number }} TestCell */
+
 // 지뢰찾기 로직을 시뮬레이션하기 위한 함수
+/**
+ * @param {TestCell[][]} grid
+ * @param {number} rows
+ * @param {number} cols
+ */
 function calculateNeighborMines(grid, rows, cols) {
     for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {

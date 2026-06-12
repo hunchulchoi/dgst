@@ -12,6 +12,10 @@ function spinReels() {
   return [0, 0, 0].map(() => symbols[Math.floor(Math.random() * symbols.length)]);
 }
 
+/**
+ * @param {string[]} reels
+ * @param {number} bet
+ */
 function calcPayout(reels, bet) {
   const [a, b, c] = reels;
   if (a === b && b === c) {
@@ -29,6 +33,10 @@ function calcPayout(reels, bet) {
   return 0;
 }
 
+/**
+ * @param {number} [spins=1000]
+ * @param {number} [bet=100]
+ */
 function runSlotProbabilityTest(spins = 1000, bet = 100) {
   const stats = {
     total: spins,
@@ -38,6 +46,7 @@ function runSlotProbabilityTest(spins = 1000, bet = 100) {
     x20: 0, // ×20 (7️⃣7️⃣7️⃣ 잭팟)
     totalBet: 0,
     totalPayout: 0,
+    /** @type {Record<string, number>} */
     tripleDetails: {} // 트리플별 상세 (심볼별)
   };
 
@@ -162,4 +171,3 @@ describe('Slot Machine Probability', () => {
 
 // 모듈로 export (테스트 프레임워크 사용 시)
 export { runSlotProbabilityTest, spinReels, calcPayout };
-

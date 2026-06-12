@@ -11,7 +11,9 @@
   /** @type {{ data: Record<string, unknown>; boardId: string; pageNo?: string | number; session?: import('@auth/sveltekit').Session | null }} */
   let { data, boardId, pageNo, session } = $props();
 
+  /** @param {string} id */
   const getBoardName = (id) => {
+    /** @type {Record<string, string>} */
     const boardNames = {
       free: '자유게시판',
       bug: '버그신고',

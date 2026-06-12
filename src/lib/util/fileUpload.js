@@ -9,6 +9,10 @@ import path from 'path';
 import sharp from 'sharp';
 import logger from './logger';
 
+/**
+ * @param {string} _name
+ * @param {string} _path
+ */
 function safeString(_name, _path) {
   _name = decodeURIComponent(_name);
 
@@ -31,6 +35,11 @@ function safeString(_name, _path) {
   return isPathSafe;
 }
 
+/**
+ * @param {File} file
+ * @param {string | undefined | null} email
+ * @param {string} [preservePath='jjal']
+ */
 export async function write(file, email, preservePath = 'jjal') {
   try {
     logger.info({
@@ -305,6 +314,10 @@ export async function write(file, email, preservePath = 'jjal') {
   }
 }
 
+/**
+ * @param {File} file
+ * @param {string} preservePath
+ */
 export async function read(file, preservePath) {
   if (!safeString(file.name, preservePath)) {
     logger.error({ fileName: file.name, preservePath, message: 'read safeString failed' });

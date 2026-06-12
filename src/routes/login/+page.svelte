@@ -6,6 +6,7 @@
 
   const googleBtnSrc = '/oauth/btn_google_signin_light_normal_web.png';
 
+  /** @param {string} errorCode */
   async function showErrorAlert(errorCode) {
     let errorMessage = '로그인 중 오류가 발생했습니다.';
 

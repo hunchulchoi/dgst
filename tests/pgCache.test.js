@@ -4,10 +4,11 @@ import { getPrisma } from '../src/lib/database/prisma.js';
 import * as pgCache from '../src/lib/server/cache/pgCache.js';
 
 const hasDatabase = Boolean(process.env.DATABASE_URL);
+const isDatabaseAvailable = hasDatabase ? await pgCache.isAvailable() : false;
 const NS = 'test';
 const KEY = 'unit:' + Date.now();
 
-describe.skipIf(!hasDatabase)('pgCache', () => {
+describe.skipIf(!isDatabaseAvailable)('pgCache', () => {
   beforeAll(async () => {
     await getPrisma().$connect();
   });

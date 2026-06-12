@@ -34,6 +34,10 @@
   const currentPageNo = $derived(Number(data.pageNo) || 1);
 
   // 페이지 네이션 클릭 핸들러 - 중복 클릭 방지
+  /**
+   * @param {number | string} targetPage
+   * @param {MouseEvent} e
+   */
   function handlePageClick(targetPage, e) {
     const target = Number(targetPage);
 
@@ -45,6 +49,22 @@
     e.preventDefault();
     const path = boardListPath(boardId, target);
     goto(path);
+  }
+
+  /** @param {MouseEvent} e */
+  function goFirstPage(e) {
+    handlePageClick(1, e);
+  }
+
+  /** @param {number} targetPage */
+  function createPageClickHandler(targetPage) {
+    /** @param {MouseEvent} e */
+    return (e) => handlePageClick(targetPage, e);
+  }
+
+  /** @param {MouseEvent} e */
+  function goLastPage(e) {
+    handlePageClick(data.maxPage, e);
   }
 </script>
 
@@ -152,7 +172,7 @@
           ><PaginationLink
             first
             href={boardListPath(boardId, 1)}
-            onclick={(e) => handlePageClick(1, e)}
+            onclick={goFirstPage}
             data-sveltekit-preload-data="hover"
           /></PaginationItem
         >
@@ -161,7 +181,7 @@
           <PaginationItem active={(!data.pageNo && targetPage === 1) || targetPage == data.pageNo}>
             <PaginationLink
               href={boardListPath(boardId, targetPage)}
-              onclick={(e) => handlePageClick(targetPage, e)}
+              onclick={createPageClickHandler(targetPage)}
               data-sveltekit-preload-data="hover"
             >
               {targetPage}
@@ -171,7 +191,7 @@
         <PaginationItem
           ><PaginationLink
             href={boardListPath(boardId, data.maxPage)}
-            onclick={(e) => handlePageClick(data.maxPage, e)}
+            onclick={goLastPage}
             data-sveltekit-preload-data="hover"
             last
           /></PaginationItem

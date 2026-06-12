@@ -5,31 +5,37 @@
   import { swalFire } from '$lib/util/swal.js';
   let { data } = $props();
 
-  let mode = $state(null);
+  /** @typedef {'beginner' | 'intermediate' | 'expert'} Difficulty */
+  /** @typedef {{ row: number; col: number; isMine: boolean; isRevealed: boolean; isFlagged: boolean; neighborMines: number }} Cell */
+  /** @typedef {{ row: number; col: number }} GridPoint */
+  /** @typedef {{ games: number; users: number }} TodayStats */
+
+  let mode = $state(/** @type {Difficulty | null} */ (null));
   let rows = $state(9);
   let cols = $state(9);
   let totalMines = $state(10);
   let showHelp = $state(true);
-  let highlightCenter = $state(null);
+  let highlightCenter = $state(/** @type {GridPoint | null} */ (null));
 
-  let grid = $state([]);
+  let grid = $state(/** @type {Cell[][]} */ ([]));
   let gameOver = $state(false);
   let gameWon = $state(false);
   let firstClick = $state(true);
   let flagsPlaced = $state(0);
   let useFlagMode = $state(false);
 
-  let explodedMine = $state(null);
+  let explodedMine = $state(/** @type {GridPoint | null} */ (null));
 
   let timer = $state(0);
+  /** @type {ReturnType<typeof setInterval> | null} */
   let timerInterval = null;
   let isPaused = $state(false);
 
   const STORAGE_KEY = 'minesweeper_save';
 
-  let rankList = $state([]);
-  let myBestTime = $state(null);
-  let todayStats = $state({ games: 0, users: 0 });
+  let rankList = $state(/** @type {Array<{ nickname: string; time: number }>} */ ([]));
+  let myBestTime = $state(/** @type {number | null} */ (null));
+  let todayStats = $state(/** @type {TodayStats} */ ({ games: 0, users: 0 }));
   let rankLoading = $state(false);
 
   $effect.pre(() => {
@@ -67,6 +73,10 @@
     }
   }
 
+  /**
+   * @param {number} timeScore
+   * @param {Difficulty} winMode
+   */
   async function submitWinScore(timeScore, winMode) {
     if (!isLoggedIn) return;
     try {
@@ -81,6 +91,7 @@
     }
   }
 
+  /** @param {Difficulty} difficulty */
   function startGame(difficulty) {
     mode = difficulty;
     if (difficulty === 'beginner') {
@@ -100,6 +111,7 @@
     initGrid();
   }
 
+  /** @param {Difficulty} newMode */
   async function confirmModeChange(newMode) {
     if (mode === newMode) return;
     if (!gameOver && !firstClick) {
@@ -132,8 +144,10 @@
     timerInterval = null;
     isPaused = false;
 
+    /** @type {Cell[][]} */
     const newGrid = [];
     for (let r = 0; r < rows; r++) {
+      /** @type {Cell[]} */
       const row = [];
       for (let c = 0; c < cols; c++) {
         row.push({
@@ -168,6 +182,10 @@
     initGrid();
   }
 
+  /**
+   * @param {number} firstRow
+   * @param {number} firstCol
+   */
   function placeMines(firstRow, firstCol) {
     let minesPlaced = 0;
     while (minesPlaced < totalMines) {
@@ -204,6 +222,10 @@
     grid = [...grid];
   }
 
+  /**
+   * @param {number} r
+   * @param {number} c
+   */
   function revealCell(r, c) {
     if (gameOver || gameWon || grid[r][c].isRevealed || grid[r][c].isFlagged) return;
 
@@ -322,6 +344,11 @@
     localStorage.removeItem(STORAGE_KEY);
   }
 
+  /**
+   * @param {MouseEvent} e
+   * @param {number} r
+   * @param {number} c
+   */
   function toggleFlag(e, r, c) {
     e.preventDefault();
     if (gameOver || gameWon || grid[r][c].isRevealed) return;
@@ -358,6 +385,10 @@
     }
   }
 
+  /**
+   * @param {number} r
+   * @param {number} c
+   */
   function handleChord(r, c) {
     if (!grid[r][c].isRevealed || grid[r][c].neighborMines === 0) return;
     let flaggedNeighbors = 0;
@@ -435,6 +466,10 @@
     highlightCenter = null;
   }
 
+  /**
+   * @param {number} r
+   * @param {number} c
+   */
   function setHighlight(r, c) {
     if (mode === 'beginner' && grid[r][c].isRevealed && grid[r][c].neighborMines > 0) {
       if (highlightCenter?.row === r && highlightCenter?.col === c) {

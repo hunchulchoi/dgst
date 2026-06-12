@@ -8,7 +8,7 @@
     active = false,
     onclick,
     class: className = '',
-    children,
+    children = undefined,
     ...rest
   } = $props();
 </script>
@@ -25,6 +25,6 @@
   {:else if last}
     <Icon name="chevron-double-right" />
   {:else}
-    {@render children()}
+    {@render children?.()}
   {/if}
 </a>

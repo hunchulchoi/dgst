@@ -74,7 +74,7 @@ export function extractMongoErrorMeta(err) {
     return { rawError: String(err) };
   }
 
-  const anyErr = /** @type {Record<string, unknown>} */ (err);
+  const anyErr = /** @type {Record<string, unknown>} */ (/** @type {unknown} */ (err));
 
   /** @type {Record<string, unknown>} */
   const meta = {
@@ -110,7 +110,7 @@ export function extractNetworkErrorMeta(err) {
     return { rawError: String(err) };
   }
 
-  const anyErr = /** @type {Record<string, unknown>} */ (err);
+  const anyErr = /** @type {Record<string, unknown>} */ (/** @type {unknown} */ (err));
 
   /** @type {Record<string, unknown>} */
   const meta = {

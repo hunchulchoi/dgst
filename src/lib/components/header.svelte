@@ -170,7 +170,7 @@
           >
           {#if session?.user?.nickname}
             <DropdownItem divider />
-            <DropdownItem onclick={signOut} class="text-bg-danger-subtle"
+            <DropdownItem onclick={() => signOut()} class="text-bg-danger-subtle"
               ><Icon name="door-closed" /> 로그아웃</DropdownItem
             >
           {/if}

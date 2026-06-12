@@ -6,8 +6,8 @@ import path from 'path';
 
 /**
  * 정적 이미지/비디오 파일 서빙
- * @param {Object} params - 요청 파라미터
- * @returns {Response} 파일 응답
+ * @param {{ params: { filepath: string } }} event - 요청 파라미터
+ * @returns {Promise<Response>} 파일 응답
  */
 export async function GET({ params }) {
   try {
@@ -30,6 +30,7 @@ export async function GET({ params }) {
     const ext = path.extname(filepath).toLowerCase();
 
     // MIME 타입 결정
+    /** @type {Record<string, string>} */
     const mimeTypes = {
       '.jpg': 'image/jpeg',
       '.jpeg': 'image/jpeg',

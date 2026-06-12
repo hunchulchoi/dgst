@@ -2,8 +2,10 @@
   import { onMount } from 'svelte';
   import sanitizeHtml from 'sanitize-html';
 
+  /** @typedef {{ title: string; description: string; image?: string; favicon?: string; siteName?: string }} OgData */
+
   let { url } = $props();
-  let ogData = $state(null);
+  let ogData = $state(/** @type {OgData | null} */ (null));
   let loading = $state(true);
   let error = $state(false);
 
@@ -13,12 +15,13 @@
       const response = await fetch(`/api/og?url=${encodeURIComponent(url)}`);
       console.log('📡 API 응답 상태:', response.status);
       if (response.ok) {
-        ogData = await response.json();
-        console.log('📊 OG 데이터:', ogData);
-        if (!ogData.title || !ogData.description) {
+        const nextOgData = /** @type {OgData} */ (await response.json());
+        ogData = nextOgData;
+        console.log('📊 OG 데이터:', nextOgData);
+        if (!nextOgData.title || !nextOgData.description) {
           console.error('❌ OG 데이터 부족:', {
-            title: ogData.title,
-            description: ogData.description
+            title: nextOgData.title,
+            description: nextOgData.description
           });
           error = true;
         }

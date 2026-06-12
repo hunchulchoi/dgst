@@ -13,6 +13,52 @@
     users: number;
   }
 
+  interface SpinPhrase {
+    top: string;
+    middle?: string;
+    bottom: string;
+  }
+
+  interface TravelJapaneseItem {
+    japanese: string;
+    pronunciation: string;
+    korean: string;
+  }
+
+  interface TriviaItem {
+    id: number;
+    category: string;
+    text: string;
+  }
+
+  interface QuoteItem {
+    id: number;
+    category: string;
+    quote: string;
+    author: string;
+  }
+
+  interface TravelEnglishItem {
+    id: number;
+    category: string;
+    english: string;
+    pronunciation: string;
+    korean: string;
+    example: string;
+  }
+
+  interface JapaneseWordItem {
+    japanese: string;
+    romaji: string;
+    korean: string;
+  }
+
+  interface FactItem {
+    id: number;
+    category: string;
+    fact: string;
+  }
+
   type SlotPageData = PageData & {
     todayStats?: SlotTodayStats;
   };
@@ -56,7 +102,7 @@
   let oopsCountdown = $state<string>('');
   let refreshing = $state(false);
   let spinAnimationInterval: ReturnType<typeof setInterval> | null = null;
-  let currentSpinPhrase = $state<{ top: string; middle?: string; bottom: string } | null>(null);
+  let currentSpinPhrase = $state<SpinPhrase | null>(null);
   let todayStats = $state<SlotTodayStats>({ spins: 0, users: 0 });
   let isMobile = $state(false);
   let guideCollapsed = $state(false);
@@ -173,57 +219,72 @@
     oopsCountdown = `${minutes}분 ${seconds}초`;
   }
 
-  const getRandomPhrase = () => {
+  function pickRandom<T>(items: T[]): T | null {
+    if (items.length === 0) return null;
+    const randomIndex = Math.floor(Math.random() * items.length);
+    return items[randomIndex];
+  }
+
+  const getRandomPhrase = (): SpinPhrase | null => {
     if (!dgstData) return null;
 
     // 6개 카테고리 중 하나 무작위 선택
-    const categories = ['여행일본어', '상식', '명언', '여행영어', '일본어단어', 'facts'];
+    const categories = ['여행일본어', '상식', '명언', '여행영어', '일본어단어', 'facts'] as const;
     const randomCategory = categories[Math.floor(Math.random() * categories.length)];
-    const categoryData = dgstData[randomCategory as keyof typeof dgstData];
-
-    if (!categoryData || !Array.isArray(categoryData) || categoryData.length === 0) {
-      return null;
-    }
-
-    // 선택된 카테고리에서 무작위 항목 선택
-    const randomIndex = Math.floor(Math.random() * categoryData.length);
-    const item = categoryData[randomIndex];
 
     // 카테고리별로 적절한 필드 매핑
     switch (randomCategory) {
-      case '여행일본어':
+      case '여행일본어': {
+        const item = pickRandom(dgstData['여행일본어'] as TravelJapaneseItem[]);
+        if (!item) return null;
         return {
           top: item.japanese || '',
           middle: item.pronunciation || '',
           bottom: item.korean || ''
         };
-      case '상식':
+      }
+      case '상식': {
+        const item = pickRandom(dgstData['상식'] as TriviaItem[]);
+        if (!item) return null;
         return {
           top: item.text || '',
           bottom: '' // 상식은 하단 없음
         };
-      case '명언':
+      }
+      case '명언': {
+        const item = pickRandom(dgstData['명언'] as QuoteItem[]);
+        if (!item) return null;
         return {
           top: item.quote || '',
           bottom: item.author ? `- ${item.author}` : ''
         };
-      case '여행영어':
+      }
+      case '여행영어': {
+        const item = pickRandom(dgstData['여행영어'] as TravelEnglishItem[]);
+        if (!item) return null;
         return {
           top: item.english || '',
           middle: item.example || '',
           bottom: item.korean || ''
         };
-      case '일본어단어':
+      }
+      case '일본어단어': {
+        const item = pickRandom(dgstData['일본어단어'] as JapaneseWordItem[]);
+        if (!item) return null;
         return {
           top: item.japanese || '',
           middle: item.romaji || '',
           bottom: item.korean || ''
         };
-      case 'facts':
+      }
+      case 'facts': {
+        const item = pickRandom(dgstData.facts as FactItem[]);
+        if (!item) return null;
         return {
           top: item.fact || '',
           bottom: '' // facts는 하단 없음
         };
+      }
       default:
         return null;
     }

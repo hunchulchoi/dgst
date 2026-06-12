@@ -20,6 +20,10 @@
   import { enhance } from '$app/forms';
   import { swalFire } from '$lib/util/swal.js';
   import { validateArticleContent } from '$lib/util/articleContentValidation.js';
+  import { fetchFile } from '@ffmpeg/util';
+
+  /** @typedef {import('sweetalert2').SweetAlertIcon} SweetAlertIcon */
+  /** @typedef {import('sweetalert2').SweetAlertPosition} SweetAlertPosition */
 
   // Svelte 5 Runes
   let { data } = $props();
@@ -28,8 +32,8 @@
    * Swal toast 메시지 표시
    * @param {string} message - 표시할 메시지
    * @param {object} options - 토스트 옵션
-   * @param {string} [options.icon='info'] - 메시지 아이콘 ('success', 'error', 'warning', 'info', 'primary')
-   * @param {string} [options.position='center'] - 토스트 위치 ('top', 'top-start', 'top-end', 'center', 'center-start', 'center-end', 'bottom', 'bottom-start', 'bottom-end')
+   * @param {SweetAlertIcon} [options.icon='info'] - 메시지 아이콘
+   * @param {SweetAlertPosition} [options.position='center'] - 토스트 위치
    * @param {number} [options.timer=1000] - 토스트 지속 시간 (0일 경우 지속 시간 없음)
    * @param {boolean} [options.isToast=true] - 토스트 표시 여부
    */
@@ -59,7 +63,8 @@
 
   const { boardId, articleId } = $page.params;
 
-  let ffmpeg;
+  /** @type {import('@ffmpeg/ffmpeg').FFmpeg | null} */
+  let ffmpeg = null;
 
   const uploadPlus = () => {
     uploading++;
@@ -108,14 +113,14 @@
 
       if (!result.isConfirmed) return false;
     }
-    goto(boardListPath(boardId));
+    goto(boardListPath(boardId ?? 'free'));
   }
 
   let title = $state('');
   let content = $state('');
 
   /** 수정 글 로드 시에만 서버 data 반영 (저장 실패 후 update()로 본문이 지워지지 않게) */
-  let hydratedEditArticleId = $state(null);
+  let hydratedEditArticleId = $state(/** @type {string | null} */ (null));
 
   $effect.pre(() => {
     if (!articleId) return;
@@ -128,7 +133,7 @@
   let uploading = $state(0);
   let formSubmitting = $state(false);
   let isLoadingOG = $state(false); // OG 정보 로딩 중 상태
-  let insertUrlFromTitle = $state(null); // 제목에서 본문으로 이동할 URL
+  let insertUrlFromTitle = $state(/** @type {string | null} */ (null)); // 제목에서 본문으로 이동할 URL
 
   /** @type {import('svelte').Component | null} */
   let QuillEditor = $state(null);
@@ -210,8 +215,9 @@
    * 안드로이드에서 paste 이벤트에서 텍스트를 잡지 못할 때 동작하는 폴백
    * @param {Event} event - input 이벤트
    */
+  /** @param {Event & { currentTarget: HTMLInputElement }} event */
   function handleTitleInput(event) {
-    const text = event.target.value;
+    const text = event.currentTarget.value;
     const diff = text.length - prevTitleLength;
     prevTitleLength = text.length;
 
@@ -224,8 +230,10 @@
         // 타이핑이 아닌 한 번에 5글자 이상 들어온 경우(붙여넣기) 또는 명시적 붙여넣기 이벤트인 경우
         if (
           diff > 5 ||
-          event.inputType === 'insertFromPaste' ||
-          event.inputType === 'insertReplacementText'
+          /** @type {InputEvent} */ (/** @type {unknown} */ (event)).inputType ===
+            'insertFromPaste' ||
+          /** @type {InputEvent} */ (/** @type {unknown} */ (event)).inputType ===
+            'insertReplacementText'
         ) {
           insertUrlFromTitle = trimmed;
           setTimeout(() => {
@@ -241,9 +249,11 @@
     console.log('uploading', uploading);
   });
 
+  /** @param {File} file */
   async function compressVideo(file) {
     try {
       uploadPlus();
+      if (!ffmpeg) throw new Error('FFmpeg is not ready');
 
       // 파일을 FFmpeg에 쓰기
       await ffmpeg.writeFile('input.mp4', await fetchFile(file));
@@ -266,8 +276,10 @@
       ]);
 
       // 압축된 파일 가져오기
-      const compressedData = await ffmpeg.readFile('output.mp4');
-      const compressedBlob = new Blob([compressedData.buffer], { type: 'video/mp4' });
+      const compressedData = /** @type {Uint8Array} */ (await ffmpeg.readFile('output.mp4'));
+      const compressedBlob = new Blob([/** @type {any} */ (compressedData)], {
+        type: 'video/mp4'
+      });
 
       uploadMinus();
       return compressedBlob;
@@ -279,6 +291,7 @@
   }
 
   // CKEditor 설정을 위한 함수 추가
+  /** @param {{ file: Promise<File> }} loader */
   function customUploadAdapter(loader) {
     return {
       upload: async () => {
@@ -318,7 +331,7 @@
       method="POST"
       use:enhance={({ formElement, formData, action, cancel, submitter }) => {
         /* 취소 등 type="button"만 클릭한 경우 — Enter 제출(submitter null)은 허용 */
-        if (submitter && submitter.type !== 'submit') {
+        if (submitter && /** @type {HTMLButtonElement} */ (submitter).type !== 'submit') {
           return cancel();
         }
 

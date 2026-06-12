@@ -10,11 +10,11 @@
   }
 
   let {
-    xs,
-    sm,
-    md,
-    lg,
-    xl,
+    xs = undefined,
+    sm = undefined,
+    md = undefined,
+    lg = undefined,
+    xl = undefined,
     class: className = '',
     children,
     ...rest

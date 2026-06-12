@@ -25,8 +25,9 @@ export async function GET({ request }) {
       at: new Date().toISOString()
     });
   } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : 'Reset failed';
     return json(
-      { ok: false, error: err?.message ?? 'Reset failed', at: new Date().toISOString() },
+      { ok: false, error: errorMessage, at: new Date().toISOString() },
       { status: 500 }
     );
   }

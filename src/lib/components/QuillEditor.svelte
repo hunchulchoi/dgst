@@ -104,9 +104,9 @@
 
   /**
    * browser-image-compression을 사용한 WebP 변환 함수 (움짤 포함)
-   * @param {File|Blob} file
+   * @param {File} file
    * @param {{width?: number, quality?: number}} options
-   * @returns {Promise<Blob>}
+   * @returns {Promise<File | Blob>}
    */
   async function convertToWebP(file, options = {}) {
     const maxWidth = options.width || 1400;
@@ -264,6 +264,7 @@
       }, 1000);
 
       // Progress 이벤트 리스너 설정
+      /** @param {{ progress: number; time: number }} param0 */
       const progressHandler = ({ progress, time }) => {
         compressionProgress = Math.round(progress * 100);
 
@@ -931,6 +932,7 @@
         // video 태그 허용
         [
           'video',
+          /** @param {HTMLElement} node @param {any} delta */
           (node, delta) => {
             const src = node.getAttribute('src');
             if (src) {
@@ -942,6 +944,7 @@
         // iframe 태그 허용 및 속성 추출
         [
           'iframe',
+          /** @param {HTMLElement} node @param {any} delta */
           (node, delta) => {
             const src = node.getAttribute('src');
             if (src) {
@@ -962,6 +965,7 @@
         // div 태그 내의 레거시 유튜브 쇼츠 감지
         [
           'div',
+          /** @param {HTMLElement} node @param {any} delta */
           (node, delta) => {
             // 구버전 유튜브 쇼츠 래퍼 구조 감지 (width 470px 또는 padding-bottom 176.6%)
             if (
@@ -990,6 +994,7 @@
         // blockquote 허용 (Instagram, TikTok)
         [
           'blockquote',
+          /** @param {HTMLElement} node @param {any} delta */
           (node, delta) => {
             return delta;
           }
@@ -1031,6 +1036,7 @@
       // @ts-ignore - Quill Blot 확장을 위해 onMount 내부에서 선언 필요
       // svelte-ignore perf_avoid_nested_class
       class VideoBlot extends BlockEmbed {
+        /** @param {string} value */
         static create(value) {
           const node = super.create();
           node.setAttribute('src', value);
@@ -1042,6 +1048,7 @@
           return node;
         }
 
+        /** @param {HTMLElement} node */
         static value(node) {
           return node.getAttribute('src');
         }
@@ -1055,16 +1062,21 @@
       // @ts-ignore - Quill Blot 확장을 위해 onMount 내부에서 선언 필요
       // svelte-ignore perf_avoid_nested_class
       class IFrameBlot extends BlockEmbed {
+        /** @param {{ src?: string; width?: string | number | null; height?: string | number | null } | string} value */
         static create(value) {
           const node = super.create();
-          const src = (typeof value === 'string' ? value : value.src) || '';
+          const iframeValue =
+            typeof value === 'string'
+              ? { src: value, width: null, height: null }
+              : value;
+          const src = iframeValue.src || '';
           node.setAttribute('src', src);
           node.setAttribute('frameborder', '0');
           node.setAttribute('allowfullscreen', 'true');
 
           // 기본값 설정
-          let width = (value.width || '560').toString().replace('px', '');
-          let height = (value.height || '315').toString().replace('px', '');
+          let width = (iframeValue.width || '560').toString().replace('px', '');
+          let height = (iframeValue.height || '315').toString().replace('px', '');
 
           // YouTube Shorts 자동 감지 (URL에 shorts가 있거나 세로 비율인 경우)
           const isShorts =
@@ -1090,6 +1102,7 @@
           return node;
         }
 
+        /** @param {HTMLElement} node */
         static value(node) {
           return {
             src: node.getAttribute('src'),
@@ -1107,6 +1120,7 @@
       // @ts-ignore - Quill Blot 확장을 위해 onMount 내부에서 선언 필요
       // svelte-ignore perf_avoid_nested_class
       class OGBlot extends BlockEmbed {
+        /** @param {{ url: string; image?: string; title?: string; description?: string; siteName?: string }} value */
         static create(value) {
           console.log('value', value);
           const node = super.create();
@@ -1126,7 +1140,7 @@
           link.style.cssText =
             'text-decoration: none; color: inherit; display: block; border: 1px solid var(--bs-border-color); border-radius: 8px; margin: 8px 0; max-width: 100%; background: transparent; cursor: pointer; overflow: hidden; padding: 0;';
 
-          link.onclick = (e) => {
+          link.onclick = () => {
             console.log('OG 카드 링크 클릭:', value.url);
             // 기본 링크 동작을 허용하므로 preventDefault 제거
           };
@@ -1190,6 +1204,7 @@
           return node;
         }
 
+        /** @param {HTMLElement} node */
         static value(node) {
           return node.getAttribute('data-og-url');
         }
@@ -1231,7 +1246,7 @@
       });
 
       // 데이터 변경 감지 및 양방향 바인딩
-      quillInstance.on('text-change', (_delta, _old, source) => {
+      quillInstance.on('text-change', (/** @type {any} */ _delta, /** @type {any} */ _old, /** @type {any} */ source) => {
         if (isComposing) return;
         if (IS_IOS) {
           Promise.resolve().then(() => (editorData = quillInstance.root.innerHTML));
@@ -1242,9 +1257,10 @@
 
       // URL 붙여넣기 감지 및 자동 임베드
       console.log('🔗 붙여넣기 이벤트 리스너 등록 중...');
-      quillInstance.root.addEventListener('paste', async (e) => {
+      quillInstance.root.addEventListener('paste', async (/** @type {ClipboardEvent} */ e) => {
         console.log('📋 붙여넣기 이벤트 발생!');
-        const clipboardData = e.clipboardData || window.clipboardData;
+        const clipboardData = e.clipboardData;
+        if (!clipboardData) return;
 
         // 클립보드에서 이미지 파일 확인
         if (clipboardData.items && clipboardData.items.length > 0) {
@@ -1346,7 +1362,7 @@
           ffmpeg = new FFmpeg();
 
           // FFmpeg 로그 활성화
-          ffmpeg.on('log', ({ message }) => {
+          ffmpeg.on('log', (/** @type {{ message: string }} */ { message }) => {
             console.log('[FFmpeg]', message);
           });
 
@@ -1443,7 +1459,7 @@
       active={loadingImage && isSingleImageUpload && !isCompressing}
       container={editorDiv}
       component="Dot"
-      opacity="0.7"
+      opacity={0.7}
     />
 
     {#if isCompressing}

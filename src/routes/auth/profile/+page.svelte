@@ -30,6 +30,15 @@
   import { swalFire } from '$lib/util/swal.js';
   import { isNicknameAllowed } from '$lib/util/nickname.js';
 
+  /** @typedef {{ ready: (callback: () => void) => void; execute: (siteKey: string, options: { action: string }) => Promise<string> }} Grecaptcha */
+  /** @typedef {{ x: number; y: number; width: number; height: number }} CropData */
+  /** @typedef {import('cropperjs').default} CropperInstance */
+
+  /** @type {Grecaptcha | undefined} */
+  const grecaptcha = browser
+    ? /** @type {Window & { grecaptcha?: Grecaptcha }} */ (window).grecaptcha
+    : undefined;
+
   // Svelte 5 Runes
   let { data } = $props();
 
@@ -43,6 +52,10 @@
   /** @returns {Promise<string>} */
   async function getRecaptchaToken() {
     return new Promise((resolve, reject) => {
+      if (!grecaptcha) {
+        reject(new Error('reCAPTCHA not loaded'));
+        return;
+      }
       grecaptcha.ready(() => {
         grecaptcha
           .execute(PUBLIC_GOOGLE_RECAPTCHA_SITE_KEY, { action: 'register' })
@@ -55,10 +68,11 @@
   // Cropper 상태
   let cropperOpen = $state(false);
   let cropperImageSrc = $state('');
-  let cropper;
-  let originalFile = $state(null);
-  let croppedFile = $state(null); // 크롭된 파일
-  let serverCropData = $state(null); // 움짤용 크롭 파라미터
+  /** @type {CropperInstance | null} */
+  let cropper = null;
+  let originalFile = $state(/** @type {File | null} */ (null));
+  let croppedFile = $state(/** @type {File | null} */ (null)); // 크롭된 파일
+  let serverCropData = $state(/** @type {CropData | null} */ (null)); // 움짤용 크롭 파라미터
   let previewSrc = $state('/icons/unknown-person-icon-4.jpg');
 
   $effect.pre(() => {
@@ -69,8 +83,9 @@
    * 파일 업로드시 미리보기 및 크롭 모달 띄우기
    * @param fileEl {Input} 파일인풋
    */
+  /** @param {HTMLInputElement} fileEl */
   function preview(fileEl) {
-    const file = fileEl.files[0];
+    const file = fileEl.files?.[0];
     if (file) {
       originalFile = file;
       cropperImageSrc = window.URL.createObjectURL(file);
@@ -79,6 +94,7 @@
   }
 
   // 모달 켜진 후 크로퍼 초기화
+  /** @param {HTMLImageElement} node */
   function initCropper(node) {
     if (cropper) cropper.destroy();
     cropper = new Cropper(node, {
@@ -88,6 +104,7 @@
       minCropBoxHeight: 100,
       background: false,
       crop(event) {
+        if (!cropper) return;
         // 실제 이미지 데이터 기준으로 최소 100x100을 보장
         const imgData = cropper.getImageData();
         const minW = Math.min(100, Math.round(imgData.naturalWidth));
@@ -118,7 +135,7 @@
 
     if (originalFile.type === 'image/gif' || originalFile.type === 'image/webp') {
       // 움짤 및 WebP 애니메이션은 서버에서 sharp로 가공하기 위해 파라미터만 저장
-      const cropData = cropper.getData(true); // {x, y, width, height...}
+      const cropData = /** @type {CropData} */ (cropper.getData(true)); // {x, y, width, height...}
       serverCropData = cropData;
       croppedFile = originalFile; // 원본 파일을 폼에 첨부
 
@@ -128,7 +145,9 @@
           previewSrc = window.URL.createObjectURL(blob);
         }
         cropperOpen = false;
-        document.querySelector('#introduction').focus();
+        /** @type {HTMLInputElement | HTMLTextAreaElement | null} */ (
+          document.querySelector('#introduction')
+        )?.focus();
       });
     } else {
       // 일반 자르기는 브라우저에서 캔버스로 잘라버림
@@ -139,7 +158,9 @@
           serverCropData = null;
         }
         cropperOpen = false;
-        document.querySelector('#introduction').focus();
+        /** @type {HTMLInputElement | HTMLTextAreaElement | null} */ (
+          document.querySelector('#introduction')
+        )?.focus();
       }, 'image/png');
     }
   }
@@ -147,7 +168,8 @@
   function closeCropModal() {
     cropperOpen = false;
     // 파일 업로드 취소 시 초기화
-    document.querySelector('#photo').value = '';
+    const photoInput = /** @type {HTMLInputElement | null} */ (document.querySelector('#photo'));
+    if (photoInput) photoInput.value = '';
     croppedFile = null;
     serverCropData = null;
     originalFile = null;
@@ -199,10 +221,10 @@
         serverCropData &&
         (croppedFile.type === 'image/gif' || croppedFile.type === 'image/webp')
       ) {
-        formData.append('cropX', serverCropData.x);
-        formData.append('cropY', serverCropData.y);
-        formData.append('cropW', serverCropData.width);
-        formData.append('cropH', serverCropData.height);
+        formData.append('cropX', String(serverCropData.x));
+        formData.append('cropY', String(serverCropData.y));
+        formData.append('cropW', String(serverCropData.width));
+        formData.append('cropH', String(serverCropData.height));
       }
     }
 
@@ -250,7 +272,7 @@
       clearTimeout(timeoutId);
       console.error('프로필 업데이트 오류:', reason);
 
-      if (reason.name === 'AbortError') {
+      if (reason instanceof Error && reason.name === 'AbortError') {
         await swalFire({
           icon: 'error',
           title: '타임아웃',
@@ -269,11 +291,14 @@
   };
 
   const doValidate = () => {
-    document.querySelectorAll('.needs-validation').forEach((el) => changeHandler(el));
+    document.querySelectorAll('.needs-validation').forEach((el) =>
+      changeHandler(/** @type {HTMLInputElement | HTMLTextAreaElement} */ (el))
+    );
   };
 
   const invalids = { nickname: false, introduction: false };
 
+  /** @param {HTMLInputElement | HTMLTextAreaElement} target */
   const changeHandler = async (target) => {
     switch (target.id) {
       case 'nickname':
@@ -347,7 +372,10 @@
           <FormGroup floating label="닉네임" labelFor="nickname">
             <Input
               id="nickname"
-              onchange={(evt) => changeHandler(evt.currentTarget)}
+              onchange={(/** @type {Event & { currentTarget: HTMLInputElement }} */ evt) =>
+                changeHandler(evt.currentTarget)}
+              oninput={(/** @type {Event & { currentTarget: HTMLInputElement }} */ evt) =>
+                changeHandler(evt.currentTarget)}
               bind:value={nickname}
               bind:invalid={invalids.nickname}
               feedback="2~15글자 사이 닉네임을 써주세요"
@@ -370,7 +398,10 @@
             <Input
               id="introduction"
               bind:value={introduction}
-              onchange={(evt) => changeHandler(evt.currentTarget)}
+              onchange={(/** @type {Event & { currentTarget: HTMLTextAreaElement }} */ evt) =>
+                changeHandler(evt.currentTarget)}
+              oninput={(/** @type {Event & { currentTarget: HTMLTextAreaElement }} */ evt) =>
+                changeHandler(evt.currentTarget)}
               bind:invalid={invalids.introduction}
               type="textarea"
               feedback="간단히 뜬구름 잡는 얘기 써주세요^^"

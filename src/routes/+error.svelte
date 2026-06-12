@@ -6,23 +6,26 @@
   import { onMount } from 'svelte';
   import { reportClientPageError } from '$lib/util/reportClientPageError.js';
 
+  /** @typedef {Error & { stack?: string; name?: string; cause?: unknown; errorId?: string }} PageError */
+
   // Svelte 5 Runes - page store 필요 (error page는 예외)
 
   // 404, 502 에러 시 자동으로 홈(자유게시판)으로 리다이렉트
   onMount(() => {
     if ($page.status >= 500) {
+      const pageError = /** @type {PageError | undefined} */ ($page.error);
       reportClientPageError({
         status: $page.status,
         pathname: $page.url.pathname,
         search: $page.url.search,
         href: $page.url.href,
-        routeId: $page.route?.id,
+        routeId: $page.route?.id ?? undefined,
         referer: document.referrer,
-        message: $page.error?.message,
-        stack: $page.error?.stack,
-        name: $page.error?.name,
-        cause: $page.error?.cause,
-        errorId: $page.error?.errorId
+        message: pageError?.message,
+        stack: pageError?.stack,
+        name: pageError?.name,
+        cause: pageError?.cause,
+        errorId: pageError?.errorId
       });
     }
 

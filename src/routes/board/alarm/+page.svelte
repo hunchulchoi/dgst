@@ -43,16 +43,17 @@
         >
           {#if alarm.comment}
             <Col
+              xl="7"
               lg="7"
               md="5"
+              sm="12"
               xs="9"
               class="text-break link-opacity-hover-50 pb-1 px-0 position-relative"
             >
+              {@const commentIds = Array.isArray(alarm.comments) ? alarm.comments : []}
               {@const commentId =
                 alarm.comment ||
-                (alarm.comments && alarm.comments.length > 0
-                  ? alarm.comments[alarm.comments.length - 1]
-                  : '')}
+                (commentIds.length > 0 ? commentIds[commentIds.length - 1] : '')}
               <a
                 data-sveltekit-preload-data="tap"
                 data-sveltekit-invalidate="all"
@@ -79,8 +80,10 @@
               </a>
             </Col>
             <Col
+              xl="1"
               lg="1"
               md="2"
+              sm="12"
               xs="3"
               class="alarm-list-meta max-md:pt-1 text-muted text-end px-0"
               >{formatRelativeTime(alarm.updatedAt, {
@@ -90,14 +93,17 @@
             >
           {:else}
             <Col
+              xl="7"
               lg="7"
               md="5"
+              sm="12"
               xs="8"
               class="text-break link-opacity-hover-50 pb-1 position-relative"
             >
+              {@const commentIdsForGeneral = Array.isArray(alarm.comments) ? alarm.comments : []}
               {@const commentIdForGeneral =
-                alarm.comments && alarm.comments.length > 0
-                  ? alarm.comments[alarm.comments.length - 1]
+                commentIdsForGeneral.length > 0
+                  ? commentIdsForGeneral[commentIdsForGeneral.length - 1]
                   : ''}
               <a
                 data-sveltekit-preload-data="tap"
@@ -124,7 +130,7 @@
                 {/if}
               </a>
             </Col>
-            <Col lg="1" md="2" xs="4" class="alarm-list-meta max-md:pt-1 text-muted text-end"
+            <Col xl="1" lg="1" md="2" sm="12" xs="4" class="alarm-list-meta max-md:pt-1 text-muted text-end"
               >{formatRelativeTime(alarm.updatedAt, {
                 locale: ko,
                 addSuffix: true

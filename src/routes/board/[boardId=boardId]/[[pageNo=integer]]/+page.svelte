@@ -4,8 +4,8 @@
 
   let { data } = $props();
 
-  const boardId = $derived($page.params.boardId);
-  const pageNo = $derived($page.params.pageNo);
+  const boardId = $derived($page.params.boardId ?? '');
+  const pageNo = $derived($page.params.pageNo ?? '');
   const session = $derived(data.session);
 </script>
 

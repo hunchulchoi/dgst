@@ -28,19 +28,25 @@
 
   /** @type {typeof import('$lib/util/embeder.js') | null} */
   let embeder = $state(null);
+  /** @typedef {{ Embeds?: { process: () => void } }} InstagramEmbed */
+  /** @type {InstagramEmbed | undefined} */
+  const instgrm = browser ? /** @type {Window & { instgrm?: InstagramEmbed }} */ (window).instgrm : undefined;
 
   // Svelte 5 Runes - Props
   let { data } = $props();
+  const article = $derived(data.article ?? null);
+  const sessionUser = $derived(data.session?.user ?? null);
 
-  const boardId = $derived($page.params.boardId);
-  const articleId = $derived($page.params.articleId);
-  const pageNo = $derived($page.params.pageNo);
+  const boardId = $derived($page.params.boardId ?? 'free');
+  const articleId = $derived($page.params.articleId ?? '');
+  const pageNo = $derived($page.params.pageNo ?? '1');
 
   // 애니메이션 관련 상태
   let likeAnimation = $state(false);
   let commentLikeAnimations = $state(new Set());
 
   // 댓글 좋아요 애니메이션 함수
+  /** @param {string} commentId */
   function triggerLikeAnimation(commentId) {
     commentLikeAnimations.add(commentId);
     setTimeout(() => {
@@ -61,6 +67,7 @@
       });
   }
 
+  /** @param {string} commentId */
   async function likeComment(commentId) {
     try {
       const response = await fetch(`/board/${boardId}/${articleId}/like/${commentId}`, {
@@ -105,16 +112,21 @@
   }
 
   async function list() {
-    const currentPageNo = pageNo || 1;
+    const currentPageNo = Number(pageNo) || 1;
 
     await invalidate('board-list');
     goto(boardListPath(boardId, currentPageNo), { replaceState: true });
   }
 
+  /** @param {'reply' | 'comment'} target */
   function getCommentImageTarget(target) {
     return target === 'reply' ? reCommentImage : commentImage;
   }
 
+  /**
+   * @param {'reply' | 'comment'} target
+   * @param {File | null} file
+   */
   function setCommentImageTarget(target, file) {
     if (target === 'reply') {
       reCommentImage = file;
@@ -123,24 +135,32 @@
     }
   }
 
+  /**
+   * @param {ClipboardEvent | Event} event
+   * @param {HTMLImageElement} el
+   * @param {'reply' | 'comment'} [target='comment']
+   */
   async function preview(event, el, target = 'comment') {
     if (event.type === 'paste') {
+      const clipboardData = /** @type {ClipboardEvent} */ (event).clipboardData;
+      if (!clipboardData) return;
       /*console.log('event.clipboardData.files', event.clipboardData.files)
         console.log('event.clipboardData.files[0]', event.clipboardData.files[0])
         console.log('event.clipboardData.files[0].type', event.clipboardData.files[0].type)*/
 
       if (
-        event.clipboardData.files?.length &&
-        event.clipboardData.files[0].type.startsWith('image')
+        clipboardData.files?.length &&
+        clipboardData.files[0].type.startsWith('image')
       ) {
-        setCommentImageTarget(target, event.clipboardData.files[0]);
+        setCommentImageTarget(target, clipboardData.files[0]);
 
         event.preventDefault();
       } else return;
-    } else setCommentImageTarget(target, event.target.files[0]);
+    } else setCommentImageTarget(target, /** @type {HTMLInputElement} */ (event.target).files?.[0] ?? null);
 
-    if (getCommentImageTarget(target)) {
-      el.src = window.URL.createObjectURL(getCommentImageTarget(target));
+    const selectedImage = getCommentImageTarget(target);
+    if (selectedImage) {
+      el.src = window.URL.createObjectURL(selectedImage);
     }
 
     el.onload = async (evt) => {
@@ -148,16 +168,12 @@
 
       //console.log('commentImage.type', commentImage.type)
 
-      if (
-        getCommentImageTarget(target) &&
-        !getCommentImageTarget(target).type.endsWith('gif') &&
-        !getCommentImageTarget(target).type.endsWith('webp')
-      ) {
-        const fileSizeMB = getCommentImageTarget(target).size / (1024 * 1024);
+      const currentImage = getCommentImageTarget(target);
+      if (currentImage && !currentImage.type.endsWith('gif') && !currentImage.type.endsWith('webp')) {
+        const fileSizeMB = currentImage.size / (1024 * 1024);
         // 1MB 이하는 변환하지 않고 원본 유지
         if (fileSizeMB > 1) {
           try {
-            const currentImage = getCommentImageTarget(target);
             const webp = await imageCompression(currentImage, {
               maxSizeMB: 10,
               maxWidthOrHeight: 800,
@@ -193,9 +209,29 @@
     };
   }
 
-  let reCommentDiv = $state(null);
+  /** @param {Event} evt */
+  function handleCommentImageChange(evt) {
+    if (previewEl) void preview(evt, previewEl);
+  }
+
+  /** @param {ClipboardEvent} evt */
+  function handleCommentPaste(evt) {
+    if (previewEl) void preview(evt, previewEl);
+  }
+
+  /** @param {Event} evt */
+  function handleReplyImageChange(evt) {
+    if (rePreviewEl) void preview(evt, rePreviewEl, 'reply');
+  }
+
+  /** @param {ClipboardEvent} evt */
+  function handleReplyPaste(evt) {
+    if (rePreviewEl) void preview(evt, rePreviewEl, 'reply');
+  }
+
+  let reCommentDiv = $state(/** @type {HTMLDivElement | null} */ (null));
   let reCommentContent = $state('');
-  let reCommentImage = $state(null);
+  let reCommentImage = $state(/** @type {File | null} */ (null));
   /** @type {HTMLImageElement | null} */
   let rePreviewEl = $state(null);
   /** @type {HTMLInputElement | null} */
@@ -203,10 +239,10 @@
   /** @type {HTMLTextAreaElement | null} */
   let reCommentTextareaEl = $state(null);
 
-  /** @type {HTMLDivElement | null} */
-  let commentDiv = $state(null);
+  /** @type {HTMLDivElement | HTMLSpanElement | null} */
+  let commentDiv = $state(/** @type {HTMLDivElement | HTMLSpanElement | null} */ (null));
   let commentContent = $state('');
-  let commentImage = $state(null);
+  let commentImage = $state(/** @type {File | null} */ (null));
   /** @type {HTMLImageElement | null} */
   let previewEl = $state(null);
   /** @type {HTMLInputElement | null} */
@@ -217,12 +253,13 @@
   // 댓글 수정 관련 상태
   let editingCommentId = $state('');
   let editCommentContent = $state('');
-  let editCommentImage = $state(null);
+  let editCommentImage = $state(/** @type {File | null} */ (null));
   /** @type {HTMLImageElement | null} */
   let editPreviewEl = $state(null);
   /** @type {HTMLInputElement | null} */
   let editCommentImageEl = $state(null);
 
+  /** @param {string | undefined} [parentCommentId] */
   async function writeComment(parentCommentId) {
     if (commentLoading) {
       return;
@@ -297,6 +334,7 @@
     }
   }
 
+  /** @param {string} commentId */
   async function deleteComment(commentId) {
     const result = await swalFire({
       title: '삭제 하시겠습니까?',
@@ -341,6 +379,7 @@
   }
 
   // 댓글 수정 시작
+  /** @param {{ _id: string; content: string; image?: string }} comment */
   function startEditComment(comment) {
     editingCommentId = comment._id;
     editCommentContent = comment.content;
@@ -432,24 +471,31 @@
   }
 
   // 댓글 이미지 미리보기
+  /**
+   * @param {ClipboardEvent | Event} event
+   * @param {HTMLImageElement} el
+   */
   function previewEditImage(event, el) {
     if (event.type === 'paste') {
+      const clipboardData = /** @type {ClipboardEvent} */ (event).clipboardData;
+      if (!clipboardData) return;
       if (
-        event.clipboardData.files?.length &&
-        event.clipboardData.files[0].type.startsWith('image')
+        clipboardData.files?.length &&
+        clipboardData.files[0].type.startsWith('image')
       ) {
-        editCommentImage = event.clipboardData.files[0];
+        editCommentImage = clipboardData.files[0];
         event.preventDefault();
       } else return;
     } else {
-      editCommentImage = event.target.files[0];
+      const input = /** @type {HTMLInputElement | null} */ (event.target);
+      editCommentImage = input?.files?.[0] ?? null;
     }
 
     if (editCommentImage) {
       el.src = window.URL.createObjectURL(editCommentImage);
     }
 
-    el.onload = async (evt) => {
+    el.onload = async () => {
       if (
         editCommentImage &&
         !editCommentImage.type.endsWith('gif') &&
@@ -490,6 +536,17 @@
     };
   }
 
+  /** @param {Event} evt */
+  function handleEditImageChange(evt) {
+    if (editPreviewEl) previewEditImage(evt, editPreviewEl);
+  }
+
+  /** @param {ClipboardEvent} evt */
+  function handleEditPaste(evt) {
+    if (editPreviewEl) previewEditImage(evt, editPreviewEl);
+  }
+
+  /** @param {string} articleId */
   async function remove(articleId) {
     const result = await swalFire({
       icon: 'warning',
@@ -523,8 +580,15 @@
     }
   }
 
+  /** @param {string} articleId */
   function edit(articleId) {
     goto(`/board/${boardId}/write/${articleId}`);
+  }
+
+  /** @param {Event} e */
+  function handleAttachmentImageLoad(e) {
+    const img = /** @type {HTMLImageElement | null} */ (e.currentTarget);
+    if (img) applyAttachmentImageMaxHeight(img);
   }
 
   function write() {
@@ -550,6 +614,7 @@
   }
 
   /** OG 카드 썸네일 등 레이아웃 고정 이미지는 제외 */
+  /** @param {unknown} img */
   function isBoardAttachmentImage(img) {
     return img instanceof HTMLImageElement && !img.closest('.og-card-blot, .og-preview');
   }
@@ -587,8 +652,13 @@
    * @param {string} message - 표시할 메시지
    * @param {string} type - 메시지 타입 ('success', 'error', 'warning', 'info', 'primary')
    */
+  /**
+   * @param {string} message
+   * @param {'success' | 'error' | 'danger' | 'warning' | 'info' | 'primary'} [type='primary']
+   */
   async function toast(message, type = 'primary') {
     // type을 Swal icon으로 매핑
+    /** @type {Record<'success' | 'error' | 'danger' | 'warning' | 'info' | 'primary', 'success' | 'error' | 'warning' | 'info'>} */
     const iconMap = {
       success: 'success',
       error: 'error',
@@ -648,10 +718,12 @@
 
   let visibleReply = $state('');
 
+  /** @param {{ id?: string; _id?: string }} comment */
   function commentKey(comment) {
-    return comment.id ?? comment._id;
+    return comment.id ?? comment._id ?? '';
   }
 
+  /** @param {{ id?: string; _id?: string }} comment */
   function openReply(comment) {
     const id = commentKey(comment);
     visibleReply = visibleReply === id ? '' : id;
@@ -665,23 +737,24 @@
   }
 
   // 댓글 데이터를 $state로 관리
-  let commentData = $state([]);
+  let commentData = $state(/** @type {Array<any>} */ ([]));
   let articleLike = $state(0);
   let articleLiked = $state(false);
 
   $effect.pre(() => {
-    commentData = data.article.comments;
-    articleLike = data.article.like;
-    articleLiked = data.article.liked;
+    commentData = article?.comments ?? [];
+    articleLike = article?.like ?? 0;
+    articleLiked = article?.liked ?? false;
   });
 
   $effect(() => {
     console.log('🔄 게시글 상세 페이지 - articleId:', articleId);
-    console.log('📝 게시글:', data.article.title);
-    console.log('💬 댓글 수:', data.article.comments?.length);
+    console.log('📝 게시글:', article?.title);
+    console.log('💬 댓글 수:', article?.comments?.length);
   });
 
   // 댓글 내용에서 URL 추출하는 함수
+  /** @param {string} text */
   function extractUrls(text) {
     const urlRegex =
       /https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&\/=]*)/g;
@@ -689,6 +762,7 @@
   }
 
   // 게시물 내용에서 URL 추출하는 함수
+  /** @param {string} htmlContent */
   function extractUrlsFromArticle(htmlContent) {
     // HTML 태그를 제거하고 텍스트만 추출
     const textContent = htmlContent.replace(/<[^>]*>/g, '');
@@ -698,6 +772,7 @@
   }
 
   // 게시물 내용을 처리하는 함수 (URL 제거하고 HTML 정리)
+  /** @param {string} htmlContent */
   function processArticleContent(htmlContent) {
     // sanitize-html 설정에서 인스타그램 임베드 허용
     return sanitizeHtml(htmlContent, {
@@ -814,22 +889,23 @@
 
     if (hash) {
       const el = document.querySelector(`#${hash}`);
-      setTimeout(
-        () => el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' }),
-        500
-      );
+      setTimeout(() => el?.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' }), 500);
     }
 
     // Quill ql-syntax 코드 하이라이트 적용 (PrismJS)
     setTimeout(async () => {
       if (typeof document !== 'undefined') {
         const { default: Prism } = await import('prismjs');
+        // @ts-ignore prism component side-effect imports
         await import('prismjs/components/prism-clike.js');
+        // @ts-ignore prism component side-effect imports
         await import('prismjs/components/prism-javascript.js');
+        // @ts-ignore prism component side-effect imports
         await import('prismjs/components/prism-css.js');
+        // @ts-ignore prism component side-effect imports
         await import('prismjs/components/prism-markup.js');
 
-        const qlBlocks = document.querySelectorAll('.ql-syntax');
+        const qlBlocks = /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('.ql-syntax'));
         qlBlocks.forEach((block) => {
           if (!block.dataset.highlighted) {
             block.dataset.highlighted = 'true';
@@ -1115,26 +1191,27 @@
     </Modal>
   </div>-->
 
+  {#if article}
   <Row class="mt-4 shadow rounded-bottom-4 p-1 m-0">
     <Row class="article-header border-bottom border-secondary-subtle pt-2 pb-2 px-2 m-0 gy-1">
       <Col xs="12" class="px-0">
-        <h5 class="article-title mb-0 !text-[1.3rem] max-md:!text-[1.4rem] !leading-[1.45] font-semibold">{data.article.title}</h5>
+        <h5 class="article-title mb-0 !text-[1.3rem] max-md:!text-[1.4rem] !leading-[1.45] font-semibold">{article.title}</h5>
       </Col>
       <Col md="6" xs="8" class="px-0 article-meta text-secondary">
-        <span class="article-author">{data.article.nickname}</span>
-        <span class="article-date text-muted">{formatIso9075Safe(data.article.createdAt)}</span>
+        <span class="article-author">{article.nickname}</span>
+        <span class="article-date text-muted">{formatIso9075Safe(article.createdAt)}</span>
       </Col>
       <Col class="text-end text-muted article-stats" md="6" xs="4">
-        <span class="article-stat"><Icon class="pe-1" name="eye" />{data.article.read}</span>
+        <span class="article-stat"><Icon class="pe-1" name="eye" />{article.read}</span>
         <span class="article-stat ms-2"
-          ><Icon class="text-success pe-1" name="hand-thumbs-up" />{data.article.like}</span
+          ><Icon class="text-success pe-1" name="hand-thumbs-up" />{article.like}</span
         >
       </Col>
     </Row>
     <Row class="py-3 px-2 mx-0">
-      <div class="text-break px-2 article-content max-w-full dgst-rich-text">
+        <div class="text-break px-2 article-content max-w-full dgst-rich-text">
         {@html processArticleContent(
-          data.article.content.replace(/<p>\s*<br\s*\/?>(\s|\u00A0)*<\/p>/g, '<br>')
+          article.content.replace(/<p>\s*<br\s*\/?>(\s|\u00A0)*<\/p>/g, '<br>')
         )}
       </div>
     </Row>
@@ -1154,7 +1231,7 @@
             </Col>
             <Col>
               <div class="article-author-body">
-                <div class="article-author-name fw-semibold">{data.article.nickname}</div>
+                <div class="article-author-name fw-semibold">{article.nickname}</div>
                 <div class="text-muted pt-2">
                   <pre class="article-author-intro mb-0">{data.introduction}</pre>
                 </div>
@@ -1167,11 +1244,11 @@
     <Row class="mx-0">
       <!--버튼-->
       <Col class="article-toolbar text-end pe-md-3 p-xs-0 m-xs-0">
-        {#if data.session?.user?.email && data.article.email === data.session.user.email}
+        {#if sessionUser?.email && article.email === sessionUser.email}
           <Button
             size="lg"
             color="danger"
-            onclick={() => remove(data.article._id)}
+            onclick={() => remove(article._id)}
             class="article-action-btn"
           >
             <Icon name="trash" />
@@ -1180,7 +1257,7 @@
           <Button
             size="lg"
             color="success"
-            onclick={() => edit(data.article._id)}
+            onclick={() => edit(article._id)}
             class="article-action-btn"
           >
             <Icon name="pencil" />
@@ -1275,7 +1352,7 @@
                           <input
                             type="file"
                             bind:this={editCommentImageEl}
-                            onchange={(evt) => previewEditImage(evt, editPreviewEl)}
+                            onchange={handleEditImageChange}
                             accept="image/*"
                             class="form-control m-2"
                           />
@@ -1307,7 +1384,7 @@
                         <InputGroup>
                           <textarea
                             bind:value={editCommentContent}
-                            onpaste={(evt) => previewEditImage(evt, editPreviewEl)}
+                            onpaste={handleEditPaste}
                             class="form-control border border-gray rounded-start-3"
                             rows="3"
                             placeholder="댓글 내용을 입력하세요"
@@ -1341,10 +1418,7 @@
                               src={comment.image}
                               alt="리플 짤"
                               style="max-width: 100%;"
-                              onload={(e) => {
-                                const img = e.target;
-                                applyAttachmentImageMaxHeight(img);
-                              }}
+                              onload={handleAttachmentImageLoad}
                             />
                           </Col>
                         </Row>
@@ -1398,10 +1472,10 @@
               </Col>
             </Row>
 
-            {#if data.session?.user.nickname && comment.state === 'write'}
+            {#if sessionUser?.nickname && comment.state === 'write'}
               <Row class="mt-2">
                 <Col class="comment-actions text-end pe-2 m-0">
-                  {#if comment.email === data.session?.user.email}
+                  {#if comment.email === sessionUser?.email}
                     <Button
                       onclick={() => deleteComment(comment._id)}
                       outline
@@ -1430,7 +1504,6 @@
                     class="comment-action-btn comment-like-btn {commentLikeAnimations.has(comment._id)
                       ? 'like-animation'
                       : ''}"
-                    data-comment-id={comment._id}
                   >
                     <Icon name={comment.liked ? 'hand-thumbs-up-fill' : 'hand-thumbs-up'} />
                     {comment.like || ''}
@@ -1477,7 +1550,7 @@
                 <input
                   type="file"
                   bind:this={reCommentImageEl}
-                  onchange={(evt) => preview(evt, rePreviewEl, 'reply')}
+                  onchange={handleReplyImageChange}
                   accept="image/*"
                   class="form-control m-2"
                 />
@@ -1497,7 +1570,7 @@
                 <textarea
                   bind:value={reCommentContent}
                   bind:this={reCommentTextareaEl}
-                  onpaste={(evt) => preview(evt, rePreviewEl, 'reply')}
+                  onpaste={handleReplyPaste}
                   class="form-control border border-gray rounded-start-3"
                   rows="3"
                 ></textarea>
@@ -1536,7 +1609,7 @@
       {/if}
 
       <!-- 댓글 입력 -->
-      {#if data.session?.user.nickname}
+      {#if sessionUser?.nickname}
         <div class="border p-3 rounded-4 shadow-sm mt-3 position-relative" bind:this={commentDiv}>
           {#if commentLoading}
             <div
@@ -1555,7 +1628,7 @@
             <input
               type="file"
               bind:this={commentImageEl}
-              onchange={(evt) => preview(evt, previewEl)}
+              onchange={handleCommentImageChange}
               accept="image/*"
               class="form-control m-2"
             />
@@ -1572,7 +1645,7 @@
           <InputGroup class="comment-write-group">
             <textarea
               bind:value={commentContent}
-              onpaste={(evt) => preview(evt, previewEl)}
+              onpaste={handleCommentPaste}
               class="form-control border border-gray rounded-start-3"
               rows="3"
             ></textarea>
@@ -1594,12 +1667,12 @@
     <Row class="mx-0 mb-3">
       <!--버튼-->
       <Col class="article-toolbar text-end pe-1">
-        {#if data.article.email === data.session?.user.email}
-          <Button size="lg" class="article-action-btn" color="danger" onclick={() => remove(data.article._id)}>
+        {#if article.email === sessionUser?.email}
+          <Button size="lg" class="article-action-btn" color="danger" onclick={() => remove(article._id)}>
             <Icon name="trash" />
             삭제
           </Button>
-          <Button size="lg" class="article-action-btn" color="success" onclick={() => edit(data.article._id)}>
+          <Button size="lg" class="article-action-btn" color="success" onclick={() => edit(article._id)}>
             <Icon name="pencil" />
             수정
           </Button>
@@ -1615,6 +1688,11 @@
       </Col>
     </Row>
   </Row>
+  {:else}
+    <Row class="mt-4 shadow rounded-bottom-4 p-4 m-0">
+      <Col xs="12" class="text-center text-muted">게시글을 찾을 수 없습니다.</Col>
+    </Row>
+  {/if}
 
   <!-- 목록-->
   <Row class="mt-4 shadow rounded-4 p-1 m-0">

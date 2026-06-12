@@ -253,8 +253,6 @@
       onclick={refreshBanner}
       disabled={refreshing || loading}
       type="button"
-      title="기록 새로고침"
-      aria-label="기록 새로고침"
     >
       {#if refreshing}
         <span class="spinner-border spinner-border-sm" role="status" aria-label="새로고침 중"></span>

@@ -19,14 +19,20 @@ import 'prismjs/components/prism-sql.js';
 
 marked.use(markedHighlight({
   langPrefix: 'language-',
+  /**
+   * @param {string} code
+   * @param {string} lang
+   */
   highlight(code, lang) {
-    if (Prism.languages[lang]) {
-      return Prism.highlight(code, Prism.languages[lang], lang);
+    const languages = /** @type {Record<string, any>} */ (Prism.languages);
+    if (languages[lang]) {
+      return Prism.highlight(code, languages[lang], lang);
     }
     return code;
   }
 }));
 
+/** @param {string} url */
 function youtubeEmbeder(url) {
   url = url.replace('https://', '').replace('http://', '').replace('www.', '');
 
@@ -62,12 +68,14 @@ function youtubeEmbeder(url) {
   return null;
 }
 
+/** @param {string} text */
 export function isMarkdownContent(text) {
   if (!text) return false;
   // 제목, 리스트, 인용구, 코드, 볼드체/이탤릭체, 링크, 표 등 다양한 마크다운 식별 
   return /(^#{1,6}\s+|^\s*[-*+]\s+|^>\s+|^\d+\.\s+|^\[[^\]]+\]\s+|`[^`]+`|\*\*[^*]+\*\*|_[^_]+_|\[[^\]]+\]\([^)]+\)|!\[[^\]]*\]\([^)]+\))/m.test(text);
 }
 
+/** @param {string} comment */
 export function viewComment(comment) {
   // 마크다운 문법 감지
   const isMarkdown = isMarkdownContent(comment);
