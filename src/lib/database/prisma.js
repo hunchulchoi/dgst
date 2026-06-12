@@ -1,7 +1,9 @@
-import { PrismaClient } from '@prisma/client';
+import prismaPkg from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { DATABASE_URL } from '$env/static/private';
 import logger from '$lib/util/logger.js';
+
+const { PrismaClient } = prismaPkg;
 
 const DEFAULT_SLOW_QUERY_THRESHOLD_MS = 500;
 const DEFAULT_SLOW_QUERY_MAX_SQL_LENGTH = 4000;

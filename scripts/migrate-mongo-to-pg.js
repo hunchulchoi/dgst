@@ -7,14 +7,16 @@
  */
 import 'dotenv/config';
 import { randomBytes } from 'node:crypto';
-import { MongoClient } from 'mongodb';
+import { MongoClient, ObjectId } from 'mongodb';
 import Redis from 'ioredis';
-import { PrismaClient } from '@prisma/client';
+import prismaPkg from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
+
+const { PrismaClient } = prismaPkg;
 
 function readBatchSize() {
   const value = Number(process.env.MIGRATION_BATCH_SIZE ?? 500);
-  return Number.isFinite(value) ? Math.max(50, Math.min(value, 2000)) : 500;
+  return Number.isFinite(value) ? Math.max(50, Math.min(value, 50000)) : 500;
 }
 
 const BATCH = readBatchSize();
@@ -61,6 +63,14 @@ function objectIdToHex(value) {
     return /** @type {{ toHexString: () => string }} */ (value).toHexString();
   }
   return String(value);
+}
+
+/** @param {unknown} value @returns {ObjectId | null} */
+function toObjectId(value) {
+  if (value instanceof ObjectId) return value;
+  const hex = objectIdToHex(value);
+  if (!hex || !ObjectId.isValid(hex)) return null;
+  return new ObjectId(hex);
 }
 
 /** @param {Record<string, unknown>} doc @returns {string} */
@@ -210,16 +220,38 @@ async function migrateComments(db) {
   let total = 0;
   /** @type {unknown | null} */
   let lastId = null;
+  let skipSourceCount = Number(process.env.MIGRATE_SKIP_SOURCE_COUNT ?? 0);
+  if (!Number.isFinite(skipSourceCount) || skipSourceCount < 0) {
+    skipSourceCount = 0;
+  }
+  skipSourceCount = Math.trunc(skipSourceCount);
+
+  if (process.env.MIGRATE_RESUME_FROM_PG === '1') {
+    const rows = await prisma.$queryRaw`
+      SELECT MAX(id)::text AS id
+      FROM comments
+      WHERE id ~ '^[0-9a-f]{24}$'
+    `;
+    const pgLastId = Array.isArray(rows) ? rows[0]?.id : null;
+    if (pgLastId && ObjectId.isValid(pgLastId)) {
+      lastId = new ObjectId(pgLastId);
+      console.log(`[comments] resume after Postgres id: ${pgLastId}`);
+    }
+  }
 
   try {
     while (true) {
       const query = lastId == null ? {} : { _id: { $gt: lastId } };
-      const docs = await comments.find(query).sort({ _id: 1 }).limit(BATCH).toArray();
+      const cursor = comments.find(query).sort({ _id: 1 }).limit(BATCH);
+      if (lastId == null && skipSourceCount > 0) {
+        cursor.skip(skipSourceCount);
+        console.log(`[comments] skip first source rows: ${skipSourceCount}`);
+        skipSourceCount = 0;
+      }
+      const docs = await cursor.toArray();
       if (docs.length === 0) break;
 
-      const articleObjectIds = docs
-        .map((doc) => doc.articleId)
-        .filter((id) => id != null);
+      const articleObjectIds = docs.map((doc) => toObjectId(doc.articleId)).filter((id) => id != null);
       const validArticleIds = new Set(
         (
           await articles

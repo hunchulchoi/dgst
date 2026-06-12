@@ -7,10 +7,12 @@
  *     node scripts/verify-migration.js
  */
 import 'dotenv/config';
-import { MongoClient } from 'mongodb';
+import { MongoClient, ObjectId } from 'mongodb';
 import Redis from 'ioredis';
-import { PrismaClient } from '@prisma/client';
+import prismaPkg from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
+
+const { PrismaClient } = prismaPkg;
 
 const REDIS_PREFIX = process.env.REDIS_PREFIX || 'dgst:';
 const SCAN_COUNT = 200;
@@ -40,6 +42,24 @@ const prisma = new PrismaClient({
   adapter: new PrismaPg({ connectionString: DATABASE_URL })
 });
 
+/** @param {unknown} value @returns {string | null} */
+function objectIdToHex(value) {
+  if (value == null) return null;
+  if (typeof value === 'string') return value;
+  if (typeof value === 'object' && value !== null && 'toHexString' in value) {
+    return /** @type {{ toHexString: () => string }} */ (value).toHexString();
+  }
+  return String(value);
+}
+
+/** @param {unknown} value @returns {ObjectId | null} */
+function toObjectId(value) {
+  if (value instanceof ObjectId) return value;
+  const hex = objectIdToHex(value);
+  if (!hex || !ObjectId.isValid(hex)) return null;
+  return new ObjectId(hex);
+}
+
 /** @param {import('mongodb').Db} db @param {string} name */
 async function mongoCount(db, name) {
   try {
@@ -68,9 +88,7 @@ async function validMongoCommentCount(db) {
       .toArray();
     if (docs.length === 0) break;
 
-    const articleObjectIds = docs
-      .map((doc) => doc.articleId)
-      .filter((id) => id != null);
+    const articleObjectIds = docs.map((doc) => toObjectId(doc.articleId)).filter((id) => id != null);
     const validArticleIds = new Set(
       (
         await articles

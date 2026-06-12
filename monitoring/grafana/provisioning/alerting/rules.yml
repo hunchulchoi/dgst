@@ -276,8 +276,8 @@ groups:
           severity: warning
           service: dgst
 
-      - uid: dgst-mongo-error
-        title: DGST MongoDB 연결/에러
+      - uid: dgst-postgres-error
+        title: DGST PostgreSQL 연결/에러
         condition: C
         data:
           - refId: A
@@ -290,7 +290,7 @@ groups:
                 type: loki
                 uid: loki-dgst
               editorMode: code
-              expr: sum(count_over_time({service=~"dgst"} | json | __error__="" | message =~ "\\[mongo\\].*(error|failed|disconnected)" [5m]))
+              expr: sum(count_over_time({service=~"dgst"} | json | __error__="" | message =~ "\\[postgres\\].*(error|failed|slow query)" [5m]))
               instant: true
               queryType: instant
               refId: A
@@ -318,56 +318,8 @@ groups:
         execErrState: Error
         for: 1m
         annotations:
-          summary: DGST MongoDB 에러 로그가 발생했습니다
-          description: '[mongo] 관련 에러 {{ $values.A }}건 — Explore `{service=~"dgst"} | json | message =~ "\\[mongo\\]"`'
-        labels:
-          severity: critical
-          service: dgst
-
-      - uid: dgst-redis-error
-        title: DGST Redis 연결/에러
-        condition: C
-        data:
-          - refId: A
-            relativeTimeRange:
-              from: 300
-              to: 0
-            datasourceUid: loki-dgst
-            model:
-              datasource:
-                type: loki
-                uid: loki-dgst
-              editorMode: code
-              expr: sum(count_over_time({service=~"dgst"} | json | __error__="" | message =~ "\\[redis\\].*(failed|error|retry limit|giving up|connection error)" [5m]))
-              instant: true
-              queryType: instant
-              refId: A
-          - refId: C
-            datasourceUid: __expr__
-            model:
-              conditions:
-                - evaluator:
-                    params:
-                      - 0
-                    type: gt
-                  operator:
-                    type: and
-                  query:
-                    params:
-                      - C
-                  reducer:
-                    params: []
-                    type: last
-                  type: query
-              expression: A
-              refId: C
-              type: threshold
-        noDataState: OK
-        execErrState: Error
-        for: 1m
-        annotations:
-          summary: DGST Redis 에러 로그가 발생했습니다
-          description: '[redis] 관련 에러 {{ $values.A }}건'
+          summary: DGST PostgreSQL 에러 로그가 발생했습니다
+          description: '[postgres] 관련 에러 {{ $values.A }}건 — Explore `{service=~"dgst"} | json | message =~ "\\[postgres\\]"`'
         labels:
           severity: critical
           service: dgst

@@ -15,7 +15,7 @@ COPY . .
 
 # 앱 빌드 (MongoDB 없이 — 런타임에만 연결)
 ENV SKIP_DB_CONNECT=true
-RUN npm run build
+RUN npm run db:generate && npm run build
 
 FROM node:22 AS production
 
@@ -30,6 +30,9 @@ COPY --from=build /app/package-lock.json .
 #COPY --from=build /app/patches ./patches
 
 RUN npm ci --omit dev
+
+COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=build /app/node_modules/@prisma/client ./node_modules/@prisma/client
 
 USER www-data
 

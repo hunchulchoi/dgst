@@ -18,3 +18,18 @@ datasources:
     url: http://prometheus:9090
     isDefault: true
     editable: true
+
+  - name: PostgreSQL
+    uid: postgres-dgst
+    type: postgres
+    access: proxy
+    url: ${GRAFANA_PG_HOST}
+    user: ${GRAFANA_PG_USER}
+    database: ${GRAFANA_PG_DB}
+    editable: true
+    jsonData:
+      postgresVersion: 1800
+      sslmode: disable
+      timescaledb: false
+    secureJsonData:
+      password: ${GRAFANA_PG_PASSWORD}

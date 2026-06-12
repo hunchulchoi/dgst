@@ -111,7 +111,19 @@
     goto(boardListPath(boardId, currentPageNo), { replaceState: true });
   }
 
-  async function preview(event, el) {
+  function getCommentImageTarget(target) {
+    return target === 'reply' ? reCommentImage : commentImage;
+  }
+
+  function setCommentImageTarget(target, file) {
+    if (target === 'reply') {
+      reCommentImage = file;
+    } else {
+      commentImage = file;
+    }
+  }
+
+  async function preview(event, el, target = 'comment') {
     if (event.type === 'paste') {
       /*console.log('event.clipboardData.files', event.clipboardData.files)
         console.log('event.clipboardData.files[0]', event.clipboardData.files[0])
@@ -121,14 +133,14 @@
         event.clipboardData.files?.length &&
         event.clipboardData.files[0].type.startsWith('image')
       ) {
-        commentImage = event.clipboardData.files[0];
+        setCommentImageTarget(target, event.clipboardData.files[0]);
 
         event.preventDefault();
       } else return;
-    } else commentImage = event.target.files[0];
+    } else setCommentImageTarget(target, event.target.files[0]);
 
-    if (commentImage) {
-      el.src = window.URL.createObjectURL(commentImage);
+    if (getCommentImageTarget(target)) {
+      el.src = window.URL.createObjectURL(getCommentImageTarget(target));
     }
 
     el.onload = async (evt) => {
@@ -137,25 +149,28 @@
       //console.log('commentImage.type', commentImage.type)
 
       if (
-        commentImage &&
-        !commentImage.type.endsWith('gif') &&
-        !commentImage.type.endsWith('webp')
+        getCommentImageTarget(target) &&
+        !getCommentImageTarget(target).type.endsWith('gif') &&
+        !getCommentImageTarget(target).type.endsWith('webp')
       ) {
-        const fileSizeMB = commentImage.size / (1024 * 1024);
+        const fileSizeMB = getCommentImageTarget(target).size / (1024 * 1024);
         // 1MB 이하는 변환하지 않고 원본 유지
         if (fileSizeMB > 1) {
           try {
-            const webp = await imageCompression(commentImage, {
+            const currentImage = getCommentImageTarget(target);
+            const webp = await imageCompression(currentImage, {
               maxSizeMB: 10,
               maxWidthOrHeight: 800,
               useWebWorker: true,
               fileType: 'image/webp',
               initialQuality: 0.85
             });
-            commentImage =
+            setCommentImageTarget(
+              target,
               webp instanceof File
                 ? webp
-                : new File([webp], commentImage.name, { type: 'image/webp' });
+                : new File([webp], currentImage.name, { type: 'image/webp' })
+            );
           } catch (error) {
             console.error('[browser-image-compression] 댓글 이미지 변환 실패:', error);
             // 변환 실패 시 원본 사용
@@ -180,10 +195,13 @@
 
   let reCommentDiv = $state(null);
   let reCommentContent = $state('');
+  let reCommentImage = $state(null);
   /** @type {HTMLImageElement | null} */
   let rePreviewEl = $state(null);
   /** @type {HTMLInputElement | null} */
   let reCommentImageEl = $state(null);
+  /** @type {HTMLTextAreaElement | null} */
+  let reCommentTextareaEl = $state(null);
 
   /** @type {HTMLDivElement | null} */
   let commentDiv = $state(null);
@@ -210,7 +228,11 @@
       return;
     }
 
-    if ((!parentCommentId && !commentContent) || (parentCommentId && !reCommentContent)) {
+    const content = parentCommentId
+      ? (reCommentTextareaEl?.value ?? reCommentContent).trim()
+      : commentContent.trim();
+
+    if (!content) {
       toast('내용을 입력하세요', 'warning');
       return;
     }
@@ -221,12 +243,12 @@
       const formData = new FormData();
 
       if (!parentCommentId) {
-        formData.append('content', commentContent);
+        formData.append('content', content);
         if (commentImage) formData.append('image', commentImage);
       } else {
-        formData.append('content', reCommentContent);
+        formData.append('content', content);
         formData.append('parentCommentId', parentCommentId);
-        if (commentImage) formData.append('image', commentImage);
+        if (reCommentImage) formData.append('image', reCommentImage);
       }
 
       const res = await fetch(`/board/${boardId}/${articleId}/comment`, {
@@ -257,7 +279,7 @@
       visibleReply = '';
       reCommentContent = '';
       if (parentCommentId) {
-        commentImage = null;
+        reCommentImage = null;
         if (reCommentImageEl) reCommentImageEl.value = '';
         if (rePreviewEl) {
           rePreviewEl.src = '';
@@ -625,6 +647,22 @@
   });
 
   let visibleReply = $state('');
+
+  function commentKey(comment) {
+    return comment.id ?? comment._id;
+  }
+
+  function openReply(comment) {
+    const id = commentKey(comment);
+    visibleReply = visibleReply === id ? '' : id;
+    reCommentContent = '';
+    reCommentImage = null;
+    if (reCommentImageEl) reCommentImageEl.value = '';
+    if (rePreviewEl) {
+      rePreviewEl.src = '';
+      rePreviewEl.classList.add('d-none');
+    }
+  }
 
   // 댓글 데이터를 $state로 관리
   let commentData = $state([]);
@@ -1180,7 +1218,7 @@
     </Row>
 
     <Row class="comment-section mb-5 mx-0 px-2">
-      {#each commentData as comment}
+      {#each commentData as comment (commentKey(comment))}
         <Row class="comment-item pt-3 pb-2 border-bottom border-gray-subtle mx-0" id="cmt{comment.id}">
           {#if comment.parentCommentNickname}
             <Col xs="auto" class="m-0 pe-1">
@@ -1398,7 +1436,7 @@
                     {comment.like || ''}
                   </Button>
                   <Button
-                    onclick={() => (visibleReply = comment._id)}
+                    onclick={() => openReply(comment)}
                     outline
                     color="info"
                     class="comment-action-btn"
@@ -1413,7 +1451,7 @@
         </Row>
 
         <!-- 대댓글 -->
-        {#if visibleReply === comment._id}
+        {#if visibleReply === commentKey(comment)}
           <div
             transition:scale
             class="mt-2 mx-0 border-bottom border-secondary-subtle bg-secondary bg-opacity-25"
@@ -1439,7 +1477,7 @@
                 <input
                   type="file"
                   bind:this={reCommentImageEl}
-                  onchange={(evt) => preview(evt, rePreviewEl)}
+                  onchange={(evt) => preview(evt, rePreviewEl, 'reply')}
                   accept="image/*"
                   class="form-control m-2"
                 />
@@ -1455,17 +1493,18 @@
                 />
               </div>
 
-              <InputGroup>
+              <InputGroup class="comment-write-group">
                 <textarea
                   bind:value={reCommentContent}
-                  onpaste={(evt) => preview(evt, rePreviewEl)}
+                  bind:this={reCommentTextareaEl}
+                  onpaste={(evt) => preview(evt, rePreviewEl, 'reply')}
                   class="form-control border border-gray rounded-start-3"
                   rows="3"
                 ></textarea>
                 <Button
                   color="primary"
                   outline
-                  onclick={() => writeComment(comment._id)}
+                  onclick={() => writeComment(commentKey(comment))}
                   disabled={commentLoading}
                   class="comment-form-btn"
                 >
@@ -1530,7 +1569,7 @@
               style="max-width: 100%"
             />
           </div>
-          <InputGroup>
+          <InputGroup class="comment-write-group">
             <textarea
               bind:value={commentContent}
               onpaste={(evt) => preview(evt, previewEl)}
@@ -1761,6 +1800,17 @@
     :global(.comment-section .input-group .comment-form-btn) {
       min-width: 4.25rem;
       padding: 0.5rem 0.75rem !important;
+    }
+
+    :global(.comment-section .comment-write-group) {
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    :global(.comment-section .comment-write-group textarea),
+    :global(.comment-section .comment-write-group .comment-form-btn) {
+      width: 100% !important;
+      border-radius: 0.75rem !important;
     }
 
     :global(.comment-actions) {

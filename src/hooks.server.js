@@ -6,9 +6,7 @@ import {
   GOOGLE_CLIENT_SECRET,
   KAKAO_CLIENT_ID,
   KAKAO_CLIENT_SECRET,
-  NODE_ENV,
-  VIP_EMAIL,
-  VIP_FAKE_EMAIL
+  NODE_ENV
 } from '$env/static/private';
 import { env as dynamicEnv } from '$env/dynamic/private';
 import { getPrisma } from '$lib/database/prisma.js';
@@ -22,6 +20,9 @@ import logger from '$lib/util/logger';
 import { serializeError, traceFromUnknown } from '$lib/util/formatErrorTrace.js';
 import { warmupConnections } from '$lib/server/warmup.js';
 import { isBoardHtmlPath } from '$lib/util/boardPaths.js';
+
+const VIP_EMAIL = dynamicEnv.VIP_EMAIL ?? '';
+const VIP_FAKE_EMAIL = dynamicEnv.VIP_FAKE_EMAIL ?? '';
 
 warmupConnections();
 

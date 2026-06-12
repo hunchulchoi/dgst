@@ -1883,13 +1883,13 @@
             "uid": "${DS_LOKI}"
           },
           "editorMode": "code",
-          "expr": "sum(count_over_time({service=~\"$service\"} | json | __error__=\"\" | message =~ \"\\\\[mongo\\\\]\" [$__interval]))",
-          "legendFormat": "mongo logs",
+          "expr": "sum(count_over_time({service=~\"$service\"} | json | __error__=\"\" | message =~ \"\\\\[postgres\\\\]\" [$__interval]))",
+          "legendFormat": "postgres logs",
           "queryType": "range",
           "refId": "A"
         }
       ],
-      "title": "MongoDB 이벤트",
+      "title": "PostgreSQL 이벤트",
       "type": "timeseries"
     },
     {
@@ -1973,13 +1973,13 @@
             "uid": "${DS_LOKI}"
           },
           "editorMode": "code",
-          "expr": "sum(count_over_time({service=~\"$service\"} | json | __error__=\"\" | message =~ \"\\\\[redis\\\\]\" [$__interval]))",
-          "legendFormat": "redis logs",
+          "expr": "sum(count_over_time({service=~\"$service\"} | json | __error__=\"\" | message =~ \"\\\\[postgres\\\\].*slow query\" [$__interval]))",
+          "legendFormat": "postgres slow query logs",
           "queryType": "range",
           "refId": "A"
         }
       ],
-      "title": "Redis 이벤트",
+      "title": "PostgreSQL Slow Query",
       "type": "timeseries"
     },
     {

@@ -5,8 +5,10 @@
  *   DATABASE_URL="postgresql://..." node scripts/backfill-slot-user-balance.js
  */
 import 'dotenv/config';
-import { PrismaClient } from '@prisma/client';
+import prismaPkg from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
+
+const { PrismaClient } = prismaPkg;
 
 const DATABASE_URL = process.env.DATABASE_URL;
 
