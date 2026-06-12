@@ -130,7 +130,7 @@ export async function PATCH({ request, locals, cookies }) {
 
       console.debug('registeredUser', registeredUser);
 
-      await invalidateUser(registeredUser.id);
+      await invalidateUser(registeredUser.id, registeredUser.email);
 
       const sessionToken =
         cookies.get('__Secure-authjs.session-token') || cookies.get('authjs.session-token');

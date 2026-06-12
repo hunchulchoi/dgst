@@ -1,15 +1,14 @@
 import { PrismaClient } from '@prisma/client';
 import logger from '$lib/util/logger.js';
 
-/** @type {PrismaClient | undefined} */
-let prisma;
+const globalForPrisma = globalThis;
 
 /** @returns {PrismaClient} */
 export function getPrisma() {
-  if (!prisma) {
-    prisma = new PrismaClient();
+  if (!globalForPrisma.prisma) {
+    globalForPrisma.prisma = new PrismaClient();
   }
-  return prisma;
+  return globalForPrisma.prisma;
 }
 
 /** @returns {Promise<void>} */

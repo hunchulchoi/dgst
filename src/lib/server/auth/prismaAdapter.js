@@ -36,7 +36,7 @@ export function getPrismaAdapter() {
     },
     async updateUser(user) {
       const updated = await base.updateUser(user);
-      await userCache.invalidateUser(user.id);
+      await userCache.invalidateUser(user.id, updated?.email ?? user.email);
       return updated;
     },
     async getSessionAndUser(sessionToken) {

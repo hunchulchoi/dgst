@@ -3,25 +3,13 @@
  * TTL로만 만료 (프로필 수정 시 userCache.invalidateUser로 유저 캐시는 무효화되나, 세션 캐시는 TTL로 갱신).
  */
 import * as pgCache from '$lib/server/cache/pgCache.js';
+import { USER_DATE_KEYS, reviveDates } from '$lib/server/auth/userCache.js';
 
 const NAMESPACE = 'session';
 const SESSION_PREFIX = 'session:';
 const SESSION_CACHE_TTL = 300; // 5분
 
-const USER_DATE_KEYS = ['emailVerified', 'created_at', 'last_modified', 'latest_login_at'];
 const SESSION_DATE_KEYS = ['expires'];
-
-/**
- * @param {Record<string, unknown>} obj
- * @param {string[]} dateKeys
- */
-function reviveDates(obj, dateKeys) {
-  if (!obj || typeof obj !== 'object') return;
-  for (const k of dateKeys) {
-    const v = obj[k];
-    if (typeof v === 'string') obj[k] = new Date(v);
-  }
-}
 
 /**
  * @param {string} sessionToken
