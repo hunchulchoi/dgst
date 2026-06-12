@@ -17,6 +17,8 @@
     "postinstall": "patch-package",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
+    "db:migrate-data": "node scripts/migrate-mongo-to-pg.js",
+    "db:verify-migration": "node scripts/verify-migration.js",
     "db:push": "prisma db push",
     "db:studio": "prisma studio"
   },
