@@ -26,6 +26,7 @@ export async function GET({ locals, setHeaders, url }) {
   });
 
   const session = await locals.auth();
+  const email = typeof session?.user?.email === 'string' ? session.user.email : '';
   const perPageParam = Number(url.searchParams.get('limit') ?? '50');
   const pageParam = Number(url.searchParams.get('page') ?? '1');
   const perPage =
@@ -80,6 +81,7 @@ export async function GET({ locals, setHeaders, url }) {
 
     const filteredComments = commentsWithId.filter((comment) => validCommentIds.has(comment.id));
 
+    /** @type {Array<{ [key: string]: unknown; id: string; depth?: number; parentCommentId?: string; likes?: string[]; liked?: boolean }>} */
     const commentsTree = JSON.parse(JSON.stringify(convertToTree(filteredComments)));
     const total = commentsTree.length;
     const offset = Math.max(0, (page - 1) * perPage);
@@ -130,14 +132,14 @@ export async function GET({ locals, setHeaders, url }) {
     const hasMore = endIndex < commentsTree.length;
 
     // 좋아요 여부 표시 및 알림 읽음 처리
-    if (session?.user?.email) {
+    if (email) {
       pagedComments.forEach((c) => {
-        c.liked = c.likes?.includes(session.user.email) || false;
+        c.liked = c.likes?.includes(email) || false;
         delete c.likes;
       });
 
       // 알림 읽음 처리
-      await markAsRead(session.user.email, SLOT_ARTICLE_ID);
+      await markAsRead(email, SLOT_ARTICLE_ID);
     } else {
       pagedComments.forEach((c) => {
         delete c.likes;
@@ -161,7 +163,9 @@ export async function GET({ locals, setHeaders, url }) {
 export async function POST(event) {
   const { request, locals } = event;
   const session = await locals.auth();
-  if (!session?.user?.email) {
+  const user = session?.user;
+  const email = typeof user?.email === 'string' ? user.email : '';
+  if (!email) {
     throw error(401, { message: '로그인이 필요합니다.' });
   }
 
@@ -190,10 +194,10 @@ export async function POST(event) {
       parentCommentId ?? '',
       content
     ]);
-    const acquired = await tryAcquireSubmitDedup('comment', session.user.email, fingerprint, 8);
+    const acquired = await tryAcquireSubmitDedup('comment', email, fingerprint, 8);
     if (!acquired) {
       const dup = await findRecentDuplicateComment({
-        email: session.user.email,
+        email,
         articleId: SLOT_ARTICLE_ID,
         boardId: SLOT_BOARD_ID,
         content,
@@ -204,8 +208,8 @@ export async function POST(event) {
       }
     }
 
-    const email = session.user.email;
-    const nickname = session.user.nickname || 'anonymous';
+    const nickname = typeof user?.nickname === 'string' && user.nickname ? user.nickname : 'anonymous';
+    const photo = typeof user?.photo === 'string' && user.photo ? user.photo : undefined;
 
     // 한국 시간(KST, UTC+9) 기준으로 당일 0시 계산
     const now = new Date();
@@ -248,9 +252,9 @@ export async function POST(event) {
     }
 
     const comment = await createComment({
-      email: session.user.email,
-      nickname: session.user.nickname || 'anonymous',
-      photo: session.user.photo,
+      email,
+      nickname,
+      photo,
       boardId: SLOT_BOARD_ID,
       articleId: SLOT_ARTICLE_ID,
       content,
@@ -287,7 +291,7 @@ export async function POST(event) {
     const title = '뺑뺑이';
 
     // 대댓글인 경우: 부모 댓글 작성자에게 알림
-    if (parentComment && parentComment.email !== session.user.email) {
+    if (parentComment && parentComment.email !== email) {
       await upsertAlarm({
         email: parentComment.email,
         articleId: SLOT_ARTICLE_ID,
@@ -303,7 +307,7 @@ export async function POST(event) {
 
     return json({ success: true, comment: toCommentJson(comment), rewardGiven });
   } catch (err) {
-    if (err.status) throw err;
+    if (err && typeof err === 'object' && 'status' in err) throw err;
     console.error('댓글 저장 실패', err);
     throw error(500, { message: '댓글 저장 중 오류가 발생하였습니다.' });
   }
