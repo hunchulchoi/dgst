@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { getPrisma } from '../src/lib/database/prisma.js';
 import * as pgCache from '../src/lib/server/cache/pgCache.js';
@@ -23,6 +24,14 @@ describe.skipIf(!hasDatabase)('pgCache', () => {
     expect(ok).toBe(true);
     const got = await pgCache.getJson(KEY, NS);
     expect(got).toEqual(payload);
+  });
+
+  it('set and get round-trip', async () => {
+    const key = KEY + ':text';
+    const ok = await pgCache.set(key, 'hello', 60, NS);
+    expect(ok).toBe(true);
+    const got = await pgCache.get(key, NS);
+    expect(got).toBe('hello');
   });
 
   it('returns null after expiry', async () => {

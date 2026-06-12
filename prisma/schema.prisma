@@ -121,10 +121,10 @@ model GameScore {
   email     String
   nickname  String
   game      String   @default("slot")
-  bet       Int
-  payout    Int
-  delta     Int
-  balance   Int
+  bet       BigInt
+  payout    BigInt
+  delta     BigInt
+  balance   BigInt
   reels     String[]
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")

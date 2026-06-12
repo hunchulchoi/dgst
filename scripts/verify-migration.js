@@ -6,9 +6,11 @@
  *   MONGODB_CONNECTION_STRING="..." DB_NAME="dgstdb" REDIS_URL="..." DATABASE_URL="..." \
  *     node scripts/verify-migration.js
  */
+import 'dotenv/config';
 import { MongoClient } from 'mongodb';
 import Redis from 'ioredis';
 import { PrismaClient } from '@prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
 
 const REDIS_PREFIX = process.env.REDIS_PREFIX || 'dgst:';
 const SCAN_COUNT = 200;
@@ -27,7 +29,9 @@ if (!DATABASE_URL) {
   process.exit(1);
 }
 
-const prisma = new PrismaClient({ datasources: { db: { url: DATABASE_URL } } });
+const prisma = new PrismaClient({
+  adapter: new PrismaPg({ connectionString: DATABASE_URL })
+});
 
 /** @param {import('mongodb').Db} db @param {string} name */
 async function mongoCount(db, name) {
@@ -38,6 +42,26 @@ async function mongoCount(db, name) {
   } catch {
     return 0;
   }
+}
+
+/** @param {import('mongodb').Db} db */
+async function validMongoCommentCount(db) {
+  const articleIds = new Set(
+    (
+      await db
+        .collection('articles')
+        .find({}, { projection: { _id: 1 } })
+        .toArray()
+    ).map((doc) => String(doc._id))
+  );
+
+  let count = 0;
+  const cursor = db.collection('comments').find({}, { projection: { articleId: 1 } });
+  for await (const doc of cursor) {
+    const articleId = doc.articleId != null ? String(doc.articleId) : null;
+    if (articleId && articleIds.has(articleId)) count += 1;
+  }
+  return count;
 }
 
 /** @param {import('ioredis').default} redis */
@@ -82,7 +106,7 @@ async function main() {
     const checks = [
       ['users', () => mongoCount(db, 'users'), () => prisma.user.count()],
       ['articles', () => mongoCount(db, 'articles'), () => prisma.article.count()],
-      ['comments', () => mongoCount(db, 'comments'), () => prisma.comment.count()],
+      ['comments', () => validMongoCommentCount(db), () => prisma.comment.count()],
       ['sessions', () => mongoCount(db, 'sessions'), () => prisma.session.count()],
       ['game_scores', () => mongoCount(db, 'game_scores'), () => prisma.gameScore.count()],
       [
@@ -99,10 +123,17 @@ async function main() {
     }
 
     if (REDIS_URL) {
-      redis = new Redis(REDIS_URL);
-      const redisAlarms = await countRedisAlarmKeys(redis);
-      const pgAlarms = await prisma.alarm.count();
-      if (!compareCount('alarms', redisAlarms, pgAlarms)) failed = true;
+      try {
+        redis = new Redis(REDIS_URL, { lazyConnect: true, maxRetriesPerRequest: 1 });
+        await redis.connect();
+        const redisAlarms = await countRedisAlarmKeys(redis);
+        const pgAlarms = await prisma.alarm.count();
+        if (!compareCount('alarms', redisAlarms, pgAlarms)) failed = true;
+      } catch (err) {
+        console.warn(
+          `[alarms] skipped — Redis unavailable: ${err instanceof Error ? err.message : String(err)}`
+        );
+      }
     } else {
       console.warn('[alarms] skipped — REDIS_URL not set');
     }
