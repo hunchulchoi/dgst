@@ -12,7 +12,12 @@ import Redis from 'ioredis';
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 
-const BATCH = 1000;
+function readBatchSize() {
+  const value = Number(process.env.MIGRATION_BATCH_SIZE ?? 500);
+  return Number.isFinite(value) ? Math.max(50, Math.min(value, 2000)) : 500;
+}
+
+const BATCH = readBatchSize();
 const REDIS_PREFIX = process.env.REDIS_PREFIX || 'dgst:';
 const SCAN_COUNT = 200;
 const ALARM_MAX_AGE_MS = 3 * 24 * 60 * 60 * 1000;
@@ -40,8 +45,6 @@ if (!DATABASE_URL) {
 const prisma = new PrismaClient({
   adapter: new PrismaPg({ connectionString: DATABASE_URL })
 });
-
-const FIND_OPTIONS = { noCursorTimeout: true };
 
 /** @returns {string} */
 function generateCuid() {
@@ -100,47 +103,11 @@ async function collectionExists(db, name) {
   return cols.length > 0;
 }
 
-/**
- * @template T
- * @param {string} label
- * @param {AsyncIterable<Record<string, unknown>>} cursor
- * @param {(doc: Record<string, unknown>) => T | null | undefined} mapFn
- * @param {(batch: T[]) => Promise<{ count: number }>} insertFn
- */
-async function migrateInBatches(label, cursor, mapFn, insertFn) {
-  /** @type {T[]} */
-  let batch = [];
-  let total = 0;
-
-  try {
-    for await (const doc of cursor) {
-      const row = mapFn(doc);
-      if (row == null) continue;
-      batch.push(row);
-      if (batch.length >= BATCH) {
-        const result = await insertFn(batch);
-        total += result.count;
-        console.log(`[${label}] ${total} rows migrated...`);
-        batch = [];
-      }
-    }
-    if (batch.length > 0) {
-      const result = await insertFn(batch);
-      total += result.count;
-    }
-    console.log(`[${label}] done: ${total} rows`);
-    return total;
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    throw new Error(`[${label}] migration failed: ${msg}`);
-  }
-}
-
 /** @param {import('mongodb').Db} db */
 async function migrateUsers(db) {
-  return migrateInBatches(
+  return migrateCollectionByIdPages(
+    db,
     'users',
-    db.collection('users').find({}, FIND_OPTIONS),
     (doc) => {
       const id = objectIdToHex(doc.id) ?? objectIdToHex(doc._id);
       if (!id || doc.nickname == null || doc.state == null) return null;
@@ -166,9 +133,9 @@ async function migrateUsers(db) {
 
 /** @param {import('mongodb').Db} db */
 async function migrateAccounts(db) {
-  return migrateInBatches(
+  return migrateCollectionByIdPages(
+    db,
     'accounts',
-    db.collection('accounts').find({}, FIND_OPTIONS),
     (doc) => {
       if (!doc.userId || !doc.type || !doc.provider || !doc.providerAccountId) return null;
       return {
@@ -185,9 +152,9 @@ async function migrateAccounts(db) {
 
 /** @param {import('mongodb').Db} db */
 async function migrateSessions(db) {
-  return migrateInBatches(
+  return migrateCollectionByIdPages(
+    db,
     'sessions',
-    db.collection('sessions').find({}, FIND_OPTIONS),
     (doc) => {
       if (!doc.sessionToken || !doc.userId || !doc.expires) return null;
       const expires = toDate(doc.expires);
@@ -205,9 +172,9 @@ async function migrateSessions(db) {
 
 /** @param {import('mongodb').Db} db */
 async function migrateArticles(db) {
-  return migrateInBatches(
+  return migrateCollectionByIdPages(
+    db,
     'articles',
-    db.collection('articles').find({}, FIND_OPTIONS),
     (doc) => {
       const id = objectIdToHex(doc._id);
       if (!id) return null;
@@ -233,53 +200,81 @@ async function migrateArticles(db) {
 
 /** @param {import('mongodb').Db} db */
 async function migrateComments(db) {
-  const validArticleIds = new Set(
-    (
-      await db
-        .collection('articles')
-        .find({}, { ...FIND_OPTIONS, projection: { _id: 1 } })
-        .toArray()
-    ).map((doc) => String(doc._id))
-  );
+  if (!(await collectionExists(db, 'comments'))) {
+    console.log('[comments] skipped (collection not found)');
+    return 0;
+  }
 
-  return migrateInBatches(
-    'comments',
-    db.collection('comments').find({}, FIND_OPTIONS),
-    (doc) => {
-      const id = objectIdToHex(doc._id);
-      const articleId = objectIdToHex(doc.articleId);
-      if (!id || !articleId || !validArticleIds.has(articleId)) return null;
-      return {
-        id,
-        email: String(doc.email),
-        nickname: String(doc.nickname),
-        photo: doc.photo ?? null,
-        boardId: String(doc.boardId),
-        articleId,
-        parentCommentId: doc.parentCommentId ? String(doc.parentCommentId) : null,
-        parentCommentNickname: doc.parentCommentNickname ?? null,
-        depth: typeof doc.depth === 'number' ? doc.depth : 1,
-        content: doc.content ?? null,
-        image: doc.image ?? null,
-        state: doc.state != null ? String(doc.state) : 'write',
-        likes: Array.isArray(doc.likes) ? doc.likes.map(String) : [],
-        unlikes: Array.isArray(doc.unlikes) ? doc.unlikes.map(String) : [],
-        modifiedEmail: doc.modified_email ?? null,
-        createdAt: toDate(doc.createdAt) ?? new Date(),
-        updatedAt: toDate(doc.updatedAt) ?? toDate(doc.createdAt) ?? new Date()
-      };
-    },
-    (batch) => prisma.comment.createMany({ data: batch, skipDuplicates: true })
-  );
+  const comments = db.collection('comments');
+  const articles = db.collection('articles');
+  let total = 0;
+  /** @type {unknown | null} */
+  let lastId = null;
+
+  try {
+    while (true) {
+      const query = lastId == null ? {} : { _id: { $gt: lastId } };
+      const docs = await comments.find(query).sort({ _id: 1 }).limit(BATCH).toArray();
+      if (docs.length === 0) break;
+
+      const articleObjectIds = docs
+        .map((doc) => doc.articleId)
+        .filter((id) => id != null);
+      const validArticleIds = new Set(
+        (
+          await articles
+            .find({ _id: { $in: articleObjectIds } }, { projection: { _id: 1 } })
+            .toArray()
+        ).map((doc) => String(doc._id))
+      );
+
+      const batch = docs
+        .map((doc) => {
+          const id = objectIdToHex(doc._id);
+          const articleId = objectIdToHex(doc.articleId);
+          if (!id || !articleId || !validArticleIds.has(articleId)) return null;
+          return {
+            id,
+            email: String(doc.email),
+            nickname: String(doc.nickname),
+            photo: doc.photo ?? null,
+            boardId: String(doc.boardId),
+            articleId,
+            parentCommentId: doc.parentCommentId ? String(doc.parentCommentId) : null,
+            parentCommentNickname: doc.parentCommentNickname ?? null,
+            depth: typeof doc.depth === 'number' ? doc.depth : 1,
+            content: doc.content ?? null,
+            image: doc.image ?? null,
+            state: doc.state != null ? String(doc.state) : 'write',
+            likes: Array.isArray(doc.likes) ? doc.likes.map(String) : [],
+            unlikes: Array.isArray(doc.unlikes) ? doc.unlikes.map(String) : [],
+            modifiedEmail: doc.modified_email ?? null,
+            createdAt: toDate(doc.createdAt) ?? new Date(),
+            updatedAt: toDate(doc.updatedAt) ?? toDate(doc.createdAt) ?? new Date()
+          };
+        })
+        .filter((row) => row != null);
+
+      if (batch.length > 0) {
+        const result = await prisma.comment.createMany({ data: batch, skipDuplicates: true });
+        total += result.count;
+        console.log(`[comments] ${total} rows migrated...`);
+      }
+
+      lastId = docs[docs.length - 1]?._id ?? null;
+    }
+
+    console.log(`[comments] done: ${total} rows`);
+    return total;
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new Error(`[comments] migration failed: ${msg}`);
+  }
 }
 
 /** @param {import('mongodb').Db} db @param {string} collection @param {(doc: Record<string, unknown>) => object | null} mapFn @param {(batch: object[]) => Promise<{ count: number }>} insertFn */
 async function migrateGameCollection(db, collection, mapFn, insertFn) {
-  if (!(await collectionExists(db, collection))) {
-    console.log(`[${collection}] skipped (collection not found)`);
-    return 0;
-  }
-  return migrateInBatches(collection, db.collection(collection).find({}, FIND_OPTIONS), mapFn, insertFn);
+  return migrateCollectionByIdPages(db, collection, mapFn, insertFn);
 }
 
 /**
@@ -422,9 +417,9 @@ async function migrateSlotUserBalance(db) {
 async function migrateMemos(db) {
   for (const name of ['memos', 'memo']) {
     if (await collectionExists(db, name)) {
-      return migrateInBatches(
+      return migrateCollectionByIdPages(
+        db,
         name,
-        db.collection(name).find({}, FIND_OPTIONS),
         (doc) => ({
           id: docIdOrCuid(doc),
           email: String(doc.email),
@@ -449,9 +444,9 @@ async function migrateLoginLogs(db) {
     return 0;
   }
 
-  return migrateInBatches(
+  return migrateCollectionByIdPages(
+    db,
     'login_logs',
-    db.collection('login_logs').find({}, FIND_OPTIONS),
     (doc) => ({
       id: docIdOrCuid(doc),
       at: toDate(doc.at) ?? new Date(),
@@ -565,7 +560,7 @@ async function main() {
   console.log('Starting MongoDB + Redis → PostgreSQL migration');
   console.log(`Mongo DB: ${DB_NAME}, batch size: ${BATCH}`);
 
-  const mongo = new MongoClient(MONGODB_CONNECTION_STRING);
+  const mongo = new MongoClient(MONGODB_CONNECTION_STRING, { maxPoolSize: 2, minPoolSize: 0 });
   /** @type {import('ioredis').default | null} */
   let redis = null;
 

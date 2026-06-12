@@ -15,6 +15,13 @@ import { PrismaPg } from '@prisma/adapter-pg';
 const REDIS_PREFIX = process.env.REDIS_PREFIX || 'dgst:';
 const SCAN_COUNT = 200;
 
+function readBatchSize() {
+  const value = Number(process.env.MIGRATION_BATCH_SIZE ?? 500);
+  return Number.isFinite(value) ? Math.max(50, Math.min(value, 2000)) : 500;
+}
+
+const BATCH = readBatchSize();
+
 const MONGODB_CONNECTION_STRING = process.env.MONGODB_CONNECTION_STRING;
 const DB_NAME = process.env.DB_NAME || 'dgstdb';
 const REDIS_URL = process.env.REDIS_URL;
@@ -46,21 +53,40 @@ async function mongoCount(db, name) {
 
 /** @param {import('mongodb').Db} db */
 async function validMongoCommentCount(db) {
-  const articleIds = new Set(
-    (
-      await db
-        .collection('articles')
-        .find({}, { projection: { _id: 1 } })
-        .toArray()
-    ).map((doc) => String(doc._id))
-  );
-
+  const comments = db.collection('comments');
+  const articles = db.collection('articles');
   let count = 0;
-  const cursor = db.collection('comments').find({}, { projection: { articleId: 1 } });
-  for await (const doc of cursor) {
-    const articleId = doc.articleId != null ? String(doc.articleId) : null;
-    if (articleId && articleIds.has(articleId)) count += 1;
+
+  /** @type {unknown | null} */
+  let lastId = null;
+  while (true) {
+    const query = lastId == null ? {} : { _id: { $gt: lastId } };
+    const docs = await comments
+      .find(query, { projection: { _id: 1, articleId: 1 } })
+      .sort({ _id: 1 })
+      .limit(BATCH)
+      .toArray();
+    if (docs.length === 0) break;
+
+    const articleObjectIds = docs
+      .map((doc) => doc.articleId)
+      .filter((id) => id != null);
+    const validArticleIds = new Set(
+      (
+        await articles
+          .find({ _id: { $in: articleObjectIds } }, { projection: { _id: 1 } })
+          .toArray()
+      ).map((doc) => String(doc._id))
+    );
+
+    for (const doc of docs) {
+      const articleId = doc.articleId != null ? String(doc.articleId) : null;
+      if (articleId && validArticleIds.has(articleId)) count += 1;
+    }
+
+    lastId = docs[docs.length - 1]?._id ?? null;
   }
+
   return count;
 }
 
@@ -94,7 +120,7 @@ function compareCount(label, mongo, pg) {
 
 async function main() {
   let failed = false;
-  const mongo = new MongoClient(MONGODB_CONNECTION_STRING);
+  const mongo = new MongoClient(MONGODB_CONNECTION_STRING, { maxPoolSize: 2, minPoolSize: 0 });
   /** @type {import('ioredis').default | null} */
   let redis = null;
 
