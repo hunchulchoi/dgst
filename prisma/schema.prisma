@@ -1,0 +1,223 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id              String    @id
+  email           String?   @unique
+  emailVerified   DateTime? @map("email_verified")
+  name            String?
+  image           String?
+  nickname        String    @unique
+  introduction    String
+  photo           String?
+  state           String
+  grade           String    @default("user")
+  createdAt       DateTime? @map("created_at")
+  latestLoginAt   DateTime? @map("latest_login_at")
+  lastModified    DateTime? @map("last_modified")
+  accounts        Account[]
+  sessions        Session[]
+  @@map("users")
+}
+
+model Account {
+  id                String @id @default(cuid())
+  userId            String @map("user_id")
+  type              String
+  provider          String
+  providerAccountId String @map("provider_account_id")
+  user              User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique @map("session_token")
+  userId       String   @map("user_id")
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+model Article {
+  id            String    @id
+  email         String
+  nickname      String
+  boardId       String    @map("board_id")
+  title         String
+  content       String
+  state         String    @default("write")
+  reads         String[]  @default([])
+  likes         String[]  @default([])
+  unlikes       String[]  @default([])
+  modifiedEmail String?   @map("modified_email")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  comments      Comment[]
+  @@index([email, createdAt(sort: Desc)])
+  @@index([boardId, state, createdAt(sort: Desc)])
+  @@map("articles")
+}
+
+model Comment {
+  id                    String   @id
+  email                 String
+  nickname              String
+  photo                 String?
+  boardId               String   @map("board_id")
+  articleId             String   @map("article_id")
+  parentCommentId       String?  @map("parent_comment_id")
+  parentCommentNickname String?  @map("parent_comment_nickname")
+  depth                 Int      @default(1)
+  content               String?
+  image                 String?
+  state                 String   @default("write")
+  likes                 String[] @default([])
+  unlikes               String[] @default([])
+  modifiedEmail         String?  @map("modified_email")
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+  article               Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  @@index([email])
+  @@index([articleId, createdAt(sort: Desc)])
+  @@index([parentCommentId])
+  @@map("comments")
+}
+
+model Alarm {
+  id              String    @id
+  email           String
+  boardId         String    @map("board_id")
+  articleId       String    @map("article_id")
+  title           String
+  parentCommentId String?   @map("parent_comment_id")
+  commentContent  String?   @map("comment_content")
+  commentIds      String[]  @default([]) @map("comment_ids")
+  readAt          DateTime? @map("read_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  @@index([email, updatedAt(sort: Desc)])
+  @@index([email, readAt, createdAt(sort: Desc)])
+  @@index([articleId])
+  @@map("alarms")
+}
+
+model GameScore {
+  id        String   @id @default(cuid())
+  email     String
+  nickname  String
+  game      String   @default("slot")
+  bet       Int
+  payout    Int
+  delta     Int
+  balance   Int
+  reels     String[]
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  @@index([game, createdAt(sort: Desc)])
+  @@index([game, bet, createdAt(sort: Desc)])
+  @@index([email, createdAt(sort: Desc)])
+  @@map("game_scores")
+}
+
+model GameScore2048 {
+  id        String   @id @default(cuid())
+  email     String
+  nickname  String
+  score     Int
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  @@index([createdAt(sort: Desc)])
+  @@index([email, score(sort: Desc)])
+  @@map("game_score_2048")
+}
+
+model GameScoreMinesweeper {
+  id        String   @id @default(cuid())
+  email     String
+  nickname  String
+  mode      String
+  time      Int
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  @@index([createdAt(sort: Desc)])
+  @@index([email, mode, time])
+  @@map("game_score_minesweeper")
+}
+
+model GameScoreWatermelon {
+  id        String   @id @default(cuid())
+  email     String
+  nickname  String
+  score     Int
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  @@index([createdAt(sort: Desc)])
+  @@index([email, score(sort: Desc)])
+  @@map("game_score_watermelon")
+}
+
+model SlotUserBalance {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  nickname  String
+  balance   Int      @default(0)
+  totalSpin Int      @default(0) @map("total_spin")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  @@index([balance(sort: Desc)])
+  @@map("slot_user_balance")
+}
+
+model GameLog {
+  id        String   @id @default(cuid())
+  game      String
+  action    String
+  email     String?
+  meta      Json?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  @@index([game])
+  @@index([email])
+  @@index([createdAt(sort: Desc)])
+  @@map("game_logs")
+}
+
+model Memo {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  toEmail      String    @unique @map("to_email")
+  content      String
+  deny         Boolean   @default(false)
+  createdAt    DateTime? @map("created_at")
+  lastModified DateTime? @map("last_modified")
+  @@map("memos")
+}
+
+model LoginLog {
+  id        String   @id @default(cuid())
+  at        DateTime @default(now())
+  userId    String?  @map("user_id")
+  ip        String
+  deviceId  String?  @map("device_id")
+  userAgent String?  @map("user_agent")
+  provider  String?
+  path      String?
+  @@index([at(sort: Desc)])
+  @@index([userId])
+  @@map("login_logs")
+}
