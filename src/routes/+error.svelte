@@ -14,6 +14,7 @@
   onMount(() => {
     if ($page.status >= 500) {
       const pageError = /** @type {PageError | undefined} */ ($page.error);
+      const reloadKey = `dgst:error-reload:${$page.url.pathname}${$page.url.search}`;
       reportClientPageError({
         status: $page.status,
         pathname: $page.url.pathname,
@@ -27,6 +28,12 @@
         cause: pageError?.cause,
         errorId: pageError?.errorId
       });
+
+      if (!sessionStorage.getItem(reloadKey)) {
+        sessionStorage.setItem(reloadKey, '1');
+        setTimeout(() => location.reload(), 100);
+        return;
+      }
     }
 
     if ($page.status === 404 || $page.status === 502) {
