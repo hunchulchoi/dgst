@@ -15,7 +15,8 @@ export async function POST({ params, locals }) {
 
   const session = await locals.auth();
 
-  if (!session?.user?.nickname) {
+  const email = typeof session?.user?.email === 'string' ? session.user.email : '';
+  if (!session?.user?.nickname || !email) {
     throw error(401, { message: '권한이 없습니다. 로그인 해주세요' });
   }
 
@@ -30,7 +31,7 @@ export async function POST({ params, locals }) {
       });
     }
 
-    const updated = await toggleArticleLike(articleId, session.user.email, 'like');
+    const updated = await toggleArticleLike(articleId, email, 'like');
     if (!updated) {
       throw error(410, {
         message: `삭제되었거나 존지하지 않는 게시물입니다.
@@ -39,7 +40,7 @@ export async function POST({ params, locals }) {
     }
 
     const articleJson = toArticleJson(updated);
-    articleJson.liked = updated.likes.includes(session.user.email);
+    articleJson.liked = updated.likes.includes(email);
 
     return new Response(JSON.stringify(articleJson), { status: 200 });
   } catch (err) {

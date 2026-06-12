@@ -16,7 +16,8 @@ export async function DELETE({ params, locals }) {
 
   const session = await locals.auth();
 
-  if (!session?.user?.nickname) {
+  const email = typeof session?.user?.email === 'string' ? session.user.email : '';
+  if (!session?.user?.nickname || !email) {
     throw error(401, { message: '권한이 없습니다. 로그인 해주세요' });
   }
 
@@ -25,7 +26,7 @@ export async function DELETE({ params, locals }) {
       where: {
         id: articleId,
         boardId,
-        email: session.user.email,
+        email,
         state: 'write'
       }
     });
@@ -36,7 +37,7 @@ export async function DELETE({ params, locals }) {
       });
     }
 
-    await softDeleteArticle(articleId, session.user.email);
+    await softDeleteArticle(articleId, email);
     await deleteAlarmsByArticle(articleId);
     await bustBoardListCache(boardId);
   } catch (err) {

@@ -20,7 +20,7 @@ import { getPrisma } from '$lib/database/prisma.js';
  *   createdAt: string | Date;
  *   updatedAt: string | Date;
  *   like: number;
- *   likes: string[];
+ *   likes?: string[];
  *   liked?: boolean;
  * }} CommentJson
  */
