@@ -1,9 +1,10 @@
 /**
- * 회원정보(User) Redis 캐시: 조회 시 Redis 우선, 미스 시 MongoDB 조회 후 캐시.
+ * 회원정보(User) pgCache: 조회 시 캐시 우선, 미스 시 DB 조회 후 캐시.
  * 무효화: updateUser 시 user:id 삭제.
  */
-import * as redis from '$lib/server/redis/client.js';
+import * as pgCache from '$lib/server/cache/pgCache.js';
 
+const NAMESPACE = 'user';
 const USER_ID_PREFIX = 'user:id:';
 const USER_EMAIL_PREFIX = 'user:email:';
 const USER_CACHE_TTL = 1800; // 30분
@@ -13,7 +14,7 @@ const USER_CACHE_TTL = 1800; // 30분
  * @returns {Promise<import('@auth/core/adapters').AdapterUser | null>}
  */
 export async function getCachedUserById(id) {
-  const raw = await redis.getJson(USER_ID_PREFIX + id);
+  const raw = await pgCache.getJson(USER_ID_PREFIX + id, NAMESPACE);
   if (!raw) return null;
   if (raw.emailVerified) raw.emailVerified = new Date(raw.emailVerified);
   return raw;
@@ -24,7 +25,7 @@ export async function getCachedUserById(id) {
  * @returns {Promise<import('@auth/core/adapters').AdapterUser | null>}
  */
 export async function getCachedUserByEmail(email) {
-  const raw = await redis.getJson(USER_EMAIL_PREFIX + email);
+  const raw = await pgCache.getJson(USER_EMAIL_PREFIX + email, NAMESPACE);
   if (!raw) return null;
   if (raw.emailVerified) raw.emailVerified = new Date(raw.emailVerified);
   return raw;
@@ -38,15 +39,16 @@ export async function setCachedUser(user) {
   const payload = { ...user };
   if (payload.emailVerified instanceof Date)
     payload.emailVerified = payload.emailVerified.toISOString();
-  await redis.setJson(USER_ID_PREFIX + user.id, payload, USER_CACHE_TTL);
-  if (user.email) await redis.setJson(USER_EMAIL_PREFIX + user.email, payload, USER_CACHE_TTL);
+  await pgCache.setJson(USER_ID_PREFIX + user.id, payload, USER_CACHE_TTL, NAMESPACE);
+  if (user.email)
+    await pgCache.setJson(USER_EMAIL_PREFIX + user.email, payload, USER_CACHE_TTL, NAMESPACE);
 }
 
 /**
  * updateUser 등으로 사용자 변경 시 캐시 무효화.
- * 프로필 수정 등 MongoDB에서 직접 사용자 갱신 시에도 호출 권장.
+ * 프로필 수정 등 DB에서 직접 사용자 갱신 시에도 호출 권장.
  * @param {string} userId
  */
 export async function invalidateUser(userId) {
-  await redis.del(USER_ID_PREFIX + userId);
+  await pgCache.del(USER_ID_PREFIX + userId, NAMESPACE);
 }

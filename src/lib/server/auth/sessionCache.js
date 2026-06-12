@@ -1,9 +1,10 @@
 /**
- * 세션+유저 Redis 캐시: getSessionAndUser 호출 시 Redis 우선, 미스 시 MongoDB 조회 후 캐시.
+ * 세션+유저 pgCache: getSessionAndUser 호출 시 캐시 우선, 미스 시 DB 조회 후 캐시.
  * TTL로만 만료 (프로필 수정 시 userCache.invalidateUser로 유저 캐시는 무효화되나, 세션 캐시는 TTL로 갱신).
  */
-import * as redis from '$lib/server/redis/client.js';
+import * as pgCache from '$lib/server/cache/pgCache.js';
 
+const NAMESPACE = 'session';
 const SESSION_PREFIX = 'session:';
 const SESSION_CACHE_TTL = 300; // 5분
 
@@ -27,7 +28,7 @@ function reviveDates(obj, dateKeys) {
  * @returns {Promise<{ session: import('@auth/core/adapters').AdapterSession; user: import('@auth/core/adapters').AdapterUser } | null>}
  */
 export async function getCachedSessionAndUser(sessionToken) {
-  const raw = await redis.getJson(SESSION_PREFIX + sessionToken);
+  const raw = await pgCache.getJson(SESSION_PREFIX + sessionToken, NAMESPACE);
   if (!raw?.session || !raw?.user) return null;
   reviveDates(raw.session, SESSION_DATE_KEYS);
   reviveDates(raw.user, USER_DATE_KEYS);
@@ -49,7 +50,7 @@ export async function setCachedSessionAndUser(sessionToken, data, ttlSeconds = S
   for (const k of USER_DATE_KEYS) {
     if (payload.user[k] instanceof Date) payload.user[k] = payload.user[k].toISOString();
   }
-  return redis.setJson(SESSION_PREFIX + sessionToken, payload, ttlSeconds);
+  return pgCache.setJson(SESSION_PREFIX + sessionToken, payload, ttlSeconds, NAMESPACE);
 }
 
 /**
@@ -57,5 +58,5 @@ export async function setCachedSessionAndUser(sessionToken, data, ttlSeconds = S
  * @param {string} sessionToken
  */
 export async function invalidateSession(sessionToken) {
-  return redis.del(SESSION_PREFIX + sessionToken);
+  return pgCache.del(SESSION_PREFIX + sessionToken, NAMESPACE);
 }

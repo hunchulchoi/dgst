@@ -7,13 +7,12 @@ import {
   KAKAO_CLIENT_ID,
   KAKAO_CLIENT_SECRET,
   NODE_ENV,
-  DB_NAME,
   VIP_EMAIL,
   VIP_FAKE_EMAIL
 } from '$env/static/private';
 import { env as dynamicEnv } from '$env/dynamic/private';
-import clientPromise from '$lib/database/clientPromise.js';
-import { getHybridAdapter } from '$lib/server/auth/hybridAdapter.js';
+import { getPrisma } from '$lib/database/prisma.js';
+import { getPrismaAdapter } from '$lib/server/auth/prismaAdapter.js';
 import { checkAuthRateLimit } from '$lib/server/auth/rateLimit.js';
 import * as redis from '$lib/server/redis/client.js';
 import crypto from 'crypto';
@@ -99,7 +98,7 @@ export const {
   signOut
 } = SvelteKitAuth({
   providers,
-  adapter: getHybridAdapter(DB_NAME),
+  adapter: getPrismaAdapter(),
   pages: {
     newUser: '/auth/profile',
     signIn: '/login',
@@ -427,7 +426,7 @@ export async function handle({ event, resolve }) {
           );
           if (cookieStr) {
             const sessionToken = cookieStr.slice(prefix.length).split(';')[0].trim();
-            const adapter = getHybridAdapter(DB_NAME);
+            const adapter = getPrismaAdapter();
             const sessionAndUser = await adapter.getSessionAndUser?.(sessionToken);
             if (sessionAndUser?.user?.id) userId = sessionAndUser.user.id;
           }
@@ -435,16 +434,16 @@ export async function handle({ event, resolve }) {
           logger.warn({ message: 'login_logs: getSessionAndUser failed', error: e });
         }
 
-        const client = await clientPromise;
-        const db = client.db(DB_NAME);
-        await db.collection('login_logs').insertOne({
-          at: new Date(),
-          userId,
-          ip,
-          deviceId,
-          userAgent,
-          provider: pathname.split('/').pop(),
-          path: pathname
+        await getPrisma().loginLog.create({
+          data: {
+            at: new Date(),
+            userId,
+            ip,
+            deviceId,
+            userAgent,
+            provider: pathname.split('/').pop(),
+            path: pathname
+          }
         });
       }
     }
