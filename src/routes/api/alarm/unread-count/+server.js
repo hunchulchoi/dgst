@@ -1,5 +1,5 @@
 import { json } from '@sveltejs/kit';
-import { getUnreadAlarmCount } from '$lib/server/redis/alarmService.js';
+import { getUnreadAlarmCount } from '$lib/server/alarm/alarmService.js';
 
 /** 헤더 알림 뱃지용 (레이아웃 blocking 제거) */
 export async function GET({ locals }) {

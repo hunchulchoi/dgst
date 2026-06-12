@@ -1,7 +1,7 @@
 import connectDB from '$lib/database/mongoosePriomise.js';
 import { GameScore } from '$lib/models/gameScore.js';
 import { getTodaySlotStats } from '$lib/server/slotStats.js';
-import { getUnreadAlarmCount } from '$lib/server/redis/alarmService.js';
+import { getUnreadAlarmCount } from '$lib/server/alarm/alarmService.js';
 
 connectDB();
 

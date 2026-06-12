@@ -1,6 +1,6 @@
 import { error } from '@sveltejs/kit';
 import { softDeleteArticle } from '$lib/server/board/articleRepo.js';
-import { deleteAlarmsByArticle } from '$lib/server/redis/alarmService.js';
+import { deleteAlarmsByArticle } from '$lib/server/alarm/alarmService.js';
 import { bustBoardListCache } from '$lib/server/boardListLoad.js';
 import { getPrisma } from '$lib/database/prisma.js';
 

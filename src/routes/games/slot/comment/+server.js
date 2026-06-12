@@ -1,7 +1,7 @@
 import connectDB from '$lib/database/mongoosePriomise.js';
 import { error, json } from '@sveltejs/kit';
 import { Comment } from '$lib/models/comment.js';
-import { markAsRead, upsertAlarm } from '$lib/server/redis/alarmService.js';
+import { markAsRead, upsertAlarm } from '$lib/server/alarm/alarmService.js';
 import { GameScore } from '$lib/models/gameScore.js';
 import convertToTree from '$lib/util/tree.js';
 import { checkAndLogSessionDevice } from '$lib/server/auth/checkSessionDevice.js';

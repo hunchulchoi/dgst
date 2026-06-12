@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import { z } from 'zod';
-import { getUnreadAlarmCount, markAsRead } from '$lib/server/redis/alarmService.js';
+import { getUnreadAlarmCount, markAsRead } from '$lib/server/alarm/alarmService.js';
 
 const bodySchema = z.object({
   articleId: z.string().min(1)
