@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
+import { DATABASE_URL } from '$env/static/private';
 import logger from '$lib/util/logger.js';
 
 const DEFAULT_SLOW_QUERY_THRESHOLD_MS = 500;
@@ -111,7 +112,7 @@ function attachSlowQueryLogging(client) {
 
 /** @returns {PrismaClient} */
 export function getPrisma() {
-  const connectionString = process.env.DATABASE_URL;
+  const connectionString = DATABASE_URL || process.env.DATABASE_URL;
   if (!connectionString) {
     throw new Error('DATABASE_URL is required to initialize Prisma');
   }
