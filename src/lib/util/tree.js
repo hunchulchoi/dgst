@@ -6,6 +6,8 @@
  *   state: string;
  *   content?: string | null;
  *   image?: string | null;
+ *   likes?: string[];
+ *   liked?: boolean;
  *   [key: string]: unknown;
  * }} TreeComment
  */

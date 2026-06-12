@@ -1,4 +1,14 @@
 <script>
+  /** @type {{
+   *   isOpen?: boolean;
+   *   header?: string;
+   *   placement?: 'top' | 'bottom' | 'start' | 'end' | string;
+   *   fade?: boolean;
+   *   toggle?: () => void;
+   *   class?: string;
+   *   style?: string;
+   *   children: import('svelte').Snippet;
+   * }} */
   let {
     isOpen = false,
     header = '',
@@ -20,10 +30,10 @@
   >
     <div class="offcanvas-header">
       <h5 class="offcanvas-title">{header}</h5>
-      <button type="button" class="btn-close" aria-label="닫기" onclick={toggle}></button>
+      <button type="button" class="btn-close" aria-label="닫기" onclick={() => toggle()}></button>
     </div>
     <div class="offcanvas-body">
-      {@render children()}
+      {@render children?.()}
     </div>
   </div>
   <div
@@ -31,7 +41,8 @@
     role="button"
     tabindex="0"
     aria-label="닫기"
-    onclick={toggle}
+    onclick={() => toggle()}
+    /** @param {KeyboardEvent} e */
     onkeydown={(e) => {
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();

@@ -1,8 +1,15 @@
 <script>
+  /** @type {{
+   *   expand?: string | false;
+   *   color?: string;
+   *   fixed?: 'top' | 'bottom' | boolean;
+   *   class?: string;
+   *   children: import('svelte').Snippet;
+   *   [key: string]: unknown;
+   * }} */
   let {
     expand = 'md',
     color = '',
-    /** @type {'top' | 'bottom' | false} viewport 고정 (탭 바에는 사용하지 않음) */
     fixed = false,
     class: className = '',
     children,
@@ -22,6 +29,6 @@
 
 <nav class="navbar {expandClass} {bgClass} {fixedClass} {className}" {...rest}>
   <div class="container-fluid p-0 flex-nowrap align-items-center">
-    {@render children()}
+    {@render children?.()}
   </div>
 </nav>

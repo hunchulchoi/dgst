@@ -1,4 +1,15 @@
 <script>
+  /** @type {{
+   *   isOpen?: boolean;
+   *   toggle?: () => void;
+   *   size?: string;
+   *   fullscreen?: boolean;
+   *   header?: string;
+   *   body?: boolean;
+   *   class?: string;
+   *   style?: string;
+   *   children: import('svelte').Snippet;
+   * }} */
   let {
     isOpen = false,
     toggle = () => {},
@@ -32,11 +43,16 @@
         {#if header && !body}
           <div class="modal-header">
             <h5 class="modal-title">{header}</h5>
-            <button type="button" class="btn-close" aria-label="Close" onclick={toggle}></button>
+            <button
+              type="button"
+              class="btn-close"
+              aria-label="Close"
+              onclick={() => toggle()}
+            ></button>
           </div>
         {/if}
         <div class="modal-body">
-          {@render children()}
+          {@render children?.()}
         </div>
       </div>
     </div>

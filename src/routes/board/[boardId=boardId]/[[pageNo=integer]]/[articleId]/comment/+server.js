@@ -44,13 +44,12 @@ export async function GET({ params, locals }) {
       }))
     );
 
-    if (session?.user?.email) {
-      commentsTree.forEach(
-        /** @param {{ likes?: string[], liked?: boolean }} c */ (c) => {
-          c.liked = c.likes?.includes(session.user.email) ?? false;
-          delete c.likes;
-        }
-      );
+    const userEmail = session?.user?.email;
+    if (userEmail) {
+      commentsTree.forEach((c) => {
+        c.liked = c.likes?.includes(userEmail) ?? false;
+        delete c.likes;
+      });
     }
 
     return json(commentsTree);
@@ -73,9 +72,10 @@ export async function POST(event) {
 
   const session = await locals.auth();
 
-  if (!session?.user?.nickname) {
+  if (!session?.user?.nickname || !session.user.email) {
     throw error(401, { message: '권한이 없습니다. 로그인 해주세요' });
   }
+  const userEmail = session.user.email;
 
   await checkAndLogSessionDevice(event, { action: 'board.comment' });
 
@@ -85,7 +85,7 @@ export async function POST(event) {
   const image = data.get('image');
 
   if (image && image instanceof File && image.size > 0) {
-    storeFileName = await write(image, session.user.email, 'jjal');
+    storeFileName = await write(image, userEmail, 'jjal');
   }
 
   const parentCommentId = data.get('parentCommentId');
@@ -100,10 +100,10 @@ export async function POST(event) {
 
   try {
     const fingerprint = buildSubmitFingerprint([boardId, articleId, parentKey, contentText]);
-    const acquired = await tryAcquireSubmitDedup('comment', session.user.email, fingerprint, 8);
+    const acquired = await tryAcquireSubmitDedup('comment', userEmail, fingerprint, 8);
     if (!acquired) {
       const dup = await findRecentDuplicateComment({
-        email: session.user.email,
+        email: userEmail,
         articleId,
         boardId,
         content: contentText,
@@ -115,9 +115,9 @@ export async function POST(event) {
     }
 
     const comment = await createComment({
-      email: session.user.email,
+      email: userEmail,
       nickname: session.user.nickname,
-      photo: session.user.photo,
+      photo: session.user.photo ?? undefined,
       boardId,
       articleId,
       content: contentText,
@@ -129,7 +129,7 @@ export async function POST(event) {
 
     const article = await findArticleById(articleId, boardId, 'write');
 
-    if (article && article.email !== session.user.email) {
+    if (article && article.email !== userEmail) {
       if (!parentComment || parentComment.email !== article.email) {
         await upsertAlarm({
           email: article.email,
@@ -141,7 +141,7 @@ export async function POST(event) {
       }
     }
 
-    if (parentComment && parentComment.email !== session.user.email) {
+    if (parentComment && parentComment.email !== userEmail) {
       await upsertAlarm({
         email: parentComment.email,
         articleId,
@@ -172,9 +172,10 @@ export async function PUT({ request, params, locals }) {
 
   const session = await locals.auth();
 
-  if (!session?.user?.nickname) {
+  if (!session?.user?.nickname || !session.user.email) {
     throw error(401, { message: '권한이 없습니다. 로그인 해주세요' });
   }
+  const userEmail = session.user.email;
 
   const data = await request.formData();
   const commentId = data.get('commentId');
@@ -188,7 +189,7 @@ export async function PUT({ request, params, locals }) {
   const image = data.get('image');
 
   if (image && image instanceof File && image.size > 0) {
-    storeFileName = await write(image, session.user.email, 'jjal');
+    storeFileName = await write(image, userEmail, 'jjal');
   }
 
   try {
@@ -197,7 +198,7 @@ export async function PUT({ request, params, locals }) {
       !existing ||
       existing.boardId !== boardId ||
       existing.articleId !== articleId ||
-      existing.email !== session.user.email ||
+      existing.email !== userEmail ||
       existing.state !== 'write'
     ) {
       throw error(401, {
@@ -208,7 +209,7 @@ export async function PUT({ request, params, locals }) {
     /** @type {{ content: string, modifiedEmail: string, image?: string }} */
     const updateData = {
       content: String(content),
-      modifiedEmail: session.user.email
+      modifiedEmail: userEmail
     };
 
     if (storeFileName) {
@@ -237,9 +238,10 @@ export async function DELETE({ request, params, locals }) {
 
   const session = await locals.auth();
 
-  if (!session?.user?.nickname) {
+  if (!session?.user?.nickname || !session.user.email) {
     throw error(401, { message: '권한이 없습니다. 로그인 해주세요' });
   }
+  const userEmail = session.user.email;
 
   const data = await request.json();
 
@@ -249,7 +251,7 @@ export async function DELETE({ request, params, locals }) {
       !existing ||
       existing.boardId !== boardId ||
       existing.articleId !== articleId ||
-      existing.email !== session.user.email ||
+      existing.email !== userEmail ||
       existing.state !== 'write'
     ) {
       throw error(401, {
@@ -257,7 +259,7 @@ export async function DELETE({ request, params, locals }) {
       });
     }
 
-    const update = await softDeleteComment(String(data.commentId), session.user.email);
+    const update = await softDeleteComment(String(data.commentId), userEmail);
 
     if (update.parentCommentId) {
       const parentComment = await findCommentById(update.parentCommentId);

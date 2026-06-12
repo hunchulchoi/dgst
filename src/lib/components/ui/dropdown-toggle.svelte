@@ -2,6 +2,13 @@
   import { getContext } from 'svelte';
   import { DROPDOWN_CTX } from './dropdown-context.js';
 
+  /** @type {{
+   *   nav?: boolean;
+   *   caret?: boolean;
+   *   class?: string;
+   *   children: import('svelte').Snippet;
+   *   [key: string]: unknown;
+   * }} */
   let {
     nav = false,
     caret = false,
@@ -10,7 +17,9 @@
     ...rest
   } = $props();
 
-  const ctx = getContext(DROPDOWN_CTX);
+  const ctx = /** @type {{ setAnchor: (node: HTMLButtonElement | null) => void; getOpen: () => boolean; toggle: () => void }} */ (
+    getContext(DROPDOWN_CTX)
+  );
 
   /** @param {HTMLButtonElement} node */
   function anchorRef(node) {
@@ -28,11 +37,12 @@
   use:anchorRef
   class="{nav ? 'nav-link' : 'btn btn-link'} dropdown-toggle {className}"
   aria-expanded={ctx.getOpen()}
+  /** @param {MouseEvent} e */
   onclick={(e) => {
     e.stopPropagation();
     ctx.toggle();
   }}
   {...rest}
 >
-  {@render children()}
+  {@render children?.()}
 </button>

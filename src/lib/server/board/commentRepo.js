@@ -2,8 +2,32 @@ import crypto from 'crypto';
 import { getPrisma } from '$lib/database/prisma.js';
 
 /**
+ * @typedef {{
+ *   _id: string;
+ *   id: string;
+ *   email: string;
+ *   nickname: string;
+ *   photo: string | null;
+ *   boardId: string;
+ *   articleId: string;
+ *   parentCommentId: string | null;
+ *   parentCommentNickname: string | null;
+ *   depth: number;
+ *   content: string | null;
+ *   image: string | null;
+ *   state: string;
+ *   modifiedEmail: string | null;
+ *   createdAt: string | Date;
+ *   updatedAt: string | Date;
+ *   like: number;
+ *   likes: string[];
+ *   liked?: boolean;
+ * }} CommentJson
+ */
+
+/**
  * @param {import('@prisma/client').Comment} comment
- * @returns {Record<string, unknown>}
+ * @returns {CommentJson}
  */
 export function toCommentJson(comment) {
   return {

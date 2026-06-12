@@ -5,8 +5,11 @@
   import { portal } from '$lib/util/portal.js';
   import { DROPDOWN_CTX } from './dropdown-context.js';
 
+  /** @type {{ end?: boolean; class?: string; children: import('svelte').Snippet }} */
   let { end = false, class: className = '', children } = $props();
-  const ctx = getContext(DROPDOWN_CTX);
+  const ctx = /** @type {{ setMenu: (node: HTMLElement | null) => void; getAnchor: () => HTMLElement | null; getOpen: () => boolean }} */ (
+    getContext(DROPDOWN_CTX)
+  );
 
   let menuStyle = $state('');
 
@@ -60,8 +63,9 @@
     use:menuRef
     class="dropdown-menu show {end ? 'dropdown-menu-end' : ''} {className}"
     style={menuStyle}
+    /** @param {PointerEvent} e */
     onpointerdown={(e) => e.stopPropagation()}
   >
-    {@render children()}
+    {@render children?.()}
   </ul>
 {/if}
