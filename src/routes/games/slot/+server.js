@@ -101,8 +101,8 @@ async function maybeTopupAfterOOPS(email, nickname) {
       where: { email },
       orderBy: { createdAt: 'desc' }
     });
-    if (lastAfterReward && (lastAfterReward.balance ?? 0) > 0) {
-      return lastAfterReward.balance; // 댓글 보상으로 balance가 올라갔으면 오링이 아님
+    if (lastAfterReward && Number(lastAfterReward.balance ?? 0) > 0) {
+      return Number(lastAfterReward.balance); // 댓글 보상으로 balance가 올라갔으면 오링이 아님
     }
   }
 
@@ -123,7 +123,7 @@ async function maybeTopupAfterOOPS(email, nickname) {
       }
     });
     await updateSlotUserBalance(email, nickname, 700, { incSpin: false });
-    return doc.balance;
+    return Number(doc.balance);
   }
   return 0;
 }
@@ -150,7 +150,7 @@ export async function POST({ request, locals }) {
     where: { email },
     orderBy: { createdAt: 'desc' }
   });
-  let balanceBefore = last?.balance ?? 0;
+  let balanceBefore = Number(last?.balance ?? 0);
 
   if (bet > balanceBefore) {
     throw error(400, { message: '보유 점수가 부족합니다.' });
@@ -228,7 +228,7 @@ export async function GET({ locals, url }) {
     where: { email },
     orderBy: { createdAt: 'desc' }
   });
-  let balance = last?.balance ?? 0;
+  let balance = Number(last?.balance ?? 0);
   // 최초 이용자만 1000점 지급 (기록이 전무한 경우에만)
   if (!last) {
     await prisma.gameScore.create({
@@ -274,7 +274,7 @@ export async function GET({ locals, url }) {
         where: { email },
         orderBy: { createdAt: 'desc' }
       });
-      const shouldCountAsOops = !lastRewardAfterOops || latestScore?.balance === 0;
+      const shouldCountAsOops = !lastRewardAfterOops || Number(latestScore?.balance ?? 0) === 0;
 
       if (shouldCountAsOops) {
         const topped = await maybeTopupAfterOOPS(email, nickname);

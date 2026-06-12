@@ -120,13 +120,13 @@ export async function getSlotBalance(email) {
     where: { email },
     select: { balance: true }
   });
-  if (row != null) return row.balance;
+  if (row != null) return Number(row.balance);
   const last = await getPrisma().gameScore.findFirst({
     where: { email, game: 'slot' },
     orderBy: { createdAt: 'desc' },
     select: { balance: true, nickname: true }
   });
-  const balance = last?.balance ?? 0;
+  const balance = Number(last?.balance ?? 0);
   const nickname = last?.nickname ? last.nickname : 'anonymous';
   await updateSlotUserBalance(email, nickname, balance, {});
   return balance;

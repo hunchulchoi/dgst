@@ -266,7 +266,7 @@ export async function POST(event) {
         where: { email },
         orderBy: { createdAt: 'desc' }
       });
-      const currentBalance = lastScore?.balance ?? 0;
+      const currentBalance = Number(lastScore?.balance ?? 0);
       const newBalance = currentBalance + 100;
       await prisma.gameScore.create({
         data: {
