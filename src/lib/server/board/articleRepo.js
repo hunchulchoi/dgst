@@ -25,9 +25,29 @@ export function contentIcons(content) {
 }
 
 /**
+ * @typedef {{
+ *   _id: string;
+ *   email: string;
+ *   nickname: string;
+ *   boardId: string;
+ *   title: string;
+ *   content: string;
+ *   state: string;
+ *   modifiedEmail: string | null;
+ *   createdAt: string | Date;
+ *   updatedAt: string | Date;
+ *   read: number;
+ *   like: number;
+ *   comment: number;
+ *   liked?: boolean;
+ *   comments?: Array<Record<string, unknown>>;
+ * }} ArticleJson
+ */
+
+/**
  * @param {import('@prisma/client').Article} article
  * @param {number} [commentCount]
- * @returns {Record<string, unknown>}
+ * @returns {ArticleJson}
  */
 export function toArticleJson(article, commentCount = 0) {
   return {

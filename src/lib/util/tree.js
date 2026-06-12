@@ -1,3 +1,19 @@
+/**
+ * @typedef {{
+ *   id: string;
+ *   parentCommentId?: string | null;
+ *   depth: number;
+ *   state: string;
+ *   content?: string | null;
+ *   image?: string | null;
+ *   [key: string]: unknown;
+ * }} TreeComment
+ */
+
+/**
+ * @param {TreeComment[]} array
+ * @returns {TreeComment[]}
+ */
 export default function convertToTree(array) {
   const filtered = array.filter(
     (el) =>

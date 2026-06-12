@@ -16,7 +16,8 @@ const THREE_DAYS_MS = 1000 * 60 * 60 * 24 * 3;
 
 /** @param {import('@sveltejs/kit').ServerLoadEvent} event */
 export const load = async ({ params, locals, cookies }) => {
-  if (!params.articleId) {
+  const { articleId, boardId } = params;
+  if (!articleId || !boardId) {
     throw error(400, { message: '잘못된 접근입니다.' });
   }
 
@@ -25,14 +26,14 @@ export const load = async ({ params, locals, cookies }) => {
 
     const viewerId = session?.user?.email || cookies.get('dgst_device') || `guest-${Date.now()}`;
 
-    let article = await findArticleById(params.articleId, params.boardId, 'write');
+    let article = await findArticleById(articleId, boardId, 'write');
     if (!article) {
       throw error(404, { message: '삭제되었거나 존재하지 않는 게시물입니다.' });
     }
 
-    article = (await addRead(params.articleId, viewerId)) ?? article;
+    article = (await addRead(articleId, viewerId)) ?? article;
 
-    const comments = await findCommentsByArticle(params.articleId);
+    const comments = await findCommentsByArticle(articleId);
     const commentTree = convertToTree(
       comments.map((c) => ({
         ...c,
@@ -46,18 +47,22 @@ export const load = async ({ params, locals, cookies }) => {
     });
 
     const articleJson = toArticleJson(article, commentTree.length);
-    articleJson.comments = JSON.parse(JSON.stringify(commentTree));
+    const articleComments = /** @type {Array<Record<string, unknown> & { likes?: string[]; liked?: boolean }>} */ (
+      JSON.parse(JSON.stringify(commentTree))
+    );
+    articleJson.comments = articleComments;
 
     const insta =
       articleJson.content.includes('<div data-oembed-url=') &&
       article.content.includes('instagram.com');
 
     if (session?.user?.email) {
-      articleJson.liked = article.likes.includes(session.user.email);
+      const userEmail = session.user.email;
+      articleJson.liked = article.likes.includes(userEmail);
 
-      articleJson.comments.forEach(
+      articleComments.forEach(
         /** @param {{ likes?: string[], liked?: boolean }} comment */ (comment) => {
-          comment.liked = comment.likes?.includes(session.user.email) ?? false;
+          comment.liked = comment.likes?.includes(userEmail) ?? false;
           delete comment.likes;
         }
       );
@@ -68,7 +73,7 @@ export const load = async ({ params, locals, cookies }) => {
 
     const createdAfter = new Date(Date.now() - THREE_DAYS_MS);
     const total = await countArticles({
-      boardId: params.boardId,
+      boardId,
       state: 'write',
       createdAt: { gt: createdAfter }
     });
@@ -83,7 +88,7 @@ export const load = async ({ params, locals, cookies }) => {
     const { startNo, endNo } = computePaginationWindow(pageNo, maxPage);
 
     const articles = await fetchBoardArticleList({
-      boardId: params.boardId,
+      boardId,
       pageNo,
       pageUnit: PAGE_UNIT,
       createdAfter
@@ -100,7 +105,7 @@ export const load = async ({ params, locals, cookies }) => {
     };
     const ogTitle = `${safeText(articleJson.title, 60)} - ${safeText(articleJson.nickname, 30)}`;
     const ogDescription = safeText(articleJson.content, 200) || `${articleJson.nickname}의 글`;
-    const ogUrl = `https://www.dgst.me/board/${params.boardId}/${params.articleId}`;
+    const ogUrl = `https://www.dgst.me/board/${boardId}/${articleId}`;
 
     const imgMatch = articleJson.content?.match(/<img[^>]+src=["']([^"']+)["']/i);
     let firstImage = imgMatch ? imgMatch[1] : null;

@@ -19,6 +19,11 @@ import { validateArticleContent } from '$lib/util/articleContentValidation.js';
 export const actions = {
   default: async (event) => {
     const { request, params, locals } = event;
+    const { articleId, boardId } = params;
+    if (!boardId) {
+      throw error(400, { message: '잘못된 접근입니다.' });
+    }
+
     const session = await locals.auth();
 
     if (!session?.user?.nickname) {
@@ -53,11 +58,11 @@ export const actions = {
     const titleTrim = String(rawTitle).trim();
 
     try {
-      if (params.articleId) {
+      if (articleId) {
         const update = await updateArticleByOwner(
-          params.articleId,
+          articleId,
           session.user.email,
-          params.boardId,
+          boardId,
           {
             title: titleTrim,
             content: processedContent,
@@ -71,13 +76,13 @@ export const actions = {
           });
         }
 
-        await bustBoardListCache(params.boardId);
+        await bustBoardListCache(boardId);
 
-        return { success: true, articleId: params.articleId };
+        return { success: true, articleId };
       }
 
       const fingerprint = buildSubmitFingerprint([
-        params.boardId,
+        boardId,
         titleTrim,
         processedContent
       ]);
@@ -85,7 +90,7 @@ export const actions = {
       if (!acquired) {
         const dup = await findRecentDuplicateArticle({
           email: session.user.email,
-          boardId: params.boardId,
+          boardId,
           title: titleTrim
         });
         if (dup?._id) {
@@ -96,12 +101,12 @@ export const actions = {
       const inserted = await createArticle({
         email: session.user.email,
         nickname: session.user.nickname,
-        boardId: params.boardId,
+        boardId,
         title: titleTrim,
         content: processedContent
       });
 
-      await bustBoardListCache(params.boardId);
+      await bustBoardListCache(boardId);
 
       return { success: true, articleId: inserted.id };
     } catch (err) {
@@ -109,8 +114,8 @@ export const actions = {
 
       logger.error({
         message: '[board.write] save failed',
-        boardId: params.boardId,
-        articleId: params.articleId ?? null,
+        boardId,
+        articleId: articleId ?? null,
         email: session.user.email,
         errorMessage: err instanceof Error ? err.message : String(err),
         trace: traceFromUnknown(err)
@@ -123,17 +128,22 @@ export const actions = {
 /** @param {import('@sveltejs/kit').ServerLoadEvent} event */
 export const load = async ({ params, locals }) => {
   const session = await locals.auth();
+  const { articleId, boardId } = params;
 
   if (!session?.user?.nickname) {
     throw error(401, { message: '권한이 없습니다. 로그인 해 주세요' });
   }
 
-  if (!params.articleId) {
+  if (!articleId) {
     return {};
   }
 
+  if (!boardId) {
+    throw error(400, { message: '잘못된 접근입니다.' });
+  }
+
   try {
-    const article = await findArticleById(params.articleId, params.boardId, 'write');
+    const article = await findArticleById(articleId, boardId, 'write');
 
     if (!article || article.email !== session.user.email) {
       throw error(404, { message: '글을 찾을 수 없습니다.' });
@@ -155,7 +165,7 @@ export const load = async ({ params, locals }) => {
 
     logger.error({
       message: '[board.write] load failed',
-      articleId: params.articleId,
+      articleId,
       errorMessage: err instanceof Error ? err.message : String(err),
       trace: traceFromUnknown(err)
     });

@@ -25,8 +25,10 @@ import { isBoardHtmlPath } from '$lib/util/boardPaths.js';
 
 warmupConnections();
 
+/** @type {Map<string, number>} */
 const cache = new Map();
 
+/** @param {string} key */
 export function depends(key) {
   cache.set(key, new Date().getTime());
 }
@@ -152,17 +154,6 @@ export const {
       }
       return params.session;
     },
-    async updateUser(params) {
-      console.debug('=======auth callback updateUser====');
-      console.debug('params', params);
-      console.debug('=======//auth callback updateUser====');
-    },
-    async createUser(params) {
-      // createUser callback
-    },
-    async linkAccount(params) {
-      // linkAccount callback
-    },
     async redirect(params) {
       return params.url;
     }
@@ -273,6 +264,7 @@ const recordDailyActiveUser = (userId, pathname) => {
 };
 
 // 우리의 handle 함수 (Auth 핸들러와 함께 사용)
+/** @type {import('@sveltejs/kit').Handle} */
 export async function handle({ event, resolve }) {
   const startTime = Date.now();
   const { pathname } = event.url;
@@ -344,11 +336,13 @@ export async function handle({ event, resolve }) {
       : undefined;
 
   // 커스텀 resolve 함수 생성
-  const customResolve = async (event) => {
-    return resolve(event, {
+  /** @type {Parameters<import('@sveltejs/kit').Handle>[0]['resolve']} */
+  const customResolve = async (resolveEvent, opts) => {
+    return resolve(resolveEvent, {
       transformPageChunk: ({ html }) => html,
       filterSerializedResponseHeaders: () => false,
-      ...(maxBodySize && { bodySizeLimit: maxBodySize })
+      ...(maxBodySize && { bodySizeLimit: maxBodySize }),
+      ...opts
     });
   };
 
@@ -475,11 +469,11 @@ export async function handle({ event, resolve }) {
 
   const httpLogBase = {
     event: 'http.response',
-    method: event.request.method,
+    ...getRequestMeta(event),
     pathname,
     status,
     duration_ms: executionTime,
-    ...getRequestMeta(event)
+    method: event.request.method
   };
 
   if (
@@ -539,22 +533,26 @@ export async function handle({ event, resolve }) {
 // 전역 에러 로깅
 /** @type {import('@sveltejs/kit').HandleServerError} */
 export function handleError({ event, error }) {
-  /** @type {{ message?: string; errorId?: string } | undefined} */
-  const body =
-    typeof error === 'object' && error !== null && 'body' in error
-      ? /** @type {{ message?: string; errorId?: string }} */ (error.body)
-      : undefined;
+  /** @type {{ status?: number; message?: string; name?: string; cause?: unknown; body?: { message?: string; errorId?: string } }} */
+  const serverError =
+    typeof error === 'object' && error !== null
+      ? /** @type {{ status?: number; message?: string; name?: string; cause?: unknown; body?: { message?: string; errorId?: string } }} */ (
+          error
+        )
+      : /** @type {{ message?: string }} */ ({ message: String(error) });
+
+  const body = serverError.body;
 
   const errorId = body?.errorId ?? crypto.randomUUID();
-  const status = error?.status ?? 500;
+  const status = serverError.status ?? 500;
   const message =
     body?.message ??
-    (error?.cause instanceof Error
-      ? error.cause.message
-      : error?.cause != null
-        ? String(error.cause)
+    (serverError.cause instanceof Error
+      ? serverError.cause.message
+      : serverError.cause != null
+        ? String(serverError.cause)
         : undefined) ??
-    error?.message ??
+    serverError.message ??
     'Unhandled server error';
 
   try {
@@ -570,7 +568,7 @@ export function handleError({ event, error }) {
     }
     */
 
-    const status = error?.status ?? 500;
+    const status = serverError.status ?? 500;
     // adapter-node는 ADDRESS_HEADER env 미설정 시 연결 상대(프록시/내부 IP)만 반환함. 헤더 폴백 사용
     const raw =
       event.request?.headers?.get?.('x-forwarded-for') ||
@@ -595,7 +593,7 @@ export function handleError({ event, error }) {
       referer: referer || undefined,
       method: event.request?.method,
       status,
-      name: error?.name,
+      name: serverError.name,
       trace: trace || undefined,
       error: serializeError(error),
       clientIp,
