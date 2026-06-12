@@ -2,10 +2,9 @@ import { getPrisma } from '$lib/database/prisma.js';
 
 /**
  * 가입시에 닉네임 중복 검사를 한다.
- * @param params
- * @param locals
+ *
+ * @param {import('@sveltejs/kit').RequestEvent} event
  * @returns {Promise<Response>} status가 200이면 중복, 204면 없음
- * @constructor
  */
 export async function GET({ params, locals }) {
   const { nickname } = params;

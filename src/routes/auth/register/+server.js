@@ -6,8 +6,10 @@ import { isNicknameAllowed } from '$lib/util/nickname.js';
 
 export async function PATCH({ request, locals }) {
   const session = await locals.auth();
+  const user = session?.user;
+  const email = typeof user?.email === 'string' ? user.email : '';
 
-  if (!session || !session.user?.email) {
+  if (!email) {
     throw error(401, { message: '로그인 해 주세요' });
   }
 
@@ -32,9 +34,10 @@ export async function PATCH({ request, locals }) {
 
   //파일 저장
   let storeFileName;
+  const photoFile = formData.get('photo');
 
-  if (formData.get('photo')?.size) {
-    storeFileName = await write(formData.get('photo'), session.user.email, 'profiles');
+  if (photoFile instanceof File && photoFile.size > 0) {
+    storeFileName = await write(photoFile, email, 'profiles');
 
     if (!storeFileName) return new Response('파일 저장에 실패 하였습니다.', { status: 500 });
   }
@@ -58,7 +61,7 @@ export async function PATCH({ request, locals }) {
 
   try {
     const existing = await getPrisma().user.findFirst({
-      where: { email: session.user.email, state: 'signup' }
+      where: { email, state: 'signup' }
     });
 
     if (!existing) {
@@ -72,10 +75,12 @@ export async function PATCH({ request, locals }) {
 
     console.debug('registeredUser', registeredUser);
 
-    session.user.email = registeredUser.email;
-    session.user.nickname = registeredUser.nickname;
-    session.user.introduction = registeredUser.introduction;
-    session.user.photo = registeredUser.photo;
+    if (user) {
+      user.email = registeredUser.email ?? email;
+      user.nickname = registeredUser.nickname;
+      user.introduction = registeredUser.introduction;
+      user.photo = registeredUser.photo;
+    }
 
     console.debug('session', session);
 

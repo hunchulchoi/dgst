@@ -10,8 +10,9 @@ import { invalidateSession } from '$lib/server/auth/sessionCache.js';
 export async function PATCH({ request, locals, cookies }) {
   try {
     const session = await locals.auth();
+    const email = typeof session?.user?.email === 'string' ? session.user.email : '';
 
-    if (!session || !session.user?.email) {
+    if (!email) {
       throw error(401, { message: '로그인 해 주세요' });
     }
 
@@ -49,11 +50,19 @@ export async function PATCH({ request, locals, cookies }) {
         let fileToUpload = photoFile;
         // 움짤 등 서버 크롭 파라미터가 있는지 확인
         const cropX = formData.get('cropX');
-        if (cropX !== null) {
+        const cropY = formData.get('cropY');
+        const cropW = formData.get('cropW');
+        const cropH = formData.get('cropH');
+        if (
+          typeof cropX === 'string' &&
+          typeof cropY === 'string' &&
+          typeof cropW === 'string' &&
+          typeof cropH === 'string'
+        ) {
           const x = parseInt(cropX);
-          const y = parseInt(formData.get('cropY'));
-          const w = parseInt(formData.get('cropW'));
-          const h = parseInt(formData.get('cropH'));
+          const y = parseInt(cropY);
+          const w = parseInt(cropW);
+          const h = parseInt(cropH);
 
           if (!isNaN(x) && !isNaN(y) && !isNaN(w) && !isNaN(h)) {
             const sharp = (await import('sharp')).default;
@@ -62,12 +71,14 @@ export async function PATCH({ request, locals, cookies }) {
               .extract({ left: x, top: y, width: w, height: h })
               .toBuffer();
 
-            fileToUpload = new File([croppedBuffer], photoFile.name, { type: photoFile.type });
+            fileToUpload = new File([new Uint8Array(croppedBuffer)], photoFile.name, {
+              type: photoFile.type
+            });
           }
         }
 
         // 타임아웃 처리 (30초)
-        const uploadPromise = write(fileToUpload, session.user.email, 'profiles');
+        const uploadPromise = write(fileToUpload, email, 'profiles');
         const timeoutPromise = new Promise((_, reject) =>
           setTimeout(() => reject(new Error('파일 업로드 타임아웃')), 30000)
         );
@@ -116,7 +127,7 @@ export async function PATCH({ request, locals, cookies }) {
 
     try {
       const existing = await getPrisma().user.findFirst({
-        where: { email: session.user.email, state: { not: 'banned' } }
+        where: { email, state: { not: 'banned' } }
       });
 
       if (!existing) {
@@ -130,7 +141,7 @@ export async function PATCH({ request, locals, cookies }) {
 
       console.debug('registeredUser', registeredUser);
 
-      await invalidateUser(registeredUser.id, registeredUser.email);
+      await invalidateUser(registeredUser.id, registeredUser.email ?? email);
 
       const sessionToken =
         cookies.get('__Secure-authjs.session-token') || cookies.get('authjs.session-token');
