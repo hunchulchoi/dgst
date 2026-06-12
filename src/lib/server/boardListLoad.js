@@ -10,7 +10,7 @@ import { traceFromUnknown } from '$lib/util/formatErrorTrace.js';
 const PAGE_UNIT = 30;
 const THREE_DAYS_MS = 1000 * 60 * 60 * 24 * 3;
 const TOTAL_CACHE_TTL_SECONDS = 60;
-/** 성공 응답 Redis 캐시 — DB 일시 장애 시 stale fallback */
+/** 성공 응답 pgCache 캐시 — DB 일시 장애 시 stale fallback */
 const LIST_PAYLOAD_TTL_SECONDS = 300;
 
 /**
@@ -22,7 +22,7 @@ function listPayloadCacheKey(boardId, pageNo) {
 }
 
 /**
- * 글 작성·수정·삭제 후 목록 Redis 캐시 무효화
+ * 글 작성·수정·삭제 후 목록 pgCache 캐시 무효화
  *
  * @param {string} boardId
  */
@@ -150,7 +150,7 @@ export function computePaginationWindow(pageNo, maxPage) {
 }
 
 /**
- * boardId별 최근 3일 게시글 수 — Redis 60초 캐시 (목록 페이지마다 count 회피)
+ * boardId별 최근 3일 게시글 수 — pgCache 60초 캐시 (목록 페이지마다 count 회피)
  *
  * @param {string} boardId
  * @param {import('@prisma/client').Prisma.ArticleWhereInput} filter

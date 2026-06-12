@@ -1,5 +1,5 @@
 /**
- * vite build / Docker image build 시 MongoDB 연결 스킵.
+ * vite build / Docker image build 시 DB 연결 스킵.
  * 런타임(node .)에서는 false — 정상 연결.
  * @returns {boolean}
  */

@@ -136,7 +136,7 @@ export async function GET({ locals, setHeaders, url }) {
         delete c.likes;
       });
 
-      // 알림 읽음 처리 (Redis)
+      // 알림 읽음 처리
       await markAsRead(session.user.email, SLOT_ARTICLE_ID);
     } else {
       pagedComments.forEach((c) => {
@@ -286,7 +286,7 @@ export async function POST(event) {
 
     const title = '뺑뺑이';
 
-    // 대댓글인 경우: 부모 댓글 작성자에게 알림 (Redis)
+    // 대댓글인 경우: 부모 댓글 작성자에게 알림
     if (parentComment && parentComment.email !== session.user.email) {
       await upsertAlarm({
         email: parentComment.email,

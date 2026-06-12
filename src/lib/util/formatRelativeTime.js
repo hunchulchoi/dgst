@@ -74,7 +74,7 @@ export function formatIso9075Safe(value) {
 }
 
 /**
- * Redis·Mongo 혼재 데이터용 ISO 문자열 정규화.
+ * DB/캐시 데이터용 ISO 문자열 정규화.
  *
  * @param {unknown} value
  * @returns {string}
