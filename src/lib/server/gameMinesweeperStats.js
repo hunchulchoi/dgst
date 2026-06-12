@@ -1,4 +1,4 @@
-import { GameScoreMinesweeper } from '$lib/models/gameScoreMinesweeper.js';
+import { getPrisma } from '$lib/database/prisma.js';
 
 const KST_OFFSET_MINUTES = 9 * 60;
 
@@ -15,18 +15,17 @@ function getKstStartOfDay(baseDate = new Date()) {
 export async function getTodayMinesweeperStats() {
   try {
     const startOfKstDay = getKstStartOfDay();
-    const baseFilter = { createdAt: { $gte: startOfKstDay } };
-    const [games, distinctAgg] = await Promise.all([
-      GameScoreMinesweeper.countDocuments(baseFilter),
-      GameScoreMinesweeper.aggregate([
-        { $match: baseFilter },
-        { $group: { _id: '$email' } },
-        { $count: 'count' }
-      ])
+    const where = { createdAt: { gte: startOfKstDay } };
+    const [games, distinctUsers] = await Promise.all([
+      getPrisma().gameScoreMinesweeper.count({ where }),
+      getPrisma().gameScoreMinesweeper.groupBy({
+        by: ['email'],
+        where
+      })
     ]);
     return {
       games: games ?? 0,
-      users: distinctAgg?.[0]?.count ?? 0
+      users: distinctUsers.length
     };
   } catch (err) {
     console.error('지뢰찾기 오늘 통계 산출 실패:', err);

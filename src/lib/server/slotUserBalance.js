@@ -1,5 +1,4 @@
-import { SlotUserBalance } from '$lib/models/slotUserBalance.js';
-import { GameScore } from '$lib/models/gameScore.js';
+import { getPrisma } from '$lib/database/prisma.js';
 
 let backfillPromise = null;
 
@@ -10,8 +9,8 @@ let backfillPromise = null;
  */
 export async function resetSlotUserBalance() {
   backfillPromise = null;
-  const r = await SlotUserBalance.deleteMany({});
-  return r.deletedCount ?? 0;
+  const r = await getPrisma().slotUserBalance.deleteMany({});
+  return r.count ?? 0;
 }
 
 /**
@@ -22,51 +21,44 @@ export async function backfillSlotUserBalance() {
   if (backfillPromise) return backfillPromise;
   backfillPromise = (async () => {
     try {
-      const cursor = GameScore.aggregate([
-        { $match: { game: 'slot' } },
-        { $sort: { email: 1, createdAt: -1 } },
-        {
-          $group: {
-            _id: '$email',
-            nickname: { $first: '$nickname' },
-            balance: { $first: '$balance' },
-            totalSpin: { $sum: { $cond: [{ $gt: ['$bet', 0] }, 1, 0] } }
-          }
-        },
-        { $match: { totalSpin: { $gt: 0 } } }
-      ])
-        .allowDiskUse(true)
-        .cursor();
+      /** @type {Array<{ email: string; nickname: string; balance: number; totalSpin: number }>} */
+      const rows = await getPrisma().$queryRaw`
+        SELECT
+          email,
+          (ARRAY_AGG(nickname ORDER BY created_at DESC))[1] AS nickname,
+          (ARRAY_AGG(balance ORDER BY created_at DESC))[1] AS balance,
+          COUNT(*) FILTER (WHERE bet > 0)::int AS "totalSpin"
+        FROM game_scores
+        WHERE game = 'slot'
+        GROUP BY email
+        HAVING COUNT(*) FILTER (WHERE bet > 0) > 0
+      `;
 
-      const bulk = [];
-      const BATCH = 500;
+      const BATCH = 50;
       let count = 0;
+      const prisma = getPrisma();
 
-      for await (const doc of cursor) {
-        bulk.push({
-          updateOne: {
-            filter: { email: doc._id },
-            update: {
-              $set: {
+      for (let i = 0; i < rows.length; i += BATCH) {
+        const batch = rows.slice(i, i + BATCH);
+        await prisma.$transaction(
+          batch.map((doc) =>
+            prisma.slotUserBalance.upsert({
+              where: { email: doc.email },
+              update: {
                 nickname: doc.nickname,
-                balance: doc.balance,
-                totalSpin: doc.totalSpin,
-                updatedAt: new Date()
+                balance: Number(doc.balance),
+                totalSpin: Number(doc.totalSpin)
               },
-              $setOnInsert: { createdAt: new Date() }
-            },
-            upsert: true
-          }
-        });
-        if (bulk.length >= BATCH) {
-          await SlotUserBalance.bulkWrite(bulk);
-          count += bulk.length;
-          bulk.length = 0;
-        }
-      }
-      if (bulk.length) {
-        await SlotUserBalance.bulkWrite(bulk);
-        count += bulk.length;
+              create: {
+                email: doc.email,
+                nickname: doc.nickname,
+                balance: Number(doc.balance),
+                totalSpin: Number(doc.totalSpin)
+              }
+            })
+          )
+        );
+        count += batch.length;
       }
       return count;
     } finally {
@@ -80,7 +72,7 @@ export async function backfillSlotUserBalance() {
  * 랭킹 조회 전에 slot_user_balance가 비어 있으면 1회만 백필 후 진행.
  */
 export async function ensureSlotUserBalanceFilled() {
-  const n = await SlotUserBalance.countDocuments();
+  const n = await getPrisma().slotUserBalance.count();
   if (n === 0) {
     const count = await backfillSlotUserBalance();
     if (count > 0) console.log('[slot_user_balance] 자동 백필 완료:', count, '명');
@@ -98,18 +90,20 @@ export async function ensureSlotUserBalanceFilled() {
  */
 export async function updateSlotUserBalance(email, nickname, balance, opts = {}) {
   try {
-    /** @type {Record<string, unknown>} */
-    const update = {
-      $set: { nickname, balance, updatedAt: new Date() }
-    };
+    const prisma = getPrisma();
     if (opts.incSpin === true) {
-      // $inc는 insert 시에도 0 + 1 = 1로 설정되므로 $setOnInsert 불필요.
-      // 같은 필드에 $inc + $setOnInsert를 함께 쓰면 MongoDB conflict 에러.
-      update.$inc = { totalSpin: 1 };
+      await prisma.slotUserBalance.upsert({
+        where: { email },
+        update: { nickname, balance, totalSpin: { increment: 1 } },
+        create: { email, nickname, balance, totalSpin: 1 }
+      });
     } else {
-      update.$setOnInsert = { totalSpin: 0 };
+      await prisma.slotUserBalance.upsert({
+        where: { email },
+        update: { nickname, balance },
+        create: { email, nickname, balance, totalSpin: 0 }
+      });
     }
-    await SlotUserBalance.findOneAndUpdate({ email }, update, { upsert: true });
   } catch (e) {
     console.error('updateSlotUserBalance failed', email, e?.message);
   }
@@ -122,14 +116,18 @@ export async function updateSlotUserBalance(email, nickname, balance, opts = {})
  * @returns {Promise<number>}
  */
 export async function getSlotBalance(email) {
-  const row = await SlotUserBalance.findOne({ email }).select({ balance: 1 }).lean();
+  const row = await getPrisma().slotUserBalance.findUnique({
+    where: { email },
+    select: { balance: true }
+  });
   if (row != null) return row.balance;
-  const last = await GameScore.findOne({ email, game: 'slot' })
-    .sort({ createdAt: -1 })
-    .select({ balance: 1, nickname: 1 })
-    .lean();
+  const last = await getPrisma().gameScore.findFirst({
+    where: { email, game: 'slot' },
+    orderBy: { createdAt: 'desc' },
+    select: { balance: true, nickname: true }
+  });
   const balance = last?.balance ?? 0;
-  const nickname = last && 'nickname' in last && last.nickname ? last.nickname : 'anonymous';
+  const nickname = last?.nickname ? last.nickname : 'anonymous';
   await updateSlotUserBalance(email, nickname, balance, {});
   return balance;
 }

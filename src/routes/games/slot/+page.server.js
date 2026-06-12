@@ -1,9 +1,6 @@
-import connectDB from '$lib/database/mongoosePriomise.js';
-import { GameScore } from '$lib/models/gameScore.js';
+import { getSlotBalance } from '$lib/server/slotUserBalance.js';
 import { getTodaySlotStats } from '$lib/server/slotStats.js';
 import { getUnreadAlarmCount } from '$lib/server/alarm/alarmService.js';
-
-connectDB();
 
 export async function load({ locals, depends }) {
   // 캐시 무효화를 위해 depends 추가
@@ -16,11 +13,7 @@ export async function load({ locals, depends }) {
   let hasUnreadAlarm = false;
   let unreadAlarmCount = 0;
   if (email) {
-    const last = await GameScore.findOne({ email })
-      .sort({ createdAt: -1 })
-      .select({ balance: 1 })
-      .lean();
-    balance = last?.balance ?? 0;
+    balance = await getSlotBalance(email);
     unreadAlarmCount = await getUnreadAlarmCount(email);
     hasUnreadAlarm = unreadAlarmCount > 0;
   }

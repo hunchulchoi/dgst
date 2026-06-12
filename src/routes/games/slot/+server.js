@@ -1,34 +1,11 @@
-import connectDB from '$lib/database/mongoosePriomise.js';
 import { error, json } from '@sveltejs/kit';
-import { GameScore } from '$lib/models/gameScore.js';
-import { SlotUserBalance } from '$lib/models/slotUserBalance.js';
+import { getPrisma } from '$lib/database/prisma.js';
 import { getTodaySlotStats } from '$lib/server/slotStats.js';
 import {
   updateSlotUserBalance,
   getSlotBalance,
   ensureSlotUserBalanceFilled
 } from '$lib/server/slotUserBalance.js';
-
-/**
- * @typedef {import('mongoose').Types.ObjectId} ObjectId
- */
-
-/**
- * @typedef {Object} LeanGameScore
- * @property {ObjectId} _id
- * @property {string} email
- * @property {string} nickname
- * @property {string} game
- * @property {number} bet
- * @property {number} payout
- * @property {number} delta
- * @property {number} balance
- * @property {string[]} reels
- * @property {Date} createdAt
- * @property {Date} updatedAt
- */
-
-connectDB();
 
 const OOPS_TOPUP_DELAY_MS = 5 * 60 * 1000;
 
@@ -80,10 +57,6 @@ function calcPayout(reels, bet) {
  * @param {string} email
  * @returns {Promise<number>}
  */
-/**
- * @param {string} email
- * @returns {Promise<number>}
- */
 async function getBalance(email) {
   return getSlotBalance(email);
 }
@@ -97,40 +70,37 @@ async function getBalance(email) {
  * @returns {Promise<number>}
  */
 async function maybeTopupAfterOOPS(email, nickname) {
+  const prisma = getPrisma();
+
   // 실제 스핀 기록(bet > 0) 중에서 balance가 0인 마지막 기록 찾기
-  const lastOopsSpin = /** @type {(LeanGameScore | null)} */ (
-    await GameScore.findOne({
-      email,
-      bet: { $gt: 0 }, // 실제 스핀만 (댓글 보상 제외)
-      balance: 0
-    })
-      .sort({ createdAt: -1 })
-      .lean()
-  );
+  const lastOopsSpin = await prisma.gameScore.findFirst({
+    where: { email, bet: { gt: 0 }, balance: 0 },
+    orderBy: { createdAt: 'desc' }
+  });
 
   if (!lastOopsSpin) {
     return 0; // 실제 스핀에서 오링이 발생하지 않았으면 0 반환
   }
 
   // 댓글 보상으로 받은 점수가 있는지 확인 (오링 이후에 댓글 보상이 있으면 오링이 아님)
-  const lastRewardAfterOops = /** @type {(LeanGameScore | null)} */ (
-    await GameScore.findOne({
+  const lastRewardAfterOops = await prisma.gameScore.findFirst({
+    where: {
       email,
       bet: 0,
       payout: 100,
       delta: 100,
-      createdAt: { $gt: lastOopsSpin.createdAt }
-    })
-      .sort({ createdAt: -1 })
-      .lean()
-  );
+      createdAt: { gt: lastOopsSpin.createdAt }
+    },
+    orderBy: { createdAt: 'desc' }
+  });
 
   // 오링 이후에 댓글 보상을 받았으면 오링이 아님 (balance > 0이 되었을 것)
   if (lastRewardAfterOops) {
     // 댓글 보상 이후의 최종 balance 확인
-    const lastAfterReward = /** @type {(LeanGameScore | null)} */ (
-      await GameScore.findOne({ email }).sort({ createdAt: -1 }).lean()
-    );
+    const lastAfterReward = await prisma.gameScore.findFirst({
+      where: { email },
+      orderBy: { createdAt: 'desc' }
+    });
     if (lastAfterReward && (lastAfterReward.balance ?? 0) > 0) {
       return lastAfterReward.balance; // 댓글 보상으로 balance가 올라갔으면 오링이 아님
     }
@@ -140,8 +110,8 @@ async function maybeTopupAfterOOPS(email, nickname) {
   const createdAt = new Date(lastOopsSpin.createdAt).getTime();
   const now = Date.now();
   if (now - createdAt >= OOPS_TOPUP_DELAY_MS) {
-    const doc = /** @type {LeanGameScore} */ (
-      await GameScore.create({
+    const doc = await prisma.gameScore.create({
+      data: {
         email,
         nickname,
         game: 'slot',
@@ -150,8 +120,8 @@ async function maybeTopupAfterOOPS(email, nickname) {
         delta: 700,
         balance: 700,
         reels: ['-', '-', '-']
-      })
-    );
+      }
+    });
     await updateSlotUserBalance(email, nickname, 700, { incSpin: false });
     return doc.balance;
   }
@@ -175,9 +145,11 @@ export async function POST({ request, locals }) {
     typeof session.user.nickname === 'string'
       ? session.user.nickname
       : 'anonymous';
-  const last = /** @type {(LeanGameScore | null)} */ (
-    await GameScore.findOne({ email }).sort({ createdAt: -1 }).lean()
-  );
+  const prisma = getPrisma();
+  const last = await prisma.gameScore.findFirst({
+    where: { email },
+    orderBy: { createdAt: 'desc' }
+  });
   let balanceBefore = last?.balance ?? 0;
 
   if (bet > balanceBefore) {
@@ -185,15 +157,17 @@ export async function POST({ request, locals }) {
   }
   // 최초 이용자(기록이 전무): 1000점 지급 후 안내
   if (!last) {
-    await GameScore.create({
-      email,
-      nickname,
-      game: 'slot',
-      bet: 0,
-      payout: 0,
-      delta: 0,
-      balance: 1000,
-      reels: ['-', '-', '-']
+    await prisma.gameScore.create({
+      data: {
+        email,
+        nickname,
+        game: 'slot',
+        bet: 0,
+        payout: 0,
+        delta: 0,
+        balance: 1000,
+        reels: ['-', '-', '-']
+      }
     });
     await updateSlotUserBalance(email, nickname, 1000, { incSpin: false });
     return json({ success: false, balance: 1000, message: '첫 1000점 지급! 다시 베팅해 주세요.' });
@@ -214,8 +188,8 @@ export async function POST({ request, locals }) {
   const balanceAfter = balanceBefore + delta;
 
   // 스핀 결과 기록
-  const docSpin = /** @type {LeanGameScore} */ (
-    await GameScore.create({
+  const docSpin = await prisma.gameScore.create({
+    data: {
       email,
       nickname,
       game: 'slot',
@@ -224,8 +198,8 @@ export async function POST({ request, locals }) {
       delta,
       balance: balanceAfter,
       reels
-    })
-  );
+    }
+  });
   await updateSlotUserBalance(email, nickname, balanceAfter, { incSpin: true });
   const extraMsg = balanceAfter === 0 ? '오링! 😵' : undefined;
   return json({
@@ -234,7 +208,7 @@ export async function POST({ request, locals }) {
     payout,
     delta,
     balance: balanceAfter,
-    id: docSpin._id,
+    id: docSpin.id,
     message: extraMsg
   });
 }
@@ -249,21 +223,25 @@ export async function GET({ locals, url }) {
     typeof session.user.nickname === 'string'
       ? session.user.nickname
       : 'anonymous';
-  const last = /** @type {(LeanGameScore | null)} */ (
-    await GameScore.findOne({ email }).sort({ createdAt: -1 }).lean()
-  );
+  const prisma = getPrisma();
+  const last = await prisma.gameScore.findFirst({
+    where: { email },
+    orderBy: { createdAt: 'desc' }
+  });
   let balance = last?.balance ?? 0;
   // 최초 이용자만 1000점 지급 (기록이 전무한 경우에만)
   if (!last) {
-    await GameScore.create({
-      email,
-      nickname,
-      game: 'slot',
-      bet: 0,
-      payout: 0,
-      delta: 0,
-      balance: 1000,
-      reels: ['-', '-', '-']
+    await prisma.gameScore.create({
+      data: {
+        email,
+        nickname,
+        game: 'slot',
+        bet: 0,
+        payout: 0,
+        delta: 0,
+        balance: 1000,
+        reels: ['-', '-', '-']
+      }
     });
     await updateSlotUserBalance(email, nickname, 1000, { incSpin: false });
     balance = 1000;
@@ -272,37 +250,31 @@ export async function GET({ locals, url }) {
   // 잔액 0인 경우 체크
   if (balance === 0 && last) {
     // 실제 스핀에서 오링이 발생한 경우인지 확인
-    const lastOopsSpin = /** @type {(LeanGameScore | null)} */ (
-      await GameScore.findOne({
-        email,
-        bet: { $gt: 0 }, // 실제 스핀만
-        balance: 0
-      })
-        .sort({ createdAt: -1 })
-        .lean()
-    );
+    const lastOopsSpin = await prisma.gameScore.findFirst({
+      where: { email, bet: { gt: 0 }, balance: 0 },
+      orderBy: { createdAt: 'desc' }
+    });
 
     if (lastOopsSpin) {
       // 오링 이후에 댓글 보상으로 받은 점수가 있는지 확인
-      const lastRewardAfterOops = /** @type {(LeanGameScore | null)} */ (
-        await GameScore.findOne({
+      const lastRewardAfterOops = await prisma.gameScore.findFirst({
+        where: {
           email,
           bet: 0,
           payout: 100,
           delta: 100,
-          createdAt: { $gt: lastOopsSpin.createdAt }
-        })
-          .sort({ createdAt: -1 })
-          .lean()
-      );
+          createdAt: { gt: lastOopsSpin.createdAt }
+        },
+        orderBy: { createdAt: 'desc' }
+      });
 
       // 댓글 보상으로 받은 점수가 있으면 오링이 아님 (balance > 0이 되어 있을 것)
       // 댓글 보상이 없거나, 받았지만 다시 0이 된 경우(10개 보상 다 받고 다시 스핀해서 0이 된 경우)에만 오링 처리
-      const shouldCountAsOops =
-        !lastRewardAfterOops ||
-        /** @type {(LeanGameScore | null)} */ (
-          await GameScore.findOne({ email }).sort({ createdAt: -1 }).lean()
-        )?.balance === 0;
+      const latestScore = await prisma.gameScore.findFirst({
+        where: { email },
+        orderBy: { createdAt: 'desc' }
+      });
+      const shouldCountAsOops = !lastRewardAfterOops || latestScore?.balance === 0;
 
       if (shouldCountAsOops) {
         const topped = await maybeTopupAfterOOPS(email, nickname);
@@ -312,8 +284,7 @@ export async function GET({ locals, url }) {
           // 오링 상태: 남은 시간 정보 반환 (실제 스핀 기준)
           const createdAt = new Date(lastOopsSpin.createdAt).getTime();
           const now = Date.now();
-          const elapsed = now - createdAt;
-          const remaining = OOPS_TOPUP_DELAY_MS - elapsed;
+          const remaining = OOPS_TOPUP_DELAY_MS - (now - createdAt);
           if (remaining > 0) {
             oopsInfo = {
               createdAt: lastOopsSpin.createdAt,
@@ -330,11 +301,12 @@ export async function GET({ locals, url }) {
   if (url.searchParams.get('rank')) {
     // slot_user_balance가 비어 있으면 기존 game_scores 기준으로 1회 자동 백필
     await ensureSlotUserBalanceFilled();
-    const balances = await SlotUserBalance.find({ totalSpin: { $gt: 0 } })
-      .sort({ balance: -1 })
-      .limit(10)
-      .select({ email: 1, nickname: 1, balance: 1, totalSpin: 1 })
-      .lean();
+    const balances = await prisma.slotUserBalance.findMany({
+      where: { totalSpin: { gt: 0 } },
+      orderBy: { balance: 'desc' },
+      take: 10,
+      select: { email: true, nickname: true, balance: true, totalSpin: true }
+    });
     const rank = balances.map((r) => ({
       _id: r.email,
       nickname: r.nickname,

@@ -1,5 +1,4 @@
-import { GameLog } from '$lib/models/gameLog.js';
-import { User } from '$lib/models/user.js';
+import { getPrisma } from '$lib/database/prisma.js';
 import { currentSeoulWeekSunSatRangeUtc } from '$lib/server/lottoOfficial.js';
 
 export const LOTTO_HISTORY_MS = 24 * 60 * 60 * 1000;
@@ -39,22 +38,21 @@ export function generateLottoNumbers() {
 }
 
 /**
- * @param {{ _id: unknown, email?: unknown, createdAt: unknown, meta?: { nickname?: unknown, numbers?: unknown } }} log
+ * @param {{ id: unknown, email?: unknown, createdAt: unknown, meta?: { nickname?: unknown, numbers?: unknown } | null }} log
  * @param {string} viewerNorm
  */
 function draftFromLottoLog(log, viewerNorm) {
+  const meta = log.meta && typeof log.meta === 'object' ? log.meta : null;
   const nickname =
-    typeof log.meta?.nickname === 'string' && log.meta.nickname.trim()
-      ? log.meta.nickname.trim()
-      : null;
-  const raw = log.meta?.numbers;
+    typeof meta?.nickname === 'string' && meta.nickname.trim() ? meta.nickname.trim() : null;
+  const raw = meta?.numbers;
   if (!nickname || !isValidLottoNumbers(raw)) return null;
 
   const pickEmailNorm = normalizeLottoEmail(typeof log.email === 'string' ? log.email : '');
   const mine = viewerNorm !== '' && pickEmailNorm !== '' && pickEmailNorm === viewerNorm;
 
   return {
-    id: String(log._id),
+    id: String(log.id),
     nickname,
     numbers: [...raw].sort((a, b) => a - b),
     createdAt: new Date(log.createdAt).toISOString(),
@@ -73,18 +71,19 @@ async function fetchMyLottoPicksCurrentWeek(viewerNorm) {
   const since24h = new Date(Date.now() - LOTTO_HISTORY_MS);
 
   try {
-    const logs = await GameLog.find({
-      game: 'lotto',
-      action: 'pick',
-      createdAt: {
-        $gte: new Date(weekStartUtc),
-        $lte: new Date(weekEndUtc),
-        $lt: since24h
-      }
-    })
-      .sort({ createdAt: -1 })
-      .limit(LOTTO_HISTORY_LIMIT)
-      .lean();
+    const logs = await getPrisma().gameLog.findMany({
+      where: {
+        game: 'lotto',
+        action: 'pick',
+        createdAt: {
+          gte: new Date(weekStartUtc),
+          lte: new Date(weekEndUtc),
+          lt: since24h
+        }
+      },
+      orderBy: { createdAt: 'desc' },
+      take: LOTTO_HISTORY_LIMIT
+    });
 
     /** @type {Array<NonNullable<ReturnType<typeof draftFromLottoLog>>>} */
     const out = [];
@@ -110,14 +109,15 @@ export async function fetchLottoHistory(viewerEmail) {
   const viewerNorm = normalizeLottoEmail(viewerEmail);
 
   try {
-    const logs24hPromise = GameLog.find({
-      game: 'lotto',
-      action: 'pick',
-      createdAt: { $gte: since }
-    })
-      .sort({ createdAt: -1 })
-      .limit(LOTTO_HISTORY_LIMIT)
-      .lean();
+    const logs24hPromise = getPrisma().gameLog.findMany({
+      where: {
+        game: 'lotto',
+        action: 'pick',
+        createdAt: { gte: since }
+      },
+      orderBy: { createdAt: 'desc' },
+      take: LOTTO_HISTORY_LIMIT
+    });
 
     const weekMinePromise =
       viewerNorm !== '' ? fetchMyLottoPicksCurrentWeek(viewerNorm) : Promise.resolve([]);
@@ -143,22 +143,12 @@ export async function fetchLottoHistory(viewerEmail) {
     const distinctNormEmails = [...new Set(drafts.map((d) => d.pickEmailNorm).filter(Boolean))];
 
     if (distinctNormEmails.length > 0) {
-      /** @type {Array<{ photo?: string | null; lowerEmail: string }>} */
-      const rows = await User.aggregate([
-        {
-          $match: {
-            $expr: {
-              $in: [{ $toLower: { $ifNull: ['$email', ''] } }, distinctNormEmails]
-            }
-          }
-        },
-        {
-          $project: {
-            photo: 1,
-            lowerEmail: { $toLower: { $ifNull: ['$email', ''] } }
-          }
-        }
-      ]).exec();
+      /** @type {Array<{ photo: string | null; lowerEmail: string }>} */
+      const rows = await getPrisma().$queryRaw`
+        SELECT photo, LOWER(COALESCE(email, '')) AS "lowerEmail"
+        FROM users
+        WHERE LOWER(COALESCE(email, '')) = ANY(${distinctNormEmails}::text[])
+      `;
 
       for (const row of rows) {
         const p = typeof row.photo === 'string' && row.photo.trim() ? row.photo.trim() : '';
@@ -194,10 +184,12 @@ export async function fetchLottoHistory(viewerEmail) {
  */
 export async function countAllLottoPicks24h() {
   try {
-    return await GameLog.countDocuments({
-      game: 'lotto',
-      action: 'pick',
-      createdAt: { $gte: new Date(Date.now() - LOTTO_HISTORY_MS) }
+    return await getPrisma().gameLog.count({
+      where: {
+        game: 'lotto',
+        action: 'pick',
+        createdAt: { gte: new Date(Date.now() - LOTTO_HISTORY_MS) }
+      }
     });
   } catch {
     return 0;

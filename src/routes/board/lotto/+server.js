@@ -1,11 +1,8 @@
-import connectDB from '$lib/database/mongoosePriomise.js';
 import { json, error, isHttpError } from '@sveltejs/kit';
 import { z } from 'zod';
 import logger from '$lib/util/logger.js';
-import { GameLog } from '$lib/models/gameLog.js';
+import { getPrisma } from '$lib/database/prisma.js';
 import { generateLottoNumbers } from '$lib/server/lotto.js';
-
-connectDB();
 
 const lottoPostBodySchema = z.object({}).strict();
 
@@ -43,11 +40,13 @@ export async function POST({ locals, request }) {
 
     const numbers = generateLottoNumbers();
 
-    await GameLog.create({
-      game: 'lotto',
-      action: 'pick',
-      email,
-      meta: { nickname, numbers }
+    await getPrisma().gameLog.create({
+      data: {
+        game: 'lotto',
+        action: 'pick',
+        email,
+        meta: { nickname, numbers }
+      }
     });
 
     return json({ success: true, numbers });

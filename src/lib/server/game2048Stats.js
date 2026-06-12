@@ -1,4 +1,4 @@
-import { GameScore2048 } from '$lib/models/gameScore2048.js';
+import { getPrisma } from '$lib/database/prisma.js';
 
 const KST_OFFSET_MINUTES = 9 * 60;
 
@@ -16,18 +16,17 @@ function getKstStartOfDay(baseDate = new Date()) {
 export async function getToday2048Stats() {
   try {
     const startOfKstDay = getKstStartOfDay();
-    const baseFilter = { createdAt: { $gte: startOfKstDay } };
-    const [games, distinctAgg] = await Promise.all([
-      GameScore2048.countDocuments(baseFilter),
-      GameScore2048.aggregate([
-        { $match: baseFilter },
-        { $group: { _id: '$email' } },
-        { $count: 'count' }
-      ])
+    const where = { createdAt: { gte: startOfKstDay } };
+    const [games, distinctUsers] = await Promise.all([
+      getPrisma().gameScore2048.count({ where }),
+      getPrisma().gameScore2048.groupBy({
+        by: ['email'],
+        where
+      })
     ]);
     return {
       games: games ?? 0,
-      users: distinctAgg?.[0]?.count ?? 0
+      users: distinctUsers.length
     };
   } catch (err) {
     console.error('2048 오늘 통계 산출 실패:', err);

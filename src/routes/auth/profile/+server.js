@@ -1,14 +1,11 @@
 import { error, json } from '@sveltejs/kit';
-import connectDB from '$lib/database/mongoosePriomise.js';
+import { getPrisma } from '$lib/database/prisma.js';
 import { verifyRecaptchaToken } from '$lib/server/recaptcha.js';
 import { write } from '$lib/util/fileUpload.js';
 import { invalidateUser } from '$lib/server/auth/userCache.js';
-import { User } from '$lib/models/user.js';
 import { isNicknameAllowed } from '$lib/util/nickname.js';
 
 import { invalidateSession } from '$lib/server/auth/sessionCache.js';
-
-connectDB();
 
 export async function PATCH({ request, locals, cookies }) {
   try {
@@ -98,44 +95,45 @@ export async function PATCH({ request, locals, cookies }) {
       }
     }
 
-    const filter = {
-      email: session.user.email,
-      state: { $ne: 'banned' }
-    };
-
     const nicknameRaw = String(formData.get('nickname') || '');
     if (!isNicknameAllowed(nicknameRaw)) {
       throw error(400, { message: '닉네임에 사용할 수 없는 문자가 포함되어 있습니다.' });
     }
 
-    /**
-     * @type {{ nickname: string; introduction: string; state: string; last_modified: Date; photo?: string }}
-     */
-    const update = {
+    /** @type {import('@prisma/client').Prisma.UserUpdateInput} */
+    const updateData = {
       nickname: nicknameRaw,
       introduction: String(formData.get('introduction') || ''),
       state: 'registered',
-      last_modified: new Date()
+      lastModified: new Date()
     };
 
     if (storeFileName) {
-      update.photo = storeFileName;
+      updateData.photo = storeFileName;
     }
 
-    console.debug('filter', filter, 'update', update);
+    console.debug('update', updateData);
 
     try {
-      const registeredUser = await User.findOneAndUpdate(filter, update, { new: true });
+      const existing = await getPrisma().user.findFirst({
+        where: { email: session.user.email, state: { not: 'banned' } }
+      });
 
-      console.debug('registeredUser', registeredUser);
-
-      if (!registeredUser) {
+      if (!existing) {
         throw error(404, { message: '사용자를 찾을 수 없습니다.' });
       }
 
-      await invalidateUser(registeredUser._id?.toString?.() ?? String(registeredUser._id));
+      const registeredUser = await getPrisma().user.update({
+        where: { id: existing.id },
+        data: updateData
+      });
 
-      const sessionToken = cookies.get('__Secure-authjs.session-token') || cookies.get('authjs.session-token');
+      console.debug('registeredUser', registeredUser);
+
+      await invalidateUser(registeredUser.id);
+
+      const sessionToken =
+        cookies.get('__Secure-authjs.session-token') || cookies.get('authjs.session-token');
       if (sessionToken) {
         await invalidateSession(sessionToken);
       }

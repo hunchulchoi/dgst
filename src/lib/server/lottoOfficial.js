@@ -2,8 +2,7 @@
  * 한국 로또 645 공식 결과(동행복권) 조회 및 직전 주 사이트 뽑기와의 등수 비교 — GameLog 활용(DB 스키마 변경 없음)
  */
 import { z } from 'zod';
-import { GameLog } from '$lib/models/gameLog.js';
-import { User } from '$lib/models/user.js';
+import { getPrisma } from '$lib/database/prisma.js';
 import { isValidLottoNumbers, normalizeLottoEmail } from '$lib/server/lotto.js';
 
 const DH_ENDPOINT = 'https://www.dhlottery.co.kr/common.do';
@@ -245,13 +244,12 @@ export async function fetchOfficialDrawJson(drwNo) {
  */
 export async function getLatestStoredOfficialDraw() {
   try {
-    const docs = await GameLog.find({
-      game: 'lotto_official',
-      action: 'draw_result'
-    })
-      .sort({ createdAt: -1 })
-      .limit(250)
-      .lean();
+    const docs = await getPrisma().gameLog.findMany({
+      where: { game: 'lotto_official', action: 'draw_result' },
+      orderBy: { createdAt: 'desc' },
+      take: 250,
+      select: { meta: true }
+    });
 
     /** @type {ParsedOfficialDraw | null} */
     let best = null;
@@ -279,15 +277,16 @@ export async function getLatestStoredOfficialDraw() {
  */
 export async function officialDrawStored(drwNo) {
   try {
-    const docs = await GameLog.find({
-      game: 'lotto_official',
-      action: 'draw_result'
-    })
-      .select({ meta: 1 })
-      .sort({ createdAt: -1 })
-      .limit(400)
-      .lean();
-    return docs.some((d) => Number(d.meta?.drwNo) === drwNo);
+    const docs = await getPrisma().gameLog.findMany({
+      where: { game: 'lotto_official', action: 'draw_result' },
+      select: { meta: true },
+      orderBy: { createdAt: 'desc' },
+      take: 400
+    });
+    return docs.some((d) => {
+      const meta = d.meta && typeof d.meta === 'object' ? d.meta : null;
+      return Number(meta?.drwNo) === drwNo;
+    });
   } catch {
     return false;
   }
@@ -301,10 +300,12 @@ export async function officialDrawStored(drwNo) {
 export async function storeOfficialDraw(draw) {
   if (await officialDrawStored(draw.drwNo)) return false;
   try {
-    await GameLog.create({
-      game: 'lotto_official',
-      action: 'draw_result',
-      meta: metaFromParsed(draw)
+    await getPrisma().gameLog.create({
+      data: {
+        game: 'lotto_official',
+        action: 'draw_result',
+        meta: metaFromParsed(draw)
+      }
     });
     return true;
   } catch {
@@ -401,22 +402,23 @@ export async function computeLottoWeekMatchSummary(opts = {}) {
   };
 
   try {
-    const logs = await GameLog.find({
-      game: 'lotto',
-      action: 'pick',
-      createdAt: { $gte: new Date(weekStartUtc), $lte: new Date(weekEndUtc) }
-    })
-      .sort({ createdAt: 1 })
-      .limit(5000)
-      .lean();
+    const logs = await getPrisma().gameLog.findMany({
+      where: {
+        game: 'lotto',
+        action: 'pick',
+        createdAt: { gte: new Date(weekStartUtc), lte: new Date(weekEndUtc) }
+      },
+      orderBy: { createdAt: 'asc' },
+      take: 5000
+    });
 
     /** @type {Array<{ rank: number, nickname: string, numbers: number[], createdAt: string, pickId: string, emailNorm: string }>} */
     const winnersDraft = [];
     let validPickCount = 0;
 
     for (const doc of logs) {
-      const m = doc.meta;
-      if (!m || typeof m !== 'object') continue;
+      const m = doc.meta && typeof doc.meta === 'object' ? doc.meta : null;
+      if (!m) continue;
       const nickname =
         typeof m.nickname === 'string' && m.nickname.trim() ? m.nickname.trim() : null;
       const rawNums = /** @type {unknown} */ (m.numbers);
@@ -432,7 +434,7 @@ export async function computeLottoWeekMatchSummary(opts = {}) {
           nickname,
           numbers: nums,
           createdAt: new Date(doc.createdAt).toISOString(),
-          pickId: String(doc._id),
+          pickId: String(doc.id),
           emailNorm: normalizeLottoEmail(typeof doc.email === 'string' ? doc.email : '')
         });
       }
@@ -448,22 +450,12 @@ export async function computeLottoWeekMatchSummary(opts = {}) {
     const winnerNorms = [...new Set(winnersDraft.map((w) => w.emailNorm).filter(Boolean))];
 
     if (winnerNorms.length > 0) {
-      /** @type {Array<{ photo?: string | null; lowerEmail: string }>} */
-      const uph = await User.aggregate([
-        {
-          $match: {
-            $expr: {
-              $in: [{ $toLower: { $ifNull: ['$email', ''] } }, winnerNorms]
-            }
-          }
-        },
-        {
-          $project: {
-            photo: 1,
-            lowerEmail: { $toLower: { $ifNull: ['$email', ''] } }
-          }
-        }
-      ]).exec();
+      /** @type {Array<{ photo: string | null; lowerEmail: string }>} */
+      const uph = await getPrisma().$queryRaw`
+        SELECT photo, LOWER(COALESCE(email, '')) AS "lowerEmail"
+        FROM users
+        WHERE LOWER(COALESCE(email, '')) = ANY(${winnerNorms}::text[])
+      `;
 
       for (const row of uph) {
         const p = typeof row.photo === 'string' && row.photo.trim() ? row.photo.trim() : '';

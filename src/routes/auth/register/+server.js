@@ -1,11 +1,8 @@
 import { error, json } from '@sveltejs/kit';
-import connectDB from '$lib/database/mongoosePriomise.js';
+import { getPrisma } from '$lib/database/prisma.js';
 import { verifyRecaptchaToken } from '$lib/server/recaptcha.js';
 import { write } from '$lib/util/fileUpload.js';
-import { User } from '$lib/models/user.js';
 import { isNicknameAllowed } from '$lib/util/nickname.js';
-
-connectDB();
 
 export async function PATCH({ request, locals }) {
   const session = await locals.auth();
@@ -47,25 +44,31 @@ export async function PATCH({ request, locals }) {
     throw error(400, { message: '닉네임에 사용할 수 없는 문자가 포함되어 있습니다.' });
   }
 
-  const filter = {
-    email: session.user.email,
-    state: 'signup'
-  };
-
-  const update = {
+  /** @type {import('@prisma/client').Prisma.UserUpdateInput} */
+  const updateData = {
     nickname: nicknameRaw,
-    introduction: formData.get('introduction'),
-    photo: storeFileName,
+    introduction: String(formData.get('introduction') ?? ''),
     state: 'registered',
-    last_modified: new Date()
+    lastModified: new Date()
   };
 
-  if (storeFileName) update.photo = storeFileName;
+  if (storeFileName) updateData.photo = storeFileName;
 
-  console.debug('filter', filter, 'update', update);
+  console.debug('update', updateData);
 
   try {
-    const registeredUser = await User.findOneAndUpdate(filter, update, { new: true });
+    const existing = await getPrisma().user.findFirst({
+      where: { email: session.user.email, state: 'signup' }
+    });
+
+    if (!existing) {
+      return new Response('저장에 실패 하였다.', { status: 404 });
+    }
+
+    const registeredUser = await getPrisma().user.update({
+      where: { id: existing.id },
+      data: updateData
+    });
 
     console.debug('registeredUser', registeredUser);
 
@@ -77,8 +80,8 @@ export async function PATCH({ request, locals }) {
     console.debug('session', session);
 
     return json({ nickname: registeredUser.nickname, photo: registeredUser.photo });
-  } catch (error) {
-    console.error(error);
+  } catch (err) {
+    console.error(err);
 
     return new Response('저장에 실패 하였다.', { status: 500 });
   }

@@ -1,8 +1,11 @@
-import connectDB from '$lib/database/mongoosePriomise.js';
 import { error, json } from '@sveltejs/kit';
-import { Comment } from '$lib/models/comment.js';
+import { getPrisma } from '$lib/database/prisma.js';
 import { markAsRead, upsertAlarm } from '$lib/server/alarm/alarmService.js';
-import { GameScore } from '$lib/models/gameScore.js';
+import {
+  createComment,
+  findCommentById,
+  toCommentJson
+} from '$lib/server/board/commentRepo.js';
 import convertToTree from '$lib/util/tree.js';
 import { checkAndLogSessionDevice } from '$lib/server/auth/checkSessionDevice.js';
 import { updateSlotUserBalance } from '$lib/server/slotUserBalance.js';
@@ -11,8 +14,6 @@ import {
   findRecentDuplicateComment,
   tryAcquireSubmitDedup
 } from '$lib/server/submitDedup.js';
-
-connectDB();
 
 // 게임용 댓글: boardId='slot', articleId='slot' 사용
 const SLOT_BOARD_ID = 'slot';
@@ -35,35 +36,24 @@ export async function GET({ locals, setHeaders, url }) {
     // 최근 24시간 내 댓글만 조회
     const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
-    const comments = await Comment.find(
-      {
+    const rows = await getPrisma().comment.findMany({
+      where: {
         boardId: SLOT_BOARD_ID,
         articleId: SLOT_ARTICLE_ID,
-        createdAt: { $gte: oneDayAgo }
+        createdAt: { gte: oneDayAgo }
       },
-      {
-        _id: 1,
-        photo: 1,
-        nickname: 1,
-        createdAt: 1,
-        image: 1,
-        email: 1,
-        content: 1,
-        depth: 1,
-        parentCommentId: 1,
-        parentCommentNickname: 1,
-        state: 1,
-        likes: 1,
-        like: 1
-      }
-    )
-      .sort({ createdAt: -1 })
-      .lean();
+      orderBy: { createdAt: 'desc' }
+    });
+
+    const comments = rows.map((c) => ({
+      ...toCommentJson(c),
+      parentCommentId: c.parentCommentId ?? undefined
+    }));
 
     // ID를 문자열로 변환하고 트리 구조로 변환
     const commentsWithId = comments.map((c) => ({
       ...c,
-      id: c._id.toString(),
+      id: String(c._id),
       parentCommentId: c.parentCommentId?.toString()
     }));
 
@@ -230,20 +220,24 @@ export async function POST(event) {
     // 한국 시간 기준 오늘 23:59:59.999 (UTC로 변환)
     const todayEnd = new Date(Date.UTC(kstYear, kstMonth, kstDate, 23, 59, 59, 999) - kstOffset);
 
+    const prisma = getPrisma();
+
     // 오늘 받은 댓글 보상 개수 체크 (100점 보상은 하루 10개까지만, 한국 시간 기준 당일 0시~23:59:59)
-    const todayRewardCount = await GameScore.countDocuments({
-      email,
-      game: 'slot',
-      bet: 0,
-      payout: 100,
-      delta: 100,
-      createdAt: { $gte: todayStart, $lte: todayEnd }
+    const todayRewardCount = await prisma.gameScore.count({
+      where: {
+        email,
+        game: 'slot',
+        bet: 0,
+        payout: 100,
+        delta: 100,
+        createdAt: { gte: todayStart, lte: todayEnd }
+      }
     });
 
     // 대댓글인 경우 부모 댓글 확인
     let parentComment = null;
     if (parentCommentId) {
-      parentComment = await Comment.findById(parentCommentId).lean();
+      parentComment = await findCommentById(parentCommentId);
       if (
         !parentComment ||
         parentComment.boardId !== SLOT_BOARD_ID ||
@@ -253,36 +247,38 @@ export async function POST(event) {
       }
     }
 
-    const comment = new Comment({
+    const comment = await createComment({
       email: session.user.email,
       nickname: session.user.nickname || 'anonymous',
       photo: session.user.photo,
       boardId: SLOT_BOARD_ID,
       articleId: SLOT_ARTICLE_ID,
-      content: content,
+      content,
       depth: parentComment ? parentComment.depth + 1 : 1,
       parentCommentId: parentCommentId || undefined,
-      parentCommentNickname: parentComment?.nickname,
-      state: 'write'
+      parentCommentNickname: parentComment?.nickname
     });
-
-    await comment.save();
 
     // 댓글 작성 보상: 100점 지급 (하루 10개까지만)
     let rewardGiven = false;
     if (todayRewardCount < 10) {
-      const lastScore = await GameScore.findOne({ email }).sort({ createdAt: -1 }).lean();
+      const lastScore = await prisma.gameScore.findFirst({
+        where: { email },
+        orderBy: { createdAt: 'desc' }
+      });
       const currentBalance = lastScore?.balance ?? 0;
       const newBalance = currentBalance + 100;
-      await GameScore.create({
-        email,
-        nickname,
-        game: 'slot',
-        bet: 0,
-        payout: 100,
-        delta: 100,
-        balance: newBalance,
-        reels: ['-', '-', '-']
+      await prisma.gameScore.create({
+        data: {
+          email,
+          nickname,
+          game: 'slot',
+          bet: 0,
+          payout: 100,
+          delta: 100,
+          balance: newBalance,
+          reels: ['-', '-', '-']
+        }
       });
       await updateSlotUserBalance(email, nickname, newBalance, { incSpin: false });
       rewardGiven = true;
@@ -299,13 +295,13 @@ export async function POST(event) {
         boardId: SLOT_BOARD_ID,
         parentCommentId: parentCommentId,
         parentCommentContent: parentComment.content,
-        newCommentId: comment._id.toString()
+        newCommentId: comment.id
       });
     }
 
     // 일반 댓글인 경우: 알림을 보내지 않음 (대댓글만 알림)
 
-    return json({ success: true, comment, rewardGiven });
+    return json({ success: true, comment: toCommentJson(comment), rewardGiven });
   } catch (err) {
     if (err.status) throw err;
     console.error('댓글 저장 실패', err);

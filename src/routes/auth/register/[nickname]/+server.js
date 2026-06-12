@@ -1,7 +1,4 @@
-import { User } from '$lib/models/user.js';
-import connectDB from '$lib/database/mongoosePriomise.js';
-
-connectDB();
+import { getPrisma } from '$lib/database/prisma.js';
 
 /**
  * 가입시에 닉네임 중복 검사를 한다.
@@ -17,15 +14,20 @@ export async function GET({ params, locals }) {
 
   const email = session?.user?.email;
 
-  const filter = { nickname };
+  try {
+    /** @type {import('@prisma/client').Prisma.UserWhereInput} */
+    const where = { nickname };
+    if (email) where.email = { not: email };
 
-  if (email) filter.email = { $ne: email };
+    const found = await getPrisma().user.count({ where });
 
-  const found = await User.countDocuments(filter);
+    console.debug('found', found);
 
-  console.debug('found', found);
+    if (!found) return new Response(null, { status: 204 });
 
-  if (!found) return new Response(null, { status: 204 });
-
-  return new Response(found.toString(), { status: 200 });
+    return new Response(found.toString(), { status: 200 });
+  } catch (err) {
+    console.error('닉네임 중복 검사 실패', err);
+    return new Response(null, { status: 500 });
+  }
 }

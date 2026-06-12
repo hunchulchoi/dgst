@@ -1,4 +1,4 @@
-import { GameScore } from '$lib/models/gameScore.js';
+import { getPrisma } from '$lib/database/prisma.js';
 
 const KST_OFFSET_MINUTES = 9 * 60;
 
@@ -22,22 +22,21 @@ function getKstStartOfDay(baseDate = new Date()) {
 export async function getTodaySlotStats() {
   try {
     const startOfKstDay = getKstStartOfDay();
-    const baseFilter = {
+    const where = {
       game: 'slot',
-      bet: { $gt: 0 },
-      createdAt: { $gte: startOfKstDay }
+      bet: { gt: 0 },
+      createdAt: { gte: startOfKstDay }
     };
-    const [spinCount, distinctUserAgg] = await Promise.all([
-      GameScore.countDocuments(baseFilter),
-      GameScore.aggregate([
-        { $match: baseFilter },
-        { $group: { _id: '$email' } },
-        { $count: 'count' }
-      ])
+    const [spinCount, distinctUsers] = await Promise.all([
+      getPrisma().gameScore.count({ where }),
+      getPrisma().gameScore.groupBy({
+        by: ['email'],
+        where
+      })
     ]);
     return {
       spins: spinCount,
-      users: distinctUserAgg?.[0]?.count ?? 0
+      users: distinctUsers.length
     };
   } catch (err) {
     console.error('슬롯 통계 산출 실패:', err);
