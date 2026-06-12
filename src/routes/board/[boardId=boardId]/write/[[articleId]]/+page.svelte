@@ -20,7 +20,6 @@
   import { enhance } from '$app/forms';
   import { swalFire } from '$lib/util/swal.js';
   import { validateArticleContent } from '$lib/util/articleContentValidation.js';
-  import { fetchFile } from '@ffmpeg/util';
 
   /** @typedef {import('sweetalert2').SweetAlertIcon} SweetAlertIcon */
   /** @typedef {import('sweetalert2').SweetAlertPosition} SweetAlertPosition */
@@ -65,6 +64,9 @@
 
   /** @type {import('@ffmpeg/ffmpeg').FFmpeg | null} */
   let ffmpeg = null;
+  /** @type {typeof import('@ffmpeg/util').fetchFile | null} */
+  let fetchFile;
+  let ffmpegLoadPromise = null;
 
   const uploadPlus = () => {
     uploading++;
@@ -77,16 +79,6 @@
   onMount(async () => {
     QuillEditor = (await import('$lib/components/QuillEditor.svelte')).default;
 
-    try {
-      const { FFmpeg } = await import('@ffmpeg/ffmpeg');
-      const { fetchFile } = await import('@ffmpeg/util');
-
-      ffmpeg = new FFmpeg();
-      await ffmpeg.load();
-    } catch (e) {
-      console.error('[FFmpeg 로드 실패]', e);
-    }
-
     // 모바일에서 제목 입력칸으로 스크롤하고 포커스
     setTimeout(() => {
       const titleInput = document.getElementById('title');
@@ -97,6 +89,26 @@
       }
     }, 100); // DOM 렌더링 완료 후 실행
   });
+
+  async function ensureFfmpegLoaded() {
+    if (ffmpeg) return;
+    if (!ffmpegLoadPromise) {
+      ffmpegLoadPromise = (async () => {
+        const [{ FFmpeg }, ffmpegUtil] = await Promise.all([
+          import('@ffmpeg/ffmpeg'),
+          import('@ffmpeg/util')
+        ]);
+
+        fetchFile = ffmpegUtil.fetchFile;
+        ffmpeg = new FFmpeg();
+        await ffmpeg.load();
+      })().finally(() => {
+        ffmpegLoadPromise = null;
+      });
+    }
+
+    await ffmpegLoadPromise;
+  }
 
   async function list() {
     if (title || content) {
@@ -253,9 +265,10 @@
   async function compressVideo(file) {
     try {
       uploadPlus();
-      if (!ffmpeg) throw new Error('FFmpeg is not ready');
+      await ensureFfmpegLoaded();
 
       // 파일을 FFmpeg에 쓰기
+      if (!ffmpeg || !fetchFile) throw new Error('FFmpeg is not ready');
       await ffmpeg.writeFile('input.mp4', await fetchFile(file));
 
       // 비디오 압축 실행
