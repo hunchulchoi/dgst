@@ -122,7 +122,15 @@ export async function markAsRead(email, articleId) {
 
 /**
  * 알림 데이터 Upsert (추가 및 갱신)
- * @param {Object} param0
+ * @param {{
+ *   email: string;
+ *   articleId: string;
+ *   title: string;
+ *   boardId: string;
+ *   parentCommentId?: string | null;
+ *   parentCommentContent?: string | null;
+ *   newCommentId?: string | null;
+ * }} param0
  */
 export async function upsertAlarm({
   email,
@@ -200,7 +208,12 @@ export async function deleteAlarmsByArticle(articleId) {
 
 /**
  * 알람에서 특정 댓글을 제거하고, 빈 알람(댓글이 없는 상태)이 되면 알람을 완전히 삭제합니다.
- * @param {Object} param0
+ * @param {{
+ *   email: string;
+ *   articleId: string;
+ *   parentCommentId?: string | null;
+ *   commentId: string;
+ * }} param0
  */
 export async function removeCommentFromAlarm({ email, articleId, parentCommentId, commentId }) {
   const alarmId = buildAlarmId(articleId, parentCommentId);

@@ -1,6 +1,6 @@
 import sanitizeHtml from 'sanitize-html';
 
-/** @type {import('sanitize-html').IOptions} */
+/** @type {Record<string, unknown>} */
 const ARTICLE_SANITIZE_OPTIONS = {
   allowedTags: [
     'p',

@@ -16,11 +16,20 @@ const SESSION_DATE_KEYS = ['expires'];
  * @returns {Promise<{ session: import('@auth/core/adapters').AdapterSession; user: import('@auth/core/adapters').AdapterUser } | null>}
  */
 export async function getCachedSessionAndUser(sessionToken) {
-  const raw = await pgCache.getJson(SESSION_PREFIX + sessionToken, NAMESPACE);
+  const raw = /** @type {{ session?: Record<string, unknown>; user?: Record<string, unknown> } | null} */ (
+    await pgCache.getJson(SESSION_PREFIX + sessionToken, NAMESPACE)
+  );
   if (!raw?.session || !raw?.user) return null;
   reviveDates(raw.session, SESSION_DATE_KEYS);
   reviveDates(raw.user, USER_DATE_KEYS);
-  return { session: raw.session, user: raw.user };
+  return {
+    session: /** @type {import('@auth/core/adapters').AdapterSession} */ (
+      /** @type {unknown} */ (raw.session)
+    ),
+    user: /** @type {import('@auth/core/adapters').AdapterUser} */ (
+      /** @type {unknown} */ (raw.user)
+    )
+  };
 }
 
 /**
@@ -30,8 +39,8 @@ export async function getCachedSessionAndUser(sessionToken) {
  */
 export async function setCachedSessionAndUser(sessionToken, data, ttlSeconds = SESSION_CACHE_TTL) {
   const payload = {
-    session: { ...data.session },
-    user: { ...data.user }
+    session: /** @type {Record<string, unknown>} */ ({ ...data.session }),
+    user: /** @type {Record<string, unknown>} */ ({ ...data.user })
   };
   if (payload.session.expires instanceof Date)
     payload.session.expires = payload.session.expires.toISOString();

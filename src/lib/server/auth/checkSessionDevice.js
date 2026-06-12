@@ -16,7 +16,7 @@ const SESSION_COOKIE_NAME =
 
 /**
  * @param {{ cookies: { get: (name: string) => string | undefined }; request: Request }} event
- * @param {{ action: string }} meta - 로그용 (예: { action: 'board.write' })
+ * @param {{ action?: string }} [meta] - 로그용 (예: { action: 'board.write' })
  */
 export async function checkAndLogSessionDevice(event, meta = {}) {
   try {
@@ -27,7 +27,9 @@ export async function checkAndLogSessionDevice(event, meta = {}) {
     if (!sessionToken) return;
 
     const key = SESSION_DEVICE_PREFIX + sessionToken;
-    const stored = await pgCache.getJson(key, DEVICE_NS);
+    const stored = /** @type {{ deviceId?: string; userAgent?: string } | null} */ (
+      await pgCache.getJson(key, DEVICE_NS)
+    );
 
     if (stored && (stored.deviceId !== deviceId || stored.userAgent !== userAgent)) {
       logger.error({

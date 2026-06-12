@@ -60,7 +60,9 @@ async function cacheListPayload(boardId, pageNo, payload) {
  */
 async function getStaleListPayload(boardId, pageNo) {
   try {
-    const cached = await pgCache.getJson(listPayloadCacheKey(boardId, pageNo), BOARDLIST_NS);
+    const cached = /** @type {Record<string, unknown> | null} */ (
+      await pgCache.getJson(listPayloadCacheKey(boardId, pageNo), BOARDLIST_NS)
+    );
     if (!cached || typeof cached !== 'object' || !Array.isArray(cached.articles)) {
       return null;
     }

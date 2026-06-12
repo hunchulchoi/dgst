@@ -11,12 +11,9 @@ const DEFAULT_TTL_SECONDS = 1800;
  * @returns {Promise<void>}
  */
 async function deleteExpiredKey(k, namespace) {
-  await getPrisma().$executeRawUnsafe(
-    `DELETE FROM cache_kv
-     WHERE namespace = $1 AND key = $2 AND expires_at < NOW()`,
-    namespace,
-    k
-  );
+  await getPrisma().$executeRaw`
+    DELETE FROM cache_kv
+    WHERE namespace = ${namespace} AND key = ${k} AND expires_at < NOW()`;
 }
 
 /**
@@ -56,16 +53,11 @@ export async function get(k, namespace = 'default') {
 export async function set(k, v, ttlSeconds = DEFAULT_TTL_SECONDS, namespace = 'default') {
   try {
     const expires = new Date(Date.now() + ttlSeconds * 1000);
-    await getPrisma().$executeRawUnsafe(
-      `INSERT INTO cache_kv (namespace, key, value, expires_at)
-       VALUES ($1, $2, to_jsonb(CAST($3 AS text)), $4)
-       ON CONFLICT (namespace, key)
-       DO UPDATE SET value = EXCLUDED.value, expires_at = EXCLUDED.expires_at`,
-      namespace,
-      k,
-      v,
-      expires
-    );
+    await getPrisma().$executeRaw`
+      INSERT INTO cache_kv (namespace, key, value, expires_at)
+      VALUES (${namespace}, ${k}, to_jsonb(CAST(${v} AS text)), ${expires})
+      ON CONFLICT (namespace, key)
+      DO UPDATE SET value = EXCLUDED.value, expires_at = EXCLUDED.expires_at`;
     return true;
   } catch (err) {
     logger.warn({ message: '[pgCache] set failed', key: k, namespace, error: String(err) });
@@ -84,16 +76,11 @@ export async function setJson(k, v, ttlSeconds = DEFAULT_TTL_SECONDS, namespace 
   try {
     const expires = new Date(Date.now() + ttlSeconds * 1000);
     const json = JSON.stringify(v);
-    await getPrisma().$executeRawUnsafe(
-      `INSERT INTO cache_kv (namespace, key, value, expires_at)
-       VALUES ($1, $2, CAST($3 AS jsonb), $4)
-       ON CONFLICT (namespace, key)
-       DO UPDATE SET value = EXCLUDED.value, expires_at = EXCLUDED.expires_at`,
-      namespace,
-      k,
-      json,
-      expires
-    );
+    await getPrisma().$executeRaw`
+      INSERT INTO cache_kv (namespace, key, value, expires_at)
+      VALUES (${namespace}, ${k}, CAST(${json} AS jsonb), ${expires})
+      ON CONFLICT (namespace, key)
+      DO UPDATE SET value = EXCLUDED.value, expires_at = EXCLUDED.expires_at`;
     return true;
   } catch (err) {
     logger.warn({ message: '[pgCache] setJson failed', key: k, namespace, error: String(err) });
@@ -133,11 +120,8 @@ export async function getJson(k, namespace = 'default') {
  */
 export async function del(k, namespace = 'default') {
   try {
-    await getPrisma().$executeRawUnsafe(
-      `DELETE FROM cache_kv WHERE namespace = $1 AND key = $2`,
-      namespace,
-      k
-    );
+    await getPrisma().$executeRaw`
+      DELETE FROM cache_kv WHERE namespace = ${namespace} AND key = ${k}`;
     return true;
   } catch (err) {
     logger.warn({ message: '[pgCache] del failed', key: k, namespace, error: String(err) });
@@ -152,12 +136,9 @@ export async function del(k, namespace = 'default') {
  */
 export async function delByPrefix(prefix, namespace = 'default') {
   try {
-    await getPrisma().$executeRawUnsafe(
-      `DELETE FROM cache_kv
-       WHERE namespace = $1 AND key LIKE $2`,
-      namespace,
-      prefix + '%'
-    );
+    await getPrisma().$executeRaw`
+      DELETE FROM cache_kv
+      WHERE namespace = ${namespace} AND key LIKE ${prefix + '%'}`;
     return true;
   } catch (err) {
     logger.warn({
@@ -186,9 +167,9 @@ export async function isAvailable() {
 /** @returns {Promise<void>} */
 export async function purgeExpired() {
   try {
-    await getPrisma().$executeRawUnsafe(`DELETE FROM cache_kv WHERE expires_at < NOW()`);
-    await getPrisma().$executeRawUnsafe(`DELETE FROM rate_limit WHERE expires_at < NOW()`);
-    await getPrisma().$executeRawUnsafe(`DELETE FROM dedup_lock WHERE expires_at < NOW()`);
+    await getPrisma().$executeRaw`DELETE FROM cache_kv WHERE expires_at < NOW()`;
+    await getPrisma().$executeRaw`DELETE FROM rate_limit WHERE expires_at < NOW()`;
+    await getPrisma().$executeRaw`DELETE FROM dedup_lock WHERE expires_at < NOW()`;
   } catch (err) {
     logger.warn({ message: '[pgCache] purgeExpired failed', error: String(err) });
   }

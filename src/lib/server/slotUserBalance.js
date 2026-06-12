@@ -1,5 +1,6 @@
 import { getPrisma } from '$lib/database/prisma.js';
 
+/** @type {Promise<number> | null} */
 let backfillPromise = null;
 
 /**
@@ -105,7 +106,7 @@ export async function updateSlotUserBalance(email, nickname, balance, opts = {})
       });
     }
   } catch (e) {
-    console.error('updateSlotUserBalance failed', email, e?.message);
+    console.error('updateSlotUserBalance failed', email, e instanceof Error ? e.message : e);
   }
 }
 

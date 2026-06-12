@@ -41,10 +41,12 @@ function serializeDates(obj, dateKeys) {
  * @returns {Promise<import('@auth/core/adapters').AdapterUser | null>}
  */
 export async function getCachedUserById(id) {
-  const raw = await pgCache.getJson(USER_ID_PREFIX + id, NAMESPACE);
+  const raw = /** @type {Record<string, unknown> | null} */ (
+    await pgCache.getJson(USER_ID_PREFIX + id, NAMESPACE)
+  );
   if (!raw) return null;
   reviveDates(raw, USER_DATE_KEYS);
-  return raw;
+  return /** @type {import('@auth/core/adapters').AdapterUser} */ (/** @type {unknown} */ (raw));
 }
 
 /**
@@ -52,10 +54,12 @@ export async function getCachedUserById(id) {
  * @returns {Promise<import('@auth/core/adapters').AdapterUser | null>}
  */
 export async function getCachedUserByEmail(email) {
-  const raw = await pgCache.getJson(USER_EMAIL_PREFIX + email, NAMESPACE);
+  const raw = /** @type {Record<string, unknown> | null} */ (
+    await pgCache.getJson(USER_EMAIL_PREFIX + email, NAMESPACE)
+  );
   if (!raw) return null;
   reviveDates(raw, USER_DATE_KEYS);
-  return raw;
+  return /** @type {import('@auth/core/adapters').AdapterUser} */ (/** @type {unknown} */ (raw));
 }
 
 /**
@@ -63,7 +67,10 @@ export async function getCachedUserByEmail(email) {
  */
 export async function setCachedUser(user) {
   if (!user?.id) return;
-  const payload = serializeDates(user, USER_DATE_KEYS);
+  const payload = serializeDates(
+    /** @type {Record<string, unknown>} */ (/** @type {unknown} */ (user)),
+    USER_DATE_KEYS
+  );
   await pgCache.setJson(USER_ID_PREFIX + user.id, payload, USER_CACHE_TTL, NAMESPACE);
   if (user.email)
     await pgCache.setJson(USER_EMAIL_PREFIX + user.email, payload, USER_CACHE_TTL, NAMESPACE);
@@ -78,7 +85,9 @@ export async function setCachedUser(user) {
 export async function invalidateUser(userId, email) {
   let emailToInvalidate = email;
   if (!emailToInvalidate) {
-    const cached = await pgCache.getJson(USER_ID_PREFIX + userId, NAMESPACE);
+    const cached = /** @type {{ email?: string } | null} */ (
+      await pgCache.getJson(USER_ID_PREFIX + userId, NAMESPACE)
+    );
     if (cached?.email) emailToInvalidate = cached.email;
   }
   await pgCache.del(USER_ID_PREFIX + userId, NAMESPACE);

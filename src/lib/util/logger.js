@@ -27,6 +27,7 @@ const getErrorLogPath = () =>
 /**
  * @param {unknown} value
  * @param {number} [depth]
+ * @returns {unknown}
  */
 function serializeLogValue(value, depth = 0) {
   if (value == null) return value;
@@ -112,7 +113,9 @@ function formatGrafanaJson(info) {
 function formatPretty(info) {
   const { level, message, ...metadata } = info;
   const record = toGrafanaLogRecord(level, message, metadata);
-  const kst = new Date(record.timestamp).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' });
+  const logTimestamp =
+    typeof record.timestamp === 'string' ? record.timestamp : new Date().toISOString();
+  const kst = new Date(logTimestamp).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' });
   const reqPath = record.pathname ? ` [${record.pathname}]` : '';
   const status = record.status ? ` [${record.status}]` : '';
   const { trace, timestamp, level: lvl, message: msg, ...rest } = record;

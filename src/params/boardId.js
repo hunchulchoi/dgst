@@ -1,6 +1,6 @@
 /**
  * board id 유효성 검사
- * @param param
+ * @param {string} param
  * @returns {boolean}
  */
 export function match(param) {

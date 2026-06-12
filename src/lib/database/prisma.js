@@ -2,6 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import logger from '$lib/util/logger.js';
 
+/** @type {typeof globalThis & { prisma?: PrismaClient }} */
 const globalForPrisma = globalThis;
 
 /** @returns {PrismaClient} */
