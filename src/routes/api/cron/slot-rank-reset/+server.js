@@ -3,7 +3,7 @@ import { env as dynamicEnv } from '$env/dynamic/private';
 import { resetSlotUserBalance } from '$lib/server/slotUserBalance.js';
 
 /**
- * slot_user_balance 컬렉션 전체 삭제. 다음 랭킹 조회 시 game_scores 기준으로 자동 백필됨.
+ * slot_user_balance 테이블 전체 삭제. 다음 랭킹 조회 시 game_scores 기준으로 자동 백필됨.
  * Top10 점수가 어긋났을 때 재집계용.
  *
  * 예: curl -H "x-cron-secret: YOUR_CRON_SECRET" "https://your-domain/api/cron/slot-rank-reset"

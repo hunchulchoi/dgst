@@ -3,7 +3,7 @@ import { getPrisma } from '$lib/database/prisma.js';
 let backfillPromise = null;
 
 /**
- * slot_user_balance 컬렉션 전체 삭제. 다음 랭킹 조회 시 game_scores 기준으로 자동 백필됨.
+ * slot_user_balance 테이블 전체 삭제. 다음 랭킹 조회 시 game_scores 기준으로 자동 백필됨.
  * Top10 점수가 어긋났을 때 재집계하려면 이 함수 호출 후 랭킹 페이지를 새로고침하면 됨.
  * @returns {Promise<number>} 삭제된 문서 수
  */
@@ -14,7 +14,7 @@ export async function resetSlotUserBalance() {
 }
 
 /**
- * game_scores 집계 결과로 slot_user_balance를 채움. 컬렉션이 비었을 때 1회만 자동 호출됨.
+ * game_scores 집계 결과로 slot_user_balance를 채움. 테이블이 비었을 때 1회만 자동 호출됨.
  * @returns {Promise<number>} upsert된 행 수
  */
 export async function backfillSlotUserBalance() {
@@ -81,7 +81,7 @@ export async function ensureSlotUserBalanceFilled() {
 
 /**
  * GameScore 생성 시 호출: slot_user_balance에 해당 유저의 최신 balance/totalSpin 반영.
- * 랭킹/잔액 조회는 이 컬렉션만 사용해 30만 건 집계를 피함.
+ * 랭킹/잔액 조회는 이 테이블만 사용해 30만 건 집계를 피함.
  *
  * @param {string} email
  * @param {string} nickname
