@@ -19,9 +19,10 @@ const shouldDenySessionUser = (user) => user?.state === 'blocked' || user?.state
 export function getPrismaAdapter() {
   if (cachedAdapter) return cachedAdapter;
 
-  const base = /** @type {import('@auth/core/adapters').Adapter & Required<Pick<import('@auth/core/adapters').Adapter, 'getUser' | 'getUserByEmail' | 'updateUser' | 'getSessionAndUser' | 'deleteSession'>>} */ (
-    PrismaAdapter(getPrisma())
-  );
+  const base =
+    /** @type {import('@auth/core/adapters').Adapter & Required<Pick<import('@auth/core/adapters').Adapter, 'getUser' | 'getUserByEmail' | 'updateUser' | 'getSessionAndUser' | 'deleteSession'>>} */ (
+      PrismaAdapter(getPrisma())
+    );
 
   cachedAdapter = {
     ...base,

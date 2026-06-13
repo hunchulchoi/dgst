@@ -251,7 +251,9 @@ async function migrateComments(db) {
       const docs = await cursor.toArray();
       if (docs.length === 0) break;
 
-      const articleObjectIds = docs.map((doc) => toObjectId(doc.articleId)).filter((id) => id != null);
+      const articleObjectIds = docs
+        .map((doc) => toObjectId(doc.articleId))
+        .filter((id) => id != null);
       const validArticleIds = new Set(
         (
           await articles
@@ -482,7 +484,8 @@ async function migrateLoginLogs(db) {
     (doc) => ({
       id: docIdOrCuid(doc),
       at: toDate(doc.at) ?? new Date(),
-      userId: doc.userId != null ? String(doc.userId) : doc.user_id != null ? String(doc.user_id) : null,
+      userId:
+        doc.userId != null ? String(doc.userId) : doc.user_id != null ? String(doc.user_id) : null,
       ip: String(doc.ip ?? 'unknown'),
       deviceId: doc.deviceId ?? doc.device_id ?? null,
       userAgent: doc.userAgent ?? doc.user_agent ?? null,
@@ -542,7 +545,7 @@ async function migrateRedisAlarms(redis) {
           boardId: String(alarm.boardId ?? ''),
           articleId: String(alarm.articleId),
           title: String(alarm.title ?? ''),
-          parentCommentId: alarm.comment ? String(alarm.comment) : alarm.parentCommentId ?? null,
+          parentCommentId: alarm.comment ? String(alarm.comment) : (alarm.parentCommentId ?? null),
           commentContent: alarm.commentContent ?? null,
           commentIds: Array.isArray(alarm.comments)
             ? alarm.comments.map(String)
@@ -603,7 +606,7 @@ async function main() {
   };
 
   try {
-    const db = await getDb();
+    await getDb();
     console.log('[mongo] connected');
 
     const counts = {};

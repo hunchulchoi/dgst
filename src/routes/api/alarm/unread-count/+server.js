@@ -10,10 +10,7 @@ export async function GET({ locals }) {
     }
 
     const count = await getUnreadAlarmCount(session.user.email);
-    return json(
-      { count },
-      { headers: { 'Cache-Control': 'private, no-cache' } }
-    );
+    return json({ count }, { headers: { 'Cache-Control': 'private, no-cache' } });
   } catch (err) {
     console.error('unread alarm count failed', err);
     return json({ count: 0 }, { status: 500 });

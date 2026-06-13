@@ -768,8 +768,8 @@
                     if (guideCollapsed && isMobile) toggleGuideCollapse();
                   }}
                   style={guideCollapsed && isMobile ? 'cursor: pointer;' : ''}
-                  aria-label="가이드 펼치기"
-                >🎲</button>
+                  aria-label="가이드 펼치기">🎲</button
+                >
                 <h6 class="fw-bold mb-0">뺑뺑이는 즐거운 놀이터입니다</h6>
               </div>
               <button

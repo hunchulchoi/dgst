@@ -9,17 +9,12 @@
    *   children: import('svelte').Snippet;
    *   [key: string]: unknown;
    * }} */
-  let {
-    nav = false,
-    caret = false,
-    class: className = '',
-    children,
-    ...rest
-  } = $props();
+  let { nav = false, caret = false, class: className = '', children, ...rest } = $props();
 
-  const ctx = /** @type {{ setAnchor: (node: HTMLButtonElement | null) => void; getOpen: () => boolean; toggle: () => void }} */ (
-    getContext(DROPDOWN_CTX)
-  );
+  const ctx =
+    /** @type {{ setAnchor: (node: HTMLButtonElement | null) => void; getOpen: () => boolean; toggle: () => void }} */ (
+      getContext(DROPDOWN_CTX)
+    );
 
   /** @param {HTMLButtonElement} node */
   function anchorRef(node) {
@@ -37,7 +32,6 @@
   use:anchorRef
   class="{nav ? 'nav-link' : 'btn btn-link'} dropdown-toggle {className}"
   aria-expanded={ctx.getOpen()}
-  /** @param {MouseEvent} e */
   onclick={(e) => {
     e.stopPropagation();
     ctx.toggle();

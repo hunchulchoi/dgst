@@ -1,11 +1,5 @@
 <script>
-  let {
-    floating = false,
-    label = '',
-    labelFor = '',
-    class: className = '',
-    children
-  } = $props();
+  let { floating = false, label = '', labelFor = '', class: className = '', children } = $props();
 </script>
 
 {#if floating}

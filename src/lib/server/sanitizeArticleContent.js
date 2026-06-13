@@ -51,14 +51,7 @@ const ARTICLE_SANITIZE_OPTIONS = {
   allowedStyles: {
     '*': {
       'text-align': [/^left$/, /^right$/, /^center$/, /^justify$/],
-      color: [
-        /^#(?:[0-9a-fA-F]{3,4}){1,2}$/,
-        /^rgb\(/,
-        /^rgba\(/,
-        /^hsl\(/,
-        /^hsla\(/,
-        /^[a-z]+$/
-      ],
+      color: [/^#(?:[0-9a-fA-F]{3,4}){1,2}$/, /^rgb\(/, /^rgba\(/, /^hsl\(/, /^hsla\(/, /^[a-z]+$/],
       'background-color': [
         /^#(?:[0-9a-fA-F]{3,4}){1,2}$/,
         /^rgb\(/,

@@ -52,8 +52,7 @@
             >
               {@const commentIds = Array.isArray(alarm.comments) ? alarm.comments : []}
               {@const commentId =
-                alarm.comment ||
-                (commentIds.length > 0 ? commentIds[commentIds.length - 1] : '')}
+                alarm.comment || (commentIds.length > 0 ? commentIds[commentIds.length - 1] : '')}
               <a
                 data-sveltekit-preload-data="tap"
                 data-sveltekit-invalidate="all"
@@ -130,7 +129,13 @@
                 {/if}
               </a>
             </Col>
-            <Col xl="1" lg="1" md="2" sm="12" xs="4" class="alarm-list-meta max-md:pt-1 text-muted text-end"
+            <Col
+              xl="1"
+              lg="1"
+              md="2"
+              sm="12"
+              xs="4"
+              class="alarm-list-meta max-md:pt-1 text-muted text-end"
               >{formatRelativeTime(alarm.updatedAt, {
                 locale: ko,
                 addSuffix: true

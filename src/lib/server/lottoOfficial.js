@@ -38,7 +38,8 @@ function toNum(x) {
  * @returns { 1 | 2 | 3 | 4 | 5 | null }
  */
 export function rankKoLotto645(userNumbers, mains, bonus) {
-  if (!Array.isArray(userNumbers) || userNumbers.length !== 6 || !Number.isFinite(bonus)) return null;
+  if (!Array.isArray(userNumbers) || userNumbers.length !== 6 || !Number.isFinite(bonus))
+    return null;
   const user = new Set(userNumbers);
   const mainSet = new Set(mains);
   if (mainSet.size !== 6) return null;
@@ -188,7 +189,8 @@ function parsedFromStoredMeta(meta) {
     normalized.mains.some((n) => !Number.isInteger(n) || n < 1 || n > 45)
   )
     return null;
-  if (!Number.isInteger(normalized.bonus) || normalized.bonus < 1 || normalized.bonus > 45) return null;
+  if (!Number.isInteger(normalized.bonus) || normalized.bonus < 1 || normalized.bonus > 45)
+    return null;
   return normalized;
 }
 
@@ -226,8 +228,7 @@ export async function fetchOfficialDrawJson(drwNo) {
       toNum(d.drwtNo6)
     ].sort((a, b) => a - b);
     const bonus = toNum(d.bnusNo);
-    let drNum =
-      typeof d.drwNo === 'number' ? d.drwNo : Number.parseInt(String(d.drwNo ?? ''), 10);
+    let drNum = typeof d.drwNo === 'number' ? d.drwNo : Number.parseInt(String(d.drwNo ?? ''), 10);
 
     if (!Number.isFinite(drNum)) drNum = drwNo;
 

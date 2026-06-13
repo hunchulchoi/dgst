@@ -185,86 +185,86 @@
         ? 'tab-nav-bar-attached rounded-0 shadow-sm mb-0'
         : 'rounded-bottom shadow-sm'}"
     >
-    <Nav tabs class="w-100 flex-nowrap" data-sveltekit-preload-data="false">
-      <NavItem>
-        <NavLink
-          href="/"
-          active={isFreeBoardPath}
-          data-sveltekit-invalidate="board-list"
-          onclick={handleFreeBoardTabClick}
-        >
-          자유게시판
-          {#if showSpinner}
-            <span
-              class="spinner-border spinner-border-sm ms-2 text-primary"
-              role="status"
-              aria-label="목록 불러오는 중"
-            ></span>
-          {/if}
-        </NavLink>
-      </NavItem>
-      {#if session?.user?.nickname}
+      <Nav tabs class="w-100 flex-nowrap" data-sveltekit-preload-data="false">
         <NavItem>
           <NavLink
-            href="/board/alarm"
-            active={pathname?.startsWith('/board/alarm')}
-            class="px-3 text-center"
+            href="/"
+            active={isFreeBoardPath}
+            data-sveltekit-invalidate="board-list"
+            onclick={handleFreeBoardTabClick}
           >
-            <Icon name="megaphone" class="text-success" /><span class="d-none d-sm-inline ms-1"
-              >알림</span
-            >
-            {#if $alarmCount && $alarmCount > 0}
-              <Badge color="danger" class="ms-1">{$alarmCount}</Badge>
+            자유게시판
+            {#if showSpinner}
+              <span
+                class="spinner-border spinner-border-sm ms-2 text-primary"
+                role="status"
+                aria-label="목록 불러오는 중"
+              ></span>
             {/if}
           </NavLink>
         </NavItem>
-        <!-- <NavItem>
+        {#if session?.user?.nickname}
+          <NavItem>
+            <NavLink
+              href="/board/alarm"
+              active={pathname?.startsWith('/board/alarm')}
+              class="px-3 text-center"
+            >
+              <Icon name="megaphone" class="text-success" /><span class="d-none d-sm-inline ms-1"
+                >알림</span
+              >
+              {#if $alarmCount && $alarmCount > 0}
+                <Badge color="danger" class="ms-1">{$alarmCount}</Badge>
+              {/if}
+            </NavLink>
+          </NavItem>
+          <!-- <NavItem>
           <NavLink href="/board/bug" active={pathname?.startsWith('/board/bug')}>
             <Icon name="bug-fill" class="text-warning me-2"/>버그 신고
           </NavLink>
         </NavItem> -->
-        <NavItem>
-          <NavLink
-            href="/games/slot"
-            active={pathname?.startsWith('/games/slot')}
-            class="px-3 text-center"
-          >
-            <Icon name="dice-3-fill" class="text-info" /><span class="d-none d-sm-inline ms-1"
-              >뺑뺑이</span
+          <NavItem>
+            <NavLink
+              href="/games/slot"
+              active={pathname?.startsWith('/games/slot')}
+              class="px-3 text-center"
             >
-          </NavLink>
-        </NavItem>
-        <NavItem>
-          <NavLink
-            href="/games/watermelon"
-            active={pathname?.startsWith('/games/watermelon')}
-            class="px-3 text-center"
-          >
-            <span>🍉</span><span class="d-none d-sm-inline ms-1">과일</span>
-          </NavLink>
-        </NavItem>
-        <NavItem>
-          <NavLink
-            href="/games/2048"
-            active={pathname?.startsWith('/games/2048')}
-            class="px-3 text-center"
-          >
-            <Icon name="grid-3x3-gap-fill" class="text-warning" /><span
-              class="d-none d-sm-inline ms-1">2048</span
+              <Icon name="dice-3-fill" class="text-info" /><span class="d-none d-sm-inline ms-1"
+                >뺑뺑이</span
+              >
+            </NavLink>
+          </NavItem>
+          <NavItem>
+            <NavLink
+              href="/games/watermelon"
+              active={pathname?.startsWith('/games/watermelon')}
+              class="px-3 text-center"
             >
-          </NavLink>
-        </NavItem>
-        <NavItem>
-          <NavLink
-            href="/games/minesweeper"
-            active={pathname?.startsWith('/games/minesweeper')}
-            class="px-3 text-center"
-          >
-            <span>💣</span><span class="d-none d-sm-inline ms-1">지뢰</span>
-          </NavLink>
-        </NavItem>
-      {/if}
-      <!--<NavItem>
+              <span>🍉</span><span class="d-none d-sm-inline ms-1">과일</span>
+            </NavLink>
+          </NavItem>
+          <NavItem>
+            <NavLink
+              href="/games/2048"
+              active={pathname?.startsWith('/games/2048')}
+              class="px-3 text-center"
+            >
+              <Icon name="grid-3x3-gap-fill" class="text-warning" /><span
+                class="d-none d-sm-inline ms-1">2048</span
+              >
+            </NavLink>
+          </NavItem>
+          <NavItem>
+            <NavLink
+              href="/games/minesweeper"
+              active={pathname?.startsWith('/games/minesweeper')}
+              class="px-3 text-center"
+            >
+              <span>💣</span><span class="d-none d-sm-inline ms-1">지뢰</span>
+            </NavLink>
+          </NavItem>
+        {/if}
+        <!--<NavItem>
         <NavLink href="/game/56471" active={pathname?.startsWith('/game/56471')}>
           <Icon name="bi bi-joystick" class="text-primary"/>
         </NavLink>
@@ -279,7 +279,7 @@
           <Icon name="bi bi-joystick" class="text-info"/>
         </NavLink>
       </NavItem>-->
-    </Nav>
+      </Nav>
     </Navbar>
   </div>
 </header>

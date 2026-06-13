@@ -167,9 +167,7 @@ export function main() {
 
   console.error('Secret scan failed:');
   for (const finding of findings) {
-    console.error(
-      `- ${finding.filePath}:${finding.line} [${finding.rule}] ${finding.message}`
-    );
+    console.error(`- ${finding.filePath}:${finding.line} [${finding.rule}] ${finding.message}`);
   }
   process.exitCode = 1;
 }

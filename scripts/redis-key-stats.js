@@ -72,10 +72,7 @@ async function main() {
   console.log('prefix (top 30)\tcount');
   for (const [prefix, count] of sorted.slice(0, 30)) {
     const ttl = ttlStats.get(prefix);
-    const ttlNote =
-      ttl && SAMPLE > 0
-        ? `\t(noTTL=${ttl.noTtl}, hasTTL=${ttl.withTtl})`
-        : '';
+    const ttlNote = ttl && SAMPLE > 0 ? `\t(noTTL=${ttl.noTtl}, hasTTL=${ttl.withTtl})` : '';
     console.log(`${prefix}\t${count}${ttlNote}`);
   }
 

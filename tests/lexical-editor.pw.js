@@ -28,13 +28,16 @@ async function expectSyncedEditorHtmlToContain(page, snippets) {
 
 /** @param {import('@playwright/test').Page} page @param {string} url */
 async function mockUpload(page, url) {
-  await page.route('**/board/upload', async (/** @type {import('@playwright/test').Route} */ route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ url })
-    });
-  });
+  await page.route(
+    '**/board/upload',
+    async (/** @type {import('@playwright/test').Route} */ route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ url })
+      });
+    }
+  );
 }
 
 /** @param {import('@playwright/test').Page} page */
@@ -117,7 +120,9 @@ test('Lexical editor smoke route mounts and syncs typed content', async ({ page 
   await expect(page.locator('[data-testid="editor-html"]')).toContainText('hello lexical smoke');
 });
 
-test('Lexical editor renders Enter-created paragraphs with normal line spacing', async ({ page }) => {
+test('Lexical editor renders Enter-created paragraphs with normal line spacing', async ({
+  page
+}) => {
   const editor = await gotoSmokeEditor(page);
 
   await editor.click();
@@ -174,7 +179,9 @@ test('Lexical editor uploads pasted images and inserts image html', async ({ pag
   await expect(page.locator('[data-testid="editor-uploads"]')).toHaveText('0');
 });
 
-test('Lexical editor preserves initial image html when syncing loaded content', async ({ page }) => {
+test('Lexical editor preserves initial image html when syncing loaded content', async ({
+  page
+}) => {
   const initialHtml = [
     '<p>before image</p>',
     '<img src="/uploads/existing-image.png" alt="existing" style="max-width: 100%; height: auto; display: block; margin: 1em 0;">',

@@ -1,9 +1,5 @@
 <script>
-  let {
-    color = 'secondary',
-    class: className = '',
-    children
-  } = $props();
+  let { color = 'secondary', class: className = '', children } = $props();
 </script>
 
 <span class="badge text-bg-{color} {className}">

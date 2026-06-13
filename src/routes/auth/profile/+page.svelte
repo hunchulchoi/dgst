@@ -291,9 +291,9 @@
   };
 
   const doValidate = () => {
-    document.querySelectorAll('.needs-validation').forEach((el) =>
-      changeHandler(/** @type {HTMLInputElement | HTMLTextAreaElement} */ (el))
-    );
+    document
+      .querySelectorAll('.needs-validation')
+      .forEach((el) => changeHandler(/** @type {HTMLInputElement | HTMLTextAreaElement} */ (el)));
   };
 
   const invalids = { nickname: false, introduction: false };

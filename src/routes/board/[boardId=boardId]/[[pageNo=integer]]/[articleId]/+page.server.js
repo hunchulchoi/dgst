@@ -47,9 +47,10 @@ export const load = async ({ params, locals, cookies }) => {
     });
 
     const articleJson = toArticleJson(article, commentTree.length);
-    const articleComments = /** @type {Array<Record<string, unknown> & { likes?: string[]; liked?: boolean }>} */ (
-      JSON.parse(JSON.stringify(commentTree))
-    );
+    const articleComments =
+      /** @type {Array<Record<string, unknown> & { likes?: string[]; liked?: boolean }>} */ (
+        JSON.parse(JSON.stringify(commentTree))
+      );
     articleJson.comments = articleComments;
 
     const insta =

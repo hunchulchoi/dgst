@@ -17,7 +17,7 @@
   class="page-link {className}"
   {href}
   aria-current={active ? 'page' : undefined}
-  onclick={onclick}
+  {onclick}
   {...rest}
 >
   {#if first}

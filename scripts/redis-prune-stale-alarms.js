@@ -120,7 +120,9 @@ async function pruneListZsets() {
 }
 
 async function main() {
-  console.log(`${DRY_RUN ? '(DRY RUN) ' : ''}Prune stale alarms (max age ${MAX_AGE_MS / 86400000}d)`);
+  console.log(
+    `${DRY_RUN ? '(DRY RUN) ' : ''}Prune stale alarms (max age ${MAX_AGE_MS / 86400000}d)`
+  );
   await pruneDataKeys();
   await pruneListZsets();
   console.log(`DBSIZE=${await redis.dbsize()}`);

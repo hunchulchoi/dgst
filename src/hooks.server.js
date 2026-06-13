@@ -8,7 +8,6 @@ import {
   KAKAO_CLIENT_SECRET,
   NODE_ENV
 } from '$env/static/private';
-import { env as dynamicEnv } from '$env/dynamic/private';
 import { getPrisma } from '$lib/database/prisma.js';
 import { getPrismaAdapter } from '$lib/server/auth/prismaAdapter.js';
 import { checkAuthRateLimit } from '$lib/server/auth/rateLimit.js';
@@ -16,14 +15,11 @@ import { shouldRejectCrossOriginRequest } from '$lib/server/auth/requestOrigin.j
 import * as pgCache from '$lib/server/cache/pgCache.js';
 import { tryAcquire } from '$lib/server/cache/pgDedup.js';
 import crypto from 'crypto';
-import { error, redirect, json } from '@sveltejs/kit';
+import { redirect, json } from '@sveltejs/kit';
 import logger from '$lib/util/logger';
 import { serializeError, traceFromUnknown } from '$lib/util/formatErrorTrace.js';
 import { warmupConnections } from '$lib/server/warmup.js';
 import { isBoardHtmlPath } from '$lib/util/boardPaths.js';
-
-const VIP_EMAIL = dynamicEnv.VIP_EMAIL ?? '';
-const VIP_FAKE_EMAIL = dynamicEnv.VIP_FAKE_EMAIL ?? '';
 
 warmupConnections();
 
@@ -161,22 +157,22 @@ export const {
     }
   },
   events: {
-    async signIn(message) {
+    async signIn(_message) {
       // signIn event
     },
-    async signOut(message) {
+    async signOut(_message) {
       // signOut event
     },
-    async createUser(message) {
+    async createUser(_message) {
       // createUser event
     },
-    async updateUser(message) {
+    async updateUser(_message) {
       // updateUser event
     },
-    async linkAccount(message) {
+    async linkAccount(_message) {
       // linkAccount event
     },
-    async session(message) {
+    async session(_message) {
       // session event
     }
   },
@@ -215,7 +211,9 @@ const AUTH_SESSION_COOKIE_NAME =
 /** @param {import('@sveltejs/kit').RequestEvent} event */
 const getRequestMeta = (event) => {
   const forwardedFor =
-    event.request?.headers?.get?.('x-forwarded-for') || event.request?.headers?.get?.('x-real-ip') || '';
+    event.request?.headers?.get?.('x-forwarded-for') ||
+    event.request?.headers?.get?.('x-real-ip') ||
+    '';
   const clientIp =
     (forwardedFor ? String(forwardedFor).split(',')[0].trim() : '') ||
     event.getClientAddress?.() ||
@@ -239,8 +237,7 @@ const isDauTrackablePath = (pathname) =>
   !pathname.includes('.');
 
 /** KST 기준 YYYY-MM-DD */
-const getKstDateKey = () =>
-  new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' });
+const getKstDateKey = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' });
 
 /**
  * 로그인 사용자 DAU — KST 기준 하루 1회 user.active 로그
@@ -390,7 +387,9 @@ export async function handle({ event, resolve }) {
       const url = new URL(location, event.url.origin);
       const errorType = url.searchParams.get('error') ?? '';
       const errorDescription = url.searchParams.get('error_description') ?? '';
-      const provider = pathname.startsWith('/auth/callback/') ? pathname.split('/').pop() : undefined;
+      const provider = pathname.startsWith('/auth/callback/')
+        ? pathname.split('/').pop()
+        : undefined;
       const authQuery = Object.fromEntries(event.url.searchParams.entries());
       const errorQuery = Object.fromEntries(url.searchParams.entries());
       logger.error({
@@ -406,7 +405,7 @@ export async function handle({ event, resolve }) {
         redirectQuery: errorQuery
       });
     }
-  } catch (e) {
+  } catch {
     // 로그 실패만 무시
   }
 

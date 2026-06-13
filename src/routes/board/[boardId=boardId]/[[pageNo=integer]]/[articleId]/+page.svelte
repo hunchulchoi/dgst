@@ -1,12 +1,5 @@
 <script>
-  import {
-    Badge,
-    Button,
-    Col,
-    Icon,
-    InputGroup,
-    Row
-  } from '$lib/components/ui/index.js';
+  import { Badge, Button, Col, Icon, InputGroup, Row } from '$lib/components/ui/index.js';
   import { goto, invalidate } from '$app/navigation';
   import { boardListPath } from '$lib/util/boardPaths.js';
   import { page } from '$app/stores';
@@ -30,7 +23,9 @@
   let embeder = $state(null);
   /** @typedef {{ Embeds?: { process: () => void } }} InstagramEmbed */
   /** @type {InstagramEmbed | undefined} */
-  const instgrm = browser ? /** @type {Window & { instgrm?: InstagramEmbed }} */ (window).instgrm : undefined;
+  const instgrm = browser
+    ? /** @type {Window & { instgrm?: InstagramEmbed }} */ (window).instgrm
+    : undefined;
 
   // Svelte 5 Runes - Props
   let { data } = $props();
@@ -148,15 +143,16 @@
         console.log('event.clipboardData.files[0]', event.clipboardData.files[0])
         console.log('event.clipboardData.files[0].type', event.clipboardData.files[0].type)*/
 
-      if (
-        clipboardData.files?.length &&
-        clipboardData.files[0].type.startsWith('image')
-      ) {
+      if (clipboardData.files?.length && clipboardData.files[0].type.startsWith('image')) {
         setCommentImageTarget(target, clipboardData.files[0]);
 
         event.preventDefault();
       } else return;
-    } else setCommentImageTarget(target, /** @type {HTMLInputElement} */ (event.target).files?.[0] ?? null);
+    } else
+      setCommentImageTarget(
+        target,
+        /** @type {HTMLInputElement} */ (event.target).files?.[0] ?? null
+      );
 
     const selectedImage = getCommentImageTarget(target);
     if (selectedImage) {
@@ -169,7 +165,11 @@
       //console.log('commentImage.type', commentImage.type)
 
       const currentImage = getCommentImageTarget(target);
-      if (currentImage && !currentImage.type.endsWith('gif') && !currentImage.type.endsWith('webp')) {
+      if (
+        currentImage &&
+        !currentImage.type.endsWith('gif') &&
+        !currentImage.type.endsWith('webp')
+      ) {
         const fileSizeMB = currentImage.size / (1024 * 1024);
         // 1MB 이하는 변환하지 않고 원본 유지
         if (fileSizeMB > 1) {
@@ -347,34 +347,34 @@
     });
 
     if (result.isConfirmed) {
-        commentLoading = true;
+      commentLoading = true;
 
-        fetch(`/board/${boardId}/${articleId}/comment`, {
-          method: 'DELETE',
-          body: JSON.stringify({ commentId })
+      fetch(`/board/${boardId}/${articleId}/comment`, {
+        method: 'DELETE',
+        body: JSON.stringify({ commentId })
+      })
+        .then(async (res) => {
+          if (res.status !== 200) {
+            const { message } = await res.json();
+            await toast(message, 'error');
+            return;
+          }
+
+          const _message = await res.text();
+
+          await toast(_message || '삭제 되었습니다.', 'success');
+
+          commentLoading = false;
+          comments();
         })
-          .then(async (res) => {
-            if (res.status !== 200) {
-              const { message } = await res.json();
-              await toast(message, 'error');
-              return;
-            }
+        .catch(async (err) => {
+          console.error(err);
 
-            const _message = await res.text();
-
-            await toast(_message || '삭제 되었습니다.', 'success');
-
-            commentLoading = false;
-            comments();
-          })
-          .catch(async (err) => {
-            console.error(err);
-
-            await toast(err.message ?? '삭제 중 오류가 발생했습니다.', 'error');
-          })
-          .finally(() => {
-            commentLoading = false;
-          });
+          await toast(err.message ?? '삭제 중 오류가 발생했습니다.', 'error');
+        })
+        .finally(() => {
+          commentLoading = false;
+        });
     }
   }
 
@@ -479,10 +479,7 @@
     if (event.type === 'paste') {
       const clipboardData = /** @type {ClipboardEvent} */ (event).clipboardData;
       if (!clipboardData) return;
-      if (
-        clipboardData.files?.length &&
-        clipboardData.files[0].type.startsWith('image')
-      ) {
+      if (clipboardData.files?.length && clipboardData.files[0].type.startsWith('image')) {
         editCommentImage = clipboardData.files[0];
         event.preventDefault();
       } else return;
@@ -889,7 +886,10 @@
 
     if (hash) {
       const el = document.querySelector(`#${hash}`);
-      setTimeout(() => el?.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' }), 500);
+      setTimeout(
+        () => el?.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' }),
+        500
+      );
     }
 
     // Quill ql-syntax 코드 하이라이트 적용 (PrismJS)
@@ -907,7 +907,9 @@
         // @ts-ignore prism component side-effect imports
         await import('prismjs/components/prism-markup.js');
 
-        const qlBlocks = /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('.ql-syntax'));
+        const qlBlocks = /** @type {NodeListOf<HTMLElement>} */ (
+          document.querySelectorAll('.ql-syntax')
+        );
         qlBlocks.forEach((block) => {
           if (!block.dataset.highlighted) {
             block.dataset.highlighted = 'true';
@@ -1194,502 +1196,540 @@
   </div>-->
 
   {#if article}
-  <Row class="mt-4 shadow rounded-bottom-4 p-1 m-0">
-    <Row class="article-header border-bottom border-secondary-subtle pt-2 pb-2 px-2 m-0 gy-1">
-      <Col xs="12" class="px-0">
-        <h5 class="article-title mb-0 !text-[1.3rem] max-md:!text-[1.4rem] !leading-[1.45] font-semibold">{article.title}</h5>
-      </Col>
-      <Col md="6" xs="8" class="px-0 article-meta text-secondary">
-        <span class="article-author">{article.nickname}</span>
-        <span class="article-date text-muted">{formatIso9075Safe(article.createdAt)}</span>
-      </Col>
-      <Col class="text-end text-muted article-stats" md="6" xs="4">
-        <span class="article-stat"><Icon class="pe-1" name="eye" />{article.read}</span>
-        <span class="article-stat ms-2"
-          ><Icon class="text-success pe-1" name="hand-thumbs-up" />{article.like}</span
-        >
-      </Col>
-    </Row>
-    <Row class="py-3 px-2 mx-0">
-        <div class="text-break px-2 article-content max-w-full dgst-rich-text">
-        {@html processArticleContent(
-          article.content.replace(/<p>\s*<br\s*\/?>(\s|\u00A0)*<\/p>/g, '<br>')
-        )}
-      </div>
-    </Row>
-    <Row class="mb-3 mx-0">
-      <Col xs="12" class="px-2">
-        <!--프로필-->
-        <div class="article-author-panel rounded-3">
-          <Row class="g-2 d-flex align-items-center m-0">
-            <Col xs="auto">
-              <img
-                alt=""
-                class="article-author-photo"
-                src={data.photo || '/icons/unknown-person-icon-4.jpg'}
-                width="100"
-                height="100"
-              />
-            </Col>
-            <Col>
-              <div class="article-author-body">
-                <div class="article-author-name fw-semibold">{article.nickname}</div>
-                <div class="text-muted pt-2">
-                  <pre class="article-author-intro mb-0">{data.introduction}</pre>
-                </div>
-              </div>
-            </Col>
-          </Row>
-        </div>
-      </Col>
-    </Row>
-    <Row class="mx-0">
-      <!--버튼-->
-      <Col class="article-toolbar text-end pe-md-3 p-xs-0 m-xs-0">
-        {#if sessionUser?.email && article.email === sessionUser.email}
-          <Button
-            size="lg"
-            color="danger"
-            onclick={() => remove(article._id)}
-            class="article-action-btn"
+    <Row class="mt-4 shadow rounded-bottom-4 p-1 m-0">
+      <Row class="article-header border-bottom border-secondary-subtle pt-2 pb-2 px-2 m-0 gy-1">
+        <Col xs="12" class="px-0">
+          <h5
+            class="article-title mb-0 !text-[1.3rem] max-md:!text-[1.4rem] !leading-[1.45] font-semibold"
           >
-            <Icon name="trash" />
-            삭제
-          </Button>
-          <Button
-            size="lg"
-            color="success"
-            onclick={() => edit(article._id)}
-            class="article-action-btn"
-          >
-            <Icon name="pencil" />
-            수정
-          </Button>
-        {/if}
-        <Button
-          size="lg"
-          color="primary"
-          onclick={like}
-          class="article-action-btn px-3 {likeAnimation ? 'like-animation' : ''}"
-          disabled={articleLiked}
-        >
-          <Icon name={articleLiked ? 'hand-thumbs-up-fill' : 'hand-thumbs-up'} />
-          {articleLike || ''}
-        </Button>
-        <Button size="lg" color="secondary" onclick={list} class="article-action-btn">
-          <Icon name="list" />
-          목록
-        </Button>
-      </Col>
-      <Row class="comment-heading-bar my-3 bg-warning-subtle p-2 rounded-3 mb-1 mx-2 align-items-center">
-        <!--리플-->
-        <Col class="d-flex align-items-center gap-2 flex-wrap">
-          <Icon name="chat" />
-          <span>의견남기기</span>
-          <Badge color="primary">{commentData.length}</Badge>
+            {article.title}
+          </h5>
         </Col>
-        <Col class="text-end article-comment-refresh d-flex align-items-center justify-content-end">
-          <Button class="comment-toolbar-btn fw-bolder" onclick={comments} outline size="lg">
-            <Icon name="arrow-repeat" />
-          </Button>
+        <Col md="6" xs="8" class="px-0 article-meta text-secondary">
+          <span class="article-author">{article.nickname}</span>
+          <span class="article-date text-muted">{formatIso9075Safe(article.createdAt)}</span>
+        </Col>
+        <Col class="text-end text-muted article-stats" md="6" xs="4">
+          <span class="article-stat"><Icon class="pe-1" name="eye" />{article.read}</span>
+          <span class="article-stat ms-2"
+            ><Icon class="text-success pe-1" name="hand-thumbs-up" />{article.like}</span
+          >
         </Col>
       </Row>
-    </Row>
-
-    <Row class="comment-section mb-5 mx-0 px-2">
-      {#each commentData as comment (commentKey(comment))}
-        <Row class="comment-item pt-3 pb-2 border-bottom border-gray-subtle mx-0" id="cmt{comment.id}">
-          {#if comment.parentCommentNickname}
-            <Col xs="auto" class="m-0 pe-1">
-              <Icon name="arrow-return-right" class="text-success"></Icon>
-            </Col>
-          {/if}
-
-          <Col class="p-0 m-0">
-            <Row class="mx-0 align-items-start">
-              <Col xs="12" class="comment-item-header p-0 m-0 mb-2">
-                <div class="d-flex align-items-center gap-2">
-                  <img
-                    alt=""
-                    class="comment-avatar rounded-circle flex-shrink-0"
-                    src={comment.photo || '/icons/unknown-person-icon-4.jpg'}
-                    width="40"
-                    height="40"
-                    loading="lazy"
-                  />
-                  <div class="comment-meta">
-                    <div class="comment-nickname-line font-semibold !text-[1.05rem] !leading-snug">{comment.nickname}</div>
-                    <div class="comment-time-line !text-[0.9375rem] !leading-snug text-muted">
-                      {formatRelativeTime(comment.createdAt, {
-                        locale: ko,
-                        addSuffix: true
-                      })}
-                    </div>
+      <Row class="py-3 px-2 mx-0">
+        <div class="text-break px-2 article-content max-w-full dgst-rich-text">
+          {@html processArticleContent(
+            article.content.replace(/<p>\s*<br\s*\/?>(\s|\u00A0)*<\/p>/g, '<br>')
+          )}
+        </div>
+      </Row>
+      <Row class="mb-3 mx-0">
+        <Col xs="12" class="px-2">
+          <!--프로필-->
+          <div class="article-author-panel rounded-3">
+            <Row class="g-2 d-flex align-items-center m-0">
+              <Col xs="auto">
+                <img
+                  alt=""
+                  class="article-author-photo"
+                  src={data.photo || '/icons/unknown-person-icon-4.jpg'}
+                  width="100"
+                  height="100"
+                />
+              </Col>
+              <Col>
+                <div class="article-author-body">
+                  <div class="article-author-name fw-semibold">{article.nickname}</div>
+                  <div class="text-muted pt-2">
+                    <pre class="article-author-intro mb-0">{data.introduction}</pre>
                   </div>
                 </div>
-              </Col>
-
-              <Col xs="12" class="p-0 min-w-0">
-                <Row class="mx-0">
-                  <Col class="text-break p-0 m-0" style="max-width: 98%">
-                    {#if editingCommentId === comment._id}
-                      <!-- 댓글 수정 모드 -->
-                      <div class="border p-3 rounded-4 shadow-sm bg-light position-relative">
-                        {#if commentLoading}
-                          <div
-                            class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center rounded-4"
-                            style="z-index: 1000; background-color: rgba(255, 255, 255, 0.50);"
-                          >
-                            <div class="text-center">
-                              <div class="spinner-border text-primary" role="status">
-                                <span class="visually-hidden">Loading...</span>
-                              </div>
-                              <div class="mt-2 fw-bold">댓글 저장 중...</div>
-                            </div>
-                          </div>
-                        {/if}
-
-                        <!-- 이미지 업로드 -->
-                        <InputGroup class="mb-2">
-                          <input
-                            type="file"
-                            bind:this={editCommentImageEl}
-                            onchange={handleEditImageChange}
-                            accept="image/*"
-                            class="form-control m-2"
-                          />
-                          {#if editPreviewEl && editPreviewEl.src}
-                            <Button
-                              color="danger"
-                              outline
-                              onclick={removeEditCommentImage}
-                              class="comment-form-btn ms-2"
-                            >
-                              <Icon name="trash" />
-                              이미지 삭제
-                            </Button>
-                          {/if}
-                        </InputGroup>
-
-                        <!-- 이미지 미리보기 -->
-                        <div class="mb-2">
-                          <img
-                            src=""
-                            class="d-none"
-                            bind:this={editPreviewEl}
-                            alt="댓글 이미지 미리보기"
-                            style="max-width: 100%"
-                          />
-                        </div>
-
-                        <!-- 댓글 내용 입력 -->
-                        <InputGroup>
-                          <textarea
-                            bind:value={editCommentContent}
-                            onpaste={handleEditPaste}
-                            class="form-control border border-gray rounded-start-3"
-                            rows="3"
-                            placeholder="댓글 내용을 입력하세요"
-                          ></textarea>
-                          <Button
-                            color="success"
-                            onclick={saveEditComment}
-                            class="comment-form-btn z-2"
-                            disabled={commentLoading}
-                          >
-                            <Icon name="check" />
-                            저장
-                          </Button>
-                          <Button
-                            color="secondary"
-                            onclick={cancelEditComment}
-                            class="comment-form-btn z-2"
-                            disabled={commentLoading}
-                          >
-                            <Icon name="x" />
-                            취소
-                          </Button>
-                        </InputGroup>
-                      </div>
-                    {:else}
-                      <!-- 일반 댓글 표시 모드 -->
-                      {#if comment.state === 'write' && comment.image}
-                        <Row class="pb-3 mx-0">
-                          <Col class="p-0 ps-1 m-0">
-                            <img
-                              src={comment.image}
-                              alt="리플 짤"
-                              style="max-width: 100%;"
-                              onload={handleAttachmentImageLoad}
-                            />
-                          </Col>
-                        </Row>
-                      {/if}
-
-                      {#if !/[0-9a-zA-Z가-힣_-]/.test(comment.content) && countEmojis(comment.content) === 1}
-                        <div class="comment-content-wrap dgst-rich-text">
-                          <div class="comment-body-line">
-                            {#if comment.parentCommentNickname}
-                              <span class="comment-mention text-bg-secondary rounded-2"
-                                ><span class="text-warning">@</span
-                                >{comment.parentCommentNickname}</span
-                              >
-                            {/if}
-                            <span class="display-1">{comment.content}</span>
-                          </div>
-                        </div>
-                      {:else if comment.state !== 'write'}
-                        <div class="comment-content-wrap text-muted dgst-rich-text"><em>{comment.content}</em></div>
-                      {:else}
-                        <div class="comment-content-wrap dgst-rich-text">
-                          <div class="comment-body-line">
-                            {#if comment.parentCommentNickname}
-                              <span class="comment-mention text-bg-secondary rounded-2">
-                                <span class="text-warning">@</span>{comment.parentCommentNickname}
-                              </span>
-                            {/if}
-                            <span
-                              class="comment-text"
-                              bind:this={commentDiv}
-                              data-comment-id={comment._id}
-                            >
-                              {@html embeder ? embeder.viewComment(comment.content) : comment.content}
-                            </span>
-                          </div>
-
-                          <!-- 마크다운일 때는 출처 등이 OG 카드로 도배되는 것을 막기 위해 렌더링 생략 -->
-                          <!-- 일반 글이더라도 URL이 여러개면 OG 폭탄 방지를 위해 첫번째 링크만 OG 렌더링 -->
-                          {#if embeder && !embeder.isMarkdownContent(comment.content)}
-                            {#each extractUrls(comment.content).slice(0, 1) as url}
-                              {#if !url.includes('youtube.com') && !url.includes('youtu.be')}
-                                <OGPreview {url} />
-                              {/if}
-                            {/each}
-                          {/if}
-                        </div>
-                      {/if}
-                    {/if}
-                  </Col>
-                </Row>
               </Col>
             </Row>
-
-            {#if sessionUser?.nickname && comment.state === 'write'}
-              <Row class="mt-2">
-                <Col class="comment-actions text-end pe-2 m-0">
-                  {#if comment.email === sessionUser?.email}
-                    <Button
-                      onclick={() => deleteComment(comment._id)}
-                      outline
-                      color="danger"
-                      class="comment-action-btn"
-                    >
-                      <Icon name="trash" />
-                      삭제
-                    </Button>
-                    <Button
-                      onclick={() => startEditComment(comment)}
-                      outline
-                      color="primary"
-                      class="comment-action-btn"
-                      disabled={editingCommentId !== ''}
-                    >
-                      <Icon name="pencil" />
-                      수정
-                    </Button>
-                  {/if}
-                  <Button
-                    onclick={() => likeComment(comment._id)}
-                    outline
-                    color="primary"
-                    disabled={comment.liked}
-                    class="comment-action-btn comment-like-btn {commentLikeAnimations.has(comment._id)
-                      ? 'like-animation'
-                      : ''}"
-                  >
-                    <Icon name={comment.liked ? 'hand-thumbs-up-fill' : 'hand-thumbs-up'} />
-                    {comment.like || ''}
-                  </Button>
-                  <Button
-                    onclick={() => openReply(comment)}
-                    outline
-                    color="info"
-                    class="comment-action-btn"
-                  >
-                    <Icon name="chat-square-dots" />
-                    답글
-                  </Button>
-                </Col>
-              </Row>
-            {/if}
-          </Col>
-        </Row>
-
-        <!-- 대댓글 -->
-        {#if visibleReply === commentKey(comment)}
-          <div
-            transition:scale
-            class="mt-2 mx-0 border-bottom border-secondary-subtle bg-secondary bg-opacity-25"
-          >
-            <div
-              class="border p-3 mb-2 rounded-4 shadow-sm position-relative"
-              bind:this={reCommentDiv}
-            >
-              {#if commentLoading}
-                <div
-                  class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center rounded-4"
-                  style="z-index: 1000; background-color: rgba(255, 255, 255, 0.75);"
-                >
-                  <div class="text-center">
-                    <div class="spinner-border text-primary" role="status">
-                      <span class="visually-hidden">Loading...</span>
-                    </div>
-                    <div class="mt-2 fw-bold">댓글 저장 중...</div>
-                  </div>
-                </div>
-              {/if}
-              <InputGroup class="mb-2">
-                <input
-                  type="file"
-                  bind:this={reCommentImageEl}
-                  onchange={handleReplyImageChange}
-                  accept="image/*"
-                  class="form-control m-2"
-                />
-              </InputGroup>
-
-              <div>
-                <img
-                  src=""
-                  class="d-none"
-                  bind:this={rePreviewEl}
-                  alt="리플 이미지 첨부 미리보기"
-                  style="max-width: 100%"
-                />
-              </div>
-
-              <InputGroup class="comment-write-group">
-                <textarea
-                  bind:value={reCommentContent}
-                  bind:this={reCommentTextareaEl}
-                  onpaste={handleReplyPaste}
-                  class="form-control border border-gray rounded-start-3"
-                  rows="3"
-                ></textarea>
-                <Button
-                  color="primary"
-                  outline
-                  onclick={() => writeComment(commentKey(comment))}
-                  disabled={commentLoading}
-                  class="comment-form-btn"
-                >
-                  <Icon name="pencil-fill" />
-                  등록
-                </Button>
-              </InputGroup>
-            </div>
           </div>
-        {/if}
-      {/each}
-
-      <!--목록 끝-->
-
-      {#if commentData?.length}
-        <Row class="comment-heading-bar my-3 bg-warning-subtle p-2 rounded-3 mb-1 mx-0 align-items-center">
+        </Col>
+      </Row>
+      <Row class="mx-0">
+        <!--버튼-->
+        <Col class="article-toolbar text-end pe-md-3 p-xs-0 m-xs-0">
+          {#if sessionUser?.email && article.email === sessionUser.email}
+            <Button
+              size="lg"
+              color="danger"
+              onclick={() => remove(article._id)}
+              class="article-action-btn"
+            >
+              <Icon name="trash" />
+              삭제
+            </Button>
+            <Button
+              size="lg"
+              color="success"
+              onclick={() => edit(article._id)}
+              class="article-action-btn"
+            >
+              <Icon name="pencil" />
+              수정
+            </Button>
+          {/if}
+          <Button
+            size="lg"
+            color="primary"
+            onclick={like}
+            class="article-action-btn px-3 {likeAnimation ? 'like-animation' : ''}"
+            disabled={articleLiked}
+          >
+            <Icon name={articleLiked ? 'hand-thumbs-up-fill' : 'hand-thumbs-up'} />
+            {articleLike || ''}
+          </Button>
+          <Button size="lg" color="secondary" onclick={list} class="article-action-btn">
+            <Icon name="list" />
+            목록
+          </Button>
+        </Col>
+        <Row
+          class="comment-heading-bar my-3 bg-warning-subtle p-2 rounded-3 mb-1 mx-2 align-items-center"
+        >
           <!--리플-->
           <Col class="d-flex align-items-center gap-2 flex-wrap">
             <Icon name="chat" />
             <span>의견남기기</span>
             <Badge color="primary">{commentData.length}</Badge>
           </Col>
-          <Col class="text-end d-flex align-items-center justify-content-end">
-            <Button class="comment-toolbar-btn fw-bolder" onclick={comments} outline>
+          <Col
+            class="text-end article-comment-refresh d-flex align-items-center justify-content-end"
+          >
+            <Button class="comment-toolbar-btn fw-bolder" onclick={comments} outline size="lg">
               <Icon name="arrow-repeat" />
             </Button>
           </Col>
         </Row>
-      {/if}
+      </Row>
 
-      <!-- 댓글 입력 -->
-      {#if sessionUser?.nickname}
-        <div class="border p-3 rounded-4 shadow-sm mt-3 position-relative" bind:this={commentDiv}>
-          {#if commentLoading}
+      <Row class="comment-section mb-5 mx-0 px-2">
+        {#each commentData as comment (commentKey(comment))}
+          <Row
+            class="comment-item pt-3 pb-2 border-bottom border-gray-subtle mx-0"
+            id="cmt{comment.id}"
+          >
+            {#if comment.parentCommentNickname}
+              <Col xs="auto" class="m-0 pe-1">
+                <Icon name="arrow-return-right" class="text-success"></Icon>
+              </Col>
+            {/if}
+
+            <Col class="p-0 m-0">
+              <Row class="mx-0 align-items-start">
+                <Col xs="12" class="comment-item-header p-0 m-0 mb-2">
+                  <div class="d-flex align-items-center gap-2">
+                    <img
+                      alt=""
+                      class="comment-avatar rounded-circle flex-shrink-0"
+                      src={comment.photo || '/icons/unknown-person-icon-4.jpg'}
+                      width="40"
+                      height="40"
+                      loading="lazy"
+                    />
+                    <div class="comment-meta">
+                      <div
+                        class="comment-nickname-line font-semibold !text-[1.05rem] !leading-snug"
+                      >
+                        {comment.nickname}
+                      </div>
+                      <div class="comment-time-line !text-[0.9375rem] !leading-snug text-muted">
+                        {formatRelativeTime(comment.createdAt, {
+                          locale: ko,
+                          addSuffix: true
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                </Col>
+
+                <Col xs="12" class="p-0 min-w-0">
+                  <Row class="mx-0">
+                    <Col class="text-break p-0 m-0" style="max-width: 98%">
+                      {#if editingCommentId === comment._id}
+                        <!-- 댓글 수정 모드 -->
+                        <div class="border p-3 rounded-4 shadow-sm bg-light position-relative">
+                          {#if commentLoading}
+                            <div
+                              class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center rounded-4"
+                              style="z-index: 1000; background-color: rgba(255, 255, 255, 0.50);"
+                            >
+                              <div class="text-center">
+                                <div class="spinner-border text-primary" role="status">
+                                  <span class="visually-hidden">Loading...</span>
+                                </div>
+                                <div class="mt-2 fw-bold">댓글 저장 중...</div>
+                              </div>
+                            </div>
+                          {/if}
+
+                          <!-- 이미지 업로드 -->
+                          <InputGroup class="mb-2">
+                            <input
+                              type="file"
+                              bind:this={editCommentImageEl}
+                              onchange={handleEditImageChange}
+                              accept="image/*"
+                              class="form-control m-2"
+                            />
+                            {#if editPreviewEl && editPreviewEl.src}
+                              <Button
+                                color="danger"
+                                outline
+                                onclick={removeEditCommentImage}
+                                class="comment-form-btn ms-2"
+                              >
+                                <Icon name="trash" />
+                                이미지 삭제
+                              </Button>
+                            {/if}
+                          </InputGroup>
+
+                          <!-- 이미지 미리보기 -->
+                          <div class="mb-2">
+                            <img
+                              src=""
+                              class="d-none"
+                              bind:this={editPreviewEl}
+                              alt="댓글 이미지 미리보기"
+                              style="max-width: 100%"
+                            />
+                          </div>
+
+                          <!-- 댓글 내용 입력 -->
+                          <InputGroup>
+                            <textarea
+                              bind:value={editCommentContent}
+                              onpaste={handleEditPaste}
+                              class="form-control border border-gray rounded-start-3"
+                              rows="3"
+                              placeholder="댓글 내용을 입력하세요"
+                            ></textarea>
+                            <Button
+                              color="success"
+                              onclick={saveEditComment}
+                              class="comment-form-btn z-2"
+                              disabled={commentLoading}
+                            >
+                              <Icon name="check" />
+                              저장
+                            </Button>
+                            <Button
+                              color="secondary"
+                              onclick={cancelEditComment}
+                              class="comment-form-btn z-2"
+                              disabled={commentLoading}
+                            >
+                              <Icon name="x" />
+                              취소
+                            </Button>
+                          </InputGroup>
+                        </div>
+                      {:else}
+                        <!-- 일반 댓글 표시 모드 -->
+                        {#if comment.state === 'write' && comment.image}
+                          <Row class="pb-3 mx-0">
+                            <Col class="p-0 ps-1 m-0">
+                              <img
+                                src={comment.image}
+                                alt="리플 짤"
+                                style="max-width: 100%;"
+                                onload={handleAttachmentImageLoad}
+                              />
+                            </Col>
+                          </Row>
+                        {/if}
+
+                        {#if !/[0-9a-zA-Z가-힣_-]/.test(comment.content) && countEmojis(comment.content) === 1}
+                          <div class="comment-content-wrap dgst-rich-text">
+                            <div class="comment-body-line">
+                              {#if comment.parentCommentNickname}
+                                <span class="comment-mention text-bg-secondary rounded-2"
+                                  ><span class="text-warning">@</span
+                                  >{comment.parentCommentNickname}</span
+                                >
+                              {/if}
+                              <span class="display-1">{comment.content}</span>
+                            </div>
+                          </div>
+                        {:else if comment.state !== 'write'}
+                          <div class="comment-content-wrap text-muted dgst-rich-text">
+                            <em>{comment.content}</em>
+                          </div>
+                        {:else}
+                          <div class="comment-content-wrap dgst-rich-text">
+                            <div class="comment-body-line">
+                              {#if comment.parentCommentNickname}
+                                <span class="comment-mention text-bg-secondary rounded-2">
+                                  <span class="text-warning">@</span>{comment.parentCommentNickname}
+                                </span>
+                              {/if}
+                              <span
+                                class="comment-text"
+                                bind:this={commentDiv}
+                                data-comment-id={comment._id}
+                              >
+                                {@html embeder
+                                  ? embeder.viewComment(comment.content)
+                                  : comment.content}
+                              </span>
+                            </div>
+
+                            <!-- 마크다운일 때는 출처 등이 OG 카드로 도배되는 것을 막기 위해 렌더링 생략 -->
+                            <!-- 일반 글이더라도 URL이 여러개면 OG 폭탄 방지를 위해 첫번째 링크만 OG 렌더링 -->
+                            {#if embeder && !embeder.isMarkdownContent(comment.content)}
+                              {#each extractUrls(comment.content).slice(0, 1) as url}
+                                {#if !url.includes('youtube.com') && !url.includes('youtu.be')}
+                                  <OGPreview {url} />
+                                {/if}
+                              {/each}
+                            {/if}
+                          </div>
+                        {/if}
+                      {/if}
+                    </Col>
+                  </Row>
+                </Col>
+              </Row>
+
+              {#if sessionUser?.nickname && comment.state === 'write'}
+                <Row class="mt-2">
+                  <Col class="comment-actions text-end pe-2 m-0">
+                    {#if comment.email === sessionUser?.email}
+                      <Button
+                        onclick={() => deleteComment(comment._id)}
+                        outline
+                        color="danger"
+                        class="comment-action-btn"
+                      >
+                        <Icon name="trash" />
+                        삭제
+                      </Button>
+                      <Button
+                        onclick={() => startEditComment(comment)}
+                        outline
+                        color="primary"
+                        class="comment-action-btn"
+                        disabled={editingCommentId !== ''}
+                      >
+                        <Icon name="pencil" />
+                        수정
+                      </Button>
+                    {/if}
+                    <Button
+                      onclick={() => likeComment(comment._id)}
+                      outline
+                      color="primary"
+                      disabled={comment.liked}
+                      class="comment-action-btn comment-like-btn {commentLikeAnimations.has(
+                        comment._id
+                      )
+                        ? 'like-animation'
+                        : ''}"
+                    >
+                      <Icon name={comment.liked ? 'hand-thumbs-up-fill' : 'hand-thumbs-up'} />
+                      {comment.like || ''}
+                    </Button>
+                    <Button
+                      onclick={() => openReply(comment)}
+                      outline
+                      color="info"
+                      class="comment-action-btn"
+                    >
+                      <Icon name="chat-square-dots" />
+                      답글
+                    </Button>
+                  </Col>
+                </Row>
+              {/if}
+            </Col>
+          </Row>
+
+          <!-- 대댓글 -->
+          {#if visibleReply === commentKey(comment)}
             <div
-              class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center rounded-4"
-              style="z-index: 1000; background-color: rgba(255, 255, 255, 0.50); left: 0; right: 0; top: 0; bottom: 0;"
+              transition:scale
+              class="mt-2 mx-0 border-bottom border-secondary-subtle bg-secondary bg-opacity-25"
             >
-              <div class="text-center">
-                <div class="spinner-border text-primary" role="status">
-                  <span class="visually-hidden">Loading...</span>
+              <div
+                class="border p-3 mb-2 rounded-4 shadow-sm position-relative"
+                bind:this={reCommentDiv}
+              >
+                {#if commentLoading}
+                  <div
+                    class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center rounded-4"
+                    style="z-index: 1000; background-color: rgba(255, 255, 255, 0.75);"
+                  >
+                    <div class="text-center">
+                      <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                      </div>
+                      <div class="mt-2 fw-bold">댓글 저장 중...</div>
+                    </div>
+                  </div>
+                {/if}
+                <InputGroup class="mb-2">
+                  <input
+                    type="file"
+                    bind:this={reCommentImageEl}
+                    onchange={handleReplyImageChange}
+                    accept="image/*"
+                    class="form-control m-2"
+                  />
+                </InputGroup>
+
+                <div>
+                  <img
+                    src=""
+                    class="d-none"
+                    bind:this={rePreviewEl}
+                    alt="리플 이미지 첨부 미리보기"
+                    style="max-width: 100%"
+                  />
                 </div>
-                <div class="mt-2 fw-bold">댓글 저장 중...</div>
+
+                <InputGroup class="comment-write-group">
+                  <textarea
+                    bind:value={reCommentContent}
+                    bind:this={reCommentTextareaEl}
+                    onpaste={handleReplyPaste}
+                    class="form-control border border-gray rounded-start-3"
+                    rows="3"
+                  ></textarea>
+                  <Button
+                    color="primary"
+                    outline
+                    onclick={() => writeComment(commentKey(comment))}
+                    disabled={commentLoading}
+                    class="comment-form-btn"
+                  >
+                    <Icon name="pencil-fill" />
+                    등록
+                  </Button>
+                </InputGroup>
               </div>
             </div>
           {/if}
-          <InputGroup class="mb-2">
-            <input
-              type="file"
-              bind:this={commentImageEl}
-              onchange={handleCommentImageChange}
-              accept="image/*"
-              class="form-control m-2"
-            />
-          </InputGroup>
-          <div>
-            <img
-              src=""
-              class="img-thumbnail d-none me-2"
-              bind:this={previewEl}
-              alt="리플 이미지 첨부 미리보기"
-              style="max-width: 100%"
-            />
-          </div>
-          <InputGroup class="comment-write-group">
-            <textarea
-              bind:value={commentContent}
-              onpaste={handleCommentPaste}
-              class="form-control border border-gray rounded-start-3"
-              rows="3"
-            ></textarea>
-            <Button
-              color="primary"
-              outline
-              onclick={() => writeComment()}
-              class="comment-form-btn z-2"
-              disabled={commentLoading}
-            >
-              <Icon name="pencil-fill" />
-              등록
-            </Button>
-          </InputGroup>
-        </div>
-      {/if}
-    </Row>
+        {/each}
 
-    <Row class="mx-0 mb-3">
-      <!--버튼-->
-      <Col class="article-toolbar text-end pe-1">
-        {#if article.email === sessionUser?.email}
-          <Button size="lg" class="article-action-btn" color="danger" onclick={() => remove(article._id)}>
-            <Icon name="trash" />
-            삭제
-          </Button>
-          <Button size="lg" class="article-action-btn" color="success" onclick={() => edit(article._id)}>
-            <Icon name="pencil" />
-            수정
-          </Button>
+        <!--목록 끝-->
+
+        {#if commentData?.length}
+          <Row
+            class="comment-heading-bar my-3 bg-warning-subtle p-2 rounded-3 mb-1 mx-0 align-items-center"
+          >
+            <!--리플-->
+            <Col class="d-flex align-items-center gap-2 flex-wrap">
+              <Icon name="chat" />
+              <span>의견남기기</span>
+              <Badge color="primary">{commentData.length}</Badge>
+            </Col>
+            <Col class="text-end d-flex align-items-center justify-content-end">
+              <Button class="comment-toolbar-btn fw-bolder" onclick={comments} outline>
+                <Icon name="arrow-repeat" />
+              </Button>
+            </Col>
+          </Row>
         {/if}
-        <Button size="lg" class="article-action-btn px-3 fw-semibold" color="primary" onclick={write}>
-          <Icon name="pencil-fill" class="pe-1" />
-          글쓰기
-        </Button>
-        <Button size="lg" class="article-action-btn" color="secondary" onclick={list}>
-          <Icon name="list" />
-          목록
-        </Button>
-      </Col>
+
+        <!-- 댓글 입력 -->
+        {#if sessionUser?.nickname}
+          <div class="border p-3 rounded-4 shadow-sm mt-3 position-relative" bind:this={commentDiv}>
+            {#if commentLoading}
+              <div
+                class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center rounded-4"
+                style="z-index: 1000; background-color: rgba(255, 255, 255, 0.50); left: 0; right: 0; top: 0; bottom: 0;"
+              >
+                <div class="text-center">
+                  <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                  </div>
+                  <div class="mt-2 fw-bold">댓글 저장 중...</div>
+                </div>
+              </div>
+            {/if}
+            <InputGroup class="mb-2">
+              <input
+                type="file"
+                bind:this={commentImageEl}
+                onchange={handleCommentImageChange}
+                accept="image/*"
+                class="form-control m-2"
+              />
+            </InputGroup>
+            <div>
+              <img
+                src=""
+                class="img-thumbnail d-none me-2"
+                bind:this={previewEl}
+                alt="리플 이미지 첨부 미리보기"
+                style="max-width: 100%"
+              />
+            </div>
+            <InputGroup class="comment-write-group">
+              <textarea
+                bind:value={commentContent}
+                onpaste={handleCommentPaste}
+                class="form-control border border-gray rounded-start-3"
+                rows="3"
+              ></textarea>
+              <Button
+                color="primary"
+                outline
+                onclick={() => writeComment()}
+                class="comment-form-btn z-2"
+                disabled={commentLoading}
+              >
+                <Icon name="pencil-fill" />
+                등록
+              </Button>
+            </InputGroup>
+          </div>
+        {/if}
+      </Row>
+
+      <Row class="mx-0 mb-3">
+        <!--버튼-->
+        <Col class="article-toolbar text-end pe-1">
+          {#if article.email === sessionUser?.email}
+            <Button
+              size="lg"
+              class="article-action-btn"
+              color="danger"
+              onclick={() => remove(article._id)}
+            >
+              <Icon name="trash" />
+              삭제
+            </Button>
+            <Button
+              size="lg"
+              class="article-action-btn"
+              color="success"
+              onclick={() => edit(article._id)}
+            >
+              <Icon name="pencil" />
+              수정
+            </Button>
+          {/if}
+          <Button
+            size="lg"
+            class="article-action-btn px-3 fw-semibold"
+            color="primary"
+            onclick={write}
+          >
+            <Icon name="pencil-fill" class="pe-1" />
+            글쓰기
+          </Button>
+          <Button size="lg" class="article-action-btn" color="secondary" onclick={list}>
+            <Icon name="list" />
+            목록
+          </Button>
+        </Col>
+      </Row>
     </Row>
-  </Row>
   {:else}
     <Row class="mt-4 shadow rounded-bottom-4 p-4 m-0">
       <Col xs="12" class="text-center text-muted">게시글을 찾을 수 없습니다.</Col>

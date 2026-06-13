@@ -238,12 +238,7 @@
         <Badge color="success" class="align-middle">{lottoTotalPicks24h}</Badge>
       {/if}
     </Button>
-    <Button
-      color="primary"
-      outline
-      onclick={() => (expanded = !expanded)}
-      type="button"
-    >
+    <Button color="primary" outline onclick={() => (expanded = !expanded)} type="button">
       {expanded ? '접기' : '펼치기'}
     </Button>
     <Button
@@ -255,7 +250,8 @@
       type="button"
     >
       {#if refreshing}
-        <span class="spinner-border spinner-border-sm" role="status" aria-label="새로고침 중"></span>
+        <span class="spinner-border spinner-border-sm" role="status" aria-label="새로고침 중"
+        ></span>
       {:else}
         <Icon name="arrow-clockwise" aria-hidden="true" />
       {/if}
@@ -272,8 +268,8 @@
         {@const dr = lottoWeekMatch.official}
         <h4 class="h6 text-secondary mb-2">직전 주 &amp; 공식 당첨 비교</h4>
         <div class="small text-muted mb-1">
-          비교 구간 · <strong>{lottoWeekMatch.weekLabel}</strong> 서울 기준월~일 /
-          참고 회차 동행복권 <strong>{dr.drwNo}회</strong>
+          비교 구간 · <strong>{lottoWeekMatch.weekLabel}</strong> 서울 기준월~일 / 참고 회차
+          동행복권 <strong>{dr.drwNo}회</strong>
           {#if dr.drwNoDate}
             (<span>{dr.drwNoDate}</span>)
           {/if}
@@ -317,9 +313,7 @@
                     />
                   {/if}
                   <span class="fw-medium">{w.nickname}</span>
-                  <span class="text-muted"
-                    >[{formatAbsoluteTime(w.createdAt, 'M/d HH:mm')}]</span
-                  >
+                  <span class="text-muted">[{formatAbsoluteTime(w.createdAt, 'M/d HH:mm')}]</span>
                   <span class="d-inline-flex flex-wrap gap-1 align-middle mt-1 d-block ms-0 ps-0">
                     {#each w.numbers as n (n)}
                       <span
@@ -381,9 +375,7 @@
                 {/if}
                 <span class={`fw-medium align-middle ${row.mine === true ? 'text-dark' : ''}`}
                   >{row.nickname}</span
-                ><span class="text-muted align-middle"
-                  >[{formatHistoryTime(row.createdAt)}]</span
-                >
+                ><span class="text-muted align-middle">[{formatHistoryTime(row.createdAt)}]</span>
                 <span class="text-muted align-middle"> - </span>
                 <span class="d-inline-flex flex-wrap gap-1 align-middle">
                   {#each row.numbers as n (n)}

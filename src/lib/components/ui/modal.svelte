@@ -43,11 +43,7 @@
         {#if header && !body}
           <div class="modal-header">
             <h5 class="modal-title">{header}</h5>
-            <button
-              type="button"
-              class="btn-close"
-              aria-label="Close"
-              onclick={() => toggle()}
+            <button type="button" class="btn-close" aria-label="Close" onclick={() => toggle()}
             ></button>
           </div>
         {/if}

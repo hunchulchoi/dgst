@@ -9,13 +9,7 @@
    *   children?: import('svelte').Snippet;
    *   [key: string]: unknown;
    * }} */
-  let {
-    divider = false,
-    class: className = '',
-    onclick,
-    children,
-    ...rest
-  } = $props();
+  let { divider = false, class: className = '', onclick, children, ...rest } = $props();
 
   const ctx = /** @type {{ close: () => void }} */ (getContext(DROPDOWN_CTX));
 

@@ -24,6 +24,8 @@ if (!fs.existsSync(logDir)) {
 const getErrorLogPath = () =>
   path.join(logDir, `error-${new Date().toISOString().split('T')[0]}.log`);
 
+const ANSI_ESCAPE_REGEX = new RegExp(String.raw`\u001b\[[0-9;]*m`, 'g');
+
 /**
  * @param {unknown} value
  * @param {number} [depth]
@@ -66,23 +68,28 @@ function serializeLogValue(value, depth = 0) {
  * @param {Record<string, unknown>} [metadata]
  */
 export function toGrafanaLogRecord(level, message, metadata = {}) {
-  const {
-    trace,
-    pathname,
-    path: pathField,
-    status,
-    clientIp,
-    error,
-    level: _ignoredLevel,
-    message: _ignoredMessage,
-    timestamp: _ignoredTimestamp,
-    ...rest
-  } = metadata;
+  const rest = { ...metadata };
+  const trace = rest.trace;
+  const pathname = rest.pathname;
+  const pathField = rest.path;
+  const status = rest.status;
+  const clientIp = rest.clientIp;
+  const error = rest.error;
+
+  delete rest.trace;
+  delete rest.pathname;
+  delete rest.path;
+  delete rest.status;
+  delete rest.clientIp;
+  delete rest.error;
+  delete rest.level;
+  delete rest.message;
+  delete rest.timestamp;
 
   /** @type {Record<string, unknown>} */
   const record = {
     timestamp: new Date().toISOString(),
-    level: String(level).replace(/\u001b\[[0-9;]*m/g, '').toLowerCase(),
+    level: String(level).replace(ANSI_ESCAPE_REGEX, '').toLowerCase(),
     message: typeof message === 'string' ? message : JSON.stringify(message),
     service: serviceName,
     environment,
@@ -118,14 +125,17 @@ function formatPretty(info) {
   const kst = new Date(logTimestamp).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' });
   const reqPath = record.pathname ? ` [${record.pathname}]` : '';
   const status = record.status ? ` [${record.status}]` : '';
-  const { trace, timestamp, level: lvl, message: msg, ...rest } = record;
+  const { trace, level: lvl, message: msg, ...rest } = record;
   const metaString = Object.keys(rest).length > 0 ? ` ${JSON.stringify(rest)}` : '';
   const traceBlock = typeof trace === 'string' && trace ? `\n[trace]\n${trace}` : '';
   return `[${kst}] ${String(lvl).toUpperCase()}${reqPath}${status} ${msg}${metaString}${traceBlock}`;
 }
 
 const grafanaJsonFormat = winston.format.printf(formatGrafanaJson);
-const prettyFormat = winston.format.combine(winston.format.colorize(), winston.format.printf(formatPretty));
+const prettyFormat = winston.format.combine(
+  winston.format.colorize(),
+  winston.format.printf(formatPretty)
+);
 
 const activeFormat = logFormat === 'json' ? grafanaJsonFormat : prettyFormat;
 

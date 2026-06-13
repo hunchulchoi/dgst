@@ -10,11 +10,11 @@
 
 ### 1.1 백업
 
-| 대상 | 명령·작업 | 보관 위치 |
-|------|-----------|-----------|
-| MongoDB | `mongodump --uri="$MONGODB_CONNECTION_STRING" --db=dgstdb --out=./backup-$(date +%Y%m%d)` | 오프사인 복사본 |
-| Redis | `redis-cli -u "$REDIS_URL" BGSAVE` 후 RDB 파일 복사 | 오프사인 복사본 |
-| Postgres | cutover 직전 **빈 스키마** 상태에서 시작 (데이터는 마이그레이션 스크립트로 적재) | — |
+| 대상     | 명령·작업                                                                                 | 보관 위치       |
+| -------- | ----------------------------------------------------------------------------------------- | --------------- |
+| MongoDB  | `mongodump --uri="$MONGODB_CONNECTION_STRING" --db=dgstdb --out=./backup-$(date +%Y%m%d)` | 오프사인 복사본 |
+| Redis    | `redis-cli -u "$REDIS_URL" BGSAVE` 후 RDB 파일 복사                                       | 오프사인 복사본 |
+| Postgres | cutover 직전 **빈 스키마** 상태에서 시작 (데이터는 마이그레이션 스크립트로 적재)          | —               |
 
 ### 1.2 스테이징 dry-run
 
@@ -59,17 +59,17 @@ DB_NAME="dgstdb"
 
 ## 2. 점검 타임라인 (T-24h ~ T+30)
 
-| 시각 | 작업 | 담당 확인 |
-|------|------|-----------|
-| **T-24h** | 사용자 공지 (점검 일시·예상 소요·재로그인 가능성) | [ ] |
-| **T-1h** | on-call 대기, 백업 최종 확인, 스테이징 dry-run 결과 재확인 | [ ] |
-| **T-0** | 점검 모드 ON (503 또는 읽기 전용 middleware) — **쓰기 차단** | [ ] |
-| **T+0** | 최종 `mongodump` (delta 없음 — 쓰기 차단 상태) | [ ] |
-| **T+5** | `npm run db:migrate-data` 실행 | [ ] |
-| **T+15** | `npm run db:verify-migration` — 건수·FK·샘플 게시글 URL | [ ] |
-| **T+20** | `DATABASE_URL` 전환, Postgres 버전 Docker 이미지 배포 | [ ] |
-| **T+25** | 스모크 테스트 (§4 체크리스트) | [ ] |
-| **T+30** | 점검 해제 또는 롤백 결정 | [ ] |
+| 시각      | 작업                                                         | 담당 확인 |
+| --------- | ------------------------------------------------------------ | --------- |
+| **T-24h** | 사용자 공지 (점검 일시·예상 소요·재로그인 가능성)            | [ ]       |
+| **T-1h**  | on-call 대기, 백업 최종 확인, 스테이징 dry-run 결과 재확인   | [ ]       |
+| **T-0**   | 점검 모드 ON (503 또는 읽기 전용 middleware) — **쓰기 차단** | [ ]       |
+| **T+0**   | 최종 `mongodump` (delta 없음 — 쓰기 차단 상태)               | [ ]       |
+| **T+5**   | `npm run db:migrate-data` 실행                               | [ ]       |
+| **T+15**  | `npm run db:verify-migration` — 건수·FK·샘플 게시글 URL      | [ ]       |
+| **T+20**  | `DATABASE_URL` 전환, Postgres 버전 Docker 이미지 배포        | [ ]       |
+| **T+25**  | 스모크 테스트 (§4 체크리스트)                                | [ ]       |
+| **T+30**  | 점검 해제 또는 롤백 결정                                     | [ ]       |
 
 ---
 
@@ -101,9 +101,9 @@ docker compose -f conf/docker-compose.yml up -d dgst
 
 **마이그레이션 데이터 순서 (스크립트 내부 FK 순서):**
 
-1. users → 2. accounts → 3. **sessions** → 4. articles → 5. comments  
-6. game_scores·2048·minesweeper·watermelon → 7. slot_user_balance·memos·login_logs  
-8. Redis alarms (잔존 키만)
+1. users → 2. accounts → 3. **sessions** → 4. articles → 5. comments
+2. game_scores·2048·minesweeper·watermelon → 7. slot_user_balance·memos·login_logs
+3. Redis alarms (잔존 키만)
 
 ---
 
@@ -122,15 +122,15 @@ verify 통과 후, 점검 해제 전에 수동 확인:
 
 ### Cutover 게이트 (verify-migration 기준, §6.4)
 
-| 체크 | 기준 |
-|------|------|
-| users | Mongo count = Postgres count |
+| 체크                | 기준                                     |
+| ------------------- | ---------------------------------------- |
+| users               | Mongo count = Postgres count             |
 | articles + comments | count 일치, 랜덤 10건 title/content 일치 |
-| sessions | count 일치 (활성 세션 유지) |
-| game_scores | count 일치 (±0) |
-| slot_user_balance | email·balance 일치 |
-| alarms | Redis 잔존 키 수 ≈ Postgres alarms count |
-| FK | orphan comment 0건 |
+| sessions            | count 일치 (활성 세션 유지)              |
+| game_scores         | count 일치 (±0)                          |
+| slot_user_balance   | email·balance 일치                       |
+| alarms              | Redis 잔존 키 수 ≈ Postgres alarms count |
+| FK                  | orphan comment 0건                       |
 
 ---
 

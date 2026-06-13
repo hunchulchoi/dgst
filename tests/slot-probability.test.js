@@ -100,7 +100,9 @@ describe('Slot Machine Probability', () => {
     console.log(`\n총 스핀: ${result.total}회`);
     console.log(`총 베팅: ${result.totalBet.toLocaleString()}점`);
     console.log(`총 배당: ${result.totalPayout.toLocaleString()}점`);
-    console.log(`순 손익: ${result.netResult >= 0 ? '+' : ''}${result.netResult.toLocaleString()}점`);
+    console.log(
+      `순 손익: ${result.netResult >= 0 ? '+' : ''}${result.netResult.toLocaleString()}점`
+    );
     console.log(`RTP (Return to Player): ${result.rtp}%\n`);
 
     console.log('-'.repeat(60));
@@ -111,7 +113,9 @@ describe('Slot Machine Probability', () => {
     );
     console.log(`페어 (×2):  ${result.x2.toString().padStart(4)}회 (${result.percentages.x2}%)`);
     console.log(`트리플(×10): ${result.x10.toString().padStart(4)}회 (${result.percentages.x10}%)`);
-    console.log(`잭팟 (×20): ${result.x20.toString().padStart(4)}회 (${result.percentages.x20}%)\n`);
+    console.log(
+      `잭팟 (×20): ${result.x20.toString().padStart(4)}회 (${result.percentages.x20}%)\n`
+    );
 
     if (Object.keys(result.tripleDetails).length > 0) {
       console.log('-'.repeat(60));

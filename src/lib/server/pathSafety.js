@@ -11,7 +11,6 @@ export function isPathUnderRoot(candidatePath, rootDir) {
   const resolvedRoot = path.resolve(rootDir);
   const resolvedCandidate = path.resolve(candidatePath);
   return (
-    resolvedCandidate === resolvedRoot ||
-    resolvedCandidate.startsWith(resolvedRoot + path.sep)
+    resolvedCandidate === resolvedRoot || resolvedCandidate.startsWith(resolvedRoot + path.sep)
   );
 }

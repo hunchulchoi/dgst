@@ -42,7 +42,6 @@
     tabindex="0"
     aria-label="닫기"
     onclick={() => toggle()}
-    /** @param {KeyboardEvent} e */
     onkeydown={(e) => {
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();

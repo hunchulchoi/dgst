@@ -42,7 +42,7 @@
 <svelte:window onclick={handleWindowClick} />
 
 <div
-  class="{(nav ? 'nav-item ' : '')}dropdown {nav ? '' : 'position-relative'} {className}"
+  class="{nav ? 'nav-item ' : ''}dropdown {nav ? '' : 'position-relative'} {className}"
   role="group"
   onpointerdown={(e) => e.stopPropagation()}
 >

@@ -1,11 +1,7 @@
 import { error, json } from '@sveltejs/kit';
 import { getPrisma } from '$lib/database/prisma.js';
 import { getTodaySlotStats } from '$lib/server/slotStats.js';
-import {
-  updateSlotUserBalance,
-  getSlotBalance,
-  ensureSlotUserBalanceFilled
-} from '$lib/server/slotUserBalance.js';
+import { updateSlotUserBalance, ensureSlotUserBalanceFilled } from '$lib/server/slotUserBalance.js';
 
 const OOPS_TOPUP_DELAY_MS = 5 * 60 * 1000;
 
@@ -51,14 +47,6 @@ function calcPayout(reels, bet) {
     return bet * 2;
   }
   return 0;
-}
-
-/**
- * @param {string} email
- * @returns {Promise<number>}
- */
-async function getBalance(email) {
-  return getSlotBalance(email);
 }
 
 // 잔액 0 상태가 5분 이상이면 700점 보충 (지연 지급)

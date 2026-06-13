@@ -14,19 +14,19 @@
 
 ## File Map
 
-| 파일 | 책임 |
-|------|------|
-| `prisma/schema.prisma` | 전체 LOGGED 모델 |
-| `prisma/migrations/*/migration.sql` | UNLOGGED raw SQL 포함 |
-| `src/lib/database/prisma.js` | PrismaClient 싱글톤 |
-| `src/lib/server/cache/pgCache.js` | UNLOGGED 캐시 (Redis client API 호환) |
-| `src/lib/server/cache/pgRateLimit.js` | rate_limit 테이블 INCR 로직 |
-| `src/lib/server/cache/pgDedup.js` | dedup_lock SET NX 로직 |
-| `src/lib/server/auth/prismaAdapter.js` | PrismaAdapter + pgCache 캐시 래퍼 |
-| `src/lib/server/alarm/alarmService.js` | Redis alarmService → Prisma Alarm |
-| `scripts/migrate-mongo-to-pg.js` | 운영 데이터 이전 |
-| `scripts/verify-migration.js` | cutover 검증 |
-| `tests/pgCache.test.js` | UNLOGGED 캐시 단위 테스트 |
+| 파일                                   | 책임                                  |
+| -------------------------------------- | ------------------------------------- |
+| `prisma/schema.prisma`                 | 전체 LOGGED 모델                      |
+| `prisma/migrations/*/migration.sql`    | UNLOGGED raw SQL 포함                 |
+| `src/lib/database/prisma.js`           | PrismaClient 싱글톤                   |
+| `src/lib/server/cache/pgCache.js`      | UNLOGGED 캐시 (Redis client API 호환) |
+| `src/lib/server/cache/pgRateLimit.js`  | rate_limit 테이블 INCR 로직           |
+| `src/lib/server/cache/pgDedup.js`      | dedup_lock SET NX 로직                |
+| `src/lib/server/auth/prismaAdapter.js` | PrismaAdapter + pgCache 캐시 래퍼     |
+| `src/lib/server/alarm/alarmService.js` | Redis alarmService → Prisma Alarm     |
+| `scripts/migrate-mongo-to-pg.js`       | 운영 데이터 이전                      |
+| `scripts/verify-migration.js`          | cutover 검증                          |
+| `tests/pgCache.test.js`                | UNLOGGED 캐시 단위 테스트             |
 
 **제거 대상 (Phase 7):** `mongoosePriomise.js`, `clientPromise.js`, `src/lib/models/*`, `src/lib/server/redis/*`, `hybridAdapter.js`
 
@@ -39,6 +39,7 @@
 ### Task 1: Prisma 패키지 설치
 
 **Files:**
+
 - Modify: `package.json`
 
 - [ ] **Step 1: 의존성 설치**
@@ -69,6 +70,7 @@ git commit -m "chore: add Prisma and @auth/prisma-adapter dependencies"
 ### Task 2: Prisma schema (LOGGED 모델 전체)
 
 **Files:**
+
 - Create: `prisma/schema.prisma`
 
 - [ ] **Step 1: schema.prisma 작성**
@@ -112,6 +114,7 @@ git commit -m "feat: add Prisma schema for Postgres migration"
 ### Task 3: 초기 migration + UNLOGGED 테이블
 
 **Files:**
+
 - Create: `prisma/migrations/<timestamp>_init/migration.sql` (prisma migrate가 생성 후 수정)
 
 - [ ] **Step 1: migrate dev 실행**
@@ -164,6 +167,7 @@ git commit -m "feat: add UNLOGGED cache tables to initial migration"
 ### Task 4: Prisma client 싱글톤
 
 **Files:**
+
 - Create: `src/lib/database/prisma.js`
 
 - [ ] **Step 1: prisma.js 작성**
@@ -208,6 +212,7 @@ git commit -m "feat: add Prisma client singleton"
 ### Task 5: pgCache.js (Redis client API 호환)
 
 **Files:**
+
 - Create: `src/lib/server/cache/pgCache.js`
 - Create: `tests/pgCache.test.js`
 
@@ -432,6 +437,7 @@ git commit -m "feat: add pgCache UNLOGGED cache module with tests"
 ### Task 6: prismaAdapter + 캐시 레이어
 
 **Files:**
+
 - Create: `src/lib/server/auth/prismaAdapter.js`
 - Modify: `src/lib/server/auth/userCache.js`
 - Modify: `src/lib/server/auth/sessionCache.js`
@@ -519,10 +525,11 @@ import { getPrismaAdapter } from '$lib/server/auth/prismaAdapter.js';
 import getPrisma from '$lib/database/prisma.js';
 
 // SvelteKitAuth adapter:
-adapter: getPrismaAdapter(),
-
-// login_logs: db.collection('login_logs').insertOne →
-await getPrisma().loginLog.create({ data: { at: new Date(), userId, ip, deviceId, userAgent, provider, path } });
+adapter: (getPrismaAdapter(),
+  // login_logs: db.collection('login_logs').insertOne →
+  await getPrisma().loginLog.create({
+    data: { at: new Date(), userId, ip, deviceId, userAgent, provider, path }
+  }));
 ```
 
 - [ ] **Step 5: 수동 테스트**
@@ -546,12 +553,14 @@ git commit -m "feat: switch Auth to Prisma adapter with pgCache layer"
 ### Task 7: board repository 헬퍼
 
 **Files:**
+
 - Create: `src/lib/server/board/articleRepo.js`
 - Create: `src/lib/server/board/commentRepo.js`
 
 - [ ] **Step 1: articleRepo.js — Mongoose 쿼리 래퍼**
 
 주요 함수:
+
 - `findArticleById(id)`
 - `findArticlesByBoard({ boardId, state, pageNo, pageUnit })`
 - `createArticle(data)` — 새 ID는 `new ObjectId().toString()` 대신 `crypto.randomBytes(12).toString('hex')` (24자 hex, Mongo 호환)
@@ -568,16 +577,16 @@ git commit -m "feat: switch Auth to Prisma adapter with pgCache layer"
 
 - [ ] **Step 3: 라우트 파일 일괄 수정**
 
-| 파일 | 변경 |
-|------|------|
-| `src/routes/board/[boardId]/[[pageNo]]/+page.server.js` | Article.find → articleRepo |
-| `src/routes/board/[boardId]/write/[[articleId]]/+page.server.js` | Article.create/save |
-| `src/routes/board/.../[articleId]/+page.server.js` | findOne + populate 제거 |
-| `src/routes/board/.../comment/+server.js` | Comment + upsertAlarm (Phase 4) |
-| `src/routes/board/.../like/+server.js` | likes 배열 업데이트 |
-| `src/routes/board/.../delete/+server.js` | cascade delete |
-| `src/lib/server/boardArticleList.js` | Prisma 쿼리 |
-| `src/lib/server/submitDedup.js` | findRecentDuplicate → Prisma |
+| 파일                                                             | 변경                            |
+| ---------------------------------------------------------------- | ------------------------------- |
+| `src/routes/board/[boardId]/[[pageNo]]/+page.server.js`          | Article.find → articleRepo      |
+| `src/routes/board/[boardId]/write/[[articleId]]/+page.server.js` | Article.create/save             |
+| `src/routes/board/.../[articleId]/+page.server.js`               | findOne + populate 제거         |
+| `src/routes/board/.../comment/+server.js`                        | Comment + upsertAlarm (Phase 4) |
+| `src/routes/board/.../like/+server.js`                           | likes 배열 업데이트             |
+| `src/routes/board/.../delete/+server.js`                         | cascade delete                  |
+| `src/lib/server/boardArticleList.js`                             | Prisma 쿼리                     |
+| `src/lib/server/submitDedup.js`                                  | findRecentDuplicate → Prisma    |
 
 - [ ] **Step 4: 검증**
 
@@ -599,6 +608,7 @@ git commit -m "feat: migrate board articles and comments to Prisma"
 ### Task 8: alarmService Postgres 전환
 
 **Files:**
+
 - Create: `src/lib/server/alarm/alarmService.js`
 - Modify: 알림 import 경로 (comment, delete, alarm pages, slot page, api routes)
 - Delete (Phase 7): `src/lib/server/redis/alarmService.js`
@@ -629,7 +639,15 @@ export async function getAlarmList(email, limit = 30) {
   }));
 }
 
-export async function upsertAlarm({ email, articleId, title, boardId, parentCommentId, parentCommentContent, newCommentId }) {
+export async function upsertAlarm({
+  email,
+  articleId,
+  title,
+  boardId,
+  parentCommentId,
+  parentCommentContent,
+  newCommentId
+}) {
   const id = parentCommentId ? `${articleId}_${parentCommentId}` : articleId;
   const existing = await getPrisma().alarm.findUnique({ where: { id } });
   const commentIds = existing?.commentIds ?? [];
@@ -637,14 +655,22 @@ export async function upsertAlarm({ email, articleId, title, boardId, parentComm
   await getPrisma().alarm.upsert({
     where: { id },
     create: {
-      id, email, articleId, boardId, title,
+      id,
+      email,
+      articleId,
+      boardId,
+      title,
       parentCommentId: parentCommentId ?? null,
       commentContent: parentCommentContent ?? null,
       commentIds: newCommentId ? [newCommentId] : [],
       readAt: null
     },
     update: {
-      title, boardId, commentIds, readAt: null, updatedAt: new Date()
+      title,
+      boardId,
+      commentIds,
+      readAt: null,
+      updatedAt: new Date()
     }
   });
 }
@@ -673,6 +699,7 @@ git commit -m "feat: migrate alarms from Redis to Postgres Alarm table"
 ### Task 9: 게임·memo·auth register 전환
 
 **Files:**
+
 - Modify: `src/routes/games/slot/+server.js`, `+page.server.js`
 - Modify: `src/routes/games/2048/+server.js`, `+page.server.js`
 - Modify: `src/routes/games/minesweeper/+server.js`, `+page.server.js`
@@ -683,6 +710,7 @@ git commit -m "feat: migrate alarms from Redis to Postgres Alarm table"
 - [ ] **Step 1: 각 파일에서 Model import 제거 → getPrisma() 사용**
 
 패턴:
+
 ```javascript
 // Before
 import { GameScore } from '$lib/models/gameScore.js';
@@ -714,6 +742,7 @@ git commit -m "feat: migrate game scores and user balance to Prisma"
 ### Task 10: rate limit, dedup, boardlist, og, device
 
 **Files:**
+
 - Create: `src/lib/server/cache/pgRateLimit.js`
 - Create: `src/lib/server/cache/pgDedup.js`
 - Modify: `src/lib/server/apiRateLimit.js`
@@ -785,6 +814,7 @@ git commit -m "feat: replace Redis cache/rate-limit/dedup with Postgres UNLOGGED
 ### Task 11: migrate-mongo-to-pg.js
 
 **Files:**
+
 - Create: `scripts/migrate-mongo-to-pg.js`
 - Create: `scripts/verify-migration.js`
 
@@ -805,9 +835,12 @@ async function migrateUsers(db) {
     batch.push({
       id: doc.id,
       email: doc.email,
-      emailVerified: doc.emailVerified === true
-        ? (doc.created_at ?? new Date())
-        : doc.emailVerified instanceof Date ? doc.emailVerified : null,
+      emailVerified:
+        doc.emailVerified === true
+          ? (doc.created_at ?? new Date())
+          : doc.emailVerified instanceof Date
+            ? doc.emailVerified
+            : null,
       nickname: doc.nickname,
       introduction: doc.introduction ?? '',
       photo: doc.photo ?? null,
@@ -838,7 +871,10 @@ async function main() {
   await prisma.$disconnect();
 }
 
-main().catch((e) => { console.error(e); process.exit(1); });
+main().catch((e) => {
+  console.error(e);
+  process.exit(1);
+});
 ```
 
 - [ ] **Step 2: verify-migration.js**
@@ -871,6 +907,7 @@ git commit -m "feat: add Mongo/Redis to Postgres migration and verify scripts"
 ### Task 12: Mongo/Redis 제거
 
 **Files:**
+
 - Delete: `src/lib/database/mongoosePriomise.js`, `clientPromise.js`
 - Delete: `src/lib/models/*.js`
 - Delete: `src/lib/server/redis/`
@@ -938,14 +975,14 @@ node scripts/verify-migration.js
 
 ## Spec Coverage Self-Review
 
-| Spec § | Task |
-|--------|------|
-| §3 UNLOGGED | Task 3, 5 |
-| §4 Prisma models | Task 2 |
-| §4.1 Auth | Task 6 |
-| §4.2 Community | Task 7 |
-| §4.3 Alarms | Task 8 |
-| §4.4 Games | Task 9 |
-| §6 Migration | Task 11, 13 |
-| §7 Cleanup | Task 12 |
-| §9 Verification | Task 5, 13 |
+| Spec §           | Task        |
+| ---------------- | ----------- |
+| §3 UNLOGGED      | Task 3, 5   |
+| §4 Prisma models | Task 2      |
+| §4.1 Auth        | Task 6      |
+| §4.2 Community   | Task 7      |
+| §4.3 Alarms      | Task 8      |
+| §4.4 Games       | Task 9      |
+| §6 Migration     | Task 11, 13 |
+| §7 Cleanup       | Task 12     |
+| §9 Verification  | Task 5, 13  |

@@ -49,11 +49,11 @@ SvelteKit + Auth.js + Prisma 기반 인증 구조를 정리한 문서입니다.
   - `getUser`, `getUserByEmail`, `getSessionAndUser`: `pgCache` 우선 조회
   - `updateUser`, `deleteSession`: 관련 캐시 무효화 후 DB 갱신
 
-| 메서드                                                                                                    | 원본 저장소          | 캐시 |
-| --------------------------------------------------------------------------------------------------------- | -------------------- | ---- |
-| createUser, updateUser, getUser, getUserByEmail, getUserByAccount, linkAccount, unlinkAccount             | PostgreSQL via Prisma | User cache |
-| createSession, getSessionAndUser, updateSession, deleteSession                                            | PostgreSQL via Prisma | Session cache |
-| createVerificationToken, useVerificationToken                                                             | PostgreSQL via Prisma | 없음 |
+| 메서드                                                                                        | 원본 저장소           | 캐시          |
+| --------------------------------------------------------------------------------------------- | --------------------- | ------------- |
+| createUser, updateUser, getUser, getUserByEmail, getUserByAccount, linkAccount, unlinkAccount | PostgreSQL via Prisma | User cache    |
+| createSession, getSessionAndUser, updateSession, deleteSession                                | PostgreSQL via Prisma | Session cache |
+| createVerificationToken, useVerificationToken                                                 | PostgreSQL via Prisma | 없음          |
 
 ---
 
@@ -96,10 +96,10 @@ SvelteKit + Auth.js + Prisma 기반 인증 구조를 정리한 문서입니다.
 
 ### 필수
 
-| 변수              | 설명                               |
-| ----------------- | ---------------------------------- |
-| `DATABASE_URL`    | PostgreSQL 연결 URL                |
-| `NEXTAUTH_SECRET` | 세션 서명용 비밀 키                |
+| 변수              | 설명                |
+| ----------------- | ------------------- |
+| `DATABASE_URL`    | PostgreSQL 연결 URL |
+| `NEXTAUTH_SECRET` | 세션 서명용 비밀 키 |
 
 ### Google
 
@@ -126,17 +126,17 @@ SvelteKit + Auth.js + Prisma 기반 인증 구조를 정리한 문서입니다.
 
 ## 8. 관련 파일
 
-| 경로                                  | 역할                                                                  |
-| ------------------------------------- | --------------------------------------------------------------------- |
-| `src/hooks.server.js`                 | SvelteKitAuth 설정, providers, callbacks, session/cookies, rate limit |
+| 경로                                   | 역할                                                                  |
+| -------------------------------------- | --------------------------------------------------------------------- |
+| `src/hooks.server.js`                  | SvelteKitAuth 설정, providers, callbacks, session/cookies, rate limit |
 | `src/lib/server/auth/prismaAdapter.js` | Prisma Adapter 래핑, User/Session 캐시                                |
-| `src/lib/server/auth/sessionCache.js` | 세션+유저 조회 결과 캐시                                              |
-| `src/lib/server/auth/userCache.js`    | 회원정보 캐시 및 무효화                                               |
-| `src/lib/server/auth/rateLimit.js`    | Auth 경로 rate limit                                                  |
-| `src/lib/server/cache/pgCache.js`     | UNLOGGED cache_kv 기반 캐시                                           |
-| `src/lib/server/cache/pgRateLimit.js` | UNLOGGED rate_limit 기반 rate limit                                  |
-| `src/lib/server/cache/pgDedup.js`     | UNLOGGED dedup_lock 기반 중복 제출 방지                               |
-| `src/routes/auth/profile/+server.js`  | 프로필 수정 API, 수정 후 사용자 캐시 무효화                           |
+| `src/lib/server/auth/sessionCache.js`  | 세션+유저 조회 결과 캐시                                              |
+| `src/lib/server/auth/userCache.js`     | 회원정보 캐시 및 무효화                                               |
+| `src/lib/server/auth/rateLimit.js`     | Auth 경로 rate limit                                                  |
+| `src/lib/server/cache/pgCache.js`      | UNLOGGED cache_kv 기반 캐시                                           |
+| `src/lib/server/cache/pgRateLimit.js`  | UNLOGGED rate_limit 기반 rate limit                                   |
+| `src/lib/server/cache/pgDedup.js`      | UNLOGGED dedup_lock 기반 중복 제출 방지                               |
+| `src/routes/auth/profile/+server.js`   | 프로필 수정 API, 수정 후 사용자 캐시 무효화                           |
 
 ---
 

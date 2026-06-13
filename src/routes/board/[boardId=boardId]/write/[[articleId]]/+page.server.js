@@ -59,16 +59,11 @@ export const actions = {
 
     try {
       if (articleId) {
-        const update = await updateArticleByOwner(
-          articleId,
-          session.user.email,
-          boardId,
-          {
-            title: titleTrim,
-            content: processedContent,
-            modifiedEmail: session.user.email
-          }
-        );
+        const update = await updateArticleByOwner(articleId, session.user.email, boardId, {
+          title: titleTrim,
+          content: processedContent,
+          modifiedEmail: session.user.email
+        });
 
         if (!update) {
           throw error(401, {
@@ -81,11 +76,7 @@ export const actions = {
         return { success: true, articleId };
       }
 
-      const fingerprint = buildSubmitFingerprint([
-        boardId,
-        titleTrim,
-        processedContent
-      ]);
+      const fingerprint = buildSubmitFingerprint([boardId, titleTrim, processedContent]);
       const acquired = await tryAcquireSubmitDedup('article', session.user.email, fingerprint, 15);
       if (!acquired) {
         const dup = await findRecentDuplicateArticle({

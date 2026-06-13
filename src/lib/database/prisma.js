@@ -37,7 +37,10 @@ function getSlowQueryThresholdMs() {
 
 /** @returns {number} */
 function getSlowQueryMaxSqlLength() {
-  return Math.max(200, numberFromEnv('SLOW_QUERY_MAX_SQL_LENGTH', DEFAULT_SLOW_QUERY_MAX_SQL_LENGTH));
+  return Math.max(
+    200,
+    numberFromEnv('SLOW_QUERY_MAX_SQL_LENGTH', DEFAULT_SLOW_QUERY_MAX_SQL_LENGTH)
+  );
 }
 
 /**

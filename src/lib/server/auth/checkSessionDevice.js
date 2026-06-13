@@ -66,7 +66,10 @@ export function getSessionDeviceMismatch(stored, current) {
     reasons.push('deviceId');
   }
 
-  if (getUserAgentFingerprint(stored.userAgent ?? '') !== getUserAgentFingerprint(current.userAgent ?? '')) {
+  if (
+    getUserAgentFingerprint(stored.userAgent ?? '') !==
+    getUserAgentFingerprint(current.userAgent ?? '')
+  ) {
     reasons.push('userAgent');
   }
 

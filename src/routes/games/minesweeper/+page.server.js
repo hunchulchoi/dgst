@@ -5,7 +5,7 @@ export async function load({ locals }) {
   let todayStats = { games: 0, users: 0 };
   try {
     todayStats = await getTodayMinesweeperStats();
-  } catch (e) {}
+  } catch {}
 
   return { session, todayStats };
 }

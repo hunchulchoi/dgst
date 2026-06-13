@@ -6,7 +6,29 @@
   font-size: 1.2rem !important;
   line-height: 1.55 !important;
 
-  & :is(p, li, blockquote, span, div, em, strong, a, pre, code, ul, ol, h1, h2, h3, h4, h5, h6, .markdown-body, .display-1) {
+  &
+    :is(
+      p,
+      li,
+      blockquote,
+      span,
+      div,
+      em,
+      strong,
+      a,
+      pre,
+      code,
+      ul,
+      ol,
+      h1,
+      h2,
+      h3,
+      h4,
+      h5,
+      h6,
+      .markdown-body,
+      .display-1
+    ) {
     font-size: inherit !important;
     line-height: inherit !important;
   }
@@ -31,7 +53,9 @@
   --bs-border-radius-xl: calc(var(--dgst-radius) + 0.25rem);
   --bs-border-radius-pill: var(--dgst-radius-pill);
 
-  --notion-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, "Apple Color Emoji", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol";
+  --notion-font:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, 'Apple Color Emoji', Arial,
+    sans-serif, 'Segoe UI Emoji', 'Segoe UI Symbol';
   --notion-text: #37352f;
   --notion-bg: transparent;
   --notion-border: rgba(55, 53, 47, 0.16);
@@ -181,11 +205,11 @@ body {
   word-wrap: break-word;
 }
 
-.markdown-body>*:first-child {
+.markdown-body > *:first-child {
   margin-top: 0;
 }
 
-.markdown-body>*:last-child {
+.markdown-body > *:last-child {
   margin-bottom: 0;
 }
 

@@ -218,9 +218,7 @@
       videoId = url.match(/youtu\.be\/([\w-]+)/)?.[1] || null;
     }
 
-    return videoId
-      ? { src: `https://www.youtube.com/embed/${videoId}`, width, height }
-      : null;
+    return videoId ? { src: `https://www.youtube.com/embed/${videoId}`, width, height } : null;
   }
 
   function syncEditorData() {
@@ -417,7 +415,9 @@
     try {
       await Promise.race([
         ensureFfmpegLoaded(),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('FFmpeg load timeout')), 60000))
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('FFmpeg load timeout')), 60000)
+        )
       ]);
 
       if (!ffmpeg || !fetchFile) return file;
@@ -642,7 +642,9 @@
       `);
     } catch (error) {
       console.error('Lexical OG card failed:', error);
-      insertHtmlBlock(`<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(url)}</a>`);
+      insertHtmlBlock(
+        `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(url)}</a>`
+      );
     } finally {
       loading = false;
       onLoadingChange?.(false);
@@ -731,9 +733,7 @@
     if (!text) return;
 
     const isMarkdown =
-      /^(#|##|###|- |\* |\d+\. |> |`|\[.*\]\(.*\)|_{1,2}\w+_{1,2}|\*{1,2}\w+\*{1,2})/m.test(
-        text
-      );
+      /^(#|##|###|- |\* |\d+\. |> |`|\[.*\]\(.*\)|_{1,2}\w+_{1,2}|\*{1,2}\w+\*{1,2})/m.test(text);
 
     if (isMarkdown && text.includes('\n')) {
       event.preventDefault();
@@ -914,7 +914,10 @@
   />
 
   <div class="lexical-toolbar" aria-label="에디터 툴바">
-    <div class="lexical-toolbar__group lexical-toolbar__group--primary" aria-label="이미지와 동영상 삽입">
+    <div
+      class="lexical-toolbar__group lexical-toolbar__group--primary"
+      aria-label="이미지와 동영상 삽입"
+    >
       <button
         class="lexical-toolbar__button lexical-toolbar__button--media lexical-toolbar__button--media-image"
         type="button"
@@ -974,11 +977,19 @@
     </div>
 
     <div class="lexical-toolbar__group" aria-label="블록 서식">
-      <button class="lexical-toolbar__button" type="button" aria-label="제목 1" title="제목 1" onclick={() => toggleHeading('h1')}
-        >H1</button
+      <button
+        class="lexical-toolbar__button"
+        type="button"
+        aria-label="제목 1"
+        title="제목 1"
+        onclick={() => toggleHeading('h1')}>H1</button
       >
-      <button class="lexical-toolbar__button" type="button" aria-label="제목 2" title="제목 2" onclick={() => toggleHeading('h2')}
-        >H2</button
+      <button
+        class="lexical-toolbar__button"
+        type="button"
+        aria-label="제목 2"
+        title="제목 2"
+        onclick={() => toggleHeading('h2')}>H2</button
       >
       <button
         class="lexical-toolbar__button"
@@ -994,21 +1005,43 @@
         title="번호 목록"
         onclick={() => editor?.dispatchCommand(INSERT_ORDERED_LIST_COMMAND, undefined)}>1.</button
       >
-      <button class="lexical-toolbar__button" type="button" aria-label="인용" title="인용" onclick={toggleQuote}>❝</button>
-      <button class="lexical-toolbar__button" type="button" aria-label="코드 블록" title="코드 블록" onclick={toggleCodeBlock}
-        >{`{}`}</button
+      <button
+        class="lexical-toolbar__button"
+        type="button"
+        aria-label="인용"
+        title="인용"
+        onclick={toggleQuote}>❝</button
+      >
+      <button
+        class="lexical-toolbar__button"
+        type="button"
+        aria-label="코드 블록"
+        title="코드 블록"
+        onclick={toggleCodeBlock}>{`{}`}</button
       >
     </div>
 
     <div class="lexical-toolbar__group" aria-label="정렬">
-      <button class="lexical-toolbar__button" type="button" aria-label="왼쪽 정렬" title="왼쪽 정렬" onclick={() => formatAlignment('left')}
-        >≡</button
+      <button
+        class="lexical-toolbar__button"
+        type="button"
+        aria-label="왼쪽 정렬"
+        title="왼쪽 정렬"
+        onclick={() => formatAlignment('left')}>≡</button
       >
-      <button class="lexical-toolbar__button" type="button" aria-label="가운데 정렬" title="가운데 정렬" onclick={() => formatAlignment('center')}
-        >≣</button
+      <button
+        class="lexical-toolbar__button"
+        type="button"
+        aria-label="가운데 정렬"
+        title="가운데 정렬"
+        onclick={() => formatAlignment('center')}>≣</button
       >
-      <button class="lexical-toolbar__button" type="button" aria-label="오른쪽 정렬" title="오른쪽 정렬" onclick={() => formatAlignment('right')}
-        >≡</button
+      <button
+        class="lexical-toolbar__button"
+        type="button"
+        aria-label="오른쪽 정렬"
+        title="오른쪽 정렬"
+        onclick={() => formatAlignment('right')}>≡</button
       >
     </div>
 
@@ -1024,8 +1057,16 @@
     </div>
 
     <div class="lexical-toolbar__group" aria-label="삽입">
-      <button class="lexical-toolbar__button lexical-toolbar__button--wide" type="button" onclick={addLink}>Link</button>
-      <button class="lexical-toolbar__button lexical-toolbar__button--wide" type="button" onclick={addMediaUrl}>URL</button>
+      <button
+        class="lexical-toolbar__button lexical-toolbar__button--wide"
+        type="button"
+        onclick={addLink}>Link</button
+      >
+      <button
+        class="lexical-toolbar__button lexical-toolbar__button--wide"
+        type="button"
+        onclick={addMediaUrl}>URL</button
+      >
     </div>
   </div>
 
@@ -1068,7 +1109,11 @@
     border-bottom: 0;
     border-radius: 10px 10px 0 0;
     background:
-      linear-gradient(180deg, rgba(var(--bs-body-bg-rgb), 0.96), rgba(var(--bs-secondary-bg-rgb), 0.94)),
+      linear-gradient(
+        180deg,
+        rgba(var(--bs-body-bg-rgb), 0.96),
+        rgba(var(--bs-secondary-bg-rgb), 0.94)
+      ),
       var(--bs-secondary-bg);
     box-shadow: inset 0 -1px 0 rgba(var(--bs-body-color-rgb), 0.06);
     scrollbar-width: thin;
@@ -1200,7 +1245,8 @@
   }
 
   .lexical-toolbar__button--code {
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
+    font-family:
+      ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
     font-size: 0.78rem;
   }
 
@@ -1309,7 +1355,8 @@
   :global(.lexical-text-code) {
     border-radius: 4px;
     background: var(--bs-tertiary-bg);
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
+    font-family:
+      ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
     padding: 0.1rem 0.25rem;
   }
 

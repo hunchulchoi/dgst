@@ -65,7 +65,9 @@
   function preview(fileEl) {
     console.log(fileEl);
     const file = fileEl.files?.[0];
-    const previewImage = /** @type {HTMLImageElement | null} */ (document.querySelector('#preview'));
+    const previewImage = /** @type {HTMLImageElement | null} */ (
+      document.querySelector('#preview')
+    );
     const introInput = /** @type {HTMLInputElement | HTMLTextAreaElement | null} */ (
       document.querySelector('#introduction')
     );
@@ -158,9 +160,9 @@
   };
 
   const doValidate = () => {
-    document.querySelectorAll('.needs-validation').forEach((el) =>
-      changeHandler(/** @type {HTMLInputElement | HTMLTextAreaElement} */ (el))
-    );
+    document
+      .querySelectorAll('.needs-validation')
+      .forEach((el) => changeHandler(/** @type {HTMLInputElement | HTMLTextAreaElement} */ (el)));
   };
 
   const invalids = { nickname: false, introduction: false };

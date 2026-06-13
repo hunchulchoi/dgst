@@ -4,7 +4,5 @@
  * @returns {boolean}
  */
 export function isDbConnectSkipped() {
-  return (
-    process.env.SKIP_DB_CONNECT === 'true' || process.env.npm_lifecycle_event === 'build'
-  );
+  return process.env.SKIP_DB_CONNECT === 'true' || process.env.npm_lifecycle_event === 'build';
 }

@@ -22,7 +22,12 @@ export async function POST({ params, locals }) {
   try {
     const comment = await toggleCommentLike(commentId, email, 'like');
 
-    if (!comment || comment.boardId !== boardId || comment.articleId !== articleId || comment.state !== 'write') {
+    if (
+      !comment ||
+      comment.boardId !== boardId ||
+      comment.articleId !== articleId ||
+      comment.state !== 'write'
+    ) {
       throw error(410, { message: '삭제되었거나 존지하지 않는 댓글입니다.' });
     }
 

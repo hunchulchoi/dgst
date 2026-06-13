@@ -18,9 +18,10 @@ const SESSION_DATE_KEYS = ['expires'];
  * @returns {Promise<{ session: import('@auth/core/adapters').AdapterSession; user: import('@auth/core/adapters').AdapterUser } | null>}
  */
 export async function getCachedSessionAndUser(sessionToken) {
-  const raw = /** @type {{ session?: Record<string, unknown>; user?: Record<string, unknown> } | null} */ (
-    await pgCache.getJson(SESSION_PREFIX + sessionToken, NAMESPACE)
-  );
+  const raw =
+    /** @type {{ session?: Record<string, unknown>; user?: Record<string, unknown> } | null} */ (
+      await pgCache.getJson(SESSION_PREFIX + sessionToken, NAMESPACE)
+    );
   if (!raw?.session || !raw?.user) return null;
   reviveDates(raw.session, SESSION_DATE_KEYS);
   reviveDates(raw.user, USER_DATE_KEYS);

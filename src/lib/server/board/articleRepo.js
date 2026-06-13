@@ -13,8 +13,7 @@ export function contentIcons(content) {
     content.includes('youtu.be') ||
     content.includes('youtube.com/embed');
   const insta =
-    content.includes('instagram.com') ||
-    content.includes('blockquote class="instagram-media"');
+    content.includes('instagram.com') || content.includes('blockquote class="instagram-media"');
 
   return (
     (image ? '<i class="bi bi-card-image text-success px-2"></i>' : '') +
@@ -123,7 +122,13 @@ export async function countArticles(filter) {
  * @param {number} params.pageUnit
  * @param {Date} [params.createdAfter]
  */
-export async function findArticlesList({ boardId, state = 'write', pageNo, pageUnit, createdAfter }) {
+export async function findArticlesList({
+  boardId,
+  state = 'write',
+  pageNo,
+  pageUnit,
+  createdAfter
+}) {
   try {
     /** @type {import('@prisma/client').Prisma.ArticleWhereInput} */
     const where = { boardId, state };

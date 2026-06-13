@@ -9,16 +9,19 @@
 ## 1. 배경
 
 ### 현재 스택
+
 - **MongoDB:** Mongoose 11모델 + `@auth/mongodb-adapter` + native `clientPromise`
 - **Redis:** 세션/유저 캐시, 알림(영구), 게시판 목록 캐시, rate limit, dedup, OG, device 추적
 
 ### 문제
+
 - 앱 기동 시 Mongo 2풀 + Redis 연결 warmup — 장애 지점 분산
 - Redis graceful degrade로 캐시 실패가 조용히 넘어가 원인 추적 어려움
 - 알림 등 사용자 데이터가 Redis에만 존재 (3일 TTL)
 - 운영·모니터링 대상이 3개
 
 ### 목표
+
 - 연결 1개(Postgres), 모니터링 1개
 - 캐시는 Postgres `UNLOGGED`로 WAL 부담 없이 유지
 - 영구 데이터는 LOGGED 테이블 + Prisma
@@ -59,13 +62,13 @@ CREATE INDEX cache_kv_expires_idx ON cache_kv (expires_at);
 CREATE INDEX cache_kv_ns_key_prefix_idx ON cache_kv (namespace, key text_pattern_ops);
 ```
 
-| namespace | key 패턴 | TTL | 기존 Redis |
-|-----------|----------|-----|------------|
-| `user` | `id:{id}`, `email:{email}` | 30분 | userCache |
-| `session` | `{token}` | 5분 | sessionCache |
-| `boardlist` | `payload:{boardId}:{page}`, `total:{boardId}` | 5분/60초 | boardListLoad |
-| `og` | `{url_hash}` | 3시간 | api/og |
-| `device` | `{sessionToken}` | 30일 | checkSessionDevice |
+| namespace   | key 패턴                                      | TTL      | 기존 Redis         |
+| ----------- | --------------------------------------------- | -------- | ------------------ |
+| `user`      | `id:{id}`, `email:{email}`                    | 30분     | userCache          |
+| `session`   | `{token}`                                     | 5분      | sessionCache       |
+| `boardlist` | `payload:{boardId}:{page}`, `total:{boardId}` | 5분/60초 | boardListLoad      |
+| `og`        | `{url_hash}`                                  | 3시간    | api/og             |
+| `device`    | `{sessionToken}`                              | 30일     | checkSessionDevice |
 
 ### 3.2 `rate_limit`
 
@@ -87,11 +90,13 @@ CREATE UNLOGGED TABLE dedup_lock (
 ```
 
 ### 3.4 TTL 정리
+
 - **Lazy:** read 시 `expires_at < NOW()` → delete + miss
 - **Background:** 5분 주기 `DELETE WHERE expires_at < NOW()`
 - **재시작:** UNLOGGED truncate — cold start 허용 (Redis 빈 상태와 동일)
 
 ### 3.5 `pgCache.js`
+
 - Redis `client.js` API 호환: `get`, `set`, `getJson`, `setJson`, `del`, `delByPrefix`
 - Redis 미연결 시 graceful degrade 패턴 유지 (Postgres 실패 시 동일)
 
@@ -161,6 +166,7 @@ model VerificationToken {
 ```
 
 **Auth adapter 변경:**
+
 - `hybridAdapter.js` → `prismaAdapter.js` (PrismaAdapter + userCache/sessionCache는 pgCache UNLOGGED로 동일 패턴)
 - Account: 토큰 필드 저장 안 함 (현행과 동일)
 
@@ -218,6 +224,7 @@ model Comment {
 ```
 
 **변경점:**
+
 - `article.comments` ObjectId 배열 제거 → `Comment` FK + `COUNT`로 대체 (기존 `$push`/`$pull` 로직을 relation 기반으로 변경)
 - `likes`/`reads`/`unlikes`: `String[]` 유지 (마이그레이션 단순화). 필요 시 GIN 인덱스 추가
 
@@ -373,15 +380,15 @@ model LoginLog {
 
 ## 5. 구현 Phase
 
-| Phase | 내용 | 완료 기준 |
-|-------|------|-----------|
+| Phase | 내용                                                                                  | 완료 기준                             |
+| ----- | ------------------------------------------------------------------------------------- | ------------------------------------- |
 | **1** | Prisma init, migrate, `DATABASE_URL`, UNLOGGED raw SQL, `pgCache.js`, `prisma` client | Postgres 연결 + 캐시 모듈 단위 테스트 |
-| **2** | Auth: `@auth/prisma-adapter`, User 확장, sessionCache/userCache → pgCache | 로그인/세션/프로필 동작 |
-| **3** | Article, Comment Prisma 전환, `article.comments` 배열 제거 | 게시판 CRUD·댓글·좋아요 |
-| **4** | Alarm LOGGED + alarmService Postgres 전환 | 알림 목록/읽음/upsert |
-| **5** | 게임·memo·login_logs 전환 | slot/2048/minesweeper/watermelon |
-| **6** | rate_limit, dedup_lock, boardlist/og 캐시 → pgCache | Redis 의존 제거 |
-| **7** | Mongo/Redis 패키지·파일 삭제, warmup 단순화, `.env` 정리 | 빌드·배포 성공 |
+| **2** | Auth: `@auth/prisma-adapter`, User 확장, sessionCache/userCache → pgCache             | 로그인/세션/프로필 동작               |
+| **3** | Article, Comment Prisma 전환, `article.comments` 배열 제거                            | 게시판 CRUD·댓글·좋아요               |
+| **4** | Alarm LOGGED + alarmService Postgres 전환                                             | 알림 목록/읽음/upsert                 |
+| **5** | 게임·memo·login_logs 전환                                                             | slot/2048/minesweeper/watermelon      |
+| **6** | rate_limit, dedup_lock, boardlist/og 캐시 → pgCache                                   | Redis 의존 제거                       |
+| **7** | Mongo/Redis 패키지·파일 삭제, warmup 단순화, `.env` 정리                              | 빌드·배포 성공                        |
 
 ---
 
@@ -391,12 +398,12 @@ model LoginLog {
 
 ### 6.1 사전 준비 (점검 전)
 
-| 항목 | 내용 |
-|------|------|
-| **백업** | MongoDB `mongodump`, Redis `BGSAVE` + RDB 복사, Postgres는 빈 상태에서 시작 |
-| **스테이징 dry-run** | 운영 DB 스냅샷 복원 → 마이그레이션 스크립트 → 건수·샘플 검증 |
-| **검증 스크립트** | `scripts/verify-migration.js` — 컬렉션별 row count, FK 무결성, 샘플 URL 조회 |
-| **롤백 준비** | 이전 Docker 이미지 + `.env` Mongo/Redis connection string 보관 |
+| 항목                 | 내용                                                                         |
+| -------------------- | ---------------------------------------------------------------------------- |
+| **백업**             | MongoDB `mongodump`, Redis `BGSAVE` + RDB 복사, Postgres는 빈 상태에서 시작  |
+| **스테이징 dry-run** | 운영 DB 스냅샷 복원 → 마이그레이션 스크립트 → 건수·샘플 검증                 |
+| **검증 스크립트**    | `scripts/verify-migration.js` — 컬렉션별 row count, FK 무결성, 샘플 URL 조회 |
+| **롤백 준비**        | 이전 Docker 이미지 + `.env` Mongo/Redis connection string 보관               |
 
 ### 6.2 마이그레이션 순서 (`scripts/migrate-mongo-to-pg.js`)
 
@@ -432,15 +439,15 @@ T+30   ⑦ 점검 해제
 
 ### 6.4 검증 기준 (cutover 게이트)
 
-| 체크 | 기준 |
-|------|------|
-| users | Mongo count = Postgres count |
+| 체크                | 기준                                     |
+| ------------------- | ---------------------------------------- |
+| users               | Mongo count = Postgres count             |
 | articles + comments | count 일치, 랜덤 10건 title/content 일치 |
-| sessions | count 일치 (활성 세션 유지) |
-| game_scores | count 일치 (±0) |
-| slot_user_balance | email·balance 일치 |
-| alarms | Redis 잔존 키 수 ≈ Postgres alarms count |
-| FK | orphan comment 0건 |
+| sessions            | count 일치 (활성 세션 유지)              |
+| game_scores         | count 일치 (±0)                          |
+| slot_user_balance   | email·balance 일치                       |
+| alarms              | Redis 잔존 키 수 ≈ Postgres alarms count |
+| FK                  | orphan comment 0건                       |
 
 ### 6.5 롤백
 
@@ -455,13 +462,13 @@ T+30   ⑦ 점검 해제
 
 ## 7. 코드 변경 요약
 
-| 제거 | 추가/교체 |
-|------|-----------|
-| `mongoosePriomise.js`, `clientPromise.js` | `src/lib/database/prisma.js` |
-| `src/lib/models/*.js` (11개) | Prisma Client 타입 |
-| `hybridAdapter.js` | `prismaAdapter.js` + pgCache 캐시 레이어 |
-| `src/lib/server/redis/*` | `src/lib/server/cache/pgCache.js` |
-| `ioredis`, `mongoose`, `mongodb` | `@prisma/client`, `prisma`, `@auth/prisma-adapter` |
+| 제거                                      | 추가/교체                                          |
+| ----------------------------------------- | -------------------------------------------------- |
+| `mongoosePriomise.js`, `clientPromise.js` | `src/lib/database/prisma.js`                       |
+| `src/lib/models/*.js` (11개)              | Prisma Client 타입                                 |
+| `hybridAdapter.js`                        | `prismaAdapter.js` + pgCache 캐시 레이어           |
+| `src/lib/server/redis/*`                  | `src/lib/server/cache/pgCache.js`                  |
+| `ioredis`, `mongoose`, `mongodb`          | `@prisma/client`, `prisma`, `@auth/prisma-adapter` |
 
 **warmup.js:** `connectDB` + `clientPromise` + `redis.getClient` → `prisma.$connect()` + pgCache ping
 
@@ -469,13 +476,13 @@ T+30   ⑦ 점검 해제
 
 ## 8. 리스크 & 완화
 
-| 리스크 | 완화 |
-|--------|------|
-| UNLOGGED 캐시 재시작 시 소실 | DB fallback (현행 Redis miss와 동일) |
-| `String[]` likes 배열 성능 | 초기 유지, 문제 시 junction table 분리 |
-| Auth User `emailVerified` Boolean→DateTime | 마이그레이션: true→`created_at`, false→null |
-| article.comments 배열 제거 | Comment count 쿼리로 대체, 마이그레이션 시 검증 |
-| 대용량 game_scores | 인덱스 동일 유지, 필요 시 파티셔닝 검토 |
+| 리스크                                     | 완화                                            |
+| ------------------------------------------ | ----------------------------------------------- |
+| UNLOGGED 캐시 재시작 시 소실               | DB fallback (현행 Redis miss와 동일)            |
+| `String[]` likes 배열 성능                 | 초기 유지, 문제 시 junction table 분리          |
+| Auth User `emailVerified` Boolean→DateTime | 마이그레이션: true→`created_at`, false→null     |
+| article.comments 배열 제거                 | Comment count 쿼리로 대체, 마이그레이션 시 검증 |
+| 대용량 game_scores                         | 인덱스 동일 유지, 필요 시 파티셔닝 검토         |
 
 ---
 

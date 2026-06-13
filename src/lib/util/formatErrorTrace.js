@@ -59,9 +59,8 @@ export function traceFromUnknown(err) {
   }
 
   if (typeof err === 'object') {
-    const parsed = /** @type {{ name?: string; message?: string; stack?: string; cause?: unknown }} */ (
-      err
-    );
+    const parsed =
+      /** @type {{ name?: string; message?: string; stack?: string; cause?: unknown }} */ (err);
     return formatErrorTrace(parsed);
   }
 

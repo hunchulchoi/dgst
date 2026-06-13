@@ -1,11 +1,7 @@
 import { error, json } from '@sveltejs/kit';
 import { getPrisma } from '$lib/database/prisma.js';
 import { markAsRead, upsertAlarm } from '$lib/server/alarm/alarmService.js';
-import {
-  createComment,
-  findCommentById,
-  toCommentJson
-} from '$lib/server/board/commentRepo.js';
+import { createComment, findCommentById, toCommentJson } from '$lib/server/board/commentRepo.js';
 import convertToTree from '$lib/util/tree.js';
 import { checkAndLogSessionDevice } from '$lib/server/auth/checkSessionDevice.js';
 import { updateSlotUserBalance } from '$lib/server/slotUserBalance.js';
@@ -116,7 +112,6 @@ export async function GET({ locals, setHeaders, url }) {
     let count = 0;
     let endIndex = commentsTree.length;
     for (let i = startIndex; i < commentsTree.length; i++) {
-      const depth = commentsTree[i].depth ?? 1;
       count += 1;
       if (count >= perPage) {
         let j = i + 1;
@@ -208,7 +203,8 @@ export async function POST(event) {
       }
     }
 
-    const nickname = typeof user?.nickname === 'string' && user.nickname ? user.nickname : 'anonymous';
+    const nickname =
+      typeof user?.nickname === 'string' && user.nickname ? user.nickname : 'anonymous';
     const photo = typeof user?.photo === 'string' && user.photo ? user.photo : undefined;
 
     // 한국 시간(KST, UTC+9) 기준으로 당일 0시 계산

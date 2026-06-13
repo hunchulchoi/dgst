@@ -44,7 +44,7 @@ export async function POST({ request, locals }) {
     }
 
     return await fetchOGData(targetUrl);
-  } catch (err) {
+  } catch {
     return json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 }
@@ -106,8 +106,8 @@ async function fetchOGData(targetUrl) {
     try {
       await setJson(cacheKey, ogData, 10800, OG_NS);
       console.log(`💾 [pgCache Miss] OG 데이터 캐싱 완료: ${safeUrl}`);
-    } catch (e) {
-      console.error(`🚨 pgCache 저장 실패 (${safeUrl}):`, e);
+    } catch (cacheError) {
+      console.error(`🚨 pgCache 저장 실패 (${safeUrl}):`, cacheError);
     }
 
     return json(ogData);
@@ -119,7 +119,7 @@ async function fetchOGData(targetUrl) {
     let hostname = safeUrl;
     try {
       hostname = new URL(safeUrl).hostname;
-    } catch (e) { }
+    } catch {}
 
     return json({
       title: hostname,
@@ -214,7 +214,7 @@ function parseOpenGraphData(html, baseUrl) {
     try {
       const urlObj = new URL(baseUrl);
       ogData.title = urlObj.hostname;
-    } catch (error) {
+    } catch {
       ogData.title = baseUrl;
     }
   }
@@ -264,7 +264,7 @@ function resolveUrl(url, baseUrl) {
 
     // 상대 경로인 경우
     return new URL(url, baseUrl).href;
-  } catch (error) {
+  } catch {
     return url;
   }
 }

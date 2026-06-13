@@ -9,10 +9,7 @@ const memoryBuckets = new Map();
  * @param {{ limit: number, windowSeconds: number, bucket: string }} options
  * @returns {Promise<{ allowed: true } | { allowed: false }>}
  */
-export async function checkRateLimit(
-  event,
-  { limit, windowSeconds, bucket }
-) {
+export async function checkRateLimit(event, { limit, windowSeconds, bucket }) {
   const ip =
     event.getClientAddress?.() ??
     event.request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??

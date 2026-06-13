@@ -32,10 +32,7 @@ export async function POST({ locals, request }) {
     await markAsRead(session.user.email, articleId);
     const count = await getUnreadAlarmCount(session.user.email);
 
-    return json(
-      { count },
-      { headers: { 'Cache-Control': 'private, no-cache' } }
-    );
+    return json({ count }, { headers: { 'Cache-Control': 'private, no-cache' } });
   } catch (err) {
     console.error('alarm mark-read failed', err);
     return json({ count: 0 }, { status: 500 });

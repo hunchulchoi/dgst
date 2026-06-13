@@ -113,7 +113,9 @@
 {:else}
   {#each data.articles as article, index}
     <Row
-      class="board-list-row p-2 max-md:!p-3 max-md:!px-2 border-bottom border-secondary-subtle m-0 {index % 2 === 1
+      class="board-list-row p-2 max-md:!p-3 max-md:!px-2 border-bottom border-secondary-subtle m-0 {index %
+        2 ===
+      1
         ? 'bg-secondary bg-opacity-25'
         : ''}"
     >
@@ -123,7 +125,9 @@
           href={`/board/${boardId}/${currentPageNo}/${article._id}`}
           class="board-list-link link-underline link-underline-opacity-0 link-offset-2 link-underline-opacity-50-hover stretched-link"
         >
-          <span class="!text-[1.3rem] max-md:!text-[1.4rem] !leading-[1.45] font-medium">{article.title}</span>
+          <span class="!text-[1.3rem] max-md:!text-[1.4rem] !leading-[1.45] font-medium"
+            >{article.title}</span
+          >
           {@html article.content}
           {#if article.comment}
             {#if article.isNewComment}
@@ -149,13 +153,27 @@
         {/if}
         {article.nickname}
       </Col>
-      <Col lg="1" md="1" xs="1" class="!text-[1.05rem] !leading-[1.35] max-md:pt-1 text-muted text-end">{article.read}</Col>
-      <Col lg="1" md="1" xs="2" class="!text-[1.05rem] !leading-[1.35] max-md:pt-1 text-muted text-end">
+      <Col
+        lg="1"
+        md="1"
+        xs="1"
+        class="!text-[1.05rem] !leading-[1.35] max-md:pt-1 text-muted text-end">{article.read}</Col
+      >
+      <Col
+        lg="1"
+        md="1"
+        xs="2"
+        class="!text-[1.05rem] !leading-[1.35] max-md:pt-1 text-muted text-end"
+      >
         {#if article.like > 0}
           <Icon name="hand-thumbs-up" class="text-success pe-1" />{article.like}
         {/if}
       </Col>
-      <Col lg="1" md="2" xs="4" class="!text-[1.05rem] !leading-[1.35] max-md:pt-1 text-muted text-end"
+      <Col
+        lg="1"
+        md="2"
+        xs="4"
+        class="!text-[1.05rem] !leading-[1.35] max-md:pt-1 text-muted text-end"
         >{formatRelativeTime(article.createdAt, {
           locale: ko,
           addSuffix: true

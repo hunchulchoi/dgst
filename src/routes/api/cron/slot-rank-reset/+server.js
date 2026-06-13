@@ -26,9 +26,6 @@ export async function GET({ request }) {
     });
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : 'Reset failed';
-    return json(
-      { ok: false, error: errorMessage, at: new Date().toISOString() },
-      { status: 500 }
-    );
+    return json({ ok: false, error: errorMessage, at: new Date().toISOString() }, { status: 500 });
   }
 }

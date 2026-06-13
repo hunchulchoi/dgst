@@ -24,9 +24,7 @@ export function reportSlowLoad(payload) {
 
   const roundedMs = Math.round(durationMs);
   const routeLabel =
-    type === 'initial'
-      ? pathname ?? '(unknown)'
-      : `${from ?? '?'} → ${to ?? pathname ?? '?'}`;
+    type === 'initial' ? (pathname ?? '(unknown)') : `${from ?? '?'} → ${to ?? pathname ?? '?'}`;
 
   const summary = `[slow-${type}] ${routeLabel} (${roundedMs}ms)`;
 

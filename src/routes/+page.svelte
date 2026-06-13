@@ -6,4 +6,4 @@
   const session = $derived(data.session);
 </script>
 
-<BoardIndexView {data} boardId="free" session={session} />
+<BoardIndexView {data} boardId="free" {session} />

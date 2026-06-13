@@ -63,9 +63,7 @@ function draftFromLottoLog(log, viewerNorm) {
     id: String(log.id),
     nickname,
     numbers: [.../** @type {number[]} */ (raw)].sort((a, b) => a - b),
-    createdAt: new Date(
-      /** @type {string | number | Date} */ (log.createdAt)
-    ).toISOString(),
+    createdAt: new Date(/** @type {string | number | Date} */ (log.createdAt)).toISOString(),
     mine,
     pickEmailNorm
   };

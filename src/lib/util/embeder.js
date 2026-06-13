@@ -42,8 +42,10 @@ function youtubeEmbeder(url) {
 /** @param {string} text */
 export function isMarkdownContent(text) {
   if (!text) return false;
-  // 제목, 리스트, 인용구, 코드, 볼드체/이탤릭체, 링크, 표 등 다양한 마크다운 식별 
-  return /(^#{1,6}\s+|^\s*[-*+]\s+|^>\s+|^\d+\.\s+|^\[[^\]]+\]\s+|`[^`]+`|\*\*[^*]+\*\*|_[^_]+_|\[[^\]]+\]\([^)]+\)|!\[[^\]]*\]\([^)]+\))/m.test(text);
+  // 제목, 리스트, 인용구, 코드, 볼드체/이탤릭체, 링크, 표 등 다양한 마크다운 식별
+  return /(^#{1,6}\s+|^\s*[-*+]\s+|^>\s+|^\d+\.\s+|^\[[^\]]+\]\s+|`[^`]+`|\*\*[^*]+\*\*|_[^_]+_|\[[^\]]+\]\([^)]+\)|!\[[^\]]*\]\([^)]+\))/m.test(
+    text
+  );
 }
 
 /** @param {string} comment */
@@ -55,7 +57,10 @@ export function viewComment(comment) {
     // 동기식 변환 지원 후 article 태그로 래핑
     let parsedHtml = /** @type {string} */ (marked.parse(comment, { breaks: true }));
     // Prism-themes는 pre 태그에 'language-' 클래스가 있어야 배경색/패딩이 정상 적용되므로 클래스 복사
-    parsedHtml = parsedHtml.replace(/<pre><code class="([^"]+)">/g, '<pre class="$1"><code class="$1">');
+    parsedHtml = parsedHtml.replace(
+      /<pre><code class="([^"]+)">/g,
+      '<pre class="$1"><code class="$1">'
+    );
     comment = `<article class="markdown-body">${parsedHtml}</article>`;
   } else {
     comment = comment.replace(/(?:\r\n|\r|\n)/g, '<br>');
@@ -77,7 +82,18 @@ export function viewComment(comment) {
       'a',
       'span',
       'article',
-      'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'code', 'pre', 'hr'
+      'h1',
+      'h2',
+      'h3',
+      'h4',
+      'h5',
+      'h6',
+      'ul',
+      'ol',
+      'li',
+      'code',
+      'pre',
+      'hr'
     ],
     allowedAttributes: {
       blockquote: ['class', 'data-instgrm-permalink', 'style'],
@@ -119,7 +135,7 @@ export function viewComment(comment) {
   });
 
   const httpRegexG =
-    /https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&\/=]*)/g;
+    /https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_.+~#?&/=]*)/g;
 
   const matched = comment.match(httpRegexG);
 

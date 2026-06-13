@@ -88,7 +88,9 @@ async function validMongoCommentCount(db) {
       .toArray();
     if (docs.length === 0) break;
 
-    const articleObjectIds = docs.map((doc) => toObjectId(doc.articleId)).filter((id) => id != null);
+    const articleObjectIds = docs
+      .map((doc) => toObjectId(doc.articleId))
+      .filter((id) => id != null);
     const validArticleIds = new Set(
       (
         await articles
@@ -182,7 +184,8 @@ async function main() {
       console.warn('[alarms] skipped — REDIS_URL not set');
     }
 
-    const orphanRows = await prisma.$queryRaw`SELECT COUNT(*)::int AS n FROM comments c LEFT JOIN articles a ON a.id = c.article_id WHERE a.id IS NULL`;
+    const orphanRows =
+      await prisma.$queryRaw`SELECT COUNT(*)::int AS n FROM comments c LEFT JOIN articles a ON a.id = c.article_id WHERE a.id IS NULL`;
     const orphanCount = /** @type {{ n: number }[]} */ (orphanRows)[0]?.n ?? 0;
     const orphanOk = orphanCount === 0;
     console.log(`[orphan_comments] count=${orphanCount} → ${orphanOk ? 'OK' : 'MISMATCH'}`);

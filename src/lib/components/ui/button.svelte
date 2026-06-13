@@ -28,13 +28,6 @@
   const colorClass = $derived(outline ? `btn-outline-${color}` : `btn-${color}`);
 </script>
 
-<button
-  {type}
-  {role}
-  {id}
-  class="btn {colorClass} {sizeClass} {className}"
-  {disabled}
-  {onclick}
->
+<button {type} {role} {id} class="btn {colorClass} {sizeClass} {className}" {disabled} {onclick}>
   {@render children?.()}
 </button>

@@ -13,10 +13,7 @@ import { write } from '$lib/util/fileUpload.js';
 import { upsertAlarm, markAsRead, removeCommentFromAlarm } from '$lib/server/alarm/alarmService.js';
 import convertToTree from '$lib/util/tree.js';
 import { checkAndLogSessionDevice } from '$lib/server/auth/checkSessionDevice.js';
-import {
-  buildSubmitFingerprint,
-  tryAcquireSubmitDedup
-} from '$lib/server/submitDedup.js';
+import { buildSubmitFingerprint, tryAcquireSubmitDedup } from '$lib/server/submitDedup.js';
 
 /** @param {import('@sveltejs/kit').RequestEvent} event */
 export async function GET({ params, locals }) {
