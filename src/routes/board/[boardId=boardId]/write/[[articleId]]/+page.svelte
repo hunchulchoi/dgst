@@ -80,17 +80,17 @@
 
   onMount(async () => {
     try {
-      QuillEditor = (await import('$lib/components/QuillEditor.svelte')).default;
+      QuillEditor = (await import('$lib/components/TiptapEditor.svelte')).default;
     } catch (error) {
-      console.error('Quill 에디터 로드 실패:', error);
+      console.error('Tiptap 에디터 로드 실패:', error);
       reportClientError(error, {
         type: 'editor-import-error',
-        message: 'Quill 에디터 로드 실패',
+        message: 'Tiptap 에디터 로드 실패',
         pathname: typeof location !== 'undefined' ? location.pathname : undefined,
         href: typeof location !== 'undefined' ? location.href : undefined,
         search: typeof location !== 'undefined' ? location.search : undefined,
         routeId: $page.route.id ?? undefined,
-        importTarget: '$lib/components/QuillEditor.svelte',
+        importTarget: '$lib/components/TiptapEditor.svelte',
         phase: 'write-page-onMount'
       });
       editorLoadError = true;
