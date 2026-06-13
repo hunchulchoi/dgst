@@ -972,7 +972,7 @@
         type="button"
         aria-label="인라인 코드"
         title="인라인 코드"
-        onclick={() => editor?.dispatchCommand(FORMAT_TEXT_COMMAND, 'code')}>{`<>`}</button
+        onclick={() => editor?.dispatchCommand(FORMAT_TEXT_COMMAND, 'code')}>&lt;&gt;</button
       >
     </div>
 
