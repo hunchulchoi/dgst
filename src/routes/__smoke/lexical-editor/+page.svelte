@@ -1,0 +1,31 @@
+<script>
+  import LexicalEditor from '$lib/components/LexicalEditor.svelte';
+
+  let editorData = $state('');
+  let insertUrlFromTitle = $state(null);
+  let loading = $state(false);
+  let uploads = $state(0);
+
+  /** @param {string} _title */
+  function handleTitleUpdate(_title) {}
+
+  /** @param {boolean} value */
+  function handleLoadingChange(value) {
+    loading = value;
+  }
+</script>
+
+<main class="container py-3">
+  <h1>Lexical editor smoke</h1>
+  <LexicalEditor
+    bind:editorData
+    bind:insertUrlFromTitle
+    uploadPlus={() => uploads++}
+    uploadMinus={() => uploads--}
+    onTitleUpdate={handleTitleUpdate}
+    onLoadingChange={handleLoadingChange}
+  />
+  <output data-testid="editor-html">{editorData}</output>
+  <output data-testid="editor-loading">{String(loading)}</output>
+  <output data-testid="editor-uploads">{String(uploads)}</output>
+</main>
