@@ -854,6 +854,17 @@
     });
   }
 
+  /** 게시글 본문은 저장 시 정화되고, 표시 전 `processArticleContent()`로 한 번 더 정화한다. */
+  function getTrustedArticleBodyHtml(content) {
+    return processArticleContent(content.replace(/<p>\s*<br\s*\/?>(\s|\u00A0)*<\/p>/g, '<br>'));
+  }
+
+  /** 댓글 렌더러는 markdown/embed 변환 후 sanitize-html을 거친 문자열만 반환한다. */
+  function getTrustedCommentHtml(content) {
+    if (!embeder) return null;
+    return embeder.viewComment(String(content ?? ''));
+  }
+
   onMount(async () => {
     embeder = await import('$lib/util/embeder.js');
     // 인스타그램 임베드 처리
@@ -1218,9 +1229,8 @@
       </Row>
       <Row class="py-3 px-2 mx-0">
         <div class="text-break px-2 article-content max-w-full dgst-rich-text">
-          {@html processArticleContent(
-            article.content.replace(/<p>\s*<br\s*\/?>(\s|\u00A0)*<\/p>/g, '<br>')
-          )}
+          <!-- eslint-disable-next-line svelte/no-at-html-tags -- article HTML is sanitized on write and sanitized again before render -->
+          {@html getTrustedArticleBodyHtml(article.content)}
         </div>
       </Row>
       <Row class="mb-3 mx-0">
@@ -1472,9 +1482,12 @@
                                 bind:this={commentDiv}
                                 data-comment-id={comment._id}
                               >
-                                {@html embeder
-                                  ? embeder.viewComment(comment.content)
-                                  : comment.content}
+                                {#if embeder}
+                                  <!-- eslint-disable-next-line svelte/no-at-html-tags -- comment HTML comes from embeder.viewComment() after sanitize-html -->
+                                  {@html getTrustedCommentHtml(comment.content)}
+                                {:else}
+                                  {comment.content}
+                                {/if}
                               </span>
                             </div>
 

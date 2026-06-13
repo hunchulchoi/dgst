@@ -33,6 +33,11 @@
   /** 서버 load의 pageNo — $page.params destructuring은 네비 후 갱신되지 않을 수 있음 */
   const currentPageNo = $derived(Number(data.pageNo) || 1);
 
+  /** 서버 목록 API가 `contentIcons()`로 생성한 아이콘 마크업만 신뢰한다. */
+  function getTrustedArticlePreviewHtml(content) {
+    return String(content ?? '');
+  }
+
   // 페이지 네이션 클릭 핸들러 - 중복 클릭 방지
   /**
    * @param {number | string} targetPage
@@ -128,7 +133,8 @@
           <span class="!text-[1.3rem] max-md:!text-[1.4rem] !leading-[1.45] font-medium"
             >{article.title}</span
           >
-          {@html article.content}
+          <!-- eslint-disable-next-line svelte/no-at-html-tags -- trusted icon markup comes from server-side contentIcons() -->
+          {@html getTrustedArticlePreviewHtml(article.content)}
           {#if article.comment}
             {#if article.isNewComment}
               <Badge color="warning" class="bg-opacity-50">{article.comment}</Badge>

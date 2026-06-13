@@ -7,8 +7,6 @@
   ccd.set(false);
 
   const header_ = '만수무강';
-
-  const bannerContent = `🌸<span class="text-danger">경)</span> 🎉광명의 자랑 🧓️시골으르신 🎊퇴원 🌼똥칠할때까지 <span class="text-danger">(축</span>🌼`;
 </script>
 
 <Offcanvas
@@ -20,7 +18,10 @@
   style="background: linear-gradient(90deg, rgba(211,209,247,1) 0%, rgba(150,150,146,1) 70%,rgba(111,112,101,1) 100%);"
   placement="top"
 >
-  <div class="neon">{@html bannerContent}</div>
+  <div class="neon">
+    🌸<span class="text-danger">경)</span> 🎉광명의 자랑 🧓️시골으르신 🎊퇴원 🌼똥칠할때까지
+    <span class="text-danger">(축</span>🌼
+  </div>
   <div
     style="
  position: fixed;

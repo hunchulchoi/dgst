@@ -9,6 +9,16 @@
   let loading = $state(true);
   let error = $state(false);
 
+  const PLAIN_TEXT_SANITIZE_OPTIONS = {
+    allowedTags: [],
+    allowedAttributes: {}
+  };
+
+  const safeTitle = $derived(sanitizeHtml(ogData?.title ?? '', PLAIN_TEXT_SANITIZE_OPTIONS));
+  const safeDescription = $derived(
+    sanitizeHtml(ogData?.description ?? '', PLAIN_TEXT_SANITIZE_OPTIONS)
+  );
+
   onMount(async () => {
     console.log('🔍 OGPreview 시작:', url);
     try {
@@ -79,13 +89,13 @@
           class="mb-1"
           style="font-size: 14px; font-weight: 700; line-height: 1.25; color: var(--bs-body-color); margin-bottom: 4px;"
         >
-          {@html sanitizeHtml(ogData.title, { allowedTags: [], allowedAttributes: {} })}
+          {safeTitle}
         </h6>
         <p
           class="mb-2"
           style="font-size: 12px; line-height: 1.35; color: var(--bs-secondary-color); opacity: 0.9; margin-bottom: 6px;"
         >
-          {@html sanitizeHtml(ogData.description, { allowedTags: [], allowedAttributes: {} })}
+          {safeDescription}
         </p>
         <div class="d-flex align-items-center mb-1">
           {#if ogData.favicon}

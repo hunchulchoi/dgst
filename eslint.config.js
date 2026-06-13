@@ -65,7 +65,6 @@ export default defineConfig(
       'no-unused-vars': 'off',
       'no-empty': 'off',
       'no-useless-escape': 'off',
-      'svelte/no-at-html-tags': 'off',
       'svelte/no-navigation-without-resolve': 'off',
       'svelte/no-unused-svelte-ignore': 'off',
       'svelte/no-useless-mustaches': 'off',
