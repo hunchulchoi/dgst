@@ -1,36 +1,7 @@
 import sanitizeHtml from 'sanitize-html';
 import { marked } from 'marked';
-import { markedHighlight } from 'marked-highlight';
-import Prism from 'prismjs';
 
-// Require core components first
-import 'prismjs/components/prism-clike.js';
-import 'prismjs/components/prism-javascript.js';
-import 'prismjs/components/prism-typescript.js';
-import 'prismjs/components/prism-python.js';
-import 'prismjs/components/prism-java.js';
-import 'prismjs/components/prism-bash.js';
-import 'prismjs/components/prism-yaml.js';
-import 'prismjs/components/prism-json.js';
-import 'prismjs/components/prism-css.js';
-import 'prismjs/components/prism-markup.js';
-import 'prismjs/components/prism-markdown.js';
-import 'prismjs/components/prism-sql.js';
-
-marked.use(markedHighlight({
-  langPrefix: 'language-',
-  /**
-   * @param {string} code
-   * @param {string} lang
-   */
-  highlight(code, lang) {
-    const languages = /** @type {Record<string, any>} */ (Prism.languages);
-    if (languages[lang]) {
-      return Prism.highlight(code, languages[lang], lang);
-    }
-    return code;
-  }
-}));
+marked.use({ breaks: true });
 
 /** @param {string} url */
 function youtubeEmbeder(url) {

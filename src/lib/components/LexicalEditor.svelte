@@ -30,7 +30,6 @@
     ListNode,
     registerList
   } from '@lexical/list';
-  import { $createCodeNode as createCodeNode, CodeNode } from '@lexical/code';
   import { createEmptyHistoryState, registerHistory } from '@lexical/history';
   import { $toggleLink as toggleLink, LinkNode } from '@lexical/link';
   import {
@@ -704,10 +703,15 @@
   function toggleCodeBlock() {
     editor?.update(() => {
       const selection = getSelection();
-      if (isRangeSelection(selection)) {
-        setBlocksType(selection, () => createCodeNode());
-      }
+      const code = isRangeSelection(selection) ? selection.getTextContent() : '';
+      insertNodes([
+        createHtmlBlockNode(
+          `<pre class="language-plaintext"><code class="language-plaintext">${escapeHtml(code)}</code></pre>`
+        ),
+        createParagraphNode()
+      ]);
     });
+    syncEditorData();
   }
 
   onMount(() => {
@@ -715,7 +719,7 @@
 
     editor = createEditor({
       namespace: 'dgst-lexical-editor',
-      nodes: [HeadingNode, QuoteNode, ListNode, ListItemNode, LinkNode, CodeNode, HtmlBlockNode],
+      nodes: [HeadingNode, QuoteNode, ListNode, ListItemNode, LinkNode, HtmlBlockNode],
       onError(error) {
         console.error('Lexical editor error:', error);
       },

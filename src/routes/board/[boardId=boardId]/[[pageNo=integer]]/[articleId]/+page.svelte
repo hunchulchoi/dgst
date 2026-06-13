@@ -896,6 +896,8 @@
     setTimeout(async () => {
       if (typeof document !== 'undefined') {
         const { default: Prism } = await import('prismjs');
+        /** @type {any} */ (globalThis).Prism = Prism;
+        /** @type {any} */ (window).Prism = Prism;
         // @ts-ignore prism component side-effect imports
         await import('prismjs/components/prism-clike.js');
         // @ts-ignore prism component side-effect imports

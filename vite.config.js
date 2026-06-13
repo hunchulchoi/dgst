@@ -85,9 +85,6 @@ export default defineConfig({
           if (id.includes('node_modules/quill')) {
             return 'quill';
           }
-          if (id.includes('node_modules/prismjs')) {
-            return 'prism';
-          }
           if (id.includes('node_modules/marked')) {
             return 'marked';
           }
