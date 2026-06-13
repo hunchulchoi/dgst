@@ -68,6 +68,8 @@ export default defineConfig(
       // Kept off until the remaining article-page regex escapes can be cleaned up
       // in Svelte source without broadening this config-only task.
       'no-useless-escape': 'off',
+      // Svelte 5 reactivity migration touches state-heavy components; keep
+      // separate from lint-rule restoration to avoid behavior changes here.
       'svelte/prefer-svelte-reactivity': 'off',
       'svelte/prefer-writable-derived': 'off'
     }
