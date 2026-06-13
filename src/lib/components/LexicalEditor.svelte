@@ -886,6 +886,19 @@
   />
 
   <div class="lexical-toolbar" aria-label="에디터 툴바">
+    <div class="lexical-toolbar__group lexical-toolbar__group--primary" aria-label="이미지와 동영상 삽입">
+      <button
+        class="lexical-toolbar__button lexical-toolbar__button--media"
+        type="button"
+        aria-label="이미지 또는 동영상 업로드"
+        title="이미지/동영상 업로드"
+        onclick={openFilePicker}
+      >
+        <span class="lexical-toolbar__media-icon" aria-hidden="true">▧</span>
+        <span>이미지</span>
+      </button>
+    </div>
+
     <div class="lexical-toolbar__group" aria-label="텍스트 서식">
       <button
         class="lexical-toolbar__button lexical-toolbar__button--bold"
@@ -977,7 +990,6 @@
     <div class="lexical-toolbar__group" aria-label="삽입">
       <button class="lexical-toolbar__button lexical-toolbar__button--wide" type="button" onclick={addLink}>Link</button>
       <button class="lexical-toolbar__button lexical-toolbar__button--wide" type="button" onclick={addMediaUrl}>URL</button>
-      <button class="lexical-toolbar__button lexical-toolbar__button--wide" type="button" onclick={openFilePicker}>Media</button>
     </div>
   </div>
 
@@ -1040,6 +1052,11 @@
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
   }
 
+  .lexical-toolbar__group--primary {
+    border-color: rgba(0, 173, 181, 0.4);
+    background: linear-gradient(135deg, rgba(0, 173, 181, 0.2), rgba(49, 130, 206, 0.16));
+  }
+
   .lexical-toolbar__button {
     display: inline-flex;
     align-items: center;
@@ -1083,6 +1100,38 @@
     min-width: 3rem;
     padding-inline: 0.55rem;
     font-size: 0.82rem;
+  }
+
+  .lexical-toolbar__button--media {
+    width: auto;
+    min-width: 4.65rem;
+    gap: 0.32rem;
+    padding-inline: 0.58rem 0.68rem;
+    background: linear-gradient(135deg, #00adb5, #3182ce);
+    color: #fff;
+    font-size: 0.86rem;
+    font-weight: 900;
+    box-shadow:
+      0 4px 12px rgba(0, 173, 181, 0.24),
+      inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  }
+
+  .lexical-toolbar__button--media:hover {
+    background: linear-gradient(135deg, #00c2cc, #3b8fe5);
+    color: #fff;
+  }
+
+  .lexical-toolbar__media-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.25rem;
+    height: 1.25rem;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.22);
+    color: #fff;
+    font-size: 1rem;
+    line-height: 1;
   }
 
   .lexical-toolbar__button--bold {
