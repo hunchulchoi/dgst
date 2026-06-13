@@ -1,9 +1,50 @@
 import { sveltekit } from '@sveltejs/kit/vite';
 import tailwindcss from '@tailwindcss/vite';
+import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { defineConfig } from 'vite';
 
+/**
+ * @returns {import('vite').Plugin}
+ */
+function rootRelativeSvelteKitPreloadDeps() {
+  const immutableDir = join('.svelte-kit', 'output', 'client', '_app', 'immutable');
+
+  /**
+   * @param {string} dir
+   */
+  function rewriteJsFiles(dir) {
+    if (!existsSync(dir)) return;
+
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const path = join(dir, entry.name);
+      if (entry.isDirectory()) {
+        rewriteJsFiles(path);
+        continue;
+      }
+
+      if (!entry.isFile() || !entry.name.endsWith('.js')) continue;
+
+      const original = readFileSync(path, 'utf8');
+      const rewritten = original.replaceAll('"./_app/immutable/', '"/_app/immutable/');
+      if (rewritten !== original) {
+        writeFileSync(path, rewritten);
+      }
+    }
+  }
+
+  return {
+    name: 'dgst-root-relative-sveltekit-preload-deps',
+    apply: 'build',
+    enforce: 'post',
+    writeBundle() {
+      rewriteJsFiles(immutableDir);
+    }
+  };
+}
+
 export default defineConfig({
-  plugins: [tailwindcss(), sveltekit()],
+  plugins: [tailwindcss(), sveltekit(), rootRelativeSvelteKitPreloadDeps()],
 
   // SSR 외부화
   ssr: {
