@@ -1,4 +1,5 @@
 <script>
+  import { onMount } from 'svelte';
   import LexicalEditor from '$lib/components/LexicalEditor.svelte';
 
   let editorData = $state('');
@@ -16,6 +17,13 @@
   function handleLoadingChange(value) {
     loading = value;
   }
+
+  onMount(() => {
+    const initialHtml = new URLSearchParams(window.location.search).get('initialHtml');
+    if (initialHtml) {
+      editorData = initialHtml;
+    }
+  });
 </script>
 
 <main class="container py-3">

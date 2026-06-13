@@ -276,6 +276,33 @@
     void notifyEditorFailure(error, 'lexical-editor-unhandled-rejection');
   }
 
+  /** @param {HTMLElement} root */
+  function preserveMediaHtmlBlocks(root) {
+    const candidates = Array.from(
+      root.querySelectorAll(
+        '.og-card-blot, img, video, iframe, blockquote.instagram-media, blockquote.tiktok-embed'
+      )
+    );
+    const preserved = new Set();
+
+    for (const candidate of candidates) {
+      if (!(candidate instanceof HTMLElement)) continue;
+      if (!candidate.isConnected) continue;
+      if (candidate.closest('[data-lexical-html-block="true"]')) continue;
+
+      const block = candidate.closest('.og-card-blot') || candidate;
+      if (!(block instanceof HTMLElement)) continue;
+      if (!block.parentNode) continue;
+      if (preserved.has(block)) continue;
+
+      const wrapper = document.createElement('div');
+      wrapper.setAttribute('data-lexical-html-block', 'true');
+      wrapper.innerHTML = block.outerHTML;
+      block.replaceWith(wrapper);
+      preserved.add(block);
+    }
+  }
+
   /** @param {string} value */
   function setEditorHtml(value) {
     const currentEditor = editor;
@@ -288,6 +315,7 @@
       if (value) {
         const parser = new DOMParser();
         const dom = parser.parseFromString(value, 'text/html');
+        preserveMediaHtmlBlocks(dom.body);
         const nodes = generateNodesFromDOM(currentEditor, dom);
         root.append(...nodes);
       }

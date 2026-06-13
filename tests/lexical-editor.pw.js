@@ -2,9 +2,12 @@ import { expect, test } from '@playwright/test';
 
 const editorSelector = '.lexical-editor__content[contenteditable="true"]';
 
-/** @param {import('@playwright/test').Page} page */
-async function gotoSmokeEditor(page) {
-  const response = await page.goto('/__smoke/lexical-editor');
+/** @param {import('@playwright/test').Page} page @param {{ initialHtml?: string }} [options] */
+async function gotoSmokeEditor(page, options = {}) {
+  const path = options.initialHtml
+    ? `/__smoke/lexical-editor?initialHtml=${encodeURIComponent(options.initialHtml)}`
+    : '/__smoke/lexical-editor';
+  const response = await page.goto(path);
   expect(response?.status()).toBe(200);
 
   const editor = page.locator(editorSelector);
@@ -13,6 +16,14 @@ async function gotoSmokeEditor(page) {
   await expect(page.locator('.swal2-container')).toHaveCount(0);
 
   return editor;
+}
+
+/** @param {import('@playwright/test').Page} page @param {string[]} snippets */
+async function expectSyncedEditorHtmlToContain(page, snippets) {
+  const html = page.locator('[data-testid="editor-html"]');
+  for (const snippet of snippets) {
+    await expect(html).toContainText(snippet);
+  }
 }
 
 /** @param {import('@playwright/test').Page} page @param {string} url */
@@ -145,9 +156,7 @@ test('Lexical editor uploads selected images and inserts image html', async ({ p
     buffer: Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])
   });
 
-  const html = page.locator('[data-testid="editor-html"]');
-  await expect(html).toContainText('<img');
-  await expect(html).toContainText('/uploads/smoke-selected-image.png');
+  await expectSyncedEditorHtmlToContain(page, ['<img', '/uploads/smoke-selected-image.png']);
   await expect(page.locator('[data-testid="editor-uploads"]')).toHaveText('0');
 });
 
@@ -161,10 +170,26 @@ test('Lexical editor uploads pasted images and inserts image html', async ({ pag
     bytes: [137, 80, 78, 71, 13, 10, 26, 10]
   });
 
-  const html = page.locator('[data-testid="editor-html"]');
-  await expect(html).toContainText('<img');
-  await expect(html).toContainText('/uploads/smoke-pasted-image.png');
+  await expectSyncedEditorHtmlToContain(page, ['<img', '/uploads/smoke-pasted-image.png']);
   await expect(page.locator('[data-testid="editor-uploads"]')).toHaveText('0');
+});
+
+test('Lexical editor preserves initial image html when syncing loaded content', async ({ page }) => {
+  const initialHtml = [
+    '<p>before image</p>',
+    '<img src="/uploads/existing-image.png" alt="existing" style="max-width: 100%; height: auto; display: block; margin: 1em 0;">',
+    '<p>after image</p>'
+  ].join('');
+
+  const editor = await gotoSmokeEditor(page, { initialHtml });
+
+  await expect(editor.locator('img[src="/uploads/existing-image.png"]')).toHaveCount(1);
+  await expectSyncedEditorHtmlToContain(page, [
+    'before image',
+    '<img',
+    '/uploads/existing-image.png',
+    'after image'
+  ]);
 });
 
 test('Lexical editor uploads selected videos and inserts video html', async ({ page }) => {
@@ -177,9 +202,7 @@ test('Lexical editor uploads selected videos and inserts video html', async ({ p
     buffer: Buffer.from('smoke video')
   });
 
-  const html = page.locator('[data-testid="editor-html"]');
-  await expect(html).toContainText('<video');
-  await expect(html).toContainText('/uploads/smoke-video.mp4');
+  await expectSyncedEditorHtmlToContain(page, ['<video', '/uploads/smoke-video.mp4']);
   await expect(page.locator('[data-testid="editor-uploads"]')).toHaveText('0');
 });
 
