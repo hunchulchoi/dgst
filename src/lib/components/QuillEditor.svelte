@@ -6,8 +6,6 @@
   import { onMount, onDestroy } from 'svelte';
   import Loader from 'svelte-loading-overlay/Loader.svelte';
   import { swalFire } from '$lib/util/swal.js';
-  import imageCompression from 'browser-image-compression';
-  import { marked } from 'marked';
 
   // Svelte 5 Runes - Props
   let {
@@ -147,6 +145,9 @@
         );
         return file;
       }
+
+      // 에디터 초기 로드가 iOS에서 optional image library 문법 때문에 깨지지 않도록 지연 로드한다.
+      const imageCompression = (await import('browser-image-compression')).default;
 
       // browser-image-compression으로 리사이즈 및 압축
       const compressedFile = await imageCompression(file, {
@@ -1306,6 +1307,7 @@
             console.log('📝 마크다운 텍스트 감지, HTML로 변환합니다.');
             const range = quillInstance.getSelection(true) || { index: quillInstance.getLength() };
             // 비동기로 변환될 수도 있으니 await (marked 설정에 따라 다름, 기본은 동기)
+            const { marked } = await import('marked');
             const html = await marked.parse(pastedText);
 
             quillInstance.clipboard.dangerouslyPasteHTML(range.index, html);

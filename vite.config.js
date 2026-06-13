@@ -28,8 +28,8 @@ export default defineConfig({
 
   // 프로덕션 빌드 설정
   build: {
-    // Avoid shipping syntax that current iOS Safari cannot parse in lazy-loaded chunks.
-    target: ['es2022', 'safari16'],
+    // Avoid shipping syntax that older iOS Safari cannot parse in lazy-loaded editor chunks.
+    target: ['es2020', 'safari14'],
     // heic2any WASM (~1.35MB) — QuillEditor에서 dynamic import, 추가 분할 불가
     chunkSizeWarningLimit: 1400,
     rollupOptions: {
