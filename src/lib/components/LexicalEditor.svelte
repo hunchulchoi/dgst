@@ -886,31 +886,99 @@
   />
 
   <div class="lexical-toolbar" aria-label="에디터 툴바">
-    <button type="button" onclick={() => editor?.dispatchCommand(FORMAT_TEXT_COMMAND, 'bold')}>B</button>
-    <button type="button" onclick={() => editor?.dispatchCommand(FORMAT_TEXT_COMMAND, 'italic')}>I</button>
-    <button type="button" onclick={() => editor?.dispatchCommand(FORMAT_TEXT_COMMAND, 'underline')}>U</button>
-    <button type="button" onclick={() => editor?.dispatchCommand(FORMAT_TEXT_COMMAND, 'strikethrough')}>S</button>
-    <button type="button" onclick={() => editor?.dispatchCommand(FORMAT_TEXT_COMMAND, 'code')}>Code</button>
-    <button type="button" onclick={addLink}>Link</button>
-    <button type="button" onclick={addMediaUrl}>URL</button>
-    <button type="button" onclick={() => toggleHeading('h1')}>H1</button>
-    <button type="button" onclick={() => toggleHeading('h2')}>H2</button>
-    <button type="button" onclick={() => editor?.dispatchCommand(INSERT_UNORDERED_LIST_COMMAND, undefined)}>• List</button>
-    <button type="button" onclick={() => editor?.dispatchCommand(INSERT_ORDERED_LIST_COMMAND, undefined)}>1. List</button>
-    <button type="button" onclick={toggleQuote}>Quote</button>
-    <button type="button" onclick={toggleCodeBlock}>Block Code</button>
-    <button type="button" onclick={() => formatAlignment('left')}>Left</button>
-    <button type="button" onclick={() => formatAlignment('center')}>Center</button>
-    <button type="button" onclick={() => formatAlignment('right')}>Right</button>
-    <label class="lexical-toolbar__color">
-      Text
-      <input type="color" value="#212529" oninput={handleTextColor} />
-    </label>
-    <label class="lexical-toolbar__color">
-      Bg
-      <input type="color" value="#fff3cd" oninput={handleTextBackground} />
-    </label>
-    <button type="button" onclick={openFilePicker}>Image/Video</button>
+    <div class="lexical-toolbar__group" aria-label="텍스트 서식">
+      <button
+        class="lexical-toolbar__button lexical-toolbar__button--bold"
+        type="button"
+        aria-label="굵게"
+        title="굵게"
+        onclick={() => editor?.dispatchCommand(FORMAT_TEXT_COMMAND, 'bold')}>B</button
+      >
+      <button
+        class="lexical-toolbar__button lexical-toolbar__button--italic"
+        type="button"
+        aria-label="기울임"
+        title="기울임"
+        onclick={() => editor?.dispatchCommand(FORMAT_TEXT_COMMAND, 'italic')}>I</button
+      >
+      <button
+        class="lexical-toolbar__button lexical-toolbar__button--underline"
+        type="button"
+        aria-label="밑줄"
+        title="밑줄"
+        onclick={() => editor?.dispatchCommand(FORMAT_TEXT_COMMAND, 'underline')}>U</button
+      >
+      <button
+        class="lexical-toolbar__button lexical-toolbar__button--strike"
+        type="button"
+        aria-label="취소선"
+        title="취소선"
+        onclick={() => editor?.dispatchCommand(FORMAT_TEXT_COMMAND, 'strikethrough')}>S</button
+      >
+      <button
+        class="lexical-toolbar__button lexical-toolbar__button--code"
+        type="button"
+        aria-label="인라인 코드"
+        title="인라인 코드"
+        onclick={() => editor?.dispatchCommand(FORMAT_TEXT_COMMAND, 'code')}>{`<>`}</button
+      >
+    </div>
+
+    <div class="lexical-toolbar__group" aria-label="블록 서식">
+      <button class="lexical-toolbar__button" type="button" aria-label="제목 1" title="제목 1" onclick={() => toggleHeading('h1')}
+        >H1</button
+      >
+      <button class="lexical-toolbar__button" type="button" aria-label="제목 2" title="제목 2" onclick={() => toggleHeading('h2')}
+        >H2</button
+      >
+      <button
+        class="lexical-toolbar__button"
+        type="button"
+        aria-label="글머리 목록"
+        title="글머리 목록"
+        onclick={() => editor?.dispatchCommand(INSERT_UNORDERED_LIST_COMMAND, undefined)}>•</button
+      >
+      <button
+        class="lexical-toolbar__button"
+        type="button"
+        aria-label="번호 목록"
+        title="번호 목록"
+        onclick={() => editor?.dispatchCommand(INSERT_ORDERED_LIST_COMMAND, undefined)}>1.</button
+      >
+      <button class="lexical-toolbar__button" type="button" aria-label="인용" title="인용" onclick={toggleQuote}>❝</button>
+      <button class="lexical-toolbar__button" type="button" aria-label="코드 블록" title="코드 블록" onclick={toggleCodeBlock}
+        >{`{}`}</button
+      >
+    </div>
+
+    <div class="lexical-toolbar__group" aria-label="정렬">
+      <button class="lexical-toolbar__button" type="button" aria-label="왼쪽 정렬" title="왼쪽 정렬" onclick={() => formatAlignment('left')}
+        >≡</button
+      >
+      <button class="lexical-toolbar__button" type="button" aria-label="가운데 정렬" title="가운데 정렬" onclick={() => formatAlignment('center')}
+        >≣</button
+      >
+      <button class="lexical-toolbar__button" type="button" aria-label="오른쪽 정렬" title="오른쪽 정렬" onclick={() => formatAlignment('right')}
+        >≡</button
+      >
+    </div>
+
+    <div class="lexical-toolbar__group" aria-label="색상">
+      <label class="lexical-toolbar__color" title="글자색">
+        <span>A</span>
+        <input type="color" value="#212529" aria-label="글자색" oninput={handleTextColor} />
+      </label>
+      <label class="lexical-toolbar__color" title="배경색">
+        <span>▣</span>
+        <input type="color" value="#fff3cd" aria-label="배경색" oninput={handleTextBackground} />
+      </label>
+    </div>
+
+    <div class="lexical-toolbar__group" aria-label="삽입">
+      <button class="lexical-toolbar__button lexical-toolbar__button--wide" type="button" onclick={addLink}>Link</button>
+      <button class="lexical-toolbar__button lexical-toolbar__button--wide" type="button" onclick={addMediaUrl}>URL</button>
+      <button class="lexical-toolbar__button lexical-toolbar__button--wide" type="button" onclick={openFilePicker}>Media</button>
+    </div>
   </div>
 
   <div class="lexical-editor__box" class:loading>
@@ -938,48 +1006,134 @@
 
   .lexical-toolbar {
     display: flex;
-    flex-wrap: wrap;
-    gap: 0.35rem;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 0.45rem;
     box-sizing: border-box;
     width: 100%;
     max-width: 100%;
     min-width: 0;
     overflow-x: auto;
-    padding: 0.5rem;
-    border: 1px solid var(--bs-border-color);
+    overflow-y: hidden;
+    padding: 0.45rem;
+    border: 1px solid rgba(var(--bs-body-color-rgb), 0.12);
     border-bottom: 0;
-    border-radius: 4px 4px 0 0;
-    background: var(--bs-secondary-bg);
+    border-radius: 10px 10px 0 0;
+    background:
+      linear-gradient(180deg, rgba(var(--bs-body-bg-rgb), 0.96), rgba(var(--bs-secondary-bg-rgb), 0.94)),
+      var(--bs-secondary-bg);
+    box-shadow: inset 0 -1px 0 rgba(var(--bs-body-color-rgb), 0.06);
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
   }
 
-  .lexical-toolbar button {
-    border: 1px solid var(--bs-border-color);
-    border-radius: var(--dgst-radius-sm);
-    background: var(--bs-body-bg);
+  .lexical-toolbar__group {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 1px;
+    min-width: 0;
+    padding: 3px;
+    border: 1px solid rgba(var(--bs-body-color-rgb), 0.12);
+    border-radius: 10px;
+    background: rgba(var(--bs-body-bg-rgb), 0.82);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+  }
+
+  .lexical-toolbar__button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    width: 2rem;
+    min-width: 2rem;
+    height: 2rem;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
     color: var(--bs-body-color);
-    padding: 0.25rem 0.5rem;
-    font-size: 0.95rem;
+    padding: 0;
+    font-size: 0.9rem;
+    font-weight: 700;
+    line-height: 1;
+    transition:
+      background-color 120ms ease,
+      color 120ms ease,
+      transform 120ms ease;
+  }
+
+  .lexical-toolbar__button:hover,
+  .lexical-toolbar__color:hover {
+    background: rgba(var(--bs-primary-rgb), 0.12);
+    color: var(--bs-primary);
+  }
+
+  .lexical-toolbar__button:active {
+    transform: translateY(1px);
+  }
+
+  .lexical-toolbar__button:focus-visible,
+  .lexical-toolbar__color:focus-within {
+    outline: 2px solid rgba(var(--bs-primary-rgb), 0.45);
+    outline-offset: 1px;
+  }
+
+  .lexical-toolbar__button--wide {
+    width: auto;
+    min-width: 3rem;
+    padding-inline: 0.55rem;
+    font-size: 0.82rem;
+  }
+
+  .lexical-toolbar__button--bold {
+    font-weight: 900;
+  }
+
+  .lexical-toolbar__button--italic {
+    font-family: Georgia, serif;
+    font-style: italic;
+  }
+
+  .lexical-toolbar__button--underline {
+    text-decoration: underline;
+  }
+
+  .lexical-toolbar__button--strike {
+    text-decoration: line-through;
+  }
+
+  .lexical-toolbar__button--code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
+    font-size: 0.78rem;
   }
 
   .lexical-toolbar__color {
     display: inline-flex;
     align-items: center;
-    gap: 0.25rem;
-    border: 1px solid var(--bs-border-color);
-    border-radius: var(--dgst-radius-sm);
-    background: var(--bs-body-bg);
+    justify-content: center;
+    gap: 0.2rem;
+    flex: 0 0 auto;
+    min-width: 2.45rem;
+    height: 2rem;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
     color: var(--bs-body-color);
-    padding: 0.25rem 0.5rem;
-    font-size: 0.95rem;
+    padding: 0 0.25rem;
+    font-size: 0.82rem;
+    font-weight: 800;
     line-height: 1;
+    cursor: pointer;
   }
 
   .lexical-toolbar__color input {
-    width: 1.5rem;
-    height: 1.5rem;
+    width: 1.05rem;
+    height: 1.05rem;
     border: 0;
     padding: 0;
+    border-radius: 999px;
     background: transparent;
+    cursor: pointer;
   }
 
   .lexical-editor__box {
@@ -993,7 +1147,7 @@
     overflow-y: auto;
     overflow-x: hidden;
     border: 1px solid var(--bs-border-color);
-    border-radius: 0 0 4px 4px;
+    border-radius: 0 0 10px 10px;
     background: var(--bs-body-bg);
   }
 
