@@ -166,7 +166,7 @@ Use one shared pattern everywhere:
 
 For parameterized routes:
 
-```svelte
+```js
 const articleHref = resolve(`/board/${boardId}/${pageNo}/${articleId}`);
 await goto(articleHref);
 ```
@@ -389,7 +389,7 @@ Do not mix this with unrelated lint cleanup.
 
 Use Svelte-approved state helpers only where lint points:
 
-```svelte
+```js
 // example shape only
 let derivedValue = $derived(source.map(...));
 ```

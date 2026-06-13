@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { resolve } from '$app/navigation';
+  import { resolve } from '$app/paths';
   import { onMount, tick } from 'svelte';
   import type { PageData } from './$types';
 
