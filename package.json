@@ -53,6 +53,8 @@
     "@auth/sveltekit": "^1.11.2",
     "@ffmpeg/ffmpeg": "^0.12.10",
     "@ffmpeg/util": "^0.12.1",
+    "@lexical/code": "^0.45.0",
+    "@lexical/history": "^0.45.0",
     "@lexical/html": "^0.45.0",
     "@lexical/link": "^0.45.0",
     "@lexical/list": "^0.45.0",

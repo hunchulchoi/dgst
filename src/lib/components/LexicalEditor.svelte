@@ -8,6 +8,7 @@
     $isRangeSelection as isRangeSelection,
     COMMAND_PRIORITY_LOW,
     DecoratorNode,
+    FORMAT_ELEMENT_COMMAND,
     FORMAT_TEXT_COMMAND,
     createEditor
   } from 'lexical';
@@ -29,8 +30,13 @@
     ListNode,
     registerList
   } from '@lexical/list';
+  import { $createCodeNode as createCodeNode, CodeNode } from '@lexical/code';
+  import { createEmptyHistoryState, registerHistory } from '@lexical/history';
   import { $toggleLink as toggleLink, LinkNode } from '@lexical/link';
-  import { $setBlocksType as setBlocksType } from '@lexical/selection';
+  import {
+    $patchStyleText as patchStyleText,
+    $setBlocksType as setBlocksType
+  } from '@lexical/selection';
   import { mergeRegister } from '@lexical/utils';
   import { swalFire } from '$lib/util/swal.js';
 
@@ -456,6 +462,43 @@
     syncEditorData();
   }
 
+  async function addMediaUrl() {
+    const url = prompt('URL을 입력하세요:', 'https://');
+    if (!url?.trim()) return;
+    const value = url.trim();
+    if (isMediaUrl(value)) {
+      await insertMediaUrl(value);
+    } else {
+      await createOGCard(value);
+    }
+  }
+
+  /** @param {Record<string, string>} style */
+  function applyTextStyle(style) {
+    editor?.update(() => {
+      const selection = getSelection();
+      if (isRangeSelection(selection)) {
+        patchStyleText(selection, style);
+      }
+    });
+    syncEditorData();
+  }
+
+  /** @param {Event & { currentTarget: HTMLInputElement }} event */
+  function handleTextColor(event) {
+    applyTextStyle({ color: event.currentTarget.value });
+  }
+
+  /** @param {Event & { currentTarget: HTMLInputElement }} event */
+  function handleTextBackground(event) {
+    applyTextStyle({ 'background-color': event.currentTarget.value });
+  }
+
+  /** @param {'left' | 'center' | 'right'} alignment */
+  function formatAlignment(alignment) {
+    editor?.dispatchCommand(FORMAT_ELEMENT_COMMAND, alignment);
+  }
+
   /** @param {string} url */
   function createInstagramCard(url) {
     const cleanUrl = url.split('?')[0];
@@ -620,6 +663,20 @@
     }
   }
 
+  /** @param {DragEvent} event */
+  function handleDragOver(event) {
+    if ((event.dataTransfer?.files.length ?? 0) === 0) return;
+    event.preventDefault();
+  }
+
+  /** @param {DragEvent} event */
+  async function handleDrop(event) {
+    const files = Array.from(event.dataTransfer?.files || []);
+    if (files.length === 0) return;
+    event.preventDefault();
+    await uploadAndInsertFiles(files);
+  }
+
   /** @param {'h1' | 'h2'} level */
   function toggleHeading(level) {
     editor?.update(() => {
@@ -639,12 +696,21 @@
     });
   }
 
+  function toggleCodeBlock() {
+    editor?.update(() => {
+      const selection = getSelection();
+      if (isRangeSelection(selection)) {
+        setBlocksType(selection, () => createCodeNode());
+      }
+    });
+  }
+
   onMount(() => {
     if (!editorElement) return;
 
     editor = createEditor({
       namespace: 'dgst-lexical-editor',
-      nodes: [HeadingNode, QuoteNode, ListNode, ListItemNode, LinkNode, HtmlBlockNode],
+      nodes: [HeadingNode, QuoteNode, ListNode, ListItemNode, LinkNode, CodeNode, HtmlBlockNode],
       onError(error) {
         console.error('Lexical editor error:', error);
       },
@@ -652,6 +718,7 @@
         paragraph: 'lexical-paragraph',
         text: {
           bold: 'lexical-text-bold',
+          code: 'lexical-text-code',
           italic: 'lexical-text-italic',
           strikethrough: 'lexical-text-strike'
         }
@@ -663,6 +730,7 @@
     unregister = mergeRegister(
       registerRichText(editor),
       registerList(editor),
+      registerHistory(editor, createEmptyHistoryState(), 300),
       editor.registerUpdateListener(() => {
         if (isComposing) return;
         syncEditorData();
@@ -678,6 +746,8 @@
     );
 
     editorElement.addEventListener('paste', handlePaste);
+    editorElement.addEventListener('dragover', handleDragOver);
+    editorElement.addEventListener('drop', handleDrop);
     editorElement.addEventListener('compositionstart', () => {
       isComposing = true;
     });
@@ -695,6 +765,8 @@
     unregister = null;
     if (editorElement) {
       editorElement.removeEventListener('paste', handlePaste);
+      editorElement.removeEventListener('dragover', handleDragOver);
+      editorElement.removeEventListener('drop', handleDrop);
     }
     editor?.setRootElement(null);
     editor = null;
@@ -735,13 +807,28 @@
   <div class="lexical-toolbar" aria-label="에디터 툴바">
     <button type="button" onclick={() => editor?.dispatchCommand(FORMAT_TEXT_COMMAND, 'bold')}>B</button>
     <button type="button" onclick={() => editor?.dispatchCommand(FORMAT_TEXT_COMMAND, 'italic')}>I</button>
+    <button type="button" onclick={() => editor?.dispatchCommand(FORMAT_TEXT_COMMAND, 'underline')}>U</button>
     <button type="button" onclick={() => editor?.dispatchCommand(FORMAT_TEXT_COMMAND, 'strikethrough')}>S</button>
+    <button type="button" onclick={() => editor?.dispatchCommand(FORMAT_TEXT_COMMAND, 'code')}>Code</button>
     <button type="button" onclick={addLink}>Link</button>
+    <button type="button" onclick={addMediaUrl}>URL</button>
     <button type="button" onclick={() => toggleHeading('h1')}>H1</button>
     <button type="button" onclick={() => toggleHeading('h2')}>H2</button>
     <button type="button" onclick={() => editor?.dispatchCommand(INSERT_UNORDERED_LIST_COMMAND, undefined)}>• List</button>
     <button type="button" onclick={() => editor?.dispatchCommand(INSERT_ORDERED_LIST_COMMAND, undefined)}>1. List</button>
     <button type="button" onclick={toggleQuote}>Quote</button>
+    <button type="button" onclick={toggleCodeBlock}>Block Code</button>
+    <button type="button" onclick={() => formatAlignment('left')}>Left</button>
+    <button type="button" onclick={() => formatAlignment('center')}>Center</button>
+    <button type="button" onclick={() => formatAlignment('right')}>Right</button>
+    <label class="lexical-toolbar__color">
+      Text
+      <input type="color" value="#212529" oninput={handleTextColor} />
+    </label>
+    <label class="lexical-toolbar__color">
+      Bg
+      <input type="color" value="#fff3cd" oninput={handleTextBackground} />
+    </label>
     <button type="button" onclick={openFilePicker}>Image/Video</button>
   </div>
 
@@ -793,6 +880,27 @@
     font-size: 0.95rem;
   }
 
+  .lexical-toolbar__color {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    border: 1px solid var(--bs-border-color);
+    border-radius: var(--dgst-radius-sm);
+    background: var(--bs-body-bg);
+    color: var(--bs-body-color);
+    padding: 0.25rem 0.5rem;
+    font-size: 0.95rem;
+    line-height: 1;
+  }
+
+  .lexical-toolbar__color input {
+    width: 1.5rem;
+    height: 1.5rem;
+    border: 0;
+    padding: 0;
+    background: transparent;
+  }
+
   .lexical-editor__box {
     position: relative;
     box-sizing: border-box;
@@ -828,6 +936,14 @@
     white-space: pre-wrap;
   }
 
+  .lexical-editor__content :global(pre) {
+    overflow-x: auto;
+    border-radius: 6px;
+    background: var(--bs-tertiary-bg);
+    padding: 0.75rem;
+    white-space: pre;
+  }
+
   .lexical-editor__content :global(img),
   .lexical-editor__content :global(video),
   .lexical-editor__content :global(iframe) {
@@ -852,6 +968,13 @@
 
   :global(.lexical-text-italic) {
     font-style: italic;
+  }
+
+  :global(.lexical-text-code) {
+    border-radius: 4px;
+    background: var(--bs-tertiary-bg);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
+    padding: 0.1rem 0.25rem;
   }
 
   :global(.lexical-text-strike) {
