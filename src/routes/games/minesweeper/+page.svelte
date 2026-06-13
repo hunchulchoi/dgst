@@ -1003,7 +1003,7 @@
   .minesweeper-board-scroll {
     width: max-content;
     max-width: none;
-    overflow: visible;
+    overflow: auto;
     -webkit-overflow-scrolling: touch;
     touch-action: pan-x pan-y pinch-zoom;
   }
@@ -1055,8 +1055,7 @@
     .minesweeper-board-scroll {
       width: 100vw;
       max-width: 100vw;
-      overflow-x: auto;
-      overflow-y: visible;
+      overflow: auto;
     }
   }
 

@@ -1,6 +1,23 @@
 import { expect, test } from '@playwright/test';
+import { readFileSync } from 'node:fs';
 
 test.use({ hasTouch: true, isMobile: true });
+
+test('minesweeper board scroll styles use overflow auto', () => {
+  const source = readFileSync(
+    new URL('../src/routes/games/minesweeper/+page.svelte', import.meta.url),
+    'utf8'
+  );
+  const scrollBlocks = [...source.matchAll(/\.minesweeper-board-scroll\s*\{[^}]*\}/g)].map(
+    ([block]) => block
+  );
+
+  expect(scrollBlocks.length).toBeGreaterThan(0);
+  for (const block of scrollBlocks) {
+    expect(block).toMatch(/\boverflow:\s*auto;/);
+    expect(block).not.toMatch(/\boverflow(?:-[xy])?:\s*visible;/);
+  }
+});
 
 test('expert minesweeper board can be reached horizontally on mobile portrait', async ({
   page
@@ -26,6 +43,7 @@ test('expert minesweeper board can be reached horizontally on mobile portrait', 
 
     const boardRect = boardEl.getBoundingClientRect();
     const scrollRect = boardScroll.getBoundingClientRect();
+    const scrollStyle = getComputedStyle(boardScroll);
     const rankRect = rankCol.getBoundingClientRect();
 
     boardScroll.scrollLeft = boardScroll.scrollWidth;
@@ -36,6 +54,8 @@ test('expert minesweeper board can be reached horizontally on mobile portrait', 
       viewportWidth: window.innerWidth,
       scrollWidth: document.documentElement.scrollWidth,
       scrollFrameWidth: scrollRect.width,
+      scrollFrameOverflowX: scrollStyle.overflowX,
+      scrollFrameOverflowY: scrollStyle.overflowY,
       scrollFrameScrollWidth: boardScroll.scrollWidth,
       maxScrollLeft: boardScroll.scrollLeft,
       rankTop: rankRect.top,
@@ -46,6 +66,8 @@ test('expert minesweeper board can be reached horizontally on mobile portrait', 
   expect(metrics.boardWidth).toBeGreaterThan(metrics.viewportWidth);
   expect(metrics.scrollWidth).toBeLessThanOrEqual(metrics.viewportWidth + 1);
   expect(metrics.scrollFrameWidth).toBeLessThanOrEqual(metrics.viewportWidth + 1);
+  expect(metrics.scrollFrameOverflowX).toBe('auto');
+  expect(metrics.scrollFrameOverflowY).toBe('auto');
   expect(metrics.scrollFrameScrollWidth).toBeGreaterThanOrEqual(metrics.boardWidth);
   expect(metrics.maxScrollLeft).toBeGreaterThan(metrics.boardWidth - metrics.viewportWidth - 24);
   expect(metrics.rankTop).toBeGreaterThanOrEqual(metrics.boardBottom);
@@ -105,6 +127,7 @@ test('expert minesweeper rank stays below board and board scrolls on mobile land
 
     const boardRect = boardEl.getBoundingClientRect();
     const scrollRect = boardScroll.getBoundingClientRect();
+    const scrollStyle = getComputedStyle(boardScroll);
     const rankRect = rankCol.getBoundingClientRect();
 
     boardScroll.scrollLeft = boardScroll.scrollWidth;
@@ -115,6 +138,8 @@ test('expert minesweeper rank stays below board and board scrolls on mobile land
       viewportWidth: window.innerWidth,
       scrollWidth: document.documentElement.scrollWidth,
       scrollFrameWidth: scrollRect.width,
+      scrollFrameOverflowX: scrollStyle.overflowX,
+      scrollFrameOverflowY: scrollStyle.overflowY,
       scrollFrameScrollWidth: boardScroll.scrollWidth,
       maxScrollLeft: boardScroll.scrollLeft,
       rankTop: rankRect.top,
@@ -125,6 +150,8 @@ test('expert minesweeper rank stays below board and board scrolls on mobile land
   expect(metrics.boardWidth).toBeGreaterThan(metrics.viewportWidth);
   expect(metrics.scrollWidth).toBeLessThanOrEqual(metrics.viewportWidth + 1);
   expect(metrics.scrollFrameWidth).toBeLessThanOrEqual(metrics.viewportWidth + 1);
+  expect(metrics.scrollFrameOverflowX).toBe('auto');
+  expect(metrics.scrollFrameOverflowY).toBe('auto');
   expect(metrics.scrollFrameScrollWidth).toBeGreaterThanOrEqual(metrics.boardWidth);
   expect(metrics.maxScrollLeft).toBeGreaterThan(metrics.boardWidth - metrics.viewportWidth - 24);
   expect(metrics.rankTop).toBeGreaterThanOrEqual(metrics.boardBottom);
