@@ -888,14 +888,24 @@
   <div class="lexical-toolbar" aria-label="에디터 툴바">
     <div class="lexical-toolbar__group lexical-toolbar__group--primary" aria-label="이미지와 동영상 삽입">
       <button
-        class="lexical-toolbar__button lexical-toolbar__button--media"
+        class="lexical-toolbar__button lexical-toolbar__button--media lexical-toolbar__button--media-image"
         type="button"
-        aria-label="이미지 또는 동영상 업로드"
-        title="이미지/동영상 업로드"
+        aria-label="이미지 업로드"
+        title="이미지 업로드"
         onclick={openFilePicker}
       >
         <span class="lexical-toolbar__media-icon" aria-hidden="true">▧</span>
         <span>이미지</span>
+      </button>
+      <button
+        class="lexical-toolbar__button lexical-toolbar__button--media lexical-toolbar__button--media-video"
+        type="button"
+        aria-label="동영상 업로드"
+        title="동영상 업로드"
+        onclick={openFilePicker}
+      >
+        <span class="lexical-toolbar__media-icon" aria-hidden="true">▶</span>
+        <span>동영상</span>
       </button>
     </div>
 
@@ -1107,17 +1117,33 @@
     min-width: 4.65rem;
     gap: 0.32rem;
     padding-inline: 0.58rem 0.68rem;
-    background: linear-gradient(135deg, #00adb5, #3182ce);
     color: #fff;
     font-size: 0.86rem;
     font-weight: 900;
+  }
+
+  .lexical-toolbar__button--media-image {
+    background: linear-gradient(135deg, #00adb5, #3182ce);
     box-shadow:
       0 4px 12px rgba(0, 173, 181, 0.24),
       inset 0 1px 0 rgba(255, 255, 255, 0.22);
   }
 
-  .lexical-toolbar__button--media:hover {
+  .lexical-toolbar__button--media-image:hover {
     background: linear-gradient(135deg, #00c2cc, #3b8fe5);
+    color: #fff;
+  }
+
+  .lexical-toolbar__button--media-video {
+    min-width: 5.15rem;
+    background: linear-gradient(135deg, #ff7a1a, #e11d48);
+    box-shadow:
+      0 4px 12px rgba(225, 29, 72, 0.22),
+      inset 0 1px 0 rgba(255, 255, 255, 0.24);
+  }
+
+  .lexical-toolbar__button--media-video:hover {
+    background: linear-gradient(135deg, #ff922b, #f43f5e);
     color: #fff;
   }
 
