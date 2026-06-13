@@ -5,6 +5,7 @@
   import Memo from '$lib/components/memo.svelte';
   import { blur } from 'svelte/transition';
   import { page } from '$app/stores';
+  import { updated } from '$app/state';
   import { afterNavigate, beforeNavigate } from '$app/navigation';
   import { browser } from '$app/environment';
   import { onMount } from 'svelte';
@@ -45,11 +46,50 @@
     return pathname.split('?')[0];
   }
 
+  /** @param {unknown} value */
+  function getErrorMessage(value) {
+    if (value instanceof Error) return value.message;
+    if (typeof value === 'string') return value;
+    try {
+      return JSON.stringify(value);
+    } catch {
+      return String(value);
+    }
+  }
+
+  /** @param {unknown} value */
+  function isStaleBuildError(value) {
+    const message = getErrorMessage(value);
+    return (
+      message.includes('_app/immutable/') ||
+      /Failed to fetch dynamically imported module/i.test(message) ||
+      /Importing a module script failed/i.test(message) ||
+      /error loading dynamically imported module/i.test(message) ||
+      /Loading chunk \d+ failed/i.test(message)
+    );
+  }
+
+  function reloadForFreshBuild() {
+    const key = `dgst:fresh-build-reload:${location.pathname}`;
+    if (sessionStorage.getItem(key) === '1') return;
+
+    sessionStorage.setItem(key, '1');
+    setTimeout(() => {
+      location.reload();
+    }, 50);
+  }
+
   const pageTransitionBlur = $derived(
     $boardListReloading || boardListToDetailBlur ? blurTransition : undefined
   );
 
-  beforeNavigate(({ from, to }) => {
+  beforeNavigate(({ from, to, willUnload, cancel }) => {
+    if (browser && updated.current && !willUnload && to?.url) {
+      cancel();
+      location.href = to.url.href;
+      return;
+    }
+
     navigationStartedAt = performance.now();
     navigationFromPath = from?.url?.pathname;
     navigationToPath = to?.url?.pathname;
@@ -117,6 +157,10 @@
         colno: event.colno,
         phase: 'window-error'
       });
+
+      if (isStaleBuildError(event.error ?? event.message)) {
+        reloadForFreshBuild();
+      }
     };
 
     /** @param {PromiseRejectionEvent} event */
@@ -130,6 +174,10 @@
         routeId: $page.route.id ?? undefined,
         phase: 'unhandledrejection'
       });
+
+      if (isStaleBuildError(event.reason)) {
+        reloadForFreshBuild();
+      }
     };
 
     window.addEventListener('error', handleWindowError);

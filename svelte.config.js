@@ -17,6 +17,9 @@ const config = {
       assets: '',
       relative: false
     },
+    version: {
+      pollInterval: 60_000
+    },
     prerender: {
       entries: ['/index']
     }
