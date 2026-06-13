@@ -57,10 +57,6 @@
   /** @type {boolean} */
   let ffmpegReady = false;
   /** @type {boolean} */
-  let isComposing = $state(false);
-  // iOS 감지 (SSR 안전)
-  const IS_IOS = typeof navigator !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent);
-  /** @type {boolean} */
   let isUserTyping = $state(false);
   /** @type {any} */
   let syncTimer = null;
@@ -1231,28 +1227,9 @@
         editorData = '';
       }
 
-      // 입력 합성(iOS/한글 IME) 중에는 바인딩 지연
-      quillInstance.root.addEventListener('compositionstart', () => {
-        isComposing = true;
-      });
-      quillInstance.root.addEventListener('compositionend', () => {
-        isComposing = false;
-        // 합성 종료 후 한 번만 동기화 (iOS는 일정 스택이 밀린 뒤 반영)
-        if (IS_IOS) {
-          Promise.resolve().then(() => (editorData = quillInstance.root.innerHTML));
-        } else {
-          editorData = quillInstance.root.innerHTML;
-        }
-      });
-
       // 데이터 변경 감지 및 양방향 바인딩
       quillInstance.on('text-change', (/** @type {any} */ _delta, /** @type {any} */ _old, /** @type {any} */ source) => {
-        if (isComposing) return;
-        if (IS_IOS) {
-          Promise.resolve().then(() => (editorData = quillInstance.root.innerHTML));
-        } else {
-          editorData = quillInstance.root.innerHTML;
-        }
+        editorData = quillInstance.root.innerHTML;
       });
 
       // URL 붙여넣기 감지 및 자동 임베드

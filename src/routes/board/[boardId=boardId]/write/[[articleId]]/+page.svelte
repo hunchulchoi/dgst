@@ -65,7 +65,8 @@
   /** @type {import('@ffmpeg/ffmpeg').FFmpeg | null} */
   let ffmpeg = null;
   /** @type {typeof import('@ffmpeg/util').fetchFile | null} */
-  let fetchFile;
+  let fetchFile = null;
+  /** @type {Promise<void> | null} */
   let ffmpegLoadPromise = null;
 
   const uploadPlus = () => {
