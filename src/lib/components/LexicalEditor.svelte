@@ -207,7 +207,7 @@
   function syncEditorData() {
     const currentEditor = editor;
     if (!currentEditor) return;
-    currentEditor.getEditorState().read(() => {
+    currentEditor.read(() => {
       lastSyncedEditorData = generateHtmlFromNodes(currentEditor);
       editorData = lastSyncedEditorData;
     });
