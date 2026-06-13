@@ -11,6 +11,7 @@
     Tooltip
   } from '$lib/components/ui/index.js';
   import { goto, invalidate } from '$app/navigation';
+  import { resolve } from '$app/paths';
   import { boardListPath } from '$lib/util/boardPaths.js';
   /**
    * SvelteKit page store import for accessing current route info
@@ -148,7 +149,7 @@
 
       if (!result.isConfirmed) return false;
     }
-    goto(boardListPath(boardId ?? 'free'));
+    goto(resolve(boardListPath(boardId ?? 'free')));
   }
 
   let title = $state('');
@@ -473,7 +474,7 @@
 
               const savedArticleId = actionData.articleId || articleId;
               if (savedArticleId) {
-                goto(`/board/${boardId}/${savedArticleId}`);
+                goto(resolve(`/board/${boardId}/${savedArticleId}`));
               } else {
                 await list();
               }

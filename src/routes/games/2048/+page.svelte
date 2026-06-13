@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { resolve } from '$app/navigation';
   import { onMount, tick } from 'svelte';
   import type { PageData } from './$types';
 
@@ -781,7 +782,7 @@
                 </p>
                 {#if !isLoggedIn}
                   <p class="small text-muted mb-2">로그인하면 점수를 랭킹에 올릴 수 있어요.</p>
-                  <a href="/login" class="btn btn-outline-primary mb-2">로그인</a>
+                  <a href={resolve('/login')} class="btn btn-outline-primary mb-2">로그인</a>
                 {/if}
                 <button class="btn btn-outline-secondary ms-2" onclick={initGrid}>
                   다시 하기
@@ -806,7 +807,7 @@
                 🔄
               </button>
             {:else}
-              <a href="/login" class="btn btn-sm btn-outline-primary">로그인</a>
+              <a href={resolve('/login')} class="btn btn-sm btn-outline-primary">로그인</a>
             {/if}
           </div>
           <p class="small text-muted mb-1">3일 내 1인 1최고점 (뺑뺑이 점수와 별개)</p>

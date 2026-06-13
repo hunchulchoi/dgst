@@ -25,6 +25,7 @@
 
   import { PUBLIC_GOOGLE_RECAPTCHA_SITE_KEY } from '$env/static/public';
   import { goto } from '$app/navigation';
+  import { resolve } from '$app/paths';
   import { browser } from '$app/environment';
   import imageCompression from 'browser-image-compression';
   import { swalFire } from '$lib/util/swal.js';
@@ -45,7 +46,7 @@
   // 클라이언트에서만 세션 체크 및 리다이렉트
   $effect(() => {
     if (browser && !data.session) {
-      goto('/', { replaceState: true });
+      goto(resolve('/'), { replaceState: true });
     }
   });
 
@@ -255,7 +256,7 @@
           text: data.message || '프로필이 성공적으로 변경되었습니다.',
           confirmButtonText: '확인'
         }).then(() => {
-          goto('/', { invalidateAll: true });
+          goto(resolve('/'), { invalidateAll: true });
         });
       } else {
         const errorData = await res

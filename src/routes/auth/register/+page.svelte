@@ -21,6 +21,7 @@
 
   import { PUBLIC_GOOGLE_RECAPTCHA_SITE_KEY } from '$env/static/public';
   import { goto } from '$app/navigation';
+  import { resolve } from '$app/paths';
   import { browser } from '$app/environment';
   import imageCompression from 'browser-image-compression';
   import { swalFire } from '$lib/util/swal.js';
@@ -37,7 +38,7 @@
 
   $effect(() => {
     if (!data.session || data.session.user?.nickname) {
-      if (browser) goto('/', { replaceState: true });
+      if (browser) goto(resolve('/'), { replaceState: true });
     }
   });
 
@@ -139,7 +140,7 @@
           text: '등록 되었습니다.\n다시 로그인 해주세요.',
           confirmButtonText: '확인'
         });
-        goto('/');
+        goto(resolve('/'));
       } else {
         await swalFire({
           icon: 'error',

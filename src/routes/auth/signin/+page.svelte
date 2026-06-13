@@ -1,5 +1,6 @@
 <script>
   import { signIn } from '@auth/sveltekit/client';
+  import { resolve } from '$app/paths';
 
   let { data } = $props();
 </script>
@@ -12,7 +13,7 @@
   <div class="row justify-content-center">
     <div class="col-12 col-md-6 col-lg-4">
       <div class="text-center mb-4">
-        <a href="/" class="d-inline-block">
+        <a href={resolve('/')} class="d-inline-block">
           <img
             alt="dgst 로고"
             src="/logo/logo_transparent_120.png"

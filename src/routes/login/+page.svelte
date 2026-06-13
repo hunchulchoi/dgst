@@ -1,5 +1,6 @@
 <script>
   import { signIn } from '@auth/sveltekit/client';
+  import { resolve } from '$app/paths';
   import { swalFire } from '$lib/util/swal.js';
 
   let { data } = $props();
@@ -67,7 +68,7 @@
       <div class="card shadow rounded-4">
         <div class="card-body py-5">
           <div class="text-center mb-4">
-            <a href="/" class="d-inline-block">
+            <a href={resolve('/')} class="d-inline-block">
               <img alt="dgst 로고" src="/logo/logo_transparent_120.png" class="login-logo" />
             </a>
           </div>

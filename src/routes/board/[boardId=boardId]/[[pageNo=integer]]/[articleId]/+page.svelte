@@ -1,6 +1,7 @@
 <script>
   import { Badge, Button, Col, Icon, InputGroup, Row } from '$lib/components/ui/index.js';
   import { goto, invalidate } from '$app/navigation';
+  import { resolve } from '$app/paths';
   import { boardListPath } from '$lib/util/boardPaths.js';
   import { page } from '$app/stores';
   import { browser } from '$app/environment';
@@ -110,7 +111,7 @@
     const currentPageNo = Number(pageNo) || 1;
 
     await invalidate('board-list');
-    goto(boardListPath(boardId, currentPageNo), { replaceState: true });
+    goto(resolve(boardListPath(boardId, currentPageNo)), { replaceState: true });
   }
 
   /** @param {'reply' | 'comment'} target */
@@ -579,7 +580,7 @@
 
   /** @param {string} articleId */
   function edit(articleId) {
-    goto(`/board/${boardId}/write/${articleId}`);
+    goto(resolve(`/board/${boardId}/write/${articleId}`));
   }
 
   /** @param {Event} e */
@@ -589,7 +590,7 @@
   }
 
   function write() {
-    goto(`/board/${boardId}/write`);
+    goto(resolve(`/board/${boardId}/write`));
   }
 
   /**
@@ -597,7 +598,9 @@
    * @param pageNo {number}
    */
   function gopage(pageNo) {
-    goto(`/board/${boardId}/${pageNo}?v=${new Date().getSeconds()}`, { invalidateAll: true });
+    goto(resolve(`/board/${boardId}/${pageNo}?v=${new Date().getSeconds()}`), {
+      invalidateAll: true
+    });
   }
 
   /**

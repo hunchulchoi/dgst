@@ -5,6 +5,7 @@
   import LottoFreeBanner from '$lib/components/lotto_free_banner.svelte';
 
   import { goto } from '$app/navigation';
+  import { resolve } from '$app/paths';
   import { swalFire } from '$lib/util/swal.js';
   import { onMount } from 'svelte';
 
@@ -37,13 +38,13 @@
         icon: 'info',
         confirmButtonText: '확인'
       }).then(() => {
-        goto('https://www.dgst.me');
+        window.location.assign('https://www.dgst.me');
       });
     }
   });
 
   function write() {
-    goto(`/board/${boardId}/write`);
+    goto(resolve(`/board/${boardId}/write`));
   }
 </script>
 

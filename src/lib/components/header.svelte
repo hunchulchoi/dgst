@@ -17,6 +17,7 @@
 
   import { signIn, signOut } from '@auth/sveltekit/client';
   import { goto, invalidate } from '$app/navigation';
+  import { resolve } from '$app/paths';
   import { navigating } from '$app/stores';
   import { browser } from '$app/environment';
 
@@ -96,7 +97,7 @@
 
     try {
       if (!onHome) {
-        await goto('/', { invalidateAll: false, replaceState: true });
+        await goto(resolve('/'), { invalidateAll: false, replaceState: true });
       }
 
       await invalidate('board-list');
@@ -139,7 +140,7 @@
             <button
               type="button"
               class="btn btn-link text-secondary p-0 text-nowrap leading-none"
-              onclick={() => goto('/auth/profile')}>{session.user.nickname}</button
+              onclick={() => goto(resolve('/auth/profile'))}>{session.user.nickname}</button
             >
           </div>
         {:else}

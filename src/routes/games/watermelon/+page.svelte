@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
+  import { resolve } from '$app/paths';
   import Matter from 'matter-js';
   import { FRUITS, GAME_WIDTH, GAME_HEIGHT, WALL_THICKNESS, type FruitType } from './gameUtils';
 
@@ -620,7 +621,7 @@
           >
             <h3 class="fw-bold mb-3">로그인 후 이용 가능합니다</h3>
             <p class="mb-4">점수를 기록하고 랭킹에 도전해보세요!</p>
-            <a href="/login" class="btn btn-primary btn-lg px-5 shadow-sm">로그인하기</a>
+            <a href={resolve('/login')} class="btn btn-primary btn-lg px-5 shadow-sm">로그인하기</a>
           </div>
         {:else if !gameStarted}
           <div
@@ -682,7 +683,7 @@
                 🔄
               </button>
             {:else}
-              <a href="/login" class="btn btn-sm btn-outline-primary">로그인</a>
+              <a href={resolve('/login')} class="btn btn-sm btn-outline-primary">로그인</a>
             {/if}
           </div>
           <div class="mb-3">

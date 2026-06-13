@@ -1,6 +1,7 @@
 <script>
   import { onMount, tick } from 'svelte';
   import { beforeNavigate } from '$app/navigation';
+  import { resolve } from '$app/paths';
   import { browser } from '$app/environment';
   import { swalFire } from '$lib/util/swal.js';
   let { data } = $props();
@@ -617,7 +618,7 @@
                   🔄
                 </button>
               {:else}
-                <a href="/login" class="btn btn-sm btn-outline-primary">로그인</a>
+                <a href={resolve('/login')} class="btn btn-sm btn-outline-primary">로그인</a>
               {/if}
             </div>
             <p class="small text-muted mb-1">3일 내 1인 1최단기록</p>

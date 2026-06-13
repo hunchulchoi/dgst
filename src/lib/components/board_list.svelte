@@ -13,6 +13,7 @@
   import { ko } from 'date-fns/locale';
   import { formatRelativeTime } from '$lib/util/formatRelativeTime.js';
   import { goto, invalidateAll } from '$app/navigation';
+  import { resolve } from '$app/paths';
   import { boardListPath } from '$lib/util/boardPaths.js';
 
   // Svelte 5 Runes - Props
@@ -53,7 +54,7 @@
 
     e.preventDefault();
     const path = boardListPath(boardId, target);
-    goto(path);
+    goto(resolve(path));
   }
 
   /** @param {MouseEvent} e */
@@ -127,7 +128,7 @@
       <Col lg="7" md="5" xs="12" class="text-break link-opacity-hover-50 pb-1 position-relative">
         <a
           data-sveltekit-preload-data="hover"
-          href={`/board/${boardId}/${currentPageNo}/${article._id}`}
+          href={resolve(`/board/${boardId}/${currentPageNo}/${article._id}`)}
           class="board-list-link link-underline link-underline-opacity-0 link-offset-2 link-underline-opacity-50-hover stretched-link"
         >
           <span class="!text-[1.3rem] max-md:!text-[1.4rem] !leading-[1.45] font-medium"

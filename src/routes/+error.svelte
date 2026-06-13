@@ -9,6 +9,7 @@
   } from '$lib/components/ui/index.js';
 
   import { goto } from '$app/navigation';
+  import { resolve } from '$app/paths';
   import { page } from '$app/stores';
   import { onMount } from 'svelte';
   import { reportClientPageError } from '$lib/util/reportClientPageError.js';
@@ -51,7 +52,7 @@
       }
 
       // 그 외의 경우 홈(자유게시판)으로 리다이렉트
-      goto('/');
+      goto(resolve('/'));
     }
   });
 </script>
@@ -73,6 +74,8 @@
         ><Icon name="arrow-repeat" class="pe-1" /> 새로고침</Button
       >
     {/if}
-    <Button onclick={() => goto('/')} class="me-2"><Icon name="house" class="pe-1" /> Home</Button>
+    <Button onclick={() => goto(resolve('/'))} class="me-2"
+      ><Icon name="house" class="pe-1" /> Home</Button
+    >
   </CardFooter>
 </Card>

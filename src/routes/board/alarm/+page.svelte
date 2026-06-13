@@ -1,5 +1,6 @@
 <script>
   import { Badge, Col, Icon, Row } from '$lib/components/ui/index.js';
+  import { resolve } from '$app/paths';
   import { ko } from 'date-fns/locale';
   import { formatRelativeTime } from '$lib/util/formatRelativeTime.js';
   import { alarmCount } from '$lib/util/store.js';
@@ -56,11 +57,13 @@
               <a
                 data-sveltekit-preload-data="tap"
                 data-sveltekit-invalidate="all"
-                href={alarm.boardId === 'slot'
-                  ? commentId
-                    ? `/games/slot?cmt=${commentId}`
-                    : `/games/slot`
-                  : `/board/${alarm.boardId}/${alarm.articleId}?a=cmt${alarm.comment}`}
+                href={resolve(
+                  alarm.boardId === 'slot'
+                    ? commentId
+                      ? `/games/slot?cmt=${commentId}`
+                      : `/games/slot`
+                    : `/board/${alarm.boardId}/${alarm.articleId}?a=cmt${alarm.comment}`
+                )}
                 class="alarm-list-link link-underline link-underline-opacity-0 link-offset-2 link-underline-opacity-50-hover stretched-link"
               >
                 {#if alarm.readAt}
@@ -107,11 +110,13 @@
               <a
                 data-sveltekit-preload-data="tap"
                 data-sveltekit-invalidate="all"
-                href={alarm.boardId === 'slot'
-                  ? commentIdForGeneral
-                    ? `/games/slot?cmt=${commentIdForGeneral}`
-                    : `/games/slot`
-                  : `/board/${alarm.boardId}/${alarm.articleId}`}
+                href={resolve(
+                  alarm.boardId === 'slot'
+                    ? commentIdForGeneral
+                      ? `/games/slot?cmt=${commentIdForGeneral}`
+                      : `/games/slot`
+                    : `/board/${alarm.boardId}/${alarm.articleId}`
+                )}
                 class="alarm-list-link link-underline link-underline-opacity-0 link-offset-2 link-underline-opacity-50-hover stretched-link"
               >
                 {#if alarm.readAt}
