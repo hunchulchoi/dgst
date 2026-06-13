@@ -55,6 +55,9 @@
   /** @type {boolean} */
   let ffmpegReady = false;
   /** @type {boolean} */
+  let isComposing = false;
+  const isIOS = typeof navigator !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent);
+  /** @type {boolean} */
   let isUserTyping = $state(false);
   /** @type {any} */
   let syncTimer = null;
@@ -1228,9 +1231,34 @@
         editorData = '';
       }
 
+      const syncEditorData = () => {
+        editorData = quillInstance.root.innerHTML;
+      };
+
+      quillInstance.root.addEventListener('compositionstart', () => {
+        isComposing = true;
+      });
+
+      quillInstance.root.addEventListener('compositionend', () => {
+        isComposing = false;
+
+        // iOS Korean IME can update contenteditable selection/content just after compositionend.
+        if (isIOS) {
+          requestAnimationFrame(syncEditorData);
+        } else {
+          queueMicrotask(syncEditorData);
+        }
+      });
+
       // 데이터 변경 감지 및 양방향 바인딩
       quillInstance.on('text-change', (/** @type {any} */ _delta, /** @type {any} */ _old, /** @type {any} */ source) => {
-        editorData = quillInstance.root.innerHTML;
+        if (isComposing) return;
+
+        if (isIOS) {
+          requestAnimationFrame(syncEditorData);
+        } else {
+          syncEditorData();
+        }
       });
 
       // URL 붙여넣기 감지 및 자동 임베드
@@ -1400,6 +1428,8 @@
 
   // editorData prop 변경 감지 (외부에서 변경 시)
   $effect(() => {
+    if (isComposing) return;
+
     if (quillInstance && editorData !== quillInstance.root.innerHTML) {
       const currentSelection = quillInstance.getSelection();
       // dangerouslyPasteHTML을 사용하여 매처가 작동하도록 함
