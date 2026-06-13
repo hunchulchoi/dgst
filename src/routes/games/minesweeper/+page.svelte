@@ -953,7 +953,8 @@
     }
   }
 
-  @media (max-width: 767.98px) {
+  @media (max-width: 767.98px),
+    (orientation: landscape) and (max-width: 991.98px) and (max-height: 500px) {
     .minesweeper-game-root.minesweeper-game-active {
       width: 100% !important;
       max-width: 100% !important;
@@ -968,10 +969,12 @@
     }
 
     .minesweeper-rank-col {
+      order: 2 !important;
       width: 100vw !important;
       max-width: 100vw !important;
       min-width: 0 !important;
       flex: 0 0 auto !important;
+      margin-top: 1rem !important;
       margin-left: 0;
       margin-right: 0;
       padding-left: max(0.5rem, env(safe-area-inset-left, 0px));
@@ -1040,8 +1043,10 @@
     max-width: none;
   }
 
-  @media (max-width: 767.98px) {
+  @media (max-width: 767.98px),
+    (orientation: landscape) and (max-width: 991.98px) and (max-height: 500px) {
     .minesweeper-game-active .minesweeper-game-col {
+      order: 1 !important;
       width: 100vw !important;
       max-width: 100vw !important;
       overflow-x: hidden;
