@@ -110,7 +110,7 @@
     mobileWidthNormalizeTimers = [];
   }
 
-  /** 모바일에서 네비/키보드 후 layout viewport 폭 틀어짐 완화 */
+  /** 모바일에서 라우트 이동 직후 layout viewport 폭 틀어짐 완화 */
   function applyMobileLayoutWidth() {
     if (!browser) return;
     const root = document.documentElement;
@@ -213,11 +213,6 @@
 
     window.addEventListener('error', handleWindowError);
     window.addEventListener('unhandledrejection', handleUnhandledRejection);
-    window.addEventListener('resize', normalizeMobileLayoutWidth);
-    window.addEventListener('orientationchange', normalizeMobileLayoutWidth);
-    window.addEventListener('focusin', normalizeMobileLayoutWidth);
-    window.visualViewport?.addEventListener('resize', normalizeMobileLayoutWidth);
-    window.visualViewport?.addEventListener('scroll', normalizeMobileLayoutWidth);
 
     if (isFreeBoardLegacyPath(window.location.pathname)) {
       history.replaceState(history.state, '', `/${window.location.search}`);
@@ -237,11 +232,6 @@
       clearMobileWidthNormalizeTimers();
       window.removeEventListener('error', handleWindowError);
       window.removeEventListener('unhandledrejection', handleUnhandledRejection);
-      window.removeEventListener('resize', normalizeMobileLayoutWidth);
-      window.removeEventListener('orientationchange', normalizeMobileLayoutWidth);
-      window.removeEventListener('focusin', normalizeMobileLayoutWidth);
-      window.visualViewport?.removeEventListener('resize', normalizeMobileLayoutWidth);
-      window.visualViewport?.removeEventListener('scroll', normalizeMobileLayoutWidth);
       window.removeEventListener('load', measureInitialLoad);
     };
   });
