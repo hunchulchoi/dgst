@@ -373,9 +373,26 @@
         formSubmitting = true;
 
         // 동기 검증 (제출 전)
-        const titleValue = title || '';
-        const latestContent = quillEditorRef?.getEditorHtml?.() ?? content ?? '';
-        content = latestContent;
+        let titleValue = '';
+        let latestContent = '';
+        try {
+          titleValue = title || '';
+          latestContent = quillEditorRef?.getEditorHtml?.() ?? content ?? '';
+          content = latestContent;
+        } catch (e) {
+          formSubmitting = false;
+          console.error('에디터 본문 동기화 실패:', e);
+          reportClientError(e, {
+            type: 'write-submit-editor-sync-error',
+            pathname: $page.url.pathname,
+            phase: 'write-page-submit'
+          });
+          toast('저장 준비 중 오류가 발생했습니다. 페이지를 새로고침해주세요.', {
+            icon: 'error',
+            isToast: false
+          });
+          return cancel();
+        }
 
         // 제목 검증
         if (titleValue.replace(/\s/g, '').length < 2) {
