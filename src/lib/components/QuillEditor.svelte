@@ -57,6 +57,8 @@
   /** @type {boolean} */
   let isComposing = false;
   const isIOS = typeof navigator !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent);
+  /** @type {string} */
+  let lastSyncedEditorData = '';
   /** @type {boolean} */
   let isUserTyping = $state(false);
   /** @type {any} */
@@ -1226,13 +1228,16 @@
       // 초기 데이터 설정
       if (editorData) {
         quillInstance.clipboard.dangerouslyPasteHTML(0, editorData);
+        lastSyncedEditorData = quillInstance.root.innerHTML;
         console.log('✅ 초기 데이터 설정됨 (dangerouslyPasteHTML)');
       } else {
         editorData = '';
+        lastSyncedEditorData = '';
       }
 
       const syncEditorData = () => {
-        editorData = quillInstance.root.innerHTML;
+        lastSyncedEditorData = quillInstance.root.innerHTML;
+        editorData = lastSyncedEditorData;
       };
 
       quillInstance.root.addEventListener('compositionstart', () => {
@@ -1429,12 +1434,14 @@
   // editorData prop 변경 감지 (외부에서 변경 시)
   $effect(() => {
     if (isComposing) return;
+    if (editorData === lastSyncedEditorData) return;
 
     if (quillInstance && editorData !== quillInstance.root.innerHTML) {
       const currentSelection = quillInstance.getSelection();
       // dangerouslyPasteHTML을 사용하여 매처가 작동하도록 함
       quillInstance.setContents([]);
       quillInstance.clipboard.dangerouslyPasteHTML(0, editorData);
+      lastSyncedEditorData = quillInstance.root.innerHTML;
 
       if (currentSelection) {
         quillInstance.setSelection(currentSelection);
