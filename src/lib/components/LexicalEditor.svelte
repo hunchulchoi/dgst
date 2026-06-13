@@ -214,6 +214,11 @@
     });
   }
 
+  export function getEditorHtml() {
+    syncEditorData();
+    return lastSyncedEditorData;
+  }
+
   /** @param {string} value */
   function setEditorHtml(value) {
     const currentEditor = editor;

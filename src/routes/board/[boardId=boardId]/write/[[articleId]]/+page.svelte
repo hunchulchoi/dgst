@@ -168,7 +168,7 @@
   let QuillEditor = $state(null);
   let editorLoadError = $state(false);
 
-  /** @type {{ focusEditor: () => void } | null} */
+  /** @type {{ focusEditor: () => void; getEditorHtml?: () => string } | null} */
   let quillEditorRef = $state(null);
 
   /**
@@ -374,7 +374,8 @@
 
         // 동기 검증 (제출 전)
         const titleValue = title || '';
-        const contentValue = content || '';
+        const latestContent = quillEditorRef?.getEditorHtml?.() ?? content ?? '';
+        content = latestContent;
 
         // 제목 검증
         if (titleValue.replace(/\s/g, '').length < 2) {
@@ -383,7 +384,7 @@
           return cancel();
         }
 
-        const contentCheck = validateArticleContent(contentValue, { minTextLength: 5 });
+        const contentCheck = validateArticleContent(latestContent, { minTextLength: 5 });
         if (!contentCheck.ok) {
           formSubmitting = false;
           toast(contentCheck.message, { icon: 'warning', isToast: false });
@@ -392,7 +393,7 @@
 
         // 제출 직전에 에디터 내용 및 식별자 주입
         try {
-          formData.set('content', content || '');
+          formData.set('content', latestContent);
           if (articleId) {
             formData.set('articleId', articleId);
           } else {
