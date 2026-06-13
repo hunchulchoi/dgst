@@ -1,4 +1,5 @@
 <script>
+  import { resolve } from '$app/paths';
   import Icon from './icon.svelte';
 
   let {
@@ -11,11 +12,15 @@
     children = undefined,
     ...rest
   } = $props();
+
+  const resolvedHref = $derived(
+    typeof href === 'string' && href.startsWith('/') ? resolve(href) : href
+  );
 </script>
 
 <a
   class="page-link {className}"
-  {href}
+  href={resolvedHref}
   aria-current={active ? 'page' : undefined}
   {onclick}
   {...rest}

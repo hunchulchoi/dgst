@@ -1,4 +1,6 @@
 <script>
+  import { resolve } from '$app/paths';
+
   let {
     href = undefined,
     active = false,
@@ -7,12 +9,16 @@
     children,
     ...rest
   } = $props();
+
+  const resolvedHref = $derived(
+    typeof href === 'string' && href.startsWith('/') ? resolve(href) : href
+  );
 </script>
 
-{#if href}
+{#if resolvedHref}
   <a
     class="nav-link dgst-nav-link {active ? 'active' : ''} {className}"
-    {href}
+    href={resolvedHref}
     aria-current={active ? 'page' : undefined}
     {onclick}
     {...rest}
