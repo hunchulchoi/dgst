@@ -500,12 +500,16 @@
 
     /** @type {Element | null | undefined} */
     let pageTransition;
+    /** @type {Element | null | undefined} */
+    let appShell;
 
     const enablePageScroll = async () => {
       await tick();
+      appShell = document.querySelector('.app-shell');
       pageTransition = document.querySelector('.page-transition');
       document.documentElement.classList.add('minesweeper-page-scroll');
       document.body.classList.add('minesweeper-page-scroll');
+      appShell?.classList.add('minesweeper-page-scroll');
       pageTransition?.classList.add('minesweeper-page-scroll');
     };
 
@@ -514,6 +518,9 @@
     return () => {
       document.documentElement.classList.remove('minesweeper-page-scroll');
       document.body.classList.remove('minesweeper-page-scroll');
+      (appShell ?? document.querySelector('.app-shell'))?.classList.remove(
+        'minesweeper-page-scroll'
+      );
       (pageTransition ?? document.querySelector('.page-transition'))?.classList.remove(
         'minesweeper-page-scroll'
       );
@@ -538,7 +545,12 @@
 >
   <!-- 도움말 오버레이 -->
   {#if showHelp}
-    <div class="instructions-overlay" role="dialog" aria-modal="true" aria-labelledby="minesweeper-help-title">
+    <div
+      class="instructions-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="minesweeper-help-title"
+    >
       <div class="instructions-overlay-panel card shadow-lg border-0 rounded-4 overflow-hidden">
         <div class="card-header bg-primary text-white text-center py-3 flex-shrink-0">
           <h5 class="mb-0" id="minesweeper-help-title">지뢰찾기 가이드 💣</h5>
@@ -559,8 +571,12 @@
             <h6 class="fw-bold mb-3"><i class="bi bi-phone me-2"></i>모바일 조작법</h6>
             <ul class="list-unstyled small mb-0">
               <li class="mb-2">⛏️ <strong>기본 모드:</strong> 터치해서 땅 파기</li>
-              <li class="mb-2">🚩 <strong>깃발 모드:</strong> 상단 스위치를 켜고 터치해서 깃발 꽂기</li>
-              <li class="mb-2">👆 <strong>보드가 크면:</strong> 페이지를 스크롤해서 이동할 수 있어요</li>
+              <li class="mb-2">
+                🚩 <strong>깃발 모드:</strong> 상단 스위치를 켜고 터치해서 깃발 꽂기
+              </li>
+              <li class="mb-2">
+                👆 <strong>보드가 크면:</strong> 페이지를 스크롤해서 이동할 수 있어요
+              </li>
               <li>🔍 <strong>전체 보기:</strong> 두 손가락으로 핀치해서 축소·확대할 수 있어요</li>
             </ul>
           </div>
@@ -643,78 +659,80 @@
         ? 'order-1 order-md-2 minesweeper-game-col text-start'
         : 'text-center'}"
     >
-      <div class="card shadow rounded-4 mb-3 d-inline-flex minesweeper-game-card">
-        <div class="card-body {mode != null ? 'minesweeper-game-card-body' : ''}">
-          {#if mode == null}
-            <div class="text-center py-4 px-2 px-md-5">
-              <h4 class="mb-3">지뢰찾기 💣</h4>
-              <p class="text-muted mb-4">난이도를 선택하세요</p>
-              <div class="d-flex flex-column gap-3">
-                <button
-                  class="btn btn-lg btn-outline-success border-2 fw-bold"
-                  onclick={() => startGame('beginner')}
-                >
-                  초급 <small class="d-block text-muted">9×9, 지뢰 10개</small>
-                </button>
-                <button
-                  class="btn btn-lg btn-outline-warning border-2 fw-bold"
-                  onclick={() => startGame('intermediate')}
-                >
-                  중급 <small class="d-block text-muted">16×16, 지뢰 40개</small>
-                </button>
-                <button
-                  class="btn btn-lg btn-outline-danger border-2 fw-bold"
-                  onclick={() => startGame('expert')}
-                >
-                  고급 <small class="d-block text-muted">30×16, 지뢰 99개</small>
-                </button>
-              </div>
-            </div>
-          {:else}
-            <!-- 헤더 툴바 -->
-            <div
-              class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2 text-start {mode != null
-                ? 'minesweeper-toolbar'
-                : 'px-2 px-md-0'}"
-            >
-              <h4 class="mb-0 fw-bold">
-                지뢰찾기 <span class="badge bg-secondary ms-2 fw-normal">
-                  {mode === 'beginner' ? '초급' : mode === 'intermediate' ? '중급' : '고급'}
-                </span>
-              </h4>
-              <div class="d-flex align-items-center gap-2">
-                {#if !gameOver}
+      <div class="minesweeper-board-scroll">
+        <div class="card shadow rounded-4 mb-3 d-inline-flex minesweeper-game-card">
+          <div class="card-body {mode != null ? 'minesweeper-game-card-body' : ''}">
+            {#if mode == null}
+              <div class="text-center py-4 px-2 px-md-5">
+                <h4 class="mb-3">지뢰찾기 💣</h4>
+                <p class="text-muted mb-4">난이도를 선택하세요</p>
+                <div class="d-flex flex-column gap-3">
                   <button
-                    class="btn btn-sm {isPaused ? 'btn-success' : 'btn-warning'} shadow-sm"
-                    onclick={togglePause}
+                    class="btn btn-lg btn-outline-success border-2 fw-bold"
+                    onclick={() => startGame('beginner')}
                   >
-                    {isPaused ? '▶️ 재개' : '⏸️ 일시정지'}
-                  </button>
-                {/if}
-                <button class="btn btn-sm btn-outline-secondary" onclick={handleReset}>
-                  새 게임
-                </button>
-                <div class="btn-group btn-group-sm shadow-sm">
-                  <button
-                    class="btn btn-outline-success {mode === 'beginner' ? 'active' : ''}"
-                    onclick={() => confirmModeChange('beginner')}
-                  >
-                    초급
+                    초급 <small class="d-block text-muted">9×9, 지뢰 10개</small>
                   </button>
                   <button
-                    class="btn btn-outline-warning {mode === 'intermediate' ? 'active' : ''}"
-                    onclick={() => confirmModeChange('intermediate')}
+                    class="btn btn-lg btn-outline-warning border-2 fw-bold"
+                    onclick={() => startGame('intermediate')}
                   >
-                    중급
+                    중급 <small class="d-block text-muted">16×16, 지뢰 40개</small>
                   </button>
                   <button
-                    class="btn btn-outline-danger {mode === 'expert' ? 'active' : ''}"
-                    onclick={() => confirmModeChange('expert')}
+                    class="btn btn-lg btn-outline-danger border-2 fw-bold"
+                    onclick={() => startGame('expert')}
                   >
-                    고급
+                    고급 <small class="d-block text-muted">30×16, 지뢰 99개</small>
                   </button>
                 </div>
-                <!-- 
+              </div>
+            {:else}
+              <!-- 헤더 툴바 -->
+              <div
+                class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2 text-start {mode !=
+                null
+                  ? 'minesweeper-toolbar'
+                  : 'px-2 px-md-0'}"
+              >
+                <h4 class="mb-0 fw-bold">
+                  지뢰찾기 <span class="badge bg-secondary ms-2 fw-normal">
+                    {mode === 'beginner' ? '초급' : mode === 'intermediate' ? '중급' : '고급'}
+                  </span>
+                </h4>
+                <div class="d-flex align-items-center gap-2">
+                  {#if !gameOver}
+                    <button
+                      class="btn btn-sm {isPaused ? 'btn-success' : 'btn-warning'} shadow-sm"
+                      onclick={togglePause}
+                    >
+                      {isPaused ? '▶️ 재개' : '⏸️ 일시정지'}
+                    </button>
+                  {/if}
+                  <button class="btn btn-sm btn-outline-secondary" onclick={handleReset}>
+                    새 게임
+                  </button>
+                  <div class="btn-group btn-group-sm shadow-sm">
+                    <button
+                      class="btn btn-outline-success {mode === 'beginner' ? 'active' : ''}"
+                      onclick={() => confirmModeChange('beginner')}
+                    >
+                      초급
+                    </button>
+                    <button
+                      class="btn btn-outline-warning {mode === 'intermediate' ? 'active' : ''}"
+                      onclick={() => confirmModeChange('intermediate')}
+                    >
+                      중급
+                    </button>
+                    <button
+                      class="btn btn-outline-danger {mode === 'expert' ? 'active' : ''}"
+                      onclick={() => confirmModeChange('expert')}
+                    >
+                      고급
+                    </button>
+                  </div>
+                  <!-- 
                 <button
                   class="btn btn-sm btn-outline-dark"
                   onclick={() => {
@@ -724,141 +742,142 @@
                   모드 변경
                 </button>
                 -->
+                </div>
               </div>
-            </div>
 
-            <div class="minesweeper-wrapper d-inline-block rounded">
-              <!-- 클래식 느낌의 상단 상태 표시줄 -->
-              <div
-                class="minesweeper-header bg-dark text-white rounded p-2 mb-3 d-flex justify-content-between align-items-center fw-bold fs-4 shadow-inner"
-                style="border: 3px inset #666;"
-              >
-                <!-- 왼쪽: 남은 지뢰 숫자 -->
+              <div class="minesweeper-wrapper d-inline-block rounded">
+                <!-- 클래식 느낌의 상단 상태 표시줄 -->
                 <div
-                  class="text-danger flex-fill text-start font-monospace digital-font"
-                  style="min-width: 3.5rem;"
+                  class="minesweeper-header bg-dark text-white rounded p-2 mb-3 d-flex justify-content-between align-items-center fw-bold fs-4 shadow-inner"
+                  style="border: 3px inset #666;"
                 >
-                  {('00' + Math.max(0, minesLeft)).slice(-3)}
-                </div>
-
-                <!-- 가운데: 스마일 페이스 (새 게임/재시작) -->
-                <div class="flex-fill text-center">
-                  <button
-                    class="btn p-0 face-btn"
-                    onclick={handleReset}
-                    title="게임을 다시 시작합니다"
-                  >
-                    {#if gameWon}😎{:else if gameOver}😵{:else}🙂{/if}
-                  </button>
-                </div>
-
-                <!-- 오른쪽: 경과 시간(타이머) -->
-                <div
-                  class="text-danger flex-fill text-end font-monospace digital-font"
-                  style="min-width: 3.5rem;"
-                >
-                  {('00' + timer).slice(-3)}
-                </div>
-              </div>
-
-              <!-- 모바일 대응 툴바: 깃발 모드 토글 -->
-              <div class="d-block d-md-none mb-3 text-center bg-light border p-2 rounded">
-                <div class="form-check form-switch d-inline-block m-0">
-                  <input
-                    class="form-check-input"
-                    type="checkbox"
-                    id="flagSwitch"
-                    bind:checked={useFlagMode}
-                    style="width: 2.5em; height: 1.25em;"
-                  />
-                  <label class="form-check-label fw-bold ms-2" for="flagSwitch">
-                    현재 모드: {useFlagMode ? '🚩 깃발 꽂기' : '⛏ 칸 파기'}
-                  </label>
-                </div>
-              </div>
-
-              <!-- 게임 보드 -->
-              <div
-                class="minesweeper-board d-inline-block p-1 bg-secondary rounded user-select-none shadow"
-              >
-                <div class="grid-container" style="--cols: {cols};">
-                  {#each grid as row}
-                    {#each row as cell}
-                      <div
-                        role="button"
-                        tabindex="0"
-                        class="grid-cell"
-                        class:revealed={cell.isRevealed}
-                        class:mine={cell.isRevealed && cell.isMine}
-                        class:exploded={cell.isRevealed &&
-                          cell.isMine &&
-                          explodedMine?.row === cell.row &&
-                          explodedMine?.col === cell.col}
-                        class:wrong-flag={gameOver && !gameWon && cell.isFlagged && !cell.isMine}
-                        class:flagged={cell.isFlagged}
-                        class:neighbor-highlight={highlightCenter &&
-                          Math.abs(cell.row - highlightCenter.row) <= 1 &&
-                          Math.abs(cell.col - highlightCenter.col) <= 1}
-                        aria-label="칸 ({cell.row + 1}, {cell.col + 1})"
-                        oncontextmenu={(e) => toggleFlag(e, cell.row, cell.col)}
-                        onmouseenter={() => setHighlight(cell.row, cell.col)}
-                        onmouseleave={clearHighlight}
-                        onclick={() => activateCell(cell.row, cell.col)}
-                        onkeydown={(e) => handleCellKeydown(e, cell.row, cell.col)}
-                      >
-                        {#if cell.isRevealed}
-                          {#if cell.isMine}
-                            💣
-                          {:else if cell.neighborMines > 0}
-                            <span class="c{cell.neighborMines}">{cell.neighborMines}</span>
-                          {/if}
-                        {:else if cell.isFlagged}
-                          {#if gameOver && !gameWon && !cell.isMine}
-                            ❌
-                          {:else}
-                            🚩
-                          {/if}
-                        {/if}
-                      </div>
-                    {/each}
-                  {/each}
-                </div>
-
-                {#if isPaused}
+                  <!-- 왼쪽: 남은 지뢰 숫자 -->
                   <div
-                    class="pause-overlay"
-                    role="button"
-                    tabindex="0"
-                    aria-label="게임 재개"
-                    onclick={togglePause}
-                    onkeydown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        togglePause();
-                      }
-                    }}
+                    class="text-danger flex-fill text-start font-monospace digital-font"
+                    style="min-width: 3.5rem;"
                   >
-                    <div class="text-white text-center">
-                      <div class="fs-1 mb-2">⏸️</div>
-                      <div class="fw-bold">일시정지 중</div>
-                      <div class="small opacity-75">클릭하면 재개합니다</div>
-                    </div>
+                    {('00' + Math.max(0, minesLeft)).slice(-3)}
                   </div>
-                {/if}
-              </div>
-            </div>
 
-            <p class="small text-muted text-center mt-3 mb-0">
-              모바일에서는 우측 상단 토글로 🚩깃발 모드를 쓸 수 있어요.<br />
-              보드가 화면보다 크면 페이지를 스크롤하거나 핀치로 축소·확대할 수 있어요.<br />
-              컴퓨터에서는 우클릭으로 깃발을 꽂고 숫자 클릭 시 나머지를 한번에 팔 수 있어요!<br />
-              {#if isLoggedIn && gameWon}
-                <span class="text-success fw-bold"
-                  >승리 점수(소요시간)가 랭킹에 기록되었습니다!</span
+                  <!-- 가운데: 스마일 페이스 (새 게임/재시작) -->
+                  <div class="flex-fill text-center">
+                    <button
+                      class="btn p-0 face-btn"
+                      onclick={handleReset}
+                      title="게임을 다시 시작합니다"
+                    >
+                      {#if gameWon}😎{:else if gameOver}😵{:else}🙂{/if}
+                    </button>
+                  </div>
+
+                  <!-- 오른쪽: 경과 시간(타이머) -->
+                  <div
+                    class="text-danger flex-fill text-end font-monospace digital-font"
+                    style="min-width: 3.5rem;"
+                  >
+                    {('00' + timer).slice(-3)}
+                  </div>
+                </div>
+
+                <!-- 모바일 대응 툴바: 깃발 모드 토글 -->
+                <div class="d-block d-md-none mb-3 text-center bg-light border p-2 rounded">
+                  <div class="form-check form-switch d-inline-block m-0">
+                    <input
+                      class="form-check-input"
+                      type="checkbox"
+                      id="flagSwitch"
+                      bind:checked={useFlagMode}
+                      style="width: 2.5em; height: 1.25em;"
+                    />
+                    <label class="form-check-label fw-bold ms-2" for="flagSwitch">
+                      현재 모드: {useFlagMode ? '🚩 깃발 꽂기' : '⛏ 칸 파기'}
+                    </label>
+                  </div>
+                </div>
+
+                <!-- 게임 보드 -->
+                <div
+                  class="minesweeper-board d-inline-block p-1 bg-secondary rounded user-select-none shadow"
                 >
-              {/if}
-            </p>
-          {/if}
+                  <div class="grid-container" style="--cols: {cols};">
+                    {#each grid as row}
+                      {#each row as cell}
+                        <div
+                          role="button"
+                          tabindex="0"
+                          class="grid-cell"
+                          class:revealed={cell.isRevealed}
+                          class:mine={cell.isRevealed && cell.isMine}
+                          class:exploded={cell.isRevealed &&
+                            cell.isMine &&
+                            explodedMine?.row === cell.row &&
+                            explodedMine?.col === cell.col}
+                          class:wrong-flag={gameOver && !gameWon && cell.isFlagged && !cell.isMine}
+                          class:flagged={cell.isFlagged}
+                          class:neighbor-highlight={highlightCenter &&
+                            Math.abs(cell.row - highlightCenter.row) <= 1 &&
+                            Math.abs(cell.col - highlightCenter.col) <= 1}
+                          aria-label="칸 ({cell.row + 1}, {cell.col + 1})"
+                          oncontextmenu={(e) => toggleFlag(e, cell.row, cell.col)}
+                          onmouseenter={() => setHighlight(cell.row, cell.col)}
+                          onmouseleave={clearHighlight}
+                          onclick={() => activateCell(cell.row, cell.col)}
+                          onkeydown={(e) => handleCellKeydown(e, cell.row, cell.col)}
+                        >
+                          {#if cell.isRevealed}
+                            {#if cell.isMine}
+                              💣
+                            {:else if cell.neighborMines > 0}
+                              <span class="c{cell.neighborMines}">{cell.neighborMines}</span>
+                            {/if}
+                          {:else if cell.isFlagged}
+                            {#if gameOver && !gameWon && !cell.isMine}
+                              ❌
+                            {:else}
+                              🚩
+                            {/if}
+                          {/if}
+                        </div>
+                      {/each}
+                    {/each}
+                  </div>
+
+                  {#if isPaused}
+                    <div
+                      class="pause-overlay"
+                      role="button"
+                      tabindex="0"
+                      aria-label="게임 재개"
+                      onclick={togglePause}
+                      onkeydown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          togglePause();
+                        }
+                      }}
+                    >
+                      <div class="text-white text-center">
+                        <div class="fs-1 mb-2">⏸️</div>
+                        <div class="fw-bold">일시정지 중</div>
+                        <div class="small opacity-75">클릭하면 재개합니다</div>
+                      </div>
+                    </div>
+                  {/if}
+                </div>
+              </div>
+
+              <p class="small text-muted text-center mt-3 mb-0">
+                모바일에서는 우측 상단 토글로 🚩깃발 모드를 쓸 수 있어요.<br />
+                보드가 화면보다 크면 페이지를 스크롤하거나 핀치로 축소·확대할 수 있어요.<br />
+                컴퓨터에서는 우클릭으로 깃발을 꽂고 숫자 클릭 시 나머지를 한번에 팔 수 있어요!<br />
+                {#if isLoggedIn && gameWon}
+                  <span class="text-success fw-bold"
+                    >승리 점수(소요시간)가 랭킹에 기록되었습니다!</span
+                  >
+                {/if}
+              </p>
+            {/if}
+          </div>
         </div>
       </div>
     </div>
@@ -868,18 +887,28 @@
 <style>
   :global(html.minesweeper-page-scroll),
   :global(body.minesweeper-page-scroll) {
-    overflow-x: auto !important;
+    overflow-x: hidden !important;
     overflow-y: auto !important;
     max-width: none !important;
+    width: 100% !important;
     -webkit-overflow-scrolling: touch;
-    touch-action: pan-x pan-y pinch-zoom;
+    touch-action: pan-y pinch-zoom;
   }
 
   :global(.page-transition.minesweeper-page-scroll) {
-    overflow-x: auto !important;
+    overflow-x: hidden !important;
     overflow-y: visible !important;
     max-width: none !important;
-    width: max-content;
+    width: 100%;
+    min-width: 100%;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y pinch-zoom;
+  }
+
+  :global(.app-shell.minesweeper-page-scroll) {
+    overflow-x: hidden !important;
+    max-width: none !important;
+    width: 100% !important;
     min-width: 100%;
   }
 
@@ -925,6 +954,19 @@
   }
 
   @media (max-width: 767.98px) {
+    .minesweeper-game-root.minesweeper-game-active {
+      width: 100% !important;
+      max-width: 100% !important;
+      overflow-x: hidden;
+    }
+
+    .minesweeper-game-root.minesweeper-game-active > .minesweeper-game-row {
+      width: 100%;
+      max-width: 100%;
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
     .minesweeper-rank-col {
       width: 100vw !important;
       max-width: 100vw !important;
@@ -953,6 +995,14 @@
 
   .minesweeper-game-active .minesweeper-game-card-body {
     padding: 0.5rem;
+  }
+
+  .minesweeper-board-scroll {
+    width: max-content;
+    max-width: none;
+    overflow: visible;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-x pan-y pinch-zoom;
   }
 
   .minesweeper-game-active .minesweeper-toolbar {
@@ -988,6 +1038,21 @@
   .minesweeper-game-active .minesweeper-game-card :global(.card-body) {
     overflow: visible;
     max-width: none;
+  }
+
+  @media (max-width: 767.98px) {
+    .minesweeper-game-active .minesweeper-game-col {
+      width: 100vw !important;
+      max-width: 100vw !important;
+      overflow-x: hidden;
+    }
+
+    .minesweeper-board-scroll {
+      width: 100vw;
+      max-width: 100vw;
+      overflow-x: auto;
+      overflow-y: visible;
+    }
   }
 
   .minesweeper-wrapper {
@@ -1134,8 +1199,7 @@
     justify-content: center;
     align-items: center;
     padding: max(0.75rem, env(safe-area-inset-top, 0px))
-      max(0.75rem, env(safe-area-inset-right, 0px))
-      max(0.75rem, env(safe-area-inset-bottom, 0px))
+      max(0.75rem, env(safe-area-inset-right, 0px)) max(0.75rem, env(safe-area-inset-bottom, 0px))
       max(0.75rem, env(safe-area-inset-left, 0px));
     background: rgba(0, 0, 0, 0.75);
     backdrop-filter: blur(4px);
