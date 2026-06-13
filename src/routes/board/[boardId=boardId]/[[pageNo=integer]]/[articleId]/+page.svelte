@@ -1865,6 +1865,14 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    flex: 0 0 auto;
+    gap: 0.25rem;
+    min-width: 4.75rem;
+    white-space: nowrap;
+  }
+
+  :global(.comment-section .comment-write-group textarea) {
+    min-width: 0;
   }
 
   @media (max-width: 767.98px) {
@@ -1878,19 +1886,8 @@
     }
 
     :global(.comment-section .input-group .comment-form-btn) {
-      min-width: 4.25rem;
+      min-width: 4.75rem;
       padding: 0.5rem 0.75rem !important;
-    }
-
-    :global(.comment-section .comment-write-group) {
-      flex-direction: column;
-      gap: 0.5rem;
-    }
-
-    :global(.comment-section .comment-write-group textarea),
-    :global(.comment-section .comment-write-group .comment-form-btn) {
-      width: 100% !important;
-      border-radius: 0.75rem !important;
     }
 
     :global(.comment-actions) {
