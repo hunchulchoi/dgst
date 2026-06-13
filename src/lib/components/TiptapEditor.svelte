@@ -148,6 +148,8 @@
       const attrs = node.attrs;
       const url = attrs.url || HTMLAttributes.url || '';
       const siteName = attrs.siteName || safeHostname(url);
+      const isInstagram = siteName === 'Instagram' || url.includes('instagram.com');
+      const image = isInstagram ? '' : attrs.image || '';
       return [
         'div',
         mergeAttributes(HTMLAttributes, {
@@ -165,16 +167,29 @@
             style:
               'text-decoration: none; color: inherit; display: block; border: 1px solid var(--bs-border-color); border-radius: 8px; margin: 8px 0; max-width: 100%; background: transparent; cursor: pointer; overflow: hidden; padding: 0;'
           },
-          ...(attrs.image
+          ...(image
             ? [
                 [
                   'img',
                   {
-                    src: attrs.image,
+                    src: image,
                     alt: '',
                     style:
                       'width: 100%; height: 200px; object-fit: cover; display: block; margin: 0; border: 0;'
                   }
+                ]
+              ]
+            : []),
+          ...(isInstagram
+            ? [
+                [
+                  'div',
+                  {
+                    'aria-label': 'Instagram preview',
+                    style:
+                      'height: 140px; display: flex; align-items: center; justify-content: center; background: radial-gradient(circle at 30% 107%, #fdf497 0%, #fdf497 5%, #fd5949 45%, #d6249f 60%, #285aeb 90%); color: white; font-size: 18px; font-weight: 800; letter-spacing: 0.02em;'
+                  },
+                  'Instagram'
                 ]
               ]
             : []),
@@ -572,7 +587,7 @@
             url: cleanUrl,
             title: `Instagram ${cleanUrl.includes('/reel/') ? 'Reel' : 'Post'}`,
             description: 'View this post on Instagram',
-            image: 'https://www.instagram.com/static/images/ico/favicon-192.png',
+            image: '',
             siteName: 'Instagram'
           }
         })

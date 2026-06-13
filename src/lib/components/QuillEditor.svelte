@@ -881,7 +881,7 @@
           url: cleanUrl,
           title: `Instagram ${isReel ? 'Reel' : 'Post'}`,
           description: `View this post on Instagram`,
-          image: 'https://www.instagram.com/static/images/ico/favicon-192.png',
+          image: '',
           siteName: 'Instagram'
         });
 
@@ -1147,12 +1147,23 @@
             // 기본 링크 동작을 허용하므로 preventDefault 제거
           };
 
-          if (value.image) {
+          const isInstagram =
+            value.siteName === 'Instagram' || (value.url || '').includes('instagram.com');
+          const image = isInstagram ? '' : value.image;
+
+          if (image) {
             const img = document.createElement('img');
-            img.src = value.image;
+            img.src = image;
             img.style.cssText =
               'width: 100%; height: 200px; object-fit: cover; display: block; margin: 0; border: 0;';
             link.appendChild(img);
+          } else if (isInstagram) {
+            const preview = document.createElement('div');
+            preview.setAttribute('aria-label', 'Instagram preview');
+            preview.style.cssText =
+              'height: 140px; display: flex; align-items: center; justify-content: center; background: radial-gradient(circle at 30% 107%, #fdf497 0%, #fdf497 5%, #fd5949 45%, #d6249f 60%, #285aeb 90%); color: white; font-size: 18px; font-weight: 800; letter-spacing: 0.02em;';
+            preview.textContent = 'Instagram';
+            link.appendChild(preview);
           }
 
           const title = document.createElement('div');
