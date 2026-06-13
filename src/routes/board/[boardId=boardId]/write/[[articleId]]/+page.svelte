@@ -78,7 +78,12 @@
   };
 
   onMount(async () => {
-    QuillEditor = (await import('$lib/components/QuillEditor.svelte')).default;
+    try {
+      QuillEditor = (await import('$lib/components/QuillEditor.svelte')).default;
+    } catch (error) {
+      console.error('Quill 에디터 로드 실패:', error);
+      editorLoadError = true;
+    }
 
     // 모바일에서 제목 입력칸으로 스크롤하고 포커스
     setTimeout(() => {
@@ -150,6 +155,7 @@
 
   /** @type {import('svelte').Component | null} */
   let QuillEditor = $state(null);
+  let editorLoadError = $state(false);
 
   /** @type {{ focusEditor: () => void } | null} */
   let quillEditorRef = $state(null);
@@ -472,6 +478,10 @@
           onTitleUpdate={handleTitleUpdate}
           onLoadingChange={handleLoadingChange}
         />
+      {:else if editorLoadError}
+        <div class="alert alert-danger my-4 text-center" role="alert">
+          에디터를 불러오지 못했습니다. 페이지를 새로고침해 주세요.
+        </div>
       {:else}
         <div class="text-center py-5">
           <Spinner />
