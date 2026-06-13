@@ -1860,6 +1860,19 @@
     align-items: center;
   }
 
+  :global(.comment-section .comment-write-group) {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    width: 100%;
+  }
+
+  :global(.comment-section .comment-write-group textarea) {
+    flex: 1 1 auto;
+    width: 1%;
+    min-width: 0;
+  }
+
   :global(.comment-section .input-group .comment-form-btn) {
     align-self: stretch;
     display: inline-flex;
@@ -1869,10 +1882,6 @@
     gap: 0.25rem;
     min-width: 4.75rem;
     white-space: nowrap;
-  }
-
-  :global(.comment-section .comment-write-group textarea) {
-    min-width: 0;
   }
 
   @media (max-width: 767.98px) {
