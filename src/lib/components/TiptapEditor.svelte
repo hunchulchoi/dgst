@@ -24,6 +24,14 @@
   let fileInput = null;
   /** @type {string} */
   let lastSyncedEditorData = '';
+  /** @type {any} */
+  let ffmpeg = null;
+  /** @type {typeof import('@ffmpeg/util').fetchFile | null} */
+  let fetchFile = null;
+  /** @type {Promise<void> | null} */
+  let ffmpegLoadPromise = null;
+  /** @type {any} */
+  let heic2any = null;
   let loading = $state(false);
 
   const Video = Node.create({
@@ -74,6 +82,32 @@
           frameborder: '0',
           allowfullscreen: 'true',
           style: `max-width: 100%; width: ${width}px; aspect-ratio: ${width} / ${height}; height: auto; display: block; margin: 0 auto; border: none; padding: 0;`
+        })
+      ];
+    }
+  });
+
+  const TikTokEmbed = Node.create({
+    name: 'tiktok',
+    group: 'block',
+    atom: true,
+    addAttributes() {
+      return {
+        cite: { default: '' },
+        videoId: { default: '' }
+      };
+    },
+    parseHTML() {
+      return [{ tag: 'blockquote.tiktok-embed' }];
+    },
+    renderHTML({ HTMLAttributes }) {
+      return [
+        'blockquote',
+        mergeAttributes(HTMLAttributes, {
+          class: 'tiktok-embed',
+          cite: HTMLAttributes.cite,
+          'data-video-id': HTMLAttributes.videoId,
+          style: 'max-width: 605px; min-width: 0; width: 100%;'
         })
       ];
     }
@@ -242,6 +276,141 @@
     editorData = lastSyncedEditorData;
   }
 
+  async function ensureFfmpegLoaded() {
+    if (ffmpeg && fetchFile) return;
+
+    if (!ffmpegLoadPromise) {
+      ffmpegLoadPromise = (async () => {
+        const [{ FFmpeg }, ffmpegUtil] = await Promise.all([
+          import('@ffmpeg/ffmpeg'),
+          import('@ffmpeg/util')
+        ]);
+        fetchFile = ffmpegUtil.fetchFile;
+        ffmpeg = new FFmpeg();
+        await ffmpeg.load();
+      })().finally(() => {
+        ffmpegLoadPromise = null;
+      });
+    }
+
+    await ffmpegLoadPromise;
+  }
+
+  /**
+   * @param {File} file
+   * @param {{width?: number, quality?: number}} options
+   * @returns {Promise<File | Blob>}
+   */
+  async function convertToWebP(file, options = {}) {
+    const fileSizeMB = file.size / (1024 * 1024);
+    const lowerType = (file.type || '').toLowerCase();
+    const lowerName = (file.name || '').toLowerCase();
+
+    if (
+      fileSizeMB <= 1 ||
+      lowerType === 'image/gif' ||
+      lowerType.includes('image/heic') ||
+      lowerType.includes('image/heif') ||
+      lowerName.endsWith('.heic') ||
+      lowerName.endsWith('.heif')
+    ) {
+      return file;
+    }
+
+    const imageCompression = (await import('browser-image-compression')).default;
+    return imageCompression(file, {
+      maxSizeMB: 10,
+      maxWidthOrHeight: options.width || 1400,
+      useWebWorker: true,
+      fileType: 'image/webp',
+      initialQuality: options.quality || 0.85
+    });
+  }
+
+  /** @param {File} file */
+  async function convertHeicToJpeg(file) {
+    const lowerType = (file.type || '').toLowerCase();
+    const lowerName = (file.name || '').toLowerCase();
+    const isHeic =
+      lowerType.includes('image/heic') ||
+      lowerType.includes('image/heif') ||
+      lowerName.endsWith('.heic') ||
+      lowerName.endsWith('.heif');
+
+    if (!isHeic) return file;
+
+    if (!heic2any) {
+      heic2any = (await import('heic2any')).default;
+    }
+
+    const converted = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.8 });
+    const jpgBlob = Array.isArray(converted) ? converted[0] : converted;
+    const baseName = file.name.replace(/\.(heic|heif)$/i, '') || 'image';
+    return new File([jpgBlob], `${baseName}.jpg`, { type: 'image/jpeg' });
+  }
+
+  /** @param {File} file */
+  async function compressVideo(file) {
+    try {
+      await Promise.race([
+        ensureFfmpegLoaded(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('FFmpeg load timeout')), 60000))
+      ]);
+
+      if (!ffmpeg || !fetchFile) return file;
+
+      await ffmpeg.writeFile('input.mp4', await fetchFile(file));
+      await ffmpeg.exec([
+        '-i',
+        'input.mp4',
+        '-vf',
+        "scale='min(640,iw)':'min(640,ih)':force_original_aspect_ratio=decrease,pad=ceil(iw/2)*2:ceil(ih/2)*2",
+        '-c:v',
+        'libx264',
+        '-crf',
+        '28',
+        '-preset',
+        'medium',
+        '-c:a',
+        'aac',
+        '-b:a',
+        '128k',
+        '-pix_fmt',
+        'yuv420p',
+        'output.mp4'
+      ]);
+
+      const data = await ffmpeg.readFile('output.mp4');
+      const bytes = data instanceof Uint8Array ? data : new TextEncoder().encode(String(data));
+      const blob = new Blob([/** @type {BlobPart} */ (bytes)], { type: 'video/mp4' });
+      return new File([blob], file.name.replace(/\.[^.]+$/, '.mp4'), { type: 'video/mp4' });
+    } catch (error) {
+      console.warn('Tiptap video compression failed; uploading original file:', error);
+      return file;
+    }
+  }
+
+  /** @param {File} file */
+  async function prepareUploadFile(file) {
+    if (file.type.startsWith('image/')) {
+      let prepared = await convertHeicToJpeg(file);
+      if (prepared.type !== 'image/webp') {
+        const webp = await convertToWebP(prepared, { width: 1400, quality: 0.85 });
+        if (webp !== prepared) {
+          const base = prepared.name.replace(/\.[^.]+$/, '') || 'image';
+          prepared = new File([webp], `${base}.webp`, { type: 'image/webp' });
+        }
+      }
+      return prepared;
+    }
+
+    if (file.type.startsWith('video/')) {
+      return compressVideo(file);
+    }
+
+    return file;
+  }
+
   /** @param {File[]} files */
   async function uploadAndInsertFiles(files) {
     if (!editor || files.length === 0) return;
@@ -250,36 +419,39 @@
     try {
       for (const file of files) {
         uploadPlus?.();
-        const formData = new FormData();
-        formData.append('upload', file);
+        try {
+          const preparedFile = await prepareUploadFile(file);
+          const formData = new FormData();
+          formData.append('upload', preparedFile);
 
-        const response = await fetch('/board/upload', {
-          method: 'POST',
-          body: formData,
-          credentials: 'include'
-        });
+          const response = await fetch('/board/upload', {
+            method: 'POST',
+            body: formData,
+            credentials: 'include'
+          });
 
-        if (!response.ok) {
-          throw new Error(`Upload failed: ${response.status}`);
+          if (!response.ok) {
+            throw new Error(`Upload failed: ${response.status}`);
+          }
+
+          const data = await response.json();
+          const url = data.url;
+          if (typeof url !== 'string') {
+            throw new Error('Upload response has no url');
+          }
+
+          if (preparedFile.type.startsWith('video/')) {
+            editor.chain().focus().insertContent({ type: 'video', attrs: { src: url } }).insertContent('<p></p>').run();
+          } else {
+            editor.chain().focus().setImage({ src: url }).insertContent('<p></p>').run();
+          }
+        } finally {
+          uploadMinus?.();
         }
-
-        const data = await response.json();
-        const url = data.url;
-        if (typeof url !== 'string') {
-          throw new Error('Upload response has no url');
-        }
-
-        if (file.type.startsWith('video/')) {
-          editor.chain().focus().insertContent({ type: 'video', attrs: { src: url } }).run();
-        } else {
-          editor.chain().focus().setImage({ src: url }).insertContent('<p></p>').run();
-        }
-        uploadMinus?.();
       }
       syncEditorData();
     } catch (error) {
       console.error('Tiptap upload failed:', error);
-      uploadMinus?.();
       await swalFire({
         icon: 'error',
         title: '업로드 실패',
@@ -408,6 +580,41 @@
         .run();
     } else if (url.match(/\.(mp4|webm|ogg|mov)(\?.*)?$/i)) {
       editor.chain().focus().insertContent({ type: 'video', attrs: { src: url } }).insertContent('<p></p>').run();
+    } else if (url.includes('tiktok.com')) {
+      const match = url.match(/tiktok\.com\/(.*)\/video\/([\w-]+)/);
+      if (match) {
+        editor
+          .chain()
+          .focus()
+          .insertContent({
+            type: 'tiktok',
+            attrs: {
+              cite: `https://www.tiktok.com/${match[1]}/video/${match[2]}`,
+              videoId: match[2]
+            }
+          })
+          .insertContent('<p></p>')
+          .run();
+      } else {
+        await createOGCard(url);
+        return;
+      }
+    } else if (url.includes('tv.naver.com')) {
+      const id = url.match(/tv\.naver\.com\/v\/([\w-]+)/)?.[1] || null;
+      if (id) {
+        editor
+          .chain()
+          .focus()
+          .insertContent({
+            type: 'iframe',
+            attrs: { src: `https://tv.naver.com/embed/${id}`, width: '544', height: '306' }
+          })
+          .insertContent('<p></p>')
+          .run();
+      } else {
+        await createOGCard(url);
+        return;
+      }
     } else {
       await createOGCard(url);
       return;
@@ -428,7 +635,23 @@
     }
 
     const text = event.clipboardData?.getData('text')?.trim();
-    if (!text || !/^https?:\/\/\S+$/i.test(text)) return;
+    if (!text) return;
+
+    const isMarkdown =
+      /^(#|##|###|- |\* |\d+\. |> |`|\[.*\]\(.*\)|_{1,2}\w+_{1,2}|\*{1,2}\w+\*{1,2})/m.test(
+        text
+      );
+
+    if (isMarkdown && text.includes('\n')) {
+      event.preventDefault();
+      const { marked } = await import('marked');
+      const html = await marked.parse(text);
+      editor.chain().focus().insertContent(html).run();
+      syncEditorData();
+      return;
+    }
+
+    if (!/^https?:\/\/\S+$/i.test(text)) return;
 
     event.preventDefault();
     if (isMediaUrl(text)) {
@@ -469,6 +692,7 @@
         Placeholder.configure({ placeholder: '내용을 입력하세요...' }),
         Video,
         IFrame,
+        TikTokEmbed,
         OGCard
       ],
       content: editorData || '',
@@ -516,6 +740,10 @@
     void insertMediaUrl(url);
   });
 </script>
+
+<svelte:head>
+  <script defer src="//www.tiktok.com/embed.js"></script>
+</svelte:head>
 
 <main class="tiptap-editor">
   <input
