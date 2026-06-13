@@ -62,8 +62,11 @@ export default defineConfig(
       }
     },
     rules: {
+      // Kept off for now because re-enabling exposes existing Svelte-file cleanup
+      // work; restore after unused bindings are removed or renamed with `_`.
       'no-unused-vars': 'off',
-      'no-empty': 'off',
+      // Kept off until the remaining article-page regex escapes can be cleaned up
+      // in Svelte source without broadening this config-only task.
       'no-useless-escape': 'off',
       'svelte/prefer-svelte-reactivity': 'off',
       'svelte/prefer-writable-derived': 'off'
