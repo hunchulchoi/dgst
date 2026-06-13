@@ -363,8 +363,9 @@
 </svelte:head>
 
 <main class="container board-page-inset my-1">
-  <Row class="border border-secondary-subtle rounded-4 py-5 shadow">
+  <Row class="write-form-card border border-secondary-subtle rounded-4 py-5 shadow">
     <form
+      class="write-form"
       method="POST"
       use:enhance={({ formElement, formData, action, cancel, submitter }) => {
         /* 취소 등 type="button"만 클릭한 경우 — Enter 제출(submitter null)은 허용 */
@@ -489,7 +490,7 @@
       }}
     >
       <input type="hidden" name="articleId" value={articleId} />
-      <FormGroup floating label="제목" labelFor="title">
+      <FormGroup floating label="제목" labelFor="title" class="write-title-field">
         <input
           type="text"
           id="title"
@@ -522,7 +523,7 @@
           <Spinner />
         </div>
       {/if}
-      <Row class="text-end pe-2 mt-4">
+      <Row class="write-action-row text-end pe-2 mt-4">
         <Col md="10" xs="8" class="text-end">
           <Button type="button" color="warning" onclick={list}>
             <Icon name="x-lg" class="pe-2" />
@@ -566,3 +567,59 @@
     <span class="text-white mt-3 fw-bold fs-5">링크 정보를 분석 중입니다...</span>
   </div>
 {/if}
+
+<style>
+  :global(.write-form-card) {
+    --bs-gutter-x: 0;
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    margin-right: 0 !important;
+    margin-left: 0 !important;
+    overflow-x: clip;
+  }
+
+  .write-form {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    padding-inline: 0.75rem;
+  }
+
+  :global(.write-title-field) {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  :global(.write-title-field > .form-control) {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  :global(.write-action-row) {
+    --bs-gutter-x: 0;
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    margin-right: 0 !important;
+    margin-left: 0 !important;
+  }
+
+  @supports not (overflow: clip) {
+    :global(.write-form-card) {
+      overflow-x: hidden;
+    }
+  }
+
+  @media (max-width: 575.98px) {
+    .write-form {
+      padding-inline: 0.5rem;
+    }
+  }
+</style>
