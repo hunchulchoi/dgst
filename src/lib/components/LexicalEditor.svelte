@@ -894,8 +894,7 @@
         title="이미지 업로드"
         onclick={openFilePicker}
       >
-        <span class="lexical-toolbar__media-icon" aria-hidden="true">▧</span>
-        <span>이미지</span>
+        <span class="lexical-toolbar__media-icon" aria-hidden="true">🏞️</span>
       </button>
       <button
         class="lexical-toolbar__button lexical-toolbar__button--media lexical-toolbar__button--media-video"
@@ -904,8 +903,7 @@
         title="동영상 업로드"
         onclick={openFilePicker}
       >
-        <span class="lexical-toolbar__media-icon" aria-hidden="true">▶</span>
-        <span>동영상</span>
+        <span class="lexical-toolbar__media-icon" aria-hidden="true">🎞️</span>
       </button>
     </div>
 
@@ -1113,12 +1111,11 @@
   }
 
   .lexical-toolbar__button--media {
-    width: auto;
-    min-width: 4.65rem;
-    gap: 0.32rem;
-    padding-inline: 0.58rem 0.68rem;
+    width: 2.35rem;
+    min-width: 2.35rem;
+    padding: 0;
     color: #fff;
-    font-size: 0.86rem;
+    font-size: 1.08rem;
     font-weight: 900;
   }
 
@@ -1135,7 +1132,6 @@
   }
 
   .lexical-toolbar__button--media-video {
-    min-width: 5.15rem;
     background: linear-gradient(135deg, #ff7a1a, #e11d48);
     box-shadow:
       0 4px 12px rgba(225, 29, 72, 0.22),
@@ -1154,9 +1150,7 @@
     width: 1.25rem;
     height: 1.25rem;
     border-radius: 6px;
-    background: rgba(255, 255, 255, 0.22);
-    color: #fff;
-    font-size: 1rem;
+    font-size: 1.05rem;
     line-height: 1;
   }
 
@@ -1296,6 +1290,12 @@
   }
 
   @media (max-width: 768px) {
+    .lexical-toolbar {
+      flex-wrap: wrap;
+      overflow-x: hidden;
+      align-content: flex-start;
+    }
+
     .lexical-editor__box {
       min-height: 400px;
       max-height: 400px;

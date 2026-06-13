@@ -126,6 +126,15 @@ test('Lexical editor renders Enter-created paragraphs with normal line spacing',
   expect(paragraphGap).toBeLessThanOrEqual(2);
 });
 
+test('Lexical editor mobile toolbar wraps and media buttons show icons only', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await gotoSmokeEditor(page);
+
+  await expect(page.getByRole('button', { name: '이미지 업로드' })).toHaveText('🏞️');
+  await expect(page.getByRole('button', { name: '동영상 업로드' })).toHaveText('🎞️');
+  await expect(page.locator('.lexical-toolbar')).toHaveCSS('flex-wrap', 'wrap');
+});
+
 test('Lexical editor uploads selected images and inserts image html', async ({ page }) => {
   await mockUpload(page, '/uploads/smoke-selected-image.png');
   await gotoSmokeEditor(page);
