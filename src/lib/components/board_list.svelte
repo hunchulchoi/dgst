@@ -167,7 +167,11 @@
 {#if data.maxPage > 1}
   <Row class="mt-3 mx-0">
     <Col xs="12">
-      <Pagination size="md" arialabel="페이지 네이션" class="d-flex justify-content-center">
+      <Pagination
+        size="md"
+        arialabel="페이지 네이션"
+        class="board-pagination d-flex justify-content-center"
+      >
         <PaginationItem
           ><PaginationLink
             first
@@ -228,5 +232,34 @@
 
   .board-list-link:visited {
     color: var(--bs-secondary-color) !important;
+  }
+
+  :global(.board-pagination) {
+    gap: 0.45rem;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-bottom: 0;
+  }
+
+  :global(.board-pagination .page-link) {
+    min-width: 2.35rem;
+    min-height: 2.35rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.6rem !important;
+    padding-inline: 0.75rem;
+  }
+
+  @media (max-width: 767.98px) {
+    :global(.board-pagination) {
+      gap: 0.55rem;
+    }
+
+    :global(.board-pagination .page-link) {
+      min-width: 2.6rem;
+      min-height: 2.6rem;
+      padding-inline: 0.85rem;
+    }
   }
 </style>
