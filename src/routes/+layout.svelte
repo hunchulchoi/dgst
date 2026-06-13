@@ -245,24 +245,34 @@
 </svelte:head>
 
 <ThemeSync />
-<Header session={data.session} pathname={data.pathname} />
-<Memo />
+<div class="app-shell">
+  <Header session={data.session} pathname={data.pathname} />
+  <Memo />
 
-{#key `${layoutPageKey(data.pathname)}-${$boardListReloadKey}`}
-  <div
-    class="page-transition"
-    class:page-transition-reloading={$boardListReloading}
-    in:blur={pageTransitionBlur}
-    out:blur={pageTransitionBlur}
-  >
-    {@render children()}
-  </div>
-{/key}
+  {#key `${layoutPageKey(data.pathname)}-${$boardListReloadKey}`}
+    <div
+      class="page-transition"
+      class:page-transition-reloading={$boardListReloading}
+      in:blur={pageTransitionBlur}
+      out:blur={pageTransitionBlur}
+    >
+      {@render children()}
+    </div>
+  {/key}
 
-<Footer />
+  <Footer />
+</div>
 
 <style>
+  .app-shell {
+    display: flex;
+    min-height: 100vh;
+    min-height: 100dvh;
+    flex-direction: column;
+  }
+
   .page-transition {
+    flex: 1 0 auto;
     max-width: 100%;
     overflow-x: hidden;
     isolation: isolate;
