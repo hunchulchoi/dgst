@@ -1,0 +1,21 @@
+apiVersion: 1
+
+# Telegram — grafana 서비스 환경변수 필수
+#   TELEGRAM_BOT_TOKEN
+#   TELEGRAM_CHAT_ID            (예: -1001234567890)
+#   TELEGRAM_MESSAGE_THREAD_ID  (토픽 없으면 0)
+#
+# chatid 는 반드시 따옴표 문자열 (음수 ID 가 number 로 파싱되면 Grafana 기동 실패)
+contactPoints:
+  - orgId: 1
+    name: telegram-dgst
+    receivers:
+      - uid: dgst-telegram
+        type: telegram
+        disableResolveMessage: false
+        settings:
+          bottoken: "$TELEGRAM_BOT_TOKEN"
+          chatid: "$TELEGRAM_CHAT_ID"
+          message_thread_id: "$TELEGRAM_MESSAGE_THREAD_ID"
+          message: |
+            {{ template "default.message" . }}

@@ -1,19 +1,27 @@
-import {error, json} from '@sveltejs/kit';
-import connectDB from '$lib/database/mongoosePriomise.js';
+import { error, json } from '@sveltejs/kit';
+import { getPrisma } from '$lib/database/prisma.js';
+import { verifyRecaptchaToken } from '$lib/server/recaptcha.js';
 import { write } from '$lib/util/fileUpload.js';
-
-import { User } from '$lib/models/user.js';
-
-connectDB();
+import { isNicknameAllowed } from '$lib/util/nickname.js';
 
 export async function PATCH({ request, locals }) {
-  const session = await locals.getSession();
+  const session = await locals.auth();
+  const user = session?.user;
+  const email = typeof user?.email === 'string' ? user.email : '';
 
-  if(!session || !session.user?.email){
+  if (!email) {
     throw error(401, { message: '로그인 해 주세요' });
   }
 
   const formData = await request.formData();
+
+  const captcha = await verifyRecaptchaToken(
+    formData.get('recaptchaToken')?.toString(),
+    'register'
+  );
+  if (!captcha.ok) {
+    throw error(400, { message: captcha.message });
+  }
 
   console.debug('formData', formData, 'session', session);
 
@@ -26,45 +34,59 @@ export async function PATCH({ request, locals }) {
 
   //파일 저장
   let storeFileName;
+  const photoFile = formData.get('photo');
 
-  if (formData.get('photo')?.size) {
-    storeFileName = await write(formData.get('photo'), session.user.email, 'profiles');
+  if (photoFile instanceof File && photoFile.size > 0) {
+    storeFileName = await write(photoFile, email, 'profiles');
 
     if (!storeFileName) return new Response('파일 저장에 실패 하였습니다.', { status: 500 });
   }
 
-  const filter = {
-    email: session.user.email,
-    state: 'signup'
-  };
+  const nicknameRaw = String(formData.get('nickname') ?? '');
+  if (!isNicknameAllowed(nicknameRaw)) {
+    throw error(400, { message: '닉네임에 사용할 수 없는 문자가 포함되어 있습니다.' });
+  }
 
-  const update = {
-    nickname: formData.get('nickname'),
-    introduction: formData.get('introduction'),
-    photo: storeFileName,
+  /** @type {import('@prisma/client').Prisma.UserUpdateInput} */
+  const updateData = {
+    nickname: nicknameRaw,
+    introduction: String(formData.get('introduction') ?? ''),
     state: 'registered',
-    last_modified: new Date()
+    lastModified: new Date()
   };
-  
-  if(storeFileName) update.photo = storeFileName;
 
-  console.debug('filter', filter, 'update', update);
+  if (storeFileName) updateData.photo = storeFileName;
+
+  console.debug('update', updateData);
 
   try {
-    const registeredUser = await User.findOneAndUpdate(filter, update, { new: true });
+    const existing = await getPrisma().user.findFirst({
+      where: { email, state: 'signup' }
+    });
+
+    if (!existing) {
+      return new Response('저장에 실패 하였다.', { status: 404 });
+    }
+
+    const registeredUser = await getPrisma().user.update({
+      where: { id: existing.id },
+      data: updateData
+    });
 
     console.debug('registeredUser', registeredUser);
 
-    session.user.email = registeredUser.email;
-    session.user.nickname = registeredUser.nickname;
-    session.user.introduction = registeredUser.introduction;
-    session.user.photo = registeredUser.photo;
+    if (user) {
+      user.email = registeredUser.email ?? email;
+      user.nickname = registeredUser.nickname;
+      user.introduction = registeredUser.introduction;
+      user.photo = registeredUser.photo;
+    }
 
-    console.log('session', session);
+    console.debug('session', session);
 
     return json({ nickname: registeredUser.nickname, photo: registeredUser.photo });
-  } catch (error) {
-    console.error(error);
+  } catch (err) {
+    console.error(err);
 
     return new Response('저장에 실패 하였다.', { status: 500 });
   }

@@ -1,0 +1,11 @@
+apiVersion: 1
+
+providers:
+  - name: dgst
+    orgId: 1
+    folder: DGST
+    type: file
+    disableDeletion: false
+    editable: true
+    options:
+      path: /etc/grafana/dashboards

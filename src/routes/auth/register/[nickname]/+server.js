@@ -1,31 +1,32 @@
-import { User } from '$lib/models/user.js';
-import connectDB from '$lib/database/mongoosePriomise.js';
-
-connectDB();
+import { getPrisma } from '$lib/database/prisma.js';
 
 /**
  * 가입시에 닉네임 중복 검사를 한다.
- * @param params
- * @param locals
+ *
+ * @param {import('@sveltejs/kit').RequestEvent} event
  * @returns {Promise<Response>} status가 200이면 중복, 204면 없음
- * @constructor
  */
 export async function GET({ params, locals }) {
   const { nickname } = params;
 
-  const session = await locals.getSession();
+  const session = await locals.auth();
 
   const email = session?.user?.email;
-  
-  const filter = {nickname};
-  
-  if(email) filter.email = {$ne: email};
 
-  const found = await User.find(filter).count();
+  try {
+    /** @type {import('@prisma/client').Prisma.UserWhereInput} */
+    const where = { nickname };
+    if (email) where.email = { not: email };
 
-  console.debug('found', found);
+    const found = await getPrisma().user.count({ where });
 
-  if (!found) return new Response(null, { status: 204 });
+    console.debug('found', found);
 
-  return new Response(found, { status: 200 });
+    if (!found) return new Response(null, { status: 204 });
+
+    return new Response(found.toString(), { status: 200 });
+  } catch (err) {
+    console.error('닉네임 중복 검사 실패', err);
+    return new Response(null, { status: 500 });
+  }
 }

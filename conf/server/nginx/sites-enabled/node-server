@@ -1,0 +1,94 @@
+server{
+				listen 80;
+				server_name dgst.site;
+
+				return 301 https://www.dgst.site$request_uri;
+}
+
+server{
+				listen 80;
+				server_name www.dgst.site;
+
+				return 301 https://www.dgst.site$request_uri;
+}
+
+server{
+				server_name dgst.site;
+
+				listen 443 ssl;
+				listen [::]:443 ssl;
+        ssl_certificate /mnt/dgst/conf/private/2024/www_dgst.site_cert-2.pem;
+        ssl_certificate_key /mnt/dgst/conf/private/2024/www_dgst.site-2.pem;
+
+				return 301 https://www.dgst.site$request_uri;
+}
+
+server{
+				server_name www.dgst.site;
+				
+				listen 443 ssl;
+				listen [::]:443 ssl;
+				ssl_certificate /mnt/dgst/conf/private/2024/www_dgst.site_cert-2.pem;
+        ssl_certificate_key /mnt/dgst/conf/private/2024/www_dgst.site-2.pem;
+				
+				location / {
+								proxy_pass_header Server;
+								proxy_set_header Host $http_host;
+								proxy_set_header X-Real-IP $remote_addr;
+								proxy_set_header X-Forwarded-for $proxy_add_x_forwarded_for;
+								proxy_set_header X-Forwarded-Proto $scheme;
+								proxy_pass http://127.0.0.1:3000;
+								proxy_redirect off;
+								proxy_http_version 1.1; 
+
+								proxy_buffers 32 16k;
+								proxy_busy_buffers_size 64k;
+								proxy_cache off;
+
+								# 헤더 크기 제한 증가
+								proxy_buffer_size 128k;
+								proxy_buffering on;
+								large_client_header_buffers 4 32k;
+
+								add_header 'Cache-Control' 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0';
+
+								# 404, 502 에러 시 /board/free로 리다이렉트
+								error_page 404 = @fallback;
+								error_page 502 = @fallback;
+				}
+
+				location @fallback {
+								# admin 경로인 경우 fmkorea로 리다이렉트
+								if ($request_uri ~* admin) {
+									return 302 https://www.fmkorea.com/best;
+								}
+								# 그 외의 경우 /board/free로 리다이렉트
+								return 302 /board/free;
+				}				
+
+				# favicon.ico 처리
+				location = /favicon.ico {
+				    alias /mnt/dgst/volume/static/favicon/favicon.ico;
+				    expires 1y;
+				    add_header Cache-Control "public, immutable";
+				}
+
+				location /images {
+            alias /mnt/dgst/volume/uploads;
+						valid_referers none blocked
+				    server_names ~($host);
+				    if ($invalid_referer) {
+								rewrite (.*)$ /images/dgst.png redirect;
+								access_log /var/log/nginx/$host-hotlink-access.log;
+				    }
+				    log_not_found off; access_log off;
+				    expires 1w;
+				    try_files $uri =404;
+
+         }
+				 location /images/dgst.png {
+            alias /mnt/dgst/volume/uploads/jjal/dgst.png;
+				 }
+
+
+}

@@ -1,9 +1,15 @@
 <script>
-  export let data;
+  // Svelte 5 Runes
+  let { data } = $props();
 </script>
 
-<iframe src="https://retropang.daonamu.com/embed/{data.gameId}" width="100%" height="500"
-        max-width="600"
-        frameborder="no"
-        allowfullscreen="true" webkitallowfullscreen="true" mozallowfullscreen="true" scrolling="no"
+<iframe
+  title="게임 플레이"
+  src="https://retropang.daonamu.com/embed/{data.gameId}"
+  width="100%"
+  height="500"
+  style="max-width: 600px;"
+  frameborder="no"
+  allowfullscreen={true}
+  scrolling="no"
 ></iframe>

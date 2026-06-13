@@ -1,65 +1,67 @@
-import connectDB from '$lib/database/mongoosePriomise.js';
 import { error, json } from '@sveltejs/kit';
-import { Comment } from '$lib/models/comment.js';
-import { Article } from '$lib/models/article.js';
+import { findArticleById } from '$lib/server/board/articleRepo.js';
+import {
+  createComment,
+  findCommentById,
+  findCommentsByArticle,
+  findRecentDuplicateComment,
+  softDeleteComment,
+  toCommentJson,
+  updateComment
+} from '$lib/server/board/commentRepo.js';
 import { write } from '$lib/util/fileUpload.js';
-import {Alarm} from "$lib/models/alarm.js";
+import { upsertAlarm, markAsRead, removeCommentFromAlarm } from '$lib/server/alarm/alarmService.js';
 import convertToTree from '$lib/util/tree.js';
+import { checkAndLogSessionDevice } from '$lib/server/auth/checkSessionDevice.js';
+import {
+  buildSubmitFingerprint,
+  tryAcquireSubmitDedup
+} from '$lib/server/submitDedup.js';
 
-connectDB();
-
+/** @param {import('@sveltejs/kit').RequestEvent} event */
 export async function GET({ params, locals }) {
   const boardId = params.boardId;
   const articleId = params.articleId;
 
-
   if (!boardId || !articleId) {
     console.error('invalid', params);
     throw error(400, { message: '잘못된 접근입니다.' });
   }
 
-  let comments;
-
-  const session = await locals.getSession();
+  const session = await locals.auth();
 
   try {
-    comments = await Comment.find(
-      { articleId: params.articleId, boardId: params.boardId },
-      { _id: 1, photo: 1, nickname: 1, createdAt: 1, image: 1, email: 1, content: 1, depth:1, parentCommentId: 1, parentCommentNickname: 1 , state:1, likes:1, like:1}
-    ).sort('createdAt');
+    const comments = await findCommentsByArticle(articleId, boardId);
 
+    if (session?.user?.email) {
+      await markAsRead(session.user.email, articleId);
+    }
 
-  // 알람 삭제
-  if(session?.user?.nickname){
-      const deleteAlarm = await Alarm.updateMany({email: session.user.email, articleId: params.articleId}
-          ,{$set:{readAt: new Date()}}, {timestamps: false});
-      console.log('delete alarm', deleteAlarm);
-  }
+    const commentsTree = convertToTree(
+      comments.map((c) => ({
+        ...toCommentJson(c),
+        id: c.id
+      }))
+    );
 
+    const userEmail = session?.user?.email;
+    if (userEmail) {
+      commentsTree.forEach((c) => {
+        c.liked = c.likes?.includes(userEmail) ?? false;
+        delete c.likes;
+      });
+    }
+
+    return json(commentsTree);
   } catch (err) {
     console.error('댓글 목록 실패', err);
     throw error(500, { message: '데이터를 가져오는 중에 오류가 발생하였습니다.ㅜㅜ' });
   }
-
-  const commentsTree = JSON.parse(JSON.stringify(convertToTree(comments)));
-
-
-  if (session?.user?.nickname) {
-    commentsTree.forEach((c) => {
-
-      console.log(session.user.email, c.likes,c.likes.includes(session.user.email))
-
-      c.liked = c.likes.includes(session.user.email);
-      delete c.likes;
-    })
-
-  }
-
-  return json(commentsTree);
 }
 
-export async function POST({ request, params, locals }) {
-
+/** @param {import('@sveltejs/kit').RequestEvent} event */
+export async function POST(event) {
+  const { request, params, locals } = event;
   const boardId = params.boardId;
   const articleId = params.articleId;
 
@@ -68,80 +70,88 @@ export async function POST({ request, params, locals }) {
     throw error(400, { message: '잘못된 접근입니다.' });
   }
 
-  const session = await locals.getSession();
+  const session = await locals.auth();
 
-  // 권한 검사
-  if (!session?.user?.nickname) {
+  if (!session?.user?.nickname || !session.user.email) {
     throw error(401, { message: '권한이 없습니다. 로그인 해주세요' });
   }
+  const userEmail = session.user.email;
+
+  await checkAndLogSessionDevice(event, { action: 'board.comment' });
 
   const data = await request.formData();
 
-  //파일 저장
   let storeFileName;
-
   const image = data.get('image');
 
-  if (image) {
-    storeFileName = await write(image,  session.user.email,'jjal');
+  if (image && image instanceof File && image.size > 0) {
+    storeFileName = await write(image, userEmail, 'jjal');
   }
 
   const parentCommentId = data.get('parentCommentId');
+  const parentKey = parentCommentId ? String(parentCommentId) : '';
 
-  let parentComment;
-
-  if(parentCommentId) {
-    parentComment = await Comment.findById(parentCommentId);
+  let parentComment = null;
+  if (parentCommentId) {
+    parentComment = await findCommentById(String(parentCommentId));
   }
 
-  //console.log('parentComment', parentComment);
+  const contentText = String(data.get('content') ?? '').trim();
 
   try {
-    const comment = new Comment({
-      email: session.user.email,
-      nickname: session.user.nickname,
-      photo: session.user.photo,
-      boardId,
-      articleId: articleId,
-      content: data.get('content'),
-      parentCommentId,
-      depth: parentComment?.depth +1 || 1,
-      parentCommentNickname: parentComment?.nickname
-    });
-
-    if (storeFileName) comment.image = storeFileName;
-
-    //console.log(comment);
-
-    const inserted = await comment.save();
-
-    //console.log('inserted', inserted);
-
-    const article = await Article.findByIdAndUpdate(articleId, {
-      $push: { comments: comment._id }
-    }).lean();
-
-    // 내글이 아닐때 알림
-    if(article.email !== session.user.email){
-        if(!parentComment || parentComment.email !== article.email){
-            const alarm = await Alarm.findOneAndUpdate({email: article.email, articleId: articleId}
-                , {$set:{title: article.title, boardId: boardId, readAt: null}, $addToSet: {comments: comment._id}}
-                , {upsert: true, new: true}).lean();
-        }
-    }
-
-    // 내 댓글이 아닐때 알림
-    if(parentComment){
-      if(parentComment.email !== session.user.email){
-        const alarm = await Alarm.findOneAndUpdate({email: parentComment.email, articleId: articleId, comment: parentComment.id}
-          , {$set:{title: article.title, boardId: boardId, comment: parentComment.id, commentContent: parentComment.content, readAt: null}
-            , $addToSet: {comments: comment._id}}
-          , {upsert: true, new: true}).lean();
-
-        //console.log('alarm', alarm);
+    const fingerprint = buildSubmitFingerprint([boardId, articleId, parentKey, contentText]);
+    const acquired = await tryAcquireSubmitDedup('comment', userEmail, fingerprint, 8);
+    if (!acquired) {
+      const dup = await findRecentDuplicateComment({
+        email: userEmail,
+        articleId,
+        boardId,
+        content: contentText,
+        parentCommentId: parentKey
+      });
+      if (dup) {
+        return new Response('ok', { status: 201 });
       }
     }
 
+    const comment = await createComment({
+      email: userEmail,
+      nickname: session.user.nickname,
+      photo: session.user.photo ?? undefined,
+      boardId,
+      articleId,
+      content: contentText,
+      parentCommentId: parentCommentId ? String(parentCommentId) : undefined,
+      depth: parentComment ? parentComment.depth + 1 : 1,
+      parentCommentNickname: parentComment?.nickname,
+      image: storeFileName
+    });
+
+    const article = await findArticleById(articleId, boardId, 'write');
+
+    if (article && article.email !== userEmail) {
+      if (!parentComment || parentComment.email !== article.email) {
+        await upsertAlarm({
+          email: article.email,
+          articleId,
+          title: article.title,
+          boardId,
+          newCommentId: comment.id
+        });
+      }
+    }
+
+    if (parentComment && parentComment.email !== userEmail) {
+      await upsertAlarm({
+        email: parentComment.email,
+        articleId,
+        title: article?.title ?? '',
+        boardId,
+        parentCommentId: parentComment.id,
+        parentCommentContent: parentComment.content ?? '',
+        newCommentId: comment.id
+      });
+    }
   } catch (err) {
     console.error('댓글 저장 실패', err);
     throw error(500, { message: '댓글 저장 중 오류가 발생하였습니다.ㅜㅜ' });
@@ -150,8 +160,8 @@ export async function POST({ request, params, locals }) {
   return new Response('ok', { status: 201 });
 }
 
-export async function DELETE({ request, params, locals }) {
-
+/** @param {import('@sveltejs/kit').RequestEvent} event */
+export async function PUT({ request, params, locals }) {
   const boardId = params.boardId;
   const articleId = params.articleId;
 
@@ -160,36 +170,122 @@ export async function DELETE({ request, params, locals }) {
     throw error(400, { message: '잘못된 접근입니다.' });
   }
 
-  const session = await locals.getSession();
+  const session = await locals.auth();
 
-  // 권한 검사
-  if (!session?.user?.nickname) {
+  if (!session?.user?.nickname || !session.user.email) {
     throw error(401, { message: '권한이 없습니다. 로그인 해주세요' });
   }
+  const userEmail = session.user.email;
+
+  const data = await request.formData();
+  const commentId = data.get('commentId');
+  const content = data.get('content');
+
+  if (!commentId || !content) {
+    throw error(400, { message: '댓글 ID와 내용이 필요합니다.' });
+  }
+
+  let storeFileName;
+  const image = data.get('image');
+
+  if (image && image instanceof File && image.size > 0) {
+    storeFileName = await write(image, userEmail, 'jjal');
+  }
+
+  try {
+    const existing = await findCommentById(String(commentId));
+    if (
+      !existing ||
+      existing.boardId !== boardId ||
+      existing.articleId !== articleId ||
+      existing.email !== userEmail ||
+      existing.state !== 'write'
+    ) {
+      throw error(401, {
+        message: '수정되지 않았습니다. 이미 삭제되었거나 권한이 없는 것 같습니다.'
+      });
+    }
+
+    /** @type {{ content: string, modifiedEmail: string, image?: string }} */
+    const updateData = {
+      content: String(content),
+      modifiedEmail: userEmail
+    };
+
+    if (storeFileName) {
+      updateData.image = storeFileName;
+    }
+
+    await updateComment(String(commentId), updateData);
+
+    return json({ message: '댓글이 수정되었습니다.' });
+  } catch (err) {
+    console.error('댓글 수정 실패', err);
+    if (err && typeof err === 'object' && 'status' in err) throw err;
+    throw error(500, { message: '댓글 수정 중 오류가 발생하였습니다.' });
+  }
+}
+
+/** @param {import('@sveltejs/kit').RequestEvent} event */
+export async function DELETE({ request, params, locals }) {
+  const boardId = params.boardId;
+  const articleId = params.articleId;
+
+  if (!boardId || !articleId) {
+    console.error('invalid', params);
+    throw error(400, { message: '잘못된 접근입니다.' });
+  }
+
+  const session = await locals.auth();
+
+  if (!session?.user?.nickname || !session.user.email) {
+    throw error(401, { message: '권한이 없습니다. 로그인 해주세요' });
+  }
+  const userEmail = session.user.email;
+
   const data = await request.json();
 
   try {
-    const update = await Comment.findOneAndUpdate(
-      { _id: data.commentId, boardId, articleId, email: session.user.email, state: 'write' },
-      { state: 'deleted', modified_email: session.user.email },
-      { timestamps: true }
-    );
-
-    if (!update) {
+    const existing = await findCommentById(String(data.commentId));
+    if (
+      !existing ||
+      existing.boardId !== boardId ||
+      existing.articleId !== articleId ||
+      existing.email !== userEmail ||
+      existing.state !== 'write'
+    ) {
       throw error(401, {
         message: '삭제 되지 않았습니다. 이미 삭제되었거나 권한이 없는 것 같습니다.'
       });
     }
 
-    //게시글 리플 목록에서 삭제
-   await Article.updateOne({_id:articleId}
-     , {$pull: {comments: data.commentId}}
-     , {timestamps: false}
-    )
+    const update = await softDeleteComment(String(data.commentId), userEmail);
 
+    if (update.parentCommentId) {
+      const parentComment = await findCommentById(update.parentCommentId);
+      if (parentComment) {
+        await removeCommentFromAlarm({
+          email: parentComment.email,
+          articleId,
+          parentCommentId: parentComment.id,
+          commentId: String(data.commentId)
+        });
+      }
+    } else {
+      const article = await findArticleById(articleId, boardId);
+      if (article) {
+        await removeCommentFromAlarm({
+          email: article.email,
+          articleId,
+          parentCommentId: null,
+          commentId: String(data.commentId)
+        });
+      }
+    }
   } catch (err) {
     console.error(err);
-    throw error(err.status, err.body.message ?? '삭제 중에 오류가 발생하였습니다.');
+    if (err && typeof err === 'object' && 'status' in err) throw err;
+    throw error(500, { message: '삭제 중에 오류가 발생하였습니다.' });
   }
 
   return new Response('삭제했습니다.', { status: 200 });

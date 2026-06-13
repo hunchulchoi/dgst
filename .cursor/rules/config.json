@@ -1,0 +1,57 @@
+{
+  "language": "typescript",
+  "framework": "svelte",
+  "include": ["src/**/*.{svelte,ts,js}"],
+  "rules": {
+    "svelte_reactivity": {
+      "pattern": "\\$:",
+      "message": "Svelte 5에서는 '$derived' 또는 '$effect'를 사용하세요.",
+      "replacement": {
+        "$:": {
+          "derived": "$derived",
+          "effect": "$effect"
+        }
+      }
+    },
+    "svelte_state": {
+      "pattern": "\\blet\\s+(\\w+)\\s*=",
+      "message": "Svelte 5에서는 반응형 변수에 'let' 대신 '$state'를 사용하세요.",
+      "replacement": {
+        "let ": "let $1 = $state("
+      }
+    },
+    "svelte_props": {
+      "pattern": "export\\s+let\\s+(\\w+)",
+      "message": "'export let' 대신 '$props'를 구조 분해하여 컴포넌트 속성을 가져오세요.",
+      "suggestion": "let { $1 } = $props();"
+    },
+    "svelte_events": {
+      "pattern": "on:",
+      "message": "이벤트 핸들링은 'on:' 대신 속성 형태로 작성합니다 (예: on:click → onclick).",
+      "replacement": {
+        "on:click": "onclick",
+        "on:input": "oninput",
+        "on:submit": "onsubmit",
+        "on:change": "onchange"
+      }
+    },
+    "svelte_dispatch": {
+      "pattern": "createEventDispatcher",
+      "message": "Svelte 5에서는 'createEventDispatcher' 대신 콜백 props를 사용하세요."
+    },
+    "svelte_slots": {
+      "pattern": "<slot\\s*/>",
+      "message": "Svelte 5에서는 slot 대신 snippet 및 '@render children()'을 사용하세요.",
+      "replacement": "{@render children?.()}"
+    },
+    "svelte_legacy_class_component": {
+      "pattern": "new\\s+([A-Z]\\w*)\\s*\\(",
+      "message": "Svelte 5에서는 class 기반 컴포넌트가 아니라 'mount(...)'를 사용합니다.",
+      "replacement": "mount($1, { target: document.body })"
+    },
+    "kit_redirect_error": {
+      "pattern": "throw\\s+(redirect|error)\\(",
+      "message": "SvelteKit 2에서는 redirect()나 error()를 직접 호출하면 throw가 필요 없습니다."
+    }
+  }
+}

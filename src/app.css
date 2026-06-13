@@ -1,0 +1,602 @@
+@import 'tailwindcss';
+@import './styles/bootstrap-btn-defaults.css';
+
+/* Svelte class 속성에서 [&_p] 등 & 이스케이프됨 → @utility로 Quill 본문·리플 타이포 통일 */
+@utility dgst-rich-text {
+  font-size: 1.2rem !important;
+  line-height: 1.55 !important;
+
+  & :is(p, li, blockquote, span, div, em, strong, a, pre, code, ul, ol, h1, h2, h3, h4, h5, h6, .markdown-body, .display-1) {
+    font-size: inherit !important;
+    line-height: inherit !important;
+  }
+}
+
+@import 'prism-themes/themes/prism-dracula.css';
+@import 'sweetalert2/dist/sweetalert2.min.css';
+
+/* Notion-like Markdown Theme */
+:root {
+  --dgst-radius: 0.5rem;
+  --dgst-radius-sm: 0.375rem;
+  --dgst-radius-pill: 2rem;
+  --dgst-chrome-bg: #fafae4;
+  --dgst-chrome-text: #37352f;
+  --dgst-chrome-muted: rgba(55, 53, 47, 0.65);
+
+  /* static/bootstrap.min.css 는 radius 0 — 입력·카드 등 Bootstrap 컴포넌트용 */
+  --bs-border-radius: var(--dgst-radius);
+  --bs-border-radius-sm: var(--dgst-radius-sm);
+  --bs-border-radius-lg: calc(var(--dgst-radius) + 0.125rem);
+  --bs-border-radius-xl: calc(var(--dgst-radius) + 0.25rem);
+  --bs-border-radius-pill: var(--dgst-radius-pill);
+
+  --notion-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, "Apple Color Emoji", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol";
+  --notion-text: #37352f;
+  --notion-bg: transparent;
+  --notion-border: rgba(55, 53, 47, 0.16);
+  --notion-quote-border: #37352f;
+  --notion-code-bg: #f7f6f3;
+  --notion-code-text: #eb5757;
+}
+
+/* 모바일 네비 후 가로 스크롤·100% 초과 폭 방지 */
+html,
+body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.site-header,
+.page-transition,
+/* 게시판 목록·읽기·쓰기는 Bootstrap .container breakpoint(672/960/1152px) 유지 */
+.container:not(.board-chrome-connect):not(.board-page-inset) {
+  max-width: 100%;
+}
+
+.board-list-row :global([class*='col']) {
+  min-width: 0;
+}
+
+/* 라이트 모드: Notion 스타일 톤 보강 */
+[data-bs-theme='light'] {
+  --bs-body-bg: #ffffff;
+  --bs-body-bg-rgb: 255, 255, 255;
+  --bs-body-color: #37352f;
+  --bs-body-color-rgb: 55, 53, 47;
+  --bs-secondary-color: rgba(55, 53, 47, 0.7);
+  --bs-secondary-bg: #f8f9fa;
+  --bs-tertiary-bg: #f1f3f5;
+  --bs-emphasis-color: #212529;
+  --bs-border-color: rgba(0, 0, 0, 0.12);
+  --bs-link-color: #212529;
+  --bs-link-color-rgb: 33, 37, 41;
+  --bs-link-hover-color: #0b5ed7;
+  --bs-link-hover-color-rgb: 11, 94, 215;
+  --bs-primary: #0d6efd;
+  --bs-primary-rgb: 13, 110, 253;
+}
+
+/* 다크 모드: Bootstrap primary 파란색 (bootstrap.min.css 회색 emphasis 덮어씀) */
+[data-bs-theme='dark'] {
+  --bs-primary: #0d6efd;
+  --bs-primary-rgb: 13, 110, 253;
+  --bs-primary-text-emphasis: #6ea8fe;
+  --bs-primary-bg-subtle: #031633;
+  --bs-primary-border-subtle: #084298;
+}
+
+/* 헤더 상단·푸터: 라이트/다크 공통 크림 배경 */
+.site-header-top,
+.site-footer-chrome {
+  background-color: var(--dgst-chrome-bg) !important;
+  color: var(--dgst-chrome-text) !important;
+  box-shadow: none !important;
+}
+
+.site-header-top :global(.btn-link),
+.site-header-top :global(.dropdown-toggle),
+.site-header-top :global(.text-secondary),
+.site-header-top :global(.navbar-brand) {
+  color: var(--dgst-chrome-text) !important;
+}
+
+/* 헤더 테마 메뉴 — body 포털, 크림 배경·진한 글자 */
+.site-header-dropdown-menu {
+  --bs-dropdown-bg: var(--dgst-chrome-bg);
+  --bs-dropdown-color: var(--dgst-chrome-text);
+  --bs-dropdown-link-color: var(--dgst-chrome-text);
+  --bs-dropdown-link-hover-color: var(--dgst-chrome-text);
+  --bs-dropdown-link-hover-bg: rgba(55, 53, 47, 0.08);
+  --bs-dropdown-link-active-color: var(--dgst-chrome-text);
+  --bs-dropdown-link-active-bg: rgba(55, 53, 47, 0.12);
+  --bs-dropdown-divider-bg: rgba(55, 53, 47, 0.2);
+  background-color: var(--dgst-chrome-bg) !important;
+  color: var(--dgst-chrome-text) !important;
+  border-color: rgba(55, 53, 47, 0.2) !important;
+  border-radius: var(--dgst-radius) !important;
+}
+
+.site-header-dropdown-menu .dropdown-item {
+  color: var(--dgst-chrome-text) !important;
+}
+
+.site-header-dropdown-menu .dropdown-item:hover,
+.site-header-dropdown-menu .dropdown-item:focus {
+  color: var(--dgst-chrome-text) !important;
+  background-color: rgba(55, 53, 47, 0.08) !important;
+}
+
+.site-header-dropdown-menu .dropdown-item .bi {
+  color: inherit;
+}
+
+.site-footer-chrome :global(.text-muted) {
+  color: var(--dgst-chrome-muted) !important;
+}
+
+.site-footer-chrome :global(.border-secondary-subtle) {
+  border-color: rgba(55, 53, 47, 0.2) !important;
+}
+
+/* 게시판: 탭 바로 아래 패널 붙임 */
+.board-chrome-connect {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+}
+
+.board-chrome-connect .board-panel {
+  border-top: 0 !important;
+  margin-top: 0 !important;
+}
+
+/* 게시판 본문 패널 — bootstrap shadow:none 대응 */
+.board-panel {
+  background-color: var(--bs-body-bg) !important;
+  border-radius: var(--bs-border-radius-xl) !important;
+  border-top-left-radius: 0 !important;
+  border-top-right-radius: 0 !important;
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.12),
+    0 2px 6px rgba(0, 0, 0, 0.08) !important;
+  overflow: hidden;
+}
+
+/* 글 상세 글쓴이 프로필 박스 */
+.article-author-panel {
+  border-radius: var(--bs-border-radius-xl) !important;
+  border: 1px solid var(--bs-border-color) !important;
+  overflow: hidden;
+}
+
+.article-author-panel .article-author-photo {
+  border-radius: var(--dgst-radius) !important;
+}
+
+.markdown-body {
+  font-family: var(--notion-font);
+  color: var(--notion-text);
+  line-height: 1.5;
+  font-size: 16px;
+  word-wrap: break-word;
+}
+
+.markdown-body>*:first-child {
+  margin-top: 0;
+}
+
+.markdown-body>*:last-child {
+  margin-bottom: 0;
+}
+
+.markdown-body h1 {
+  font-size: 2.5em;
+  margin-bottom: 0.5em;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.markdown-body h2 {
+  font-size: 1.875em;
+  margin-top: 1.5em;
+  margin-bottom: 0.3em;
+  border-bottom: 1px solid var(--notion-border);
+  padding-bottom: 0.2em;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.markdown-body h3 {
+  font-size: 1.5em;
+  margin-top: 1.2em;
+  margin-bottom: 0.5em;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.markdown-body h4,
+.markdown-body h5,
+.markdown-body h6 {
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.markdown-body p,
+.markdown-body ul,
+.markdown-body ol,
+.markdown-body dl,
+.markdown-body table {
+  margin-top: 0;
+  margin-bottom: 1em;
+}
+
+.markdown-body blockquote {
+  margin: 1em 0;
+  padding-left: 1em;
+  border-left: 3px solid var(--notion-quote-border);
+  font-size: 1.1em;
+  color: inherit;
+}
+
+.markdown-body code {
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+  padding: 0.2em 0.4em;
+  border-radius: 3px;
+  font-size: 85%;
+  word-break: break-all;
+  background-color: var(--notion-code-bg);
+  color: var(--notion-code-text);
+}
+
+.markdown-body pre {
+  padding: 1rem 1.25rem !important;
+  border-radius: 8px !important;
+  overflow-x: auto;
+  margin-top: 0;
+  margin-bottom: 1em;
+  font-size: 13px !important;
+  line-height: 1.5 !important;
+  background-color: #1a1a1a !important;
+  /* 바탕색 더 짙고 확실한 대비를 주어 구별 */
+}
+
+.markdown-body pre code {
+  padding: 0;
+  word-break: normal;
+}
+
+.markdown-body ul,
+.markdown-body ol {
+  padding-left: 1.5em;
+}
+
+.markdown-body li {
+  margin-bottom: 0.3em;
+}
+
+.markdown-body a {
+  color: #0366d6;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.markdown-body a:hover {
+  text-decoration: underline;
+}
+
+.markdown-body img {
+  max-width: 100%;
+  box-sizing: content-box;
+  background-color: transparent;
+  border-radius: 4px;
+}
+
+.markdown-body hr {
+  height: 1px;
+  padding: 0;
+  margin: 24px 0;
+  background-color: var(--notion-border);
+  border: 0;
+}
+
+.callout {
+  display: flex;
+  padding: 16px;
+  background: #f1f1ef;
+  border-radius: 3px;
+  border: 1px solid transparent;
+  margin: 1em 0;
+}
+
+.badge.badge-success {
+  color: #fff;
+  background-color: var(--bs-success);
+}
+
+/* 버튼·탭·페이지네이션 공통 모서리·패딩 */
+.btn,
+.btn-link,
+.page-link,
+.dropdown-item {
+  border-radius: var(--dgst-radius) !important;
+}
+
+/* 입력 폼 — Bootstrap form-control 보강 (padding·focus·radius) */
+.form-control,
+.form-select {
+  padding: 0.375rem 0.75rem !important;
+  line-height: 1.5 !important;
+  border-radius: var(--dgst-radius) !important;
+  border: var(--bs-border-width) solid var(--bs-border-color) !important;
+  transition:
+    border-color 0.15s ease-in-out,
+    box-shadow 0.15s ease-in-out !important;
+}
+
+.form-control:focus,
+.form-select:focus {
+  border-color: #86b7fe !important;
+  outline: 0 !important;
+  box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25) !important;
+}
+
+.form-control::placeholder {
+  color: var(--bs-secondary-color);
+  opacity: 1;
+}
+
+.form-control:disabled,
+.form-control[readonly],
+.form-select:disabled {
+  background-color: var(--bs-secondary-bg);
+  opacity: 1;
+}
+
+.form-control-sm,
+.form-select-sm {
+  padding: 0.25rem 0.5rem !important;
+  font-size: 0.875rem !important;
+  border-radius: var(--dgst-radius-sm) !important;
+}
+
+.form-control-lg,
+.form-select-lg {
+  padding: 0.5rem 1rem !important;
+  font-size: 1.25rem !important;
+  border-radius: calc(var(--dgst-radius) + 0.125rem) !important;
+}
+
+.form-control.is-invalid,
+.form-select.is-invalid {
+  border-color: var(--bs-form-invalid-border-color) !important;
+}
+
+.form-control.is-invalid:focus,
+.form-select.is-invalid:focus {
+  border-color: var(--bs-form-invalid-border-color) !important;
+  box-shadow: 0 0 0 0.25rem rgba(220, 53, 69, 0.25) !important;
+}
+
+.form-control.is-valid,
+.form-select.is-valid {
+  border-color: var(--bs-form-valid-border-color) !important;
+}
+
+.form-floating > .form-control,
+.form-floating > .form-select {
+  height: calc(3.5rem + calc(var(--bs-border-width) * 2));
+  min-height: calc(3.5rem + calc(var(--bs-border-width) * 2));
+  padding: 1rem 0.75rem !important;
+  line-height: 1.25 !important;
+  border-radius: var(--dgst-radius) !important;
+}
+
+.form-floating > .form-control:focus,
+.form-floating > .form-control:not(:placeholder-shown),
+.form-floating > .form-control:-webkit-autofill {
+  padding-top: 1.625rem !important;
+  padding-bottom: 0.625rem !important;
+}
+
+.form-check-input {
+  border-radius: 0.25em !important;
+  border: var(--bs-border-width) solid var(--bs-border-color) !important;
+}
+
+.form-check-input:focus {
+  border-color: #86b7fe !important;
+  box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25) !important;
+}
+
+.form-switch .form-check-input {
+  border-radius: var(--dgst-radius-pill) !important;
+}
+
+/* input-group: 붙은 형태 — 가운데는 직각, 양끝만 radius */
+.input-group > .form-control,
+.input-group > .form-select,
+.input-group > .input-group-text,
+.input-group > .btn {
+  border-radius: 0 !important;
+}
+
+.input-group > :first-child,
+.input-group > .form-floating:first-child > .form-control,
+.input-group > .form-floating:first-child > .form-select {
+  border-top-left-radius: var(--dgst-radius) !important;
+  border-bottom-left-radius: var(--dgst-radius) !important;
+}
+
+.input-group > :last-child,
+.input-group > .form-floating:last-child > .form-control,
+.input-group > .form-floating:last-child > .form-select {
+  border-top-right-radius: var(--dgst-radius) !important;
+  border-bottom-right-radius: var(--dgst-radius) !important;
+}
+
+.input-group > .btn {
+  z-index: 2;
+}
+
+.input-group > .form-control:focus,
+.input-group > .form-select:focus {
+  z-index: 3;
+}
+
+/* btn 패딩·색상은 styles/bootstrap-btn-defaults.css (Bootstrap 5.3 기본) */
+
+.btn-sm {
+  border-radius: var(--dgst-radius-sm) !important;
+}
+
+.btn-lg {
+  border-radius: calc(var(--dgst-radius) + 0.125rem) !important;
+}
+
+/* 모든 뱃지: 원형(한 자리) 또는 캡슐형(긴 텍스트) */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.5rem;
+  min-height: 1.5rem;
+  padding: 0.2em 0.55em !important;
+  line-height: 1;
+  font-weight: 600;
+  border-radius: 9999px !important;
+  vertical-align: middle;
+}
+
+/* Bootstrap text-bg-* 기본 #000 — 반투명·다크 배경에서 대비 부족 */
+.badge.text-bg-primary,
+.badge.text-bg-warning,
+.badge.text-bg-success,
+.badge.text-bg-info {
+  color: #fff !important;
+}
+
+.btn.rounded-pill {
+  border-radius: var(--dgst-radius-pill) !important;
+}
+
+/* SweetAlert2 — Bootstrap·입력폼과 동일 radius */
+.swal2-popup {
+  border-radius: var(--dgst-radius) !important;
+}
+
+.swal2-popup.swal2-toast {
+  border-radius: var(--dgst-radius) !important;
+}
+
+.swal2-styled,
+.swal2-actions .swal2-styled {
+  border-radius: var(--dgst-radius) !important;
+  padding: 0.3rem 0.9rem !important;
+}
+
+.swal2-input,
+.swal2-textarea,
+.swal2-select,
+.swal2-file {
+  border-radius: var(--dgst-radius) !important;
+}
+
+.swal2-validation-message {
+  border-radius: var(--dgst-radius-sm) !important;
+}
+
+.swal2-icon {
+  border-radius: 50% !important;
+}
+
+.nav-tabs {
+  border-bottom: 0;
+  gap: 0.25rem;
+}
+
+.nav-tabs .nav-link {
+  padding: 0.5rem 0.9rem !important;
+  margin-bottom: 0;
+  border: 1px solid transparent;
+  border-radius: var(--dgst-radius) var(--dgst-radius) 0 0 !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nav-tabs .nav-link.active,
+.nav-tabs .nav-item.show .nav-link {
+  border-radius: var(--dgst-radius) var(--dgst-radius) 0 0 !important;
+}
+
+/* 모바일 탭: 터치 영역 최소 44px (Apple HIG) */
+@media (max-width: 767.98px) {
+  .tab-nav-bar .nav-tabs {
+    gap: 0.35rem;
+    padding-bottom: 0.25rem;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .tab-nav-bar .nav-tabs .nav-link {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 0.6rem 1rem !important;
+    font-size: 1rem;
+    line-height: 1.2;
+  }
+}
+
+/* 스피너는 항상 원형 (전역 border-radius 규칙과 분리) */
+.spinner-border,
+.spinner-grow {
+  border-radius: 50% !important;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  aspect-ratio: 1;
+}
+
+.spinner-border-sm {
+  width: 1rem !important;
+  height: 1rem !important;
+}
+
+/* Dark mode overrides */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --notion-text: #e0e0e0;
+    --notion-code-bg: #2d2d2d;
+    /* Keep for inline code if not overridden by Prism */
+    --notion-code-text: #ff7b72;
+    /* Keep for inline code if not overridden by Prism */
+    --notion-border: rgba(255, 255, 255, 0.16);
+    --notion-quote-border: #e0e0e0;
+  }
+
+  .markdown-body h2 {
+    border-bottom: 1px solid #333;
+  }
+
+  .markdown-body code {
+    /* Removed background-color override to allow Prism to style */
+  }
+
+  .callout {
+    background: #2f2f2f;
+  }
+
+  .form-control:focus,
+  .form-select:focus,
+  .form-check-input:focus {
+    border-color: #6ea8fe !important;
+    box-shadow: 0 0 0 0.25rem rgba(110, 168, 254, 0.25) !important;
+  }
+}
+
+[data-bs-theme='dark'] .form-control:focus,
+[data-bs-theme='dark'] .form-select:focus,
+[data-bs-theme='dark'] .form-check-input:focus {
+  border-color: #6ea8fe !important;
+  box-shadow: 0 0 0 0.25rem rgba(110, 168, 254, 0.25) !important;
+}

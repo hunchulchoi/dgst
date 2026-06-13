@@ -1,8 +1,9 @@
 <script>
-  import { goto } from '$app/navigation';
-  import { browser } from '$app/environment';
+  import BoardIndexView from '$lib/components/board_index_view.svelte';
 
-  if (browser) {
-    goto('/board/free');
-  }
+  let { data } = $props();
+
+  const session = $derived(data.session);
 </script>
+
+<BoardIndexView {data} boardId="free" session={session} />

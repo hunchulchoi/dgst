@@ -1,29 +1,33 @@
-import {error} from "@sveltejs/kit";
-import {Alarm} from '$lib/models/alarm.js';
-import connectDB from "$lib/database/mongoosePriomise.js";
+import { error } from '@sveltejs/kit';
+import { getAlarmList } from '$lib/server/alarm/alarmService.js';
+import logger from '$lib/util/logger.js';
 
-connectDB();
+// 캐시 방지 - 항상 최신 데이터 로드
+export const load = async ({ locals, depends }) => {
+  depends('alarm-list');
 
-export const load = async ({locals})=>{
+  try {
+    const session = await locals.auth();
 
-  const session = await locals.getSession();
+    if (!session?.user?.nickname) {
+      throw error(401, { message: '로그인이 필요합니다.' });
+    }
 
-  // 로그인 안한 경우
-  if(!session || !session.user || !session.user.nickname){
-    throw error(405, {message: '로그인이 필요합니다.'});
+    if (!session.user.email) {
+      return { alarms: [] };
+    }
+
+    const alarms = await getAlarmList(session.user.email, 30);
+    return { alarms };
+  } catch (err) {
+    if (err && typeof err === 'object' && 'status' in err) {
+      throw err;
+    }
+
+    logger.error({
+      message: '[alarm page] load failed',
+      errorMessage: err instanceof Error ? err.message : String(err)
+    });
+    return { alarms: [] };
   }
-
-  let alarms = await Alarm.find({email: session.user.email, updatedAt: {$gt: new Date(new Date()-1000*60*60*24)}})
-    .select('boardId articleId title comments updatedAt comment commentContent readAt')
-      .sort({updatedAt: -1})
-    .limit(30);
-
-
-  if(alarms && alarms.length){
-      alarms = JSON.parse(JSON.stringify(alarms));
-  }
-
-  return{
-    alarms,
-  }
-}
+};

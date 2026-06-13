@@ -1,0 +1,39 @@
+---
+description: 'Svelte3 + SvelteKit 1.x → Svelte 5 + SvelteKit 2 migration rules'
+globs: ['src/**/*.svelte', 'src/**/*.ts', 'src/**/*.js', 'src/routes/**/*']
+alwaysApply: true
+---
+
+# Project Overview
+
+This is svelte & svelte-kit based commnity
+
+- Frontend: svelete5 + TypeScript
+- Backend: sveltekit2 + Prisma + mongodb
+- Styling: Tailwind CSS + shadcn/ui
+
+## Essential Elements
+
+- Always include error handling with try-catch
+- Use Zod for runtime validation
+- Include TypeScript interfaces for all props
+- Add JSDoc comments for complex functions
+
+# Deprecated Patterns - DO NOT USE
+
+❌ Class components (use functional components)
+❌ var declarations (use const/let)
+❌ any type (use proper TypeScript types)
+
+## Preferred Patterns
+
+✅ Arrow functions for components
+✅ Custom hooks for state logic
+✅ Strict TypeScript configurations
+
+## Migraiton Rule
+
+- Quill에디터 사용
+- Database model 구조는 변경하지 않음
+
+변경후에는 커밋을 해줍니다.

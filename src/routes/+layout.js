@@ -1,9 +1,10 @@
-export const load = ({ url, data, }) => {
+import { normalizeFreeBoardPath } from '$lib/util/boardPaths.js';
+
+export const load = ({ url, data }) => {
   const { pathname, search } = url;
 
   return {
-    pathname: `${pathname}${search || ''}`,
-    session: data.session,
-    alarmCount: data.alarmCount
+    pathname: normalizeFreeBoardPath(pathname, search || ''),
+    session: data.session
   };
 };

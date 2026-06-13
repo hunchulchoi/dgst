@@ -1,25 +1,52 @@
-import { Alarm } from '$lib/models/alarm.js';
-import connectDB from "$lib/database/mongoosePriomise.js";
-
-connectDB();
+import { env as dynamicEnv } from '$env/dynamic/private';
+import { isBoardHtmlPath } from '$lib/util/boardPaths.js';
+import logger from '$lib/util/logger.js';
+import { traceFromUnknown } from '$lib/util/formatErrorTrace.js';
 
 export const load = async (event) => {
-  const session = await event.locals.getSession();
+  const boardRoute = isBoardHtmlPath(event.url.pathname);
 
-  let alarmCount = 0;
-
-  // 내용이 없는 알람 삭제
-  await Alarm.deleteMany({ comments: { $exists: true, $eq: [] } })
-
-  // 알림이 있는 지 확인
-  if (session?.user?.nickname) {
-    alarmCount = await Alarm.countDocuments({ email: session.user.email, readAt: null, createdAt: { $gt: new Date(new Date() - 1000 * 60 * 60 * 24) } });
+  try {
+    event.setHeaders(
+      boardRoute
+        ? {
+            'Cache-Control': 'private, no-store, must-revalidate, max-age=0',
+            'CDN-Cache-Control': 'no-store'
+          }
+        : {
+            'Cache-Control': 'private, no-cache'
+          }
+    );
+  } catch (err) {
+    const message = err instanceof Error ? err.message : '';
+    if (!message.includes('already set')) {
+      throw err;
+    }
   }
 
-  console.log('layout server alarmCount', alarmCount)
+  /** @type {import('@auth/sveltekit').Session | null} */
+  let session = null;
+  try {
+    session = await event.locals.auth();
+  } catch (err) {
+    logger.warn({
+      message: '[layout] auth() failed — continuing without session',
+      pathname: event.url.pathname,
+      errorMessage: err instanceof Error ? err.message : String(err),
+      trace: traceFromUnknown(err)
+    });
+  }
+
+  const kakaoId =
+    dynamicEnv.KAKAO_CLIENT_ID ??
+    (typeof process !== 'undefined' ? process.env?.KAKAO_CLIENT_ID : undefined);
+  const kakaoSecret =
+    dynamicEnv.KAKAO_CLIENT_SECRET ??
+    (typeof process !== 'undefined' ? process.env?.KAKAO_CLIENT_SECRET : undefined);
+  const kakaoEnabled = !!(kakaoId && kakaoSecret);
 
   return {
     session,
-    alarmCount
+    kakaoEnabled
   };
 };
