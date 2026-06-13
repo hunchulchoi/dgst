@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 const PLACEHOLDER_VALUES = new Set([
@@ -147,6 +147,8 @@ export function scanTrackedFiles() {
   const findings = [];
 
   for (const filePath of trackedFiles()) {
+    if (!existsSync(filePath)) continue;
+
     const buffer = readFileSync(filePath);
     if (!isLikelyText(buffer)) continue;
 
