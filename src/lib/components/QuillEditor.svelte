@@ -1619,23 +1619,33 @@
   }
 
   main :global(.ql-container) {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
     height: 450px; /* 더 크게 조정 */
     max-height: 450px; /* 최대 높이 제한 */
-    font-size: 1rem; /* Bootstrap 기본 폰트 크기 */
+    font-size: 16px; /* iOS 포커스 확대 방지 */
     overflow-y: auto; /* 세로 스크롤 활성화 */
+    overflow-x: hidden;
     background-color: var(--bs-body-bg); /* Bootstrap 변수 기반 */
     border: 1px solid var(--bs-border-color); /* Bootstrap 변수 기반 */
     border-radius: 0 0 4px 4px;
   }
 
   main :global(.ql-editor) {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
     min-height: 450px; /* 에디터 최소 높이를 더 크게 조정 */
     height: auto; /* 내용에 따라 자동 높이 조정 */
     padding: 12px 15px;
     color: var(--bs-body-color); /* Bootstrap 변수 기반 텍스트 색상 */
     background-color: var(--bs-body-bg); /* Bootstrap 변수 기반 배경 */
-    font-size: 1rem; /* Bootstrap 기본 폰트 크기 */
+    font-size: 16px; /* iOS 포커스 확대 방지 */
     line-height: 1.5; /* Bootstrap 기본 줄간격 */
+    overflow-wrap: anywhere;
   }
 
   /* 에디터 placeholder 색상 변경 */
@@ -1669,6 +1679,11 @@
   }
 
   main :global(.ql-toolbar) {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow-x: auto;
     background: var(--bs-secondary-bg); /* Bootstrap 변수 기반 */
     border: 1px solid var(--bs-border-color); /* Bootstrap 변수 기반 */
     border-bottom: none;
