@@ -5,9 +5,12 @@
   let insertUrlFromTitle = $state(null);
   let loading = $state(false);
   let uploads = $state(0);
+  let lastTitle = $state('');
 
-  /** @param {string} _title */
-  function handleTitleUpdate(_title) {}
+  /** @param {string} title */
+  function handleTitleUpdate(title) {
+    lastTitle = title;
+  }
 
   /** @param {boolean} value */
   function handleLoadingChange(value) {
@@ -24,8 +27,10 @@
     uploadMinus={() => uploads--}
     onTitleUpdate={handleTitleUpdate}
     onLoadingChange={handleLoadingChange}
+    disableVideoCompression={true}
   />
   <output data-testid="editor-html">{editorData}</output>
   <output data-testid="editor-loading">{String(loading)}</output>
   <output data-testid="editor-uploads">{String(uploads)}</output>
+  <output data-testid="editor-title">{lastTitle}</output>
 </main>

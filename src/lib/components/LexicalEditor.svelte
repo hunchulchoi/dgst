@@ -46,7 +46,8 @@
     editorData = $bindable(),
     onTitleUpdate,
     onLoadingChange,
-    insertUrlFromTitle = $bindable(/** @type {string | null} */ (null))
+    insertUrlFromTitle = $bindable(/** @type {string | null} */ (null)),
+    disableVideoCompression = false
   } = $props();
 
   /** @type {HTMLDivElement | null} */
@@ -439,6 +440,7 @@
     }
 
     if (file.type.startsWith('video/')) {
+      if (disableVideoCompression) return file;
       return compressVideo(file);
     }
 
