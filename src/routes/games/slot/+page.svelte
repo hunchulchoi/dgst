@@ -896,7 +896,7 @@
               </div>
             {/if}
             <div class="slot-reels display-4 fw-semibold">
-              {#each reels as reel}
+              {#each reels as reel, reelIndex (`reel-${reelIndex}`)}
                 <span class="slot-reel" class:slot-reel-spinning={spinning}>{reel}</span>
               {/each}
             </div>
@@ -945,7 +945,7 @@
             </button>
           </div>
           <ol class="list-group list-group-numbered">
-            {#each rankList as r, i}
+            {#each rankList as r, i (r._id ?? `${r.nickname}:${r.balance}`)}
               <li class="list-group-item d-flex justify-content-between align-items-center">
                 <span>{r.nickname}</span>
                 <span class="fw-bold font-monospace">{formatNumber(r.balance)}</span>
@@ -1013,7 +1013,7 @@
           <!-- 댓글 목록 -->
           {#if comments.length > 0}
             <div class="mb-3">
-              {#each comments as comment}
+              {#each comments as comment (comment._id ?? comment.id ?? `${comment.nickname}:${comment.createdAt}`)}
                 <div class="border-bottom pb-3 mb-3 d-flex">
                   {#if comment.parentCommentNickname}
                     <div class="me-2 flex-shrink-0">

@@ -68,8 +68,7 @@ export default defineConfig(
       'svelte/no-unused-svelte-ignore': 'off',
       'svelte/no-useless-mustaches': 'off',
       'svelte/prefer-svelte-reactivity': 'off',
-      'svelte/prefer-writable-derived': 'off',
-      'svelte/require-each-key': 'off'
+      'svelte/prefer-writable-derived': 'off'
     }
   }
 );

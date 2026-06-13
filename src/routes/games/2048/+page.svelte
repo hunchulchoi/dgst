@@ -753,9 +753,9 @@
                   role="application"
                   aria-label="2048 그리드, 스와이프로 이동"
                 >
-                  {#each Array(SIZE) as _, row}
+                  {#each Array(SIZE) as _, row (row)}
                     <div class="game-2048-row">
-                      {#each Array(SIZE) as _, col}
+                      {#each Array(SIZE) as _, col (`${row}-${col}`)}
                         <div
                           class="game-2048-tile"
                           class:game-2048-tile-tick={gridTicked}
@@ -817,7 +817,7 @@
           </p>
           {#if isLoggedIn}
             <ol class="list-group list-group-numbered">
-              {#each rankList as r}
+              {#each rankList as r (r._id ?? `${r.nickname}:${r.score}`)}
                 <li class="list-group-item d-flex justify-content-between align-items-center">
                   <span>{r.nickname}</span>
                   <span class="fw-bold font-monospace">{formatScore(r.score)}</span>

@@ -117,7 +117,7 @@
     </Row>
   </Row>
 {:else}
-  {#each data.articles as article, index}
+  {#each data.articles as article, index (article._id)}
     <Row
       class="board-list-row p-2 max-md:!p-3 max-md:!px-2 border-bottom border-secondary-subtle m-0 {index %
         2 ===
@@ -205,7 +205,7 @@
             data-sveltekit-preload-data="hover"
           /></PaginationItem
         >
-        {#each Array(data.endNo - data.startNo + 1) as _, i}
+        {#each Array(data.endNo - data.startNo + 1) as _, i (i + data.startNo)}
           {@const targetPage = i + data.startNo}
           <PaginationItem active={(!data.pageNo && targetPage === 1) || targetPage == data.pageNo}>
             <PaginationLink

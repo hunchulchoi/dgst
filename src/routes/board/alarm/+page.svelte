@@ -36,7 +36,7 @@
         </Row>
       </Row>
     {:else}
-      {#each data.alarms as alarm, index}
+      {#each data.alarms as alarm, index (alarm._id ?? alarm.id)}
         <Row
           class="py-2 max-md:!py-3 border-bottom border-secondary-subtle m-0 {index % 2 === 1
             ? 'bg-secondary bg-opacity-25'

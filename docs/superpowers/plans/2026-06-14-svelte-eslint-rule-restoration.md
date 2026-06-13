@@ -13,6 +13,7 @@
 ### Task 1: Baseline Rule Audit
 
 **Files:**
+
 - Modify: `/Users/hunchulchoi/projects/workspace/dgst/eslint.config.js`
 - Create: `/private/tmp/svelte-eslint-baseline.txt`
 
@@ -53,6 +54,7 @@ git commit -m "docs: add svelte eslint restoration plan"
 ### Task 2: Restore `svelte/no-at-html-tags`
 
 **Files:**
+
 - Modify: `/Users/hunchulchoi/projects/workspace/dgst/eslint.config.js`
 - Modify: `/Users/hunchulchoi/projects/workspace/dgst/src/lib/components/banner.svelte`
 - Modify: `/Users/hunchulchoi/projects/workspace/dgst/src/lib/components/OGPreview.svelte`
@@ -115,6 +117,7 @@ git commit -m "refactor: restore svelte html safety rule"
 ### Task 3: Restore `svelte/no-navigation-without-resolve`
 
 **Files:**
+
 - Modify: `/Users/hunchulchoi/projects/workspace/dgst/eslint.config.js`
 - Modify: `/Users/hunchulchoi/projects/workspace/dgst/src/lib/components/board_index_view.svelte`
 - Modify: `/Users/hunchulchoi/projects/workspace/dgst/src/lib/components/board_list.svelte`
@@ -129,6 +132,7 @@ git commit -m "refactor: restore svelte html safety rule"
 - Modify: `/Users/hunchulchoi/projects/workspace/dgst/src/routes/board/[boardId=boardId]/[[pageNo=integer]]/[articleId]/+page.svelte`
 - Modify: `/Users/hunchulchoi/projects/workspace/dgst/src/routes/board/[boardId=boardId]/write/[[articleId]]/+page.svelte`
 - Modify: `/Users/hunchulchoi/projects/workspace/dgst/src/routes/board/alarm/+page.svelte`
+- Modify: `/Users/hunchulchoi/projects/workspace/dgst/src/routes/games/2048/+page.svelte`
 - Modify: `/Users/hunchulchoi/projects/workspace/dgst/src/routes/games/minesweeper/+page.svelte`
 - Modify: `/Users/hunchulchoi/projects/workspace/dgst/src/routes/games/watermelon/+page.svelte`
 - Modify: `/Users/hunchulchoi/projects/workspace/dgst/src/routes/login/+page.svelte`
@@ -184,6 +188,7 @@ git commit -m "refactor: restore svelte navigation resolve rule"
 ### Task 4: Restore `svelte/require-each-key`
 
 **Files:**
+
 - Modify: `/Users/hunchulchoi/projects/workspace/dgst/eslint.config.js`
 - Modify: `/Users/hunchulchoi/projects/workspace/dgst/src/lib/components/board_list.svelte`
 - Modify: `/Users/hunchulchoi/projects/workspace/dgst/src/routes/board/[boardId=boardId]/[[pageNo=integer]]/[articleId]/+page.svelte`
@@ -240,6 +245,7 @@ git commit -m "refactor: restore keyed each blocks"
 ### Task 5: Restore low-risk Svelte cleanup rules
 
 **Files:**
+
 - Modify: `/Users/hunchulchoi/projects/workspace/dgst/eslint.config.js`
 - Modify: `/Users/hunchulchoi/projects/workspace/dgst/src/lib/components/LexicalEditor.svelte`
 - Modify: `/Users/hunchulchoi/projects/workspace/dgst/src/lib/components/ui/modal.svelte`
@@ -289,6 +295,7 @@ git commit -m "style: restore low-risk svelte lint rules"
 ### Task 6: Evaluate generic JS rules inside `.svelte`
 
 **Files:**
+
 - Modify: `/Users/hunchulchoi/projects/workspace/dgst/eslint.config.js`
 - Modify: affected `.svelte` files only if noise is acceptable
 - Test: `npx eslint .`
@@ -344,6 +351,7 @@ git commit -m "chore: tune generic lint rules for svelte files"
 ### Task 7: Isolate Svelte 5 reactivity/style migration decision
 
 **Files:**
+
 - Modify: `/Users/hunchulchoi/projects/workspace/dgst/eslint.config.js`
 - Optionally modify: `/Users/hunchulchoi/projects/workspace/dgst/src/lib/components/LexicalEditor.svelte`
 - Optionally modify: `/Users/hunchulchoi/projects/workspace/dgst/src/routes/auth/profile/+page.svelte`
@@ -401,6 +409,7 @@ git commit -m "refactor: evaluate svelte 5 reactivity lint rules"
 ### Task 8: Final verification
 
 **Files:**
+
 - Modify: none
 - Test: `/Users/hunchulchoi/projects/workspace/dgst/package.json`
 

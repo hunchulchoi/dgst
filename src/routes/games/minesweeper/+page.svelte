@@ -634,7 +634,7 @@
               {/if}
               {#if rankList.length > 0}
                 <ol class="list-group list-group-numbered">
-                  {#each rankList as r}
+                  {#each rankList as r (`${r.nickname}:${r.time}`)}
                     <li class="list-group-item d-flex justify-content-between align-items-center">
                       <span>{r.nickname}</span>
                       <span class="fw-bold font-monospace text-danger">{r.time}초</span>
@@ -801,8 +801,8 @@
                   class="minesweeper-board d-inline-block p-1 bg-secondary rounded user-select-none shadow"
                 >
                   <div class="grid-container" style="--cols: {cols};">
-                    {#each grid as row}
-                      {#each row as cell}
+                    {#each grid as row, rowIndex (row[0]?.row ?? `row-${rowIndex}`)}
+                      {#each row as cell (`${cell.row}:${cell.col}`)}
                         <div
                           role="button"
                           tabindex="0"
