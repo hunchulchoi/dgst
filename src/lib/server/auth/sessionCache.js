@@ -4,6 +4,8 @@
  */
 import * as pgCache from '$lib/server/cache/pgCache.js';
 import { USER_DATE_KEYS, reviveDates } from '$lib/server/auth/userCache.js';
+import { getPrisma } from '$lib/database/prisma.js';
+import logger from '$lib/util/logger.js';
 
 const NAMESPACE = 'session';
 const SESSION_PREFIX = 'session:';
@@ -56,4 +58,26 @@ export async function setCachedSessionAndUser(sessionToken, data, ttlSeconds = S
  */
 export async function invalidateSession(sessionToken) {
   return pgCache.del(SESSION_PREFIX + sessionToken, NAMESPACE);
+}
+
+/**
+ * 유저 정보/상태 변경 시 해당 유저의 세션 조회 캐시를 모두 비웁니다.
+ * @param {string} userId
+ */
+export async function invalidateSessionsForUser(userId) {
+  try {
+    const sessions = await getPrisma().session.findMany({
+      where: { userId },
+      select: { sessionToken: true }
+    });
+    await Promise.all(sessions.map((session) => invalidateSession(session.sessionToken)));
+    return true;
+  } catch (err) {
+    logger.warn({
+      message: '[auth] invalidateSessionsForUser failed',
+      userId,
+      error: String(err)
+    });
+    return false;
+  }
 }

@@ -10,6 +10,9 @@ import logger from '$lib/util/logger.js';
 /** @type {import('@auth/core/adapters').Adapter | null} */
 let cachedAdapter = null;
 
+/** @param {import('@auth/core/adapters').AdapterUser | null | undefined} user */
+const shouldDenySessionUser = (user) => user?.state === 'blocked' || user?.state === 'banned';
+
 /**
  * @returns {import('@auth/core/adapters').Adapter}
  */
@@ -39,13 +42,26 @@ export function getPrismaAdapter() {
     async updateUser(user) {
       const updated = await base.updateUser(user);
       await userCache.invalidateUser(user.id, updated?.email ?? user.email);
+      await sessionCache.invalidateSessionsForUser(user.id);
       return updated;
     },
     async getSessionAndUser(sessionToken) {
       try {
         const cached = await sessionCache.getCachedSessionAndUser(sessionToken);
-        if (cached) return cached;
+        if (cached) {
+          if (shouldDenySessionUser(cached.user)) {
+            await sessionCache.invalidateSession(sessionToken);
+            await base.deleteSession(sessionToken);
+            return null;
+          }
+          return cached;
+        }
         const result = await base.getSessionAndUser(sessionToken);
+        if (result && shouldDenySessionUser(result.user)) {
+          await sessionCache.invalidateSession(sessionToken);
+          await base.deleteSession(sessionToken);
+          return null;
+        }
         if (result) await sessionCache.setCachedSessionAndUser(sessionToken, result);
         return result;
       } catch (err) {

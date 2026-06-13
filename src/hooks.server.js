@@ -12,6 +12,7 @@ import { env as dynamicEnv } from '$env/dynamic/private';
 import { getPrisma } from '$lib/database/prisma.js';
 import { getPrismaAdapter } from '$lib/server/auth/prismaAdapter.js';
 import { checkAuthRateLimit } from '$lib/server/auth/rateLimit.js';
+import { shouldRejectCrossOriginRequest } from '$lib/server/auth/requestOrigin.js';
 import * as pgCache from '$lib/server/cache/pgCache.js';
 import { tryAcquire } from '$lib/server/cache/pgDedup.js';
 import crypto from 'crypto';
@@ -191,7 +192,8 @@ export const {
         httpOnly: true,
         sameSite: 'lax',
         path: '/',
-        secure: NODE_ENV === 'production'
+        secure: NODE_ENV === 'production',
+        maxAge: 30 * 24 * 60 * 60
       }
     }
   },
@@ -319,6 +321,23 @@ export async function handle({ event, resolve }) {
     if (!allowed) {
       return json({ error: 'Too Many Requests' }, { status: 429 });
     }
+  }
+
+  if (
+    shouldRejectCrossOriginRequest({
+      method: event.request.method,
+      requestOrigin: event.url.origin,
+      origin: event.request.headers.get('origin'),
+      secFetchSite: event.request.headers.get('sec-fetch-site')
+    })
+  ) {
+    logger.warn({
+      message: 'Blocked cross-origin unsafe request',
+      event: 'security.csrf.blocked',
+      pathname,
+      ...getRequestMeta(event)
+    });
+    return json({ error: 'Forbidden' }, { status: 403 });
   }
 
   logger.debug({
