@@ -9,6 +9,7 @@
   import { browser } from '$app/environment';
   import { onMount } from 'svelte';
   import { reportSlowInitialLoad, reportSlowLoad } from '$lib/util/logSlowLoad.js';
+  import { reportClientError } from '$lib/util/reportClientPageError.js';
   import { isFreeBoardLegacyPath } from '$lib/util/boardPaths.js';
   import { boardListReloadKey, boardListReloading } from '$lib/util/store.js';
   import '../app.css';
@@ -102,6 +103,38 @@
   onMount(() => {
     if (!browser) return;
 
+    /** @param {ErrorEvent} event */
+    const handleWindowError = (event) => {
+      reportClientError(event.error ?? event.message, {
+        type: 'window-error',
+        message: event.message || 'Unhandled window error',
+        pathname: window.location.pathname,
+        href: window.location.href,
+        search: window.location.search,
+        routeId: $page.route.id ?? undefined,
+        filename: event.filename,
+        lineno: event.lineno,
+        colno: event.colno,
+        phase: 'window-error'
+      });
+    };
+
+    /** @param {PromiseRejectionEvent} event */
+    const handleUnhandledRejection = (event) => {
+      reportClientError(event.reason, {
+        type: 'unhandled-rejection',
+        message: 'Unhandled promise rejection',
+        pathname: window.location.pathname,
+        href: window.location.href,
+        search: window.location.search,
+        routeId: $page.route.id ?? undefined,
+        phase: 'unhandledrejection'
+      });
+    };
+
+    window.addEventListener('error', handleWindowError);
+    window.addEventListener('unhandledrejection', handleUnhandledRejection);
+
     if (isFreeBoardLegacyPath(window.location.pathname)) {
       history.replaceState(history.state, '', `/${window.location.search}`);
     }
@@ -115,6 +148,12 @@
     } else {
       window.addEventListener('load', measureInitialLoad, { once: true });
     }
+
+    return () => {
+      window.removeEventListener('error', handleWindowError);
+      window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+      window.removeEventListener('load', measureInitialLoad);
+    };
   });
 </script>
 

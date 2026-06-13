@@ -19,6 +19,7 @@
   import { page } from '$app/stores';
   import { enhance } from '$app/forms';
   import { swalFire } from '$lib/util/swal.js';
+  import { reportClientError } from '$lib/util/reportClientPageError.js';
   import { validateArticleContent } from '$lib/util/articleContentValidation.js';
 
   /** @typedef {import('sweetalert2').SweetAlertIcon} SweetAlertIcon */
@@ -82,6 +83,16 @@
       QuillEditor = (await import('$lib/components/QuillEditor.svelte')).default;
     } catch (error) {
       console.error('Quill 에디터 로드 실패:', error);
+      reportClientError(error, {
+        type: 'editor-import-error',
+        message: 'Quill 에디터 로드 실패',
+        pathname: typeof location !== 'undefined' ? location.pathname : undefined,
+        href: typeof location !== 'undefined' ? location.href : undefined,
+        search: typeof location !== 'undefined' ? location.search : undefined,
+        routeId: $page.route.id ?? undefined,
+        importTarget: '$lib/components/QuillEditor.svelte',
+        phase: 'write-page-onMount'
+      });
       editorLoadError = true;
     }
 

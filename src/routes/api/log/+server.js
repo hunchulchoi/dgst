@@ -44,11 +44,22 @@ export async function POST(event) {
       }),
       ...(typeof logData.trace === 'string' && { trace: logData.trace.slice(0, 8000) }),
       ...(typeof logData.errorName === 'string' && { errorName: logData.errorName.slice(0, 64) }),
+      ...(typeof logData.cause === 'string' && { cause: logData.cause.slice(0, 1000) }),
       ...(typeof logData.href === 'string' && { href: logData.href.slice(0, 512) }),
       ...(typeof logData.search === 'string' && { search: logData.search.slice(0, 256) }),
       ...(typeof logData.referer === 'string' && { referer: logData.referer.slice(0, 512) }),
       ...(typeof logData.routeId === 'string' && { routeId: logData.routeId.slice(0, 128) }),
       ...(typeof logData.viewport === 'string' && { viewport: logData.viewport.slice(0, 32) }),
+      ...(typeof logData.platform === 'string' && { platform: logData.platform.slice(0, 128) }),
+      ...(typeof logData.language === 'string' && { language: logData.language.slice(0, 64) }),
+      ...(typeof logData.filename === 'string' && { filename: logData.filename.slice(0, 512) }),
+      ...(Number.isFinite(logData.lineno) && { lineno: logData.lineno }),
+      ...(Number.isFinite(logData.colno) && { colno: logData.colno }),
+      ...(typeof logData.chunkUrl === 'string' && { chunkUrl: logData.chunkUrl.slice(0, 512) }),
+      ...(typeof logData.importTarget === 'string' && {
+        importTarget: logData.importTarget.slice(0, 256)
+      }),
+      ...(typeof logData.phase === 'string' && { phase: logData.phase.slice(0, 64) }),
       ...(typeof logData.clientAt === 'string' && { clientAt: logData.clientAt.slice(0, 32) }),
       ...(typeof logData.errorId === 'string' && { errorId: logData.errorId.slice(0, 64) })
     };
