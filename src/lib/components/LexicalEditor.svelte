@@ -1246,6 +1246,10 @@
     white-space: pre-wrap;
   }
 
+  .lexical-editor__content :global(.lexical-paragraph) {
+    margin: 0;
+  }
+
   .lexical-editor__content :global(pre) {
     overflow-x: auto;
     border-radius: 6px;

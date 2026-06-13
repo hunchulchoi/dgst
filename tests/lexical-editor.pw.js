@@ -106,6 +106,26 @@ test('Lexical editor smoke route mounts and syncs typed content', async ({ page 
   await expect(page.locator('[data-testid="editor-html"]')).toContainText('hello lexical smoke');
 });
 
+test('Lexical editor renders Enter-created paragraphs with normal line spacing', async ({ page }) => {
+  const editor = await gotoSmokeEditor(page);
+
+  await editor.click();
+  await page.keyboard.type('first line');
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('second line');
+
+  const paragraphGap = await page.locator(editorSelector).evaluate((root) => {
+    const paragraphs = Array.from(root.querySelectorAll('p'));
+    if (paragraphs.length < 2) throw new Error('Expected at least two paragraphs');
+
+    const firstRect = paragraphs[0].getBoundingClientRect();
+    const secondRect = paragraphs[1].getBoundingClientRect();
+    return secondRect.top - firstRect.bottom;
+  });
+
+  expect(paragraphGap).toBeLessThanOrEqual(2);
+});
+
 test('Lexical editor uploads selected images and inserts image html', async ({ page }) => {
   await mockUpload(page, '/uploads/smoke-selected-image.png');
   await gotoSmokeEditor(page);
