@@ -38,6 +38,7 @@
   } from '@lexical/selection';
   import { mergeRegister } from '@lexical/utils';
   import { swalFire } from '$lib/util/swal.js';
+  import { reportClientError } from '$lib/util/reportClientPageError.js';
 
   let {
     uploadPlus,
@@ -68,6 +69,23 @@
   let unregister = null;
   let loading = $state(false);
   let isComposing = false;
+  let editorFailureAlertShown = false;
+
+  /** @param {unknown} value */
+  function getErrorMessage(value) {
+    if (value instanceof Error) return `${value.name}: ${value.message}`;
+    if (typeof value === 'string') return value;
+    if (value && typeof value === 'object' && 'message' in value) {
+      return String(/** @type {{ message?: unknown }} */ (value).message ?? '');
+    }
+    return String(value ?? '');
+  }
+
+  /** @param {unknown} value */
+  function isLexicalFailure(value) {
+    const message = getErrorMessage(value);
+    return /lexical/i.test(message);
+  }
 
   /** @extends {DecoratorNode<null>} */
   class HtmlBlockNode extends DecoratorNode {
@@ -216,6 +234,45 @@
   export function getEditorHtml() {
     syncEditorData();
     return lastSyncedEditorData;
+  }
+
+  /**
+   * @param {unknown} error
+   * @param {string} phase
+   */
+  async function notifyEditorFailure(error, phase) {
+    reportClientError(error, {
+      type: phase === 'lexical-editor-init' ? 'lexical-editor-init-error' : 'lexical-editor-error',
+      message: 'Lexical 에디터 초기화 실패',
+      pathname: typeof location !== 'undefined' ? location.pathname : undefined,
+      href: typeof location !== 'undefined' ? location.href : undefined,
+      search: typeof location !== 'undefined' ? location.search : undefined,
+      importTarget: '$lib/components/LexicalEditor.svelte',
+      phase
+    });
+
+    if (editorFailureAlertShown) return;
+    editorFailureAlertShown = true;
+    await swalFire({
+      icon: 'error',
+      title: '에디터 초기화 실패',
+      text: '에디터를 불러오지 못했습니다. 페이지를 새로고침해 주세요.',
+      confirmButtonText: '확인'
+    });
+  }
+
+  /** @param {ErrorEvent} event */
+  function handleWindowError(event) {
+    const error = event.error ?? event.message;
+    if (!isLexicalFailure(error)) return;
+    void notifyEditorFailure(error, 'lexical-editor-window-error');
+  }
+
+  /** @param {PromiseRejectionEvent} event */
+  function handleUnhandledRejection(event) {
+    const error = event.reason;
+    if (!isLexicalFailure(error)) return;
+    void notifyEditorFailure(error, 'lexical-editor-unhandled-rejection');
   }
 
   /** @param {string} value */
@@ -715,61 +772,74 @@
   }
 
   onMount(() => {
-    if (!editorElement) return;
+    try {
+      if (!editorElement) return;
 
-    editor = createEditor({
-      namespace: 'dgst-lexical-editor',
-      nodes: [HeadingNode, QuoteNode, ListNode, ListItemNode, LinkNode, HtmlBlockNode],
-      onError(error) {
-        console.error('Lexical editor error:', error);
-      },
-      theme: {
-        paragraph: 'lexical-paragraph',
-        text: {
-          bold: 'lexical-text-bold',
-          code: 'lexical-text-code',
-          italic: 'lexical-text-italic',
-          strikethrough: 'lexical-text-strike'
-        }
-      }
-    });
+      window.addEventListener('error', handleWindowError);
+      window.addEventListener('unhandledrejection', handleUnhandledRejection);
 
-    editor.setRootElement(editorElement);
-
-    unregister = mergeRegister(
-      registerRichText(editor),
-      registerList(editor),
-      registerHistory(editor, createEmptyHistoryState(), 300),
-      editor.registerUpdateListener(() => {
-        if (isComposing) return;
-        syncEditorData();
-      }),
-      editor.registerCommand(
-        FORMAT_TEXT_COMMAND,
-        () => {
-          setTimeout(syncEditorData, 0);
-          return false;
+      editor = createEditor({
+        namespace: 'dgst-lexical-editor',
+        nodes: [HeadingNode, QuoteNode, ListNode, ListItemNode, LinkNode, HtmlBlockNode],
+        onError(error) {
+          console.error('Lexical editor error:', error);
+          void notifyEditorFailure(error, 'lexical-editor-runtime');
         },
-        COMMAND_PRIORITY_LOW
-      )
-    );
+        theme: {
+          paragraph: 'lexical-paragraph',
+          text: {
+            bold: 'lexical-text-bold',
+            code: 'lexical-text-code',
+            italic: 'lexical-text-italic',
+            strikethrough: 'lexical-text-strike'
+          }
+        }
+      });
 
-    editorElement.addEventListener('paste', handlePaste);
-    editorElement.addEventListener('dragover', handleDragOver);
-    editorElement.addEventListener('drop', handleDrop);
-    editorElement.addEventListener('compositionstart', () => {
-      isComposing = true;
-    });
-    editorElement.addEventListener('compositionend', () => {
-      isComposing = false;
-      setTimeout(syncEditorData, 0);
-    });
+      editor.setRootElement(editorElement);
 
-    setEditorHtml(editorData || '');
-    syncEditorData();
+      unregister = mergeRegister(
+        registerRichText(editor),
+        registerList(editor),
+        registerHistory(editor, createEmptyHistoryState(), 300),
+        editor.registerUpdateListener(() => {
+          if (isComposing) return;
+          syncEditorData();
+        }),
+        editor.registerCommand(
+          FORMAT_TEXT_COMMAND,
+          () => {
+            setTimeout(syncEditorData, 0);
+            return false;
+          },
+          COMMAND_PRIORITY_LOW
+        )
+      );
+
+      editorElement.addEventListener('paste', handlePaste);
+      editorElement.addEventListener('dragover', handleDragOver);
+      editorElement.addEventListener('drop', handleDrop);
+      editorElement.addEventListener('compositionstart', () => {
+        isComposing = true;
+      });
+      editorElement.addEventListener('compositionend', () => {
+        isComposing = false;
+        setTimeout(syncEditorData, 0);
+      });
+
+      setEditorHtml(editorData || '');
+      syncEditorData();
+    } catch (error) {
+      console.error('Lexical editor init failed:', error);
+      void notifyEditorFailure(error, 'lexical-editor-init');
+    }
   });
 
   onDestroy(() => {
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('error', handleWindowError);
+      window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+    }
     unregister?.();
     unregister = null;
     if (editorElement) {

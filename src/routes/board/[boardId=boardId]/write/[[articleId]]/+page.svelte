@@ -94,6 +94,12 @@
         phase: 'write-page-onMount'
       });
       editorLoadError = true;
+      await swalFire({
+        icon: 'error',
+        title: '에디터 초기화 실패',
+        text: '에디터를 불러오지 못했습니다. 페이지를 새로고침해 주세요.',
+        confirmButtonText: '확인'
+      });
     }
 
     // 모바일에서 제목 입력칸으로 스크롤하고 포커스
