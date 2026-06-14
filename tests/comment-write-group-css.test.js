@@ -20,13 +20,13 @@ describe('comment write group layout CSS', () => {
     expect(articlePage).toContain('{#if isOnlyOneEmoji(comment.content)}');
     expect(articlePage).toContain('class="comment-single-emoji"');
     expect(articlePage).toContain(':global(.dgst-rich-text .comment-single-emoji)');
-    expect(articlePage).toContain('font-size: 3em !important');
+    expect(articlePage).toContain('zoom: 4.5');
   });
 
   it('renders single-emoji slot comments at three times the comment text size', () => {
     expect(slotPage).toContain('{#if isOnlyOneEmoji(comment.content)}');
     expect(slotPage).toContain('class="slot-comment-single-emoji"');
     expect(slotPage).toContain(':global(.slot-comment-single-emoji)');
-    expect(slotPage).toContain('font-size: 3em !important');
+    expect(slotPage).toContain('zoom: 4.5');
   });
 });

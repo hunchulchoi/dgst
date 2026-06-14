@@ -2097,8 +2097,10 @@
   }
 
   :global(.dgst-rich-text .comment-single-emoji) {
-    font-size: 3em !important;
+    display: inline-block;
+    font-size: 1em !important;
     line-height: 1 !important;
+    zoom: 4.5;
   }
 
   .comment-mention {

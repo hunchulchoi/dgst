@@ -1391,8 +1391,9 @@
   }
   :global(.slot-comment-single-emoji) {
     display: inline-block;
-    font-size: 3em !important;
+    font-size: 1em !important;
     line-height: 1 !important;
+    zoom: 4.5;
   }
   /* 모바일에서 스핀 문구 영역 패딩 줄이기 및 댓글 입력창이 보이도록 */
   @media (max-width: 768px) {

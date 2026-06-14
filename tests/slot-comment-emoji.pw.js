@@ -60,11 +60,13 @@ test('single-emoji slot comments render at three times the comment text size', a
     const parent = node.parentElement;
     if (!parent) throw new Error('Expected emoji comment to have a parent element');
 
+    const rect = node.getBoundingClientRect();
+
     return {
-      emoji: Number.parseFloat(getComputedStyle(node).fontSize),
+      emoji: Math.max(rect.width, rect.height),
       parent: Number.parseFloat(getComputedStyle(parent).fontSize)
     };
   });
 
-  expect(sizes.emoji).toBeGreaterThanOrEqual(sizes.parent * 2.9);
+  expect(sizes.emoji).toBeGreaterThanOrEqual(sizes.parent * 4.4);
 });
