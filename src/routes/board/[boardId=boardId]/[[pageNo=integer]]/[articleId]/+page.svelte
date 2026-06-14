@@ -18,7 +18,7 @@
   import BoardList from '$lib/components/board_list.svelte';
   import OGPreview from '$lib/components/OGPreview.svelte';
   import sanitizeHtml from 'sanitize-html';
-  import { countEmojis } from '$lib/util/emoji.js';
+  import { isOnlyOneEmoji } from '$lib/util/emoji.js';
   import {
     applyAttachmentImageSizing,
     shouldApplyAttachmentImageSizing
@@ -1591,7 +1591,7 @@
                           </Row>
                         {/if}
 
-                        {#if !/[0-9a-zA-Z가-힣_-]/.test(comment.content) && countEmojis(comment.content) === 1}
+                        {#if isOnlyOneEmoji(comment.content)}
                           <div class="comment-content-wrap dgst-rich-text">
                             <div class="comment-body-line">
                               {#if comment.parentCommentNickname}
@@ -2096,7 +2096,7 @@
     line-height: 1.55;
   }
 
-  .comment-single-emoji {
+  .dgst-rich-text .comment-single-emoji {
     font-size: 3em !important;
     line-height: 1 !important;
   }

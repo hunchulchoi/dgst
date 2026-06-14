@@ -15,8 +15,10 @@ describe('comment write group layout CSS', () => {
   });
 
   it('renders single-emoji comments at three times the comment text size', () => {
+    expect(articlePage).toContain("import { isOnlyOneEmoji } from '$lib/util/emoji.js'");
+    expect(articlePage).toContain('{#if isOnlyOneEmoji(comment.content)}');
     expect(articlePage).toContain('class="comment-single-emoji"');
-    expect(articlePage).toContain('.comment-single-emoji');
+    expect(articlePage).toContain('.dgst-rich-text .comment-single-emoji');
     expect(articlePage).toContain('font-size: 3em !important');
   });
 });
