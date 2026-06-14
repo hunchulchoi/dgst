@@ -23,6 +23,12 @@
     applyAttachmentImageSizing,
     shouldApplyAttachmentImageSizing
   } from '$lib/util/attachmentImageSizing.js';
+  import {
+    clampViewerScale,
+    computeFitScale,
+    shouldOpenAttachmentImageViewer,
+    VIEWER_MAX_SCALE
+  } from '$lib/util/attachmentImageViewer.js';
 
   /** @type {typeof import('$lib/util/embeder.js') | null} */
   let embeder = $state(null);
@@ -44,6 +50,15 @@
   // 애니메이션 관련 상태
   let likeAnimation = $state(false);
   let commentLikeAnimations = $state(new Set());
+  let imageViewerOpen = $state(false);
+  let imageViewerSrc = $state('');
+  let imageViewerAlt = $state('');
+  let imageViewerScale = $state(1);
+  let imageViewerMinScale = $state(1);
+  let imageViewerNaturalWidth = $state(0);
+  let imageViewerNaturalHeight = $state(0);
+  /** @type {HTMLDivElement | null} */
+  let imageViewerStageEl = $state(null);
 
   // 댓글 좋아요 애니메이션 함수
   /** @param {string} commentId */
@@ -52,6 +67,78 @@
     setTimeout(() => {
       commentLikeAnimations.delete(commentId);
     }, 1000);
+  }
+
+  function closeImageViewer() {
+    imageViewerOpen = false;
+    imageViewerSrc = '';
+    imageViewerAlt = '';
+    imageViewerScale = 1;
+    imageViewerMinScale = 1;
+    imageViewerNaturalWidth = 0;
+    imageViewerNaturalHeight = 0;
+  }
+
+  /** @param {HTMLImageElement} img */
+  function openAttachmentImageViewer(img) {
+    if (!browser || !shouldOpenAttachmentImageViewer(img)) return;
+
+    imageViewerSrc = img.currentSrc || img.src;
+    imageViewerAlt = img.alt || '';
+    imageViewerNaturalWidth = img.naturalWidth || 0;
+    imageViewerNaturalHeight = img.naturalHeight || 0;
+    imageViewerMinScale = computeFitScale(img, window.innerWidth, window.innerHeight);
+    imageViewerScale = imageViewerMinScale;
+    imageViewerOpen = true;
+
+    setTimeout(() => {
+      imageViewerStageEl?.scrollTo({ top: 0, left: 0 });
+    }, 0);
+  }
+
+  /** @param {WheelEvent} event */
+  function handleViewerWheel(event) {
+    event.preventDefault();
+    const factor = event.deltaY < 0 ? 1.12 : 0.9;
+    imageViewerScale = clampViewerScale(
+      imageViewerScale * factor,
+      imageViewerMinScale,
+      VIEWER_MAX_SCALE
+    );
+  }
+
+  function zoomViewerIn() {
+    imageViewerScale = clampViewerScale(
+      imageViewerScale * 1.15,
+      imageViewerMinScale,
+      VIEWER_MAX_SCALE
+    );
+  }
+
+  function zoomViewerOut() {
+    imageViewerScale = clampViewerScale(
+      imageViewerScale * 0.87,
+      imageViewerMinScale,
+      VIEWER_MAX_SCALE
+    );
+  }
+
+  function resetViewerZoom() {
+    imageViewerScale = imageViewerMinScale;
+    imageViewerStageEl?.scrollTo({ top: 0, left: 0 });
+  }
+
+  /** @param {MouseEvent} event */
+  function handleViewerBackdropClick(event) {
+    if (event.target === event.currentTarget) closeImageViewer();
+  }
+
+  /** @param {KeyboardEvent} event */
+  function handleViewerBackdropKeydown(event) {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      closeImageViewer();
+    }
   }
 
   function like() {
@@ -619,6 +706,12 @@
   function applyAttachmentImageMaxHeight(img) {
     if (!isBoardAttachmentImage(img)) return;
     applyAttachmentImageSizing(img.style, img);
+    img.dataset.attachmentImage = 'true';
+    img.style.cursor = 'zoom-in';
+    if (img.dataset.viewerBound !== 'true') {
+      img.dataset.viewerBound = 'true';
+      img.addEventListener('click', () => openAttachmentImageViewer(img));
+    }
   }
 
   /**
@@ -741,6 +834,42 @@
     console.log('💬 댓글 수:', article?.comments?.length);
   });
 
+  $effect(() => {
+    if (!browser || !imageViewerOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+
+    /** @param {KeyboardEvent} event */
+    const handleKeydown = (event) => {
+      if (event.key === 'Escape') {
+        closeImageViewer();
+      }
+    };
+
+    const handleResize = () => {
+      const nextMinScale = computeFitScale(
+        {
+          naturalWidth: imageViewerNaturalWidth,
+          naturalHeight: imageViewerNaturalHeight
+        },
+        window.innerWidth,
+        window.innerHeight
+      );
+      imageViewerMinScale = nextMinScale;
+      imageViewerScale = clampViewerScale(imageViewerScale, nextMinScale, VIEWER_MAX_SCALE);
+    };
+
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', handleKeydown);
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', handleKeydown);
+      window.removeEventListener('resize', handleResize);
+    };
+  });
+
   // 댓글 내용에서 URL 추출하는 함수
   /** @param {string} text */
   function extractUrls(text) {
@@ -846,11 +975,13 @@
   }
 
   /** 게시글 본문은 저장 시 정화되고, 표시 전 `processArticleContent()`로 한 번 더 정화한다. */
+  /** @param {string} content */
   function getTrustedArticleBodyHtml(content) {
     return processArticleContent(content.replace(/<p>\s*<br\s*\/?>(\s|\u00A0)*<\/p>/g, '<br>'));
   }
 
   /** 댓글 렌더러는 markdown/embed 변환 후 sanitize-html을 거친 문자열만 반환한다. */
+  /** @param {string | null | undefined} content */
   function getTrustedCommentHtml(content) {
     if (!embeder) return null;
     return embeder.viewComment(String(content ?? ''));
@@ -1393,7 +1524,7 @@
                           <div class="mb-2">
                             <img
                               src=""
-                              class="d-none"
+                              class="d-none comment-upload-preview"
                               bind:this={editPreviewEl}
                               alt="댓글 이미지 미리보기"
                               style="max-width: 100%"
@@ -1588,7 +1719,7 @@
                 <div>
                   <img
                     src=""
-                    class="d-none"
+                    class="d-none comment-upload-preview"
                     bind:this={rePreviewEl}
                     alt="리플 이미지 첨부 미리보기"
                     style="max-width: 100%"
@@ -1667,7 +1798,7 @@
             <div>
               <img
                 src=""
-                class="img-thumbnail d-none me-2"
+                class="img-thumbnail d-none me-2 comment-upload-preview"
                 bind:this={previewEl}
                 alt="리플 이미지 첨부 미리보기"
                 style="max-width: 100%"
@@ -1733,6 +1864,57 @@
           </Button>
         </Col>
       </Row>
+
+      {#if imageViewerOpen}
+        <div
+          class="image-viewer"
+          role="dialog"
+          aria-modal="true"
+          aria-label="이미지 확대 보기"
+          tabindex="-1"
+        >
+          <div class="image-viewer__toolbar">
+            <span class="image-viewer__zoom">{Math.round(imageViewerScale * 100)}%</span>
+            <Button color="secondary" outline size="sm" onclick={zoomViewerOut}>
+              <Icon name="dash" />
+            </Button>
+            <Button color="secondary" outline size="sm" onclick={resetViewerZoom}>
+              <Icon name="arrows-fullscreen" />
+            </Button>
+            <Button color="secondary" outline size="sm" onclick={zoomViewerIn}>
+              <Icon name="plus" />
+            </Button>
+            <Button color="danger" size="sm" onclick={closeImageViewer}>
+              <Icon name="x-lg" />
+            </Button>
+          </div>
+
+          <div
+            class="image-viewer__stage"
+            bind:this={imageViewerStageEl}
+            role="button"
+            tabindex="0"
+            aria-label="이미지 뷰어 닫기"
+            onwheel={handleViewerWheel}
+            onclick={handleViewerBackdropClick}
+            onkeydown={handleViewerBackdropKeydown}
+          >
+            <div class="image-viewer__canvas">
+              <img
+                src={imageViewerSrc}
+                alt={imageViewerAlt}
+                class="image-viewer__image"
+                draggable="false"
+                style={
+                  imageViewerNaturalWidth
+                    ? `width:${Math.max(1, Math.round(imageViewerNaturalWidth * imageViewerScale))}px;height:auto;max-width:none;`
+                    : 'width:auto;height:auto;max-width:none;'
+                }
+              />
+            </div>
+          </div>
+        </div>
+      {/if}
     </Row>
   {:else}
     <Row class="mt-4 shadow rounded-bottom-4 p-4 m-0">
@@ -1825,6 +2007,58 @@
     width: 40px;
     height: 40px;
     object-fit: cover;
+  }
+
+  .image-viewer {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    background: rgba(15, 18, 24, 0.92);
+    display: flex;
+    flex-direction: column;
+  }
+
+  .image-viewer__toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.85rem 1rem;
+    background: linear-gradient(to bottom, rgba(15, 18, 24, 0.95), rgba(15, 18, 24, 0.4));
+    backdrop-filter: blur(8px);
+  }
+
+  .image-viewer__zoom {
+    min-width: 4rem;
+    text-align: right;
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.95rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .image-viewer__stage {
+    flex: 1 1 auto;
+    overflow: auto;
+    overscroll-behavior: contain;
+    padding: 1rem;
+  }
+
+  .image-viewer__canvas {
+    min-width: 100%;
+    min-height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .image-viewer__image {
+    display: block;
+    user-select: none;
+    -webkit-user-drag: none;
+    box-shadow: 0 14px 40px rgba(0, 0, 0, 0.35);
   }
 
   .comment-meta {

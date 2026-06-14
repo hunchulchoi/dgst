@@ -46,6 +46,7 @@ describe('attachment image sizing', () => {
       maxHeight: '',
       width: '',
       height: '',
+      /** @param {string} prop */
       removeProperty(prop) {
         if (prop === 'max-height') this.maxHeight = '';
       }

@@ -17,6 +17,7 @@ export function getAttachmentImageMaxHeight(img) {
  */
 export function shouldApplyAttachmentImageSizing(img) {
   if (img?.classList?.contains?.('comment-avatar')) return false;
+  if (img?.classList?.contains?.('comment-upload-preview')) return false;
   return !img?.closest?.('.og-card-blot, .og-preview');
 }
 
