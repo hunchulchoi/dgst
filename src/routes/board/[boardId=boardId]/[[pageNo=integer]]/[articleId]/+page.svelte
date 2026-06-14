@@ -2096,7 +2096,7 @@
     line-height: 1.55;
   }
 
-  .dgst-rich-text .comment-single-emoji {
+  :global(.dgst-rich-text .comment-single-emoji) {
     font-size: 3em !important;
     line-height: 1 !important;
   }
