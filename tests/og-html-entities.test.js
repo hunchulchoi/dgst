@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { decodeOgTextFields, parseOpenGraphData } from '../src/routes/api/og/+server.js';
+import { decodeOgTextFields, parseOpenGraphData } from '../src/lib/server/ogMetadata.js';
 
 describe('parseOpenGraphData', () => {
   it('decodes HTML entities in OG title and description', () => {
