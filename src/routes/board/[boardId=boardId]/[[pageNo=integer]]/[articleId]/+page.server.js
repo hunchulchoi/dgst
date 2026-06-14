@@ -1,18 +1,10 @@
 import { error } from '@sveltejs/kit';
 import { getPrisma } from '$lib/database/prisma.js';
-import {
-  addRead,
-  countArticles,
-  findArticleById,
-  toArticleJson
-} from '$lib/server/board/articleRepo.js';
+import { addRead, findArticleById, toArticleJson } from '$lib/server/board/articleRepo.js';
 import { findCommentsByArticle, toCommentJson } from '$lib/server/board/commentRepo.js';
-import { fetchBoardArticleList } from '$lib/server/boardArticleList.js';
-import { computePaginationWindow } from '$lib/server/boardListLoad.js';
+import { getBoardListPayload } from '$lib/server/boardListLoad.js';
 import convertToTree from '$lib/util/tree.js';
 
-const PAGE_UNIT = 30;
-const THREE_DAYS_MS = 1000 * 60 * 60 * 24 * 3;
 const BOARD_COMMENT_SELECT = {
   id: true,
   email: true,
@@ -87,31 +79,8 @@ export const load = async ({ params, locals, cookies }) => {
       );
     }
 
-    let pageNo = parseInt(params.pageNo || '1', 10);
-    if (!Number.isFinite(pageNo) || pageNo < 1) pageNo = 1;
-
-    const createdAfter = new Date(Date.now() - THREE_DAYS_MS);
-    const total = await countArticles({
-      boardId,
-      state: 'write',
-      createdAt: { gt: createdAfter }
-    });
-
-    if (!total) {
-      return { articles: [] };
-    }
-
-    const maxPage = Math.ceil(total / PAGE_UNIT);
-    if (maxPage < pageNo) pageNo = maxPage;
-
-    const { startNo, endNo } = computePaginationWindow(pageNo, maxPage);
-
-    const articles = await fetchBoardArticleList({
-      boardId,
-      pageNo,
-      pageUnit: PAGE_UNIT,
-      createdAfter
-    });
+    const requestedPageNo = parseInt(params.pageNo || '1', 10);
+    const boardListPayload = await getBoardListPayload(boardId, requestedPageNo);
 
     /** @param {string | null | undefined} str @param {number} [maxLen=200] */
     const safeText = (str, maxLen = 200) => {
@@ -138,11 +107,7 @@ export const load = async ({ params, locals, cookies }) => {
       photo: author?.photo || '/icons/unknown-person-icon-4.jpg',
       introduction: author?.introduction,
       insta,
-      pageNo,
-      maxPage,
-      startNo,
-      endNo,
-      articles,
+      ...boardListPayload,
       ogTitle,
       ogDescription,
       ogUrl,

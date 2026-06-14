@@ -11,7 +11,7 @@ const PAGE_UNIT = 30;
 const THREE_DAYS_MS = 1000 * 60 * 60 * 24 * 3;
 const TOTAL_CACHE_TTL_SECONDS = 60;
 /** 성공 응답 pgCache 캐시 — DB 일시 장애 시 stale fallback */
-const LIST_PAYLOAD_TTL_SECONDS = 300;
+const LIST_PAYLOAD_TTL_SECONDS = 5;
 
 /**
  * @param {string} boardId
@@ -171,6 +171,73 @@ async function getCachedTotal(boardId, filter) {
 }
 
 /**
+ * @param {string} boardId
+ * @param {number} inputPageNo
+ */
+export async function getBoardListPayload(boardId, inputPageNo) {
+  let pageNo = Number.isFinite(inputPageNo) && inputPageNo > 0 ? inputPageNo : 1;
+  const t0 = performance.now();
+  const tConnected = performance.now();
+  const createdAfter = new Date(Date.now() - THREE_DAYS_MS);
+
+  const filter = {
+    boardId,
+    state: 'write',
+    createdAt: { gt: createdAfter }
+  };
+
+  const total = await getCachedTotal(boardId, filter);
+  const tCounted = performance.now();
+
+  if (!total) {
+    return { articles: [], boardId, pageNo: 1, maxPage: 0, startNo: 1, endNo: 1 };
+  }
+
+  const maxPage = Math.ceil(total / PAGE_UNIT);
+
+  if (maxPage < pageNo) {
+    pageNo = maxPage;
+  }
+
+  const articles = await fetchBoardArticleList({
+    boardId,
+    pageNo,
+    pageUnit: PAGE_UNIT,
+    createdAfter
+  });
+  const tFetched = performance.now();
+  const { startNo, endNo } = computePaginationWindow(pageNo, maxPage);
+
+  const totalMs = Math.round(tFetched - t0);
+  if (totalMs > 500) {
+    logger.warn({
+      message: `[board-list-timing] ${boardId} total=${totalMs}ms connect=${Math.round(tConnected - t0)}ms count=${Math.round(tCounted - tConnected)}ms list=${Math.round(tFetched - tCounted)}ms`,
+      boardId,
+      pageNo,
+      timings: {
+        connect: Math.round(tConnected - t0),
+        count: Math.round(tCounted - tConnected),
+        list: Math.round(tFetched - tCounted),
+        total: totalMs
+      }
+    });
+  }
+
+  const payload = {
+    boardId,
+    pageNo,
+    maxPage,
+    startNo,
+    endNo,
+    articles
+  };
+
+  await cacheListPayload(boardId, pageNo, payload);
+
+  return payload;
+}
+
+/**
  * @param {import('@sveltejs/kit').ServerLoadEvent} event
  * @param {string} boardId
  */
@@ -180,67 +247,8 @@ export async function loadBoardList(event, boardId) {
   let pageNo = parseInt(event.params.pageNo || '1', 10);
   if (!Number.isFinite(pageNo) || pageNo < 1) pageNo = 1;
 
-  const t0 = performance.now();
-
   try {
-    const tConnected = performance.now();
-    const createdAfter = new Date(Date.now() - THREE_DAYS_MS);
-
-    const filter = {
-      boardId,
-      state: 'write',
-      createdAt: { gt: createdAfter }
-    };
-
-    const total = await getCachedTotal(boardId, filter);
-    const tCounted = performance.now();
-
-    if (!total) {
-      return { articles: [], boardId, pageNo: 1, maxPage: 0, startNo: 1, endNo: 1 };
-    }
-
-    const maxPage = Math.ceil(total / PAGE_UNIT);
-
-    if (maxPage < pageNo) {
-      pageNo = maxPage;
-    }
-
-    const articles = await fetchBoardArticleList({
-      boardId,
-      pageNo,
-      pageUnit: PAGE_UNIT,
-      createdAfter
-    });
-    const tFetched = performance.now();
-    const { startNo, endNo } = computePaginationWindow(pageNo, maxPage);
-
-    const totalMs = Math.round(tFetched - t0);
-    if (totalMs > 500) {
-      logger.warn({
-        message: `[board-list-timing] ${boardId} total=${totalMs}ms connect=${Math.round(tConnected - t0)}ms count=${Math.round(tCounted - tConnected)}ms list=${Math.round(tFetched - tCounted)}ms`,
-        boardId,
-        pageNo,
-        timings: {
-          connect: Math.round(tConnected - t0),
-          count: Math.round(tCounted - tConnected),
-          list: Math.round(tFetched - tCounted),
-          total: totalMs
-        }
-      });
-    }
-
-    const payload = {
-      boardId,
-      pageNo,
-      maxPage,
-      startNo,
-      endNo,
-      articles
-    };
-
-    await cacheListPayload(boardId, pageNo, payload);
-
-    return payload;
+    return await getBoardListPayload(boardId, pageNo);
   } catch (err) {
     const errorId = crypto.randomUUID();
     return buildDegradedListResponse(event, boardId, pageNo, err, errorId);

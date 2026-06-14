@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const articleRepo = vi.hoisted(() => ({
   addRead: vi.fn(),
-  countArticles: vi.fn(),
   findArticleById: vi.fn(),
   toArticleJson: vi.fn()
 }));
@@ -17,7 +16,8 @@ const boardArticleList = vi.hoisted(() => ({
 }));
 
 const boardListLoad = vi.hoisted(() => ({
-  computePaginationWindow: vi.fn()
+  computePaginationWindow: vi.fn(),
+  getBoardListPayload: vi.fn()
 }));
 
 const prismaModule = vi.hoisted(() => ({
@@ -42,7 +42,6 @@ describe('board article load comment shape', () => {
       likes: []
     });
     articleRepo.addRead.mockResolvedValue(null);
-    articleRepo.countArticles.mockResolvedValue(1);
     articleRepo.toArticleJson.mockReturnValue({
       _id: 'article-1',
       id: 'article-1',
@@ -114,6 +113,14 @@ describe('board article load comment shape', () => {
     }));
     boardArticleList.fetchBoardArticleList.mockResolvedValue([]);
     boardListLoad.computePaginationWindow.mockReturnValue({ startNo: 1, endNo: 1 });
+    boardListLoad.getBoardListPayload.mockResolvedValue({
+      boardId: 'free',
+      pageNo: 1,
+      maxPage: 1,
+      startNo: 1,
+      endNo: 1,
+      articles: []
+    });
     prismaModule.getPrisma.mockReturnValue({
       user: {
         findFirst: vi.fn().mockResolvedValue({
