@@ -1,5 +1,5 @@
 import { error } from '@sveltejs/kit';
-import { toggleCommentLike, toCommentJson } from '$lib/server/board/commentRepo.js';
+import { toggleCommentLike } from '$lib/server/board/commentRepo.js';
 
 /** @param {import('@sveltejs/kit').RequestEvent} event */
 export async function POST({ params, locals }) {
@@ -31,11 +31,13 @@ export async function POST({ params, locals }) {
       throw error(410, { message: '삭제되었거나 존지하지 않는 댓글입니다.' });
     }
 
-    const commentJson = toCommentJson(comment);
-    commentJson.liked = comment.likes.includes(email);
-    delete commentJson.likes;
-
-    return new Response(JSON.stringify(commentJson), { status: 200 });
+    return new Response(
+      JSON.stringify({
+        like: comment.likes.length,
+        liked: comment.likes.includes(email)
+      }),
+      { status: 200 }
+    );
   } catch (err) {
     if (err && typeof err === 'object' && 'status' in err) throw err;
     throw error(500, { message: '좋아요 처리 중 오류가 발생하였습니다.' });

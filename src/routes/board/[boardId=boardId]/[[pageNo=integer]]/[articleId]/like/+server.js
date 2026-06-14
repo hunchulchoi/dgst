@@ -1,9 +1,5 @@
 import { error } from '@sveltejs/kit';
-import {
-  findArticleById,
-  toggleArticleLike,
-  toArticleJson
-} from '$lib/server/board/articleRepo.js';
+import { findArticleById, toggleArticleLike } from '$lib/server/board/articleRepo.js';
 
 const THREE_DAYS_MS = 1000 * 60 * 60 * 24 * 3;
 
@@ -43,10 +39,13 @@ export async function POST({ params, locals }) {
       });
     }
 
-    const articleJson = toArticleJson(updated);
-    articleJson.liked = updated.likes.includes(email);
-
-    return new Response(JSON.stringify(articleJson), { status: 200 });
+    return new Response(
+      JSON.stringify({
+        like: updated.likes.length,
+        liked: updated.likes.includes(email)
+      }),
+      { status: 200 }
+    );
   } catch (err) {
     if (err && typeof err === 'object' && 'status' in err) throw err;
     throw error(500, { message: '좋아요 처리 중 오류가 발생하였습니다.' });
