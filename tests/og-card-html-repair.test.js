@@ -17,9 +17,9 @@ describe('repairOgCardHtmlEntities', () => {
 
     const repaired = repairOgCardHtmlEntities(html);
 
-    expect(repaired).toContain("data-og-title>美정부, &apos;미토스&apos; 해외접속 금지</div>");
-    expect(repaired).toContain('data-og-description>연합뉴스 &amp; YNA</div>');
-    expect(repaired).toContain("data-og-site>Foo &#39; Bar</div>");
+    expect(repaired).toContain("data-og-title>美정부, '미토스' 해외접속 금지</div>");
+    expect(repaired).toContain('data-og-description>연합뉴스 & YNA</div>');
+    expect(repaired).toContain("data-og-site>Foo ' Bar</div>");
     expect(repaired).toContain('https://example.com?q=a&amp;b=1');
   });
 });
