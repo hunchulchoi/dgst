@@ -66,7 +66,7 @@ async function fetchOGData(targetUrl) {
     const cached = await getJson(cacheKey, OG_NS);
     if (cached) {
       console.log(`✅ [pgCache Hit] OG 데이터 반환: ${safeUrl}`);
-      return json(cached);
+      return json(decodeOgTextFields(cached));
     } else {
       logger.warn({
         message: `🐌 [pgCache Miss] 캐시가 없습니다. 외부 서버 통신을 시도합니다.`,
@@ -100,7 +100,7 @@ async function fetchOGData(targetUrl) {
     const html = await response.text();
 
     // Open Graph 메타 태그 파싱
-    const ogData = parseOpenGraphData(html, safeUrl);
+    const ogData = decodeOgTextFields(parseOpenGraphData(html, safeUrl));
 
     // 성공한 데이터에 한정해 레디스에 3시간(10800초) 캐시
     try {
@@ -121,14 +121,16 @@ async function fetchOGData(targetUrl) {
       hostname = new URL(safeUrl).hostname;
     } catch {}
 
-    return json({
-      title: hostname,
-      description: '',
-      image: '',
-      url: safeUrl,
-      siteName: hostname,
-      favicon: ''
-    });
+    return json(
+      decodeOgTextFields({
+        title: hostname,
+        description: '',
+        image: '',
+        url: safeUrl,
+        siteName: hostname,
+        favicon: ''
+      })
+    );
   }
 }
 
@@ -138,7 +140,7 @@ async function fetchOGData(targetUrl) {
  * @param {string} baseUrl - 기본 URL
  * @returns {Object} 파싱된 OG 데이터
  */
-function parseOpenGraphData(html, baseUrl) {
+export function parseOpenGraphData(html, baseUrl) {
   const ogData = {
     title: '',
     description: '',
@@ -233,6 +235,47 @@ function parseOpenGraphData(html, baseUrl) {
   }
 
   return ogData;
+}
+
+/**
+ * @param {string} value
+ * @returns {string}
+ */
+function decodeHtmlEntities(value) {
+  const namedEntities = {
+    amp: '&',
+    lt: '<',
+    gt: '>',
+    quot: '"',
+    apos: "'",
+    nbsp: ' '
+  };
+
+  return String(value ?? '').replaceAll(/&(#x?[0-9a-f]+|[a-z]+);/gi, (match, entity) => {
+    if (entity[0] === '#') {
+      const isHex = entity[1]?.toLowerCase() === 'x';
+      const codePointText = isHex ? entity.slice(2) : entity.slice(1);
+      const codePoint = Number.parseInt(codePointText, isHex ? 16 : 10);
+      return Number.isFinite(codePoint) ? String.fromCodePoint(codePoint) : match;
+    }
+
+    return namedEntities[entity.toLowerCase()] ?? match;
+  });
+}
+
+/**
+ * @param {{ title?: string; description?: string; image?: string; url?: string; siteName?: string; favicon?: string }} ogData
+ * @returns {{ title: string; description: string; image: string; url: string; siteName: string; favicon: string }}
+ */
+export function decodeOgTextFields(ogData) {
+  return {
+    title: decodeHtmlEntities(ogData.title ?? ''),
+    description: decodeHtmlEntities(ogData.description ?? ''),
+    image: ogData.image ?? '',
+    url: ogData.url ?? '',
+    siteName: decodeHtmlEntities(ogData.siteName ?? ''),
+    favicon: ogData.favicon ?? ''
+  };
 }
 
 /**
