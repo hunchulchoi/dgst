@@ -84,6 +84,28 @@ export async function findArticleById(id, boardId, state = 'write') {
 }
 
 /**
+ * 댓글 알람 발송에 필요한 최소 게시글 정보만 조회
+ *
+ * @param {string} id
+ * @param {string} boardId
+ * @param {string} [state]
+ */
+export async function findArticleAlarmTarget(id, boardId, state = 'write') {
+  try {
+    return await getPrisma().article.findFirst({
+      where: { id, boardId, state },
+      select: {
+        id: true,
+        email: true,
+        title: true
+      }
+    });
+  } catch {
+    return null;
+  }
+}
+
+/**
  * @param {string} id
  * @param {string} viewerId
  */

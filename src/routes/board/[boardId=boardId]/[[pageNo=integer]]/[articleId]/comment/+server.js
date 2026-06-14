@@ -1,5 +1,5 @@
 import { error, json } from '@sveltejs/kit';
-import { findArticleById } from '$lib/server/board/articleRepo.js';
+import { findArticleAlarmTarget } from '$lib/server/board/articleRepo.js';
 import {
   createComment,
   findCommentById,
@@ -124,7 +124,7 @@ export async function POST(event) {
       image: storeFileName
     });
 
-    const article = await findArticleById(articleId, boardId, 'write');
+    const article = await findArticleAlarmTarget(articleId, boardId, 'write');
 
     if (article && article.email !== userEmail) {
       if (!parentComment || parentComment.email !== article.email) {
