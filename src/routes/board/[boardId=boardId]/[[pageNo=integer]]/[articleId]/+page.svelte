@@ -346,6 +346,7 @@
   let editingCommentId = $state('');
   let editCommentContent = $state('');
   let editCommentImage = $state(/** @type {File | null} */ (null));
+  let editCommentRemoveImage = $state(false);
   /** @type {HTMLImageElement | null} */
   let editPreviewEl = $state(null);
   /** @type {HTMLInputElement | null} */
@@ -476,6 +477,7 @@
     editingCommentId = commentKey(comment);
     editCommentContent = comment.content;
     editCommentImage = null;
+    editCommentRemoveImage = false;
 
     // DOM이 업데이트된 후 미리보기 설정
     setTimeout(() => {
@@ -496,6 +498,7 @@
     editingCommentId = '';
     editCommentContent = '';
     editCommentImage = null;
+    editCommentRemoveImage = false;
     if (editCommentImageEl) editCommentImageEl.value = '';
     if (editPreviewEl) {
       editPreviewEl.src = '';
@@ -521,6 +524,9 @@
     const formData = new FormData();
     formData.append('content', editCommentContent);
     formData.append('commentId', editingCommentId);
+    if (editCommentRemoveImage) {
+      formData.append('removeImage', 'true');
+    }
 
     // 새 이미지가 있으면 추가, 없으면 기존 이미지 유지
     if (editCommentImage) {
@@ -555,6 +561,7 @@
   // 댓글 이미지 삭제
   function removeEditCommentImage() {
     editCommentImage = null;
+    editCommentRemoveImage = true;
     if (editCommentImageEl) editCommentImageEl.value = '';
     if (editPreviewEl) {
       editPreviewEl.src = '';
@@ -573,11 +580,15 @@
       if (!clipboardData) return;
       if (clipboardData.files?.length && clipboardData.files[0].type.startsWith('image')) {
         editCommentImage = clipboardData.files[0];
+        editCommentRemoveImage = false;
         event.preventDefault();
       } else return;
     } else {
       const input = /** @type {HTMLInputElement | null} */ (event.target);
       editCommentImage = input?.files?.[0] ?? null;
+      if (editCommentImage) {
+        editCommentRemoveImage = false;
+      }
     }
 
     if (editCommentImage) {

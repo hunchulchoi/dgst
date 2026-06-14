@@ -197,6 +197,7 @@ export async function PUT({ request, params, locals }) {
   const data = await request.formData();
   const commentId = data.get('commentId');
   const content = data.get('content');
+  const removeImage = data.get('removeImage') === 'true';
 
   if (!commentId || !content) {
     throw error(400, { message: '댓글 ID와 내용이 필요합니다.' });
@@ -224,13 +225,15 @@ export async function PUT({ request, params, locals }) {
       });
     }
 
-    /** @type {{ content: string, modifiedEmail: string, image?: string }} */
+    /** @type {{ content: string, modifiedEmail: string, image?: string | null }} */
     const updateData = {
       content: String(content),
       modifiedEmail: userEmail
     };
 
-    if (storeFileName) {
+    if (removeImage) {
+      updateData.image = null;
+    } else if (storeFileName) {
       updateData.image = storeFileName;
     }
 

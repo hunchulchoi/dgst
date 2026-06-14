@@ -134,4 +134,39 @@ describe('board comment route auth', () => {
     });
     expect(response.status).toBe(200);
   });
+
+  it('clears the existing image when comment edit requests image removal', async () => {
+    commentRepo.findOwnedActiveComment.mockResolvedValue({ id: 'comment-1' });
+    commentRepo.updateComment.mockResolvedValue({});
+
+    const { PUT } =
+      await import('../src/routes/board/[boardId=boardId]/[[pageNo=integer]]/[articleId]/comment/+server.js');
+
+    const formData = new FormData();
+    formData.set('commentId', 'comment-1');
+    formData.set('content', 'updated body');
+    formData.set('removeImage', 'true');
+
+    const response = await PUT({
+      params: { boardId: 'free', articleId: 'article-1' },
+      locals: {
+        auth: vi.fn().mockResolvedValue({
+          user: {
+            nickname: 'session-user',
+            email: 'session@example.com'
+          }
+        })
+      },
+      request: {
+        formData: vi.fn().mockResolvedValue(formData)
+      }
+    });
+
+    expect(commentRepo.updateComment).toHaveBeenCalledWith('comment-1', {
+      content: 'updated body',
+      modifiedEmail: 'session@example.com',
+      image: null
+    });
+    expect(response.status).toBe(200);
+  });
 });
