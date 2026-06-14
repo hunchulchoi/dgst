@@ -294,6 +294,34 @@ export async function countCommentsByArticles(articleIds) {
 
 /**
  * @param {string[]} articleIds
+ * @returns {Promise<Record<string, { count: number; latestCreatedAt: Date | null }>>}
+ */
+export async function summarizeCommentsByArticles(articleIds) {
+  /** @type {Record<string, { count: number; latestCreatedAt: Date | null }>} */
+  const summary = {};
+  if (articleIds.length === 0) return summary;
+
+  try {
+    const rows = await getPrisma().comment.groupBy({
+      by: ['articleId'],
+      where: { articleId: { in: articleIds }, state: 'write' },
+      _count: { _all: true },
+      _max: { createdAt: true }
+    });
+    for (const row of rows) {
+      summary[row.articleId] = {
+        count: row._count._all,
+        latestCreatedAt: row._max.createdAt ?? null
+      };
+    }
+  } catch {
+    // graceful fallback
+  }
+  return summary;
+}
+
+/**
+ * @param {string[]} articleIds
  * @returns {Promise<Record<string, Date>>}
  */
 export async function latestCommentAtByArticles(articleIds) {

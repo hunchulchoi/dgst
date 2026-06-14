@@ -64,4 +64,47 @@ describe('commentRepo', () => {
       select: { id: true, likes: true }
     });
   });
+
+  it('summarizes comment counts and latest timestamps in one grouped query', async () => {
+    const groupBy = vi.fn().mockResolvedValue([
+      {
+        articleId: 'article-1',
+        _count: { _all: 3 },
+        _max: { createdAt: new Date('2026-06-14T11:45:00.000Z') }
+      },
+      {
+        articleId: 'article-2',
+        _count: { _all: 1 },
+        _max: { createdAt: new Date('2026-06-14T10:15:00.000Z') }
+      }
+    ]);
+
+    prismaModule.getPrisma.mockReturnValue({
+      comment: { groupBy }
+    });
+
+    const { summarizeCommentsByArticles } = await import('../src/lib/server/board/commentRepo.js');
+
+    const result = await summarizeCommentsByArticles(['article-1', 'article-2']);
+
+    expect(result).toEqual({
+      'article-1': {
+        count: 3,
+        latestCreatedAt: new Date('2026-06-14T11:45:00.000Z')
+      },
+      'article-2': {
+        count: 1,
+        latestCreatedAt: new Date('2026-06-14T10:15:00.000Z')
+      }
+    });
+    expect(groupBy).toHaveBeenCalledWith({
+      by: ['articleId'],
+      where: {
+        articleId: { in: ['article-1', 'article-2'] },
+        state: 'write'
+      },
+      _count: { _all: true },
+      _max: { createdAt: true }
+    });
+  });
 });

@@ -5,8 +5,7 @@ const prismaModule = vi.hoisted(() => ({
 }));
 
 const commentRepo = vi.hoisted(() => ({
-  countCommentsByArticles: vi.fn(),
-  latestCommentAtByArticles: vi.fn()
+  summarizeCommentsByArticles: vi.fn()
 }));
 
 vi.mock('$lib/database/prisma.js', () => prismaModule);
@@ -55,12 +54,15 @@ describe('fetchBoardArticleList', () => {
       article: { findMany: articleFindMany },
       user: { findMany: userFindMany }
     });
-    commentRepo.countCommentsByArticles.mockResolvedValue({
-      'article-1': 3
-    });
-    commentRepo.latestCommentAtByArticles.mockResolvedValue({
-      'article-1': new Date('2026-06-14T11:45:00.000Z'),
-      'article-2': new Date('2026-06-14T10:15:00.000Z')
+    commentRepo.summarizeCommentsByArticles.mockResolvedValue({
+      'article-1': {
+        count: 3,
+        latestCreatedAt: new Date('2026-06-14T11:45:00.000Z')
+      },
+      'article-2': {
+        count: 0,
+        latestCreatedAt: new Date('2026-06-14T10:15:00.000Z')
+      }
     });
 
     const { fetchBoardArticleList } = await import('../src/lib/server/boardArticleList.js');
@@ -92,8 +94,10 @@ describe('fetchBoardArticleList', () => {
         content: true
       }
     });
-    expect(commentRepo.countCommentsByArticles).toHaveBeenCalledWith(['article-1', 'article-2']);
-    expect(commentRepo.latestCommentAtByArticles).toHaveBeenCalledWith(['article-1', 'article-2']);
+    expect(commentRepo.summarizeCommentsByArticles).toHaveBeenCalledWith([
+      'article-1',
+      'article-2'
+    ]);
     expect(result).toMatchObject([
       {
         _id: 'article-1',
@@ -134,8 +138,7 @@ describe('fetchBoardArticleList', () => {
     });
 
     expect(result).toEqual([]);
-    expect(commentRepo.countCommentsByArticles).not.toHaveBeenCalled();
-    expect(commentRepo.latestCommentAtByArticles).not.toHaveBeenCalled();
+    expect(commentRepo.summarizeCommentsByArticles).not.toHaveBeenCalled();
     expect(userFindMany).not.toHaveBeenCalled();
   });
 });

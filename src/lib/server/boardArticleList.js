@@ -1,9 +1,6 @@
 import { getPrisma } from '$lib/database/prisma.js';
 import { contentIcons } from '$lib/server/board/articleRepo.js';
-import {
-  countCommentsByArticles,
-  latestCommentAtByArticles
-} from '$lib/server/board/commentRepo.js';
+import { summarizeCommentsByArticles } from '$lib/server/board/commentRepo.js';
 
 const THIRTY_MIN_MS = 30 * 60 * 1000;
 
@@ -50,9 +47,8 @@ export async function fetchBoardArticleList({ boardId, pageNo, pageUnit, created
     const emails = [...new Set(rows.map((a) => a.email))];
     const newCommentThreshold = new Date(Date.now() - THIRTY_MIN_MS);
 
-    const [commentCounts, latestByArticle, users] = await Promise.all([
-      countCommentsByArticles(articleIds),
-      latestCommentAtByArticles(articleIds),
+    const [commentSummaryByArticle, users] = await Promise.all([
+      summarizeCommentsByArticles(articleIds),
       getPrisma().user.findMany({
         where: { email: { in: emails } },
         select: { email: true, photo: true }
@@ -66,7 +62,8 @@ export async function fetchBoardArticleList({ boardId, pageNo, pageUnit, created
     }
 
     return rows.map((a) => {
-      const latest = latestByArticle[a.id];
+      const commentSummary = commentSummaryByArticle[a.id];
+      const latest = commentSummary?.latestCreatedAt;
       return {
         _id: a.id,
         title: a.title,
@@ -75,7 +72,7 @@ export async function fetchBoardArticleList({ boardId, pageNo, pageUnit, created
         email: a.email,
         read: a.reads.length,
         like: a.likes.length,
-        comment: commentCounts[a.id] ?? 0,
+        comment: commentSummary?.count ?? 0,
         content: contentIcons(a.content),
         isNewComment: Boolean(latest && latest >= newCommentThreshold),
         photo: a.email ? photoByEmail[a.email] : undefined
