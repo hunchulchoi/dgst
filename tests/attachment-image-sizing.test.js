@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  applyAttachmentImageSizing,
   DEFAULT_ATTACHMENT_IMAGE_MAX_HEIGHT,
   LONG_IMAGE_RATIO_THRESHOLD,
   getAttachmentImageMaxHeight
@@ -24,5 +25,24 @@ describe('attachment image sizing', () => {
 
   it('does not cap unloaded images', () => {
     expect(getAttachmentImageMaxHeight({ naturalWidth: 0, naturalHeight: 0 })).toBeUndefined();
+  });
+
+  it('forces attachment images to keep their intrinsic size when width attributes exist', () => {
+    const style = {
+      maxWidth: '',
+      maxHeight: '',
+      width: '',
+      height: '',
+      removeProperty(prop) {
+        if (prop === 'max-height') this.maxHeight = '';
+      }
+    };
+
+    applyAttachmentImageSizing(style, { naturalWidth: 1080, naturalHeight: 1920 });
+
+    expect(style.maxWidth).toBe('100%');
+    expect(style.maxHeight).toBe(DEFAULT_ATTACHMENT_IMAGE_MAX_HEIGHT);
+    expect(style.width).toBe('auto');
+    expect(style.height).toBe('auto');
   });
 });

@@ -10,3 +10,20 @@ export function getAttachmentImageMaxHeight(img) {
   if (img.naturalHeight >= img.naturalWidth * LONG_IMAGE_RATIO_THRESHOLD) return undefined;
   return DEFAULT_ATTACHMENT_IMAGE_MAX_HEIGHT;
 }
+
+/**
+ * @param {{ maxWidth?: string; maxHeight?: string; width?: string; height?: string; removeProperty?: (name: string) => void }} style
+ * @param {{ naturalWidth?: number; naturalHeight?: number } | null | undefined} img
+ */
+export function applyAttachmentImageSizing(style, img) {
+  style.maxWidth = '100%';
+  style.width = 'auto';
+  style.height = 'auto';
+
+  const maxHeight = getAttachmentImageMaxHeight(img);
+  if (maxHeight) {
+    style.maxHeight = maxHeight;
+  } else {
+    style.removeProperty?.('max-height');
+  }
+}

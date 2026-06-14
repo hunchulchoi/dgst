@@ -19,7 +19,7 @@
   import OGPreview from '$lib/components/OGPreview.svelte';
   import sanitizeHtml from 'sanitize-html';
   import { countEmojis } from '$lib/util/emoji.js';
-  import { getAttachmentImageMaxHeight } from '$lib/util/attachmentImageSizing.js';
+  import { applyAttachmentImageSizing } from '$lib/util/attachmentImageSizing.js';
 
   /** @type {typeof import('$lib/util/embeder.js') | null} */
   let embeder = $state(null);
@@ -615,13 +615,7 @@
    */
   function applyAttachmentImageMaxHeight(img) {
     if (!isBoardAttachmentImage(img)) return;
-    img.style.maxWidth = '100%';
-    const maxHeight = getAttachmentImageMaxHeight(img);
-    if (maxHeight) {
-      img.style.maxHeight = maxHeight;
-    } else {
-      img.style.removeProperty('max-height');
-    }
+    applyAttachmentImageSizing(img.style, img);
   }
 
   /**
