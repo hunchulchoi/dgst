@@ -5,6 +5,7 @@ const articlePage = readFileSync(
   'src/routes/board/[boardId=boardId]/[[pageNo=integer]]/[articleId]/+page.svelte',
   'utf8'
 );
+const slotPage = readFileSync('src/routes/games/slot/+page.svelte', 'utf8');
 
 describe('comment write group layout CSS', () => {
   it('keeps textarea and submit button on one input-group row', () => {
@@ -20,5 +21,12 @@ describe('comment write group layout CSS', () => {
     expect(articlePage).toContain('class="comment-single-emoji"');
     expect(articlePage).toContain('.dgst-rich-text .comment-single-emoji');
     expect(articlePage).toContain('font-size: 3em !important');
+  });
+
+  it('renders single-emoji slot comments at three times the comment text size', () => {
+    expect(slotPage).toContain('{#if isOnlyOneEmoji(comment.content)}');
+    expect(slotPage).toContain('class="slot-comment-single-emoji"');
+    expect(slotPage).toContain('.slot-comment-single-emoji');
+    expect(slotPage).toContain('font-size: 3em');
   });
 });

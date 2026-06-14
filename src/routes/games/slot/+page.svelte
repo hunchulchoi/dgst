@@ -1052,7 +1052,7 @@
                     </div>
                     <div class="ms-1" id={comment.id ? `comment-${comment.id}` : undefined}>
                       {#if isOnlyOneEmoji(comment.content)}
-                        <span class="fs-2">{comment.content}</span>
+                        <span class="slot-comment-single-emoji">{comment.content}</span>
                       {:else}
                         {comment.content}
                       {/if}
@@ -1388,6 +1388,11 @@
   .comment-submit-btn {
     align-self: flex-start;
     min-width: 80px;
+  }
+  .slot-comment-single-emoji {
+    display: inline-block;
+    font-size: 3em;
+    line-height: 1;
   }
   /* 모바일에서 스핀 문구 영역 패딩 줄이기 및 댓글 입력창이 보이도록 */
   @media (max-width: 768px) {
