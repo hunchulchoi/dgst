@@ -6,7 +6,7 @@ import {
   findArticleById,
   toArticleJson
 } from '$lib/server/board/articleRepo.js';
-import { findCommentsByArticle } from '$lib/server/board/commentRepo.js';
+import { findCommentsByArticle, toCommentJson } from '$lib/server/board/commentRepo.js';
 import { fetchBoardArticleList } from '$lib/server/boardArticleList.js';
 import { computePaginationWindow } from '$lib/server/boardListLoad.js';
 import convertToTree from '$lib/util/tree.js';
@@ -36,7 +36,7 @@ export const load = async ({ params, locals, cookies }) => {
     const comments = await findCommentsByArticle(articleId);
     const commentTree = convertToTree(
       comments.map((c) => ({
-        ...c,
+        ...toCommentJson(c),
         id: c.id
       }))
     );

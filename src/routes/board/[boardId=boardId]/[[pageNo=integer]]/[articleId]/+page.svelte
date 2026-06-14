@@ -380,9 +380,9 @@
   }
 
   // 댓글 수정 시작
-  /** @param {{ _id: string; content: string; image?: string }} comment */
+  /** @param {{ id?: string; _id?: string; content: string; image?: string }} comment */
   function startEditComment(comment) {
-    editingCommentId = comment._id;
+    editingCommentId = commentKey(comment);
     editCommentContent = comment.content;
     editCommentImage = null;
 
@@ -1362,7 +1362,7 @@
                 <Col xs="12" class="p-0 min-w-0">
                   <Row class="mx-0">
                     <Col class="text-break p-0 m-0" style="max-width: 98%">
-                      {#if editingCommentId === comment._id}
+                      {#if editingCommentId === commentKey(comment)}
                         <!-- 댓글 수정 모드 -->
                         <div class="border p-3 rounded-4 shadow-sm bg-light position-relative">
                           {#if commentLoading}
@@ -1483,7 +1483,7 @@
                               <span
                                 class="comment-text"
                                 bind:this={commentDiv}
-                                data-comment-id={comment._id}
+                                data-comment-id={commentKey(comment)}
                               >
                                 {#if embeder}
                                   <!-- eslint-disable-next-line svelte/no-at-html-tags -- comment HTML comes from embeder.viewComment() after sanitize-html -->
@@ -1516,7 +1516,7 @@
                   <Col class="comment-actions text-end pe-2 m-0">
                     {#if comment.email === sessionUser?.email}
                       <Button
-                        onclick={() => deleteComment(comment._id)}
+                        onclick={() => deleteComment(commentKey(comment))}
                         outline
                         color="danger"
                         class="comment-action-btn"
@@ -1536,12 +1536,12 @@
                       </Button>
                     {/if}
                     <Button
-                      onclick={() => likeComment(comment._id)}
+                      onclick={() => likeComment(commentKey(comment))}
                       outline
                       color="primary"
                       disabled={comment.liked}
                       class="comment-action-btn comment-like-btn {commentLikeAnimations.has(
-                        comment._id
+                        commentKey(comment)
                       )
                         ? 'like-animation'
                         : ''}"
