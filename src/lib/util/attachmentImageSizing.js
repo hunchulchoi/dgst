@@ -1,4 +1,4 @@
-export const LONG_IMAGE_RATIO_THRESHOLD = 1.8;
+export const LONG_IMAGE_RATIO_THRESHOLD = 2.3;
 export const DEFAULT_ATTACHMENT_IMAGE_MAX_HEIGHT = '72dvh';
 
 /**

@@ -14,6 +14,12 @@ describe('attachment image sizing', () => {
     );
   });
 
+  it('still caps tall phone screenshots that are not true long images', () => {
+    expect(getAttachmentImageMaxHeight({ naturalWidth: 960, naturalHeight: 2079 })).toBe(
+      DEFAULT_ATTACHMENT_IMAGE_MAX_HEIGHT
+    );
+  });
+
   it('does not cap long images once they cross the long-image threshold', () => {
     expect(
       getAttachmentImageMaxHeight({
