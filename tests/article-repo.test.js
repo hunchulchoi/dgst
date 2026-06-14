@@ -40,4 +40,31 @@ describe('articleRepo', () => {
       }
     });
   });
+
+  it('loads only profile fields needed for the article author panel', async () => {
+    const findFirst = vi.fn().mockResolvedValue({
+      photo: '/writer.jpg',
+      introduction: 'hello'
+    });
+
+    prismaModule.getPrisma.mockReturnValue({
+      user: { findFirst }
+    });
+
+    const { findArticleAuthorProfile } = await import('../src/lib/server/board/articleRepo.js');
+
+    const result = await findArticleAuthorProfile('writer@example.com');
+
+    expect(result).toEqual({
+      photo: '/writer.jpg',
+      introduction: 'hello'
+    });
+    expect(findFirst).toHaveBeenCalledWith({
+      where: { email: 'writer@example.com' },
+      select: {
+        photo: true,
+        introduction: true
+      }
+    });
+  });
 });

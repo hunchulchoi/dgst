@@ -1,6 +1,10 @@
 import { error } from '@sveltejs/kit';
-import { getPrisma } from '$lib/database/prisma.js';
-import { addRead, findArticleById, toArticleJson } from '$lib/server/board/articleRepo.js';
+import {
+  addRead,
+  findArticleAuthorProfile,
+  findArticleById,
+  toArticleJson
+} from '$lib/server/board/articleRepo.js';
 import { findCommentsByArticle, toCommentJson } from '$lib/server/board/commentRepo.js';
 import { getBoardListPayload } from '$lib/server/boardListLoad.js';
 import convertToTree from '$lib/util/tree.js';
@@ -45,10 +49,7 @@ export const load = async ({ params, locals, cookies }) => {
     const requestedPageNo = parseInt(params.pageNo || '1', 10);
     const [comments, author, boardListPayload] = await Promise.all([
       findCommentsByArticle(articleId, boardId, BOARD_COMMENT_SELECT),
-      getPrisma().user.findFirst({
-        where: { email: article.email },
-        select: { photo: true, introduction: true }
-      }),
+      findArticleAuthorProfile(article.email),
       getBoardListPayload(boardId, requestedPageNo)
     ]);
 

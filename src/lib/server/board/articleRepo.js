@@ -127,6 +127,25 @@ export async function findArticleAlarmTarget(id, boardId, state = 'write') {
 }
 
 /**
+ * 게시글 상세 작성자 패널에 필요한 최소 프로필 정보만 조회
+ *
+ * @param {string} email
+ */
+export async function findArticleAuthorProfile(email) {
+  try {
+    return await getPrisma().user.findFirst({
+      where: { email },
+      select: {
+        photo: true,
+        introduction: true
+      }
+    });
+  } catch {
+    return null;
+  }
+}
+
+/**
  * @param {string} id
  * @param {string} viewerId
  */

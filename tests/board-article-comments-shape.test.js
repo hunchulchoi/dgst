@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const articleRepo = vi.hoisted(() => ({
   addRead: vi.fn(),
+  findArticleAuthorProfile: vi.fn(),
   findArticleById: vi.fn(),
   toArticleJson: vi.fn()
 }));
@@ -42,6 +43,10 @@ describe('board article load comment shape', () => {
       likes: []
     });
     articleRepo.addRead.mockResolvedValue(null);
+    articleRepo.findArticleAuthorProfile.mockResolvedValue({
+      photo: null,
+      introduction: ''
+    });
     articleRepo.toArticleJson.mockReturnValue({
       _id: 'article-1',
       id: 'article-1',
@@ -121,14 +126,7 @@ describe('board article load comment shape', () => {
       endNo: 1,
       articles: []
     });
-    prismaModule.getPrisma.mockReturnValue({
-      user: {
-        findFirst: vi.fn().mockResolvedValue({
-          photo: null,
-          introduction: ''
-        })
-      }
-    });
+    prismaModule.getPrisma.mockReturnValue({});
   });
 
   it('returns top-level comments and replies with normalized ids on initial load', async () => {
