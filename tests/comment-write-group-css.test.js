@@ -13,4 +13,10 @@ describe('comment write group layout CSS', () => {
     expect(articlePage).toContain('width: 1%');
     expect(articlePage).toContain('flex: 1 1 auto');
   });
+
+  it('renders single-emoji comments at three times the comment text size', () => {
+    expect(articlePage).toContain('class="comment-single-emoji"');
+    expect(articlePage).toContain('.comment-single-emoji');
+    expect(articlePage).toContain('font-size: 3em !important');
+  });
 });

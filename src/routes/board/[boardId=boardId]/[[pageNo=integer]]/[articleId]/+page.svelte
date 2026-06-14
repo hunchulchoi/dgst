@@ -1600,7 +1600,7 @@
                                   >{comment.parentCommentNickname}</span
                                 >
                               {/if}
-                              <span class="display-1">{comment.content}</span>
+                              <span class="comment-single-emoji">{comment.content}</span>
                             </div>
                           </div>
                         {:else if comment.state !== 'write'}
@@ -2094,6 +2094,11 @@
     align-items: baseline;
     gap: 0.35rem;
     line-height: 1.55;
+  }
+
+  .comment-single-emoji {
+    font-size: 3em !important;
+    line-height: 1 !important;
   }
 
   .comment-mention {
