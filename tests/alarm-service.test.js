@@ -71,16 +71,14 @@ describe('alarmService', () => {
   });
 
   it('upserts an existing alarm by appending only new comment ids and resetting readAt', async () => {
-    const findUnique = vi.fn().mockResolvedValue({
-      id: 'article-1',
-      commentIds: ['comment-1'],
-      readAt: new Date('2026-06-14T00:00:00.000Z')
-    });
-    const update = vi.fn().mockResolvedValue({});
+    const updateMany = vi
+      .fn()
+      .mockResolvedValueOnce({ count: 1 })
+      .mockResolvedValueOnce({ count: 0 });
     const create = vi.fn();
 
     prismaModule.getPrisma.mockReturnValue({
-      alarm: { findUnique, update, create }
+      alarm: { updateMany, create }
     });
 
     const { upsertAlarm } = await import('../src/lib/server/alarm/alarmService.js');
@@ -93,28 +91,36 @@ describe('alarmService', () => {
       newCommentId: 'comment-2'
     });
 
-    expect(findUnique).toHaveBeenCalledWith({ where: { id: 'article-1' } });
-    expect(update).toHaveBeenCalledWith({
-      where: { id: 'article-1' },
+    expect(updateMany).toHaveBeenCalledTimes(1);
+    expect(updateMany).toHaveBeenCalledWith({
+      where: {
+        id: 'article-1',
+        NOT: {
+          commentIds: {
+            has: 'comment-2'
+          }
+        }
+      },
       data: {
         title: 'title',
         boardId: 'free',
-        commentIds: ['comment-1', 'comment-2'],
-        readAt: null
+        readAt: null,
+        commentIds: {
+          push: 'comment-2'
+        }
       }
     });
     expect(create).not.toHaveBeenCalled();
   });
 
   it('does not duplicate an existing comment id during alarm upsert', async () => {
-    const findUnique = vi.fn().mockResolvedValue({
-      id: 'article-1_comment-1',
-      commentIds: ['comment-9']
-    });
-    const update = vi.fn().mockResolvedValue({});
+    const updateMany = vi
+      .fn()
+      .mockResolvedValueOnce({ count: 0 })
+      .mockResolvedValueOnce({ count: 1 });
 
     prismaModule.getPrisma.mockReturnValue({
-      alarm: { findUnique, update, create: vi.fn() }
+      alarm: { updateMany, create: vi.fn() }
     });
 
     const { upsertAlarm } = await import('../src/lib/server/alarm/alarmService.js');
@@ -128,11 +134,66 @@ describe('alarmService', () => {
       newCommentId: 'comment-9'
     });
 
-    expect(update).toHaveBeenCalledWith({
+    expect(updateMany).toHaveBeenNthCalledWith(1, {
+      where: {
+        id: 'article-1_comment-1',
+        NOT: {
+          commentIds: {
+            has: 'comment-9'
+          }
+        }
+      },
+      data: {
+        title: 'title',
+        boardId: 'free',
+        readAt: null,
+        commentIds: {
+          push: 'comment-9'
+        }
+      }
+    });
+    expect(updateMany).toHaveBeenNthCalledWith(2, {
       where: { id: 'article-1_comment-1' },
       data: {
         title: 'title',
         boardId: 'free',
+        readAt: null
+      }
+    });
+  });
+
+  it('creates a new alarm row when no existing alarm matches the target id', async () => {
+    const updateMany = vi
+      .fn()
+      .mockResolvedValueOnce({ count: 0 })
+      .mockResolvedValueOnce({ count: 0 });
+    const create = vi.fn().mockResolvedValue({});
+
+    prismaModule.getPrisma.mockReturnValue({
+      alarm: { updateMany, create }
+    });
+
+    const { upsertAlarm } = await import('../src/lib/server/alarm/alarmService.js');
+
+    await upsertAlarm({
+      email: 'owner@example.com',
+      articleId: 'article-1',
+      title: 'title',
+      boardId: 'free',
+      parentCommentId: 'comment-1',
+      parentCommentContent: 'parent body',
+      newCommentId: 'comment-9'
+    });
+
+    expect(create).toHaveBeenCalledWith({
+      data: {
+        id: 'article-1_comment-1',
+        email: 'owner@example.com',
+        articleId: 'article-1',
+        boardId: 'free',
+        title: 'title',
+        parentCommentId: 'comment-1',
+        commentContent: 'parent body',
         commentIds: ['comment-9'],
         readAt: null
       }

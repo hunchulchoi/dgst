@@ -14,6 +14,14 @@ function buildAlarmId(articleId, parentCommentId) {
 }
 
 /**
+ * @param {unknown} error
+ * @returns {boolean}
+ */
+function isUniqueConstraintError(error) {
+  return !!error && typeof error === 'object' && 'code' in error && error.code === 'P2002';
+}
+
+/**
  * @param {import('@prisma/client').Alarm} alarm
  * @returns {Record<string, unknown>}
  */
@@ -138,39 +146,86 @@ export async function upsertAlarm({
 
   try {
     const prisma = getPrisma();
-    const existing = await prisma.alarm.findUnique({ where: { id: alarmId } });
+    /** @type {{ title: string; boardId: string; readAt: null }} */
+    const touchData = {
+      title,
+      boardId,
+      readAt: null
+    };
 
-    if (existing) {
-      const commentIds = [...existing.commentIds];
-      if (newCommentId && !commentIds.includes(newCommentId)) {
-        commentIds.push(newCommentId);
-      }
-
-      await prisma.alarm.update({
-        where: { id: alarmId },
+    if (newCommentId) {
+      const appendResult = await prisma.alarm.updateMany({
+        where: {
+          id: alarmId,
+          NOT: {
+            commentIds: {
+              has: newCommentId
+            }
+          }
+        },
         data: {
-          title,
+          ...touchData,
+          commentIds: {
+            push: newCommentId
+          }
+        }
+      });
+
+      if (appendResult.count > 0) return;
+    }
+
+    const touchResult = await prisma.alarm.updateMany({
+      where: { id: alarmId },
+      data: touchData
+    });
+
+    if (touchResult.count > 0) return;
+
+    try {
+      await prisma.alarm.create({
+        data: {
+          id: alarmId,
+          email,
+          articleId,
           boardId,
-          commentIds,
+          title,
+          parentCommentId: parentCommentId || null,
+          commentContent: parentCommentContent || null,
+          commentIds: newCommentId ? [newCommentId] : [],
           readAt: null
         }
       });
-      return;
-    }
-
-    await prisma.alarm.create({
-      data: {
-        id: alarmId,
-        email,
-        articleId,
-        boardId,
-        title,
-        parentCommentId: parentCommentId || null,
-        commentContent: parentCommentContent || null,
-        commentIds: newCommentId ? [newCommentId] : [],
-        readAt: null
+    } catch (error) {
+      if (!isUniqueConstraintError(error)) {
+        throw error;
       }
-    });
+
+      if (newCommentId) {
+        const appendRetry = await prisma.alarm.updateMany({
+          where: {
+            id: alarmId,
+            NOT: {
+              commentIds: {
+                has: newCommentId
+              }
+            }
+          },
+          data: {
+            ...touchData,
+            commentIds: {
+              push: newCommentId
+            }
+          }
+        });
+
+        if (appendRetry.count > 0) return;
+      }
+
+      await prisma.alarm.updateMany({
+        where: { id: alarmId },
+        data: touchData
+      });
+    }
   } catch (error) {
     logger.error({
       message: `🚨 [Alarm] ❌ 알림 저장 실패 - 대상: ${email}, 게시판: ${boardId}, 알람 ID: ${alarmId}`,
