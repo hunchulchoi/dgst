@@ -1,0 +1,39 @@
+/**
+ * @param {string} value
+ * @returns {string}
+ */
+function decodeHtmlEntities(value) {
+  const namedEntities = {
+    amp: '&',
+    lt: '<',
+    gt: '>',
+    quot: '"',
+    apos: "'",
+    nbsp: ' '
+  };
+
+  return String(value ?? '').replaceAll(/&(#x?[0-9a-f]+|[a-z]+);/gi, (match, entity) => {
+    if (entity[0] === '#') {
+      const isHex = entity[1]?.toLowerCase() === 'x';
+      const codePointText = isHex ? entity.slice(2) : entity.slice(1);
+      const codePoint = Number.parseInt(codePointText, isHex ? 16 : 10);
+      return Number.isFinite(codePoint) ? String.fromCodePoint(codePoint) : match;
+    }
+
+    return namedEntities[entity.toLowerCase()] ?? match;
+  });
+}
+
+/**
+ * Stored OG cards can contain doubly-escaped text like `&amp;apos;`.
+ * Decode only the human-readable OG text fields and leave href/image URLs untouched.
+ *
+ * @param {string} html
+ * @returns {string}
+ */
+export function repairOgCardHtmlEntities(html) {
+  return String(html ?? '').replaceAll(
+    /(<div[^>]+data-og-(?:title|description|site)[^>]*>)([\s\S]*?)(<\/div>)/gi,
+    (_, openTag, text, closeTag) => `${openTag}${decodeHtmlEntities(text)}${closeTag}`
+  );
+}
