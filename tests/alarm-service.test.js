@@ -47,34 +47,27 @@ describe('alarmService', () => {
   });
 
   it('marks only unread alarms for the article and its comment thread ids', async () => {
-    const findMany = vi.fn().mockResolvedValue([
-      { id: 'article-1', readAt: null },
-      { id: 'article-1_comment-1', readAt: null },
-      { id: 'article-1_comment-2', readAt: new Date('2026-06-14T00:00:00.000Z') }
-    ]);
     const updateMany = vi.fn().mockResolvedValue({ count: 2 });
 
     prismaModule.getPrisma.mockReturnValue({
-      alarm: { findMany, updateMany }
+      alarm: { updateMany }
     });
 
     const { markAsRead } = await import('../src/lib/server/alarm/alarmService.js');
 
     await markAsRead('user@example.com', 'article-1');
 
-    expect(findMany).toHaveBeenCalledWith({
+    expect(updateMany).toHaveBeenCalledTimes(1);
+    expect(updateMany).toHaveBeenCalledWith({
       where: {
         email: 'user@example.com',
+        readAt: null,
         OR: [{ id: 'article-1' }, { id: { startsWith: 'article-1_' } }]
       },
-      select: { id: true, readAt: true }
+      data: {
+        readAt: expect.any(Date)
+      }
     });
-    expect(updateMany).toHaveBeenCalledTimes(1);
-    expect(updateMany.mock.calls[0][0].where).toEqual({
-      id: { in: ['article-1', 'article-1_comment-1'] },
-      readAt: null
-    });
-    expect(updateMany.mock.calls[0][0].data.readAt).toBeInstanceOf(Date);
   });
 
   it('upserts an existing alarm by appending only new comment ids and resetting readAt', async () => {

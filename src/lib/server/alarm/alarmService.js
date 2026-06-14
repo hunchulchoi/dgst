@@ -95,19 +95,12 @@ export async function getAlarmList(email, limit = 30) {
 export async function markAsRead(email, articleId) {
   try {
     const prisma = getPrisma();
-    const alarms = await prisma.alarm.findMany({
+    await prisma.alarm.updateMany({
       where: {
         email,
+        readAt: null,
         OR: [{ id: articleId }, { id: { startsWith: `${articleId}_` } }]
       },
-      select: { id: true, readAt: true }
-    });
-
-    const unreadIds = alarms.filter((a) => a.readAt == null).map((a) => a.id);
-    if (unreadIds.length === 0) return;
-
-    await prisma.alarm.updateMany({
-      where: { id: { in: unreadIds }, readAt: null },
       data: { readAt: new Date() }
     });
   } catch (err) {
