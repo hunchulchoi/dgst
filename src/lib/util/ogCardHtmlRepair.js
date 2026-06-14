@@ -40,6 +40,34 @@ function decodeHtmlEntitiesDeep(value) {
   return decoded;
 }
 
+/** @param {string} text */
+function isUrlText(text) {
+  return /^https?:\/\//i.test(decodeHtmlEntitiesDeep(text).trim());
+}
+
+/**
+ * @param {string} html
+ * @returns {string}
+ */
+function repairAttributeTaggedOgText(html) {
+  return html.replaceAll(
+    /(<div[^>]+data-og-(?:title|description|site)[^>]*>)([\s\S]*?)(<\/div>)/gi,
+    (_, openTag, text, closeTag) => `${openTag}${decodeHtmlEntitiesDeep(text)}${closeTag}`
+  );
+}
+
+/**
+ * @param {string} html
+ * @returns {string}
+ */
+function repairPlainDivText(html) {
+  return html.replaceAll(
+    /(<div\b[^>]*>)([^<>]*&(?:#x?[0-9a-f]+|[a-z]+);[^<>]*)(<\/div>)/gi,
+    (token, openTag, text, closeTag) =>
+      isUrlText(text) ? token : `${openTag}${decodeHtmlEntitiesDeep(text)}${closeTag}`
+  );
+}
+
 /**
  * Stored OG cards can contain doubly-escaped text like `&amp;apos;`.
  * Decode only the human-readable OG text fields and leave href/image URLs untouched.
@@ -48,8 +76,5 @@ function decodeHtmlEntitiesDeep(value) {
  * @returns {string}
  */
 export function repairOgCardHtmlEntities(html) {
-  return String(html ?? '').replaceAll(
-    /(<div[^>]+data-og-(?:title|description|site)[^>]*>)([\s\S]*?)(<\/div>)/gi,
-    (_, openTag, text, closeTag) => `${openTag}${decodeHtmlEntitiesDeep(text)}${closeTag}`
-  );
+  return repairPlainDivText(repairAttributeTaggedOgText(String(html ?? '')));
 }
