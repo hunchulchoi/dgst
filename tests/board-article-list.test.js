@@ -32,7 +32,10 @@ describe('fetchBoardArticleList', () => {
         email: 'writer1@example.com',
         reads: ['a', 'b'],
         likes: ['x'],
-        content: '<p>hello <img src="/a.jpg" /></p>'
+        hasImage: true,
+        hasVideo: false,
+        hasYoutube: true,
+        hasInstagram: false
       },
       {
         id: 'article-2',
@@ -42,7 +45,10 @@ describe('fetchBoardArticleList', () => {
         email: 'writer2@example.com',
         reads: [],
         likes: [],
-        content: '<p>plain text</p>'
+        hasImage: false,
+        hasVideo: false,
+        hasYoutube: false,
+        hasInstagram: true
       }
     ]);
     const userFindMany = vi.fn().mockResolvedValue([
@@ -91,7 +97,10 @@ describe('fetchBoardArticleList', () => {
         email: true,
         reads: true,
         likes: true,
-        content: true
+        hasImage: true,
+        hasVideo: true,
+        hasYoutube: true,
+        hasInstagram: true
       }
     });
     expect(commentRepo.summarizeCommentsByArticles).toHaveBeenCalledWith([
@@ -118,6 +127,8 @@ describe('fetchBoardArticleList', () => {
       }
     ]);
     expect(result[0].content).toContain('bi-card-image');
+    expect(result[0].content).toContain('bi-youtube');
+    expect(result[1].content).toContain('bi-instagram');
   });
 
   it('returns early without fan-out queries when there are no board rows', async () => {

@@ -1,5 +1,5 @@
 import { getPrisma } from '$lib/database/prisma.js';
-import { contentIcons } from '$lib/server/board/articleRepo.js';
+import { contentIconsFromFlags } from '$lib/server/board/articleRepo.js';
 import { summarizeCommentsByArticles } from '$lib/server/board/commentRepo.js';
 
 const THIRTY_MIN_MS = 30 * 60 * 1000;
@@ -37,7 +37,10 @@ export async function fetchBoardArticleList({ boardId, pageNo, pageUnit, created
         email: true,
         reads: true,
         likes: true,
-        content: true
+        hasImage: true,
+        hasVideo: true,
+        hasYoutube: true,
+        hasInstagram: true
       }
     });
 
@@ -73,7 +76,7 @@ export async function fetchBoardArticleList({ boardId, pageNo, pageUnit, created
         read: a.reads.length,
         like: a.likes.length,
         comment: commentSummary?.count ?? 0,
-        content: contentIcons(a.content),
+        content: contentIconsFromFlags(a),
         isNewComment: Boolean(latest && latest >= newCommentThreshold),
         photo: a.email ? photoByEmail[a.email] : undefined
       };

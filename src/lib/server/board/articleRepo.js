@@ -3,23 +3,51 @@ import { getPrisma } from '$lib/database/prisma.js';
 
 /**
  * @param {string} content
+ * @returns {{ hasImage: boolean; hasVideo: boolean; hasYoutube: boolean; hasInstagram: boolean }}
+ */
+export function deriveArticleContentFlags(content) {
+  return {
+    hasImage: content.includes('<img '),
+    hasVideo: content.includes('<video '),
+    hasYoutube:
+      content.includes('youtube.com') ||
+      content.includes('youtu.be') ||
+      content.includes('youtube.com/embed'),
+    hasInstagram:
+      content.includes('instagram.com') || content.includes('blockquote class="instagram-media"')
+  };
+}
+
+/**
+ * @param {{ hasImage?: boolean; hasVideo?: boolean; hasYoutube?: boolean; hasInstagram?: boolean }} flags
+ * @returns {string}
+ */
+export function contentIconsFromFlags(flags) {
+  return (
+    (flags.hasImage ? '<i class="bi bi-card-image text-success px-2"></i>' : '') +
+    (flags.hasVideo ? '<i class="bi bi-camera-video text-primary px-2"></i>' : '') +
+    (flags.hasYoutube ? '<i class="bi bi-youtube text-danger px-2"></i>' : '') +
+    (flags.hasInstagram ? '<i class="bi bi-instagram text-warning px-2"></i>' : '')
+  );
+}
+
+/**
+ * @param {string} content
  * @returns {string}
  */
 export function contentIcons(content) {
-  const image = content.includes('<img ');
-  const video = content.includes('<video ');
-  const youtube =
+  return contentIconsFromFlags(deriveArticleContentFlags(content));
+}
+
+/**
+ * @param {string} content
+ * @returns {boolean}
+ */
+export function hasYoutubeContent(content) {
+  return (
     content.includes('youtube.com') ||
     content.includes('youtu.be') ||
-    content.includes('youtube.com/embed');
-  const insta =
-    content.includes('instagram.com') || content.includes('blockquote class="instagram-media"');
-
-  return (
-    (image ? '<i class="bi bi-card-image text-success px-2"></i>' : '') +
-    (video ? '<i class="bi bi-camera-video text-primary px-2"></i>' : '') +
-    (youtube ? '<i class="bi bi-youtube text-danger px-2"></i>' : '') +
-    (insta ? '<i class="bi bi-instagram text-warning px-2"></i>' : '')
+    content.includes('youtube.com/embed')
   );
 }
 
@@ -219,6 +247,7 @@ export async function findArticlesList({
  */
 export async function createArticle(data) {
   const id = crypto.randomBytes(12).toString('hex');
+  const contentFlags = deriveArticleContentFlags(data.content);
   return await getPrisma().article.create({
     data: {
       id,
@@ -226,7 +255,8 @@ export async function createArticle(data) {
       nickname: data.nickname,
       boardId: data.boardId,
       title: data.title,
-      content: data.content
+      content: data.content,
+      ...contentFlags
     }
   });
 }
@@ -242,7 +272,10 @@ export async function updateArticle(id, data) {
   /** @type {import('@prisma/client').Prisma.ArticleUpdateInput} */
   const updateData = {};
   if (data.title !== undefined) updateData.title = data.title;
-  if (data.content !== undefined) updateData.content = data.content;
+  if (data.content !== undefined) {
+    updateData.content = data.content;
+    Object.assign(updateData, deriveArticleContentFlags(data.content));
+  }
   if (data.modifiedEmail !== undefined) updateData.modifiedEmail = data.modifiedEmail;
 
   return await getPrisma().article.update({

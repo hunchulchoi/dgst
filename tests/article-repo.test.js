@@ -67,4 +67,63 @@ describe('articleRepo', () => {
       }
     });
   });
+
+  it('stores derived content flags when creating an article', async () => {
+    const create = vi.fn().mockResolvedValue({ id: 'article-1' });
+
+    prismaModule.getPrisma.mockReturnValue({
+      article: { create }
+    });
+
+    const { createArticle } = await import('../src/lib/server/board/articleRepo.js');
+
+    await createArticle({
+      email: 'writer@example.com',
+      nickname: 'writer',
+      boardId: 'free',
+      title: 'title',
+      content:
+        '<p><img src="/a.jpg" /></p><iframe src="https://www.youtube.com/embed/abc"></iframe><blockquote class="instagram-media"></blockquote>'
+    });
+
+    expect(create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        email: 'writer@example.com',
+        nickname: 'writer',
+        boardId: 'free',
+        title: 'title',
+        hasImage: true,
+        hasVideo: false,
+        hasYoutube: true,
+        hasInstagram: true
+      })
+    });
+  });
+
+  it('recomputes derived content flags when updating article content', async () => {
+    const update = vi.fn().mockResolvedValue({ id: 'article-1' });
+
+    prismaModule.getPrisma.mockReturnValue({
+      article: { update }
+    });
+
+    const { updateArticle } = await import('../src/lib/server/board/articleRepo.js');
+
+    await updateArticle('article-1', {
+      content: '<video src="/a.mp4"></video><p>plain</p>',
+      modifiedEmail: 'writer@example.com'
+    });
+
+    expect(update).toHaveBeenCalledWith({
+      where: { id: 'article-1' },
+      data: {
+        content: '<video src="/a.mp4"></video><p>plain</p>',
+        modifiedEmail: 'writer@example.com',
+        hasImage: false,
+        hasVideo: true,
+        hasYoutube: false,
+        hasInstagram: false
+      }
+    });
+  });
 });
