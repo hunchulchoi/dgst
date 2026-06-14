@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   clampViewerScale,
   computeFitScale,
+  shouldHandleViewerZoomWheel,
   shouldOpenAttachmentImageViewer
 } from '../src/lib/util/attachmentImageViewer.js';
 
@@ -52,5 +53,11 @@ describe('attachment image viewer', () => {
     expect(clampViewerScale(0.2, 0.5, 4)).toBe(0.5);
     expect(clampViewerScale(5, 0.5, 4)).toBe(4);
     expect(clampViewerScale(2, 0.5, 4)).toBe(2);
+  });
+
+  it('zooms only when ctrl or meta is pressed during wheel input', () => {
+    expect(shouldHandleViewerZoomWheel({ ctrlKey: true, metaKey: false })).toBe(true);
+    expect(shouldHandleViewerZoomWheel({ ctrlKey: false, metaKey: true })).toBe(true);
+    expect(shouldHandleViewerZoomWheel({ ctrlKey: false, metaKey: false })).toBe(false);
   });
 });

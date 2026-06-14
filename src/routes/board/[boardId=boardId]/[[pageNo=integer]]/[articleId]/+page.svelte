@@ -26,6 +26,7 @@
   import {
     clampViewerScale,
     computeFitScale,
+    shouldHandleViewerZoomWheel,
     shouldOpenAttachmentImageViewer,
     VIEWER_MAX_SCALE
   } from '$lib/util/attachmentImageViewer.js';
@@ -98,6 +99,7 @@
 
   /** @param {WheelEvent} event */
   function handleViewerWheel(event) {
+    if (!shouldHandleViewerZoomWheel(event)) return;
     event.preventDefault();
     const factor = event.deltaY < 0 ? 1.12 : 0.9;
     imageViewerScale = clampViewerScale(

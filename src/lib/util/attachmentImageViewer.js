@@ -34,3 +34,10 @@ export function shouldOpenAttachmentImageViewer(img) {
   if (img?.classList?.contains?.('comment-upload-preview')) return false;
   return !img?.closest?.('.og-card-blot, .og-preview');
 }
+
+/**
+ * @param {{ ctrlKey?: boolean; metaKey?: boolean }} event
+ */
+export function shouldHandleViewerZoomWheel(event) {
+  return Boolean(event?.ctrlKey || event?.metaKey);
+}
