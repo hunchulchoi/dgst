@@ -19,6 +19,7 @@
   import OGPreview from '$lib/components/OGPreview.svelte';
   import sanitizeHtml from 'sanitize-html';
   import { countEmojis } from '$lib/util/emoji.js';
+  import { getAttachmentImageMaxHeight } from '$lib/util/attachmentImageSizing.js';
 
   /** @type {typeof import('$lib/util/embeder.js') | null} */
   let embeder = $state(null);
@@ -603,16 +604,6 @@
     });
   }
 
-  /**
-   * 첨부 이미지 max-height — 긴짤(세로>가로×2)은 제한 없음, 그 외 80vh
-   * @param {HTMLImageElement | null | undefined} img
-   */
-  function getImageMaxHeight(img) {
-    if (!img?.naturalWidth || !img?.naturalHeight) return undefined;
-    if (img.naturalHeight > img.naturalWidth * 2) return undefined;
-    return '80vh';
-  }
-
   /** OG 카드 썸네일 등 레이아웃 고정 이미지는 제외 */
   /** @param {unknown} img */
   function isBoardAttachmentImage(img) {
@@ -625,7 +616,7 @@
   function applyAttachmentImageMaxHeight(img) {
     if (!isBoardAttachmentImage(img)) return;
     img.style.maxWidth = '100%';
-    const maxHeight = getImageMaxHeight(img);
+    const maxHeight = getAttachmentImageMaxHeight(img);
     if (maxHeight) {
       img.style.maxHeight = maxHeight;
     } else {
