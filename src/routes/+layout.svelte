@@ -12,7 +12,6 @@
   import { reportSlowInitialLoad, reportSlowLoad } from '$lib/util/logSlowLoad.js';
   import { reportClientError } from '$lib/util/reportClientPageError.js';
   import { isFreeBoardLegacyPath } from '$lib/util/boardPaths.js';
-  import { computeMobileLayoutWidth } from '$lib/util/mobileLayoutWidth.js';
   import { boardListReloadKey, boardListReloading } from '$lib/util/store.js';
   import '../app.css';
 
@@ -29,9 +28,6 @@
 
   /** 게시판 목록 → 글 상세 이동 시 blur (beforeNavigate에서 미리 켬 — 첫 클릭부터 적용) */
   let boardListToDetailBlur = $state(false);
-
-  /** @type {ReturnType<typeof setTimeout>[]} */
-  let mobileWidthNormalizeTimers = [];
 
   /** @param {string} pathname */
   function isBoardListPath(pathname) {
@@ -104,59 +100,9 @@
     }
   });
 
-  function clearMobileWidthNormalizeTimers() {
-    for (const timer of mobileWidthNormalizeTimers) {
-      clearTimeout(timer);
-    }
-    mobileWidthNormalizeTimers = [];
-  }
-
-  /** 모바일에서 라우트 이동 직후 layout viewport 폭 틀어짐 완화 */
-  function applyMobileLayoutWidth() {
-    if (!browser) return;
-    const root = document.documentElement;
-    const body = document.body;
-
-    if (!window.matchMedia('(max-width: 767.98px)').matches) {
-      root.style.removeProperty('--dgst-mobile-viewport-width');
-      root.style.removeProperty('width');
-      root.style.removeProperty('max-width');
-      body.style.removeProperty('width');
-      body.style.removeProperty('max-width');
-      return;
-    }
-
-    const viewportWidth = computeMobileLayoutWidth({
-      innerWidth: window.innerWidth,
-      visualViewportWidth: window.visualViewport?.width
-    });
-    root.style.setProperty('--dgst-mobile-viewport-width', `${viewportWidth}px`);
-    root.style.width = '100%';
-    root.style.maxWidth = 'var(--dgst-mobile-viewport-width)';
-    body.style.width = '100%';
-    body.style.maxWidth = 'var(--dgst-mobile-viewport-width)';
-  }
-
-  function refreshMobileLayoutWidth() {
-    if (!browser) return;
-
-    clearMobileWidthNormalizeTimers();
-    applyMobileLayoutWidth();
-    requestAnimationFrame(applyMobileLayoutWidth);
-    for (const delay of [80, 180, 360]) {
-      mobileWidthNormalizeTimers.push(setTimeout(applyMobileLayoutWidth, delay));
-    }
-  }
-
   function normalizeMobileLayoutWidth() {
     if (!browser) return;
-    if (!window.matchMedia('(max-width: 767.98px)').matches) {
-      applyMobileLayoutWidth();
-      return;
-    }
-
     window.scrollTo(0, 0);
-    refreshMobileLayoutWidth();
   }
 
   afterNavigate(({ to }) => {
@@ -224,14 +170,6 @@
     window.addEventListener('error', handleWindowError);
     window.addEventListener('unhandledrejection', handleUnhandledRejection);
 
-    const handleViewportResize = () => {
-      refreshMobileLayoutWidth();
-    };
-
-    window.addEventListener('resize', handleViewportResize);
-    window.addEventListener('orientationchange', handleViewportResize);
-    window.visualViewport?.addEventListener('resize', handleViewportResize);
-
     if (isFreeBoardLegacyPath(window.location.pathname)) {
       history.replaceState(history.state, '', `/${window.location.search}`);
     }
@@ -247,12 +185,8 @@
     }
 
     return () => {
-      clearMobileWidthNormalizeTimers();
       window.removeEventListener('error', handleWindowError);
       window.removeEventListener('unhandledrejection', handleUnhandledRejection);
-      window.removeEventListener('resize', handleViewportResize);
-      window.removeEventListener('orientationchange', handleViewportResize);
-      window.visualViewport?.removeEventListener('resize', handleViewportResize);
       window.removeEventListener('load', measureInitialLoad);
     };
   });
@@ -320,7 +254,7 @@
   .app-shell {
     display: flex;
     width: 100%;
-    max-width: var(--dgst-mobile-viewport-width, 100%);
+    max-width: 100%;
     min-height: 100vh;
     min-height: 100dvh;
     flex-direction: column;
@@ -330,7 +264,7 @@
   .page-transition {
     flex: 1 0 auto;
     width: 100%;
-    max-width: var(--dgst-mobile-viewport-width, 100%);
+    max-width: 100%;
     overflow-x: hidden;
     isolation: isolate;
   }
