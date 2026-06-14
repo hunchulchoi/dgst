@@ -4,6 +4,7 @@ import {
   createComment,
   findCommentById,
   findCommentsByArticle,
+  findOwnedActiveComment,
   findRecentDuplicateComment,
   softDeleteComment,
   toCommentJson,
@@ -190,14 +191,15 @@ export async function PUT({ request, params, locals }) {
   }
 
   try {
-    const existing = await findCommentById(String(commentId));
-    if (
-      !existing ||
-      existing.boardId !== boardId ||
-      existing.articleId !== articleId ||
-      existing.email !== userEmail ||
-      existing.state !== 'write'
-    ) {
+    const existing = await findOwnedActiveComment({
+      id: String(commentId),
+      email: userEmail,
+      boardId,
+      articleId,
+      select: { id: true }
+    });
+
+    if (!existing) {
       throw error(401, {
         message: '수정되지 않았습니다. 이미 삭제되었거나 권한이 없는 것 같습니다.'
       });
@@ -243,14 +245,15 @@ export async function DELETE({ request, params, locals }) {
   const data = await request.json();
 
   try {
-    const existing = await findCommentById(String(data.commentId));
-    if (
-      !existing ||
-      existing.boardId !== boardId ||
-      existing.articleId !== articleId ||
-      existing.email !== userEmail ||
-      existing.state !== 'write'
-    ) {
+    const existing = await findOwnedActiveComment({
+      id: String(data.commentId),
+      email: userEmail,
+      boardId,
+      articleId,
+      select: { id: true }
+    });
+
+    if (!existing) {
       throw error(401, {
         message: '삭제 되지 않았습니다. 이미 삭제되었거나 권한이 없는 것 같습니다.'
       });
