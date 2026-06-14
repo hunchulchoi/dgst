@@ -69,6 +69,7 @@ model Article {
   updatedAt     DateTime  @updatedAt @map("updated_at")
   comments      Comment[]
   @@index([email, createdAt(sort: Desc)])
+  @@index([email, boardId, state, createdAt(sort: Desc)])
   @@index([boardId, state, createdAt(sort: Desc)])
   @@map("articles")
 }
@@ -94,6 +95,7 @@ model Comment {
   article               Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
   @@index([email])
   @@index([articleId, createdAt(sort: Desc)])
+  @@index([email, boardId, articleId, parentCommentId, state, createdAt(sort: Desc)])
   @@index([parentCommentId])
   @@map("comments")
 }
@@ -111,7 +113,7 @@ model Alarm {
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")
   @@index([email, updatedAt(sort: Desc)])
-  @@index([email, readAt, createdAt(sort: Desc)])
+  @@index([email, readAt, updatedAt(sort: Desc)])
   @@index([articleId])
   @@map("alarms")
 }
