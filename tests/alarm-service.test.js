@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const prismaModule = vi.hoisted(() => ({
   getPrisma: vi.fn()
@@ -17,6 +17,33 @@ vi.mock('$lib/util/logger.js', () => loggerModule);
 describe('alarmService', () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-06-14T12:00:00.000Z'));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('counts only unread alarms updated within the requested hour window', async () => {
+    const count = vi.fn().mockResolvedValue(7);
+
+    prismaModule.getPrisma.mockReturnValue({
+      alarm: { count }
+    });
+
+    const { getUnreadAlarmCount } = await import('../src/lib/server/alarm/alarmService.js');
+
+    const result = await getUnreadAlarmCount('user@example.com');
+
+    expect(result).toBe(7);
+    expect(count).toHaveBeenCalledWith({
+      where: {
+        email: 'user@example.com',
+        readAt: null,
+        updatedAt: { gte: new Date('2026-06-13T12:00:00.000Z') }
+      }
+    });
   });
 
   it('marks only unread alarms for the article and its comment thread ids', async () => {
