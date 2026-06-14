@@ -42,19 +42,22 @@ export const load = async ({ params, locals, cookies }) => {
     }
 
     article = (await addRead(articleId, viewerId)) ?? article;
+    const requestedPageNo = parseInt(params.pageNo || '1', 10);
+    const [comments, author, boardListPayload] = await Promise.all([
+      findCommentsByArticle(articleId, boardId, BOARD_COMMENT_SELECT),
+      getPrisma().user.findFirst({
+        where: { email: article.email },
+        select: { photo: true, introduction: true }
+      }),
+      getBoardListPayload(boardId, requestedPageNo)
+    ]);
 
-    const comments = await findCommentsByArticle(articleId, boardId, BOARD_COMMENT_SELECT);
     const commentTree = convertToTree(
       comments.map((c) => ({
         ...toCommentJson(c),
         id: c.id
       }))
     );
-
-    const author = await getPrisma().user.findFirst({
-      where: { email: article.email },
-      select: { photo: true, introduction: true }
-    });
 
     const articleJson = toArticleJson(article, commentTree.length);
     const articleComments =
@@ -78,9 +81,6 @@ export const load = async ({ params, locals, cookies }) => {
         }
       );
     }
-
-    const requestedPageNo = parseInt(params.pageNo || '1', 10);
-    const boardListPayload = await getBoardListPayload(boardId, requestedPageNo);
 
     /** @param {string | null | undefined} str @param {number} [maxLen=200] */
     const safeText = (str, maxLen = 200) => {
