@@ -1,7 +1,7 @@
 import { error, isHttpError } from '@sveltejs/kit';
 import {
   createArticle,
-  findArticleById,
+  findOwnedArticle,
   updateArticleByOwner
 } from '$lib/server/board/articleRepo.js';
 import { checkAndLogSessionDevice } from '$lib/server/auth/checkSessionDevice.js';
@@ -134,9 +134,25 @@ export const load = async ({ params, locals }) => {
   }
 
   try {
-    const article = await findArticleById(articleId, boardId, 'write');
+    const article = await findOwnedArticle({
+      id: articleId,
+      email: session.user.email,
+      boardId,
+      state: 'write',
+      select: {
+        id: true,
+        email: true,
+        nickname: true,
+        boardId: true,
+        title: true,
+        content: true,
+        state: true,
+        createdAt: true,
+        updatedAt: true
+      }
+    });
 
-    if (!article || article.email !== session.user.email) {
+    if (!article) {
       throw error(404, { message: '글을 찾을 수 없습니다.' });
     }
 

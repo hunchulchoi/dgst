@@ -1,8 +1,7 @@
 import { error } from '@sveltejs/kit';
-import { softDeleteArticle } from '$lib/server/board/articleRepo.js';
+import { softDeleteArticleByOwner } from '$lib/server/board/articleRepo.js';
 import { deleteAlarmsByArticle } from '$lib/server/alarm/alarmService.js';
 import { bustBoardListCache } from '$lib/server/boardListLoad.js';
-import { getPrisma } from '$lib/database/prisma.js';
 
 /** @param {import('@sveltejs/kit').RequestEvent} event */
 export async function DELETE({ params, locals }) {
@@ -22,22 +21,14 @@ export async function DELETE({ params, locals }) {
   }
 
   try {
-    const existing = await getPrisma().article.findFirst({
-      where: {
-        id: articleId,
-        boardId,
-        email,
-        state: 'write'
-      }
-    });
+    const result = await softDeleteArticleByOwner(articleId, email, boardId);
 
-    if (!existing) {
+    if (!result || result.count === 0) {
       throw error(401, {
         message: '삭제 되지 않았습니다. 이미 삭제되었거나 권한이 없는 것 같습니다.'
       });
     }
 
-    await softDeleteArticle(articleId, email);
     await deleteAlarmsByArticle(articleId);
     await bustBoardListCache(boardId);
   } catch (err) {

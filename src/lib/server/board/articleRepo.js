@@ -84,6 +84,27 @@ export async function findArticleById(id, boardId, state = 'write') {
 }
 
 /**
+ * @template {import('@prisma/client').Prisma.ArticleSelect | undefined} TSelect
+ * @param {object} params
+ * @param {string} params.id
+ * @param {string} params.email
+ * @param {string} params.boardId
+ * @param {string} [params.state]
+ * @param {TSelect} [params.select]
+ * @returns {Promise<TSelect extends import('@prisma/client').Prisma.ArticleSelect ? import('@prisma/client').Prisma.ArticleGetPayload<{ select: TSelect }> | null : import('@prisma/client').Article | null>}
+ */
+export async function findOwnedArticle({ id, email, boardId, state = 'write', select }) {
+  try {
+    return await getPrisma().article.findFirst({
+      where: { id, email, boardId, state },
+      ...(select ? { select } : {})
+    });
+  } catch {
+    return null;
+  }
+}
+
+/**
  * 댓글 알람 발송에 필요한 최소 게시글 정보만 조회
  *
  * @param {string} id
@@ -228,6 +249,26 @@ export async function softDeleteArticle(id, modifiedEmail) {
 /**
  * @param {string} id
  * @param {string} email
+ * @param {string} boardId
+ * @param {string} [state]
+ */
+export async function softDeleteArticleByOwner(id, email, boardId, state = 'write') {
+  try {
+    return await getPrisma().article.updateMany({
+      where: { id, email, boardId, state },
+      data: {
+        state: 'deleted',
+        modifiedEmail: email
+      }
+    });
+  } catch {
+    return { count: 0 };
+  }
+}
+
+/**
+ * @param {string} id
+ * @param {string} email
  * @param {'like' | 'unlike'} [action='like']
  */
 export async function toggleArticleLike(id, email, action = 'like') {
@@ -263,9 +304,7 @@ export async function toggleArticleLike(id, email, action = 'like') {
  */
 export async function updateArticleByOwner(id, email, boardId, data, state = 'write') {
   try {
-    const existing = await getPrisma().article.findFirst({
-      where: { id, email, boardId, state }
-    });
+    const existing = await findOwnedArticle({ id, email, boardId, state, select: { id: true } });
     if (!existing) return null;
     return await updateArticle(id, data);
   } catch {
