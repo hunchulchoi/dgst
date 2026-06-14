@@ -13,6 +13,24 @@ import convertToTree from '$lib/util/tree.js';
 
 const PAGE_UNIT = 30;
 const THREE_DAYS_MS = 1000 * 60 * 60 * 24 * 3;
+const BOARD_COMMENT_SELECT = {
+  id: true,
+  email: true,
+  nickname: true,
+  photo: true,
+  boardId: true,
+  articleId: true,
+  parentCommentId: true,
+  parentCommentNickname: true,
+  depth: true,
+  content: true,
+  image: true,
+  state: true,
+  modifiedEmail: true,
+  createdAt: true,
+  updatedAt: true,
+  likes: true
+};
 
 /** @param {import('@sveltejs/kit').ServerLoadEvent} event */
 export const load = async ({ params, locals, cookies }) => {
@@ -33,7 +51,7 @@ export const load = async ({ params, locals, cookies }) => {
 
     article = (await addRead(articleId, viewerId)) ?? article;
 
-    const comments = await findCommentsByArticle(articleId);
+    const comments = await findCommentsByArticle(articleId, boardId, BOARD_COMMENT_SELECT);
     const commentTree = convertToTree(
       comments.map((c) => ({
         ...toCommentJson(c),

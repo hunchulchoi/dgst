@@ -57,8 +57,9 @@ export function toCommentJson(comment) {
 /**
  * @param {string} articleId
  * @param {string} [boardId]
+ * @param {import('@prisma/client').Prisma.CommentSelect} [select]
  */
-export async function findCommentsByArticle(articleId, boardId) {
+export async function findCommentsByArticle(articleId, boardId, select) {
   try {
     /** @type {import('@prisma/client').Prisma.CommentWhereInput} */
     const where = { articleId };
@@ -66,7 +67,8 @@ export async function findCommentsByArticle(articleId, boardId) {
 
     return await getPrisma().comment.findMany({
       where,
-      orderBy: { createdAt: 'asc' }
+      orderBy: { createdAt: 'asc' },
+      ...(select ? { select } : {})
     });
   } catch {
     return [];

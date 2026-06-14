@@ -16,6 +16,25 @@ import convertToTree from '$lib/util/tree.js';
 import { checkAndLogSessionDevice } from '$lib/server/auth/checkSessionDevice.js';
 import { buildSubmitFingerprint, tryAcquireSubmitDedup } from '$lib/server/submitDedup.js';
 
+const BOARD_COMMENT_SELECT = {
+  id: true,
+  email: true,
+  nickname: true,
+  photo: true,
+  boardId: true,
+  articleId: true,
+  parentCommentId: true,
+  parentCommentNickname: true,
+  depth: true,
+  content: true,
+  image: true,
+  state: true,
+  modifiedEmail: true,
+  createdAt: true,
+  updatedAt: true,
+  likes: true
+};
+
 /** @param {import('@sveltejs/kit').RequestEvent} event */
 export async function GET({ params, locals }) {
   const boardId = params.boardId;
@@ -29,7 +48,7 @@ export async function GET({ params, locals }) {
   const session = await locals.auth();
 
   try {
-    const comments = await findCommentsByArticle(articleId, boardId);
+    const comments = await findCommentsByArticle(articleId, boardId, BOARD_COMMENT_SELECT);
 
     if (session?.user?.email) {
       await markAsRead(session.user.email, articleId);

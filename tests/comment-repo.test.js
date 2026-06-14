@@ -42,4 +42,26 @@ describe('commentRepo', () => {
       select: { id: true }
     });
   });
+
+  it('passes through a select object for article comment list lookups', async () => {
+    const findMany = vi.fn().mockResolvedValue([{ id: 'comment-1' }]);
+
+    prismaModule.getPrisma.mockReturnValue({
+      comment: { findMany }
+    });
+
+    const { findCommentsByArticle } = await import('../src/lib/server/board/commentRepo.js');
+
+    const result = await findCommentsByArticle('article-1', 'free', { id: true, likes: true });
+
+    expect(result).toEqual([{ id: 'comment-1' }]);
+    expect(findMany).toHaveBeenCalledWith({
+      where: {
+        articleId: 'article-1',
+        boardId: 'free'
+      },
+      orderBy: { createdAt: 'asc' },
+      select: { id: true, likes: true }
+    });
+  });
 });
