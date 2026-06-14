@@ -257,13 +257,12 @@ export async function deleteAlarmsByArticle(articleId) {
 /**
  * 알람에서 특정 댓글을 제거하고, 빈 알람(댓글이 없는 상태)이 되면 알람을 완전히 삭제합니다.
  * @param {{
- *   email: string;
  *   articleId: string;
  *   parentCommentId?: string | null;
  *   commentId: string;
  * }} param0
  */
-export async function removeCommentFromAlarm({ email, articleId, parentCommentId, commentId }) {
+export async function removeCommentFromAlarm({ articleId, parentCommentId, commentId }) {
   const alarmId = buildAlarmId(articleId, parentCommentId);
 
   try {
@@ -286,7 +285,7 @@ export async function removeCommentFromAlarm({ email, articleId, parentCommentId
     }
   } catch (err) {
     logger.error({
-      message: `🚨 [Alarm] ❌ 알람 내 댓글 제거 실패 - 대상: ${email}, 알람 ID: ${alarmId}`,
+      message: `🚨 [Alarm] ❌ 알람 내 댓글 제거 실패 - 알람 ID: ${alarmId}`,
       error: err
     });
   }

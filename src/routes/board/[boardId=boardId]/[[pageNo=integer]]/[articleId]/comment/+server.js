@@ -258,27 +258,11 @@ export async function DELETE({ request, params, locals }) {
 
     const update = await softDeleteComment(String(data.commentId), userEmail);
 
-    if (update.parentCommentId) {
-      const parentComment = await findCommentById(update.parentCommentId);
-      if (parentComment) {
-        await removeCommentFromAlarm({
-          email: parentComment.email,
-          articleId,
-          parentCommentId: parentComment.id,
-          commentId: String(data.commentId)
-        });
-      }
-    } else {
-      const article = await findArticleById(articleId, boardId);
-      if (article) {
-        await removeCommentFromAlarm({
-          email: article.email,
-          articleId,
-          parentCommentId: null,
-          commentId: String(data.commentId)
-        });
-      }
-    }
+    await removeCommentFromAlarm({
+      articleId,
+      parentCommentId: update.parentCommentId,
+      commentId: String(data.commentId)
+    });
   } catch (err) {
     console.error(err);
     if (err && typeof err === 'object' && 'status' in err) throw err;

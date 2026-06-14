@@ -215,7 +215,6 @@ describe('alarmService', () => {
     const { removeCommentFromAlarm } = await import('../src/lib/server/alarm/alarmService.js');
 
     await removeCommentFromAlarm({
-      email: 'owner@example.com',
       articleId: 'article-1',
       parentCommentId: null,
       commentId: 'comment-1'
@@ -240,7 +239,6 @@ describe('alarmService', () => {
     const { removeCommentFromAlarm } = await import('../src/lib/server/alarm/alarmService.js');
 
     await removeCommentFromAlarm({
-      email: 'owner@example.com',
       articleId: 'article-1',
       parentCommentId: 'comment-1',
       commentId: 'comment-2'
