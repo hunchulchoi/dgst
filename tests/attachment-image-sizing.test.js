@@ -20,6 +20,12 @@ describe('attachment image sizing', () => {
     );
   });
 
+  it('still caps ultra-wide phone screenshots such as 21:9 displays', () => {
+    expect(getAttachmentImageMaxHeight({ naturalWidth: 900, naturalHeight: 2100 })).toBe(
+      DEFAULT_ATTACHMENT_IMAGE_MAX_HEIGHT
+    );
+  });
+
   it('does not cap long images once they cross the long-image threshold', () => {
     expect(
       getAttachmentImageMaxHeight({
