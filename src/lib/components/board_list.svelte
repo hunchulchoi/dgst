@@ -259,6 +259,22 @@
     color: var(--bs-secondary-color) !important;
   }
 
+  @media (hover: none) and (pointer: coarse) {
+    :global(.board-list-row) {
+      transition: background-color 120ms ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    :global(.board-list-row:active),
+    :global(.board-list-row:has(.board-list-link:active)) {
+      background-color: var(--bs-tertiary-bg) !important;
+    }
+
+    .board-list-link:active {
+      color: var(--bs-link-hover-color) !important;
+    }
+  }
+
   :global(.board-pagination) {
     gap: 0.45rem;
     flex-wrap: wrap;
