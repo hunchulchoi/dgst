@@ -41,3 +41,10 @@ export function shouldOpenAttachmentImageViewer(img) {
 export function shouldHandleViewerZoomWheel(event) {
   return Boolean(event?.ctrlKey || event?.metaKey);
 }
+
+/**
+ * @param {{ closest?: (selector: string) => unknown } | null | undefined} target
+ */
+export function shouldCloseViewerOnStageClick(target) {
+  return !target?.closest?.('[data-image-viewer-toolbar="true"]');
+}

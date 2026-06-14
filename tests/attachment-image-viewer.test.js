@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   clampViewerScale,
   computeFitScale,
+  shouldCloseViewerOnStageClick,
   shouldHandleViewerZoomWheel,
   shouldOpenAttachmentImageViewer
 } from '../src/lib/util/attachmentImageViewer.js';
@@ -59,5 +60,21 @@ describe('attachment image viewer', () => {
     expect(shouldHandleViewerZoomWheel({ ctrlKey: true, metaKey: false })).toBe(true);
     expect(shouldHandleViewerZoomWheel({ ctrlKey: false, metaKey: true })).toBe(true);
     expect(shouldHandleViewerZoomWheel({ ctrlKey: false, metaKey: false })).toBe(false);
+  });
+
+  it('closes the viewer when the stage layer is clicked, including on the image itself', () => {
+    expect(
+      shouldCloseViewerOnStageClick({
+        closest: () => null
+      })
+    ).toBe(true);
+  });
+
+  it('does not close from toolbar interactions', () => {
+    expect(
+      shouldCloseViewerOnStageClick({
+        closest: (selector) => (selector === '[data-image-viewer-toolbar="true"]' ? {} : null)
+      })
+    ).toBe(false);
   });
 });

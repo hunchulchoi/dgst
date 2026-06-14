@@ -26,6 +26,7 @@
   import {
     clampViewerScale,
     computeFitScale,
+    shouldCloseViewerOnStageClick,
     shouldHandleViewerZoomWheel,
     shouldOpenAttachmentImageViewer,
     VIEWER_MAX_SCALE
@@ -132,7 +133,9 @@
 
   /** @param {MouseEvent} event */
   function handleViewerBackdropClick(event) {
-    if (event.target === event.currentTarget) closeImageViewer();
+    if (shouldCloseViewerOnStageClick(/** @type {Element | null} */ (event.target))) {
+      closeImageViewer();
+    }
   }
 
   /** @param {KeyboardEvent} event */
@@ -1886,7 +1889,7 @@
           aria-label="이미지 확대 보기"
           tabindex="-1"
         >
-          <div class="image-viewer__toolbar">
+          <div class="image-viewer__toolbar" data-image-viewer-toolbar="true">
             <span class="image-viewer__zoom">{Math.round(imageViewerScale * 100)}%</span>
             <Button color="secondary" outline size="sm" onclick={zoomViewerOut}>
               <Icon name="dash" />
