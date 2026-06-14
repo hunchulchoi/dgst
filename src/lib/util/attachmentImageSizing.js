@@ -12,6 +12,15 @@ export function getAttachmentImageMaxHeight(img) {
 }
 
 /**
+ * @param {{ classList?: { contains?: (name: string) => boolean }; closest?: (selector: string) => unknown }} img
+ * @returns {boolean}
+ */
+export function shouldApplyAttachmentImageSizing(img) {
+  if (img?.classList?.contains?.('comment-avatar')) return false;
+  return !img?.closest?.('.og-card-blot, .og-preview');
+}
+
+/**
  * @param {{ maxWidth?: string; maxHeight?: string; width?: string; height?: string; removeProperty?: (name: string) => void }} style
  * @param {{ naturalWidth?: number; naturalHeight?: number } | null | undefined} img
  */

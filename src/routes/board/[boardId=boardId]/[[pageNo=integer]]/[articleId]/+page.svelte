@@ -19,7 +19,10 @@
   import OGPreview from '$lib/components/OGPreview.svelte';
   import sanitizeHtml from 'sanitize-html';
   import { countEmojis } from '$lib/util/emoji.js';
-  import { applyAttachmentImageSizing } from '$lib/util/attachmentImageSizing.js';
+  import {
+    applyAttachmentImageSizing,
+    shouldApplyAttachmentImageSizing
+  } from '$lib/util/attachmentImageSizing.js';
 
   /** @type {typeof import('$lib/util/embeder.js') | null} */
   let embeder = $state(null);
@@ -607,7 +610,7 @@
   /** OG 카드 썸네일 등 레이아웃 고정 이미지는 제외 */
   /** @param {unknown} img */
   function isBoardAttachmentImage(img) {
-    return img instanceof HTMLImageElement && !img.closest('.og-card-blot, .og-preview');
+    return img instanceof HTMLImageElement && shouldApplyAttachmentImageSizing(img);
   }
 
   /**

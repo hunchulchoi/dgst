@@ -4,7 +4,8 @@ import {
   applyAttachmentImageSizing,
   DEFAULT_ATTACHMENT_IMAGE_MAX_HEIGHT,
   LONG_IMAGE_RATIO_THRESHOLD,
-  getAttachmentImageMaxHeight
+  getAttachmentImageMaxHeight,
+  shouldApplyAttachmentImageSizing
 } from '../src/lib/util/attachmentImageSizing.js';
 
 describe('attachment image sizing', () => {
@@ -56,5 +57,14 @@ describe('attachment image sizing', () => {
     expect(style.maxHeight).toBe(DEFAULT_ATTACHMENT_IMAGE_MAX_HEIGHT);
     expect(style.width).toBe('auto');
     expect(style.height).toBe('auto');
+  });
+
+  it('does not treat comment avatars as attachment images', () => {
+    expect(
+      shouldApplyAttachmentImageSizing({
+        classList: { contains: (name) => name === 'comment-avatar' },
+        closest: () => null
+      })
+    ).toBe(false);
   });
 });
