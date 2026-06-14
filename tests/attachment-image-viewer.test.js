@@ -50,6 +50,13 @@ describe('attachment image viewer', () => {
     );
   });
 
+  it('keeps tall phone screenshots as wide as the viewport on narrow screens', () => {
+    expect(computeFitScale({ naturalWidth: 960, naturalHeight: 2079 }, 390, 844)).toBeCloseTo(
+      0.37,
+      2
+    );
+  });
+
   it('clamps zoom between the fit scale and the max scale', () => {
     expect(clampViewerScale(0.2, 0.5, 4)).toBe(0.5);
     expect(clampViewerScale(5, 0.5, 4)).toBe(4);

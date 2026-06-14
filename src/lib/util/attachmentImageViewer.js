@@ -1,6 +1,7 @@
 export const VIEWER_MAX_SCALE = 4;
 const VIEWER_VIEWPORT_PADDING = 0.92;
 const VIEWER_VIEWPORT_HEIGHT_PADDING = 0.82;
+const MOBILE_VIEWER_BREAKPOINT = 768;
 
 /**
  * @param {number} value
@@ -21,6 +22,10 @@ export function computeFitScale(img, viewportWidth, viewportHeight) {
 
   const widthScale = (viewportWidth * VIEWER_VIEWPORT_PADDING) / img.naturalWidth;
   const heightScale = (viewportHeight * VIEWER_VIEWPORT_HEIGHT_PADDING) / img.naturalHeight;
+
+  if (viewportWidth < MOBILE_VIEWER_BREAKPOINT && img.naturalHeight > img.naturalWidth) {
+    return Math.min(1, widthScale);
+  }
 
   return Math.min(1, widthScale, heightScale);
 }
