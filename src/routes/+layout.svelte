@@ -12,6 +12,7 @@
   import { reportSlowInitialLoad, reportSlowLoad } from '$lib/util/logSlowLoad.js';
   import { reportClientError } from '$lib/util/reportClientPageError.js';
   import { isFreeBoardLegacyPath } from '$lib/util/boardPaths.js';
+  import { computeMobileLayoutWidth } from '$lib/util/mobileLayoutWidth.js';
   import { boardListReloadKey, boardListReloading } from '$lib/util/store.js';
   import '../app.css';
 
@@ -125,7 +126,10 @@
       return;
     }
 
-    const viewportWidth = Math.floor(window.visualViewport?.width || window.innerWidth);
+    const viewportWidth = computeMobileLayoutWidth({
+      innerWidth: window.innerWidth,
+      visualViewportWidth: window.visualViewport?.width
+    });
     root.style.setProperty('--dgst-mobile-viewport-width', `${viewportWidth}px`);
     root.style.width = '100%';
     root.style.maxWidth = 'var(--dgst-mobile-viewport-width)';
