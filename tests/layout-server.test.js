@@ -57,4 +57,26 @@ describe('+layout.server load', () => {
 
     expect(result.isBlueDgstHost).toBe(true);
   });
+
+  it('marks forwarded requests for the configured blue host', async () => {
+    envModule.env.BLUE_DGST_HOST = 'blue.example.test';
+    const { load } = await import('../src/routes/+layout.server.js');
+
+    const event = /** @type {any} */ ({
+      url: new URL('http://127.0.0.1:3000/'),
+      request: {
+        headers: new Headers({
+          'x-forwarded-host': 'blue.example.test'
+        })
+      },
+      setHeaders: vi.fn(),
+      locals: {
+        auth: vi.fn().mockResolvedValue(null)
+      }
+    });
+
+    const result = await load(event);
+
+    expect(result.isBlueDgstHost).toBe(true);
+  });
 });

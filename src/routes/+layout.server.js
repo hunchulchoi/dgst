@@ -4,6 +4,11 @@ import { isBoardHtmlPath } from '$lib/util/boardPaths.js';
 import logger from '$lib/util/logger.js';
 import { traceFromUnknown } from '$lib/util/formatErrorTrace.js';
 
+/** @param {string | null | undefined} host */
+function normalizeHost(host) {
+  return (host ?? '').split(',')[0].trim().replace(/:\d+$/, '').toLowerCase();
+}
+
 export const load = async (event) => {
   const boardRoute = isBoardHtmlPath(event.url.pathname);
 
@@ -53,7 +58,13 @@ export const load = async (event) => {
   const blueDgstHost =
     dynamicEnv.BLUE_DGST_HOST ??
     (typeof process !== 'undefined' ? process.env?.BLUE_DGST_HOST : undefined);
-  const isBlueDgstHost = !!blueDgstHost && event.url.hostname === blueDgstHost;
+  const blueDgstHostName = normalizeHost(blueDgstHost);
+  const requestHostName = normalizeHost(event.request?.headers.get('host'));
+  const forwardedHostName = normalizeHost(event.request?.headers.get('x-forwarded-host'));
+  const urlHostName = normalizeHost(event.url.hostname);
+  const isBlueDgstHost =
+    !!blueDgstHostName &&
+    [forwardedHostName, requestHostName, urlHostName].includes(blueDgstHostName);
 
   return {
     session,
