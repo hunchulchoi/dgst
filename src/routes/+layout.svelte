@@ -243,6 +243,7 @@
   {#key `${layoutPageKey(data.pathname)}-${$boardListReloadKey}`}
     <div
       class="page-transition"
+      class:page-transition-navigating={boardListToDetailBlur}
       class:page-transition-reloading={$boardListReloading}
       in:blur={pageTransitionBlur}
       out:blur={pageTransitionBlur}
@@ -271,11 +272,19 @@
     max-width: 100%;
     overflow-x: hidden;
     isolation: isolate;
+    transition:
+      filter 0.16s ease,
+      opacity 0.16s ease;
+  }
+
+  .page-transition-navigating {
+    filter: blur(3px);
+    opacity: 0.86;
+    pointer-events: none;
   }
 
   .page-transition-reloading {
     opacity: 0.88;
     pointer-events: none;
-    transition: opacity 0.25s ease;
   }
 </style>

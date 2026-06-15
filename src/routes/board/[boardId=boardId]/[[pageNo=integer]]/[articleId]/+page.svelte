@@ -258,6 +258,7 @@
     }
 
     el.onload = async (evt) => {
+      commentLoadingMessage = '이미지를 업로드 중입니다...';
       commentLoading = true;
 
       //console.log('commentImage.type', commentImage.type)
@@ -347,6 +348,7 @@
   let commentImageEl = $state(null);
 
   let commentLoading = $state(false);
+  let commentLoadingMessage = $state('댓글 저장 중...');
 
   // 댓글 수정 관련 상태
   let editingCommentId = $state('');
@@ -373,6 +375,8 @@
       return;
     }
 
+    const hasImage = parentCommentId ? Boolean(reCommentImage) : Boolean(commentImage);
+    commentLoadingMessage = hasImage ? '이미지를 업로드 중입니다...' : '댓글 저장 중...';
     commentLoading = true;
 
     try {
@@ -446,6 +450,7 @@
     });
 
     if (result.isConfirmed) {
+      commentLoadingMessage = '댓글 삭제 중...';
       commentLoading = true;
 
       fetch(`/board/${boardId}/${articleId}/comment`, {
@@ -525,6 +530,7 @@
       return;
     }
 
+    commentLoadingMessage = editCommentImage ? '이미지를 업로드 중입니다...' : '댓글 저장 중...';
     commentLoading = true;
 
     const formData = new FormData();
@@ -602,43 +608,50 @@
     }
 
     el.onload = async () => {
-      if (
-        editCommentImage &&
-        !editCommentImage.type.endsWith('gif') &&
-        !editCommentImage.type.endsWith('webp')
-      ) {
-        const fileSizeMB = editCommentImage.size / (1024 * 1024);
-        // 1MB 이하는 변환하지 않고 원본 유지
-        if (fileSizeMB > 1) {
-          try {
-            const webp = await imageCompression(editCommentImage, {
-              maxSizeMB: 10,
-              maxWidthOrHeight: 800,
-              useWebWorker: true,
-              fileType: 'image/webp',
-              initialQuality: 0.85
-            });
-            editCommentImage =
-              webp instanceof File
-                ? webp
-                : new File([webp], editCommentImage.name, { type: 'image/webp' });
-          } catch (error) {
-            console.error('[browser-image-compression] 댓글 이미지 변환 실패:', error);
-            // 변환 실패 시 원본 사용
+      commentLoadingMessage = '이미지를 업로드 중입니다...';
+      commentLoading = true;
+
+      try {
+        if (
+          editCommentImage &&
+          !editCommentImage.type.endsWith('gif') &&
+          !editCommentImage.type.endsWith('webp')
+        ) {
+          const fileSizeMB = editCommentImage.size / (1024 * 1024);
+          // 1MB 이하는 변환하지 않고 원본 유지
+          if (fileSizeMB > 1) {
+            try {
+              const webp = await imageCompression(editCommentImage, {
+                maxSizeMB: 10,
+                maxWidthOrHeight: 800,
+                useWebWorker: true,
+                fileType: 'image/webp',
+                initialQuality: 0.85
+              });
+              editCommentImage =
+                webp instanceof File
+                  ? webp
+                  : new File([webp], editCommentImage.name, { type: 'image/webp' });
+            } catch (error) {
+              console.error('[browser-image-compression] 댓글 이미지 변환 실패:', error);
+              // 변환 실패 시 원본 사용
+            }
+          } else {
+            console.log(
+              '[browser-image-compression] 1MB 이하 댓글 이미지는 원본 유지:',
+              fileSizeMB.toFixed(2),
+              'MB'
+            );
           }
-        } else {
-          console.log(
-            '[browser-image-compression] 1MB 이하 댓글 이미지는 원본 유지:',
-            fileSizeMB.toFixed(2),
-            'MB'
-          );
         }
+
+        // WebP 변환 시 이미 회전이 적용됨
+
+        applyAttachmentImageMaxHeight(el);
+        el.classList.remove('d-none');
+      } finally {
+        commentLoading = false;
       }
-
-      // WebP 변환 시 이미 회전이 적용됨
-
-      applyAttachmentImageMaxHeight(el);
-      el.classList.remove('d-none');
     };
   }
 
@@ -1527,7 +1540,7 @@
                                 <div class="spinner-border text-primary" role="status">
                                   <span class="visually-hidden">Loading...</span>
                                 </div>
-                                <div class="mt-2 fw-bold">댓글 저장 중...</div>
+                                <div class="mt-2 fw-bold">{commentLoadingMessage}</div>
                               </div>
                             </div>
                           {/if}
@@ -1736,7 +1749,7 @@
                       <div class="spinner-border text-primary" role="status">
                         <span class="visually-hidden">Loading...</span>
                       </div>
-                      <div class="mt-2 fw-bold">댓글 저장 중...</div>
+                      <div class="mt-2 fw-bold">{commentLoadingMessage}</div>
                     </div>
                   </div>
                 {/if}
@@ -1816,7 +1829,7 @@
                   <div class="spinner-border text-primary" role="status">
                     <span class="visually-hidden">Loading...</span>
                   </div>
-                  <div class="mt-2 fw-bold">댓글 저장 중...</div>
+                  <div class="mt-2 fw-bold">{commentLoadingMessage}</div>
                 </div>
               </div>
             {/if}

@@ -540,6 +540,8 @@
           >
             {#if uploading > 0}
               <Spinner color="info" size="sm" />
+            {:else if formSubmitting}
+              <Spinner color="info" size="sm" />
             {:else if isLoadingOG}
               <Spinner color="info" size="sm" />
             {:else}
@@ -559,13 +561,19 @@
   </Row>
 </main>
 
-{#if isLoadingOG}
+{#if formSubmitting || uploading > 0 || isLoadingOG}
   <div
     class="position-fixed top-0 start-0 w-100 h-100 d-flex flex-column justify-content-center align-items-center bg-dark bg-opacity-50"
     style="z-index: 9999; backdrop-filter: blur(2px);"
   >
     <Spinner color="light" style="width: 4rem; height: 4rem;" />
-    <span class="text-white mt-3 fw-bold fs-5">링크 정보를 분석 중입니다...</span>
+    <span class="text-white mt-3 fw-bold fs-5">
+      {uploading > 0
+        ? '이미지를 업로드 중입니다...'
+        : formSubmitting
+          ? '글을 저장 중입니다...'
+          : '링크 정보를 분석 중입니다...'}
+    </span>
   </div>
 {/if}
 
