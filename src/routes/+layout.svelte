@@ -39,6 +39,22 @@
     return /^\/board\/[^/]+\/\d+\/[^/]+$/.test(pathname);
   }
 
+  /**
+   * @param {string} fromPathname
+   * @param {string} toPathname
+   */
+  function isBoardListNavigation(fromPathname, toPathname) {
+    return isBoardListPath(fromPathname) && isBoardListPath(toPathname);
+  }
+
+  /**
+   * @param {string} fromPathname
+   * @param {string} toPathname
+   */
+  function isBoardDetailToListNavigation(fromPathname, toPathname) {
+    return isBoardDetailPath(fromPathname) && isBoardListPath(toPathname);
+  }
+
   const blurTransition = { amount: 40, duration: 400 };
 
   /** @param {string} pathname */
@@ -96,7 +112,9 @@
 
     if (from && to) {
       boardListToDetailBlur =
-        isBoardListPath(from.url.pathname) && isBoardDetailPath(to.url.pathname);
+        (isBoardListPath(from.url.pathname) && isBoardDetailPath(to.url.pathname)) ||
+        isBoardListNavigation(from.url.pathname, to.url.pathname) ||
+        isBoardDetailToListNavigation(from.url.pathname, to.url.pathname);
     }
   });
 
