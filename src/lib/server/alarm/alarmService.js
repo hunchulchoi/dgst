@@ -54,14 +54,20 @@ function normalizeAlarmRecord(alarm) {
 export async function getUnreadAlarmCount(email, hours = 24) {
   try {
     const timeLimit = new Date(Date.now() - 1000 * 60 * 60 * hours);
-    const count = await getPrisma().alarm.count({
+    const alarms = await getPrisma().alarm.findMany({
       where: {
         email,
         readAt: null,
         updatedAt: { gte: timeLimit }
+      },
+      select: {
+        commentIds: true
       }
     });
-    return count;
+    return alarms.reduce((sum, alarm) => {
+      const commentCount = Array.isArray(alarm.commentIds) ? alarm.commentIds.length : 0;
+      return sum + Math.max(commentCount, 1);
+    }, 0);
   } catch (err) {
     logger.warn({
       message: '[alarm] getUnreadAlarmCount failed',

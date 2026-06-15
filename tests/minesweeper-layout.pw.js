@@ -158,7 +158,9 @@ test('expert minesweeper rank stays below board and board scrolls on mobile land
   expect(metrics.rootWidth).toBeLessThanOrEqual(metrics.viewportWidth + 1);
 });
 
-test('expert minesweeper rank stays right and board scrolls on iPad portrait', async ({ page }) => {
+test('expert minesweeper rank moves below when board is wider than iPad portrait', async ({
+  page
+}) => {
   await page.setViewportSize({ width: 820, height: 1180 });
   await page.goto('/games/minesweeper');
 
@@ -194,22 +196,20 @@ test('expert minesweeper rank stays right and board scrolls on iPad portrait', a
       scrollFrameOverflowY: scrollStyle.overflowY,
       scrollFrameScrollWidth: boardScroll.scrollWidth,
       maxScrollLeft: boardScroll.scrollLeft,
-      rankLeft: rankRect.left,
-      rankRight: rankRect.right,
-      scrollRight: scrollRect.right,
+      boardBottom: boardRect.bottom,
+      rankTop: rankRect.top,
       rootWidth: gameRoot.getBoundingClientRect().width
     };
   });
 
-  expect(metrics.boardWidth).toBeGreaterThan(metrics.scrollFrameWidth);
+  expect(metrics.boardWidth).toBeGreaterThan(metrics.viewportWidth);
   expect(metrics.scrollWidth).toBeLessThanOrEqual(metrics.viewportWidth + 1);
-  expect(metrics.scrollFrameWidth).toBeLessThan(metrics.viewportWidth);
+  expect(metrics.scrollFrameWidth).toBeLessThanOrEqual(metrics.viewportWidth + 1);
   expect(metrics.scrollFrameOverflowX).toBe('auto');
   expect(metrics.scrollFrameOverflowY).toBe('auto');
   expect(metrics.scrollFrameScrollWidth).toBeGreaterThanOrEqual(metrics.boardWidth);
-  expect(metrics.maxScrollLeft).toBeGreaterThan(metrics.boardWidth - metrics.scrollFrameWidth - 24);
-  expect(metrics.rankLeft).toBeGreaterThanOrEqual(metrics.scrollRight);
-  expect(metrics.rankRight).toBeLessThanOrEqual(metrics.viewportWidth + 1);
+  expect(metrics.maxScrollLeft).toBeGreaterThan(metrics.boardWidth - metrics.viewportWidth - 24);
+  expect(metrics.rankTop).toBeGreaterThanOrEqual(metrics.boardBottom);
   expect(metrics.rootWidth).toBeLessThanOrEqual(metrics.viewportWidth + 1);
 });
 

@@ -958,7 +958,7 @@
     }
   }
 
-  @media (max-width: 767.98px),
+  @media (max-width: 1004px),
     (orientation: landscape) and (max-width: 991.98px) and (max-height: 500px) {
     .minesweeper-game-root.minesweeper-game-active {
       width: 100% !important;

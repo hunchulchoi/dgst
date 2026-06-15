@@ -45,7 +45,8 @@
    - `{articleId}`와 `{articleId}_*` 알림을 함께 처리합니다.
 
 3. **`getUnreadAlarmCount(email, hours = 24)`**
-   - 최근 `hours` 시간 안에 갱신된 읽지 않은 알림 수를 반환합니다.
+   - 최근 `hours` 시간 안에 갱신된 읽지 않은 댓글 알림 수를 반환합니다.
+   - 같은 대상의 알림이 한 row로 묶여도 `commentIds` 개수 기준으로 셉니다.
    - 기본 탑 네비게이션의 안 읽은 뱃지에 사용됩니다.
 
 4. **`getAlarmList(email, limit = 30)`**

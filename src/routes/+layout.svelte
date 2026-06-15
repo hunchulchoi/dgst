@@ -233,7 +233,11 @@
 
 <ThemeSync />
 <div class="app-shell">
-  <Header session={data.session} pathname={data.pathname} />
+  <Header
+    session={data.session}
+    pathname={data.pathname}
+    unreadAlarmCount={data.unreadAlarmCount}
+  />
   <Memo />
 
   {#key `${layoutPageKey(data.pathname)}-${$boardListReloadKey}`}

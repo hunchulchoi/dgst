@@ -19,13 +19,12 @@
   import { goto, invalidate } from '$app/navigation';
   import { resolve } from '$app/paths';
   import { navigating } from '$app/stores';
-  import { browser } from '$app/environment';
 
   import { alarmCount, boardListReloading, boardListReloadKey } from '$lib/util/store.js';
   import { isFreeBoardHomePath } from '$lib/util/boardPaths.js';
 
   // Svelte 5 Runes - Props
-  let { session, pathname } = $props();
+  let { session, pathname, unreadAlarmCount = 0 } = $props();
 
   let navigatingSpinner = $state(false);
 
@@ -46,29 +45,14 @@
     signIn('google', { callbackUrl: '/' });
   };
 
-  /** 알림 뱃지 — 레이아웃 blocking 제거 후 클라이언트에서 조회 */
+  /** 알림 뱃지 — SSR layout load에서 조회한 값을 사용 */
   $effect(() => {
-    if (!browser) return;
-
     if (!session?.user?.nickname) {
       alarmCount.set(0);
       return;
     }
 
-    let cancelled = false;
-
-    fetch('/api/alarm/unread-count')
-      .then((res) => (res.ok ? res.json() : { count: 0 }))
-      .then((body) => {
-        if (!cancelled) alarmCount.set(body.count ?? 0);
-      })
-      .catch(() => {
-        if (!cancelled) alarmCount.set(0);
-      });
-
-    return () => {
-      cancelled = true;
-    };
+    alarmCount.set(unreadAlarmCount ?? 0);
   });
 
   let colorModeIcon = $derived(

@@ -25,23 +25,30 @@ describe('alarmService', () => {
     vi.useRealTimers();
   });
 
-  it('counts only unread alarms updated within the requested hour window', async () => {
-    const count = vi.fn().mockResolvedValue(7);
+  it('counts unread alarm comments updated within the requested hour window', async () => {
+    const findMany = vi.fn().mockResolvedValue([
+      { commentIds: ['comment-1', 'comment-2'] },
+      { commentIds: ['comment-3'] },
+      { commentIds: [] }
+    ]);
 
     prismaModule.getPrisma.mockReturnValue({
-      alarm: { count }
+      alarm: { findMany }
     });
 
     const { getUnreadAlarmCount } = await import('../src/lib/server/alarm/alarmService.js');
 
     const result = await getUnreadAlarmCount('user@example.com');
 
-    expect(result).toBe(7);
-    expect(count).toHaveBeenCalledWith({
+    expect(result).toBe(4);
+    expect(findMany).toHaveBeenCalledWith({
       where: {
         email: 'user@example.com',
         readAt: null,
         updatedAt: { gte: new Date('2026-06-13T12:00:00.000Z') }
+      },
+      select: {
+        commentIds: true
       }
     });
   });

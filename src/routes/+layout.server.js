@@ -1,4 +1,5 @@
 import { env as dynamicEnv } from '$env/dynamic/private';
+import { getUnreadAlarmCount } from '$lib/server/alarm/alarmService.js';
 import { isBoardHtmlPath } from '$lib/util/boardPaths.js';
 import logger from '$lib/util/logger.js';
 import { traceFromUnknown } from '$lib/util/formatErrorTrace.js';
@@ -37,6 +38,11 @@ export const load = async (event) => {
     });
   }
 
+  let unreadAlarmCount = 0;
+  if (session?.user?.email) {
+    unreadAlarmCount = await getUnreadAlarmCount(session.user.email);
+  }
+
   const kakaoId =
     dynamicEnv.KAKAO_CLIENT_ID ??
     (typeof process !== 'undefined' ? process.env?.KAKAO_CLIENT_ID : undefined);
@@ -47,6 +53,7 @@ export const load = async (event) => {
 
   return {
     session,
+    unreadAlarmCount,
     kakaoEnabled
   };
 };

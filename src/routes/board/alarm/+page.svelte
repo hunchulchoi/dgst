@@ -3,13 +3,18 @@
   import { resolve } from '$app/paths';
   import { ko } from 'date-fns/locale';
   import { formatRelativeTime } from '$lib/util/formatRelativeTime.js';
+  import { formatAlarmCommentPreview } from '$lib/util/alarmPreview.js';
   import { alarmCount } from '$lib/util/store.js';
 
   // Svelte 5 Runes
   let { data } = $props();
 
   $effect(() => {
-    const unread = (data.alarms ?? []).filter((a) => !a.readAt).length;
+    const unread = (data.alarms ?? []).reduce((sum, alarm) => {
+      if (alarm.readAt) return sum;
+      const count = Number(alarm.commentCount ?? 0);
+      return sum + Math.max(count, 1);
+    }, 0);
     alarmCount.set(unread);
   });
 </script>
@@ -69,13 +74,13 @@
                 {#if alarm.readAt}
                   <span class="alarm-list-title text-muted">
                     <Icon name="chat-square-dots" class="text-info" />
-                    <em>{alarm.commentContent}</em>
+                    <em>{formatAlarmCommentPreview(alarm.commentContent)}</em>
                     <Badge color="secondary">{alarm.commentCount}</Badge>
                   </span>
                 {:else}
                   <span class="alarm-list-title">
                     <Icon name="chat-square-dots" class="text-info" />
-                    {alarm.commentContent}
+                    {formatAlarmCommentPreview(alarm.commentContent)}
                     <Badge color="danger" class="bg-opacity-50">{alarm.commentCount}</Badge>
                   </span>
                 {/if}
