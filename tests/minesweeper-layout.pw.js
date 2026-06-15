@@ -158,6 +158,61 @@ test('expert minesweeper rank stays below board and board scrolls on mobile land
   expect(metrics.rootWidth).toBeLessThanOrEqual(metrics.viewportWidth + 1);
 });
 
+test('expert minesweeper rank stays right and board scrolls on iPad portrait', async ({ page }) => {
+  await page.setViewportSize({ width: 820, height: 1180 });
+  await page.goto('/games/minesweeper');
+
+  await page.getByRole('button', { name: '알겠어요! 게임 시작하기' }).click();
+  await page.getByRole('button', { name: /고급/ }).first().click();
+
+  const board = page.locator('.minesweeper-board');
+  await expect(board).toBeVisible();
+
+  const metrics = await page.evaluate(() => {
+    const boardEl = document.querySelector('.minesweeper-board');
+    const gameRoot = document.querySelector('.minesweeper-game-root');
+    const boardScroll = document.querySelector('.minesweeper-board-scroll');
+    const rankCol = document.querySelector('.minesweeper-rank-col');
+
+    if (!boardEl || !gameRoot || !boardScroll || !rankCol) {
+      throw new Error('Expected minesweeper layout elements to be present');
+    }
+
+    const boardRect = boardEl.getBoundingClientRect();
+    const scrollRect = boardScroll.getBoundingClientRect();
+    const scrollStyle = getComputedStyle(boardScroll);
+    const rankRect = rankCol.getBoundingClientRect();
+
+    boardScroll.scrollLeft = boardScroll.scrollWidth;
+
+    return {
+      boardWidth: boardRect.width,
+      viewportWidth: window.innerWidth,
+      scrollWidth: document.documentElement.scrollWidth,
+      scrollFrameWidth: scrollRect.width,
+      scrollFrameOverflowX: scrollStyle.overflowX,
+      scrollFrameOverflowY: scrollStyle.overflowY,
+      scrollFrameScrollWidth: boardScroll.scrollWidth,
+      maxScrollLeft: boardScroll.scrollLeft,
+      rankLeft: rankRect.left,
+      rankRight: rankRect.right,
+      scrollRight: scrollRect.right,
+      rootWidth: gameRoot.getBoundingClientRect().width
+    };
+  });
+
+  expect(metrics.boardWidth).toBeGreaterThan(metrics.scrollFrameWidth);
+  expect(metrics.scrollWidth).toBeLessThanOrEqual(metrics.viewportWidth + 1);
+  expect(metrics.scrollFrameWidth).toBeLessThan(metrics.viewportWidth);
+  expect(metrics.scrollFrameOverflowX).toBe('auto');
+  expect(metrics.scrollFrameOverflowY).toBe('auto');
+  expect(metrics.scrollFrameScrollWidth).toBeGreaterThanOrEqual(metrics.boardWidth);
+  expect(metrics.maxScrollLeft).toBeGreaterThan(metrics.boardWidth - metrics.scrollFrameWidth - 24);
+  expect(metrics.rankLeft).toBeGreaterThanOrEqual(metrics.scrollRight);
+  expect(metrics.rankRight).toBeLessThanOrEqual(metrics.viewportWidth + 1);
+  expect(metrics.rootWidth).toBeLessThanOrEqual(metrics.viewportWidth + 1);
+});
+
 test('mobile board width limit is restored after leaving minesweeper', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/games/minesweeper');

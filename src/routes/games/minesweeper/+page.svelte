@@ -600,9 +600,9 @@
       ? 'g-0 justify-content-start align-items-start minesweeper-game-row'
       : 'justify-content-center'}"
   >
-    <!-- 랭킹 영역 (md 이상: 왼쪽) -->
+    <!-- 랭킹 영역 (md 이상: 오른쪽) -->
     {#if mode != null}
-      <div class="col-12 col-md-4 order-2 order-md-1 mt-3 mt-md-0 minesweeper-rank-col">
+      <div class="col-12 col-md-auto order-2 order-md-2 mt-3 mt-md-0 minesweeper-rank-col">
         <div class="card shadow rounded-4 h-100">
           <div class="card-body">
             <div class="d-flex justify-content-between align-items-center mb-3">
@@ -656,8 +656,8 @@
 
     <!-- 게임 보드 영역 -->
     <div
-      class="col-12 col-md-8 col-lg-auto {mode != null
-        ? 'order-1 order-md-2 minesweeper-game-col text-start'
+      class="col-12 {mode != null
+        ? 'order-1 order-md-1 minesweeper-game-col text-start'
         : 'text-center'}"
     >
       <div class="minesweeper-board-scroll">
@@ -920,17 +920,17 @@
   }
 
   .minesweeper-game-root.minesweeper-game-active {
-    width: max-content !important;
+    width: 100% !important;
     min-width: 100%;
-    max-width: none !important;
-    overflow: visible;
+    max-width: 100% !important;
+    overflow: hidden;
     touch-action: pan-x pan-y pinch-zoom;
   }
 
   .minesweeper-game-root.minesweeper-game-active > .minesweeper-game-row {
-    width: max-content;
+    width: 100%;
     min-width: 100%;
-    max-width: none;
+    max-width: 100%;
     margin-left: 0;
     margin-right: 0;
     flex-wrap: wrap;
@@ -948,9 +948,13 @@
     .minesweeper-rank-col {
       min-width: 300px;
       max-width: 300px;
-      width: max-content !important;
+      width: 300px !important;
       flex: 0 0 auto !important;
-      margin-right: 0.75rem;
+      margin-left: 0.75rem;
+    }
+
+    .minesweeper-game-root.minesweeper-game-active > .minesweeper-game-row {
+      flex-wrap: nowrap;
     }
   }
 
@@ -990,9 +994,10 @@
   }
 
   .minesweeper-game-active .minesweeper-game-col {
-    width: max-content !important;
-    max-width: none !important;
-    flex: 0 0 auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0;
+    flex: 1 1 auto !important;
     padding-left: 0;
     padding-right: 0;
   }
@@ -1002,8 +1007,8 @@
   }
 
   .minesweeper-board-scroll {
-    width: max-content;
-    max-width: none;
+    width: 100%;
+    max-width: 100%;
     overflow: auto;
     -webkit-overflow-scrolling: touch;
     touch-action: pan-x pan-y pinch-zoom;
