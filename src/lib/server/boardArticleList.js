@@ -12,9 +12,10 @@ const THIRTY_MIN_MS = 30 * 60 * 1000;
  * @param {number} params.pageNo
  * @param {number} params.pageUnit
  * @param {Date} [params.createdAfter]
+ * @param {string} [params.viewerId]
  * @returns {Promise<Array<Record<string, unknown>>>}
  */
-export async function fetchBoardArticleList({ boardId, pageNo, pageUnit, createdAfter }) {
+export async function fetchBoardArticleList({ boardId, pageNo, pageUnit, createdAfter, viewerId }) {
   try {
     /** @type {import('@prisma/client').Prisma.ArticleWhereInput} */
     const where = { boardId, state: 'write' };
@@ -48,6 +49,7 @@ export async function fetchBoardArticleList({ boardId, pageNo, pageUnit, created
 
     const articleIds = rows.map((a) => a.id);
     const emails = [...new Set(rows.map((a) => a.email))];
+    const newArticleThreshold = new Date(Date.now() - THIRTY_MIN_MS);
     const newCommentThreshold = new Date(Date.now() - THIRTY_MIN_MS);
 
     const [commentSummaryByArticle, users] = await Promise.all([
@@ -77,6 +79,9 @@ export async function fetchBoardArticleList({ boardId, pageNo, pageUnit, created
         like: a.likes.length,
         comment: commentSummary?.count ?? 0,
         content: contentIconsFromFlags(a),
+        isNewArticle: Boolean(
+          viewerId && a.createdAt > newArticleThreshold && !a.reads.includes(viewerId)
+        ),
         isNewComment: Boolean(latest && latest >= newCommentThreshold),
         photo: a.email ? photoByEmail[a.email] : undefined
       };

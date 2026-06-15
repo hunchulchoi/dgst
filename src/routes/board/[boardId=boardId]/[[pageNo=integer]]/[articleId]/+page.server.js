@@ -50,7 +50,7 @@ export const load = async ({ params, locals, cookies }) => {
     const [comments, author, boardListPayload] = await Promise.all([
       findCommentsByArticle(articleId, boardId, BOARD_COMMENT_SELECT),
       findArticleAuthorProfile(article.email),
-      getBoardListPayload(boardId, requestedPageNo)
+      getBoardListPayload(boardId, requestedPageNo, viewerId)
     ]);
 
     const commentTree = convertToTree(

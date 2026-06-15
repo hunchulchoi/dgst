@@ -152,4 +152,83 @@ describe('fetchBoardArticleList', () => {
     expect(commentRepo.summarizeCommentsByArticles).not.toHaveBeenCalled();
     expect(userFindMany).not.toHaveBeenCalled();
   });
+
+  it('marks only unread articles created within thirty minutes as new', async () => {
+    const articleFindMany = vi.fn().mockResolvedValue([
+      {
+        id: 'fresh-unread',
+        title: 'Fresh unread',
+        createdAt: new Date('2026-06-14T11:31:00.000Z'),
+        nickname: 'writer1',
+        email: 'writer1@example.com',
+        reads: [],
+        likes: [],
+        hasImage: false,
+        hasVideo: false,
+        hasYoutube: false,
+        hasInstagram: false
+      },
+      {
+        id: 'fresh-read',
+        title: 'Fresh read',
+        createdAt: new Date('2026-06-14T11:32:00.000Z'),
+        nickname: 'writer2',
+        email: 'writer2@example.com',
+        reads: ['viewer@example.com'],
+        likes: [],
+        hasImage: false,
+        hasVideo: false,
+        hasYoutube: false,
+        hasInstagram: false
+      },
+      {
+        id: 'old-unread',
+        title: 'Old unread',
+        createdAt: new Date('2026-06-14T11:29:00.000Z'),
+        nickname: 'writer3',
+        email: 'writer3@example.com',
+        reads: [],
+        likes: [],
+        hasImage: false,
+        hasVideo: false,
+        hasYoutube: false,
+        hasInstagram: false
+      },
+      {
+        id: 'boundary-unread',
+        title: 'Boundary unread',
+        createdAt: new Date('2026-06-14T11:30:00.000Z'),
+        nickname: 'writer4',
+        email: 'writer4@example.com',
+        reads: [],
+        likes: [],
+        hasImage: false,
+        hasVideo: false,
+        hasYoutube: false,
+        hasInstagram: false
+      }
+    ]);
+
+    prismaModule.getPrisma.mockReturnValue({
+      article: { findMany: articleFindMany },
+      user: { findMany: vi.fn().mockResolvedValue([]) }
+    });
+    commentRepo.summarizeCommentsByArticles.mockResolvedValue({});
+
+    const { fetchBoardArticleList } = await import('../src/lib/server/boardArticleList.js');
+
+    const result = await fetchBoardArticleList({
+      boardId: 'free',
+      pageNo: 1,
+      pageUnit: 30,
+      viewerId: 'viewer@example.com'
+    });
+
+    expect(result).toMatchObject([
+      { _id: 'fresh-unread', isNewArticle: true },
+      { _id: 'fresh-read', isNewArticle: false },
+      { _id: 'old-unread', isNewArticle: false },
+      { _id: 'boundary-unread', isNewArticle: false }
+    ]);
+  });
 });

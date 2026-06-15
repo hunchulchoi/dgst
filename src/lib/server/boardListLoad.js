@@ -16,9 +16,13 @@ const LIST_PAYLOAD_TTL_SECONDS = 5;
 /**
  * @param {string} boardId
  * @param {number} pageNo
+ * @param {string | undefined} viewerId
  */
-function listPayloadCacheKey(boardId, pageNo) {
-  return `boardlist:payload:${boardId}:${pageNo}`;
+function listPayloadCacheKey(boardId, pageNo, viewerId) {
+  const viewerKey = viewerId
+    ? crypto.createHash('sha256').update(viewerId).digest('hex').slice(0, 16)
+    : 'anon';
+  return `boardlist:payload:${boardId}:${pageNo}:${viewerKey}`;
 }
 
 /**
@@ -38,12 +42,13 @@ export async function bustBoardListCache(boardId) {
 /**
  * @param {string} boardId
  * @param {number} pageNo
+ * @param {string | undefined} viewerId
  * @param {Record<string, unknown>} payload
  */
-async function cacheListPayload(boardId, pageNo, payload) {
+async function cacheListPayload(boardId, pageNo, viewerId, payload) {
   try {
     await pgCache.setJson(
-      listPayloadCacheKey(boardId, pageNo),
+      listPayloadCacheKey(boardId, pageNo, viewerId),
       payload,
       LIST_PAYLOAD_TTL_SECONDS,
       BOARDLIST_NS
@@ -56,12 +61,13 @@ async function cacheListPayload(boardId, pageNo, payload) {
 /**
  * @param {string} boardId
  * @param {number} pageNo
+ * @param {string | undefined} viewerId
  * @returns {Promise<Record<string, unknown> | null>}
  */
-async function getStaleListPayload(boardId, pageNo) {
+async function getStaleListPayload(boardId, pageNo, viewerId) {
   try {
     const cached = /** @type {Record<string, unknown> | null} */ (
-      await pgCache.getJson(listPayloadCacheKey(boardId, pageNo), BOARDLIST_NS)
+      await pgCache.getJson(listPayloadCacheKey(boardId, pageNo, viewerId), BOARDLIST_NS)
     );
     if (!cached || typeof cached !== 'object' || !Array.isArray(cached.articles)) {
       return null;
@@ -78,15 +84,16 @@ async function getStaleListPayload(boardId, pageNo) {
  * @param {import('@sveltejs/kit').ServerLoadEvent} event
  * @param {string} boardId
  * @param {number} pageNo
+ * @param {string | undefined} viewerId
  * @param {unknown} err
  * @param {string} errorId
  */
-async function buildDegradedListResponse(event, boardId, pageNo, err, errorId) {
+async function buildDegradedListResponse(event, boardId, pageNo, viewerId, err, errorId) {
   const trace = traceFromUnknown(err);
   const errMessage = err instanceof Error ? err.message : String(err);
   const pathname = event.url?.pathname ?? `/board/${boardId}`;
 
-  const stale = await getStaleListPayload(boardId, pageNo);
+  const stale = await getStaleListPayload(boardId, pageNo, viewerId);
 
   if (stale) {
     logger.warn({
@@ -173,8 +180,9 @@ async function getCachedTotal(boardId, filter) {
 /**
  * @param {string} boardId
  * @param {number} inputPageNo
+ * @param {string} [viewerId]
  */
-export async function getBoardListPayload(boardId, inputPageNo) {
+export async function getBoardListPayload(boardId, inputPageNo, viewerId) {
   let pageNo = Number.isFinite(inputPageNo) && inputPageNo > 0 ? inputPageNo : 1;
   const t0 = performance.now();
   const tConnected = performance.now();
@@ -203,7 +211,8 @@ export async function getBoardListPayload(boardId, inputPageNo) {
     boardId,
     pageNo,
     pageUnit: PAGE_UNIT,
-    createdAfter
+    createdAfter,
+    viewerId
   });
   const tFetched = performance.now();
   const { startNo, endNo } = computePaginationWindow(pageNo, maxPage);
@@ -232,9 +241,21 @@ export async function getBoardListPayload(boardId, inputPageNo) {
     articles
   };
 
-  await cacheListPayload(boardId, pageNo, payload);
+  await cacheListPayload(boardId, pageNo, viewerId, payload);
 
   return payload;
+}
+
+/**
+ * @param {import('@sveltejs/kit').ServerLoadEvent} event
+ */
+async function resolveBoardListViewerId(event) {
+  try {
+    const session = event.locals?.auth ? await event.locals.auth() : null;
+    return session?.user?.email || event.cookies?.get?.('dgst_device') || undefined;
+  } catch {
+    return event.cookies?.get?.('dgst_device') || undefined;
+  }
 }
 
 /**
@@ -246,11 +267,12 @@ export async function loadBoardList(event, boardId) {
 
   let pageNo = parseInt(event.params.pageNo || '1', 10);
   if (!Number.isFinite(pageNo) || pageNo < 1) pageNo = 1;
+  const viewerId = await resolveBoardListViewerId(event);
 
   try {
-    return await getBoardListPayload(boardId, pageNo);
+    return await getBoardListPayload(boardId, pageNo, viewerId);
   } catch (err) {
     const errorId = crypto.randomUUID();
-    return buildDegradedListResponse(event, boardId, pageNo, err, errorId);
+    return buildDegradedListResponse(event, boardId, pageNo, viewerId, err, errorId);
   }
 }

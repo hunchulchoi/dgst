@@ -134,6 +134,9 @@
           <span class="!text-[1.3rem] max-md:!text-[1.4rem] !leading-[1.45] font-medium"
             >{article.title}</span
           >
+          {#if article.isNewArticle}
+            <Badge color="danger" class="bg-opacity-75 ms-1">new</Badge>
+          {/if}
           <!-- eslint-disable-next-line svelte/no-at-html-tags -- trusted icon markup comes from server-side contentIcons() -->
           {@html getTrustedArticlePreviewHtml(article.content)}
           {#if article.comment}

@@ -71,7 +71,8 @@ describe('loadBoardList', () => {
       boardId: 'free',
       pageNo: 1,
       pageUnit: 30,
-      createdAfter: new Date('2026-06-11T12:00:00.000Z')
+      createdAfter: new Date('2026-06-11T12:00:00.000Z'),
+      viewerId: undefined
     });
     expect(result).toMatchObject({
       boardId: 'free',
@@ -79,5 +80,57 @@ describe('loadBoardList', () => {
       maxPage: 1,
       articles: [{ _id: 'article-1' }, { _id: 'article-2' }]
     });
+  });
+
+  it('passes the authenticated user email as the board list viewer id', async () => {
+    articleRepo.countArticles.mockResolvedValue(1);
+    boardArticleList.fetchBoardArticleList.mockResolvedValue([{ _id: 'article-1' }]);
+
+    const { loadBoardList } = await import('../src/lib/server/boardListLoad.js');
+
+    await loadBoardList(
+      {
+        depends: vi.fn(),
+        locals: {
+          auth: vi.fn().mockResolvedValue({ user: { email: 'viewer@example.com' } })
+        },
+        cookies: { get: vi.fn() },
+        params: { pageNo: '1' },
+        url: new URL('https://dgst.me/board/free')
+      },
+      'free'
+    );
+
+    expect(boardArticleList.fetchBoardArticleList).toHaveBeenCalledWith(
+      expect.objectContaining({
+        viewerId: 'viewer@example.com'
+      })
+    );
+  });
+
+  it('falls back to the device cookie as the board list viewer id when auth fails', async () => {
+    articleRepo.countArticles.mockResolvedValue(1);
+    boardArticleList.fetchBoardArticleList.mockResolvedValue([{ _id: 'article-1' }]);
+
+    const { loadBoardList } = await import('../src/lib/server/boardListLoad.js');
+
+    await loadBoardList(
+      {
+        depends: vi.fn(),
+        locals: {
+          auth: vi.fn().mockRejectedValue(new Error('auth unavailable'))
+        },
+        cookies: { get: vi.fn().mockReturnValue('device-1') },
+        params: { pageNo: '1' },
+        url: new URL('https://dgst.me/board/free')
+      },
+      'free'
+    );
+
+    expect(boardArticleList.fetchBoardArticleList).toHaveBeenCalledWith(
+      expect.objectContaining({
+        viewerId: 'device-1'
+      })
+    );
   });
 });
