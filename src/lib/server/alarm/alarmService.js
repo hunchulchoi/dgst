@@ -61,13 +61,11 @@ export async function getUnreadAlarmCount(email, hours = 24) {
         updatedAt: { gte: timeLimit }
       },
       select: {
+        articleId: true,
         commentIds: true
       }
     });
-    return alarms.reduce((sum, alarm) => {
-      const commentCount = Array.isArray(alarm.commentIds) ? alarm.commentIds.length : 0;
-      return sum + Math.max(commentCount, 1);
-    }, 0);
+    return new Set(alarms.map((alarm) => alarm.articleId)).size;
   } catch (err) {
     logger.warn({
       message: '[alarm] getUnreadAlarmCount failed',

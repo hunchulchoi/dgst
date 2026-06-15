@@ -12,7 +12,7 @@
   import { reportSlowInitialLoad, reportSlowLoad } from '$lib/util/logSlowLoad.js';
   import { reportClientError } from '$lib/util/reportClientPageError.js';
   import { isFreeBoardLegacyPath } from '$lib/util/boardPaths.js';
-  import { boardListReloadKey, boardListReloading } from '$lib/util/store.js';
+  import { alarmCount, boardListReloadKey, boardListReloading } from '$lib/util/store.js';
   import '../app.css';
 
   let { data, children } = $props();
@@ -124,6 +124,30 @@
     requestAnimationFrame(() => window.scrollTo(0, 0));
   }
 
+  async function refreshUnreadAlarmCount() {
+    if (!browser || !data.session?.user?.nickname) {
+      alarmCount.set(0);
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/alarm/unread-count', {
+        headers: { Accept: 'application/json' }
+      });
+      if (!response.ok) return;
+      const body = await response.json();
+      alarmCount.set(body.count ?? 0);
+    } catch (error) {
+      reportClientError(error, {
+        type: 'alarm-unread-count-refresh-error',
+        pathname: window.location.pathname,
+        href: window.location.href,
+        routeId: $page.route.id ?? undefined,
+        phase: 'after-navigate'
+      });
+    }
+  }
+
   afterNavigate(({ to }) => {
     if (navigationStartedAt > 0) {
       reportSlowLoad({
@@ -144,6 +168,7 @@
     boardListToDetailBlur = false;
 
     normalizeMobileLayoutWidth();
+    void refreshUnreadAlarmCount();
   });
 
   onMount(() => {

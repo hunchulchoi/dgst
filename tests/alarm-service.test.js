@@ -25,11 +25,12 @@ describe('alarmService', () => {
     vi.useRealTimers();
   });
 
-  it('counts unread alarm comments updated within the requested hour window', async () => {
+  it('counts unread alarms by distinct article, not by comment count', async () => {
     const findMany = vi.fn().mockResolvedValue([
-      { commentIds: ['comment-1', 'comment-2'] },
-      { commentIds: ['comment-3'] },
-      { commentIds: [] }
+      { articleId: 'article-1', commentIds: ['comment-1', 'comment-2'] },
+      { articleId: 'article-1', commentIds: ['comment-3'] },
+      { articleId: 'article-2', commentIds: ['comment-4'] },
+      { articleId: 'article-3', commentIds: [] }
     ]);
 
     prismaModule.getPrisma.mockReturnValue({
@@ -40,7 +41,7 @@ describe('alarmService', () => {
 
     const result = await getUnreadAlarmCount('user@example.com');
 
-    expect(result).toBe(4);
+    expect(result).toBe(3);
     expect(findMany).toHaveBeenCalledWith({
       where: {
         email: 'user@example.com',
@@ -48,6 +49,7 @@ describe('alarmService', () => {
         updatedAt: { gte: new Date('2026-06-13T12:00:00.000Z') }
       },
       select: {
+        articleId: true,
         commentIds: true
       }
     });
