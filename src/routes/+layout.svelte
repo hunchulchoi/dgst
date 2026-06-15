@@ -250,7 +250,7 @@
 </svelte:head>
 
 <ThemeSync />
-<div class="app-shell">
+<div class="app-shell" class:blue-dgst-host={data.isBlueDgstHost}>
   <Header
     session={data.session}
     pathname={data.pathname}
@@ -282,6 +282,10 @@
     min-height: 100dvh;
     flex-direction: column;
     overflow-x: hidden;
+  }
+
+  .blue-dgst-host {
+    --dgst-chrome-bg: #ffd6e7;
   }
 
   .page-transition {

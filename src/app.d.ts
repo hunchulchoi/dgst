@@ -32,6 +32,7 @@ declare global {
     interface PageData {
       session: Session | null;
       kakaoEnabled?: boolean;
+      isBlueDgstHost?: boolean;
     }
     // interface Platform {}
   }

@@ -6,6 +6,7 @@ export const load = ({ url, data }) => {
   return {
     pathname: normalizeFreeBoardPath(pathname, search || ''),
     session: data.session,
-    unreadAlarmCount: data.unreadAlarmCount ?? 0
+    unreadAlarmCount: data.unreadAlarmCount ?? 0,
+    isBlueDgstHost: data.isBlueDgstHost ?? false
   };
 };

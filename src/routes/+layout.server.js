@@ -50,10 +50,15 @@ export const load = async (event) => {
     dynamicEnv.KAKAO_CLIENT_SECRET ??
     (typeof process !== 'undefined' ? process.env?.KAKAO_CLIENT_SECRET : undefined);
   const kakaoEnabled = !!(kakaoId && kakaoSecret);
+  const blueDgstHost =
+    dynamicEnv.BLUE_DGST_HOST ??
+    (typeof process !== 'undefined' ? process.env?.BLUE_DGST_HOST : undefined);
+  const isBlueDgstHost = !!blueDgstHost && event.url.hostname === blueDgstHost;
 
   return {
     session,
     unreadAlarmCount,
-    kakaoEnabled
+    kakaoEnabled,
+    isBlueDgstHost
   };
 };
