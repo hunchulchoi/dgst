@@ -121,6 +121,7 @@
   function normalizeMobileLayoutWidth() {
     if (!browser) return;
     window.scrollTo(0, 0);
+    requestAnimationFrame(() => window.scrollTo(0, 0));
   }
 
   afterNavigate(({ to }) => {
@@ -187,6 +188,7 @@
 
     window.addEventListener('error', handleWindowError);
     window.addEventListener('unhandledrejection', handleUnhandledRejection);
+    window.addEventListener('dgst:normalize-mobile-layout-width', normalizeMobileLayoutWidth);
 
     if (isFreeBoardLegacyPath(window.location.pathname)) {
       history.replaceState(history.state, '', `/${window.location.search}`);
@@ -205,6 +207,7 @@
     return () => {
       window.removeEventListener('error', handleWindowError);
       window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+      window.removeEventListener('dgst:normalize-mobile-layout-width', normalizeMobileLayoutWidth);
       window.removeEventListener('load', measureInitialLoad);
     };
   });

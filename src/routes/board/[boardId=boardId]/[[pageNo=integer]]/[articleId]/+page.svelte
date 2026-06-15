@@ -14,7 +14,7 @@
   import { swalFire } from '$lib/util/swal.js';
 
   import { alarmCount } from '$lib/util/store.js';
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import BoardList from '$lib/components/board_list.svelte';
   import OGPreview from '$lib/components/OGPreview.svelte';
   import sanitizeHtml from 'sanitize-html';
@@ -198,6 +198,11 @@
         console.log('📝 댓글 데이터:', d.length, '개');
         // $state 직접 업데이트
         commentData = d;
+        return tick();
+      })
+      .then(() => {
+        if (!browser) return;
+        window.dispatchEvent(new CustomEvent('dgst:normalize-mobile-layout-width'));
       })
       .catch((err) => {
         console.error('❌ 댓글 새로고침 실패:', err);

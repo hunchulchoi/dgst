@@ -79,6 +79,11 @@
     uploading--;
   };
 
+  function requestMobileLayoutWidthNormalization() {
+    if (typeof window === 'undefined') return;
+    window.dispatchEvent(new CustomEvent('dgst:normalize-mobile-layout-width'));
+  }
+
   onMount(async () => {
     try {
       QuillEditor = (await import('$lib/components/LexicalEditor.svelte')).default;
@@ -469,6 +474,7 @@
 
               title = '';
               content = '';
+              requestMobileLayoutWidthNormalization();
 
               await invalidate('board-list');
 
