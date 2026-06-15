@@ -1199,17 +1199,31 @@
     .article-content .og-card-blot {
       max-width: 500px !important;
       width: 100% !important;
+      border: 1px solid var(--bs-border-color) !important;
+      border-radius: 1rem !important;
+      box-shadow: 0 14px 34px rgba(0, 0, 0, 0.28) !important;
+      overflow: hidden !important;
+      background-color: var(--bs-body-bg) !important;
+      margin: 0.75rem 0 !important;
     }
     .article-content .og-card-blot a {
+      border: 0 !important;
+      border-radius: inherit !important;
       padding: 0 !important;
       display: block !important;
       cursor: pointer !important;
+      margin: 0 !important;
+      overflow: hidden !important;
     }
 
     /* OGPreview 카드도 동일하게 강제 적용 (주석 카드) */
     .article-content .og-preview {
+      border: 1px solid var(--bs-border-color) !important;
+      border-radius: 1rem !important;
+      box-shadow: 0 14px 34px rgba(0, 0, 0, 0.28) !important;
       padding: 0 !important;
       overflow: hidden !important;
+      background-color: var(--bs-body-bg) !important;
     }
     .article-content .og-preview > a {
       display: block !important;
@@ -1279,7 +1293,6 @@
     }
 
     /* 밑줄 강제 제거 (요소 전체, u/ins 포함) */
-    .article-content .og-card-blot,
     .article-content .og-card-blot *,
     .article-content .og-card-blot u,
     .article-content .og-card-blot ins {
