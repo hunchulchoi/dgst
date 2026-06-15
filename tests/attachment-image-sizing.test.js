@@ -60,6 +60,30 @@ describe('attachment image sizing', () => {
     expect(style.height).toBe('auto');
   });
 
+  it('does not height-cap regular portrait photos on mobile so max-width can use the available width', () => {
+    const style = {
+      maxWidth: '',
+      maxHeight: '',
+      width: '',
+      height: '',
+      /** @param {string} prop */
+      removeProperty(prop) {
+        if (prop === 'max-height') this.maxHeight = '';
+      }
+    };
+
+    applyAttachmentImageSizing(
+      style,
+      { naturalWidth: 1080, naturalHeight: 1920 },
+      { viewportWidth: 390 }
+    );
+
+    expect(style.maxWidth).toBe('100%');
+    expect(style.width).toBe('auto');
+    expect(style.height).toBe('auto');
+    expect(style.maxHeight).toBe('');
+  });
+
   it('does not treat comment avatars as attachment images', () => {
     expect(
       shouldApplyAttachmentImageSizing({
