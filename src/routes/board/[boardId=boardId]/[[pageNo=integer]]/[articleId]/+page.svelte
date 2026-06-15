@@ -187,26 +187,39 @@
     }
   }
 
-  function comments() {
+  async function comments() {
     console.log('🔄 댓글 새로고침 시작:', `/board/${boardId}/${articleId}/comment`);
-    fetch(`/board/${boardId}/${articleId}/comment`)
-      .then((res) => {
-        console.log('✅ 댓글 응답:', res.status);
-        return res.json();
-      })
-      .then((d) => {
-        console.log('📝 댓글 데이터:', d.length, '개');
-        // $state 직접 업데이트
-        commentData = d;
-        return tick();
-      })
-      .then(() => {
-        if (!browser) return;
-        window.dispatchEvent(new CustomEvent('dgst:normalize-mobile-layout-width'));
-      })
-      .catch((err) => {
-        console.error('❌ 댓글 새로고침 실패:', err);
+    try {
+      const res = await fetch(`/board/${boardId}/${articleId}/comment`);
+      console.log('✅ 댓글 응답:', res.status);
+      const d = await res.json();
+      console.log('📝 댓글 데이터:', d.length, '개');
+      // $state 직접 업데이트
+      commentData = d;
+      await tick();
+      if (!browser) return;
+      window.dispatchEvent(new CustomEvent('dgst:normalize-mobile-layout-width'));
+    } catch (err) {
+      console.error('❌ 댓글 새로고침 실패:', err);
+    }
+  }
+
+  async function refreshUnreadAlarmCount() {
+    if (!browser || !data.session?.user?.nickname) {
+      alarmCount.set(0);
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/alarm/unread-count', {
+        headers: { Accept: 'application/json' }
       });
+      if (!response.ok) return;
+      const body = await response.json();
+      alarmCount.set(body.count ?? 0);
+    } catch {
+      alarmCount.set(0);
+    }
   }
 
   async function list() {
@@ -433,7 +446,8 @@
       }
 
       toast('저장 되었습니다.', 'success');
-      comments();
+      await comments();
+      await refreshUnreadAlarmCount();
     } catch (error) {
       console.error('❌ 댓글 저장 실패:', error);
       toast(error instanceof Error ? error.message : '저장 중 오류가 발생했습니다.', 'error');

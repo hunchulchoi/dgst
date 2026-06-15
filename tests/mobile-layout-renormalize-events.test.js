@@ -19,13 +19,16 @@ describe('mobile layout width renormalization events', () => {
 
   it('requests width normalization after a successful article write', () => {
     expect(writePage).toContain("window.dispatchEvent(new CustomEvent('dgst:normalize-mobile-layout-width'))");
-    expect(writePage.indexOf('requestMobileLayoutWidthNormalization();')).toBeGreaterThan(
-      writePage.indexOf("await toast('저장되었습니다.'")
+    expect(writePage).toContain('await goto(resolve(`/board/${boardId}/${savedArticleId}`));');
+    expect(writePage.lastIndexOf('requestMobileLayoutWidthNormalization();')).toBeGreaterThan(
+      writePage.indexOf('await goto(resolve(`/board/${boardId}/${savedArticleId}`));')
     );
   });
 
   it('requests width normalization after comment data is refreshed', () => {
     expect(articlePage).toContain("import { onMount, tick } from 'svelte';");
+    expect(articlePage).toContain('async function comments()');
+    expect(articlePage).toContain('await comments();');
     expect(articlePage).toContain("window.dispatchEvent(new CustomEvent('dgst:normalize-mobile-layout-width'))");
     expect(articlePage.indexOf("window.dispatchEvent(new CustomEvent('dgst:normalize-mobile-layout-width'))")).toBeGreaterThan(
       articlePage.indexOf('commentData = d;')

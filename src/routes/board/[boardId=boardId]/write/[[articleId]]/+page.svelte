@@ -474,13 +474,13 @@
 
               title = '';
               content = '';
-              requestMobileLayoutWidthNormalization();
 
               await invalidate('board-list');
 
               const savedArticleId = actionData.articleId || articleId;
               if (savedArticleId) {
-                goto(resolve(`/board/${boardId}/${savedArticleId}`));
+                await goto(resolve(`/board/${boardId}/${savedArticleId}`));
+                requestMobileLayoutWidthNormalization();
               } else {
                 await list();
               }

@@ -153,12 +153,12 @@ describe('fetchBoardArticleList', () => {
     expect(userFindMany).not.toHaveBeenCalled();
   });
 
-  it('marks only unread articles created within thirty minutes as new', async () => {
+  it('marks only unread articles created within one hour as new', async () => {
     const articleFindMany = vi.fn().mockResolvedValue([
       {
         id: 'fresh-unread',
         title: 'Fresh unread',
-        createdAt: new Date('2026-06-14T11:31:00.000Z'),
+        createdAt: new Date('2026-06-14T11:01:00.000Z'),
         nickname: 'writer1',
         email: 'writer1@example.com',
         reads: [],
@@ -171,7 +171,7 @@ describe('fetchBoardArticleList', () => {
       {
         id: 'fresh-read',
         title: 'Fresh read',
-        createdAt: new Date('2026-06-14T11:32:00.000Z'),
+        createdAt: new Date('2026-06-14T11:02:00.000Z'),
         nickname: 'writer2',
         email: 'writer2@example.com',
         reads: ['viewer@example.com'],
@@ -184,7 +184,7 @@ describe('fetchBoardArticleList', () => {
       {
         id: 'old-unread',
         title: 'Old unread',
-        createdAt: new Date('2026-06-14T11:29:00.000Z'),
+        createdAt: new Date('2026-06-14T10:59:00.000Z'),
         nickname: 'writer3',
         email: 'writer3@example.com',
         reads: [],
@@ -197,7 +197,7 @@ describe('fetchBoardArticleList', () => {
       {
         id: 'boundary-unread',
         title: 'Boundary unread',
-        createdAt: new Date('2026-06-14T11:30:00.000Z'),
+        createdAt: new Date('2026-06-14T11:00:00.000Z'),
         nickname: 'writer4',
         email: 'writer4@example.com',
         reads: [],

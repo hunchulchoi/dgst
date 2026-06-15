@@ -2,6 +2,7 @@ import { getPrisma } from '$lib/database/prisma.js';
 import { contentIconsFromFlags } from '$lib/server/board/articleRepo.js';
 import { summarizeCommentsByArticles } from '$lib/server/board/commentRepo.js';
 
+const ONE_HOUR_MS = 60 * 60 * 1000;
 const THIRTY_MIN_MS = 30 * 60 * 1000;
 
 /**
@@ -49,7 +50,7 @@ export async function fetchBoardArticleList({ boardId, pageNo, pageUnit, created
 
     const articleIds = rows.map((a) => a.id);
     const emails = [...new Set(rows.map((a) => a.email))];
-    const newArticleThreshold = new Date(Date.now() - THIRTY_MIN_MS);
+    const newArticleThreshold = new Date(Date.now() - ONE_HOUR_MS);
     const newCommentThreshold = new Date(Date.now() - THIRTY_MIN_MS);
 
     const [commentSummaryByArticle, users] = await Promise.all([
