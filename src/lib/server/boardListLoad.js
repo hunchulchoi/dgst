@@ -252,9 +252,14 @@ export async function getBoardListPayload(boardId, inputPageNo, viewerId) {
 async function resolveBoardListViewerId(event) {
   try {
     const session = event.locals?.auth ? await event.locals.auth() : null;
-    return session?.user?.email || event.cookies?.get?.('dgst_device') || undefined;
+    return (
+      session?.user?.email ||
+      event.cookies?.get?.('dgst_device') ||
+      event.locals?.deviceId ||
+      undefined
+    );
   } catch {
-    return event.cookies?.get?.('dgst_device') || undefined;
+    return event.cookies?.get?.('dgst_device') || event.locals?.deviceId || undefined;
   }
 }
 

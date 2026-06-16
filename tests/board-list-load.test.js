@@ -133,4 +133,31 @@ describe('loadBoardList', () => {
       })
     );
   });
+
+  it('uses the request-local device id when the device cookie was just created', async () => {
+    articleRepo.countArticles.mockResolvedValue(1);
+    boardArticleList.fetchBoardArticleList.mockResolvedValue([{ _id: 'article-1' }]);
+
+    const { loadBoardList } = await import('../src/lib/server/boardListLoad.js');
+
+    await loadBoardList(
+      {
+        depends: vi.fn(),
+        locals: {
+          auth: vi.fn().mockResolvedValue(null),
+          deviceId: 'fresh-device-1'
+        },
+        cookies: { get: vi.fn().mockReturnValue(undefined) },
+        params: { pageNo: '1' },
+        url: new URL('https://dgst.me/board/free')
+      },
+      'free'
+    );
+
+    expect(boardArticleList.fetchBoardArticleList).toHaveBeenCalledWith(
+      expect.objectContaining({
+        viewerId: 'fresh-device-1'
+      })
+    );
+  });
 });

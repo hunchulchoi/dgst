@@ -284,6 +284,7 @@ export async function handle({ event, resolve }) {
   }
   // cookie.get()은 string을 반환하므로 안전하게 문자열로 고정
   deviceId = String(deviceId);
+  event.locals.deviceId = deviceId;
 
   // 재방문(기존 쿠키)만 pgCache 갱신 — 봇·최초 방문마다 키 생성되는 것 방지
   if (hadDeviceCookie && !pathname.startsWith('/_app/') && !pathname.includes('.')) {

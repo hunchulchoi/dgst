@@ -136,15 +136,19 @@
           >
           <!-- eslint-disable-next-line svelte/no-at-html-tags -- trusted icon markup comes from server-side contentIcons() -->
           {@html getTrustedArticlePreviewHtml(article.content)}
-          {#if article.comment}
-            {#if article.isNewComment}
-              <Badge color="warning" class="bg-opacity-50">{article.comment}</Badge>
-            {:else}
-              <Badge color="primary" class="bg-opacity-50">{article.comment}</Badge>
-            {/if}
-          {/if}
-          {#if article.isNewArticle}
-            <Badge color="danger" class="bg-opacity-75 ms-1">new</Badge>
+          {#if article.comment || article.isNewArticle}
+            <span class="board-list-badges d-inline-flex align-items-center gap-1 ms-1">
+              {#if article.comment}
+                {#if article.isNewComment}
+                  <Badge color="warning" class="bg-opacity-50">{article.comment}</Badge>
+                {:else}
+                  <Badge color="primary" class="bg-opacity-50">{article.comment}</Badge>
+                {/if}
+              {/if}
+              {#if article.isNewArticle}
+                <Badge color="danger" class="bg-opacity-75">new</Badge>
+              {/if}
+            </span>
           {/if}
         </a>
       </Col>

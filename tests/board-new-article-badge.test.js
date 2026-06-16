@@ -7,6 +7,7 @@ describe('board new article badge', () => {
 
     expect(source).toContain('article.isNewArticle');
     expect(source).toContain('new');
+    expect(source).toContain('board-list-badges');
     expect(source.indexOf('{#if article.isNewArticle}')).toBeGreaterThan(
       source.indexOf('{#if article.comment}')
     );
