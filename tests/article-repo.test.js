@@ -83,7 +83,7 @@ describe('articleRepo', () => {
       boardId: 'free',
       title: 'title',
       content:
-        '<p><img src="/a.jpg" /></p><iframe src="https://www.youtube.com/embed/abc"></iframe><blockquote class="instagram-media"></blockquote>'
+        '<p><img src="/a.jpg" /></p><audio src="/a.m4a" controls></audio><iframe src="https://www.youtube.com/embed/abc"></iframe><blockquote class="instagram-media"></blockquote>'
     });
 
     expect(create).toHaveBeenCalledWith({
@@ -94,10 +94,20 @@ describe('articleRepo', () => {
         title: 'title',
         hasImage: true,
         hasVideo: false,
+        hasAudio: true,
         hasYoutube: true,
         hasInstagram: true
       })
     });
+  });
+
+  it('renders an audio marker for audio content flags', async () => {
+    const { contentIcons } = await import('../src/lib/server/board/articleRepo.js');
+
+    const result = contentIcons('<p><audio src="/voice.m4a" controls></audio></p>');
+
+    expect(result).toContain('bi-music-note-beamed');
+    expect(result).toContain('text-info');
   });
 
   it('recomputes derived content flags when updating article content', async () => {
@@ -121,6 +131,7 @@ describe('articleRepo', () => {
         modifiedEmail: 'writer@example.com',
         hasImage: false,
         hasVideo: true,
+        hasAudio: false,
         hasYoutube: false,
         hasInstagram: false
       }

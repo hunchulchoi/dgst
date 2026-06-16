@@ -34,6 +34,7 @@ describe('fetchBoardArticleList', () => {
         likes: ['x'],
         hasImage: true,
         hasVideo: false,
+        hasAudio: true,
         hasYoutube: true,
         hasInstagram: false
       },
@@ -47,6 +48,7 @@ describe('fetchBoardArticleList', () => {
         likes: [],
         hasImage: false,
         hasVideo: false,
+        hasAudio: false,
         hasYoutube: false,
         hasInstagram: true
       }
@@ -99,6 +101,7 @@ describe('fetchBoardArticleList', () => {
         likes: true,
         hasImage: true,
         hasVideo: true,
+        hasAudio: true,
         hasYoutube: true,
         hasInstagram: true
       }
@@ -127,6 +130,7 @@ describe('fetchBoardArticleList', () => {
       }
     ]);
     expect(result[0].content).toContain('bi-card-image');
+    expect(result[0].content).toContain('bi-music-note-beamed');
     expect(result[0].content).toContain('bi-youtube');
     expect(result[1].content).toContain('bi-instagram');
   });

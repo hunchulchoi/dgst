@@ -62,6 +62,7 @@ model Article {
   content       String
   hasImage      Boolean   @default(false) @map("has_image")
   hasVideo      Boolean   @default(false) @map("has_video")
+  hasAudio      Boolean   @default(false) @map("has_audio")
   hasYoutube    Boolean   @default(false) @map("has_youtube")
   hasInstagram  Boolean   @default(false) @map("has_instagram")
   state         String    @default("write")

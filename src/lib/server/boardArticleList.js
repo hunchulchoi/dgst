@@ -41,6 +41,7 @@ export async function fetchBoardArticleList({ boardId, pageNo, pageUnit, created
         likes: true,
         hasImage: true,
         hasVideo: true,
+        hasAudio: true,
         hasYoutube: true,
         hasInstagram: true
       }

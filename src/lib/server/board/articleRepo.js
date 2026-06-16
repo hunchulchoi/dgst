@@ -3,12 +3,13 @@ import { getPrisma } from '$lib/database/prisma.js';
 
 /**
  * @param {string} content
- * @returns {{ hasImage: boolean; hasVideo: boolean; hasYoutube: boolean; hasInstagram: boolean }}
+ * @returns {{ hasImage: boolean; hasVideo: boolean; hasAudio: boolean; hasYoutube: boolean; hasInstagram: boolean }}
  */
 export function deriveArticleContentFlags(content) {
   return {
     hasImage: content.includes('<img '),
     hasVideo: content.includes('<video '),
+    hasAudio: content.includes('<audio '),
     hasYoutube:
       content.includes('youtube.com') ||
       content.includes('youtu.be') ||
@@ -19,13 +20,14 @@ export function deriveArticleContentFlags(content) {
 }
 
 /**
- * @param {{ hasImage?: boolean; hasVideo?: boolean; hasYoutube?: boolean; hasInstagram?: boolean }} flags
+ * @param {{ hasImage?: boolean; hasVideo?: boolean; hasAudio?: boolean; hasYoutube?: boolean; hasInstagram?: boolean }} flags
  * @returns {string}
  */
 export function contentIconsFromFlags(flags) {
   return (
     (flags.hasImage ? '<i class="bi bi-card-image text-success px-2"></i>' : '') +
     (flags.hasVideo ? '<i class="bi bi-camera-video text-primary px-2"></i>' : '') +
+    (flags.hasAudio ? '<i class="bi bi-music-note-beamed text-info px-2"></i>' : '') +
     (flags.hasYoutube ? '<i class="bi bi-youtube text-danger px-2"></i>' : '') +
     (flags.hasInstagram ? '<i class="bi bi-instagram text-warning px-2"></i>' : '')
   );
