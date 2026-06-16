@@ -1186,8 +1186,41 @@
   }
 
   /** @param {File[]} files */
+  async function chooseVideoUploadMode(files) {
+    if (!files.some((file) => file.type.startsWith('video/'))) {
+      removeVideoAudio = false;
+      extractVideoAudio = false;
+      return true;
+    }
+
+    const result = await swalFire({
+      icon: 'question',
+      title: '동영상 업로드 방식',
+      input: 'radio',
+      inputOptions: {
+        normal: '영상+음성',
+        mute: '음성제거',
+        audioOnly: '음성만'
+      },
+      inputValue: 'normal',
+      showCancelButton: true,
+      confirmButtonText: '업로드',
+      cancelButtonText: '취소',
+      inputValidator: (value) => (value ? undefined : '업로드 방식을 선택해 주세요.')
+    });
+
+    if (result.isDismissed) return false;
+
+    const mode = String(result.value || 'normal');
+    removeVideoAudio = mode === 'mute';
+    extractVideoAudio = mode === 'audioOnly';
+    return true;
+  }
+
+  /** @param {File[]} files */
   async function uploadAndInsertFiles(files) {
     if (!editor || files.length === 0) return;
+    if (!(await chooseVideoUploadMode(files))) return;
     loading = true;
     /** @type {File | null} */
     let failedUploadFile = null;
@@ -1305,6 +1338,8 @@
       });
     } finally {
       loading = false;
+      removeVideoAudio = false;
+      extractVideoAudio = false;
       setUploadStatus('처리 중...');
     }
   }
@@ -1723,26 +1758,6 @@
       >
         <span class="lexical-toolbar__media-icon" aria-hidden="true">🎞️</span>
       </button>
-      <label class="lexical-toolbar__toggle" title="동영상 업로드 시 음성 제거">
-        <input
-          type="checkbox"
-          bind:checked={removeVideoAudio}
-          onchange={() => {
-            if (removeVideoAudio) extractVideoAudio = false;
-          }}
-        />
-        <span>동영상 음성 제거</span>
-      </label>
-      <label class="lexical-toolbar__toggle" title="동영상 업로드 시 음성만 업로드">
-        <input
-          type="checkbox"
-          bind:checked={extractVideoAudio}
-          onchange={() => {
-            if (extractVideoAudio) removeVideoAudio = false;
-          }}
-        />
-        <span>동영상 음성만 업로드</span>
-      </label>
     </div>
 
     <div class="lexical-toolbar__group" aria-label="텍스트 서식">
@@ -2032,33 +2047,6 @@
     border-radius: 6px;
     font-size: 1.05rem;
     line-height: 1;
-  }
-
-  .lexical-toolbar__toggle {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.28rem;
-    height: 2rem;
-    padding: 0 0.45rem;
-    border-radius: 8px;
-    color: var(--bs-body-color);
-    font-size: 0.8rem;
-    font-weight: 700;
-    line-height: 1;
-    white-space: nowrap;
-    cursor: pointer;
-  }
-
-  .lexical-toolbar__toggle:hover {
-    background: rgba(var(--bs-primary-rgb), 0.12);
-    color: var(--bs-primary);
-  }
-
-  .lexical-toolbar__toggle input {
-    flex: 0 0 auto;
-    width: 1rem;
-    height: 1rem;
-    margin: 0;
   }
 
   .lexical-toolbar__button--bold {

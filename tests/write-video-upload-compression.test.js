@@ -116,7 +116,7 @@ describe('write page video upload', () => {
 
   it('can upload videos without audio when the mute option is enabled', () => {
     expect(lexicalEditor).toContain('removeVideoAudio');
-    expect(lexicalEditor).toContain('동영상 음성 제거');
+    expect(lexicalEditor).toContain("mute: '음성제거'");
     expect(lexicalEditor).toContain("audio: removeVideoAudio");
     expect(lexicalEditor).toContain("formData.set('removeVideoAudio', 'true')");
     expect(uploadRoute).toContain('removeVideoAudio');
@@ -125,9 +125,20 @@ describe('write page video upload', () => {
     expect(fileUpload).toContain("'-an'");
   });
 
+  it('asks for video audio handling after selecting video files instead of showing toolbar toggles', () => {
+    expect(lexicalEditor).toContain('chooseVideoUploadMode(files)');
+    expect(lexicalEditor).toContain("input: 'radio'");
+    expect(lexicalEditor).toContain("normal: '영상+음성'");
+    expect(lexicalEditor).toContain("mute: '음성제거'");
+    expect(lexicalEditor).toContain("audioOnly: '음성만'");
+    expect(lexicalEditor).not.toContain('class="lexical-toolbar__toggle"');
+    expect(lexicalEditor).not.toContain('bind:checked={removeVideoAudio}');
+    expect(lexicalEditor).not.toContain('bind:checked={extractVideoAudio}');
+  });
+
   it('can extract and upload only audio from selected videos', () => {
     expect(lexicalEditor).toContain('extractVideoAudio');
-    expect(lexicalEditor).toContain('동영상 음성만 업로드');
+    expect(lexicalEditor).toContain("audioOnly: '음성만'");
     expect(lexicalEditor).toContain("'-vn'");
     expect(lexicalEditor).toContain("formData.set('extractVideoAudio', 'true')");
     expect(lexicalEditor).toContain('<audio src="${escapeHtml(url)}" controls');
