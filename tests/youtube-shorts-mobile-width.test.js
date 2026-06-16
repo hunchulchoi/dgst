@@ -21,7 +21,7 @@ describe('youtube shorts mobile width', () => {
     expect(articlePage).toContain("'class'");
     expect(sanitizeArticleContent).toContain("'class'");
     expect(commentEmbeder).toContain('class="youtube-shorts-embed"');
-    expect(commentEmbeder).toContain("const wrapperWidth = isShorts ? '100%; max-width: 315px' : width");
+    expect(commentEmbeder).toContain("const wrapperWidth = isShorts ? '100%; max-width: 320px' : width");
     expect(articlePage).toContain('.youtube-shorts-wrapper');
   });
 });

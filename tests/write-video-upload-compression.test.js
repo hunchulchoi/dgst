@@ -125,6 +125,28 @@ describe('write page video upload', () => {
     expect(fileUpload).toContain("'-an'");
   });
 
+  it('can extract and upload only audio from selected videos', () => {
+    expect(lexicalEditor).toContain('extractVideoAudio');
+    expect(lexicalEditor).toContain('동영상 음성만 업로드');
+    expect(lexicalEditor).toContain("'-vn'");
+    expect(lexicalEditor).toContain("formData.set('extractVideoAudio', 'true')");
+    expect(lexicalEditor).toContain('<audio src="${escapeHtml(url)}" controls');
+    expect(uploadRoute).toContain('extractVideoAudio');
+    const fileUpload = readFileSync('src/lib/util/fileUpload.js', 'utf8');
+    expect(fileUpload).toContain('extractVideoAudio');
+    expect(fileUpload).toContain("'.m4a'");
+    expect(fileUpload).toContain("mimeType.startsWith('audio')");
+    const articlePage = readFileSync(
+      'src/routes/board/[boardId=boardId]/[[pageNo=integer]]/[articleId]/+page.svelte',
+      'utf8'
+    );
+    expect(articlePage).toContain("'audio'");
+    expect(articlePage).toContain("audio: ['src', 'controls', 'style']");
+    const sanitizeArticleContent = readFileSync('src/lib/server/sanitizeArticleContent.js', 'utf8');
+    expect(sanitizeArticleContent).toContain("'audio'");
+    expect(sanitizeArticleContent).toContain("audio: ['src', 'controls', 'style']");
+  });
+
   it('compresses 4K videos aggressively on client and server fallback', () => {
     expect(lexicalEditor).toContain('CLIENT_VIDEO_MAX_EDGE = 720');
     expect(lexicalEditor).toContain('CLIENT_VIDEO_BITRATE = 800_000');

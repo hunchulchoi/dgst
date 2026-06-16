@@ -23,11 +23,11 @@ function youtubeEmbeder(url) {
       const time = _match[2];
 
       const paddingBottom = i === 0 ? '177.77%' : '56.25%';
-      const width = i === 0 ? '315px' : '560px';
+      const width = i === 0 ? '320px' : '560px';
       const isShorts = i === 0;
       const wrapperClass = isShorts ? ' class="youtube-shorts-wrapper"' : '';
       const iframeClass = isShorts ? ' class="youtube-shorts-embed"' : '';
-      const wrapperWidth = isShorts ? '100%; max-width: 315px' : width;
+      const wrapperWidth = isShorts ? '100%; max-width: 320px' : width;
 
       return `<div${wrapperClass} style="max-width: 100%; width: ${wrapperWidth}; margin: 0 auto;">
            <div style="position: relative; width: 100%; height: 0; padding-bottom: ${paddingBottom};">

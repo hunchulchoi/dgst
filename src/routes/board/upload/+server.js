@@ -53,6 +53,7 @@ export async function POST({ request, locals }) {
     uploadFile = upload;
     const serverCompressVideo = data.get('serverCompressVideo') === 'true';
     const removeVideoAudio = data.get('removeVideoAudio') === 'true';
+    const extractVideoAudio = data.get('extractVideoAudio') === 'true';
     const serverCompressVideoReason = String(data.get('serverCompressVideoReason') || '');
     const serverCompressVideoClient = parseOptionalJsonField(data.get('serverCompressVideoClient'));
     const serverCompressVideoWebCodecs = parseOptionalJsonField(
@@ -62,6 +63,7 @@ export async function POST({ request, locals }) {
       ? {
           reason: serverCompressVideoReason || 'unknown',
           removeVideoAudio,
+          extractVideoAudio,
           client: serverCompressVideoClient,
           webCodecs: serverCompressVideoWebCodecs,
           requestUserAgent: request.headers.get('user-agent'),
@@ -77,6 +79,7 @@ export async function POST({ request, locals }) {
       fileType: uploadFile?.type,
       serverCompressVideo,
       removeVideoAudio,
+      extractVideoAudio,
       serverCompressVideoContext,
       user: email
     });
@@ -88,6 +91,7 @@ export async function POST({ request, locals }) {
         fileSize: uploadFile?.size,
         fileType: uploadFile?.type,
         removeVideoAudio,
+        extractVideoAudio,
         serverCompressVideoContext,
         user: email
       });
@@ -96,6 +100,7 @@ export async function POST({ request, locals }) {
     const res = await write(uploadFile, email, 'jjal', {
       compressVideo: serverCompressVideo,
       removeVideoAudio,
+      extractVideoAudio,
       serverCompressVideoContext
     });
 

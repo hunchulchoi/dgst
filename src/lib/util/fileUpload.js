@@ -18,8 +18,10 @@ function safeString(_name, _path) {
   _name = decodeURIComponent(_name);
 
   const mimeType = mime.getType(_name);
-  // 이미지와 비디오 모두 허용
-  const isValid = mimeType && (mimeType.startsWith('image') || mimeType.startsWith('video'));
+  // 이미지, 비디오, 오디오 모두 허용
+  const isValid =
+    mimeType &&
+    (mimeType.startsWith('image') || mimeType.startsWith('video') || mimeType.startsWith('audio'));
 
   if (!isValid) {
     console.debug('Invalid file type:', mimeType, 'for file:', _name);
@@ -53,7 +55,7 @@ function runFfmpeg(args) {
  * @param {File} file
  * @param {string | undefined | null} email
  * @param {string} [preservePath='jjal']
- * @param {{ compressVideo?: boolean, removeVideoAudio?: boolean, serverCompressVideoContext?: unknown }} [options]
+ * @param {{ compressVideo?: boolean, removeVideoAudio?: boolean, extractVideoAudio?: boolean, serverCompressVideoContext?: unknown }} [options]
  */
 export async function write(file, email, preservePath = 'jjal', options = {}) {
   try {
@@ -191,7 +193,10 @@ export async function write(file, email, preservePath = 'jjal', options = {}) {
       }
     } else if (file.type.startsWith('video') && options.compressVideo) {
       const inputPath = `${fullPath}.input`;
-      const compressedFileName = `${fileName.substring(0, fileName.lastIndexOf('.'))}.mp4`;
+      const extractVideoAudio = options.extractVideoAudio === true;
+      const compressedFileName = `${fileName.substring(0, fileName.lastIndexOf('.'))}${
+        extractVideoAudio ? '.m4a' : '.mp4'
+      }`;
       const compressedPath = `${UPLOAD_PATH}${dir}/${compressedFileName}`;
       const serverCompressVideoContext = options.serverCompressVideoContext;
       const removeVideoAudio = options.removeVideoAudio === true;
@@ -201,37 +206,43 @@ export async function write(file, email, preservePath = 'jjal', options = {}) {
           fileName,
           originalBytes: file.size,
           removeVideoAudio,
+          extractVideoAudio,
           serverCompressVideoContext,
-          message: 'Server video compression requested'
+          message: extractVideoAudio
+            ? 'Server video audio extraction requested'
+            : 'Server video compression requested'
         });
 
         fs.writeFileSync(inputPath, fileBuffer);
         const audioArgs = removeVideoAudio ? ['-an'] : ['-c:a', 'aac', '-b:a', '64k'];
-        await runFfmpeg([
-          '-y',
-          '-i',
-          inputPath,
-          '-vf',
-          "scale='min(720,iw)':'min(720,ih)':force_original_aspect_ratio=decrease,pad=ceil(iw/2)*2:ceil(ih/2)*2",
-          '-c:v',
-          'libx264',
-          '-b:v',
-          '800k',
-          '-maxrate',
-          '1000k',
-          '-bufsize',
-          '1600k',
-          '-crf',
-          '30',
-          '-preset',
-          'veryfast',
-          ...audioArgs,
-          '-pix_fmt',
-          'yuv420p',
-          '-movflags',
-          '+faststart',
-          compressedPath
-        ]);
+        const ffmpegArgs = extractVideoAudio
+          ? ['-y', '-i', inputPath, '-vn', '-c:a', 'aac', '-b:a', '96k', '-movflags', '+faststart', compressedPath]
+          : [
+              '-y',
+              '-i',
+              inputPath,
+              '-vf',
+              "scale='min(720,iw)':'min(720,ih)':force_original_aspect_ratio=decrease,pad=ceil(iw/2)*2:ceil(ih/2)*2",
+              '-c:v',
+              'libx264',
+              '-b:v',
+              '800k',
+              '-maxrate',
+              '1000k',
+              '-bufsize',
+              '1600k',
+              '-crf',
+              '30',
+              '-preset',
+              'veryfast',
+              ...audioArgs,
+              '-pix_fmt',
+              'yuv420p',
+              '-movflags',
+              '+faststart',
+              compressedPath
+            ];
+        await runFfmpeg(ffmpegArgs);
 
         if (!fs.existsSync(compressedPath)) {
           throw new Error('Compressed video was not created');
@@ -245,17 +256,23 @@ export async function write(file, email, preservePath = 'jjal', options = {}) {
           fileName,
           originalBytes: file.size,
           removeVideoAudio,
+          extractVideoAudio,
           serverCompressVideoContext,
-          message: 'Video compressed with server ffmpeg fallback'
+          message: extractVideoAudio
+            ? 'Audio extracted with server ffmpeg fallback'
+            : 'Video compressed with server ffmpeg fallback'
         });
       } catch (err) {
         logger.error({
-          message: 'Server video compression failed; saving original',
+          message: extractVideoAudio
+            ? 'Server video audio extraction failed'
+            : 'Server video compression failed; saving original',
           error: err,
           fileName,
           originalBytes: file.size,
           serverCompressVideoContext
         });
+        if (extractVideoAudio) throw err;
         if (!fileWritten) writeOriginalFile();
       } finally {
         try {

@@ -964,6 +964,7 @@
         'a',
         'img',
         'video',
+        'audio',
         'iframe',
         'div',
         'span',
@@ -984,6 +985,7 @@
           'position'
         ],
         video: ['src', 'controls', 'style', 'width', 'height'],
+        audio: ['src', 'controls', 'style'],
         a: ['href', 'target', 'rel'],
         img: ['src', 'alt', 'width', 'height', 'style'],
         div: ['class', 'style', 'position'],
@@ -1350,6 +1352,13 @@
     .article-content video {
       max-width: 100%;
       height: auto;
+      display: block;
+      margin: 0.5rem 0;
+    }
+
+    .article-content audio {
+      max-width: 100%;
+      width: 100%;
       display: block;
       margin: 0.5rem 0;
     }

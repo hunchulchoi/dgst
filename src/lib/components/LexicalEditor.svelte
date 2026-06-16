@@ -78,6 +78,7 @@
   let uploadStatusText = $state('처리 중...');
   let selectedUploadAccept = $state('image/*');
   let removeVideoAudio = $state(false);
+  let extractVideoAudio = $state(false);
   let isComposing = false;
   let editorFailureAlertShown = false;
   const FFMPEG_CORE_BASE_URL = 'https://unpkg.com/@ffmpeg/core@0.12.9/dist/umd';
@@ -112,6 +113,7 @@
 
   /** @param {File | Blob} file */
   function getUploadKind(file) {
+    if (file.type.startsWith('audio/')) return '음성';
     if (file.type.startsWith('video/')) return '동영상';
     if (file.type.startsWith('image/')) return '이미지';
     return '파일';
@@ -521,7 +523,7 @@
 
     if (url.includes('youtube.com/shorts/') || url.includes('/shorts/')) {
       videoId = url.match(/\/shorts\/([\w-]+)/)?.[1] || null;
-      width = '315';
+      width = '320';
       height = '560';
       isShorts = true;
     } else if (url.includes('youtube.com/embed/')) {
@@ -1043,6 +1045,98 @@
   }
 
   /** @param {File} file */
+  async function extractAudioFromVideo(file) {
+    try {
+      setUploadStatus('동영상에서 음성 추출 준비 중...');
+      await Promise.race([
+        ensureFfmpegLoaded(),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('FFmpeg load timeout')), 60000)
+        )
+      ]);
+
+      if (!ffmpeg || !fetchFile) return file;
+
+      setUploadStatus('동영상에서 음성 추출 중... 0%');
+      await ffmpeg.writeFile('input.mp4', await fetchFile(file));
+      const compressionStartedAt = Date.now();
+      const progressHandler = (/** @type {{ progress?: number }} */ event) => {
+        if (typeof event.progress !== 'number' || !Number.isFinite(event.progress)) return;
+        setUploadStatus(
+          getVideoCompressionStatus(event.progress, compressionStartedAt).replace(
+            '동영상 압축 중',
+            '음성 추출 중'
+          )
+        );
+      };
+
+      ffmpeg.on?.('progress', progressHandler);
+      try {
+        await ffmpeg.exec([
+          '-i',
+          'input.mp4',
+          '-vn',
+          '-c:a',
+          'aac',
+          '-b:a',
+          '96k',
+          'output.m4a'
+        ]);
+      } finally {
+        ffmpeg.off?.('progress', progressHandler);
+      }
+
+      setUploadStatus('음성 추출 마무리 중...');
+      const data = await ffmpeg.readFile('output.m4a');
+      const bytes = data instanceof Uint8Array ? data : new TextEncoder().encode(String(data));
+      const blob = new Blob([/** @type {BlobPart} */ (bytes)], { type: 'audio/mp4' });
+      if (blob.size <= 0) {
+        lastServerVideoCompressionContext = await createServerVideoCompressionContext(
+          file,
+          'client-ffmpeg-audio-extraction-empty-output',
+          {
+            ffmpegLoad: lastFfmpegLoadDetails,
+            extractVideoAudio
+          }
+        );
+        return file;
+      }
+      return new File([blob], file.name.replace(/\.[^.]+$/, '.m4a'), { type: 'audio/mp4' });
+    } catch (error) {
+      console.warn('Lexical video audio extraction failed; using server fallback:', error);
+      reportClientError(error, {
+        type: 'lexical-video-audio-extraction-failed',
+        message: 'Lexical video audio extraction failed; using server fallback',
+        pathname: typeof location !== 'undefined' ? location.pathname : undefined,
+        href: typeof location !== 'undefined' ? location.href : undefined,
+        search: typeof location !== 'undefined' ? location.search : undefined,
+        importTarget: '$lib/components/LexicalEditor.svelte',
+        phase: 'video-audio-extraction',
+        details: {
+          fileName: file.name,
+          fileType: file.type,
+          fileSize: file.size,
+          fileSizeMB: Number((file.size / (1024 * 1024)).toFixed(2)),
+          ffmpegLoad: lastFfmpegLoadDetails,
+          client: getClientCapabilityDetails(),
+          extractVideoAudio
+        }
+      });
+      lastServerVideoCompressionContext = await createServerVideoCompressionContext(
+        file,
+        'client-ffmpeg-audio-extraction-failed',
+        {
+          errorName: error instanceof Error ? error.name : undefined,
+          errorMessage: getErrorMessage(error),
+          ffmpegLoad: lastFfmpegLoadDetails,
+          extractVideoAudio
+        }
+      );
+      return file;
+    }
+  }
+
+  /** @param {File} file */
   async function prepareUploadFile(file) {
     if (file.type.startsWith('image/')) {
       setUploadStatus('이미지 변환 중...');
@@ -1059,6 +1153,18 @@
 
     if (file.type.startsWith('video/')) {
       if (disableVideoCompression) return file;
+      if (extractVideoAudio) {
+        if (shouldUseServerVideoCompression(file)) {
+          const serverCompressVideoContext =
+            lastServerVideoCompressionContext ??
+            (await createServerVideoCompressionContext(file, 'ios-safari-audio-extraction'));
+          lastServerVideoCompressionContext = serverCompressVideoContext;
+          setUploadStatus('동영상 음성은 서버에서 추출합니다...');
+          await reportServerVideoCompressionSelected(file, serverCompressVideoContext);
+          return file;
+        }
+        return extractAudioFromVideo(file);
+      }
       if (shouldUseServerVideoCompression(file)) {
         const webCodecsFile = await compressVideoWithWebCodecs(file);
         if (webCodecsFile !== file) return webCodecsFile;
@@ -1106,6 +1212,7 @@
           if (shouldAskServerToCompressVideo) {
             formData.set('serverCompressVideo', 'true');
             if (removeVideoAudio) formData.set('removeVideoAudio', 'true');
+            if (extractVideoAudio) formData.set('extractVideoAudio', 'true');
             const serverCompressVideoContext =
               lastServerVideoCompressionContext ??
               (await createServerVideoCompressionContext(
@@ -1116,7 +1223,8 @@
             formData.set('serverCompressVideoClient', JSON.stringify({
                 client: serverCompressVideoContext.client,
                 device: serverCompressVideoContext.device,
-                removeVideoAudio
+                removeVideoAudio,
+                extractVideoAudio
               }));
             formData.set('serverCompressVideoWebCodecs', JSON.stringify(serverCompressVideoContext.webCodecs ?? null));
           }
@@ -1141,7 +1249,11 @@
             throw new Error('Upload response has no url');
           }
 
-          if (preparedFile.type.startsWith('video/')) {
+          if (preparedFile.type.startsWith('audio/')) {
+            insertHtmlBlock(
+              `<audio src="${escapeHtml(url)}" controls style="max-width: 100%; width: 100%; display: block; margin: 1em 0;"></audio>`
+            );
+          } else if (preparedFile.type.startsWith('video/')) {
             insertHtmlBlock(
               `<video src="${escapeHtml(url)}" controls style="max-width: 100%; height: auto; display: block; margin: 1em 0;"></video>`
             );
@@ -1162,6 +1274,8 @@
         ? 'lexical-image-upload-failed'
         : failedUploadFile?.type.startsWith('video/')
           ? 'lexical-video-upload-failed'
+          : failedUploadFile?.type.startsWith('audio/')
+            ? 'lexical-audio-upload-failed'
           : 'lexical-file-upload-failed';
       reportClientError(error, {
         type: uploadFailureType,
@@ -1353,7 +1467,7 @@
     if (youtube) {
       const className = youtube.isShorts ? ' class="youtube-shorts-embed"' : '';
       const widthStyle = youtube.isShorts ? '100%' : `${youtube.width}px`;
-      const maxWidthStyle = youtube.isShorts ? '315px' : '100%';
+      const maxWidthStyle = youtube.isShorts ? '320px' : '100%';
       insertHtmlBlock(
         `<iframe${className} src="${escapeHtml(youtube.src)}" width="${youtube.width}" height="${youtube.height}" frameborder="0" allowfullscreen="true" style="max-width: ${maxWidthStyle}; width: ${widthStyle}; aspect-ratio: ${youtube.width} / ${youtube.height}; height: auto; display: block; margin: 0 auto; border: none; padding: 0;"></iframe>`
       );
@@ -1610,8 +1724,24 @@
         <span class="lexical-toolbar__media-icon" aria-hidden="true">🎞️</span>
       </button>
       <label class="lexical-toolbar__toggle" title="동영상 업로드 시 음성 제거">
-        <input type="checkbox" bind:checked={removeVideoAudio} />
+        <input
+          type="checkbox"
+          bind:checked={removeVideoAudio}
+          onchange={() => {
+            if (removeVideoAudio) extractVideoAudio = false;
+          }}
+        />
         <span>동영상 음성 제거</span>
+      </label>
+      <label class="lexical-toolbar__toggle" title="동영상 업로드 시 음성만 업로드">
+        <input
+          type="checkbox"
+          bind:checked={extractVideoAudio}
+          onchange={() => {
+            if (extractVideoAudio) removeVideoAudio = false;
+          }}
+        />
+        <span>동영상 음성만 업로드</span>
       </label>
     </div>
 
@@ -2032,6 +2162,7 @@
 
   .lexical-editor__content :global(img),
   .lexical-editor__content :global(video),
+  .lexical-editor__content :global(audio),
   .lexical-editor__content :global(iframe) {
     max-width: 100%;
   }
