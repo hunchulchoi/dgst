@@ -53,7 +53,7 @@ function runFfmpeg(args) {
  * @param {File} file
  * @param {string | undefined | null} email
  * @param {string} [preservePath='jjal']
- * @param {{ compressVideo?: boolean, serverCompressVideoContext?: unknown }} [options]
+ * @param {{ compressVideo?: boolean, removeVideoAudio?: boolean, serverCompressVideoContext?: unknown }} [options]
  */
 export async function write(file, email, preservePath = 'jjal', options = {}) {
   try {
@@ -194,16 +194,19 @@ export async function write(file, email, preservePath = 'jjal', options = {}) {
       const compressedFileName = `${fileName.substring(0, fileName.lastIndexOf('.'))}.mp4`;
       const compressedPath = `${UPLOAD_PATH}${dir}/${compressedFileName}`;
       const serverCompressVideoContext = options.serverCompressVideoContext;
+      const removeVideoAudio = options.removeVideoAudio === true;
 
       try {
         logger.warn({
           fileName,
           originalBytes: file.size,
+          removeVideoAudio,
           serverCompressVideoContext,
           message: 'Server video compression requested'
         });
 
         fs.writeFileSync(inputPath, fileBuffer);
+        const audioArgs = removeVideoAudio ? ['-an'] : ['-c:a', 'aac', '-b:a', '64k'];
         await runFfmpeg([
           '-y',
           '-i',
@@ -222,10 +225,7 @@ export async function write(file, email, preservePath = 'jjal', options = {}) {
           '30',
           '-preset',
           'veryfast',
-          '-c:a',
-          'aac',
-          '-b:a',
-          '64k',
+          ...audioArgs,
           '-pix_fmt',
           'yuv420p',
           '-movflags',
@@ -244,6 +244,7 @@ export async function write(file, email, preservePath = 'jjal', options = {}) {
         logger.warn({
           fileName,
           originalBytes: file.size,
+          removeVideoAudio,
           serverCompressVideoContext,
           message: 'Video compressed with server ffmpeg fallback'
         });

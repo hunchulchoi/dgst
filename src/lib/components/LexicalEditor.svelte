@@ -77,6 +77,7 @@
   let loading = $state(false);
   let uploadStatusText = $state('처리 중...');
   let selectedUploadAccept = $state('image/*');
+  let removeVideoAudio = $state(false);
   let isComposing = false;
   let editorFailureAlertShown = false;
   const FFMPEG_CORE_BASE_URL = 'https://unpkg.com/@ffmpeg/core@0.12.9/dist/umd';
@@ -760,7 +761,7 @@
     const capability = await getWebCodecsCapabilityDetails();
     if (
       !capability.videoEncoder ||
-      !capability.audioEncoder ||
+      (!removeVideoAudio && !capability.audioEncoder) ||
       capability.avcEncoderSupported !== true
     ) {
       return file;
@@ -783,7 +784,7 @@
         const videoTrack = await input.getPrimaryVideoTrack();
         if (!videoTrack) return file;
 
-        const audioTrack = await input.getPrimaryAudioTrack();
+        const audioTrack = removeVideoAudio ? null : await input.getPrimaryAudioTrack();
         const sourceWidth = await videoTrack.getDisplayWidth();
         const sourceHeight = await videoTrack.getDisplayHeight();
         const { width, height } = getConstrainedVideoSize(sourceWidth, sourceHeight);
@@ -808,15 +809,17 @@
             keyFrameInterval: 3,
             hardwareAcceleration: 'prefer-hardware'
           },
-          ...(audioTrack && {
-            audio: {
-              codec: 'aac',
-              bitrate: CLIENT_AUDIO_BITRATE,
-              sampleRate: CLIENT_AUDIO_SAMPLE_RATE,
-              numberOfChannels: 2,
-              forceTranscode: true
-            }
-          }),
+          audio: removeVideoAudio
+            ? { discard: true }
+            : audioTrack
+              ? {
+                  codec: 'aac',
+                  bitrate: CLIENT_AUDIO_BITRATE,
+                  sampleRate: CLIENT_AUDIO_SAMPLE_RATE,
+                  numberOfChannels: 2,
+                  forceTranscode: true
+                }
+              : undefined,
           showWarnings: false
         });
 
@@ -898,6 +901,7 @@
             videoBitrate: CLIENT_VIDEO_BITRATE,
             audioBitrate: audioTrack ? CLIENT_AUDIO_BITRATE : undefined,
             hasAudioTrack: Boolean(audioTrack),
+            removeVideoAudio,
             webCodecs: capability
           }
         });
@@ -951,6 +955,7 @@
       setUploadStatus('동영상 압축 중... 0%');
       await ffmpeg.writeFile('input.mp4', await fetchFile(file));
       const compressionStartedAt = Date.now();
+      const audioArgs = removeVideoAudio ? ['-an'] : ['-c:a', 'aac', '-b:a', '64k'];
       const progressHandler = (/** @type {{ progress?: number }} */ event) => {
         if (typeof event.progress !== 'number' || !Number.isFinite(event.progress)) return;
         setUploadStatus(getVideoCompressionStatus(event.progress, compressionStartedAt));
@@ -975,10 +980,7 @@
           '30',
           '-preset',
           'medium',
-          '-c:a',
-          'aac',
-          '-b:a',
-          '64k',
+          ...audioArgs,
           '-pix_fmt',
           'yuv420p',
           'output.mp4'
@@ -997,7 +999,8 @@
           'client-ffmpeg-not-smaller-than-original',
           {
             ffmpegOutputBytes: blob.size,
-            ffmpegLoad: lastFfmpegLoadDetails
+            ffmpegLoad: lastFfmpegLoadDetails,
+            removeVideoAudio
           }
         );
         return file;
@@ -1019,7 +1022,8 @@
           fileSize: file.size,
           fileSizeMB: Number((file.size / (1024 * 1024)).toFixed(2)),
           ffmpegLoad: lastFfmpegLoadDetails,
-          client: getClientCapabilityDetails()
+          client: getClientCapabilityDetails(),
+          removeVideoAudio
         }
       });
       lastServerVideoCompressionContext = await createServerVideoCompressionContext(
@@ -1028,7 +1032,8 @@
         {
           errorName: error instanceof Error ? error.name : undefined,
           errorMessage: getErrorMessage(error),
-          ffmpegLoad: lastFfmpegLoadDetails
+          ffmpegLoad: lastFfmpegLoadDetails,
+          removeVideoAudio
         }
       );
       return file;
@@ -1098,6 +1103,7 @@
           formData.append('upload', preparedFile);
           if (shouldAskServerToCompressVideo) {
             formData.set('serverCompressVideo', 'true');
+            if (removeVideoAudio) formData.set('removeVideoAudio', 'true');
             const serverCompressVideoContext =
               lastServerVideoCompressionContext ??
               (await createServerVideoCompressionContext(
@@ -1106,9 +1112,10 @@
               ));
             formData.set('serverCompressVideoReason', String(serverCompressVideoContext.reason ?? 'unknown'));
             formData.set('serverCompressVideoClient', JSON.stringify({
-              client: serverCompressVideoContext.client,
-              device: serverCompressVideoContext.device
-            }));
+                client: serverCompressVideoContext.client,
+                device: serverCompressVideoContext.device,
+                removeVideoAudio
+              }));
             formData.set('serverCompressVideoWebCodecs', JSON.stringify(serverCompressVideoContext.webCodecs ?? null));
           }
 
@@ -1597,6 +1604,10 @@
       >
         <span class="lexical-toolbar__media-icon" aria-hidden="true">🎞️</span>
       </button>
+      <label class="lexical-toolbar__toggle" title="동영상 업로드 시 음성 제거">
+        <input type="checkbox" bind:checked={removeVideoAudio} />
+        <span>동영상 음성 제거</span>
+      </label>
     </div>
 
     <div class="lexical-toolbar__group" aria-label="텍스트 서식">
@@ -1886,6 +1897,33 @@
     border-radius: 6px;
     font-size: 1.05rem;
     line-height: 1;
+  }
+
+  .lexical-toolbar__toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.28rem;
+    height: 2rem;
+    padding: 0 0.45rem;
+    border-radius: 8px;
+    color: var(--bs-body-color);
+    font-size: 0.8rem;
+    font-weight: 700;
+    line-height: 1;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+
+  .lexical-toolbar__toggle:hover {
+    background: rgba(var(--bs-primary-rgb), 0.12);
+    color: var(--bs-primary);
+  }
+
+  .lexical-toolbar__toggle input {
+    flex: 0 0 auto;
+    width: 1rem;
+    height: 1rem;
+    margin: 0;
   }
 
   .lexical-toolbar__button--bold {

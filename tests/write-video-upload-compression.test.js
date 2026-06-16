@@ -114,6 +114,17 @@ describe('write page video upload', () => {
     expect(lexicalEditor).toContain("type: 'lexical-video-webcodecs-compressed'");
   });
 
+  it('can upload videos without audio when the mute option is enabled', () => {
+    expect(lexicalEditor).toContain('removeVideoAudio');
+    expect(lexicalEditor).toContain('동영상 음성 제거');
+    expect(lexicalEditor).toContain("audio: removeVideoAudio");
+    expect(lexicalEditor).toContain("formData.set('removeVideoAudio', 'true')");
+    expect(uploadRoute).toContain('removeVideoAudio');
+    const fileUpload = readFileSync('src/lib/util/fileUpload.js', 'utf8');
+    expect(fileUpload).toContain('removeVideoAudio');
+    expect(fileUpload).toContain("'-an'");
+  });
+
   it('compresses 4K videos aggressively on client and server fallback', () => {
     expect(lexicalEditor).toContain('CLIENT_VIDEO_MAX_EDGE = 720');
     expect(lexicalEditor).toContain('CLIENT_VIDEO_BITRATE = 800_000');
