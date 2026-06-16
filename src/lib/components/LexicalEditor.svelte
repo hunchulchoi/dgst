@@ -72,7 +72,7 @@
   let unregister = null;
   let loading = $state(false);
   let uploadStatusText = $state('처리 중...');
-  let selectedUploadKind = $state(/** @type {'image' | 'video'} */ ('image'));
+  let selectedUploadAccept = $state('image/*');
   let isComposing = false;
   let editorFailureAlertShown = false;
 
@@ -670,7 +670,11 @@
 
   /** @param {'image' | 'video'} kind */
   function openFilePicker(kind) {
-    selectedUploadKind = kind;
+    const accept = kind === 'image' ? 'image/*' : 'video/*';
+    selectedUploadAccept = accept;
+    if (fileInput) {
+      fileInput.accept = accept;
+    }
     fileInput?.click();
   }
 
@@ -1047,7 +1051,7 @@
     bind:this={fileInput}
     class="d-none"
     type="file"
-    accept={selectedUploadKind === 'image' ? 'image/*' : 'video/*'}
+    accept={selectedUploadAccept}
     multiple
     onchange={handleFileChange}
   />

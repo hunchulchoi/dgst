@@ -18,8 +18,9 @@ describe('write page video upload', () => {
   });
 
   it('uses different MIME filters for image and video upload buttons', () => {
-    expect(lexicalEditor).toContain("selectedUploadKind = $state(/** @type {'image' | 'video'} */ ('image'))");
-    expect(lexicalEditor).toContain("accept={selectedUploadKind === 'image' ? 'image/*' : 'video/*'}");
+    expect(lexicalEditor).toContain("const accept = kind === 'image' ? 'image/*' : 'video/*'");
+    expect(lexicalEditor).toContain('fileInput.accept = accept');
+    expect(lexicalEditor).toContain('accept={selectedUploadAccept}');
     expect(lexicalEditor).toContain("onclick={() => openFilePicker('image')}");
     expect(lexicalEditor).toContain("onclick={() => openFilePicker('video')}");
   });
