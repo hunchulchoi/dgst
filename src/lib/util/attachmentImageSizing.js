@@ -1,5 +1,6 @@
 export const LONG_IMAGE_RATIO_THRESHOLD = 2.5;
 export const DEFAULT_ATTACHMENT_IMAGE_MAX_HEIGHT = '72dvh';
+export const DESKTOP_PORTRAIT_ATTACHMENT_IMAGE_HEIGHT = '100dvh';
 export const MOBILE_ATTACHMENT_VIEWPORT_MAX_WIDTH = 767;
 
 /**
@@ -25,6 +26,22 @@ function shouldUseMobilePortraitSizing(img, options) {
   return Boolean(
     viewportWidth &&
       viewportWidth <= MOBILE_ATTACHMENT_VIEWPORT_MAX_WIDTH &&
+      isPortraitImage(img) &&
+      img?.naturalHeight &&
+      img?.naturalWidth &&
+      img.naturalHeight < img.naturalWidth * LONG_IMAGE_RATIO_THRESHOLD
+  );
+}
+
+/**
+ * @param {{ naturalWidth?: number; naturalHeight?: number } | null | undefined} img
+ * @param {{ viewportWidth?: number }} [options]
+ */
+function shouldUseDesktopPortraitSizing(img, options) {
+  const viewportWidth = getViewportWidth(options);
+  return Boolean(
+    viewportWidth &&
+      viewportWidth > MOBILE_ATTACHMENT_VIEWPORT_MAX_WIDTH &&
       isPortraitImage(img) &&
       img?.naturalHeight &&
       img?.naturalWidth &&
@@ -63,7 +80,15 @@ export function applyAttachmentImageSizing(style, img, options) {
   style.height = 'auto';
 
   if (shouldUseMobilePortraitSizing(img, options)) {
+    style.width = '100%';
     style.removeProperty?.('max-height');
+    return;
+  }
+
+  if (shouldUseDesktopPortraitSizing(img, options)) {
+    style.width = 'auto';
+    style.height = DESKTOP_PORTRAIT_ATTACHMENT_IMAGE_HEIGHT;
+    style.maxHeight = DESKTOP_PORTRAIT_ATTACHMENT_IMAGE_HEIGHT;
     return;
   }
 

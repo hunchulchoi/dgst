@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   applyAttachmentImageSizing,
   DEFAULT_ATTACHMENT_IMAGE_MAX_HEIGHT,
+  DESKTOP_PORTRAIT_ATTACHMENT_IMAGE_HEIGHT,
   LONG_IMAGE_RATIO_THRESHOLD,
   getAttachmentImageMaxHeight,
   shouldApplyAttachmentImageSizing
@@ -40,7 +41,7 @@ describe('attachment image sizing', () => {
     expect(getAttachmentImageMaxHeight({ naturalWidth: 0, naturalHeight: 0 })).toBeUndefined();
   });
 
-  it('forces attachment images to keep their intrinsic size when width attributes exist', () => {
+  it('shows regular portrait photos larger on desktop while preserving aspect ratio', () => {
     const style = {
       maxWidth: '',
       maxHeight: '',
@@ -52,15 +53,19 @@ describe('attachment image sizing', () => {
       }
     };
 
-    applyAttachmentImageSizing(style, { naturalWidth: 1080, naturalHeight: 1920 });
+    applyAttachmentImageSizing(
+      style,
+      { naturalWidth: 1080, naturalHeight: 1920 },
+      { viewportWidth: 1280 }
+    );
 
     expect(style.maxWidth).toBe('100%');
-    expect(style.maxHeight).toBe(DEFAULT_ATTACHMENT_IMAGE_MAX_HEIGHT);
+    expect(style.maxHeight).toBe(DESKTOP_PORTRAIT_ATTACHMENT_IMAGE_HEIGHT);
     expect(style.width).toBe('auto');
-    expect(style.height).toBe('auto');
+    expect(style.height).toBe(DESKTOP_PORTRAIT_ATTACHMENT_IMAGE_HEIGHT);
   });
 
-  it('does not height-cap regular portrait photos on mobile so max-width can use the available width', () => {
+  it('shows regular portrait photos at full content width on mobile', () => {
     const style = {
       maxWidth: '',
       maxHeight: '',
@@ -79,7 +84,7 @@ describe('attachment image sizing', () => {
     );
 
     expect(style.maxWidth).toBe('100%');
-    expect(style.width).toBe('auto');
+    expect(style.width).toBe('100%');
     expect(style.height).toBe('auto');
     expect(style.maxHeight).toBe('');
   });
