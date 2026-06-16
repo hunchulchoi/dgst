@@ -15,6 +15,9 @@ describe('mobile layout width renormalization events', () => {
   it('lets child pages request mobile layout width normalization', () => {
     expect(layout).toContain("window.addEventListener('dgst:normalize-mobile-layout-width'");
     expect(layout).toContain("window.removeEventListener('dgst:normalize-mobile-layout-width'");
+    expect(layout).toContain('function scheduleMobileLayoutWidthNormalization()');
+    expect(layout).toContain('setTimeout(scheduleMobileLayoutWidthNormalization, 120)');
+    expect(layout).toContain('setTimeout(scheduleMobileLayoutWidthNormalization, 360)');
   });
 
   it('requests width normalization after a successful article write', () => {

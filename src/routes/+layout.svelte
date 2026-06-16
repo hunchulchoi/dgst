@@ -118,10 +118,16 @@
     }
   });
 
-  function normalizeMobileLayoutWidth() {
+  function scheduleMobileLayoutWidthNormalization() {
     if (!browser) return;
     window.scrollTo(0, 0);
     requestAnimationFrame(() => window.scrollTo(0, 0));
+  }
+
+  function normalizeMobileLayoutWidth() {
+    scheduleMobileLayoutWidthNormalization();
+    setTimeout(scheduleMobileLayoutWidthNormalization, 120);
+    setTimeout(scheduleMobileLayoutWidthNormalization, 360);
   }
 
   async function refreshUnreadAlarmCount() {
