@@ -976,6 +976,7 @@
           'src',
           'width',
           'height',
+          'class',
           'frameborder',
           'allow',
           'allowfullscreen',
@@ -1351,6 +1352,15 @@
       height: auto;
       display: block;
       margin: 0.5rem 0;
+    }
+
+    @media (max-width: 767.98px) {
+      .article-content iframe.youtube-shorts-embed,
+      .comment-section :global(iframe.youtube-shorts-embed),
+      .comment-section :global(.youtube-shorts-wrapper) {
+        width: 100% !important;
+        max-width: 100% !important;
+      }
     }
 
     .card-text a {

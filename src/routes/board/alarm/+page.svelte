@@ -12,8 +12,7 @@
   $effect(() => {
     const unread = (data.alarms ?? []).reduce((sum, alarm) => {
       if (alarm.readAt) return sum;
-      const count = Number(alarm.commentCount ?? 0);
-      return sum + Math.max(count, 1);
+      return sum + 1;
     }, 0);
     alarmCount.set(unread);
   });

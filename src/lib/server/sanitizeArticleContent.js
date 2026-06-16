@@ -34,6 +34,7 @@ const ARTICLE_SANITIZE_OPTIONS = {
       'src',
       'width',
       'height',
+      'class',
       'frameborder',
       'allow',
       'allowfullscreen',

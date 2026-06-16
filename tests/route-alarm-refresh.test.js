@@ -6,6 +6,7 @@ const articlePage = readFileSync(
   'src/routes/board/[boardId=boardId]/[[pageNo=integer]]/[articleId]/+page.svelte',
   'utf8'
 );
+const alarmPage = readFileSync('src/routes/board/alarm/+page.svelte', 'utf8');
 
 describe('route alarm refresh', () => {
   it('refreshes unread alarm count after every route navigation', () => {
@@ -24,5 +25,10 @@ describe('route alarm refresh', () => {
     expect(articlePage.indexOf('await refreshUnreadAlarmCount();')).toBeGreaterThan(
       articlePage.indexOf('await comments();')
     );
+  });
+
+  it('counts unread alarm rows on the alarm page instead of summing comment counts', () => {
+    expect(alarmPage).toContain('return sum + 1');
+    expect(alarmPage).not.toContain('Math.max(count, 1)');
   });
 });

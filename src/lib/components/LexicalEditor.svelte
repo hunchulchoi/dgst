@@ -517,11 +517,13 @@
     let videoId = null;
     let width = '560';
     let height = '315';
+    let isShorts = false;
 
     if (url.includes('youtube.com/shorts/') || url.includes('/shorts/')) {
       videoId = url.match(/\/shorts\/([\w-]+)/)?.[1] || null;
       width = '315';
       height = '560';
+      isShorts = true;
     } else if (url.includes('youtube.com/embed/')) {
       videoId = url.match(/youtube\.com\/embed\/([\w-]+)/)?.[1] || null;
     } else if (url.includes('youtube.com/watch')) {
@@ -530,7 +532,7 @@
       videoId = url.match(/youtu\.be\/([\w-]+)/)?.[1] || null;
     }
 
-    return videoId ? { src: `https://www.youtube.com/embed/${videoId}`, width, height } : null;
+    return videoId ? { src: `https://www.youtube.com/embed/${videoId}`, width, height, isShorts } : null;
   }
 
   function syncEditorData() {
@@ -1349,8 +1351,11 @@
 
     const youtube = getYouTubeEmbed(url);
     if (youtube) {
+      const className = youtube.isShorts ? ' class="youtube-shorts-embed"' : '';
+      const widthStyle = youtube.isShorts ? '100%' : `${youtube.width}px`;
+      const maxWidthStyle = youtube.isShorts ? '315px' : '100%';
       insertHtmlBlock(
-        `<iframe src="${escapeHtml(youtube.src)}" width="${youtube.width}" height="${youtube.height}" frameborder="0" allowfullscreen="true" style="max-width: 100%; width: ${youtube.width}px; aspect-ratio: ${youtube.width} / ${youtube.height}; height: auto; display: block; margin: 0 auto; border: none; padding: 0;"></iframe>`
+        `<iframe${className} src="${escapeHtml(youtube.src)}" width="${youtube.width}" height="${youtube.height}" frameborder="0" allowfullscreen="true" style="max-width: ${maxWidthStyle}; width: ${widthStyle}; aspect-ratio: ${youtube.width} / ${youtube.height}; height: auto; display: block; margin: 0 auto; border: none; padding: 0;"></iframe>`
       );
     } else if (url.includes('instagram.com')) {
       createInstagramCard(url);
@@ -2029,6 +2034,13 @@
   .lexical-editor__content :global(video),
   .lexical-editor__content :global(iframe) {
     max-width: 100%;
+  }
+
+  @media (max-width: 768px) {
+    .lexical-editor__content :global(iframe.youtube-shorts-embed) {
+      width: 100% !important;
+      max-width: 100% !important;
+    }
   }
 
   .lexical-editor__loading {

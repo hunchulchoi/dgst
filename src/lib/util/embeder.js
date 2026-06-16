@@ -24,10 +24,14 @@ function youtubeEmbeder(url) {
 
       const paddingBottom = i === 0 ? '177.77%' : '56.25%';
       const width = i === 0 ? '315px' : '560px';
+      const isShorts = i === 0;
+      const wrapperClass = isShorts ? ' class="youtube-shorts-wrapper"' : '';
+      const iframeClass = isShorts ? ' class="youtube-shorts-embed"' : '';
+      const wrapperWidth = isShorts ? '100%; max-width: 315px' : width;
 
-      return `<div style="max-width: 100%; width: ${width}; margin: 0 auto;">
+      return `<div${wrapperClass} style="max-width: 100%; width: ${wrapperWidth}; margin: 0 auto;">
            <div style="position: relative; width: 100%; height: 0; padding-bottom: ${paddingBottom};">
-            <iframe src="https://www.youtube.com/embed/${id}${time ? `?start=${time}` : ''}"
+            <iframe${iframeClass} src="https://www.youtube.com/embed/${id}${time ? `?start=${time}` : ''}"
               style="position: absolute; width: 100%; height: 100%; top: 0; left: 0;"
               frameborder="0" allow="autoplay; encrypted-media" allowfullscreen>
             </iframe>
@@ -101,6 +105,7 @@ export function viewComment(comment) {
         'src',
         'width',
         'height',
+        'class',
         'frameborder',
         'allow',
         'allowfullscreen',
