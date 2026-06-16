@@ -1237,7 +1237,11 @@
             throw createUploadTooLargeError(preparedFile);
           }
 
-          setUploadStatus(`${getUploadKind(preparedFile)} 업로드 중...`);
+          const insertAsAudio =
+            preparedFile.type.startsWith('audio/') ||
+            (file.type.startsWith('video/') && extractVideoAudio);
+          const preparedUploadKind = insertAsAudio ? '음성' : getUploadKind(preparedFile);
+          setUploadStatus(`${preparedUploadKind} 업로드 중...`);
           const shouldAskServerToCompressVideo =
             file.type.startsWith('video/') && preparedFile === file && !disableVideoCompression;
           const formData = new FormData();
@@ -1282,7 +1286,7 @@
             throw new Error('Upload response has no url');
           }
 
-          if (preparedFile.type.startsWith('audio/')) {
+          if (insertAsAudio) {
             insertHtmlBlock(
               `<audio src="${escapeHtml(url)}" controls style="max-width: 100%; width: 100%; display: block; margin: 1em 0;"></audio>`
             );

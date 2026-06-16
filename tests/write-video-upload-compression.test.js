@@ -141,6 +141,10 @@ describe('write page video upload', () => {
     expect(lexicalEditor).toContain("audioOnly: '음성만'");
     expect(lexicalEditor).toContain("'-vn'");
     expect(lexicalEditor).toContain("formData.set('extractVideoAudio', 'true')");
+    expect(lexicalEditor).toContain('const insertAsAudio =');
+    expect(lexicalEditor).toContain("preparedFile.type.startsWith('audio/') ||");
+    expect(lexicalEditor).toContain("file.type.startsWith('video/') && extractVideoAudio");
+    expect(lexicalEditor).toContain("const preparedUploadKind = insertAsAudio ? '음성' : getUploadKind(preparedFile)");
     expect(lexicalEditor).toContain('<audio src="${escapeHtml(url)}" controls');
     expect(uploadRoute).toContain('extractVideoAudio');
     const fileUpload = readFileSync('src/lib/util/fileUpload.js', 'utf8');
