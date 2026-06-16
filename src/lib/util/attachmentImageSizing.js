@@ -1,6 +1,6 @@
 export const LONG_IMAGE_RATIO_THRESHOLD = 2.5;
 export const DEFAULT_ATTACHMENT_IMAGE_MAX_HEIGHT = '72dvh';
-export const DESKTOP_PORTRAIT_ATTACHMENT_IMAGE_WIDTH = '80dvw';
+export const DESKTOP_PORTRAIT_ATTACHMENT_IMAGE_HEIGHT = '130dvh';
 export const MOBILE_ATTACHMENT_VIEWPORT_MAX_WIDTH = 767;
 
 /**
@@ -86,8 +86,9 @@ export function applyAttachmentImageSizing(style, img, options) {
   }
 
   if (shouldUseDesktopPortraitSizing(img, options)) {
-    style.width = DESKTOP_PORTRAIT_ATTACHMENT_IMAGE_WIDTH;
-    style.removeProperty?.('max-height');
+    style.width = 'auto';
+    style.height = DESKTOP_PORTRAIT_ATTACHMENT_IMAGE_HEIGHT;
+    style.maxHeight = DESKTOP_PORTRAIT_ATTACHMENT_IMAGE_HEIGHT;
     return;
   }
 
