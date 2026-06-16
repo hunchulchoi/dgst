@@ -11,6 +11,7 @@ const uploadLimits = readFileSync('src/lib/util/uploadLimits.js', 'utf8');
 const apiLogRoute = readFileSync('src/routes/api/log/+server.js', 'utf8');
 const dockerfile = readFileSync('Dockerfile', 'utf8');
 const dockerCompose = readFileSync('conf/docker-compose.yml', 'utf8');
+const packageJson = readFileSync('package.json', 'utf8');
 
 describe('write page video upload', () => {
   it('tries client-side ffmpeg compression before uploading videos', () => {
@@ -74,12 +75,54 @@ describe('write page video upload', () => {
     expect(uploadRoute).toContain('compressVideo');
   });
 
+  it('passes server compression context so server logs explain device and fallback reason', () => {
+    expect(lexicalEditor).toContain('createServerVideoCompressionContext');
+    expect(lexicalEditor).toContain("formData.set('serverCompressVideoReason'");
+    expect(lexicalEditor).toContain("formData.set('serverCompressVideoClient'");
+    expect(lexicalEditor).toContain("formData.set('serverCompressVideoWebCodecs'");
+    expect(lexicalEditor).toContain('userAgent: nav?.userAgent');
+    expect(uploadRoute).toContain('serverCompressVideoReason');
+    expect(uploadRoute).toContain('serverCompressVideoClient');
+    expect(uploadRoute).toContain('serverCompressVideoWebCodecs');
+    expect(uploadRoute).toContain('serverCompressVideoContext');
+    expect(uploadRoute).toContain('Server video compression upload requested');
+    expect(uploadRoute).toContain("request.headers.get('user-agent')");
+    const fileUpload = readFileSync('src/lib/util/fileUpload.js', 'utf8');
+    expect(fileUpload).toContain('serverCompressVideoContext');
+    expect(fileUpload).toContain('logger.warn({');
+    expect(fileUpload).toContain('Server video compression requested');
+    expect(fileUpload).toContain('Server video compression failed; saving original');
+  });
+
   it('skips client ffmpeg on iOS Safari/WebView and sends the video to server compression', () => {
     expect(lexicalEditor).toContain('shouldUseServerVideoCompression(file)');
     expect(lexicalEditor).toContain('isIOSLikeClient()');
     expect(lexicalEditor).toContain('isSafariLikeClient()');
-    expect(lexicalEditor).toContain('동영상은 서버에서 압축합니다');
+    expect(lexicalEditor).toContain('const webCodecsFile = await compressVideoWithWebCodecs(file)');
     expect(lexicalEditor).toContain("formData.set('serverCompressVideo', 'true')");
+  });
+
+  it('tries Mediabunny WebCodecs MP4 compression before server compression on iOS Safari videos', () => {
+    expect(packageJson).toContain('"mediabunny"');
+    expect(packageJson).not.toContain('"mp4-muxer"');
+    expect(lexicalEditor).toContain("import('mediabunny')");
+    expect(lexicalEditor).toContain('Conversion.init');
+    expect(lexicalEditor).toContain('BlobSource');
+    expect(lexicalEditor).toContain('BufferTarget');
+    expect(lexicalEditor).toContain('Mp4OutputFormat');
+    expect(lexicalEditor).toContain('forceTranscode: true');
+    expect(lexicalEditor).toContain("type: 'lexical-video-webcodecs-compressed'");
+  });
+
+  it('compresses 4K videos aggressively on client and server fallback', () => {
+    expect(lexicalEditor).toContain('CLIENT_VIDEO_MAX_EDGE = 720');
+    expect(lexicalEditor).toContain('CLIENT_VIDEO_BITRATE = 800_000');
+    expect(lexicalEditor).toContain('CLIENT_AUDIO_BITRATE = 64_000');
+    const fileUpload = readFileSync('src/lib/util/fileUpload.js', 'utf8');
+    expect(fileUpload).toContain("scale='min(720,iw)':'min(720,ih)'");
+    expect(fileUpload).toContain("'-b:v'");
+    expect(fileUpload).toContain("'800k'");
+    expect(fileUpload).toContain("'64k'");
   });
 
   it('logs WebCodecs capability before sending iOS Safari videos to server compression', () => {
@@ -89,8 +132,18 @@ describe('write page video upload', () => {
     expect(lexicalEditor).toContain('AudioEncoder');
     expect(lexicalEditor).toContain('video/mp4; codecs="avc1.42E01E"');
     expect(lexicalEditor).toContain("type: 'lexical-video-server-compression-selected'");
+    expect(lexicalEditor).toContain("level: 'warn'");
     expect(lexicalEditor).toContain("reason: 'ios-safari-webcodecs-preflight'");
     expect(lexicalEditor).toContain('webCodecs: await getWebCodecsCapabilityDetails()');
+  });
+
+  it('allows normal client telemetry to be logged at info level', () => {
+    const reportClientPageError = readFileSync('src/lib/util/reportClientPageError.js', 'utf8');
+    expect(reportClientPageError).toContain("@property {'error' | 'warn' | 'info'} [level]");
+    expect(reportClientPageError).toContain("level: context.level ?? 'error'");
+    expect(apiLogRoute).toContain(
+      "logData.level === 'error' || logData.level === 'warn' || logData.level === 'info'"
+    );
   });
 
   it('warns when the prepared upload is still over the 100MB upload limit', () => {
@@ -104,6 +157,14 @@ describe('write page video upload', () => {
   it('shows the same size warning for server 413 responses', () => {
     expect(lexicalEditor).toContain('response.status === 413');
     expect(lexicalEditor).toContain('파일이 너무 큽니다');
+  });
+
+  it('distinguishes server body-limit 413 from the app 100MB upload limit', () => {
+    expect(lexicalEditor).toContain('createServerUploadLimitError');
+    expect(lexicalEditor).toContain('ServerUploadLimitError');
+    expect(lexicalEditor).toContain('서버 업로드 제한에 걸렸습니다');
+    expect(lexicalEditor).toContain('responseText');
+    expect(lexicalEditor).toContain('serverLimitExceeded');
   });
 
   it('sets adapter-node BODY_SIZE_LIMIT to the board upload limit in production', () => {

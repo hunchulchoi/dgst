@@ -13,6 +13,14 @@ describe('write page image upload spinner', () => {
     expect(writePage).toContain('파일을 업로드 중입니다...');
   });
 
+  it('shows an upload progress bar in the blocking upload overlay', () => {
+    expect(writePage).toContain('getUploadProgressPercent');
+    expect(writePage).toContain('const uploadProgressPercent = $derived');
+    expect(writePage).toContain('role="progressbar"');
+    expect(writePage).toContain('aria-valuenow={uploadProgressPercent ?? undefined}');
+    expect(writePage).toContain('write-upload-progress__bar--indeterminate');
+  });
+
   it('shows the blocking spinner overlay while the article is being submitted', () => {
     expect(writePage).toContain('글을 저장 중입니다...');
     expect(writePage).toContain(': formSubmitting');

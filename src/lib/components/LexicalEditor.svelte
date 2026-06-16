@@ -68,6 +68,8 @@
   let ffmpegLoadPromise = null;
   /** @type {Record<string, unknown>} */
   let lastFfmpegLoadDetails = {};
+  /** @type {Record<string, unknown> | null} */
+  let lastServerVideoCompressionContext = null;
   /** @type {any} */
   let heic2any = null;
   /** @type {(() => void) | null} */
@@ -78,6 +80,12 @@
   let isComposing = false;
   let editorFailureAlertShown = false;
   const FFMPEG_CORE_BASE_URL = 'https://unpkg.com/@ffmpeg/core@0.12.9/dist/umd';
+  const CLIENT_VIDEO_MAX_EDGE = 720;
+  const CLIENT_VIDEO_BITRATE = 800_000;
+  const CLIENT_AUDIO_BITRATE = 64_000;
+  const CLIENT_AUDIO_SAMPLE_RATE = 44100;
+  const CLIENT_VIDEO_FRAME_RATE = 24;
+  const DEFAULT_SERVER_VIDEO_COMPRESSION_REASON = 'ios-safari-webcodecs-preflight';
 
   /** @param {unknown} value */
   function getErrorMessage(value) {
@@ -135,6 +143,20 @@
     return `동영상 압축 중... ${percent}% · 경과 ${elapsedText} · 남은 시간 약 ${formatDuration(remaining)}`;
   }
 
+  /**
+   * @param {number} sourceWidth
+   * @param {number} sourceHeight
+   */
+  function getConstrainedVideoSize(sourceWidth, sourceHeight) {
+    const width = Number.isFinite(sourceWidth) && sourceWidth > 0 ? sourceWidth : 640;
+    const height = Number.isFinite(sourceHeight) && sourceHeight > 0 ? sourceHeight : 360;
+    const scale = Math.min(1, CLIENT_VIDEO_MAX_EDGE / Math.max(width, height));
+    return {
+      width: Math.max(2, Math.round((width * scale) / 2) * 2),
+      height: Math.max(2, Math.round((height * scale) / 2) * 2)
+    };
+  }
+
   function getClientCapabilityDetails() {
     const nav = typeof navigator !== 'undefined' ? navigator : undefined;
     const connection =
@@ -158,6 +180,32 @@
       webAssembly: typeof WebAssembly !== 'undefined',
       sharedArrayBuffer: typeof SharedArrayBuffer !== 'undefined',
       worker: typeof Worker !== 'undefined'
+    };
+  }
+
+  function getClientDeviceDetails() {
+    const nav = typeof navigator !== 'undefined' ? navigator : undefined;
+    return {
+      userAgent: nav?.userAgent,
+      platform: nav?.platform,
+      vendor: nav?.vendor,
+      language: nav?.language,
+      languages: nav?.languages ? Array.from(nav.languages) : undefined,
+      maxTouchPoints:
+        nav && 'maxTouchPoints' in nav
+          ? Number(/** @type {{ maxTouchPoints?: unknown }} */ (nav).maxTouchPoints)
+          : undefined,
+      viewport:
+        typeof window !== 'undefined'
+          ? {
+              width: window.innerWidth,
+              height: window.innerHeight,
+              devicePixelRatio: window.devicePixelRatio,
+              visualViewportWidth: window.visualViewport?.width,
+              visualViewportHeight: window.visualViewport?.height,
+              visualViewportScale: window.visualViewport?.scale
+            }
+          : undefined
     };
   }
 
@@ -218,9 +266,45 @@
     return file.type.startsWith('video/') && (isIOSLikeClient() || isSafariLikeClient());
   }
 
-  /** @param {File} file */
-  async function reportServerVideoCompressionSelected(file) {
+  /**
+   * @param {File} file
+   * @param {string} reason
+   * @param {Record<string, unknown>} [extra]
+   */
+  async function createServerVideoCompressionContext(
+    file,
+    reason = DEFAULT_SERVER_VIDEO_COMPRESSION_REASON,
+    extra = {}
+  ) {
+    return {
+      reason: reason || 'ios-safari-webcodecs-preflight',
+      fileName: file.name,
+      fileType: file.type,
+      fileSize: file.size,
+      fileSizeMB: Number((file.size / (1024 * 1024)).toFixed(2)),
+      client: getClientCapabilityDetails(),
+      device: getClientDeviceDetails(),
+      webCodecs: await getWebCodecsCapabilityDetails(),
+      ...extra
+    };
+  }
+
+  /**
+   * @param {File} file
+   * @param {Record<string, unknown>} [serverCompressVideoContext]
+   */
+  async function reportServerVideoCompressionSelected(file, serverCompressVideoContext) {
+    const defaultServerCompressVideoDetails = {
+      reason: 'ios-safari-webcodecs-preflight'
+    };
+    const details =
+      serverCompressVideoContext ??
+      {
+        ...defaultServerCompressVideoDetails,
+        ...(await createServerVideoCompressionContext(file, DEFAULT_SERVER_VIDEO_COMPRESSION_REASON))
+      };
     reportClientError(new Error('Server video compression selected'), {
+      level: 'warn',
       type: 'lexical-video-server-compression-selected',
       message: 'Lexical video will be compressed on the server',
       pathname: typeof location !== 'undefined' ? location.pathname : undefined,
@@ -228,15 +312,7 @@
       search: typeof location !== 'undefined' ? location.search : undefined,
       importTarget: '$lib/components/LexicalEditor.svelte',
       phase: 'video-compression-preflight',
-      details: {
-        reason: 'ios-safari-webcodecs-preflight',
-        fileName: file.name,
-        fileType: file.type,
-        fileSize: file.size,
-        fileSizeMB: Number((file.size / (1024 * 1024)).toFixed(2)),
-        client: getClientCapabilityDetails(),
-        webCodecs: await getWebCodecsCapabilityDetails()
-      }
+      details
     });
   }
 
@@ -284,9 +360,30 @@
     );
   }
 
+  /**
+   * @param {File | Blob} file
+   * @param {string} responseText
+   */
+  function createServerUploadLimitError(file, responseText) {
+    return Object.assign(
+      new Error(
+        `Server upload body limit exceeded: ${file.size} bytes / ${formatMegabytes(file.size)}`
+      ),
+      {
+        name: 'ServerUploadLimitError',
+        fileSize: file.size,
+        responseText,
+        serverLimitExceeded: true
+      }
+    );
+  }
+
   /** @param {unknown} error */
   function isUploadTooLargeError(error) {
-    return error instanceof Error && error.name === 'UploadTooLargeError';
+    return (
+      error instanceof Error &&
+      (error.name === 'UploadTooLargeError' || error.name === 'ServerUploadLimitError')
+    );
   }
 
   /** @param {unknown} error */
@@ -296,6 +393,9 @@
         ? Number(/** @type {{ fileSize?: unknown }} */ (error).fileSize)
         : 0;
     const sizeText = Number.isFinite(fileSize) && fileSize > 0 ? formatMegabytes(fileSize) : '';
+    if (error instanceof Error && error.name === 'ServerUploadLimitError') {
+      return `파일은 ${sizeText || '선택한 크기'}인데 서버 업로드 제한에 걸렸습니다. 잠시 후 다시 시도해 주세요.`;
+    }
     return `압축 후에도 파일이 ${sizeText ? `${sizeText}로 ` : ''}너무 큽니다. ${BOARD_UPLOAD_MAX_MB}MB 이하 파일만 업로드할 수 있어요.`;
   }
 
@@ -656,6 +756,186 @@
   }
 
   /** @param {File} file */
+  async function compressVideoWithWebCodecs(file) {
+    const capability = await getWebCodecsCapabilityDetails();
+    if (
+      !capability.videoEncoder ||
+      !capability.audioEncoder ||
+      capability.avcEncoderSupported !== true
+    ) {
+      return file;
+    }
+
+    try {
+      setUploadStatus('WebCodecs 압축 준비 중...');
+      const {
+        Input,
+        Output,
+        Conversion,
+        ALL_FORMATS,
+        BlobSource,
+        BufferTarget,
+        Mp4OutputFormat
+      } = await import('mediabunny');
+
+      const input = new Input({ source: new BlobSource(file), formats: ALL_FORMATS });
+      try {
+        const videoTrack = await input.getPrimaryVideoTrack();
+        if (!videoTrack) return file;
+
+        const audioTrack = await input.getPrimaryAudioTrack();
+        const sourceWidth = await videoTrack.getDisplayWidth();
+        const sourceHeight = await videoTrack.getDisplayHeight();
+        const { width, height } = getConstrainedVideoSize(sourceWidth, sourceHeight);
+        const target = new BufferTarget();
+        const output = new Output({
+          format: new Mp4OutputFormat({ fastStart: 'in-memory' }),
+          target
+        });
+
+        const conversion = await Conversion.init({
+          input,
+          output,
+          tracks: 'primary',
+          video: {
+            width,
+            height,
+            fit: 'contain',
+            frameRate: CLIENT_VIDEO_FRAME_RATE,
+            codec: 'avc',
+            bitrate: CLIENT_VIDEO_BITRATE,
+            forceTranscode: true,
+            keyFrameInterval: 3,
+            hardwareAcceleration: 'prefer-hardware'
+          },
+          ...(audioTrack && {
+            audio: {
+              codec: 'aac',
+              bitrate: CLIENT_AUDIO_BITRATE,
+              sampleRate: CLIENT_AUDIO_SAMPLE_RATE,
+              numberOfChannels: 2,
+              forceTranscode: true
+            }
+          }),
+          showWarnings: false
+        });
+
+        if (!conversion.isValid) {
+          reportClientError(new Error('Mediabunny conversion is invalid'), {
+            level: 'warn',
+            type: 'lexical-video-webcodecs-skipped',
+            message: 'Mediabunny WebCodecs conversion is invalid',
+            pathname: typeof location !== 'undefined' ? location.pathname : undefined,
+            href: typeof location !== 'undefined' ? location.href : undefined,
+            search: typeof location !== 'undefined' ? location.search : undefined,
+            importTarget: '$lib/components/LexicalEditor.svelte',
+            phase: 'video-webcodecs-preflight',
+            details: {
+              reason: 'mediabunny-conversion-invalid',
+              fileName: file.name,
+              fileType: file.type,
+              fileSize: file.size,
+              fileSizeMB: Number((file.size / (1024 * 1024)).toFixed(2)),
+              discardedTrackCount: conversion.discardedTracks.length,
+              webCodecs: capability
+            }
+          });
+          return file;
+        }
+
+        const compressionStartedAt = Date.now();
+        conversion.onProgress = (progress) => {
+          setUploadStatus(
+            getVideoCompressionStatus(progress, compressionStartedAt).replace(
+              '동영상 압축 중',
+              'WebCodecs 압축 중'
+            )
+          );
+        };
+
+        await conversion.execute();
+        const buffer = target.buffer;
+        if (!buffer || buffer.byteLength <= 0) {
+          lastServerVideoCompressionContext = await createServerVideoCompressionContext(
+            file,
+            'webcodecs-produced-empty-buffer'
+          );
+          return file;
+        }
+
+        const blob = new Blob([buffer], { type: 'video/mp4' });
+        if (blob.size <= 0 || blob.size >= file.size) {
+          lastServerVideoCompressionContext = await createServerVideoCompressionContext(
+            file,
+            'webcodecs-not-smaller-than-original',
+            {
+              webCodecsOutputBytes: blob.size
+            }
+          );
+          return file;
+        }
+
+        const compressedFile = new File([blob], file.name.replace(/\.[^.]+$/, '.mp4'), {
+          type: 'video/mp4'
+        });
+        reportClientError(new Error('WebCodecs video compressed'), {
+          level: 'info',
+          type: 'lexical-video-webcodecs-compressed',
+          message: 'Lexical video compressed with WebCodecs',
+          pathname: typeof location !== 'undefined' ? location.pathname : undefined,
+          href: typeof location !== 'undefined' ? location.href : undefined,
+          search: typeof location !== 'undefined' ? location.search : undefined,
+          importTarget: '$lib/components/LexicalEditor.svelte',
+          phase: 'video-webcodecs-compression',
+          details: {
+            originalBytes: file.size,
+            compressedBytes: compressedFile.size,
+            sourceWidth,
+            sourceHeight,
+            width,
+            height,
+            frameRate: CLIENT_VIDEO_FRAME_RATE,
+            videoBitrate: CLIENT_VIDEO_BITRATE,
+            audioBitrate: audioTrack ? CLIENT_AUDIO_BITRATE : undefined,
+            hasAudioTrack: Boolean(audioTrack),
+            webCodecs: capability
+          }
+        });
+        return compressedFile;
+      } finally {
+        input.dispose();
+      }
+    } catch (error) {
+      console.warn('WebCodecs video compression failed; using server fallback:', error);
+      reportClientError(error, {
+        type: 'lexical-video-webcodecs-failed',
+        message: 'WebCodecs video compression failed; using server fallback',
+        pathname: typeof location !== 'undefined' ? location.pathname : undefined,
+        href: typeof location !== 'undefined' ? location.href : undefined,
+        search: typeof location !== 'undefined' ? location.search : undefined,
+        importTarget: '$lib/components/LexicalEditor.svelte',
+        phase: 'video-webcodecs-compression',
+        details: {
+          fileName: file.name,
+          fileType: file.type,
+          fileSize: file.size,
+          fileSizeMB: Number((file.size / (1024 * 1024)).toFixed(2)),
+          webCodecs: capability
+        }
+      });
+      lastServerVideoCompressionContext = await createServerVideoCompressionContext(
+        file,
+        'webcodecs-compression-failed',
+        {
+          errorName: error instanceof Error ? error.name : undefined,
+          errorMessage: getErrorMessage(error)
+        }
+      );
+      return file;
+    }
+  }
+
+  /** @param {File} file */
   async function compressVideo(file) {
     try {
       setUploadStatus('동영상 압축 준비 중...');
@@ -682,17 +962,23 @@
           '-i',
           'input.mp4',
           '-vf',
-          "scale='min(640,iw)':'min(640,ih)':force_original_aspect_ratio=decrease,pad=ceil(iw/2)*2:ceil(ih/2)*2",
+          "scale='min(720,iw)':'min(720,ih)':force_original_aspect_ratio=decrease,pad=ceil(iw/2)*2:ceil(ih/2)*2",
           '-c:v',
           'libx264',
+          '-b:v',
+          '800k',
+          '-maxrate',
+          '1000k',
+          '-bufsize',
+          '1600k',
           '-crf',
-          '28',
+          '30',
           '-preset',
           'medium',
           '-c:a',
           'aac',
           '-b:a',
-          '128k',
+          '64k',
           '-pix_fmt',
           'yuv420p',
           'output.mp4'
@@ -705,7 +991,17 @@
       const data = await ffmpeg.readFile('output.mp4');
       const bytes = data instanceof Uint8Array ? data : new TextEncoder().encode(String(data));
       const blob = new Blob([/** @type {BlobPart} */ (bytes)], { type: 'video/mp4' });
-      if (blob.size <= 0 || blob.size >= file.size) return file;
+      if (blob.size <= 0 || blob.size >= file.size) {
+        lastServerVideoCompressionContext = await createServerVideoCompressionContext(
+          file,
+          'client-ffmpeg-not-smaller-than-original',
+          {
+            ffmpegOutputBytes: blob.size,
+            ffmpegLoad: lastFfmpegLoadDetails
+          }
+        );
+        return file;
+      }
       return new File([blob], file.name.replace(/\.[^.]+$/, '.mp4'), { type: 'video/mp4' });
     } catch (error) {
       console.warn('Lexical video compression failed; uploading original file:', error);
@@ -726,6 +1022,15 @@
           client: getClientCapabilityDetails()
         }
       });
+      lastServerVideoCompressionContext = await createServerVideoCompressionContext(
+        file,
+        'client-ffmpeg-compression-failed',
+        {
+          errorName: error instanceof Error ? error.name : undefined,
+          errorMessage: getErrorMessage(error),
+          ffmpegLoad: lastFfmpegLoadDetails
+        }
+      );
       return file;
     }
   }
@@ -748,8 +1053,17 @@
     if (file.type.startsWith('video/')) {
       if (disableVideoCompression) return file;
       if (shouldUseServerVideoCompression(file)) {
+        const webCodecsFile = await compressVideoWithWebCodecs(file);
+        if (webCodecsFile !== file) return webCodecsFile;
+        const serverCompressVideoContext =
+          lastServerVideoCompressionContext ??
+          (await createServerVideoCompressionContext(
+            file,
+            'ios-safari-webcodecs-failed-or-skipped'
+          ));
+        lastServerVideoCompressionContext = serverCompressVideoContext;
         setUploadStatus('동영상은 서버에서 압축합니다...');
-        await reportServerVideoCompressionSelected(file);
+        await reportServerVideoCompressionSelected(file, serverCompressVideoContext);
         return file;
       }
       return compressVideo(file);
@@ -769,6 +1083,7 @@
       for (const file of files) {
         uploadPlus?.();
         failedUploadFile = file;
+        lastServerVideoCompressionContext = null;
         try {
           setUploadStatus(`${getUploadKind(file)} 준비 중...`);
           const preparedFile = await prepareUploadFile(file);
@@ -783,6 +1098,18 @@
           formData.append('upload', preparedFile);
           if (shouldAskServerToCompressVideo) {
             formData.set('serverCompressVideo', 'true');
+            const serverCompressVideoContext =
+              lastServerVideoCompressionContext ??
+              (await createServerVideoCompressionContext(
+                file,
+                'client-compression-did-not-produce-upload-file'
+              ));
+            formData.set('serverCompressVideoReason', String(serverCompressVideoContext.reason ?? 'unknown'));
+            formData.set('serverCompressVideoClient', JSON.stringify({
+              client: serverCompressVideoContext.client,
+              device: serverCompressVideoContext.device
+            }));
+            formData.set('serverCompressVideoWebCodecs', JSON.stringify(serverCompressVideoContext.webCodecs ?? null));
           }
 
           const response = await fetch('/board/upload', {
@@ -793,7 +1120,8 @@
 
           if (!response.ok) {
             if (response.status === 413) {
-              throw createUploadTooLargeError(preparedFile);
+              const responseText = await response.text().catch(() => '');
+              throw createServerUploadLimitError(preparedFile, responseText);
             }
             throw new Error(`Upload failed: ${response.status}`);
           }
@@ -833,7 +1161,17 @@
         href: typeof location !== 'undefined' ? location.href : undefined,
         search: typeof location !== 'undefined' ? location.search : undefined,
         importTarget: '$lib/components/LexicalEditor.svelte',
-        phase: 'file-upload'
+        phase: 'file-upload',
+        details:
+          error && typeof error === 'object' && 'serverLimitExceeded' in error
+            ? {
+                serverLimitExceeded: true,
+                fileSize: Number(/** @type {{ fileSize?: unknown }} */ (error).fileSize ?? 0),
+                responseText: String(
+                  /** @type {{ responseText?: unknown }} */ (error).responseText ?? ''
+                ).slice(0, 500)
+              }
+            : undefined
       });
       const isTooLarge = isUploadTooLargeError(error);
       await swalFire({

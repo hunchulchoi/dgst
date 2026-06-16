@@ -32,6 +32,7 @@ import { captureClientCallTrace, serializeError } from '$lib/util/formatErrorTra
  * @property {boolean} [clientPageError]
  * @property {number} [status]
  * @property {Record<string, unknown>} [details]
+ * @property {'error' | 'warn' | 'info'} [level]
  */
 
 const MAX_LEN = {
@@ -153,10 +154,20 @@ export function reportClientError(error, context = {}) {
     `clientAt=${clientAt}`
   ].filter((part) => typeof part === 'string');
   const logLine = `${summary} | ${detailParts.join(' | ')}`;
+  const level = context.level ?? 'error';
 
-  console.error(logLine, error);
+  if (level === 'info') {
+    console.info(logLine);
+  } else if (level === 'warn') {
+    console.warn(logLine, error);
+  } else {
+    console.error(logLine, error);
+  }
   if (trace) {
-    console.error(`[${type}] trace:\n${trace}`);
+    const traceLine = `[${type}] trace:\n${trace}`;
+    if (level === 'info') console.info(traceLine);
+    else if (level === 'warn') console.warn(traceLine);
+    else console.error(traceLine);
   }
 
   try {
@@ -165,7 +176,7 @@ export function reportClientError(error, context = {}) {
       headers: { 'Content-Type': 'application/json' },
       keepalive: true,
       body: JSON.stringify({
-        level: 'error',
+        level: context.level ?? 'error',
         message: logLine,
         type,
         ...(context.clientPageError === true && { clientPageError: true }),

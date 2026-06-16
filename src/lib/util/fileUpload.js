@@ -53,7 +53,7 @@ function runFfmpeg(args) {
  * @param {File} file
  * @param {string | undefined | null} email
  * @param {string} [preservePath='jjal']
- * @param {{ compressVideo?: boolean }} [options]
+ * @param {{ compressVideo?: boolean, serverCompressVideoContext?: unknown }} [options]
  */
 export async function write(file, email, preservePath = 'jjal', options = {}) {
   try {
@@ -193,27 +193,43 @@ export async function write(file, email, preservePath = 'jjal', options = {}) {
       const inputPath = `${fullPath}.input`;
       const compressedFileName = `${fileName.substring(0, fileName.lastIndexOf('.'))}.mp4`;
       const compressedPath = `${UPLOAD_PATH}${dir}/${compressedFileName}`;
+      const serverCompressVideoContext = options.serverCompressVideoContext;
 
       try {
+        logger.warn({
+          fileName,
+          originalBytes: file.size,
+          serverCompressVideoContext,
+          message: 'Server video compression requested'
+        });
+
         fs.writeFileSync(inputPath, fileBuffer);
         await runFfmpeg([
           '-y',
           '-i',
           inputPath,
           '-vf',
-          "scale='min(640,iw)':'min(640,ih)':force_original_aspect_ratio=decrease,pad=ceil(iw/2)*2:ceil(ih/2)*2",
+          "scale='min(720,iw)':'min(720,ih)':force_original_aspect_ratio=decrease,pad=ceil(iw/2)*2:ceil(ih/2)*2",
           '-c:v',
           'libx264',
+          '-b:v',
+          '800k',
+          '-maxrate',
+          '1000k',
+          '-bufsize',
+          '1600k',
           '-crf',
-          '28',
+          '30',
           '-preset',
           'veryfast',
           '-c:a',
           'aac',
           '-b:a',
-          '128k',
+          '64k',
           '-pix_fmt',
           'yuv420p',
+          '-movflags',
+          '+faststart',
           compressedPath
         ]);
 
@@ -225,12 +241,20 @@ export async function write(file, email, preservePath = 'jjal', options = {}) {
         fileName = compressedFileName;
         fileWritten = true;
 
-        logger.info({
+        logger.warn({
           fileName,
+          originalBytes: file.size,
+          serverCompressVideoContext,
           message: 'Video compressed with server ffmpeg fallback'
         });
       } catch (err) {
-        logger.error({ message: 'Server video compression failed; saving original', error: err });
+        logger.error({
+          message: 'Server video compression failed; saving original',
+          error: err,
+          fileName,
+          originalBytes: file.size,
+          serverCompressVideoContext
+        });
         if (!fileWritten) writeOriginalFile();
       } finally {
         try {

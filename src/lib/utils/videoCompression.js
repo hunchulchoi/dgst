@@ -34,16 +34,26 @@ export async function compressVideo(file) {
   await legacy.run(
     '-i',
     'input.mp4',
+    '-vf',
+    "scale='min(720,iw)':'min(720,ih)':force_original_aspect_ratio=decrease,pad=ceil(iw/2)*2:ceil(ih/2)*2",
     '-c:v',
     'libx264',
+    '-b:v',
+    '800k',
+    '-maxrate',
+    '1000k',
+    '-bufsize',
+    '1600k',
     '-crf',
-    '28',
+    '30',
     '-preset',
     'medium',
     '-c:a',
     'aac',
     '-b:a',
-    '128k',
+    '64k',
+    '-pix_fmt',
+    'yuv420p',
     'output.mp4'
   );
   const data = legacy.FS('readFile', 'output.mp4');

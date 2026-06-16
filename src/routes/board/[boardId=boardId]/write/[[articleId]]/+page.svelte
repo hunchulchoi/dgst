@@ -213,6 +213,17 @@
     uploadStatusText = status || '파일을 업로드 중입니다...';
   }
 
+  /** @param {string} status */
+  function getUploadProgressPercent(status) {
+    const match = status.match(/(\d{1,3})%/);
+    if (!match) return null;
+    const percent = Number(match[1]);
+    if (!Number.isFinite(percent)) return null;
+    return Math.min(100, Math.max(0, percent));
+  }
+
+  const uploadProgressPercent = $derived(getUploadProgressPercent(uploadStatusText));
+
   let prevTitleLength = 0;
 
   /**
@@ -504,6 +515,22 @@
           ? '글을 저장 중입니다...'
           : '링크 정보를 분석 중입니다...'}
     </span>
+    {#if uploading > 0}
+      <div
+        class="write-upload-progress mt-3"
+        role="progressbar"
+        aria-label="업로드 진행률"
+        aria-valuemin="0"
+        aria-valuemax="100"
+        aria-valuenow={uploadProgressPercent ?? undefined}
+      >
+        <div
+          class="write-upload-progress__bar"
+          class:write-upload-progress__bar--indeterminate={uploadProgressPercent === null}
+          style={uploadProgressPercent !== null ? `width: ${uploadProgressPercent}%` : ''}
+        ></div>
+      </div>
+    {/if}
   </div>
 {/if}
 
@@ -548,6 +575,38 @@
     min-width: 0;
     margin-right: 0 !important;
     margin-left: 0 !important;
+  }
+
+  .write-upload-progress {
+    width: min(78vw, 360px);
+    height: 0.6rem;
+    overflow: hidden;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.24);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18);
+  }
+
+  .write-upload-progress__bar {
+    width: 0%;
+    height: 100%;
+    border-radius: inherit;
+    background: #0d6efd;
+    transition: width 180ms ease;
+  }
+
+  .write-upload-progress__bar--indeterminate {
+    width: 42%;
+    animation: write-upload-progress-slide 1s ease-in-out infinite;
+  }
+
+  @keyframes write-upload-progress-slide {
+    0% {
+      transform: translateX(-110%);
+    }
+
+    100% {
+      transform: translateX(260%);
+    }
   }
 
   @supports not (overflow: clip) {

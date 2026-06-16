@@ -49,7 +49,10 @@ export async function POST(event) {
   try {
     const logData = await request.json();
 
-    const logLevel = logData.level === 'error' || logData.level === 'warn' ? logData.level : 'warn';
+    const logLevel =
+      logData.level === 'error' || logData.level === 'warn' || logData.level === 'info'
+        ? logData.level
+        : 'warn';
     const logMessage = {
       message:
         typeof logData.message === 'string' ? logData.message.slice(0, 1000) : 'Client error',

@@ -19,6 +19,16 @@ function isBodySizeLimitError(err) {
   );
 }
 
+/** @param {FormDataEntryValue | null} value */
+function parseOptionalJsonField(value) {
+  if (typeof value !== 'string' || !value) return undefined;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return { parseError: true, raw: value.slice(0, 500) };
+  }
+}
+
 export async function POST({ request, locals }) {
   const session = await locals.auth();
   const email = typeof session?.user?.email === 'string' ? session.user.email : '';
@@ -42,6 +52,21 @@ export async function POST({ request, locals }) {
     }
     uploadFile = upload;
     const serverCompressVideo = data.get('serverCompressVideo') === 'true';
+    const serverCompressVideoReason = String(data.get('serverCompressVideoReason') || '');
+    const serverCompressVideoClient = parseOptionalJsonField(data.get('serverCompressVideoClient'));
+    const serverCompressVideoWebCodecs = parseOptionalJsonField(
+      data.get('serverCompressVideoWebCodecs')
+    );
+    const serverCompressVideoContext = serverCompressVideo
+      ? {
+          reason: serverCompressVideoReason || 'unknown',
+          client: serverCompressVideoClient,
+          webCodecs: serverCompressVideoWebCodecs,
+          requestUserAgent: request.headers.get('user-agent'),
+          requestReferer: request.headers.get('referer'),
+          requestUrl: request.url
+        }
+      : undefined;
 
     logger.info({
       message: 'Image upload request',
@@ -49,10 +74,25 @@ export async function POST({ request, locals }) {
       fileSize: uploadFile?.size,
       fileType: uploadFile?.type,
       serverCompressVideo,
+      serverCompressVideoContext,
       user: email
     });
 
-    const res = await write(uploadFile, email, 'jjal', { compressVideo: serverCompressVideo });
+    if (serverCompressVideo) {
+      logger.warn({
+        message: 'Server video compression upload requested',
+        fileName: uploadFile?.name,
+        fileSize: uploadFile?.size,
+        fileType: uploadFile?.type,
+        serverCompressVideoContext,
+        user: email
+      });
+    }
+
+    const res = await write(uploadFile, email, 'jjal', {
+      compressVideo: serverCompressVideo,
+      serverCompressVideoContext
+    });
 
     logger.info({
       message: 'Image upload success',
