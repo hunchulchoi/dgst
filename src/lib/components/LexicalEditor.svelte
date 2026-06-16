@@ -66,6 +66,8 @@
   let fetchFile = null;
   /** @type {Promise<void> | null} */
   let ffmpegLoadPromise = null;
+  /** @type {Record<string, unknown>} */
+  let lastFfmpegLoadDetails = {};
   /** @type {any} */
   let heic2any = null;
   /** @type {(() => void) | null} */
@@ -75,6 +77,7 @@
   let selectedUploadAccept = $state('image/*');
   let isComposing = false;
   let editorFailureAlertShown = false;
+  const FFMPEG_CORE_BASE_URL = 'https://unpkg.com/@ffmpeg/core@0.12.9/dist/umd';
 
   /** @param {unknown} value */
   function getErrorMessage(value) {
@@ -130,6 +133,57 @@
 
     const remaining = elapsed * ((1 - normalizedProgress) / normalizedProgress);
     return `동영상 압축 중... ${percent}% · 경과 ${elapsedText} · 남은 시간 약 ${formatDuration(remaining)}`;
+  }
+
+  function getClientCapabilityDetails() {
+    const nav = typeof navigator !== 'undefined' ? navigator : undefined;
+    const connection =
+      nav && 'connection' in nav
+        ? /** @type {{ effectiveType?: string; downlink?: number; rtt?: number; saveData?: boolean }} */ (
+            nav.connection
+          )
+        : undefined;
+    const deviceMemory =
+      nav && 'deviceMemory' in nav ? /** @type {{ deviceMemory?: number }} */ (nav).deviceMemory : undefined;
+
+    return {
+      online: nav?.onLine,
+      hardwareConcurrency: nav?.hardwareConcurrency,
+      deviceMemory,
+      connectionEffectiveType: connection?.effectiveType,
+      connectionDownlink: connection?.downlink,
+      connectionRtt: connection?.rtt,
+      saveData: connection?.saveData,
+      crossOriginIsolated: typeof crossOriginIsolated !== 'undefined' ? crossOriginIsolated : undefined,
+      webAssembly: typeof WebAssembly !== 'undefined',
+      sharedArrayBuffer: typeof SharedArrayBuffer !== 'undefined',
+      worker: typeof Worker !== 'undefined'
+    };
+  }
+
+  /**
+   * @param {typeof import('@ffmpeg/util').toBlobURL} toBlobURL
+   * @param {string} url
+   * @param {string} mimeType
+   * @param {Record<string, unknown>} loadDetails
+   */
+  async function loadFfmpegCoreBlobUrl(toBlobURL, url, mimeType, loadDetails) {
+    const startedAt = performance.now();
+    /** @type {{ total?: number; received?: number; done?: boolean }} */
+    const latest = {};
+    const blobUrl = await toBlobURL(url, mimeType, true, (progress) => {
+      latest.total = progress.total;
+      latest.received = progress.received;
+      latest.done = progress.done;
+    });
+
+    const key = url.endsWith('.wasm') ? 'wasm' : url.endsWith('.worker.js') ? 'coreWorker' : 'core';
+    loadDetails[`${key}Url`] = url;
+    loadDetails[`${key}DownloadMs`] = Math.round(performance.now() - startedAt);
+    loadDetails[`${key}Bytes`] = latest.received;
+    loadDetails[`${key}TotalBytes`] = latest.total;
+    loadDetails[`${key}DownloadDone`] = latest.done;
+    return blobUrl;
   }
 
   /** @param {number} bytes */
@@ -419,14 +473,48 @@
     if (ffmpeg && fetchFile) return;
 
     if (!ffmpegLoadPromise) {
+      const loadStartedAt = performance.now();
+      /** @type {Record<string, unknown>} */
+      const loadDetails = {
+        phase: 'start',
+        loadTimeoutMs: 60000,
+        ...getClientCapabilityDetails()
+      };
+      lastFfmpegLoadDetails = loadDetails;
+
       ffmpegLoadPromise = (async () => {
+        loadDetails.phase = 'importing-modules';
+        const importStartedAt = performance.now();
         const [{ FFmpeg }, ffmpegUtil] = await Promise.all([
           import('@ffmpeg/ffmpeg'),
           import('@ffmpeg/util')
         ]);
+        loadDetails.importMs = Math.round(performance.now() - importStartedAt);
+
+        loadDetails.phase = 'downloading-core-assets';
+        const coreURL = await loadFfmpegCoreBlobUrl(
+          ffmpegUtil.toBlobURL,
+          `${FFMPEG_CORE_BASE_URL}/ffmpeg-core.js`,
+          'text/javascript',
+          loadDetails
+        );
+        const wasmURL = await loadFfmpegCoreBlobUrl(
+          ffmpegUtil.toBlobURL,
+          `${FFMPEG_CORE_BASE_URL}/ffmpeg-core.wasm`,
+          'application/wasm',
+          loadDetails
+        );
+
+        loadDetails.phase = 'constructing-ffmpeg';
         fetchFile = ffmpegUtil.fetchFile;
         ffmpeg = new FFmpeg();
-        await ffmpeg.load();
+
+        loadDetails.phase = 'loading-core';
+        const coreLoadStartedAt = performance.now();
+        await ffmpeg.load({ coreURL, wasmURL });
+        loadDetails.coreLoadMs = Math.round(performance.now() - coreLoadStartedAt);
+        loadDetails.phase = 'loaded';
+        loadDetails.totalLoadMs = Math.round(performance.now() - loadStartedAt);
       })().finally(() => {
         ffmpegLoadPromise = null;
       });
@@ -549,7 +637,15 @@
         href: typeof location !== 'undefined' ? location.href : undefined,
         search: typeof location !== 'undefined' ? location.search : undefined,
         importTarget: '$lib/components/LexicalEditor.svelte',
-        phase: 'video-compression'
+        phase: 'video-compression',
+        details: {
+          fileName: file.name,
+          fileType: file.type,
+          fileSize: file.size,
+          fileSizeMB: Number((file.size / (1024 * 1024)).toFixed(2)),
+          ffmpegLoad: lastFfmpegLoadDetails,
+          client: getClientCapabilityDetails()
+        }
       });
       return file;
     }

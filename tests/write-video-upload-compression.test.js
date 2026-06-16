@@ -38,6 +38,27 @@ describe('write page video upload', () => {
   it('reports client-side video compression failures to server logs', () => {
     expect(lexicalEditor).toContain('reportClientError(error');
     expect(lexicalEditor).toContain("type: 'lexical-video-compression-failed'");
+    expect(lexicalEditor).toContain('lastFfmpegLoadDetails');
+    expect(lexicalEditor).toContain('getClientCapabilityDetails');
+    expect(lexicalEditor).toContain("FFMPEG_CORE_BASE_URL = 'https://unpkg.com/@ffmpeg/core@0.12.9/dist/umd'");
+    expect(lexicalEditor).toContain('loadFfmpegCoreBlobUrl');
+    expect(lexicalEditor).toContain("loadDetails.phase = 'downloading-core-assets'");
+    expect(lexicalEditor).toContain("loadDetails.phase = 'importing-modules'");
+    expect(lexicalEditor).toContain("loadDetails.phase = 'loading-core'");
+    expect(lexicalEditor).toContain('`${key}DownloadMs`');
+    expect(lexicalEditor).toContain('`${key}Bytes`');
+    expect(lexicalEditor).toContain('ffmpeg.load({ coreURL, wasmURL })');
+    expect(lexicalEditor).toContain('loadTimeoutMs: 60000');
+    expect(lexicalEditor).toContain('fileSizeMB');
+    expect(lexicalEditor).toContain('ffmpegLoad: lastFfmpegLoadDetails');
+    expect(lexicalEditor).toContain('connectionEffectiveType');
+    expect(lexicalEditor).toContain('sharedArrayBuffer');
+  });
+
+  it('sends client log detail payloads to the server', () => {
+    const reportClientPageError = readFileSync('src/lib/util/reportClientPageError.js', 'utf8');
+    expect(reportClientPageError).toContain('@property {Record<string, unknown>} [details]');
+    expect(reportClientPageError).toContain('...(details && { details })');
   });
 
   it('reports failed image uploads to server logs', () => {

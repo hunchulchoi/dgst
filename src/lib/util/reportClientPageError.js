@@ -31,6 +31,7 @@ import { captureClientCallTrace, serializeError } from '$lib/util/formatErrorTra
  * @property {string} [phase]
  * @property {boolean} [clientPageError]
  * @property {number} [status]
+ * @property {Record<string, unknown>} [details]
  */
 
 const MAX_LEN = {
@@ -133,6 +134,7 @@ export function reportClientError(error, context = {}) {
     ) ?? '';
 
   const type = clip(context.type, 64) ?? 'client-error';
+  const details = context.details && typeof context.details === 'object' ? context.details : undefined;
   const summary = `[${type}] ${context.message ?? errorMessage}`;
   const detailParts = [
     errorName && `name=${errorName}`,
@@ -190,6 +192,7 @@ export function reportClientError(error, context = {}) {
         }),
         ...(clip(context.phase, MAX_LEN.phase) && { phase: clip(context.phase, MAX_LEN.phase) }),
         ...(context.errorId && { errorId: context.errorId }),
+        ...(details && { details }),
         clientAt
       })
     });
