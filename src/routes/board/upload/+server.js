@@ -3,6 +3,21 @@ import { error } from '@sveltejs/kit';
 
 import { write } from '$lib/util/fileUpload.js';
 import logger from '$lib/util/logger.js';
+import { BOARD_UPLOAD_MAX_MB } from '$lib/util/uploadLimits.js';
+
+/** @param {unknown} err */
+function getErrorMessage(err) {
+  return err instanceof Error ? err.message : String(err);
+}
+
+/** @param {unknown} err */
+function isBodySizeLimitError(err) {
+  const message = getErrorMessage(err);
+  return (
+    /Content-length of \d+ exceeds limit of \d+ bytes/i.test(message) ||
+    /request body size exceeded/i.test(message)
+  );
+}
 
 export async function POST({ request, locals }) {
   const session = await locals.auth();
@@ -48,12 +63,21 @@ export async function POST({ request, locals }) {
 
     return json({ url: res });
   } catch (err) {
+    const errorMessage = getErrorMessage(err);
     logger.error({
       message: 'Image upload failed',
       error: err,
       user: email,
-      fileName: uploadFile?.name
+      fileName: uploadFile?.name,
+      errorMessage
     });
+
+    if (isBodySizeLimitError(err)) {
+      throw error(413, {
+        message: `파일이 너무 큽니다. ${BOARD_UPLOAD_MAX_MB}MB 이하 파일만 업로드할 수 있어요.`
+      });
+    }
+
     throw err;
   }
 }

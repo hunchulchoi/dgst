@@ -20,6 +20,7 @@ RUN npm run db:generate && npm run build
 FROM node:22 AS production
 
 WORKDIR /app
+ENV BODY_SIZE_LIMIT=100M
 
 # RUN groupadd -g 999 www-data
 # RUN useradd -r -u 999 -g www-data www-data

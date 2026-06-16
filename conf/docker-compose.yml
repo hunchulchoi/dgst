@@ -53,6 +53,7 @@ services:
     environment:
       NODE_ENV: production
       AUTH_TRUST_HOST: 'true'
+      BODY_SIZE_LIMIT: 100M
     env_file:
       - .env
 

@@ -39,6 +39,7 @@
   import { mergeRegister } from '@lexical/utils';
   import { swalFire } from '$lib/util/swal.js';
   import { reportClientError } from '$lib/util/reportClientPageError.js';
+  import { BOARD_UPLOAD_MAX_BYTES, BOARD_UPLOAD_MAX_MB } from '$lib/util/uploadLimits.js';
 
   let {
     uploadPlus,
@@ -71,9 +72,9 @@
   let unregister = null;
   let loading = $state(false);
   let uploadStatusText = $state('처리 중...');
+  let selectedUploadKind = $state(/** @type {'image' | 'video'} */ ('image'));
   let isComposing = false;
   let editorFailureAlertShown = false;
-  const UPLOAD_MAX_BYTES = 100 * 1024 * 1024;
 
   /** @param {unknown} value */
   function getErrorMessage(value) {
@@ -162,7 +163,7 @@
         ? Number(/** @type {{ fileSize?: unknown }} */ (error).fileSize)
         : 0;
     const sizeText = Number.isFinite(fileSize) && fileSize > 0 ? formatMegabytes(fileSize) : '';
-    return `압축 후에도 파일이 ${sizeText ? `${sizeText}로 ` : ''}너무 큽니다. 100MB 이하 파일만 업로드할 수 있어요.`;
+    return `압축 후에도 파일이 ${sizeText ? `${sizeText}로 ` : ''}너무 큽니다. ${BOARD_UPLOAD_MAX_MB}MB 이하 파일만 업로드할 수 있어요.`;
   }
 
   /** @extends {DecoratorNode<null>} */
@@ -591,7 +592,7 @@
         try {
           setUploadStatus(`${getUploadKind(file)} 준비 중...`);
           const preparedFile = await prepareUploadFile(file);
-          if (preparedFile.size > UPLOAD_MAX_BYTES) {
+          if (preparedFile.size > BOARD_UPLOAD_MAX_BYTES) {
             throw createUploadTooLargeError(preparedFile);
           }
 
@@ -667,7 +668,9 @@
     }
   }
 
-  function openFilePicker() {
+  /** @param {'image' | 'video'} kind */
+  function openFilePicker(kind) {
+    selectedUploadKind = kind;
     fileInput?.click();
   }
 
@@ -1044,7 +1047,7 @@
     bind:this={fileInput}
     class="d-none"
     type="file"
-    accept="image/*,video/*"
+    accept={selectedUploadKind === 'image' ? 'image/*' : 'video/*'}
     multiple
     onchange={handleFileChange}
   />
@@ -1059,7 +1062,7 @@
         type="button"
         aria-label="이미지 업로드"
         title="이미지 업로드"
-        onclick={openFilePicker}
+        onclick={() => openFilePicker('image')}
       >
         <span class="lexical-toolbar__media-icon" aria-hidden="true">🏞️</span>
       </button>
@@ -1068,7 +1071,7 @@
         type="button"
         aria-label="동영상 업로드"
         title="동영상 업로드"
-        onclick={openFilePicker}
+        onclick={() => openFilePicker('video')}
       >
         <span class="lexical-toolbar__media-icon" aria-hidden="true">🎞️</span>
       </button>

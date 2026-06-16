@@ -7,11 +7,21 @@ const writePage = readFileSync(
 );
 const lexicalEditor = readFileSync('src/lib/components/LexicalEditor.svelte', 'utf8');
 const uploadRoute = readFileSync('src/routes/board/upload/+server.js', 'utf8');
+const uploadLimits = readFileSync('src/lib/util/uploadLimits.js', 'utf8');
+const dockerfile = readFileSync('Dockerfile', 'utf8');
+const dockerCompose = readFileSync('conf/docker-compose.yml', 'utf8');
 
 describe('write page video upload', () => {
   it('tries client-side ffmpeg compression before uploading videos', () => {
     expect(writePage).not.toContain('disableVideoCompression={true}');
     expect(lexicalEditor).toContain('serverCompressVideo');
+  });
+
+  it('uses different MIME filters for image and video upload buttons', () => {
+    expect(lexicalEditor).toContain("selectedUploadKind = $state(/** @type {'image' | 'video'} */ ('image'))");
+    expect(lexicalEditor).toContain("accept={selectedUploadKind === 'image' ? 'image/*' : 'video/*'}");
+    expect(lexicalEditor).toContain("onclick={() => openFilePicker('image')}");
+    expect(lexicalEditor).toContain("onclick={() => openFilePicker('video')}");
   });
 
   it('shows video compression progress while ffmpeg is running', () => {
@@ -40,14 +50,28 @@ describe('write page video upload', () => {
   });
 
   it('warns when the prepared upload is still over the 100MB upload limit', () => {
-    expect(lexicalEditor).toContain('UPLOAD_MAX_BYTES = 100 * 1024 * 1024');
-    expect(lexicalEditor).toContain('preparedFile.size > UPLOAD_MAX_BYTES');
+    expect(uploadLimits).toContain('BOARD_UPLOAD_MAX_BYTES = 100 * 1024 * 1024');
+    expect(lexicalEditor).toContain('preparedFile.size > BOARD_UPLOAD_MAX_BYTES');
     expect(lexicalEditor).toContain('UploadTooLargeError');
-    expect(lexicalEditor).toContain('100MB 이하 파일만 업로드할 수 있어요');
+    expect(lexicalEditor).toContain('BOARD_UPLOAD_MAX_MB');
+    expect(lexicalEditor).toContain('MB 이하 파일만 업로드할 수 있어요');
   });
 
   it('shows the same size warning for server 413 responses', () => {
     expect(lexicalEditor).toContain('response.status === 413');
     expect(lexicalEditor).toContain('파일이 너무 큽니다');
+  });
+
+  it('sets adapter-node BODY_SIZE_LIMIT to the board upload limit in production', () => {
+    expect(uploadLimits).toContain("BOARD_UPLOAD_BODY_SIZE_LIMIT = `${BOARD_UPLOAD_MAX_MB}M`");
+    expect(dockerfile).toContain('ENV BODY_SIZE_LIMIT=100M');
+    expect(dockerCompose).toContain('BODY_SIZE_LIMIT: 100M');
+  });
+
+  it('returns a 413 upload response when request.formData hits the body limit', () => {
+    expect(uploadRoute).toContain('isBodySizeLimitError');
+    expect(uploadRoute).toContain('throw error(413');
+    expect(uploadRoute).toContain('Content-length of');
+    expect(uploadRoute).toContain('request body size exceeded');
   });
 });
