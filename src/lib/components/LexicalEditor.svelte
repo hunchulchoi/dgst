@@ -46,6 +46,7 @@
     editorData = $bindable(),
     onTitleUpdate,
     onLoadingChange,
+    onUploadStatusChange = undefined,
     insertUrlFromTitle = $bindable(/** @type {string | null} */ (null)),
     disableVideoCompression = false
   } = $props();
@@ -69,8 +70,10 @@
   /** @type {(() => void) | null} */
   let unregister = null;
   let loading = $state(false);
+  let uploadStatusText = $state('처리 중...');
   let isComposing = false;
   let editorFailureAlertShown = false;
+  const UPLOAD_MAX_BYTES = 100 * 1024 * 1024;
 
   /** @param {unknown} value */
   function getErrorMessage(value) {
@@ -86,6 +89,80 @@
   function isLexicalFailure(value) {
     const message = getErrorMessage(value);
     return /lexical/i.test(message);
+  }
+
+  /** @param {string} text */
+  function setUploadStatus(text) {
+    uploadStatusText = text;
+    onUploadStatusChange?.(text);
+  }
+
+  /** @param {File | Blob} file */
+  function getUploadKind(file) {
+    if (file.type.startsWith('video/')) return '동영상';
+    if (file.type.startsWith('image/')) return '이미지';
+    return '파일';
+  }
+
+  /** @param {number} milliseconds */
+  function formatDuration(milliseconds) {
+    const totalSeconds = Math.max(0, Math.round(milliseconds / 1000));
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    if (minutes <= 0) return `${seconds}초`;
+    return `${minutes}분 ${seconds}초`;
+  }
+
+  /**
+   * @param {number} progress
+   * @param {number} startedAt
+   */
+  function getVideoCompressionStatus(progress, startedAt) {
+    const normalizedProgress = Math.min(0.99, Math.max(0, progress));
+    const percent = Math.round(normalizedProgress * 100);
+    const elapsed = Date.now() - startedAt;
+    const elapsedText = formatDuration(elapsed);
+
+    if (normalizedProgress <= 0.01) {
+      return `동영상 압축 중... ${percent}% · 경과 ${elapsedText}`;
+    }
+
+    const remaining = elapsed * ((1 - normalizedProgress) / normalizedProgress);
+    return `동영상 압축 중... ${percent}% · 경과 ${elapsedText} · 남은 시간 약 ${formatDuration(remaining)}`;
+  }
+
+  /** @param {number} bytes */
+  function formatMegabytes(bytes) {
+    const mb = bytes / (1024 * 1024);
+    return `${mb >= 10 ? Math.ceil(mb) : mb.toFixed(1)}MB`;
+  }
+
+  /** @param {File | Blob} file */
+  function createUploadTooLargeError(file) {
+    return Object.assign(
+      new Error(
+        `Upload file is too large after preparation: ${file.size} bytes / ${formatMegabytes(file.size)}`
+      ),
+      {
+        name: 'UploadTooLargeError',
+        fileSize: file.size
+      }
+    );
+  }
+
+  /** @param {unknown} error */
+  function isUploadTooLargeError(error) {
+    return error instanceof Error && error.name === 'UploadTooLargeError';
+  }
+
+  /** @param {unknown} error */
+  function getUploadTooLargeText(error) {
+    const fileSize =
+      error && typeof error === 'object' && 'fileSize' in error
+        ? Number(/** @type {{ fileSize?: unknown }} */ (error).fileSize)
+        : 0;
+    const sizeText = Number.isFinite(fileSize) && fileSize > 0 ? formatMegabytes(fileSize) : '';
+    return `압축 후에도 파일이 ${sizeText ? `${sizeText}로 ` : ''}너무 큽니다. 100MB 이하 파일만 업로드할 수 있어요.`;
   }
 
   /** @extends {DecoratorNode<null>} */
@@ -413,6 +490,7 @@
   /** @param {File} file */
   async function compressVideo(file) {
     try {
+      setUploadStatus('동영상 압축 준비 중...');
       await Promise.race([
         ensureFfmpegLoaded(),
         new Promise((_, reject) =>
@@ -422,27 +500,40 @@
 
       if (!ffmpeg || !fetchFile) return file;
 
+      setUploadStatus('동영상 압축 중... 0%');
       await ffmpeg.writeFile('input.mp4', await fetchFile(file));
-      await ffmpeg.exec([
-        '-i',
-        'input.mp4',
-        '-vf',
-        "scale='min(640,iw)':'min(640,ih)':force_original_aspect_ratio=decrease,pad=ceil(iw/2)*2:ceil(ih/2)*2",
-        '-c:v',
-        'libx264',
-        '-crf',
-        '28',
-        '-preset',
-        'medium',
-        '-c:a',
-        'aac',
-        '-b:a',
-        '128k',
-        '-pix_fmt',
-        'yuv420p',
-        'output.mp4'
-      ]);
+      const compressionStartedAt = Date.now();
+      const progressHandler = (/** @type {{ progress?: number }} */ event) => {
+        if (typeof event.progress !== 'number' || !Number.isFinite(event.progress)) return;
+        setUploadStatus(getVideoCompressionStatus(event.progress, compressionStartedAt));
+      };
 
+      ffmpeg.on?.('progress', progressHandler);
+      try {
+        await ffmpeg.exec([
+          '-i',
+          'input.mp4',
+          '-vf',
+          "scale='min(640,iw)':'min(640,ih)':force_original_aspect_ratio=decrease,pad=ceil(iw/2)*2:ceil(ih/2)*2",
+          '-c:v',
+          'libx264',
+          '-crf',
+          '28',
+          '-preset',
+          'medium',
+          '-c:a',
+          'aac',
+          '-b:a',
+          '128k',
+          '-pix_fmt',
+          'yuv420p',
+          'output.mp4'
+        ]);
+      } finally {
+        ffmpeg.off?.('progress', progressHandler);
+      }
+
+      setUploadStatus('동영상 압축 마무리 중...');
       const data = await ffmpeg.readFile('output.mp4');
       const bytes = data instanceof Uint8Array ? data : new TextEncoder().encode(String(data));
       const blob = new Blob([/** @type {BlobPart} */ (bytes)], { type: 'video/mp4' });
@@ -450,6 +541,15 @@
       return new File([blob], file.name.replace(/\.[^.]+$/, '.mp4'), { type: 'video/mp4' });
     } catch (error) {
       console.warn('Lexical video compression failed; uploading original file:', error);
+      reportClientError(error, {
+        type: 'lexical-video-compression-failed',
+        message: 'Lexical video compression failed; uploading original file',
+        pathname: typeof location !== 'undefined' ? location.pathname : undefined,
+        href: typeof location !== 'undefined' ? location.href : undefined,
+        search: typeof location !== 'undefined' ? location.search : undefined,
+        importTarget: '$lib/components/LexicalEditor.svelte',
+        phase: 'video-compression'
+      });
       return file;
     }
   }
@@ -457,6 +557,7 @@
   /** @param {File} file */
   async function prepareUploadFile(file) {
     if (file.type.startsWith('image/')) {
+      setUploadStatus('이미지 변환 중...');
       let prepared = await convertHeicToJpeg(file);
       if (prepared.type !== 'image/webp') {
         const webp = await convertToWebP(prepared, { width: 1400, quality: 0.85 });
@@ -480,12 +581,21 @@
   async function uploadAndInsertFiles(files) {
     if (!editor || files.length === 0) return;
     loading = true;
+    /** @type {File | null} */
+    let failedUploadFile = null;
 
     try {
       for (const file of files) {
         uploadPlus?.();
+        failedUploadFile = file;
         try {
+          setUploadStatus(`${getUploadKind(file)} 준비 중...`);
           const preparedFile = await prepareUploadFile(file);
+          if (preparedFile.size > UPLOAD_MAX_BYTES) {
+            throw createUploadTooLargeError(preparedFile);
+          }
+
+          setUploadStatus(`${getUploadKind(preparedFile)} 업로드 중...`);
           const shouldAskServerToCompressVideo =
             file.type.startsWith('video/') && preparedFile === file && !disableVideoCompression;
           const formData = new FormData();
@@ -501,6 +611,9 @@
           });
 
           if (!response.ok) {
+            if (response.status === 413) {
+              throw createUploadTooLargeError(preparedFile);
+            }
             throw new Error(`Upload failed: ${response.status}`);
           }
 
@@ -523,17 +636,34 @@
           uploadMinus?.();
         }
       }
+      failedUploadFile = null;
       syncEditorData();
     } catch (error) {
       console.error('Lexical upload failed:', error);
+      const uploadFailureType = failedUploadFile?.type.startsWith('image/')
+        ? 'lexical-image-upload-failed'
+        : failedUploadFile?.type.startsWith('video/')
+          ? 'lexical-video-upload-failed'
+          : 'lexical-file-upload-failed';
+      reportClientError(error, {
+        type: uploadFailureType,
+        message: 'Lexical file upload failed',
+        pathname: typeof location !== 'undefined' ? location.pathname : undefined,
+        href: typeof location !== 'undefined' ? location.href : undefined,
+        search: typeof location !== 'undefined' ? location.search : undefined,
+        importTarget: '$lib/components/LexicalEditor.svelte',
+        phase: 'file-upload'
+      });
+      const isTooLarge = isUploadTooLargeError(error);
       await swalFire({
         icon: 'error',
-        title: '업로드 실패',
-        text: '파일 업로드에 실패했습니다.',
+        title: isTooLarge ? '파일이 너무 큽니다' : '업로드 실패',
+        text: isTooLarge ? getUploadTooLargeText(error) : '파일 업로드에 실패했습니다.',
         confirmButtonText: '확인'
       });
     } finally {
       loading = false;
+      setUploadStatus('처리 중...');
     }
   }
 
@@ -1078,7 +1208,7 @@
 
   <div class="lexical-editor__box" class:loading>
     {#if loading}
-      <div class="lexical-editor__loading">처리 중...</div>
+      <div class="lexical-editor__loading">{uploadStatusText}</div>
     {/if}
     <div
       bind:this={editorElement}

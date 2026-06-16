@@ -34,6 +34,14 @@ const authCheck = vi.hoisted(() => ({
   checkAndLogSessionDevice: vi.fn()
 }));
 
+const logger = vi.hoisted(() => ({
+  error: vi.fn()
+}));
+
+const formatErrorTrace = vi.hoisted(() => ({
+  traceFromUnknown: vi.fn(() => 'trace')
+}));
+
 const submitDedup = vi.hoisted(() => ({
   buildSubmitFingerprint: vi.fn(),
   tryAcquireSubmitDedup: vi.fn()
@@ -45,6 +53,8 @@ vi.mock('$lib/server/alarm/alarmService.js', () => alarmService);
 vi.mock('$lib/util/fileUpload.js', () => fileUpload);
 vi.mock('$lib/util/tree.js', () => treeModule);
 vi.mock('$lib/server/auth/checkSessionDevice.js', () => authCheck);
+vi.mock('$lib/util/logger.js', () => ({ default: logger }));
+vi.mock('$lib/util/formatErrorTrace.js', () => formatErrorTrace);
 vi.mock('$lib/server/submitDedup.js', () => submitDedup);
 
 describe('board comment route auth', () => {
@@ -169,5 +179,45 @@ describe('board comment route auth', () => {
       image: null
     });
     expect(response.status).toBe(200);
+  });
+
+  it('logs structured errors when comment creation fails', async () => {
+    submitDedup.buildSubmitFingerprint.mockReturnValue('fingerprint');
+    submitDedup.tryAcquireSubmitDedup.mockResolvedValue(true);
+    commentRepo.createComment.mockRejectedValue(new Error('database down'));
+
+    const { POST } =
+      await import('../src/routes/board/[boardId=boardId]/[[pageNo=integer]]/[articleId]/comment/+server.js');
+
+    const formData = new FormData();
+    formData.set('content', 'new comment');
+
+    await expect(
+      POST({
+        params: { boardId: 'free', articleId: 'article-1' },
+        locals: {
+          auth: vi.fn().mockResolvedValue({
+            user: {
+              nickname: 'session-user',
+              email: 'session@example.com'
+            }
+          })
+        },
+        request: {
+          formData: vi.fn().mockResolvedValue(formData)
+        }
+      })
+    ).rejects.toMatchObject({ status: 500 });
+
+    expect(logger.error).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: '[board.comment] create failed',
+        boardId: 'free',
+        articleId: 'article-1',
+        email: 'session@example.com',
+        errorMessage: 'database down',
+        trace: 'trace'
+      })
+    );
   });
 });

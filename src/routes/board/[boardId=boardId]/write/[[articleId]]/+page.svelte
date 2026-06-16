@@ -171,6 +171,7 @@
   });
 
   let uploading = $state(0);
+  let uploadStatusText = $state('파일을 업로드 중입니다...');
   let formSubmitting = $state(false);
   let isLoadingOG = $state(false); // OG 정보 로딩 중 상태
   let insertUrlFromTitle = $state(/** @type {string | null} */ (null)); // 제목에서 본문으로 이동할 URL
@@ -212,6 +213,11 @@
    */
   function handleLoadingChange(loading) {
     isLoadingOG = loading;
+  }
+
+  /** @param {string} status */
+  function handleUploadStatusChange(status) {
+    uploadStatusText = status || '파일을 업로드 중입니다...';
   }
 
   let prevTitleLength = 0;
@@ -519,6 +525,7 @@
           {uploadMinus}
           onTitleUpdate={handleTitleUpdate}
           onLoadingChange={handleLoadingChange}
+          onUploadStatusChange={handleUploadStatusChange}
         />
       {:else if editorLoadError}
         <div class="alert alert-danger my-4 text-center" role="alert">
@@ -555,7 +562,7 @@
             저장
           </Button>
           {#if uploading > 0}
-            <Tooltip isOpen={uploading > 0} target="uploadBtn">이미지 업로드 중입니다.</Tooltip>
+            <Tooltip isOpen={uploading > 0} target="uploadBtn">{uploadStatusText}</Tooltip>
           {:else if isLoadingOG}
             <Tooltip isOpen={isLoadingOG} target="uploadBtn">링크 정보를 가져오는 중입니다.</Tooltip
             >
@@ -574,7 +581,7 @@
     <Spinner color="light" style="width: 4rem; height: 4rem;" />
     <span class="text-white mt-3 fw-bold fs-5">
       {uploading > 0
-        ? '이미지를 업로드 중입니다...'
+        ? uploadStatusText
         : formSubmitting
           ? '글을 저장 중입니다...'
           : '링크 정보를 분석 중입니다...'}

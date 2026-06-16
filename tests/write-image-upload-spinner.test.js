@@ -9,7 +9,8 @@ const writePage = readFileSync(
 describe('write page image upload spinner', () => {
   it('shows the blocking spinner overlay while an image upload is in progress', () => {
     expect(writePage).toContain('{#if formSubmitting || uploading > 0 || isLoadingOG}');
-    expect(writePage).toContain('이미지를 업로드 중입니다...');
+    expect(writePage).toContain('uploadStatusText');
+    expect(writePage).toContain('파일을 업로드 중입니다...');
   });
 
   it('shows the blocking spinner overlay while the article is being submitted', () => {
