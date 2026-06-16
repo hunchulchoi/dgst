@@ -68,6 +68,24 @@
   );
   const boardChromeConnect = $derived(Boolean(pathname?.startsWith('/board')) || pathname === '/');
 
+  async function refreshUnreadAlarmCount() {
+    if (!session?.user?.nickname) {
+      alarmCount.set(0);
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/alarm/unread-count', {
+        headers: { Accept: 'application/json' }
+      });
+      if (!response.ok) return;
+      const body = await response.json();
+      alarmCount.set(body.count ?? 0);
+    } catch {
+      // 탭 reload 자체는 유지한다. layout 쪽 route refresh에서도 같은 API를 다시 시도한다.
+    }
+  }
+
   /** 자유게시판 탭 — 목록 reload + blur */
   /** @param {MouseEvent} e */
   async function handleFreeBoardTabClick(e) {
@@ -85,6 +103,7 @@
       }
 
       await invalidate('board-list');
+      await refreshUnreadAlarmCount();
     } finally {
       boardListReloading.set(false);
     }

@@ -7,6 +7,7 @@ const articlePage = readFileSync(
   'utf8'
 );
 const alarmPage = readFileSync('src/routes/board/alarm/+page.svelte', 'utf8');
+const header = readFileSync('src/lib/components/header.svelte', 'utf8');
 
 describe('route alarm refresh', () => {
   it('refreshes unread alarm count after every route navigation', () => {
@@ -15,6 +16,16 @@ describe('route alarm refresh', () => {
     expect(layout).toContain("fetch('/api/alarm/unread-count'");
     expect(layout).toContain('alarmCount.set(body.count ?? 0)');
     expect(layout).toContain('void refreshUnreadAlarmCount();');
+  });
+
+  it('refreshes unread alarm count when the free-board tab reloads without route navigation', () => {
+    expect(header).toContain('async function refreshUnreadAlarmCount()');
+    expect(header).toContain("fetch('/api/alarm/unread-count'");
+    expect(header).toContain('alarmCount.set(body.count ?? 0)');
+    expect(header).toContain('await refreshUnreadAlarmCount();');
+    expect(header.indexOf('await refreshUnreadAlarmCount();')).toBeGreaterThan(
+      header.indexOf("await invalidate('board-list');")
+    );
   });
 
   it('refreshes unread alarm count after a successful comment write', () => {
