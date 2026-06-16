@@ -26,16 +26,18 @@ export async function POST({ request, locals }) {
       throw error(400, { message: '업로드할 파일이 없습니다.' });
     }
     uploadFile = upload;
+    const serverCompressVideo = data.get('serverCompressVideo') === 'true';
 
     logger.info({
       message: 'Image upload request',
       fileName: uploadFile?.name,
       fileSize: uploadFile?.size,
       fileType: uploadFile?.type,
+      serverCompressVideo,
       user: email
     });
 
-    const res = await write(uploadFile, email, 'jjal');
+    const res = await write(uploadFile, email, 'jjal', { compressVideo: serverCompressVideo });
 
     logger.info({
       message: 'Image upload success',

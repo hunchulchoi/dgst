@@ -108,13 +108,12 @@
       });
     }
 
-    // 모바일에서 제목 입력칸으로 스크롤하고 포커스
+    // 모바일에서 제목 입력칸이 상단에 붙지 않도록 중앙 근처로만 스크롤
     setTimeout(() => {
       const titleInput = document.getElementById('title');
       if (titleInput) {
         // 제목 입력칸으로 스크롤
         titleInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        titleInput.focus({ preventScroll: true });
       }
     }, 100); // DOM 렌더링 완료 후 실행
   });

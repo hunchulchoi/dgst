@@ -446,6 +446,7 @@
       const data = await ffmpeg.readFile('output.mp4');
       const bytes = data instanceof Uint8Array ? data : new TextEncoder().encode(String(data));
       const blob = new Blob([/** @type {BlobPart} */ (bytes)], { type: 'video/mp4' });
+      if (blob.size <= 0 || blob.size >= file.size) return file;
       return new File([blob], file.name.replace(/\.[^.]+$/, '.mp4'), { type: 'video/mp4' });
     } catch (error) {
       console.warn('Lexical video compression failed; uploading original file:', error);
@@ -485,8 +486,13 @@
         uploadPlus?.();
         try {
           const preparedFile = await prepareUploadFile(file);
+          const shouldAskServerToCompressVideo =
+            file.type.startsWith('video/') && preparedFile === file && !disableVideoCompression;
           const formData = new FormData();
           formData.append('upload', preparedFile);
+          if (shouldAskServerToCompressVideo) {
+            formData.set('serverCompressVideo', 'true');
+          }
 
           const response = await fetch('/board/upload', {
             method: 'POST',

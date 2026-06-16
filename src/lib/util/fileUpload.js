@@ -8,6 +8,7 @@ import { error } from '@sveltejs/kit';
 import path from 'path';
 import sharp from 'sharp';
 import logger from './logger';
+import { execFile } from 'child_process';
 
 /**
  * @param {string} _name
@@ -36,11 +37,25 @@ function safeString(_name, _path) {
 }
 
 /**
+ * @param {string[]} args
+ * @returns {Promise<void>}
+ */
+function runFfmpeg(args) {
+  return new Promise((resolve, reject) => {
+    execFile('ffmpeg', args, { timeout: 120000 }, (err) => {
+      if (err) reject(err);
+      else resolve();
+    });
+  });
+}
+
+/**
  * @param {File} file
  * @param {string | undefined | null} email
  * @param {string} [preservePath='jjal']
+ * @param {{ compressVideo?: boolean }} [options]
  */
-export async function write(file, email, preservePath = 'jjal') {
+export async function write(file, email, preservePath = 'jjal', options = {}) {
   try {
     logger.info({
       fileName: file.name,
@@ -172,6 +187,56 @@ export async function write(file, email, preservePath = 'jjal') {
           logger.error({ message: 'Image to WebP conversion failed', error: err });
           // 변환 실패 시 기존 동작처럼 원본 파일 유지
           if (!fileWritten) writeOriginalFile();
+        }
+      }
+    } else if (file.type.startsWith('video') && options.compressVideo) {
+      const inputPath = `${fullPath}.input`;
+      const compressedFileName = `${fileName.substring(0, fileName.lastIndexOf('.'))}.mp4`;
+      const compressedPath = `${UPLOAD_PATH}${dir}/${compressedFileName}`;
+
+      try {
+        fs.writeFileSync(inputPath, fileBuffer);
+        await runFfmpeg([
+          '-y',
+          '-i',
+          inputPath,
+          '-vf',
+          "scale='min(640,iw)':'min(640,ih)':force_original_aspect_ratio=decrease,pad=ceil(iw/2)*2:ceil(ih/2)*2",
+          '-c:v',
+          'libx264',
+          '-crf',
+          '28',
+          '-preset',
+          'veryfast',
+          '-c:a',
+          'aac',
+          '-b:a',
+          '128k',
+          '-pix_fmt',
+          'yuv420p',
+          compressedPath
+        ]);
+
+        if (!fs.existsSync(compressedPath)) {
+          throw new Error('Compressed video was not created');
+        }
+
+        fullPath = compressedPath;
+        fileName = compressedFileName;
+        fileWritten = true;
+
+        logger.info({
+          fileName,
+          message: 'Video compressed with server ffmpeg fallback'
+        });
+      } catch (err) {
+        logger.error({ message: 'Server video compression failed; saving original', error: err });
+        if (!fileWritten) writeOriginalFile();
+      } finally {
+        try {
+          if (fs.existsSync(inputPath)) fs.unlinkSync(inputPath);
+        } catch (cleanupErr) {
+          logger.warn({ message: 'Failed to remove temporary video input', error: cleanupErr });
         }
       }
     } else {

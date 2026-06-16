@@ -20,11 +20,13 @@ const mocks = vi.hoisted(() => {
       existsSync: vi.fn(() => true),
       mkdirSync: vi.fn(),
       writeFileSync: vi.fn(),
+      unlinkSync: vi.fn(),
       statSync: vi.fn(() => ({ size: finalBuffer.length })),
       unlink: vi.fn(),
       renameSync: vi.fn(),
       readdirSync: vi.fn(() => [])
-    }
+    },
+    execFile: vi.fn((command, args, options, callback) => callback(null))
   };
 });
 
@@ -33,6 +35,10 @@ vi.mock('$env/static/private', () => ({
 }));
 
 vi.mock('fs', () => mocks.fs);
+
+vi.mock('child_process', () => ({
+  execFile: mocks.execFile
+}));
 
 vi.mock('sharp', () => ({
   default: mocks.sharp
@@ -103,6 +109,35 @@ describe('fileUpload image resizing', () => {
     );
     expect(mocks.fs.unlink).not.toHaveBeenCalled();
     expect(mocks.fs.renameSync).not.toHaveBeenCalled();
+
+    vi.useRealTimers();
+  });
+
+  it('compresses videos on the server when client compression failed', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-06-16T00:00:00.000Z'));
+
+    const { write } = await import('../src/lib/util/fileUpload.js');
+    const sourceBytes = Buffer.alloc(1024 * 1024 + 1, 7);
+    const video = new File([sourceBytes], 'clip.mov', { type: 'video/quicktime' });
+
+    const url = await write(video, 'person@example.com', 'jjal', { compressVideo: true });
+
+    expect(url).toBe('/images/jjal/2026/6/16/persone_clip_1781568000000.mp4');
+    expect(mocks.execFile).toHaveBeenCalledWith(
+      'ffmpeg',
+      expect.arrayContaining(['-i', expect.stringContaining('.input')]),
+      expect.objectContaining({ timeout: 120000 }),
+      expect.any(Function)
+    );
+    expect(mocks.fs.writeFileSync).toHaveBeenCalledWith(
+      '/tmp/dgst-upload-test/jjal/2026/6/16/persone_clip_1781568000000.mov.input',
+      expect.any(Buffer)
+    );
+    expect(mocks.fs.writeFileSync).not.toHaveBeenCalledWith(
+      '/tmp/dgst-upload-test/jjal/2026/6/16/persone_clip_1781568000000.mov',
+      expect.any(Buffer)
+    );
 
     vi.useRealTimers();
   });

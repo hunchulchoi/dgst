@@ -7,9 +7,9 @@ const writePage = readFileSync(
 );
 
 describe('write page mobile title positioning', () => {
-  it('does not align the focused title field to the viewport top on mount', () => {
+  it('does not auto-focus or align the title field to the viewport top on mount', () => {
     expect(writePage).not.toContain("block: 'start'");
     expect(writePage).toContain("block: 'center'");
-    expect(writePage).toContain('focus({ preventScroll: true })');
+    expect(writePage).not.toContain('titleInput.focus');
   });
 });

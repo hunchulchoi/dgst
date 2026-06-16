@@ -4,7 +4,7 @@
 
 <footer class="site-footer-chrome mt-4">
   <Row class="mx-0 mb-3">
-    <Col class="p-2 border-top border-secondary-subtle">
+    <Col class="p-2 border-top border-secondary-subtle text-center">
       <div
         class="footer-brand-line d-inline-flex flex-row flex-nowrap align-items-center justify-content-center gap-2 text-muted"
       >
