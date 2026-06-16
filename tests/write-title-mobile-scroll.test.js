@@ -7,9 +7,14 @@ const writePage = readFileSync(
 );
 
 describe('write page mobile title positioning', () => {
-  it('does not auto-focus or align the title field to the viewport top on mount', () => {
+  it('keeps the title field visible after mobile layout and browser scroll restoration settle', () => {
+    expect(writePage).toContain('keepWriteTitleVisible');
+    expect(writePage).toContain("import { onMount, tick } from 'svelte'");
+    expect(writePage).toContain('await tick();');
+    expect(writePage).toContain('getBoundingClientRect');
+    expect(writePage).toContain('window.scrollTo({');
+    expect(writePage).toContain('setTimeout(keepWriteTitleVisible');
     expect(writePage).not.toContain("block: 'start'");
-    expect(writePage).toContain("block: 'center'");
     expect(writePage).not.toContain('titleInput.focus');
   });
 });

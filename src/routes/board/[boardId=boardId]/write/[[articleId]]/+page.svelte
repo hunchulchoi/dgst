@@ -1,5 +1,5 @@
 <script>
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import {
     Button,
     Col,
@@ -64,13 +64,6 @@
 
   const { boardId, articleId } = $page.params;
 
-  /** @type {import('@ffmpeg/ffmpeg').FFmpeg | null} */
-  let ffmpeg = null;
-  /** @type {typeof import('@ffmpeg/util').fetchFile | null} */
-  let fetchFile = null;
-  /** @type {Promise<void> | null} */
-  let ffmpegLoadPromise = null;
-
   const uploadPlus = () => {
     uploading++;
   };
@@ -84,9 +77,35 @@
     window.dispatchEvent(new CustomEvent('dgst:normalize-mobile-layout-width'));
   }
 
+  function keepWriteTitleVisible() {
+    if (typeof window === 'undefined') return;
+    const titleInput = document.getElementById('title');
+    if (!titleInput) return;
+
+    const rect = titleInput.getBoundingClientRect();
+    const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
+    const safeTop = Math.max(24, window.visualViewport?.offsetTop ?? 0);
+    const titleTooHigh = rect.top < safeTop;
+    const titleTooLow = rect.bottom > viewportHeight * 0.45;
+
+    if (!titleTooHigh && !titleTooLow) return;
+
+    window.scrollTo({
+      top: Math.max(0, window.scrollY + rect.top - safeTop),
+      behavior: 'auto'
+    });
+  }
+
+  function scheduleWriteTitleVisibilityCheck() {
+    requestAnimationFrame(keepWriteTitleVisible);
+    setTimeout(keepWriteTitleVisible, 100);
+    setTimeout(keepWriteTitleVisible, 350);
+    setTimeout(keepWriteTitleVisible, 800);
+  }
+
   onMount(async () => {
     try {
-      QuillEditor = (await import('$lib/components/LexicalEditor.svelte')).default;
+      LexicalEditor = (await import('$lib/components/LexicalEditor.svelte')).default;
     } catch (error) {
       console.error('Lexical 에디터 로드 실패:', error);
       reportClientError(error, {
@@ -108,35 +127,9 @@
       });
     }
 
-    // 모바일에서 제목 입력칸이 상단에 붙지 않도록 중앙 근처로만 스크롤
-    setTimeout(() => {
-      const titleInput = document.getElementById('title');
-      if (titleInput) {
-        // 제목 입력칸으로 스크롤
-        titleInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
-    }, 100); // DOM 렌더링 완료 후 실행
+    await tick();
+    scheduleWriteTitleVisibilityCheck();
   });
-
-  async function ensureFfmpegLoaded() {
-    if (ffmpeg) return;
-    if (!ffmpegLoadPromise) {
-      ffmpegLoadPromise = (async () => {
-        const [{ FFmpeg }, ffmpegUtil] = await Promise.all([
-          import('@ffmpeg/ffmpeg'),
-          import('@ffmpeg/util')
-        ]);
-
-        fetchFile = ffmpegUtil.fetchFile;
-        ffmpeg = new FFmpeg();
-        await ffmpeg.load();
-      })().finally(() => {
-        ffmpegLoadPromise = null;
-      });
-    }
-
-    await ffmpegLoadPromise;
-  }
 
   async function list() {
     if (title || content) {
@@ -177,11 +170,11 @@
   let insertUrlFromTitle = $state(/** @type {string | null} */ (null)); // 제목에서 본문으로 이동할 URL
 
   /** @type {import('svelte').Component | null} */
-  let QuillEditor = $state(null);
+  let LexicalEditor = $state(null);
   let editorLoadError = $state(false);
 
   /** @type {{ focusEditor: () => void; getEditorHtml?: () => string } | null} */
-  let quillEditorRef = $state(null);
+  let lexicalEditorRef = $state(null);
 
   /**
    * 제목 입력에서 Tab → 에디터 본문으로 포커스 (툴바 건너뜀)
@@ -193,7 +186,7 @@
     }
 
     event.preventDefault();
-    quillEditorRef?.focusEditor();
+    lexicalEditorRef?.focusEditor();
   }
 
   /**
@@ -247,7 +240,7 @@
       // URL인 경우
       event.preventDefault(); // 기본 붙여넣기 동작 방지
 
-      // QuillEditor에 URL 삽입 (반응형 변수 업데이트)
+      // 에디터 본문에 URL 삽입 (반응형 변수 업데이트)
       insertUrlFromTitle = pastedText.trim();
 
       // 제목 입력란 비우기
@@ -296,82 +289,7 @@
     console.log('uploading', uploading);
   });
 
-  /** @param {File} file */
-  async function compressVideo(file) {
-    try {
-      uploadPlus();
-      await ensureFfmpegLoaded();
-
-      // 파일을 FFmpeg에 쓰기
-      if (!ffmpeg || !fetchFile) throw new Error('FFmpeg is not ready');
-      await ffmpeg.writeFile('input.mp4', await fetchFile(file));
-
-      // 비디오 압축 실행
-      await ffmpeg.exec([
-        '-i',
-        'input.mp4',
-        '-c:v',
-        'libx264',
-        '-crf',
-        '28', // 압축률 조정 (18-28 권장, 숫자가 높을수록 더 많이 압축)
-        '-preset',
-        'medium',
-        '-c:a',
-        'aac',
-        '-b:a',
-        '128k',
-        'output.mp4'
-      ]);
-
-      // 압축된 파일 가져오기
-      const compressedData = /** @type {Uint8Array} */ (await ffmpeg.readFile('output.mp4'));
-      const compressedBlob = new Blob([/** @type {any} */ (compressedData)], {
-        type: 'video/mp4'
-      });
-
-      uploadMinus();
-      return compressedBlob;
-    } catch (error) {
-      console.error('비디오 압축 중 오류 발생:', error);
-      uploadMinus();
-      throw error;
-    }
-  }
-
-  // CKEditor 설정을 위한 함수 추가
-  /** @param {{ file: Promise<File> }} loader */
-  function customUploadAdapter(loader) {
-    return {
-      upload: async () => {
-        try {
-          const file = await loader.file;
-
-          // 비디오 파일인 경우 압축 처리
-          if (file.type.startsWith('video/')) {
-            const compressedVideo = await compressVideo(file);
-            // 여기서 압축된 비디오를 서버에 업로드하는 로직 구현
-            // ... 서버 업로드 코드 ...
-          } else {
-            // 기존 이미지 업로드 로직
-            // ... 기존 코드 ...
-          }
-        } catch (error) {
-          console.error('업로드 중 오류 발생:', error);
-          throw error;
-        }
-      }
-    };
-  }
 </script>
-
-<svelte:head>
-  <style>
-    /* CKEditor 전용 스타일 제거 -> Quill 기준으로 정리 */
-    /* Quill 컨테이너 높이만 페이지 레벨에서 보강이 필요할 경우 사용 가능
-    .ql-container { height: 450px; }
-    */
-  </style>
-</svelte:head>
 
 <main class="container board-page-inset my-1">
   <Row class="write-form-card border border-secondary-subtle rounded-4 py-5 shadow">
@@ -395,7 +313,7 @@
         let latestContent = '';
         try {
           titleValue = title || '';
-          latestContent = quillEditorRef?.getEditorHtml?.() ?? content ?? '';
+          latestContent = lexicalEditorRef?.getEditorHtml?.() ?? content ?? '';
           content = latestContent;
         } catch (e) {
           formSubmitting = false;
@@ -516,9 +434,9 @@
           placeholder=" "
         />
       </FormGroup>
-      {#if QuillEditor}
-        <QuillEditor
-          bind:this={quillEditorRef}
+      {#if LexicalEditor}
+        <LexicalEditor
+          bind:this={lexicalEditorRef}
           bind:editorData={content}
           bind:insertUrlFromTitle
           {uploadPlus}
