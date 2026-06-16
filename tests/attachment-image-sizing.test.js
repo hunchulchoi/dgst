@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   applyAttachmentImageSizing,
   DEFAULT_ATTACHMENT_IMAGE_MAX_HEIGHT,
-  DESKTOP_PORTRAIT_ATTACHMENT_IMAGE_HEIGHT,
+  DESKTOP_PORTRAIT_ATTACHMENT_IMAGE_WIDTH,
   LONG_IMAGE_RATIO_THRESHOLD,
   getAttachmentImageMaxHeight,
   shouldApplyAttachmentImageSizing
@@ -60,9 +60,9 @@ describe('attachment image sizing', () => {
     );
 
     expect(style.maxWidth).toBe('100%');
-    expect(style.maxHeight).toBe(DESKTOP_PORTRAIT_ATTACHMENT_IMAGE_HEIGHT);
-    expect(style.width).toBe('auto');
-    expect(style.height).toBe(DESKTOP_PORTRAIT_ATTACHMENT_IMAGE_HEIGHT);
+    expect(style.maxHeight).toBe('');
+    expect(style.width).toBe(DESKTOP_PORTRAIT_ATTACHMENT_IMAGE_WIDTH);
+    expect(style.height).toBe('auto');
   });
 
   it('shows regular portrait photos at full content width on mobile', () => {
