@@ -9,7 +9,7 @@ import logger from '$lib/util/logger.js';
 
 const NAMESPACE = 'session';
 const SESSION_PREFIX = 'session:';
-const SESSION_CACHE_TTL = 300; // 5분
+const SESSION_CACHE_TTL = 1800; // 30분
 
 const SESSION_DATE_KEYS = ['expires'];
 

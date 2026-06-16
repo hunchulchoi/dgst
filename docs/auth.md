@@ -72,7 +72,7 @@ SvelteKit + Auth.js + Prisma 기반 인증 구조를 정리한 문서입니다.
 
 - **위치**: `src/lib/server/auth/sessionCache.js`
 - **키**: `dgst:session:<sessionToken>`
-- **TTL**: 세션 만료 시각까지 남은 시간
+- **TTL**: 30분
 - **무효화**: Adapter `deleteSession` 호출 시 삭제
 
 캐시는 `cache_kv` UNLOGGED 테이블에 저장됩니다. Postgres 재시작 후 비어도 서비스는 DB 미스로 복구됩니다.
