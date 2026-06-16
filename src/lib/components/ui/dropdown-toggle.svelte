@@ -32,7 +32,7 @@
   use:anchorRef
   class="{nav ? 'nav-link' : 'btn btn-link'} dropdown-toggle {className}"
   aria-expanded={ctx.getOpen()}
-  onclick={(e) => {
+  onclick={(/** @type {MouseEvent} */ e) => {
     e.stopPropagation();
     ctx.toggle();
   }}

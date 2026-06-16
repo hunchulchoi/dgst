@@ -64,7 +64,7 @@
     use:menuRef
     class="dropdown-menu show {end ? 'dropdown-menu-end' : ''} {className}"
     style={menuStyle}
-    onpointerdown={(e) => e.stopPropagation()}
+    onpointerdown={(/** @type {PointerEvent} */ e) => e.stopPropagation()}
   >
     {@render children?.()}
   </ul>

@@ -87,14 +87,13 @@ export async function findCommentById(id) {
 }
 
 /**
- * @template {import('@prisma/client').Prisma.CommentSelect | undefined} TSelect
  * @param {object} params
  * @param {string} params.id
  * @param {string} params.email
  * @param {string} params.boardId
  * @param {string} params.articleId
- * @param {TSelect} [params.select]
- * @returns {Promise<TSelect extends import('@prisma/client').Prisma.CommentSelect ? import('@prisma/client').Prisma.CommentGetPayload<{ select: TSelect }> | null : import('@prisma/client').Comment | null>}
+ * @param {import('@prisma/client').Prisma.CommentSelect} [params.select]
+ * @returns {Promise<any>}
  */
 export async function findOwnedActiveComment({ id, email, boardId, articleId, select }) {
   try {
@@ -149,7 +148,7 @@ export async function createComment(data) {
  * @param {string} id
  * @param {object} data
  * @param {string} [data.content]
- * @param {string} [data.image]
+ * @param {string | null} [data.image]
  * @param {string} [data.modifiedEmail]
  */
 export async function updateComment(id, data) {

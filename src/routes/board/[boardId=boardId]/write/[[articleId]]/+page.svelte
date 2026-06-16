@@ -113,8 +113,8 @@
       const titleInput = document.getElementById('title');
       if (titleInput) {
         // 제목 입력칸으로 스크롤
-        titleInput.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        titleInput.focus();
+        titleInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        titleInput.focus({ preventScroll: true });
       }
     }, 100); // DOM 렌더링 완료 후 실행
   });
@@ -154,7 +154,7 @@
 
       if (!result.isConfirmed) return false;
     }
-    goto(resolve(boardListPath(boardId ?? 'free')));
+    goto(resolve(/** @type {any} */ (boardListPath(boardId ?? 'free'))));
   }
 
   let title = $state('');

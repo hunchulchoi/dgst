@@ -226,7 +226,9 @@
     const currentPageNo = Number(pageNo) || 1;
 
     await invalidate('board-list');
-    goto(resolve(boardListPath(boardId, currentPageNo)), { replaceState: true });
+    goto(resolve(/** @type {any} */ (boardListPath(boardId, currentPageNo))), {
+      replaceState: true
+    });
   }
 
   /** @param {'reply' | 'comment'} target */

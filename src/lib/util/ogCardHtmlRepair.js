@@ -3,6 +3,7 @@
  * @returns {string}
  */
 function decodeHtmlEntities(value) {
+  /** @type {Record<string, string>} */
   const namedEntities = {
     amp: '&',
     lt: '<',
@@ -20,7 +21,7 @@ function decodeHtmlEntities(value) {
       return Number.isFinite(codePoint) ? String.fromCodePoint(codePoint) : match;
     }
 
-    return namedEntities[entity.toLowerCase()] ?? match;
+    return namedEntities[String(entity).toLowerCase()] ?? match;
   });
 }
 

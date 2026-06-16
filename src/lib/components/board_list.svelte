@@ -35,6 +35,7 @@
   const currentPageNo = $derived(Number(data.pageNo) || 1);
 
   /** 서버 목록 API가 `contentIcons()`로 생성한 아이콘 마크업만 신뢰한다. */
+  /** @param {unknown} content */
   function getTrustedArticlePreviewHtml(content) {
     return String(content ?? '');
   }
@@ -54,7 +55,7 @@
 
     e.preventDefault();
     const path = boardListPath(boardId, target);
-    goto(resolve(path));
+    goto(resolve(/** @type {any} */ (path)));
   }
 
   /** @param {MouseEvent} e */

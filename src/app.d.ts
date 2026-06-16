@@ -28,6 +28,7 @@ declare global {
     interface Locals {
       getSession: () => Promise<Session | null>;
       auth: () => Promise<Session | null>;
+      deviceId?: string;
     }
     interface PageData {
       session: Session | null;

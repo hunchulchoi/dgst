@@ -121,7 +121,7 @@ export const load = async ({ params, locals }) => {
   const session = await locals.auth();
   const { articleId, boardId } = params;
 
-  if (!session?.user?.nickname) {
+  if (!session?.user?.nickname || !session.user.email) {
     throw error(401, { message: '권한이 없습니다. 로그인 해 주세요' });
   }
 

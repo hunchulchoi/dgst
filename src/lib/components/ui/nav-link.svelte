@@ -11,7 +11,7 @@
   } = $props();
 
   const resolvedHref = $derived(
-    typeof href === 'string' && href.startsWith('/') ? resolve(href) : href
+    typeof href === 'string' && href.startsWith('/') ? resolve(/** @type {any} */ (href)) : href
   );
 </script>
 

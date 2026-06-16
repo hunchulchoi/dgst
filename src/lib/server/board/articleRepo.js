@@ -112,14 +112,13 @@ export async function findArticleById(id, boardId, state = 'write') {
 }
 
 /**
- * @template {import('@prisma/client').Prisma.ArticleSelect | undefined} TSelect
  * @param {object} params
  * @param {string} params.id
  * @param {string} params.email
  * @param {string} params.boardId
  * @param {string} [params.state]
- * @param {TSelect} [params.select]
- * @returns {Promise<TSelect extends import('@prisma/client').Prisma.ArticleSelect ? import('@prisma/client').Prisma.ArticleGetPayload<{ select: TSelect }> | null : import('@prisma/client').Article | null>}
+ * @param {import('@prisma/client').Prisma.ArticleSelect} [params.select]
+ * @returns {Promise<any>}
  */
 export async function findOwnedArticle({ id, email, boardId, state = 'write', select }) {
   try {
