@@ -161,6 +161,85 @@
     };
   }
 
+  async function getWebCodecsCapabilityDetails() {
+    const videoEncoder = typeof VideoEncoder !== 'undefined';
+    const videoDecoder = typeof VideoDecoder !== 'undefined';
+    const audioEncoder = typeof AudioEncoder !== 'undefined';
+    const videoConfig = {
+      codec: 'avc1.42E01E',
+      width: 640,
+      height: 360,
+      bitrate: 1_000_000,
+      framerate: 30
+    };
+    const avcMimeType = 'video/mp4; codecs="avc1.42E01E"';
+    /** @type {boolean | undefined} */
+    let avcEncoderSupported;
+    /** @type {string | undefined} */
+    let avcEncoderError;
+
+    if (videoEncoder && typeof VideoEncoder.isConfigSupported === 'function') {
+      try {
+        const support = await VideoEncoder.isConfigSupported(videoConfig);
+        avcEncoderSupported = support.supported;
+      } catch (error) {
+        avcEncoderError = getErrorMessage(error);
+      }
+    }
+
+    return {
+      videoEncoder,
+      videoDecoder,
+      audioEncoder,
+      avcMimeType,
+      avcEncoderSupported,
+      avcEncoderError
+    };
+  }
+
+  function isIOSLikeClient() {
+    const nav = typeof navigator !== 'undefined' ? navigator : undefined;
+    const ua = nav?.userAgent || '';
+    const platform = nav?.platform || '';
+    const maxTouchPoints =
+      nav && 'maxTouchPoints' in nav
+        ? Number(/** @type {{ maxTouchPoints?: unknown }} */ (nav).maxTouchPoints)
+        : 0;
+    return /iPad|iPhone|iPod/i.test(`${ua} ${platform}`) || (platform === 'MacIntel' && maxTouchPoints > 1);
+  }
+
+  function isSafariLikeClient() {
+    const ua = typeof navigator !== 'undefined' ? navigator.userAgent : '';
+    return /safari/i.test(ua) && !/(chrome|chromium|crios|fxios|edg|edgios|android)/i.test(ua);
+  }
+
+  /** @param {File} file */
+  function shouldUseServerVideoCompression(file) {
+    return file.type.startsWith('video/') && (isIOSLikeClient() || isSafariLikeClient());
+  }
+
+  /** @param {File} file */
+  async function reportServerVideoCompressionSelected(file) {
+    reportClientError(new Error('Server video compression selected'), {
+      type: 'lexical-video-server-compression-selected',
+      message: 'Lexical video will be compressed on the server',
+      pathname: typeof location !== 'undefined' ? location.pathname : undefined,
+      href: typeof location !== 'undefined' ? location.href : undefined,
+      search: typeof location !== 'undefined' ? location.search : undefined,
+      importTarget: '$lib/components/LexicalEditor.svelte',
+      phase: 'video-compression-preflight',
+      details: {
+        reason: 'ios-safari-webcodecs-preflight',
+        fileName: file.name,
+        fileType: file.type,
+        fileSize: file.size,
+        fileSizeMB: Number((file.size / (1024 * 1024)).toFixed(2)),
+        client: getClientCapabilityDetails(),
+        webCodecs: await getWebCodecsCapabilityDetails()
+      }
+    });
+  }
+
   /**
    * @param {typeof import('@ffmpeg/util').toBlobURL} toBlobURL
    * @param {string} url
@@ -668,6 +747,11 @@
 
     if (file.type.startsWith('video/')) {
       if (disableVideoCompression) return file;
+      if (shouldUseServerVideoCompression(file)) {
+        setUploadStatus('동영상은 서버에서 압축합니다...');
+        await reportServerVideoCompressionSelected(file);
+        return file;
+      }
       return compressVideo(file);
     }
 

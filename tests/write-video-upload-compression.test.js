@@ -74,6 +74,25 @@ describe('write page video upload', () => {
     expect(uploadRoute).toContain('compressVideo');
   });
 
+  it('skips client ffmpeg on iOS Safari/WebView and sends the video to server compression', () => {
+    expect(lexicalEditor).toContain('shouldUseServerVideoCompression(file)');
+    expect(lexicalEditor).toContain('isIOSLikeClient()');
+    expect(lexicalEditor).toContain('isSafariLikeClient()');
+    expect(lexicalEditor).toContain('동영상은 서버에서 압축합니다');
+    expect(lexicalEditor).toContain("formData.set('serverCompressVideo', 'true')");
+  });
+
+  it('logs WebCodecs capability before sending iOS Safari videos to server compression', () => {
+    expect(lexicalEditor).toContain('getWebCodecsCapabilityDetails');
+    expect(lexicalEditor).toContain('VideoEncoder');
+    expect(lexicalEditor).toContain('VideoDecoder');
+    expect(lexicalEditor).toContain('AudioEncoder');
+    expect(lexicalEditor).toContain('video/mp4; codecs="avc1.42E01E"');
+    expect(lexicalEditor).toContain("type: 'lexical-video-server-compression-selected'");
+    expect(lexicalEditor).toContain("reason: 'ios-safari-webcodecs-preflight'");
+    expect(lexicalEditor).toContain('webCodecs: await getWebCodecsCapabilityDetails()');
+  });
+
   it('warns when the prepared upload is still over the 100MB upload limit', () => {
     expect(uploadLimits).toContain('BOARD_UPLOAD_MAX_BYTES = 100 * 1024 * 1024');
     expect(lexicalEditor).toContain('preparedFile.size > BOARD_UPLOAD_MAX_BYTES');
@@ -90,6 +109,7 @@ describe('write page video upload', () => {
   it('sets adapter-node BODY_SIZE_LIMIT to the board upload limit in production', () => {
     expect(uploadLimits).toContain("BOARD_UPLOAD_BODY_SIZE_LIMIT = `${BOARD_UPLOAD_MAX_MB}M`");
     expect(dockerfile).toContain('ENV BODY_SIZE_LIMIT=100M');
+    expect(dockerfile).toContain('BODY_SIZE_LIMIT=100M exec node .');
     expect(dockerCompose).toContain('BODY_SIZE_LIMIT: 100M');
   });
 

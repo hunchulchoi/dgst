@@ -44,4 +44,4 @@ USER www-data
 EXPOSE 3000
 
 # 실행
-ENTRYPOINT ["node", "."]
+ENTRYPOINT ["sh", "-c", "BODY_SIZE_LIMIT=100M exec node ."]
