@@ -25,6 +25,10 @@ ENV BODY_SIZE_LIMIT=100M
 # RUN groupadd -g 999 www-data
 # RUN useradd -r -u 999 -g www-data www-data
 
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends ffmpeg \
+  && rm -rf /var/lib/apt/lists/*
+
 COPY --from=build /app/build .
 COPY --from=build /app/package.json .
 COPY --from=build /app/package-lock.json .

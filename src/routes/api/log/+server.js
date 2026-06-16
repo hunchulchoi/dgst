@@ -4,6 +4,31 @@ import logger from '$lib/util/logger.js';
 
 const MAX_BODY_BYTES = 16 * 1024;
 
+/**
+ * @param {unknown} value
+ * @param {number} depth
+ * @returns {unknown}
+ */
+function sanitizeClientLogDetails(value, depth = 0) {
+  if (value == null) return value;
+  if (typeof value === 'string') return value.slice(0, 500);
+  if (typeof value === 'number' || typeof value === 'boolean') return value;
+  if (Array.isArray(value)) {
+    if (depth >= 2) return '[Array]';
+    return value.slice(0, 20).map((item) => sanitizeClientLogDetails(item, depth + 1));
+  }
+  if (typeof value === 'object') {
+    if (depth >= 2) return '[Object]';
+    /** @type {Record<string, unknown>} */
+    const out = {};
+    for (const [key, nested] of Object.entries(value).slice(0, 40)) {
+      out[key.slice(0, 80)] = sanitizeClientLogDetails(nested, depth + 1);
+    }
+    return out;
+  }
+  return String(value).slice(0, 500);
+}
+
 export async function POST(event) {
   const { request } = event;
 
@@ -62,7 +87,10 @@ export async function POST(event) {
       }),
       ...(typeof logData.phase === 'string' && { phase: logData.phase.slice(0, 64) }),
       ...(typeof logData.clientAt === 'string' && { clientAt: logData.clientAt.slice(0, 32) }),
-      ...(typeof logData.errorId === 'string' && { errorId: logData.errorId.slice(0, 64) })
+      ...(typeof logData.errorId === 'string' && { errorId: logData.errorId.slice(0, 64) }),
+      ...(logData.details && typeof logData.details === 'object' && {
+        details: sanitizeClientLogDetails(logData.details)
+      })
     };
 
     // 로그 레벨에 따라 다른 logger 메서드 호출

@@ -8,6 +8,7 @@ const writePage = readFileSync(
 const lexicalEditor = readFileSync('src/lib/components/LexicalEditor.svelte', 'utf8');
 const uploadRoute = readFileSync('src/routes/board/upload/+server.js', 'utf8');
 const uploadLimits = readFileSync('src/lib/util/uploadLimits.js', 'utf8');
+const apiLogRoute = readFileSync('src/routes/api/log/+server.js', 'utf8');
 const dockerfile = readFileSync('Dockerfile', 'utf8');
 const dockerCompose = readFileSync('conf/docker-compose.yml', 'utf8');
 
@@ -59,6 +60,8 @@ describe('write page video upload', () => {
     const reportClientPageError = readFileSync('src/lib/util/reportClientPageError.js', 'utf8');
     expect(reportClientPageError).toContain('@property {Record<string, unknown>} [details]');
     expect(reportClientPageError).toContain('...(details && { details })');
+    expect(apiLogRoute).toContain('sanitizeClientLogDetails');
+    expect(apiLogRoute).toContain('details: sanitizeClientLogDetails(logData.details)');
   });
 
   it('reports failed image uploads to server logs', () => {
@@ -88,6 +91,11 @@ describe('write page video upload', () => {
     expect(uploadLimits).toContain("BOARD_UPLOAD_BODY_SIZE_LIMIT = `${BOARD_UPLOAD_MAX_MB}M`");
     expect(dockerfile).toContain('ENV BODY_SIZE_LIMIT=100M');
     expect(dockerCompose).toContain('BODY_SIZE_LIMIT: 100M');
+  });
+
+  it('installs ffmpeg in the production container for server-side video compression', () => {
+    expect(dockerfile).toContain('apt-get install -y --no-install-recommends ffmpeg');
+    expect(dockerfile).toContain('rm -rf /var/lib/apt/lists/*');
   });
 
   it('returns a 413 upload response when request.formData hits the body limit', () => {
