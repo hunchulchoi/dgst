@@ -16,6 +16,10 @@ describe('mobile layout width renormalization events', () => {
     expect(layout).toContain("window.addEventListener('dgst:normalize-mobile-layout-width'");
     expect(layout).toContain("window.removeEventListener('dgst:normalize-mobile-layout-width'");
     expect(layout).toContain('function scheduleMobileLayoutWidthNormalization()');
+    expect(layout).toContain('function resetHorizontalScrollPositions()');
+    expect(layout).toContain('document.documentElement.scrollLeft = 0');
+    expect(layout).toContain('document.querySelectorAll');
+    expect(layout).toContain("window.dispatchEvent(new Event('resize'))");
     expect(layout).toContain('setTimeout(scheduleMobileLayoutWidthNormalization, 120)');
     expect(layout).toContain('setTimeout(scheduleMobileLayoutWidthNormalization, 360)');
   });

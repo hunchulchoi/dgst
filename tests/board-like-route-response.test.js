@@ -21,7 +21,7 @@ describe('board like route responses', () => {
   it('returns only like summary fields for article likes', async () => {
     articleRepo.findArticleById.mockResolvedValue({
       id: 'article-1',
-      createdAt: new Date('2026-06-14T00:00:00.000Z')
+      createdAt: new Date(Date.now())
     });
     articleRepo.toggleArticleLike.mockResolvedValue({
       id: 'article-1',

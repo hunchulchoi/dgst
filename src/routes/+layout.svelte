@@ -118,10 +118,25 @@
     }
   });
 
+  function resetHorizontalScrollPositions() {
+    if (!browser) return;
+    document.documentElement.scrollLeft = 0;
+    document.body.scrollLeft = 0;
+    for (const element of document.querySelectorAll('*')) {
+      if (!(element instanceof HTMLElement)) continue;
+      if (element.scrollLeft !== 0) element.scrollLeft = 0;
+    }
+  }
+
   function scheduleMobileLayoutWidthNormalization() {
     if (!browser) return;
+    resetHorizontalScrollPositions();
     window.scrollTo(0, 0);
-    requestAnimationFrame(() => window.scrollTo(0, 0));
+    requestAnimationFrame(() => {
+      resetHorizontalScrollPositions();
+      window.dispatchEvent(new Event('resize'));
+      window.scrollTo(0, 0);
+    });
   }
 
   function normalizeMobileLayoutWidth() {
