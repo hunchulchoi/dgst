@@ -12,4 +12,17 @@ describe('comment image upload spinner', () => {
     expect(articlePage).toContain("commentLoadingMessage = '이미지를 업로드 중입니다...'");
     expect(articlePage).toContain('{commentLoadingMessage}');
   });
+
+  it('can upload and record audio into comment content', () => {
+    expect(articlePage).toContain("accept=\"image/*,audio/*\"");
+    expect(articlePage).toContain('appendCommentAudio');
+    expect(articlePage).toContain('uploadCommentAudioFile');
+    expect(articlePage).toContain('toggleCommentAudioRecording');
+    expect(articlePage).toContain('navigator.mediaDevices.getUserMedia({ audio: true })');
+    expect(articlePage).toContain('new MediaRecorder(stream)');
+    expect(articlePage).toContain('comment-recorded-audio');
+    expect(articlePage).toContain('<audio src="${escapeHtml(url)}" controls');
+    expect(articlePage).toContain('음성 파일 첨부');
+    expect(articlePage).toContain("commentLoadingMessage = '음성을 업로드 중입니다...'");
+  });
 });

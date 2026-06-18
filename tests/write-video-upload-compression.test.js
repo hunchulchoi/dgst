@@ -20,11 +20,25 @@ describe('write page video upload', () => {
   });
 
   it('uses different MIME filters for image and video upload buttons', () => {
-    expect(lexicalEditor).toContain("const accept = kind === 'image' ? 'image/*' : 'video/*'");
+    expect(lexicalEditor).toContain("const accept = kind === 'image' ? 'image/*' : kind === 'audio' ? 'audio/*' : 'video/*'");
     expect(lexicalEditor).toContain('fileInput.accept = accept');
     expect(lexicalEditor).toContain('accept={selectedUploadAccept}');
     expect(lexicalEditor).toContain("onclick={() => openFilePicker('image')}");
     expect(lexicalEditor).toContain("onclick={() => openFilePicker('video')}");
+    expect(lexicalEditor).toContain("onclick={() => openFilePicker('audio')}");
+    expect(lexicalEditor).toContain('aria-label="음성 파일 업로드"');
+  });
+
+  it('can record browser microphone audio and insert it as an audio upload', () => {
+    expect(lexicalEditor).toContain('navigator.mediaDevices.getUserMedia({ audio: true })');
+    expect(lexicalEditor).toContain('new MediaRecorder(stream)');
+    expect(lexicalEditor).toContain('recorded-audio');
+    expect(lexicalEditor).toContain('startAudioRecording');
+    expect(lexicalEditor).toContain('stopAudioRecording');
+    expect(lexicalEditor).toContain('toggleAudioRecording');
+    expect(lexicalEditor).toContain('uploadAndInsertFiles([file])');
+    expect(lexicalEditor).toContain('aria-label={isRecording ? \'음성 녹음 중지\' : \'음성 녹음 시작\'}');
+    expect(lexicalEditor).toContain('class:lexical-toolbar__button--recording={isRecording}');
   });
 
   it('shows video compression progress while ffmpeg is running', () => {

@@ -79,6 +79,13 @@
   let selectedUploadAccept = $state('image/*');
   let removeVideoAudio = $state(false);
   let extractVideoAudio = $state(false);
+  let isRecording = $state(false);
+  /** @type {MediaRecorder | null} */
+  let mediaRecorder = null;
+  /** @type {Blob[]} */
+  let recordedAudioChunks = [];
+  /** @type {MediaStream | null} */
+  let recordingStream = null;
   let isComposing = false;
   let editorFailureAlertShown = false;
   const FFMPEG_CORE_BASE_URL = 'https://unpkg.com/@ffmpeg/core@0.12.9/dist/umd';
@@ -1185,6 +1192,97 @@
     return file;
   }
 
+  function stopRecordingStream() {
+    recordingStream?.getTracks().forEach((track) => track.stop());
+    recordingStream = null;
+  }
+
+  function getRecordedAudioMimeType() {
+    if (typeof MediaRecorder === 'undefined') return 'audio/webm';
+    if (MediaRecorder.isTypeSupported?.('audio/webm;codecs=opus')) return 'audio/webm;codecs=opus';
+    if (MediaRecorder.isTypeSupported?.('audio/mp4')) return 'audio/mp4';
+    return 'audio/webm';
+  }
+
+  /** @param {string} mimeType */
+  function getRecordedAudioExtension(mimeType) {
+    return mimeType.includes('mp4') ? 'm4a' : 'webm';
+  }
+
+  async function startAudioRecording() {
+    if (isRecording) return;
+    if (
+      typeof navigator === 'undefined' ||
+      !navigator.mediaDevices?.getUserMedia ||
+      typeof MediaRecorder === 'undefined'
+    ) {
+      await swalFire({
+        icon: 'error',
+        title: '녹음 불가',
+        text: '이 브라우저에서는 음성 녹음을 사용할 수 없습니다.',
+        confirmButtonText: '확인'
+      });
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mimeType = getRecordedAudioMimeType();
+      const recorder = new MediaRecorder(stream);
+      recordedAudioChunks = [];
+      recordingStream = stream;
+      mediaRecorder = recorder;
+
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) recordedAudioChunks.push(event.data);
+      };
+
+      recorder.onstop = () => {
+        const recordedType = recorder.mimeType || mimeType;
+        const blob = new Blob(recordedAudioChunks, { type: recordedType });
+        recordedAudioChunks = [];
+        mediaRecorder = null;
+        isRecording = false;
+        stopRecordingStream();
+
+        if (blob.size <= 0) return;
+        const extension = getRecordedAudioExtension(recordedType);
+        const file = new File([blob], `recorded-audio-${Date.now()}.${extension}`, {
+          type: recordedType
+        });
+        void uploadAndInsertFiles([file]);
+      };
+
+      recorder.start();
+      isRecording = true;
+      setUploadStatus('음성 녹음 중...');
+    } catch (error) {
+      console.error('Audio recording failed:', error);
+      isRecording = false;
+      mediaRecorder = null;
+      stopRecordingStream();
+      await swalFire({
+        icon: 'error',
+        title: '녹음 실패',
+        text: '마이크 권한을 확인한 뒤 다시 시도해 주세요.',
+        confirmButtonText: '확인'
+      });
+    }
+  }
+
+  function stopAudioRecording() {
+    if (!isRecording || !mediaRecorder) return;
+    mediaRecorder.stop();
+  }
+
+  function toggleAudioRecording() {
+    if (isRecording) {
+      stopAudioRecording();
+      return;
+    }
+    void startAudioRecording();
+  }
+
   /** @param {File[]} files */
   async function chooseVideoUploadMode(files) {
     if (!files.some((file) => file.type.startsWith('video/'))) {
@@ -1348,9 +1446,9 @@
     }
   }
 
-  /** @param {'image' | 'video'} kind */
+  /** @param {'image' | 'video' | 'audio'} kind */
   function openFilePicker(kind) {
-    const accept = kind === 'image' ? 'image/*' : 'video/*';
+    const accept = kind === 'image' ? 'image/*' : kind === 'audio' ? 'audio/*' : 'video/*';
     selectedUploadAccept = accept;
     if (fileInput) {
       fileInput.accept = accept;
@@ -1703,6 +1801,13 @@
       editorElement.removeEventListener('dragover', handleDragOver);
       editorElement.removeEventListener('drop', handleDrop);
     }
+    if (isRecording && mediaRecorder) {
+      mediaRecorder.onstop = null;
+      mediaRecorder.stop();
+      mediaRecorder = null;
+      isRecording = false;
+    }
+    stopRecordingStream();
     editor?.setRootElement(null);
     editor = null;
   });
@@ -1761,6 +1866,25 @@
         onclick={() => openFilePicker('video')}
       >
         <span class="lexical-toolbar__media-icon" aria-hidden="true">🎞️</span>
+      </button>
+      <button
+        class="lexical-toolbar__button lexical-toolbar__button--media lexical-toolbar__button--media-audio"
+        type="button"
+        aria-label="음성 파일 업로드"
+        title="음성 파일 업로드"
+        onclick={() => openFilePicker('audio')}
+      >
+        <span class="lexical-toolbar__media-icon" aria-hidden="true">🎧</span>
+      </button>
+      <button
+        class="lexical-toolbar__button lexical-toolbar__button--media lexical-toolbar__button--media-record"
+        class:lexical-toolbar__button--recording={isRecording}
+        type="button"
+        aria-label={isRecording ? '음성 녹음 중지' : '음성 녹음 시작'}
+        title={isRecording ? '음성 녹음 중지' : '음성 녹음 시작'}
+        onclick={toggleAudioRecording}
+      >
+        <span class="lexical-toolbar__media-icon" aria-hidden="true">🎙️</span>
       </button>
     </div>
 
@@ -2039,6 +2163,31 @@
 
   .lexical-toolbar__button--media-video:hover {
     background: linear-gradient(135deg, #ff922b, #f43f5e);
+    color: #fff;
+  }
+
+  .lexical-toolbar__button--media-audio {
+    background: linear-gradient(135deg, #6b8e23, #0f766e);
+    box-shadow:
+      0 4px 12px rgba(15, 118, 110, 0.22),
+      inset 0 1px 0 rgba(255, 255, 255, 0.24);
+  }
+
+  .lexical-toolbar__button--media-audio:hover {
+    background: linear-gradient(135deg, #7da329, #12907f);
+    color: #fff;
+  }
+
+  .lexical-toolbar__button--media-record {
+    background: linear-gradient(135deg, #7c3aed, #c026d3);
+    box-shadow:
+      0 4px 12px rgba(124, 58, 237, 0.22),
+      inset 0 1px 0 rgba(255, 255, 255, 0.24);
+  }
+
+  .lexical-toolbar__button--media-record:hover,
+  .lexical-toolbar__button--recording {
+    background: linear-gradient(135deg, #dc2626, #f97316);
     color: #fff;
   }
 

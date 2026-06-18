@@ -14,7 +14,7 @@
   import { swalFire } from '$lib/util/swal.js';
 
   import { alarmCount } from '$lib/util/store.js';
-  import { onMount, tick } from 'svelte';
+  import { onDestroy, onMount, tick } from 'svelte';
   import BoardList from '$lib/components/board_list.svelte';
   import OGPreview from '$lib/components/OGPreview.svelte';
   import sanitizeHtml from 'sanitize-html';
@@ -231,6 +231,15 @@
     });
   }
 
+  /** @param {string} value */
+  function escapeHtml(value) {
+    return value
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;');
+  }
+
   /** @param {'reply' | 'comment'} target */
   function getCommentImageTarget(target) {
     return target === 'reply' ? reCommentImage : commentImage;
@@ -245,6 +254,47 @@
       reCommentImage = file;
     } else {
       commentImage = file;
+    }
+  }
+
+  /** @param {'comment' | 'reply' | 'edit'} target @param {string} url */
+  function appendCommentAudio(target, url) {
+    const audioHtml = `<audio src="${escapeHtml(url)}" controls style="max-width: 100%; width: 100%; display: block; margin: 0.5em 0;"></audio>`;
+    if (target === 'reply') {
+      reCommentContent = `${reCommentContent.trim() ? `${reCommentContent.trim()}\n` : ''}${audioHtml}`;
+      return;
+    }
+    if (target === 'edit') {
+      editCommentContent = `${editCommentContent.trim() ? `${editCommentContent.trim()}\n` : ''}${audioHtml}`;
+      return;
+    }
+    commentContent = `${commentContent.trim() ? `${commentContent.trim()}\n` : ''}${audioHtml}`;
+  }
+
+  /** @param {File} file @param {'comment' | 'reply' | 'edit'} target */
+  async function uploadCommentAudioFile(file, target = 'comment') {
+    commentLoadingMessage = '음성을 업로드 중입니다...';
+    commentLoading = true;
+
+    try {
+      const formData = new FormData();
+      formData.append('upload', file);
+      const response = await fetch('/board/upload', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include'
+      });
+
+      if (!response.ok) throw new Error(`Audio upload failed: ${response.status}`);
+      const body = await response.json();
+      const url = body?.url;
+      if (typeof url !== 'string') throw new Error('Audio upload response has no url');
+      appendCommentAudio(target, url);
+    } catch (error) {
+      console.error('댓글 음성 업로드 실패:', error);
+      toast('음성 업로드에 실패했습니다.', 'error');
+    } finally {
+      commentLoading = false;
     }
   }
 
@@ -265,12 +315,19 @@
         setCommentImageTarget(target, clipboardData.files[0]);
 
         event.preventDefault();
+      } else if (clipboardData.files?.length && clipboardData.files[0].type.startsWith('audio')) {
+        event.preventDefault();
+        await uploadCommentAudioFile(clipboardData.files[0], target);
+        return;
       } else return;
-    } else
-      setCommentImageTarget(
-        target,
-        /** @type {HTMLInputElement} */ (event.target).files?.[0] ?? null
-      );
+    } else {
+      const file = /** @type {HTMLInputElement} */ (event.target).files?.[0] ?? null;
+      if (file?.type.startsWith('audio')) {
+        await uploadCommentAudioFile(file, target);
+        return;
+      }
+      setCommentImageTarget(target, file);
+    }
 
     const selectedImage = getCommentImageTarget(target);
     if (selectedImage) {
@@ -369,6 +426,13 @@
 
   let commentLoading = $state(false);
   let commentLoadingMessage = $state('댓글 저장 중...');
+  let commentAudioRecordingTarget = $state(/** @type {'comment' | 'reply' | 'edit' | null} */ (null));
+  /** @type {MediaRecorder | null} */
+  let commentAudioRecorder = null;
+  /** @type {Blob[]} */
+  let commentAudioChunks = [];
+  /** @type {MediaStream | null} */
+  let commentAudioStream = null;
 
   // 댓글 수정 관련 상태
   let editingCommentId = $state('');
@@ -538,6 +602,90 @@
     }
   }
 
+  function stopCommentAudioStream() {
+    commentAudioStream?.getTracks().forEach((track) => track.stop());
+    commentAudioStream = null;
+  }
+
+  function getCommentAudioMimeType() {
+    if (typeof MediaRecorder === 'undefined') return 'audio/webm';
+    if (MediaRecorder.isTypeSupported?.('audio/webm;codecs=opus')) return 'audio/webm;codecs=opus';
+    if (MediaRecorder.isTypeSupported?.('audio/mp4')) return 'audio/mp4';
+    return 'audio/webm';
+  }
+
+  /** @param {string} mimeType */
+  function getCommentAudioExtension(mimeType) {
+    return mimeType.includes('mp4') ? 'm4a' : 'webm';
+  }
+
+  /** @param {'comment' | 'reply' | 'edit'} target */
+  async function startCommentAudioRecording(target) {
+    if (commentAudioRecorder) return;
+    if (
+      typeof navigator === 'undefined' ||
+      !navigator.mediaDevices?.getUserMedia ||
+      typeof MediaRecorder === 'undefined'
+    ) {
+      toast('이 브라우저에서는 음성 녹음을 사용할 수 없습니다.', 'error');
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mimeType = getCommentAudioMimeType();
+      const recorder = new MediaRecorder(stream);
+      commentAudioChunks = [];
+      commentAudioStream = stream;
+      commentAudioRecorder = recorder;
+      commentAudioRecordingTarget = target;
+
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) commentAudioChunks.push(event.data);
+      };
+
+      recorder.onstop = () => {
+        const recordedType = recorder.mimeType || mimeType;
+        const blob = new Blob(commentAudioChunks, { type: recordedType });
+        const uploadTarget = commentAudioRecordingTarget ?? target;
+        commentAudioChunks = [];
+        commentAudioRecorder = null;
+        commentAudioRecordingTarget = null;
+        stopCommentAudioStream();
+
+        if (blob.size <= 0) return;
+        const extension = getCommentAudioExtension(recordedType);
+        const file = new File([blob], `comment-recorded-audio-${Date.now()}.${extension}`, {
+          type: recordedType
+        });
+        void uploadCommentAudioFile(file, uploadTarget);
+      };
+
+      recorder.start();
+      commentLoadingMessage = '음성 녹음 중...';
+    } catch (error) {
+      console.error('댓글 음성 녹음 실패:', error);
+      commentAudioRecorder = null;
+      commentAudioRecordingTarget = null;
+      stopCommentAudioStream();
+      toast('마이크 권한을 확인한 뒤 다시 시도해 주세요.', 'error');
+    }
+  }
+
+  function stopCommentAudioRecording() {
+    commentAudioRecorder?.stop();
+  }
+
+  /** @param {'comment' | 'reply' | 'edit'} target */
+  function toggleCommentAudioRecording(target) {
+    if (commentAudioRecorder && commentAudioRecordingTarget === target) {
+      stopCommentAudioRecording();
+      return;
+    }
+    if (commentAudioRecorder) return;
+    void startCommentAudioRecording(target);
+  }
+
   // 댓글 수정 저장
   async function saveEditComment() {
     // 중복 클릭 방지
@@ -615,10 +763,19 @@
         editCommentImage = clipboardData.files[0];
         editCommentRemoveImage = false;
         event.preventDefault();
+      } else if (clipboardData.files?.length && clipboardData.files[0].type.startsWith('audio')) {
+        event.preventDefault();
+        void uploadCommentAudioFile(clipboardData.files[0], 'edit');
+        return;
       } else return;
     } else {
       const input = /** @type {HTMLInputElement | null} */ (event.target);
-      editCommentImage = input?.files?.[0] ?? null;
+      const file = input?.files?.[0] ?? null;
+      if (file?.type.startsWith('audio')) {
+        void uploadCommentAudioFile(file, 'edit');
+        return;
+      }
+      editCommentImage = file;
       if (editCommentImage) {
         editCommentRemoveImage = false;
       }
@@ -1154,6 +1311,16 @@
     applyAttachmentImagesIn(document);
   });
 
+  onDestroy(() => {
+    if (commentAudioRecorder) {
+      commentAudioRecorder.onstop = null;
+      commentAudioRecorder.stop();
+      commentAudioRecorder = null;
+      commentAudioRecordingTarget = null;
+    }
+    stopCommentAudioStream();
+  });
+
   $effect(() => {
     if (!browser || !data.article?._id) return;
     const articleId = data.article._id;
@@ -1591,9 +1758,22 @@
                               type="file"
                               bind:this={editCommentImageEl}
                               onchange={handleEditImageChange}
-                              accept="image/*"
+                              accept="image/*,audio/*"
                               class="form-control m-2"
+                              aria-label="댓글 이미지 또는 음성 파일 첨부"
                             />
+                            <Button
+                              color={commentAudioRecordingTarget === 'edit' ? 'danger' : 'secondary'}
+                              outline
+                              onclick={() => toggleCommentAudioRecording('edit')}
+                              class="comment-form-btn ms-2"
+                              disabled={commentLoading && commentAudioRecordingTarget !== 'edit'}
+                            >
+                              <Icon
+                                name={commentAudioRecordingTarget === 'edit' ? 'stop-fill' : 'mic-fill'}
+                              />
+                              {commentAudioRecordingTarget === 'edit' ? '녹음 중지' : '음성 녹음'}
+                            </Button>
                             {#if editPreviewEl && editPreviewEl.src}
                               <Button
                                 color="danger"
@@ -1798,9 +1978,20 @@
                     type="file"
                     bind:this={reCommentImageEl}
                     onchange={handleReplyImageChange}
-                    accept="image/*"
+                    accept="image/*,audio/*"
                     class="form-control m-2"
+                    aria-label="댓글 이미지 또는 음성 파일 첨부"
                   />
+                  <Button
+                    color={commentAudioRecordingTarget === 'reply' ? 'danger' : 'secondary'}
+                    outline
+                    onclick={() => toggleCommentAudioRecording('reply')}
+                    disabled={commentLoading && commentAudioRecordingTarget !== 'reply'}
+                    class="comment-form-btn m-2"
+                  >
+                    <Icon name={commentAudioRecordingTarget === 'reply' ? 'stop-fill' : 'mic-fill'} />
+                    {commentAudioRecordingTarget === 'reply' ? '녹음 중지' : '음성 녹음'}
+                  </Button>
                 </InputGroup>
 
                 <div>
@@ -1878,9 +2069,20 @@
                 type="file"
                 bind:this={commentImageEl}
                 onchange={handleCommentImageChange}
-                accept="image/*"
+                accept="image/*,audio/*"
                 class="form-control m-2"
+                aria-label="댓글 이미지 또는 음성 파일 첨부"
               />
+              <Button
+                color={commentAudioRecordingTarget === 'comment' ? 'danger' : 'secondary'}
+                outline
+                onclick={() => toggleCommentAudioRecording('comment')}
+                disabled={commentLoading && commentAudioRecordingTarget !== 'comment'}
+                class="comment-form-btn m-2"
+              >
+                <Icon name={commentAudioRecordingTarget === 'comment' ? 'stop-fill' : 'mic-fill'} />
+                {commentAudioRecordingTarget === 'comment' ? '녹음 중지' : '음성 녹음'}
+              </Button>
             </InputGroup>
             <div>
               <img

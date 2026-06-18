@@ -148,6 +148,8 @@ test('Lexical editor mobile toolbar wraps and media buttons show icons only', as
 
   await expect(page.getByRole('button', { name: '이미지 업로드' })).toHaveText('🏞️');
   await expect(page.getByRole('button', { name: '동영상 업로드' })).toHaveText('🎞️');
+  await expect(page.getByRole('button', { name: '음성 파일 업로드' })).toHaveText('🎧');
+  await expect(page.getByRole('button', { name: '음성 녹음 시작' })).toHaveText('🎙️');
   await expect(page.locator('.lexical-toolbar')).toHaveCSS('flex-wrap', 'wrap');
 });
 
@@ -208,8 +210,23 @@ test('Lexical editor uploads selected videos and inserts video html', async ({ p
     mimeType: 'video/mp4',
     buffer: Buffer.from('smoke video')
   });
+  await page.getByRole('button', { name: '업로드', exact: true }).click();
 
   await expectSyncedEditorHtmlToContain(page, ['<video', '/uploads/smoke-video.mp4']);
+  await expect(page.locator('[data-testid="editor-uploads"]')).toHaveText('0');
+});
+
+test('Lexical editor uploads selected audio and inserts audio html', async ({ page }) => {
+  await mockUpload(page, '/uploads/smoke-audio.m4a');
+  await gotoSmokeEditor(page);
+
+  await page.locator('input[type="file"]').setInputFiles({
+    name: 'smoke-audio.m4a',
+    mimeType: 'audio/mp4',
+    buffer: Buffer.from('smoke audio')
+  });
+
+  await expectSyncedEditorHtmlToContain(page, ['<audio', '/uploads/smoke-audio.m4a']);
   await expect(page.locator('[data-testid="editor-uploads"]')).toHaveText('0');
 });
 
