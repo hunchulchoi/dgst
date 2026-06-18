@@ -97,7 +97,8 @@ export function viewComment(comment) {
       'li',
       'code',
       'pre',
-      'hr'
+      'hr',
+      'audio'
     ],
     allowedAttributes: {
       blockquote: ['class', 'data-instgrm-permalink', 'style'],
@@ -118,12 +119,14 @@ export function viewComment(comment) {
       code: ['class'],
       a: ['href', 'target', 'rel'],
       img: ['src', 'alt', 'width', 'height', 'style'],
+      audio: ['src', 'controls', 'style'],
       span: ['style', 'class']
     },
     // XSS 방지를 위한 프로토콜 철저한 차단 (javascript: 스키마 차단 등)
     allowedSchemes: ['http', 'https', 'ftp', 'mailto', 'tel'],
     allowedSchemesByTag: {
-      img: ['http', 'https', 'data']
+      img: ['http', 'https', 'data'],
+      audio: ['http', 'https']
     },
     allowedStyles: {
       '*': {
