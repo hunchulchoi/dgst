@@ -4,7 +4,11 @@
  * @returns {string}
  */
 export function formatAlarmCommentPreview(value, maxLength = 60) {
-  const normalized = String(value ?? '').replace(/\s+/g, ' ').trim();
+  const normalized = String(value ?? '')
+    .replace(/<audio\b[^>]*>[\s\S]*?<\/audio>/gi, ' 🎧 ')
+    .replace(/<audio\b[^>]*\/>/gi, ' 🎧 ')
+    .replace(/\s+/g, ' ')
+    .trim();
   const chars = Array.from(normalized);
   if (chars.length <= maxLength) return normalized;
 
