@@ -45,7 +45,8 @@ describe('loadBoardList', () => {
     vi.useRealTimers();
   });
 
-  it('limits board list loading to articles from the last three days', async () => {
+  // 절대 조건 회귀 테스트: 게시글 목록은 최근 3일 게시글만 보여야 한다.
+  it('NEVER CHANGE: limits board list loading to articles from the last three days', async () => {
     articleRepo.countArticles.mockResolvedValue(2);
     boardArticleList.fetchBoardArticleList.mockResolvedValue([
       { _id: 'article-1' },

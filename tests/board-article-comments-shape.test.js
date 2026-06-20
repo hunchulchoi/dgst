@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const articleRepo = vi.hoisted(() => ({
   addRead: vi.fn(),
@@ -35,12 +35,16 @@ vi.mock('$lib/database/prisma.js', () => prismaModule);
 describe('board article load comment shape', () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-06-14T12:00:00.000Z'));
 
     articleRepo.findArticleById.mockResolvedValue({
       id: 'article-1',
       email: 'writer@example.com',
       title: 'title',
       content: '<p>body</p>',
+      createdAt: new Date('2026-06-14T11:00:00.000Z'),
+      updatedAt: new Date('2026-06-14T11:00:00.000Z'),
       likes: []
     });
     articleRepo.addRead.mockResolvedValue(null);
@@ -128,6 +132,39 @@ describe('board article load comment shape', () => {
       articles: []
     });
     prismaModule.getPrisma.mockReturnValue({});
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  // 절대 조건 회귀 테스트: 게시글 상세도 최근 3일 게시글만 보여야 한다.
+  it('NEVER CHANGE: rejects board article detail older than three days', async () => {
+    articleRepo.findArticleById.mockResolvedValue({
+      id: 'article-1',
+      email: 'writer@example.com',
+      title: 'old title',
+      content: '<p>old body</p>',
+      createdAt: new Date('2026-06-11T12:00:00.000Z'),
+      updatedAt: new Date('2026-06-11T12:00:00.000Z'),
+      likes: []
+    });
+
+    const { load } =
+      await import('../src/routes/board/[boardId=boardId]/[[pageNo=integer]]/[articleId]/+page.server.js');
+
+    await expect(
+      load({
+        params: { boardId: 'free', articleId: 'article-1', pageNo: '1' },
+        locals: { auth: vi.fn().mockResolvedValue(null) },
+        cookies: { get: vi.fn().mockReturnValue('device-1') }
+      })
+    ).rejects.toMatchObject({
+      status: 404
+    });
+
+    expect(articleRepo.addRead).not.toHaveBeenCalled();
+    expect(commentRepo.findCommentsByArticle).not.toHaveBeenCalled();
   });
 
   it('returns top-level comments and replies with normalized ids on initial load', async () => {

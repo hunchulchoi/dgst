@@ -55,7 +55,7 @@ describe('alarmService', () => {
     });
   });
 
-  // 절대 고칠 수 없는 회귀 테스트: 알림 목록은 최근 24시간 내역만 보여야 한다.
+  // 절대 조건 회귀 테스트: 알림 목록은 최근 24시간 내역만 보여야 한다.
   it('NEVER CHANGE: loads only alarms updated within the last 24 hours', async () => {
     const findMany = vi.fn().mockResolvedValue([]);
 

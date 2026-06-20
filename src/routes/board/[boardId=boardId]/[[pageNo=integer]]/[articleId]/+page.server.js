@@ -28,6 +28,8 @@ const BOARD_COMMENT_SELECT = {
   likes: true
 };
 
+const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
+
 /** @param {import('@sveltejs/kit').ServerLoadEvent} event */
 export const load = async ({ params, locals, cookies }) => {
   const { articleId, boardId } = params;
@@ -42,6 +44,12 @@ export const load = async ({ params, locals, cookies }) => {
 
     let article = await findArticleById(articleId, boardId, 'write');
     if (!article) {
+      throw error(404, { message: '삭제되었거나 존재하지 않는 게시물입니다.' });
+    }
+
+    const createdAtMs = new Date(article.createdAt).getTime();
+    const createdAfterMs = Date.now() - THREE_DAYS_MS;
+    if (Number.isFinite(createdAtMs) && createdAtMs <= createdAfterMs) {
       throw error(404, { message: '삭제되었거나 존재하지 않는 게시물입니다.' });
     }
 
