@@ -1753,20 +1753,20 @@
                           {/if}
 
                           <!-- 이미지 업로드 -->
-                          <InputGroup class="mb-2">
+                          <InputGroup class="comment-attachment-group mb-2">
                             <input
                               type="file"
                               bind:this={editCommentImageEl}
                               onchange={handleEditImageChange}
                               accept="image/*,audio/*"
-                              class="form-control m-2"
+                              class="comment-file-input form-control"
                               aria-label="댓글 이미지 또는 음성 파일 첨부"
                             />
                             <Button
                               color={commentAudioRecordingTarget === 'edit' ? 'danger' : 'secondary'}
                               outline
                               onclick={() => toggleCommentAudioRecording('edit')}
-                              class="comment-form-btn ms-2"
+                              class="comment-form-btn"
                               disabled={commentLoading && commentAudioRecordingTarget !== 'edit'}
                             >
                               <Icon
@@ -1779,7 +1779,7 @@
                                 color="danger"
                                 outline
                                 onclick={removeEditCommentImage}
-                                class="comment-form-btn ms-2"
+                                class="comment-form-btn"
                               >
                                 <Icon name="trash" />
                                 이미지 삭제
@@ -1799,7 +1799,7 @@
                           </div>
 
                           <!-- 댓글 내용 입력 -->
-                          <InputGroup>
+                          <InputGroup class="comment-write-group">
                             <textarea
                               bind:value={editCommentContent}
                               onpaste={handleEditPaste}
@@ -1899,7 +1899,7 @@
 
               {#if sessionUser?.nickname && comment.state === 'write'}
                 <Row class="mt-2">
-                  <Col class="comment-actions text-end pe-2 m-0">
+                  <Col class="comment-actions text-start pe-2 m-0">
                     {#if comment.email === sessionUser?.email}
                       <Button
                         onclick={() => deleteComment(commentKey(comment))}
@@ -1973,13 +1973,13 @@
                     </div>
                   </div>
                 {/if}
-                <InputGroup class="mb-2">
+                <InputGroup class="comment-attachment-group mb-2">
                   <input
                     type="file"
                     bind:this={reCommentImageEl}
                     onchange={handleReplyImageChange}
                     accept="image/*,audio/*"
-                    class="form-control m-2"
+                    class="comment-file-input form-control"
                     aria-label="댓글 이미지 또는 음성 파일 첨부"
                   />
                   <Button
@@ -1987,7 +1987,7 @@
                     outline
                     onclick={() => toggleCommentAudioRecording('reply')}
                     disabled={commentLoading && commentAudioRecordingTarget !== 'reply'}
-                    class="comment-form-btn m-2"
+                    class="comment-form-btn"
                   >
                     <Icon name={commentAudioRecordingTarget === 'reply' ? 'stop-fill' : 'mic-fill'} />
                     {commentAudioRecordingTarget === 'reply' ? '녹음 중지' : '음성 녹음'}
@@ -2064,13 +2064,13 @@
                 </div>
               </div>
             {/if}
-            <InputGroup class="mb-2">
+            <InputGroup class="comment-attachment-group mb-2">
               <input
                 type="file"
                 bind:this={commentImageEl}
                 onchange={handleCommentImageChange}
                 accept="image/*,audio/*"
-                class="form-control m-2"
+                class="comment-file-input form-control"
                 aria-label="댓글 이미지 또는 음성 파일 첨부"
               />
               <Button
@@ -2078,7 +2078,7 @@
                 outline
                 onclick={() => toggleCommentAudioRecording('comment')}
                 disabled={commentLoading && commentAudioRecordingTarget !== 'comment'}
-                class="comment-form-btn m-2"
+                class="comment-form-btn"
               >
                 <Icon name={commentAudioRecordingTarget === 'comment' ? 'stop-fill' : 'mic-fill'} />
                 {commentAudioRecordingTarget === 'comment' ? '녹음 중지' : '음성 녹음'}
@@ -2430,25 +2430,45 @@
     display: flex;
     flex-wrap: wrap;
     gap: 0.35rem;
-    justify-content: flex-end;
+    justify-content: flex-start;
     align-items: center;
+  }
+
+  :global(.comment-section .comment-attachment-group) {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 0.45rem;
+    width: 100%;
+  }
+
+  :global(.comment-section .comment-file-input) {
+    flex: 0 1 18rem;
+    max-width: min(18rem, 55vw);
+    min-width: min(13rem, 100%);
   }
 
   :global(.comment-section .comment-write-group) {
     display: flex;
-    flex-wrap: nowrap;
-    align-items: stretch;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.45rem;
     width: 100%;
+    max-width: min(44rem, 100%);
   }
 
   :global(.comment-section .comment-write-group textarea) {
-    flex: 1 1 auto;
-    width: 1%;
+    width: 100%;
+    max-width: min(44rem, 100%);
     min-width: 0;
   }
 
-  :global(.comment-section .input-group .comment-form-btn) {
-    align-self: stretch;
+  :global(.comment-section .comment-write-group .comment-form-btn) {
+    align-self: flex-end;
+  }
+
+  :global(.comment-section .comment-form-btn) {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -2458,7 +2478,7 @@
     white-space: nowrap;
   }
 
-  @media (max-width: 767.98px) {
+    @media (max-width: 767.98px) {
     :global(.comment-section .comment-action-btn),
     :global(.comment-section .comment-form-btn),
     :global(.comment-section .comment-toolbar-btn) {
@@ -2471,6 +2491,16 @@
     :global(.comment-section .input-group .comment-form-btn) {
       min-width: 4.75rem;
       padding: 0.5rem 0.75rem !important;
+    }
+
+    :global(.comment-section .comment-file-input) {
+      flex: 1 1 100%;
+      max-width: 100%;
+    }
+
+    :global(.comment-section .comment-write-group),
+    :global(.comment-section .comment-write-group textarea) {
+      max-width: 100%;
     }
 
     :global(.comment-actions) {
