@@ -16,12 +16,14 @@ describe('board comment action layout', () => {
     expect(articlePage).not.toContain('class="article-toolbar text-end');
   });
 
-  it('keeps comment action buttons left aligned on desktop', () => {
-    expect(articlePage).toContain('class="comment-actions text-start pe-2 m-0"');
+  it('keeps comment action buttons right aligned within a capped comment width', () => {
+    expect(articlePage).toContain('class="comment-actions text-end pe-2 m-0"');
+    expect(articlePage).toContain(':global(.comment-section)');
+    expect(articlePage).toContain('max-width: min(48rem, 100%);');
     expect(articlePage).toMatch(
-      /:global\(\.comment-actions\)\s*\{[^}]*justify-content: flex-start;/
+      /:global\(\.comment-actions\)\s*\{[^}]*justify-content: flex-end;/
     );
-    expect(articlePage).not.toContain('class="comment-actions text-end pe-2 m-0"');
+    expect(articlePage).not.toContain('class="comment-actions text-start pe-2 m-0"');
   });
 
   it('keeps upload controls close to the left edge and submit buttons right aligned', () => {

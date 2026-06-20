@@ -1946,7 +1946,7 @@
 
               {#if sessionUser?.nickname && comment.state === 'write'}
                 <Row class="mt-2">
-                  <Col class="comment-actions text-start pe-2 m-0">
+                  <Col class="comment-actions text-end pe-2 m-0">
                     {#if comment.email === sessionUser?.email}
                       <Button
                         onclick={() => deleteComment(commentKey(comment))}
@@ -2481,11 +2481,17 @@
     line-height: 1.25;
   }
 
+  :global(.comment-section) {
+    width: 100%;
+    max-width: min(48rem, 100%);
+    margin-right: auto !important;
+  }
+
   :global(.comment-actions) {
     display: flex;
     flex-wrap: wrap;
     gap: 0.35rem;
-    justify-content: flex-start;
+    justify-content: flex-end;
     align-items: center;
   }
 
