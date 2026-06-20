@@ -1670,7 +1670,7 @@
       </Row>
       <Row class="mx-0">
         <!--버튼-->
-        <Col class="article-toolbar text-start pe-md-3 p-xs-0 m-xs-0">
+        <Col class="article-toolbar text-end pe-md-3 p-xs-0 m-xs-0">
           {#if sessionUser?.email && article.email === sessionUser.email}
             <Button
               size="lg"
@@ -1716,7 +1716,7 @@
             <span>의견남기기</span>
             <Badge color="primary">{commentData.length}</Badge>
           </Col>
-          <Col class="text-start article-comment-refresh d-flex align-items-center justify-content-start">
+          <Col class="text-end article-comment-refresh d-flex align-items-center justify-content-end">
             <Button
               class="comment-toolbar-btn fw-bolder"
               onclick={refreshCommentsFromToolbar}
@@ -2083,7 +2083,7 @@
               <span>의견남기기</span>
               <Badge color="primary">{commentData.length}</Badge>
             </Col>
-            <Col class="text-start d-flex align-items-center justify-content-start article-comment-refresh">
+            <Col class="text-end d-flex align-items-center justify-content-end article-comment-refresh">
               <Button
                 class="comment-toolbar-btn fw-bolder"
                 onclick={refreshCommentsFromToolbar}
@@ -2164,7 +2164,7 @@
 
       <Row class="mx-0 mb-3">
         <!--버튼-->
-        <Col class="article-toolbar text-start pe-1">
+        <Col class="article-toolbar text-end pe-1">
           {#if article.email === sessionUser?.email}
             <Button
               size="lg"
@@ -2298,7 +2298,7 @@
   :global(.article-toolbar) {
     display: flex;
     flex-wrap: wrap;
-    justify-content: flex-start;
+    justify-content: flex-end;
     gap: 0.45rem;
   }
 
@@ -2478,6 +2478,12 @@
   }
 
   :global(.comment-section) {
+    width: 100%;
+    max-width: min(48rem, 100%);
+    margin-right: auto !important;
+  }
+
+  :global(.comment-heading-bar) {
     width: 100%;
     max-width: min(48rem, 100%);
     margin-right: auto !important;

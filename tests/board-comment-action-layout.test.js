@@ -7,18 +7,19 @@ const articlePage = readFileSync(
 );
 
 describe('board comment action layout', () => {
-  it('keeps article action buttons left aligned on desktop', () => {
-    expect(articlePage).toContain('class="article-toolbar text-start pe-md-3 p-xs-0 m-xs-0"');
-    expect(articlePage).toContain('class="article-toolbar text-start pe-1"');
+  it('keeps article action buttons right aligned on desktop', () => {
+    expect(articlePage).toContain('class="article-toolbar text-end pe-md-3 p-xs-0 m-xs-0"');
+    expect(articlePage).toContain('class="article-toolbar text-end pe-1"');
     expect(articlePage).toMatch(
-      /:global\(\.article-toolbar\)\s*\{[^}]*justify-content: flex-start;/
+      /:global\(\.article-toolbar\)\s*\{[^}]*justify-content: flex-end;/
     );
-    expect(articlePage).not.toContain('class="article-toolbar text-end');
+    expect(articlePage).not.toContain('class="article-toolbar text-start');
   });
 
   it('keeps comment action buttons right aligned within a capped comment width', () => {
     expect(articlePage).toContain('class="comment-actions text-end pe-2 m-0"');
     expect(articlePage).toContain(':global(.comment-section)');
+    expect(articlePage).toContain(':global(.comment-heading-bar)');
     expect(articlePage).toContain('max-width: min(48rem, 100%);');
     expect(articlePage).toMatch(
       /:global\(\.comment-actions\)\s*\{[^}]*justify-content: flex-end;/
@@ -65,10 +66,10 @@ describe('board comment action layout', () => {
     expect(articlePage).not.toContain('scrollToCommentSectionStart()');
     expect(articlePage).toContain("onclick={refreshCommentsFromToolbar}");
     expect(articlePage).toContain(
-      'class="text-start article-comment-refresh d-flex align-items-center justify-content-start"'
+      'class="text-end article-comment-refresh d-flex align-items-center justify-content-end"'
     );
     expect(articlePage).toContain(
-      'class="text-start d-flex align-items-center justify-content-start article-comment-refresh"'
+      'class="text-end d-flex align-items-center justify-content-end article-comment-refresh"'
     );
   });
 
