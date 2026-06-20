@@ -31,6 +31,11 @@
   let todayStats = $state({ games: 0, users: 0 });
 
   const isLoggedIn = $derived(!!data.session?.user?.email);
+  const scoreFormatter = new Intl.NumberFormat('ko-KR');
+
+  function formatScore(value: number) {
+    return scoreFormatter.format(value);
+  }
 
   // --- Physics Vars ---
   // We'll keep these in a closure or module scope effectively since this component is a singleton page usually.
@@ -570,7 +575,7 @@
         </div>
         <div class="score-container">
           <div class="score-label">점수</div>
-          <div class="score-value">{score}</div>
+          <div class="score-value">{formatScore(score)}</div>
         </div>
       </div>
 
@@ -711,7 +716,7 @@
               >
                 <span class="small fw-bold">내 전체 최고</span>
                 <span class="text-end">
-                  <span class="fw-bold">{myBestScore}</span>
+                  <span class="fw-bold">{formatScore(myBestScore)}</span>
                   {#if myBestCreatedAt}
                     <span class="small text-muted d-block">
                       {formatRelativeTime(myBestCreatedAt, { locale: ko, addSuffix: true })}
@@ -726,7 +731,7 @@
                 <li class="list-group-item d-flex justify-content-between align-items-center">
                   <span class="text-truncate" style="max-width: 120px;">{r.nickname}</span>
                   <span class="text-end">
-                    <span class="fw-bold font-monospace">{r.score}</span>
+                    <span class="fw-bold font-monospace">{formatScore(r.score)}</span>
                     {#if r.createdAt}
                       <span class="small text-muted d-block">
                         {formatRelativeTime(r.createdAt, { locale: ko, addSuffix: true })}

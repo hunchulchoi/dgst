@@ -61,6 +61,7 @@
 
   type SlotPageData = PageData & {
     todayStats?: SlotTodayStats;
+    balanceUpdatedAt?: string | null;
   };
 
   interface SlotPageProps {
@@ -69,13 +70,16 @@
 
   let { data }: SlotPageProps = $props();
   let balance = $state(0);
+  let balanceUpdatedAt = $state<string | null>(null);
   let hasUnreadAlarm = $state(false);
   let unreadAlarmCount = $state(0);
   let bet = $state(10);
   let spinning = $state(false);
   let reels = $state(['-', '-', '-']);
   let message = $state('');
-  let rankList = $state<Array<{ nickname: string; balance: number; _id?: string }>>([]);
+  let rankList = $state<Array<{ nickname: string; balance: number; updatedAt?: string; _id?: string }>>(
+    []
+  );
   let comments = $state<
     Array<{
       _id?: string;
@@ -109,6 +113,7 @@
 
   $effect.pre(() => {
     balance = data.balance || 0;
+    balanceUpdatedAt = data.balanceUpdatedAt ?? null;
     hasUnreadAlarm = data.hasUnreadAlarm ?? false;
     unreadAlarmCount = data.unreadAlarmCount ?? 0;
     todayStats = {
@@ -158,6 +163,7 @@
       if (res.ok) {
         const j = await res.json();
         balance = j.balance;
+        balanceUpdatedAt = j.balanceUpdatedAt ?? null;
         const prevOopsInfo = oopsInfo;
         oopsInfo = j.oopsInfo || null;
         if (j.todayStats) {
@@ -326,6 +332,7 @@
     if (res.ok) {
       const j = await res.json();
       rankList = j.rank || [];
+      balanceUpdatedAt = j.balanceUpdatedAt ?? balanceUpdatedAt;
     }
   }
 
@@ -649,6 +656,11 @@
     }
   };
 
+  const formatSlotUpdatedAt = (value: string | null | undefined): string => {
+    if (!value) return '';
+    return formatRelativeTime(value, { locale: ko, addSuffix: true });
+  };
+
   const clearCommentAnchor = () => {
     try {
       const url = new URL(window.location.href);
@@ -821,6 +833,9 @@
           </div>
           <div class="mb-2">
             <div>보유 점수: <strong>{formatNumber(balance)}</strong></div>
+            {#if balanceUpdatedAt}
+              <small class="text-muted">마지막 업데이트 {formatSlotUpdatedAt(balanceUpdatedAt)}</small>
+            {/if}
           </div>
           <div class="d-flex justify-content-between align-items-center mb-2">
             <div class="d-flex align-items-center gap-2">
@@ -948,7 +963,12 @@
             {#each rankList as r, i (r._id ?? `${r.nickname}:${r.balance}`)}
               <li class="list-group-item d-flex justify-content-between align-items-center">
                 <span>{r.nickname}</span>
-                <span class="fw-bold font-monospace">{formatNumber(r.balance)}</span>
+                <span class="text-end">
+                  <span class="fw-bold font-monospace d-block">{formatNumber(r.balance)}</span>
+                  {#if r.updatedAt}
+                    <small class="text-muted">{formatSlotUpdatedAt(r.updatedAt)}</small>
+                  {/if}
+                </span>
               </li>
             {/each}
           </ol>

@@ -17,10 +17,15 @@ const statsMinesweeper = vi.hoisted(() => ({
   getTodayMinesweeperStats: vi.fn()
 }));
 
+const slotStats = vi.hoisted(() => ({
+  getTodaySlotStats: vi.fn()
+}));
+
 vi.mock('$lib/database/prisma.js', () => prismaModule);
 vi.mock('$lib/server/game2048Stats.js', () => stats2048);
 vi.mock('$lib/server/gameWatermelonStats.js', () => statsWatermelon);
 vi.mock('$lib/server/gameMinesweeperStats.js', () => statsMinesweeper);
+vi.mock('$lib/server/slotStats.js', () => slotStats);
 
 describe('game ranking routes', () => {
   beforeEach(() => {
@@ -29,6 +34,7 @@ describe('game ranking routes', () => {
     stats2048.getToday2048Stats.mockResolvedValue({ games: 0, users: 0 });
     statsWatermelon.getTodayWatermelonStats.mockResolvedValue({ games: 0, users: 0 });
     statsMinesweeper.getTodayMinesweeperStats.mockResolvedValue({ games: 0, users: 0 });
+    slotStats.getTodaySlotStats.mockResolvedValue({ spins: 0, users: 0 });
   });
 
   it('loads 2048 all-time per-user best scores with score timestamps', async () => {
@@ -166,6 +172,57 @@ describe('game ranking routes', () => {
       where: { email: 'me@example.com', mode: 'expert' },
       orderBy: [{ time: 'asc' }, { createdAt: 'desc' }],
       select: { time: true, createdAt: true }
+    });
+  });
+
+  it('loads slot balances with last updated timestamps', async () => {
+    const findFirst = vi.fn().mockResolvedValue({
+      balance: 1200,
+      createdAt: new Date('2026-06-10T12:00:00.000Z')
+    });
+    const findMany = vi.fn().mockResolvedValue([
+      {
+        email: 'slot@example.com',
+        nickname: 'slotter',
+        balance: 1300,
+        totalSpin: 9,
+        updatedAt: new Date('2026-06-11T12:00:00.000Z')
+      }
+    ]);
+    const count = vi.fn().mockResolvedValue(1);
+    const findUnique = vi.fn().mockResolvedValue({
+      balance: 1200,
+      updatedAt: new Date('2026-06-12T12:00:00.000Z')
+    });
+    prismaModule.getPrisma.mockReturnValue({
+      gameScore: { findFirst },
+      slotUserBalance: { count, findMany, findUnique }
+    });
+
+    const { GET } = await import('../src/routes/games/slot/+server.js');
+    const response = await GET({
+      locals: { auth: vi.fn().mockResolvedValue({ user: { email: 'me@example.com' } }) },
+      url: new URL('https://dgst.me/games/slot?rank=1')
+    });
+    const body = await response.json();
+
+    expect(body.balanceUpdatedAt).toBe('2026-06-12T12:00:00.000Z');
+    expect(body.rank[0]).toEqual({
+      _id: 'slot@example.com',
+      nickname: 'slotter',
+      balance: 1300,
+      totalSpin: 9,
+      updatedAt: '2026-06-11T12:00:00.000Z'
+    });
+    expect(findMany).toHaveBeenCalledWith({
+      where: { totalSpin: { gt: 0 } },
+      orderBy: { balance: 'desc' },
+      take: 10,
+      select: { email: true, nickname: true, balance: true, totalSpin: true, updatedAt: true }
+    });
+    expect(findUnique).toHaveBeenCalledWith({
+      where: { email: 'me@example.com' },
+      select: { balance: true, updatedAt: true }
     });
   });
 });

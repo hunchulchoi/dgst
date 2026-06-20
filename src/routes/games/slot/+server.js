@@ -2,6 +2,7 @@ import { error, json } from '@sveltejs/kit';
 import { getPrisma } from '$lib/database/prisma.js';
 import { getTodaySlotStats } from '$lib/server/slotStats.js';
 import { updateSlotUserBalance, ensureSlotUserBalanceFilled } from '$lib/server/slotUserBalance.js';
+import { normalizeToIsoString } from '$lib/util/formatRelativeTime.js';
 
 const OOPS_TOPUP_DELAY_MS = 5 * 60 * 1000;
 
@@ -216,10 +217,15 @@ export async function GET({ locals, url }) {
     where: { email },
     orderBy: { createdAt: 'desc' }
   });
+  const balanceRow = await prisma.slotUserBalance.findUnique({
+    where: { email },
+    select: { balance: true, updatedAt: true }
+  });
   let balance = Number(last?.balance ?? 0);
+  let balanceUpdatedAt = balanceRow?.updatedAt ? normalizeToIsoString(balanceRow.updatedAt) : null;
   // 최초 이용자만 1000점 지급 (기록이 전무한 경우에만)
   if (!last) {
-    await prisma.gameScore.create({
+    const initialScore = await prisma.gameScore.create({
       data: {
         email,
         nickname,
@@ -233,6 +239,7 @@ export async function GET({ locals, url }) {
     });
     await updateSlotUserBalance(email, nickname, 1000, { incSpin: false });
     balance = 1000;
+    balanceUpdatedAt = normalizeToIsoString(initialScore.createdAt);
   }
   let oopsInfo = null;
   // 잔액 0인 경우 체크
@@ -268,6 +275,7 @@ export async function GET({ locals, url }) {
         const topped = await maybeTopupAfterOOPS(email, nickname);
         if (topped > 0) {
           balance = topped;
+          balanceUpdatedAt = normalizeToIsoString(new Date());
         } else {
           // 오링 상태: 남은 시간 정보 반환 (실제 스핀 기준)
           const createdAt = new Date(lastOopsSpin.createdAt).getTime();
@@ -293,18 +301,19 @@ export async function GET({ locals, url }) {
       where: { totalSpin: { gt: 0 } },
       orderBy: { balance: 'desc' },
       take: 10,
-      select: { email: true, nickname: true, balance: true, totalSpin: true }
+      select: { email: true, nickname: true, balance: true, totalSpin: true, updatedAt: true }
     });
     const rank = balances.map((r) => ({
       _id: r.email,
       nickname: r.nickname,
       balance: r.balance,
-      totalSpin: r.totalSpin ?? 0
+      totalSpin: r.totalSpin ?? 0,
+      updatedAt: normalizeToIsoString(r.updatedAt)
     }));
     return json(
-      { balance, rank, oopsInfo, todayStats },
+      { balance, balanceUpdatedAt, rank, oopsInfo, todayStats },
       { headers: { 'Cache-Control': 'no-store, max-age=0' } }
     );
   }
-  return json({ balance, oopsInfo, todayStats });
+  return json({ balance, balanceUpdatedAt, oopsInfo, todayStats });
 }
