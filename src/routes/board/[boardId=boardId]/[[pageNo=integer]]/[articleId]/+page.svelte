@@ -49,6 +49,7 @@
   const boardId = $derived($page.params.boardId ?? 'free');
   const articleId = $derived($page.params.articleId ?? '');
   const pageNo = $derived($page.params.pageNo ?? '1');
+  const COMMENT_SECTION_SCROLL_OFFSET = 24;
 
   // 애니메이션 관련 상태
   let likeAnimation = $state(false);
@@ -62,6 +63,8 @@
   let imageViewerNaturalHeight = $state(0);
   /** @type {HTMLDivElement | null} */
   let imageViewerStageEl = $state(null);
+  /** @type {HTMLDivElement | null} */
+  let commentSectionEl = $state(null);
 
   // 댓글 좋아요 애니메이션 함수
   /** @param {string} commentId */
@@ -202,6 +205,18 @@
     } catch (err) {
       console.error('❌ 댓글 새로고침 실패:', err);
     }
+  }
+
+  function scrollToCommentSectionStart() {
+    if (!browser || !commentSectionEl) return;
+    const top =
+      commentSectionEl.getBoundingClientRect().top + window.scrollY - COMMENT_SECTION_SCROLL_OFFSET;
+    window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+  }
+
+  async function refreshCommentsFromToolbar() {
+    await comments();
+    scrollToCommentSectionStart();
   }
 
   async function refreshUnreadAlarmCount() {
@@ -1027,6 +1042,7 @@
 
   // 댓글 데이터를 $state로 관리
   let commentData = $state(/** @type {Array<any>} */ ([]));
+  let initialCommentLoading = $state(true);
   let articleLike = $state(0);
   let articleLiked = $state(false);
 
@@ -1204,6 +1220,9 @@
 
   onMount(async () => {
     embeder = await import('$lib/util/embeder.js');
+    await tick();
+    initialCommentLoading = false;
+
     // 인스타그램 임베드 처리
     setTimeout(() => {
       console.log('인스타그램 임베드 확인:', document.querySelector('blockquote.instagram-media'));
@@ -1646,7 +1665,7 @@
               class="article-action-btn"
             >
               <Icon name="trash" />
-              삭제
+              <span class="article-action-label">삭제</span>
             </Button>
             <Button
               size="lg"
@@ -1655,7 +1674,7 @@
               class="article-action-btn"
             >
               <Icon name="pencil" />
-              수정
+              <span class="article-action-label">수정</span>
             </Button>
           {/if}
           <Button
@@ -1670,9 +1689,10 @@
           </Button>
           <Button size="lg" color="secondary" onclick={list} class="article-action-btn">
             <Icon name="list" />
-            목록
+            <span class="article-action-label">목록</span>
           </Button>
         </Col>
+        <div class="comment-section-anchor" bind:this={commentSectionEl}></div>
         <Row
           class="comment-heading-bar my-3 bg-warning-subtle p-2 rounded-3 mb-1 mx-2 align-items-center"
         >
@@ -1682,10 +1702,13 @@
             <span>의견남기기</span>
             <Badge color="primary">{commentData.length}</Badge>
           </Col>
-          <Col
-            class="text-end article-comment-refresh d-flex align-items-center justify-content-end"
-          >
-            <Button class="comment-toolbar-btn fw-bolder" onclick={comments} outline size="lg">
+          <Col class="text-start article-comment-refresh d-flex align-items-center justify-content-start">
+            <Button
+              class="comment-toolbar-btn fw-bolder"
+              onclick={refreshCommentsFromToolbar}
+              outline
+              size="lg"
+            >
               <Icon name="arrow-repeat" />
             </Button>
           </Col>
@@ -1693,6 +1716,12 @@
       </Row>
 
       <Row class="comment-section mb-5 mx-0 px-2">
+        {#if initialCommentLoading}
+          <div class="comment-initial-loading text-muted py-3 px-1">
+            댓글을 준비하고 있습니다
+          </div>
+        {/if}
+
         {#each commentData as comment (commentKey(comment))}
           <Row
             class="comment-item pt-3 pb-2 border-bottom border-gray-subtle mx-0"
@@ -2040,8 +2069,12 @@
               <span>의견남기기</span>
               <Badge color="primary">{commentData.length}</Badge>
             </Col>
-            <Col class="text-end d-flex align-items-center justify-content-end">
-              <Button class="comment-toolbar-btn fw-bolder" onclick={comments} outline>
+            <Col class="text-start d-flex align-items-center justify-content-start article-comment-refresh">
+              <Button
+                class="comment-toolbar-btn fw-bolder"
+                onclick={refreshCommentsFromToolbar}
+                outline
+              >
                 <Icon name="arrow-repeat" />
               </Button>
             </Col>
@@ -2126,7 +2159,7 @@
               onclick={() => remove(article._id)}
             >
               <Icon name="trash" />
-              삭제
+              <span class="article-action-label">삭제</span>
             </Button>
             <Button
               size="lg"
@@ -2135,7 +2168,7 @@
               onclick={() => edit(article._id)}
             >
               <Icon name="pencil" />
-              수정
+              <span class="article-action-label">수정</span>
             </Button>
           {/if}
           <Button
@@ -2145,11 +2178,11 @@
             onclick={write}
           >
             <Icon name="pencil-fill" class="pe-1" />
-            글쓰기
+            <span class="article-action-label">글쓰기</span>
           </Button>
           <Button size="lg" class="article-action-btn" color="secondary" onclick={list}>
             <Icon name="list" />
-            목록
+            <span class="article-action-label">목록</span>
           </Button>
         </Col>
       </Row>
@@ -2276,8 +2309,12 @@
     :global(.article-toolbar .article-action-btn) {
       min-height: 44px;
       min-width: 44px;
-      padding: 0.5rem 1.1rem !important;
+      padding: 0.5rem 0.75rem !important;
       font-size: 1.05rem !important;
+    }
+
+    :global(.article-toolbar .article-action-label) {
+      display: none;
     }
 
     :global(.article-comment-refresh .comment-toolbar-btn) {
@@ -2451,22 +2488,24 @@
 
   :global(.comment-section .comment-write-group) {
     display: flex;
-    flex-direction: column;
-    align-items: flex-start;
+    flex-wrap: nowrap;
+    align-items: stretch;
     gap: 0;
     width: 100%;
     max-width: min(44rem, 100%);
   }
 
   :global(.comment-section .comment-write-group textarea) {
-    width: 100%;
-    max-width: min(44rem, 100%);
+    flex: 1 1 auto;
+    width: 1%;
     min-width: 0;
   }
 
   :global(.comment-section .comment-write-group .comment-form-btn) {
-    align-self: flex-end;
-    margin-top: 0;
+    align-self: stretch;
+    width: auto;
+    min-width: 6.25rem;
+    white-space: nowrap;
   }
 
   :global(.comment-section .comment-form-btn) {
@@ -2494,18 +2533,24 @@
       padding: 0.5rem 0.75rem !important;
     }
 
-    :global(.comment-section .comment-file-input) {
-      flex: 1 1 100%;
-      max-width: 100%;
+    :global(.comment-section .comment-attachment-group) {
+      flex-wrap: nowrap;
+      gap: 0.4rem;
     }
 
-    :global(.comment-section .comment-write-group),
-    :global(.comment-section .comment-write-group textarea) {
+    :global(.comment-section .comment-file-input) {
+      flex: 1 1 auto;
+      max-width: min(14rem, 58vw);
+      min-width: 0;
+    }
+
+    :global(.comment-section .comment-write-group) {
       max-width: 100%;
     }
 
     :global(.comment-actions) {
       gap: 0.45rem;
+      justify-content: flex-end;
     }
   }
 
