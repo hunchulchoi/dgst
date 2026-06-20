@@ -49,7 +49,6 @@
   const boardId = $derived($page.params.boardId ?? 'free');
   const articleId = $derived($page.params.articleId ?? '');
   const pageNo = $derived($page.params.pageNo ?? '1');
-  const COMMENT_SECTION_SCROLL_OFFSET = 24;
 
   // 애니메이션 관련 상태
   let likeAnimation = $state(false);
@@ -207,13 +206,6 @@
     }
   }
 
-  function scrollToCommentSectionStart() {
-    if (!browser || !commentSectionEl) return;
-    const top =
-      commentSectionEl.getBoundingClientRect().top + window.scrollY - COMMENT_SECTION_SCROLL_OFFSET;
-    window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
-  }
-
   /** @param {string | null | undefined} commentId */
   function scrollToCreatedComment(commentId) {
     if (!browser || !commentId) return;
@@ -222,8 +214,12 @@
   }
 
   async function refreshCommentsFromToolbar() {
+    const scrollY = browser ? window.scrollY : 0;
     await comments();
-    scrollToCommentSectionStart();
+    if (browser) {
+      window.scrollTo({ top: scrollY, behavior: 'auto' });
+      requestAnimationFrame(() => window.scrollTo({ top: scrollY, behavior: 'auto' }));
+    }
   }
 
   async function refreshUnreadAlarmCount() {

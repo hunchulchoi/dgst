@@ -56,12 +56,13 @@ describe('board comment action layout', () => {
     expect(articlePage).toContain('max-width: min(14rem, 58vw);');
   });
 
-  it('left aligns comment refresh controls on desktop and scrolls near reply start', () => {
+  it('keeps the viewport position when refreshing comments from the toolbar', () => {
     expect(articlePage).toContain('bind:this={commentSectionEl}');
     expect(articlePage).toContain('async function refreshCommentsFromToolbar()');
-    expect(articlePage).toContain('scrollToCommentSectionStart()');
-    expect(articlePage).toContain('COMMENT_SECTION_SCROLL_OFFSET = 24');
-    expect(articlePage).toContain('commentSectionEl.getBoundingClientRect().top + window.scrollY');
+    expect(articlePage).toContain('const scrollY = browser ? window.scrollY : 0;');
+    expect(articlePage).toContain('window.scrollTo({ top: scrollY, behavior:');
+    expect(articlePage).toContain("requestAnimationFrame(() => window.scrollTo({ top: scrollY, behavior: 'auto' }))");
+    expect(articlePage).not.toContain('scrollToCommentSectionStart()');
     expect(articlePage).toContain("onclick={refreshCommentsFromToolbar}");
     expect(articlePage).toContain(
       'class="text-start article-comment-refresh d-flex align-items-center justify-content-start"'
