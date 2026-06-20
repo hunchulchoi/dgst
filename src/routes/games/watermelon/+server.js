@@ -1,31 +1,29 @@
 import { error, json } from '@sveltejs/kit';
 import { getPrisma } from '$lib/database/prisma.js';
 import { getTodayWatermelonStats } from '$lib/server/gameWatermelonStats.js';
-
-const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
+import { normalizeToIsoString } from '$lib/util/formatRelativeTime.js';
 
 /**
- * Get Top 10 scores (highest score per user ID within last 3 days).
+ * Get Top 10 scores (all-time highest score per user ID).
  */
 async function getRankTop10() {
-  const since = new Date(Date.now() - THREE_DAYS_MS);
-  /** @type {Array<{ email: string; nickname: string; score: number }>} */
+  /** @type {Array<{ email: string; nickname: string; score: number; createdAt: Date }>} */
   const rows = await getPrisma().$queryRaw`
-    SELECT email, nickname, score
+    SELECT email, nickname, score, created_at AS "createdAt"
     FROM (
-      SELECT email, nickname, score,
-        ROW_NUMBER() OVER (PARTITION BY email ORDER BY score DESC) AS rn
+      SELECT email, nickname, score, created_at,
+        ROW_NUMBER() OVER (PARTITION BY email ORDER BY score DESC, created_at DESC) AS rn
       FROM game_score_watermelon
-      WHERE created_at >= ${since}
     ) t
     WHERE rn = 1
-    ORDER BY score DESC
+    ORDER BY score DESC, created_at DESC
     LIMIT 10
   `;
   return rows.map((r) => ({
     _id: r.email,
     nickname: r.nickname,
-    score: Number(r.score)
+    score: Number(r.score),
+    createdAt: normalizeToIsoString(r.createdAt)
   }));
 }
 
@@ -42,13 +40,14 @@ export async function GET({ locals, url }) {
     const [rank, myBest, todayStats] = await Promise.all([
       getRankTop10(),
       (async () => {
-        const since = new Date(Date.now() - THREE_DAYS_MS);
         const myDoc = await getPrisma().gameScoreWatermelon.findFirst({
-          where: { email, createdAt: { gte: since } },
-          orderBy: { score: 'desc' },
-          select: { score: true }
+          where: { email },
+          orderBy: [{ score: 'desc' }, { createdAt: 'desc' }],
+          select: { score: true, createdAt: true }
         });
-        return myDoc?.score ?? null;
+        return myDoc
+          ? { score: Number(myDoc.score), createdAt: normalizeToIsoString(myDoc.createdAt) }
+          : null;
       })(),
       getTodayWatermelonStats()
     ]);

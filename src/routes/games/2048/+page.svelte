@@ -1,6 +1,8 @@
 <script lang="ts">
   import { resolve } from '$app/paths';
   import { onMount, tick } from 'svelte';
+  import { ko } from 'date-fns/locale';
+  import { formatRelativeTime } from '$lib/util/formatRelativeTime.js';
   import type { PageData } from './$types';
 
   interface Game2048Props {
@@ -15,8 +17,11 @@
   let grid = $state<number[]>([]);
   let score = $state(0);
   let gameOver = $state(false);
-  let rankList = $state<Array<{ nickname: string; score: number; _id?: string }>>([]);
+  let rankList = $state<Array<{ nickname: string; score: number; createdAt?: string; _id?: string }>>(
+    []
+  );
   let myBestScore = $state<number | null>(null);
+  let myBestCreatedAt = $state<string | null>(null);
   let todayStats = $state<{ games: number; users: number }>({ games: 0, users: 0 });
   let loading = $state(false);
   let gridTicked = $state(false);
@@ -418,7 +423,13 @@
       if (res.ok) {
         const j = await res.json();
         rankList = j.rank ?? [];
-        myBestScore = j.myBest != null ? Number(j.myBest) : null;
+        if (j.myBest && typeof j.myBest === 'object') {
+          myBestScore = j.myBest.score != null ? Number(j.myBest.score) : null;
+          myBestCreatedAt = j.myBest.createdAt ?? null;
+        } else {
+          myBestScore = j.myBest != null ? Number(j.myBest) : null;
+          myBestCreatedAt = null;
+        }
         if (
           j.todayStats &&
           typeof j.todayStats.games === 'number' &&
@@ -430,6 +441,7 @@
     } catch {
       rankList = [];
       myBestScore = null;
+      myBestCreatedAt = null;
       todayStats = { games: 0, users: 0 };
     }
   }
@@ -695,9 +707,10 @@
               <div class="d-flex align-items-center gap-2 flex-wrap">
                 <span class="fw-bold">현재 점수: {score}</span>
                 {#if isLoggedIn}
-                  <span class="small text-muted"
-                    >3일 내 내 최고: {myBestScore != null ? formatScore(myBestScore) : '—'}</span
-                  >
+                  <span class="small text-muted">
+                    내 전체 최고: {myBestScore != null ? formatScore(myBestScore) : '—'}{#if myBestCreatedAt}
+                      · {formatRelativeTime(myBestCreatedAt, { locale: ko, addSuffix: true })}{/if}
+                  </span>
                 {/if}
                 <span class="small text-muted"
                   >오늘 참여 {todayStats.users}명 · 게임 {todayStats.games}회</span
@@ -731,7 +744,7 @@
             {/if}
             <p class="small text-muted mb-3">
               방향키 또는 그리드 위에서 스와이프로 이동. 같은 숫자가 만나면 합쳐집니다. 레벨 통과
-              또는 게임오버 시 점수가 랭킹에 기록됩니다. (3일 내 내 최고점)
+              또는 게임오버 시 점수가 랭킹에 기록됩니다. (전체 기간 내 최고점)
             </p>
             <div class="text-center">
               <div class="game-2048-grid-wrapper" class:game-2048-grid-5={SIZE === 5}>
@@ -810,7 +823,7 @@
               <a href={resolve('/login')} class="btn btn-sm btn-outline-primary">로그인</a>
             {/if}
           </div>
-          <p class="small text-muted mb-1">3일 내 1인 1최고점 (뺑뺑이 점수와 별개)</p>
+          <p class="small text-muted mb-1">전체 기간 1인 1최고점 (뺑뺑이 점수와 별개)</p>
           <p class="small text-muted mb-2">
             오늘 참여 <strong>{todayStats.users}</strong>명 · 게임
             <strong>{todayStats.games}</strong>회
@@ -820,7 +833,14 @@
               {#each rankList as r (r._id ?? `${r.nickname}:${r.score}`)}
                 <li class="list-group-item d-flex justify-content-between align-items-center">
                   <span>{r.nickname}</span>
-                  <span class="fw-bold font-monospace">{formatScore(r.score)}</span>
+                  <span class="text-end">
+                    <span class="fw-bold font-monospace">{formatScore(r.score)}</span>
+                    {#if r.createdAt}
+                      <span class="small text-muted d-block">
+                        {formatRelativeTime(r.createdAt, { locale: ko, addSuffix: true })}
+                      </span>
+                    {/if}
+                  </span>
                 </li>
               {/each}
             </ol>

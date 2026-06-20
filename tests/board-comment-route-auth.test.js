@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const commentRepo = vi.hoisted(() => ({
   createComment: vi.fn(),
@@ -13,6 +13,7 @@ const commentRepo = vi.hoisted(() => ({
 }));
 
 const articleRepo = vi.hoisted(() => ({
+  findArticleById: vi.fn(),
   findArticleAlarmTarget: vi.fn()
 }));
 
@@ -60,6 +61,34 @@ vi.mock('$lib/server/submitDedup.js', () => submitDedup);
 describe('board comment route auth', () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-06-14T12:00:00.000Z'));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  // 절대 조건 회귀 테스트: 댓글 목록 API도 최근 3일 게시글 댓글만 보여야 한다.
+  it('NEVER CHANGE: rejects comment list API for board articles older than three days', async () => {
+    articleRepo.findArticleById.mockResolvedValue({
+      id: 'article-1',
+      createdAt: new Date('2026-06-11T12:00:00.000Z')
+    });
+    commentRepo.findCommentsByArticle.mockResolvedValue([]);
+
+    const { GET } =
+      await import('../src/routes/board/[boardId=boardId]/[[pageNo=integer]]/[articleId]/comment/+server.js');
+
+    await expect(
+      GET({
+        params: { boardId: 'free', articleId: 'article-1' },
+        locals: { auth: vi.fn().mockResolvedValue(null) }
+      })
+    ).rejects.toMatchObject({ status: 404 });
+
+    expect(commentRepo.findCommentsByArticle).not.toHaveBeenCalled();
+    expect(alarmService.markAsRead).not.toHaveBeenCalled();
   });
 
   it('uses the authenticated session email for comment updates', async () => {

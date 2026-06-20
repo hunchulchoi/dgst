@@ -3,6 +3,8 @@
   import { beforeNavigate } from '$app/navigation';
   import { resolve } from '$app/paths';
   import { browser } from '$app/environment';
+  import { ko } from 'date-fns/locale';
+  import { formatRelativeTime } from '$lib/util/formatRelativeTime.js';
   import { swalFire } from '$lib/util/swal.js';
   let { data } = $props();
 
@@ -34,8 +36,9 @@
 
   const STORAGE_KEY = 'minesweeper_save';
 
-  let rankList = $state(/** @type {Array<{ nickname: string; time: number }>} */ ([]));
+  let rankList = $state(/** @type {Array<{ nickname: string; time: number; createdAt?: string }>} */ ([]));
   let myBestTime = $state(/** @type {number | null} */ (null));
+  let myBestCreatedAt = $state(/** @type {string | null} */ (null));
   let todayStats = $state(/** @type {TodayStats} */ ({ games: 0, users: 0 }));
   let rankLoading = $state(false);
 
@@ -63,12 +66,19 @@
       if (res.ok) {
         const j = await res.json();
         rankList = j.rank ?? [];
-        myBestTime = j.myBest != null ? Number(j.myBest) : null;
+        if (j.myBest && typeof j.myBest === 'object') {
+          myBestTime = j.myBest.time != null ? Number(j.myBest.time) : null;
+          myBestCreatedAt = j.myBest.createdAt ?? null;
+        } else {
+          myBestTime = j.myBest != null ? Number(j.myBest) : null;
+          myBestCreatedAt = null;
+        }
         if (j.todayStats) todayStats = j.todayStats;
       }
     } catch {
       rankList = [];
       myBestTime = null;
+      myBestCreatedAt = null;
     } finally {
       rankLoading = false;
     }
@@ -621,7 +631,7 @@
                 <a href={resolve('/login')} class="btn btn-sm btn-outline-primary">로그인</a>
               {/if}
             </div>
-            <p class="small text-muted mb-1">3일 내 1인 1최단기록</p>
+            <p class="small text-muted mb-1">전체 기간 1인 1최단기록</p>
             <p class="small text-muted mb-3">
               오늘 참여 {todayStats.users}명 / 완료 {todayStats.games}회
             </p>
@@ -629,7 +639,8 @@
             {#if isLoggedIn}
               {#if myBestTime != null}
                 <div class="alert alert-info py-2 px-3 mb-3 small">
-                  내 최고 기록: <strong>{myBestTime}</strong>초
+                  내 전체 최고 기록: <strong>{myBestTime}</strong>초{#if myBestCreatedAt}
+                    · {formatRelativeTime(myBestCreatedAt, { locale: ko, addSuffix: true })}{/if}
                 </div>
               {/if}
               {#if rankList.length > 0}
@@ -637,7 +648,14 @@
                   {#each rankList as r (`${r.nickname}:${r.time}`)}
                     <li class="list-group-item d-flex justify-content-between align-items-center">
                       <span>{r.nickname}</span>
-                      <span class="fw-bold font-monospace text-danger">{r.time}초</span>
+                      <span class="text-end">
+                        <span class="fw-bold font-monospace text-danger">{r.time}초</span>
+                        {#if r.createdAt}
+                          <span class="small text-muted d-block">
+                            {formatRelativeTime(r.createdAt, { locale: ko, addSuffix: true })}
+                          </span>
+                        {/if}
+                      </span>
                     </li>
                   {/each}
                 </ol>

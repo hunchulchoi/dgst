@@ -1,7 +1,9 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
   import { resolve } from '$app/paths';
+  import { ko } from 'date-fns/locale';
   import Matter from 'matter-js';
+  import { formatRelativeTime } from '$lib/util/formatRelativeTime.js';
   import { FRUITS, GAME_WIDTH, GAME_HEIGHT, WALL_THICKNESS, type FruitType } from './gameUtils';
 
   import type { PageData } from './$types';
@@ -20,8 +22,11 @@
   let currentFruitIndex = $state(0);
   let nextFruitIndex = $state(0);
   let canvasEl = $state<HTMLCanvasElement | null>(null);
-  let rankList = $state<Array<{ nickname: string; score: number; _id?: string }>>([]);
+  let rankList = $state<Array<{ nickname: string; score: number; createdAt?: string; _id?: string }>>(
+    []
+  );
   let myBestScore = $state<number | null>(null);
+  let myBestCreatedAt = $state<string | null>(null);
   let loading = $state(false);
   let todayStats = $state({ games: 0, users: 0 });
 
@@ -326,7 +331,13 @@
       if (res.ok) {
         const j = await res.json();
         rankList = j.rank ?? [];
-        myBestScore = j.myBest != null ? Number(j.myBest) : null;
+        if (j.myBest && typeof j.myBest === 'object') {
+          myBestScore = j.myBest.score != null ? Number(j.myBest.score) : null;
+          myBestCreatedAt = j.myBest.createdAt ?? null;
+        } else {
+          myBestScore = j.myBest != null ? Number(j.myBest) : null;
+          myBestCreatedAt = null;
+        }
         if (j.todayStats) todayStats = j.todayStats;
       }
     } catch (e) {
@@ -691,15 +702,22 @@
               >오늘 참여 {todayStats.users}명 / {todayStats.games}회</span
             >
           </div>
-          <p class="small text-muted mb-3">최근 3일 내 최고 점수 (유저별)</p>
+          <p class="small text-muted mb-3">전체 기간 1인 1최고점</p>
 
           {#if isLoggedIn}
             {#if myBestScore !== null}
               <div
                 class="alert alert-info py-2 px-3 mb-3 d-flex justify-content-between align-items-center"
               >
-                <span class="small fw-bold">내 최고 (3일)</span>
-                <span class="fw-bold">{myBestScore}</span>
+                <span class="small fw-bold">내 전체 최고</span>
+                <span class="text-end">
+                  <span class="fw-bold">{myBestScore}</span>
+                  {#if myBestCreatedAt}
+                    <span class="small text-muted d-block">
+                      {formatRelativeTime(myBestCreatedAt, { locale: ko, addSuffix: true })}
+                    </span>
+                  {/if}
+                </span>
               </div>
             {/if}
 
@@ -707,7 +725,14 @@
               {#each rankList as r (r._id ?? `${r.nickname}:${r.score}`)}
                 <li class="list-group-item d-flex justify-content-between align-items-center">
                   <span class="text-truncate" style="max-width: 120px;">{r.nickname}</span>
-                  <span class="fw-bold font-monospace">{r.score}</span>
+                  <span class="text-end">
+                    <span class="fw-bold font-monospace">{r.score}</span>
+                    {#if r.createdAt}
+                      <span class="small text-muted d-block">
+                        {formatRelativeTime(r.createdAt, { locale: ko, addSuffix: true })}
+                      </span>
+                    {/if}
+                  </span>
                 </li>
               {/each}
               {#if rankList.length === 0}

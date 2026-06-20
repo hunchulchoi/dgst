@@ -1,5 +1,5 @@
 import { error, isHttpError, json } from '@sveltejs/kit';
-import { findArticleAlarmTarget } from '$lib/server/board/articleRepo.js';
+import { findArticleAlarmTarget, findArticleById } from '$lib/server/board/articleRepo.js';
 import {
   createComment,
   findCommentById,
@@ -36,6 +36,28 @@ const BOARD_COMMENT_SELECT = {
   updatedAt: true,
   likes: true
 };
+
+const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
+
+/**
+ * @param {string} articleId
+ * @param {string} boardId
+ * @returns {Promise<import('@prisma/client').Article>}
+ */
+async function requireRecentArticle(articleId, boardId) {
+  const article = await findArticleById(articleId, boardId, 'write');
+  if (!article) {
+    throw error(404, { message: '삭제되었거나 존재하지 않는 게시물입니다.' });
+  }
+
+  const createdAtMs = new Date(article.createdAt).getTime();
+  const createdAfterMs = Date.now() - THREE_DAYS_MS;
+  if (Number.isFinite(createdAtMs) && createdAtMs <= createdAfterMs) {
+    throw error(404, { message: '삭제되었거나 존재하지 않는 게시물입니다.' });
+  }
+
+  return article;
+}
 
 /**
  * @param {unknown} err
@@ -75,6 +97,8 @@ export async function GET({ params, locals }) {
   const session = await locals.auth();
 
   try {
+    await requireRecentArticle(articleId, boardId);
+
     const comments = await findCommentsByArticle(articleId, boardId, BOARD_COMMENT_SELECT);
 
     if (session?.user?.email) {

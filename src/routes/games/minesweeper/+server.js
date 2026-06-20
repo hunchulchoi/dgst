@@ -1,33 +1,32 @@
 import { error, json } from '@sveltejs/kit';
 import { getPrisma } from '$lib/database/prisma.js';
 import { getTodayMinesweeperStats } from '$lib/server/gameMinesweeperStats.js';
-
-const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
+import { normalizeToIsoString } from '$lib/util/formatRelativeTime.js';
 
 /**
- * 3일 내 id(email)별 최고 기록 모드별 Top10. 시간(초) 기준이므로 낮을수록 좋음.
+ * 전체 기간 email별 최고 기록 모드별 Top10. 시간(초) 기준이므로 낮을수록 좋음.
  *
  * @param {string} mode
  */
 async function getRankTop10(mode) {
-  const since = new Date(Date.now() - THREE_DAYS_MS);
-  /** @type {Array<{ email: string; nickname: string; time: number }>} */
+  /** @type {Array<{ email: string; nickname: string; time: number; createdAt: Date }>} */
   const rows = await getPrisma().$queryRaw`
-    SELECT email, nickname, time
+    SELECT email, nickname, time, created_at AS "createdAt"
     FROM (
-      SELECT email, nickname, time,
-        ROW_NUMBER() OVER (PARTITION BY email ORDER BY time ASC) AS rn
+      SELECT email, nickname, time, created_at,
+        ROW_NUMBER() OVER (PARTITION BY email ORDER BY time ASC, created_at DESC) AS rn
       FROM game_score_minesweeper
-      WHERE created_at >= ${since} AND mode = ${mode}
+      WHERE mode = ${mode}
     ) t
     WHERE rn = 1
-    ORDER BY time ASC
+    ORDER BY time ASC, created_at DESC
     LIMIT 10
   `;
   return rows.map((r) => ({
     _id: r.email,
     nickname: r.nickname,
-    time: Number(r.time)
+    time: Number(r.time),
+    createdAt: normalizeToIsoString(r.createdAt)
   }));
 }
 
@@ -42,13 +41,14 @@ export async function GET({ locals, url }) {
     const [rank, myDocResult, todayStats] = await Promise.all([
       getRankTop10(mode),
       (async () => {
-        const since = new Date(Date.now() - THREE_DAYS_MS);
         const myDoc = await getPrisma().gameScoreMinesweeper.findFirst({
-          where: { email, createdAt: { gte: since }, mode },
-          orderBy: { time: 'asc' },
-          select: { time: true }
+          where: { email, mode },
+          orderBy: [{ time: 'asc' }, { createdAt: 'desc' }],
+          select: { time: true, createdAt: true }
         });
-        return myDoc?.time ?? null;
+        return myDoc
+          ? { time: Number(myDoc.time), createdAt: normalizeToIsoString(myDoc.createdAt) }
+          : null;
       })(),
       getTodayMinesweeperStats()
     ]);
