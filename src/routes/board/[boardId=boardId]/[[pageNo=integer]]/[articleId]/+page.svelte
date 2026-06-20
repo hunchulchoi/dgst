@@ -2453,7 +2453,7 @@
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    gap: 0.45rem;
+    gap: 0;
     width: 100%;
     max-width: min(44rem, 100%);
   }
@@ -2466,6 +2466,7 @@
 
   :global(.comment-section .comment-write-group .comment-form-btn) {
     align-self: flex-end;
+    margin-top: 0;
   }
 
   :global(.comment-section .comment-form-btn) {

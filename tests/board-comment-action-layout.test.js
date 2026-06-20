@@ -25,5 +25,7 @@ describe('board comment action layout', () => {
     expect(articlePage).toContain('max-width: min(44rem, 100%);');
     expect(articlePage).toContain(':global(.comment-section .comment-write-group .comment-form-btn)');
     expect(articlePage).toContain('align-self: flex-end;');
+    expect(articlePage).toContain('margin-top: 0;');
+    expect(articlePage).not.toContain('gap: 0.45rem;\n    width: 100%;\n    max-width: min(44rem, 100%);');
   });
 });
