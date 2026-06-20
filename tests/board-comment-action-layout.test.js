@@ -57,13 +57,20 @@ describe('board comment action layout', () => {
     expect(articlePage).toContain('max-width: min(14rem, 58vw);');
   });
 
-  it('keeps the viewport position when refreshing comments from the toolbar', () => {
+  it('scrolls to the comment heading after refreshing comments from the toolbar', () => {
     expect(articlePage).toContain('bind:this={commentSectionEl}');
+    expect(articlePage).toContain('async function scrollToCommentSectionStartAfterRender()');
+    expect(articlePage).toContain('await tick();');
+    expect(articlePage).toContain('requestAnimationFrame(resolve)');
+    expect(articlePage).toContain("document.querySelector('.top-comment-heading-bar')");
+    expect(articlePage).toContain('topCommentHeadingEl ?? commentSectionEl');
+    expect(articlePage).toContain('top-comment-heading-bar');
+    expect(articlePage).toContain("behavior: 'smooth'");
     expect(articlePage).toContain('async function refreshCommentsFromToolbar()');
-    expect(articlePage).toContain('const scrollY = browser ? window.scrollY : 0;');
-    expect(articlePage).toContain('window.scrollTo({ top: scrollY, behavior:');
-    expect(articlePage).toContain("requestAnimationFrame(() => window.scrollTo({ top: scrollY, behavior: 'auto' }))");
-    expect(articlePage).not.toContain('scrollToCommentSectionStart()');
+    expect(articlePage).toMatch(
+      /await comments\(\);[\s\S]*await scrollToCommentSectionStartAfterRender\(\);/
+    );
+    expect(articlePage).not.toContain('const scrollY = browser ? window.scrollY : 0;');
     expect(articlePage).toContain("onclick={refreshCommentsFromToolbar}");
     expect(articlePage).toContain(
       'class="text-end article-comment-refresh d-flex align-items-center justify-content-end"'

@@ -213,13 +213,22 @@
     el?.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
   }
 
+  async function scrollToCommentSectionStartAfterRender() {
+    if (!browser) return;
+    await tick();
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+
+    const topCommentHeadingEl = document.querySelector('.top-comment-heading-bar');
+    const target = topCommentHeadingEl ?? commentSectionEl;
+    if (!target) return;
+
+    const top = target.getBoundingClientRect().top + window.scrollY - 12;
+    window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+  }
+
   async function refreshCommentsFromToolbar() {
-    const scrollY = browser ? window.scrollY : 0;
     await comments();
-    if (browser) {
-      window.scrollTo({ top: scrollY, behavior: 'auto' });
-      requestAnimationFrame(() => window.scrollTo({ top: scrollY, behavior: 'auto' }));
-    }
+    await scrollToCommentSectionStartAfterRender();
   }
 
   async function refreshUnreadAlarmCount() {
@@ -1708,7 +1717,7 @@
         </Col>
         <div class="comment-section-anchor" bind:this={commentSectionEl}></div>
         <Row
-          class="comment-heading-bar my-3 bg-warning-subtle p-2 rounded-3 mb-1 mx-2 align-items-center"
+          class="comment-heading-bar top-comment-heading-bar my-3 bg-warning-subtle p-2 rounded-3 mb-1 mx-2 align-items-center"
         >
           <!--리플-->
           <Col class="d-flex align-items-center gap-2 flex-wrap">
