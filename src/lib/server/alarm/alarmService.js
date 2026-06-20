@@ -80,11 +80,16 @@ export async function getUnreadAlarmCount(email, hours = 24) {
  * 알림 목록 조회
  * @param {string} email
  * @param {number} limit
+ * @param {number} hours
  */
-export async function getAlarmList(email, limit = 30) {
+export async function getAlarmList(email, limit = 30, hours = 24) {
   try {
+    const timeLimit = new Date(Date.now() - 1000 * 60 * 60 * hours);
     const alarms = await getPrisma().alarm.findMany({
-      where: { email },
+      where: {
+        email,
+        updatedAt: { gte: timeLimit }
+      },
       orderBy: { updatedAt: 'desc' },
       take: limit
     });

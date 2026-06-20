@@ -55,6 +55,29 @@ describe('alarmService', () => {
     });
   });
 
+  // 절대 고칠 수 없는 회귀 테스트: 알림 목록은 최근 24시간 내역만 보여야 한다.
+  it('NEVER CHANGE: loads only alarms updated within the last 24 hours', async () => {
+    const findMany = vi.fn().mockResolvedValue([]);
+
+    prismaModule.getPrisma.mockReturnValue({
+      alarm: { findMany }
+    });
+
+    const { getAlarmList } = await import('../src/lib/server/alarm/alarmService.js');
+
+    const result = await getAlarmList('user@example.com');
+
+    expect(result).toEqual([]);
+    expect(findMany).toHaveBeenCalledWith({
+      where: {
+        email: 'user@example.com',
+        updatedAt: { gte: new Date('2026-06-13T12:00:00.000Z') }
+      },
+      orderBy: { updatedAt: 'desc' },
+      take: 30
+    });
+  });
+
   it('marks only unread alarms for the article and its comment thread ids', async () => {
     const updateMany = vi.fn().mockResolvedValue({ count: 2 });
 
