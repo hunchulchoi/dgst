@@ -1637,7 +1637,7 @@
       </Row>
       <Row class="mx-0">
         <!--버튼-->
-        <Col class="article-toolbar text-end pe-md-3 p-xs-0 m-xs-0">
+        <Col class="article-toolbar text-start pe-md-3 p-xs-0 m-xs-0">
           {#if sessionUser?.email && article.email === sessionUser.email}
             <Button
               size="lg"
@@ -2117,7 +2117,7 @@
 
       <Row class="mx-0 mb-3">
         <!--버튼-->
-        <Col class="article-toolbar text-end pe-1">
+        <Col class="article-toolbar text-start pe-1">
           {#if article.email === sessionUser?.email}
             <Button
               size="lg"
@@ -2251,7 +2251,7 @@
   :global(.article-toolbar) {
     display: flex;
     flex-wrap: wrap;
-    justify-content: flex-end;
+    justify-content: flex-start;
     gap: 0.45rem;
   }
 

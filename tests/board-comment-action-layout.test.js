@@ -7,6 +7,15 @@ const articlePage = readFileSync(
 );
 
 describe('board comment action layout', () => {
+  it('keeps article action buttons left aligned on desktop', () => {
+    expect(articlePage).toContain('class="article-toolbar text-start pe-md-3 p-xs-0 m-xs-0"');
+    expect(articlePage).toContain('class="article-toolbar text-start pe-1"');
+    expect(articlePage).toMatch(
+      /:global\(\.article-toolbar\)\s*\{[^}]*justify-content: flex-start;/
+    );
+    expect(articlePage).not.toContain('class="article-toolbar text-end');
+  });
+
   it('keeps comment action buttons left aligned on desktop', () => {
     expect(articlePage).toContain('class="comment-actions text-start pe-2 m-0"');
     expect(articlePage).toMatch(
