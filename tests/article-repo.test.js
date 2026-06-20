@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const prismaModule = vi.hoisted(() => ({
   getPrisma: vi.fn()
@@ -9,6 +9,10 @@ vi.mock('$lib/database/prisma.js', () => prismaModule);
 describe('articleRepo', () => {
   beforeEach(() => {
     vi.resetAllMocks();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it('loads only alarm-target fields for comment notification lookups', async () => {
@@ -64,6 +68,52 @@ describe('articleRepo', () => {
       select: {
         photo: true,
         introduction: true
+      }
+    });
+  });
+
+  it('stores the latest article read time while preserving first-read count semantics', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-06-14T12:00:00.000Z'));
+    const findUnique = vi.fn().mockResolvedValue({
+      id: 'article-1',
+      reads: []
+    });
+    const update = vi.fn().mockResolvedValue({
+      id: 'article-1',
+      reads: ['viewer@example.com']
+    });
+    const upsert = vi.fn().mockResolvedValue({});
+
+    prismaModule.getPrisma.mockReturnValue({
+      article: { findUnique, update },
+      articleRead: { upsert }
+    });
+
+    const { addRead } = await import('../src/lib/server/board/articleRepo.js');
+
+    const result = await addRead('article-1', 'viewer@example.com');
+
+    expect(result).toEqual({
+      id: 'article-1',
+      reads: ['viewer@example.com']
+    });
+    expect(update).toHaveBeenCalledWith({
+      where: { id: 'article-1' },
+      data: { reads: { push: 'viewer@example.com' } }
+    });
+    expect(upsert).toHaveBeenCalledWith({
+      where: {
+        articleId_viewerId: {
+          articleId: 'article-1',
+          viewerId: 'viewer@example.com'
+        }
+      },
+      update: { readAt: new Date('2026-06-14T12:00:00.000Z') },
+      create: {
+        articleId: 'article-1',
+        viewerId: 'viewer@example.com',
+        readAt: new Date('2026-06-14T12:00:00.000Z')
       }
     });
   });

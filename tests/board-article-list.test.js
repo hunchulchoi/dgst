@@ -22,7 +22,7 @@ describe('fetchBoardArticleList', () => {
     vi.useRealTimers();
   });
 
-  it('enriches board articles with comment counts, latest-comment freshness, and author photos', async () => {
+  it('enriches board articles with comment counts, reply-badge freshness, and author photos', async () => {
     const articleFindMany = vi.fn().mockResolvedValue([
       {
         id: 'article-1',
@@ -57,10 +57,23 @@ describe('fetchBoardArticleList', () => {
       { email: 'writer1@example.com', photo: '/writer1.jpg' },
       { email: 'writer2@example.com', photo: null }
     ]);
+    const articleReadFindMany = vi.fn().mockResolvedValue([
+      {
+        articleId: 'article-1',
+        readAt: new Date('2026-06-14T11:50:00.000Z')
+      },
+      {
+        articleId: 'article-2',
+        readAt: new Date('2026-06-14T10:20:00.000Z')
+      }
+    ]);
+    const commentFindMany = vi.fn().mockResolvedValue([]);
 
     prismaModule.getPrisma.mockReturnValue({
       article: { findMany: articleFindMany },
-      user: { findMany: userFindMany }
+      user: { findMany: userFindMany },
+      articleRead: { findMany: articleReadFindMany },
+      comment: { findMany: commentFindMany }
     });
     commentRepo.summarizeCommentsByArticles.mockResolvedValue({
       'article-1': {
@@ -79,7 +92,8 @@ describe('fetchBoardArticleList', () => {
       boardId: 'free',
       pageNo: 2,
       pageUnit: 30,
-      createdAfter: new Date('2026-06-11T12:00:00.000Z')
+      createdAfter: new Date('2026-06-11T12:00:00.000Z'),
+      viewerId: 'viewer@example.com'
     });
 
     expect(articleFindMany).toHaveBeenCalledWith({
@@ -110,6 +124,23 @@ describe('fetchBoardArticleList', () => {
       'article-1',
       'article-2'
     ]);
+    expect(articleReadFindMany).toHaveBeenCalledWith({
+      where: {
+        viewerId: 'viewer@example.com',
+        articleId: { in: ['article-1', 'article-2'] }
+      },
+      select: { articleId: true, readAt: true }
+    });
+    expect(commentFindMany).toHaveBeenCalledWith({
+      where: {
+        articleId: { in: ['article-1', 'article-2'] },
+        state: 'write',
+        createdAt: { gte: new Date('2026-06-14T04:45:00.000Z') },
+        NOT: { email: 'viewer@example.com' }
+      },
+      orderBy: { createdAt: 'desc' },
+      select: { articleId: true, createdAt: true }
+    });
     expect(result).toMatchObject([
       {
         _id: 'article-1',
@@ -117,7 +148,7 @@ describe('fetchBoardArticleList', () => {
         read: 2,
         like: 1,
         comment: 3,
-        isNewComment: true,
+        isNewComment: false,
         photo: '/writer1.jpg'
       },
       {
@@ -133,6 +164,100 @@ describe('fetchBoardArticleList', () => {
     expect(result[0].content).toContain('bi-music-note-beamed');
     expect(result[0].content).toContain('bi-youtube');
     expect(result[1].content).toContain('bi-instagram');
+  });
+
+  it('marks comment badges as new when latest non-viewer replies after 13:45 KST are newer than the viewer read time', async () => {
+    const articleFindMany = vi.fn().mockResolvedValue([
+      {
+        id: 'article-1',
+        title: 'Unread replies',
+        createdAt: new Date('2026-06-14T11:00:00.000Z'),
+        nickname: 'writer1',
+        email: 'writer1@example.com',
+        reads: ['viewer@example.com'],
+        likes: [],
+        hasImage: false,
+        hasVideo: false,
+        hasAudio: false,
+        hasYoutube: false,
+        hasInstagram: false
+      },
+      {
+        id: 'article-2',
+        title: 'Only fresh comments',
+        createdAt: new Date('2026-06-14T10:00:00.000Z'),
+        nickname: 'writer2',
+        email: 'writer2@example.com',
+        reads: ['viewer@example.com'],
+        likes: [],
+        hasImage: false,
+        hasVideo: false,
+        hasAudio: false,
+        hasYoutube: false,
+        hasInstagram: false
+      }
+    ]);
+    const articleReadFindMany = vi.fn().mockResolvedValue([
+      {
+        articleId: 'article-1',
+        readAt: new Date('2026-06-14T04:44:00.000Z')
+      },
+      {
+        articleId: 'article-2',
+        readAt: new Date('2026-06-14T05:00:00.000Z')
+      }
+    ]);
+    const commentFindMany = vi.fn().mockResolvedValue([
+      {
+        articleId: 'article-1',
+        createdAt: new Date('2026-06-14T04:46:00.000Z')
+      },
+      {
+        articleId: 'article-2',
+        createdAt: new Date('2026-06-14T04:50:00.000Z')
+      }
+    ]);
+
+    prismaModule.getPrisma.mockReturnValue({
+      article: { findMany: articleFindMany },
+      user: { findMany: vi.fn().mockResolvedValue([]) },
+      articleRead: { findMany: articleReadFindMany },
+      comment: { findMany: commentFindMany }
+    });
+    commentRepo.summarizeCommentsByArticles.mockResolvedValue({
+      'article-1': {
+        count: 2,
+        latestCreatedAt: new Date('2026-06-14T08:30:00.000Z')
+      },
+      'article-2': {
+        count: 1,
+        latestCreatedAt: new Date('2026-06-14T11:59:00.000Z')
+      }
+    });
+
+    const { fetchBoardArticleList } = await import('../src/lib/server/boardArticleList.js');
+
+    const result = await fetchBoardArticleList({
+      boardId: 'free',
+      pageNo: 1,
+      pageUnit: 30,
+      viewerId: 'viewer@example.com'
+    });
+
+    expect(result).toMatchObject([
+      { _id: 'article-1', comment: 2, isNewComment: true },
+      { _id: 'article-2', comment: 1, isNewComment: false }
+    ]);
+    expect(commentFindMany).toHaveBeenCalledWith({
+      where: {
+        articleId: { in: ['article-1', 'article-2'] },
+        state: 'write',
+        createdAt: { gte: new Date('2026-06-14T04:45:00.000Z') },
+        NOT: { email: 'viewer@example.com' }
+      },
+      orderBy: { createdAt: 'desc' },
+      select: { articleId: true, createdAt: true }
+    });
   });
 
   it('returns early without fan-out queries when there are no board rows', async () => {
@@ -215,7 +340,9 @@ describe('fetchBoardArticleList', () => {
 
     prismaModule.getPrisma.mockReturnValue({
       article: { findMany: articleFindMany },
-      user: { findMany: vi.fn().mockResolvedValue([]) }
+      user: { findMany: vi.fn().mockResolvedValue([]) },
+      articleRead: { findMany: vi.fn().mockResolvedValue([]) },
+      comment: { findMany: vi.fn().mockResolvedValue([]) }
     });
     commentRepo.summarizeCommentsByArticles.mockResolvedValue({});
 

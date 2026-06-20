@@ -73,10 +73,21 @@ model Article {
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
   comments      Comment[]
+  readReceipts  ArticleRead[]
   @@index([email, createdAt(sort: Desc)])
   @@index([email, boardId, state, createdAt(sort: Desc)])
   @@index([boardId, state, createdAt(sort: Desc)])
   @@map("articles")
+}
+
+model ArticleRead {
+  articleId String   @map("article_id")
+  viewerId  String   @map("viewer_id")
+  readAt    DateTime @default(now()) @map("read_at")
+  article   Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  @@id([articleId, viewerId])
+  @@index([viewerId, readAt(sort: Desc)])
+  @@map("article_reads")
 }
 
 model Comment {

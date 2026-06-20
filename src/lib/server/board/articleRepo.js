@@ -183,12 +183,29 @@ export async function addRead(id, viewerId) {
     const prisma = getPrisma();
     const article = await prisma.article.findUnique({ where: { id } });
     if (!article) return null;
-    if (article.reads.includes(viewerId)) return article;
+    const readAt = new Date();
+    const result = article.reads.includes(viewerId)
+      ? article
+      : await prisma.article.update({
+          where: { id },
+          data: { reads: { push: viewerId } }
+        });
 
-    return await prisma.article.update({
-      where: { id },
-      data: { reads: { push: viewerId } }
+    await /** @type {any} */ (prisma).articleRead.upsert({
+      where: {
+        articleId_viewerId: {
+          articleId: id,
+          viewerId
+        }
+      },
+      update: { readAt },
+      create: {
+        articleId: id,
+        viewerId,
+        readAt
+      }
     });
+    return result;
   } catch {
     return null;
   }

@@ -3,7 +3,14 @@ import { contentIconsFromFlags } from '$lib/server/board/articleRepo.js';
 import { summarizeCommentsByArticles } from '$lib/server/board/commentRepo.js';
 
 const ONE_HOUR_MS = 60 * 60 * 1000;
-const THIRTY_MIN_MS = 30 * 60 * 1000;
+
+function getTodayReplyBadgeThreshold() {
+  const now = new Date();
+  const kstNow = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+  return new Date(
+    Date.UTC(kstNow.getUTCFullYear(), kstNow.getUTCMonth(), kstNow.getUTCDate(), 4, 45, 0, 0)
+  );
+}
 
 /**
  * 게시판 목록 + 최신 댓글 시각/유저 photo (Prisma + JS content icons)
@@ -52,15 +59,50 @@ export async function fetchBoardArticleList({ boardId, pageNo, pageUnit, created
     const articleIds = rows.map((a) => a.id);
     const emails = [...new Set(rows.map((a) => a.email))];
     const newArticleThreshold = new Date(Date.now() - ONE_HOUR_MS);
-    const newCommentThreshold = new Date(Date.now() - THIRTY_MIN_MS);
+    const replyBadgeThreshold = getTodayReplyBadgeThreshold();
 
-    const [commentSummaryByArticle, users] = await Promise.all([
+    const [commentSummaryByArticle, users, articleReads, recentComments] = await Promise.all([
       summarizeCommentsByArticles(articleIds),
       getPrisma().user.findMany({
         where: { email: { in: emails } },
         select: { email: true, photo: true }
-      })
+      }),
+      viewerId
+        ? /** @type {any} */ (getPrisma()).articleRead.findMany({
+            where: {
+              viewerId,
+              articleId: { in: articleIds }
+            },
+            select: { articleId: true, readAt: true }
+          })
+        : Promise.resolve([]),
+      viewerId
+        ? getPrisma().comment.findMany({
+            where: {
+              articleId: { in: articleIds },
+              state: 'write',
+              createdAt: { gte: replyBadgeThreshold },
+              NOT: { email: viewerId }
+            },
+            orderBy: { createdAt: 'desc' },
+            select: { articleId: true, createdAt: true }
+          })
+        : Promise.resolve([])
     ]);
+    const readAtByArticleId = new Map(
+      articleReads.map(
+        /** @param {{ articleId: string, readAt: Date }} read */ (read) => [read.articleId, read.readAt]
+      )
+    );
+    /** @type {Map<string, Date>} */
+    const latestUnreadReplyByArticleId = new Map();
+    for (const comment of /** @type {Array<{ articleId: string, createdAt: Date }>} */ (
+      recentComments
+    )) {
+      if (!latestUnreadReplyByArticleId.has(comment.articleId)) {
+        latestUnreadReplyByArticleId.set(comment.articleId, comment.createdAt);
+      }
+    }
 
     /** @type {Record<string, string | undefined>} */
     const photoByEmail = {};
@@ -70,7 +112,8 @@ export async function fetchBoardArticleList({ boardId, pageNo, pageUnit, created
 
     return rows.map((a) => {
       const commentSummary = commentSummaryByArticle[a.id];
-      const latest = commentSummary?.latestCreatedAt;
+      const latestUnreadReplyAt = latestUnreadReplyByArticleId.get(a.id);
+      const readAt = readAtByArticleId.get(a.id);
       return {
         _id: a.id,
         title: a.title,
@@ -84,7 +127,7 @@ export async function fetchBoardArticleList({ boardId, pageNo, pageUnit, created
         isNewArticle: Boolean(
           viewerId && a.createdAt > newArticleThreshold && !a.reads.includes(viewerId)
         ),
-        isNewComment: Boolean(latest && latest >= newCommentThreshold),
+        isNewComment: Boolean(latestUnreadReplyAt && (!readAt || latestUnreadReplyAt > readAt)),
         photo: a.email ? photoByEmail[a.email] : undefined
       };
     });
