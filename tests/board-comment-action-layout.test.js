@@ -57,6 +57,15 @@ describe('board comment action layout', () => {
     expect(articlePage).toContain('max-width: min(14rem, 58vw);');
   });
 
+  it('keeps mobile icon-only buttons large enough to tap', () => {
+    expect(articlePage).toMatch(
+      /@media \(max-width: 767\.98px\) \{[\s\S]*:global\(\.article-toolbar \.article-action-btn\) \{[\s\S]*display: inline-flex;[\s\S]*min-height: 44px;[\s\S]*min-width: 44px;/
+    );
+    expect(articlePage).toMatch(
+      /@media \(max-width: 767\.98px\) \{[\s\S]*:global\(\.comment-section \.comment-action-btn\),[\s\S]*:global\(\.comment-section \.comment-form-btn\),[\s\S]*:global\(\.comment-section \.comment-toolbar-btn\) \{[\s\S]*display: inline-flex;[\s\S]*min-height: 44px;[\s\S]*min-width: 44px;/
+    );
+  });
+
   it('scrolls to the comment heading after refreshing comments from the toolbar', () => {
     expect(articlePage).toContain('bind:this={commentSectionEl}');
     expect(articlePage).toContain('async function scrollToCommentSectionStartAfterRender()');
