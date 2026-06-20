@@ -186,7 +186,7 @@ export async function POST(event) {
         parentCommentId: parentKey
       });
       if (dup) {
-        return new Response('ok', { status: 201 });
+        return json({ id: dup._id }, { status: 201 });
       }
     }
 
@@ -228,6 +228,8 @@ export async function POST(event) {
         newCommentId: comment.id
       });
     }
+
+    return json({ id: comment.id }, { status: 201 });
   } catch (err) {
     if (isHttpError(err)) throw err;
     logCommentError('[board.comment] create failed', err, {
@@ -238,8 +240,6 @@ export async function POST(event) {
     });
     throw error(500, { message: '댓글 저장 중 오류가 발생하였습니다.ㅜㅜ' });
   }
-
-  return new Response('ok', { status: 201 });
 }
 
 /** @param {import('@sveltejs/kit').RequestEvent} event */

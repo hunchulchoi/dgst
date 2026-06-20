@@ -210,6 +210,37 @@ describe('board comment route auth', () => {
     expect(response.status).toBe(200);
   });
 
+  it('returns the created comment id after a successful comment create', async () => {
+    submitDedup.buildSubmitFingerprint.mockReturnValue('fingerprint');
+    submitDedup.tryAcquireSubmitDedup.mockResolvedValue(true);
+    commentRepo.createComment.mockResolvedValue({ id: 'comment-new' });
+    articleRepo.findArticleAlarmTarget.mockResolvedValue(null);
+
+    const { POST } =
+      await import('../src/routes/board/[boardId=boardId]/[[pageNo=integer]]/[articleId]/comment/+server.js');
+
+    const formData = new FormData();
+    formData.set('content', 'new comment');
+
+    const response = await POST({
+      params: { boardId: 'free', articleId: 'article-1' },
+      locals: {
+        auth: vi.fn().mockResolvedValue({
+          user: {
+            nickname: 'session-user',
+            email: 'session@example.com'
+          }
+        })
+      },
+      request: {
+        formData: vi.fn().mockResolvedValue(formData)
+      }
+    });
+
+    expect(response.status).toBe(201);
+    await expect(response.json()).resolves.toEqual({ id: 'comment-new' });
+  });
+
   it('logs structured errors when comment creation fails', async () => {
     submitDedup.buildSubmitFingerprint.mockReturnValue('fingerprint');
     submitDedup.tryAcquireSubmitDedup.mockResolvedValue(true);

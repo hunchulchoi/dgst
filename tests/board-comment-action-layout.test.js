@@ -75,4 +75,18 @@ describe('board comment action layout', () => {
     expect(articlePage).toContain('{#if initialCommentLoading}');
     expect(articlePage).toContain('initialCommentLoading = false;');
   });
+
+  it('scrolls near the newly created comment after saving', () => {
+    expect(articlePage).toContain('function scrollToCreatedComment(commentId)');
+    expect(articlePage).toContain('document.getElementById(`cmt${commentId}`)');
+    expect(articlePage).toContain("block: 'center'");
+    expect(articlePage).toContain('const createdCommentId = createdCommentBody?.id;');
+    expect(articlePage).toContain('scrollToCreatedComment(createdCommentId);');
+    expect(articlePage).toMatch(/await comments\(\);[\s\S]*scrollToCreatedComment\(createdCommentId\);/);
+  });
+
+  it('scrolls near the edited comment after saving an edit', () => {
+    expect(articlePage).toContain('const editedCommentId = editingCommentId;');
+    expect(articlePage).toMatch(/cancelEditComment\(\);[\s\S]*await comments\(\);[\s\S]*scrollToCreatedComment\(editedCommentId\);/);
+  });
 });

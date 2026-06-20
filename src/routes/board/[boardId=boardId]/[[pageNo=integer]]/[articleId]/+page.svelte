@@ -214,6 +214,13 @@
     window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
   }
 
+  /** @param {string | null | undefined} commentId */
+  function scrollToCreatedComment(commentId) {
+    if (!browser || !commentId) return;
+    const el = document.getElementById(`cmt${commentId}`);
+    el?.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+  }
+
   async function refreshCommentsFromToolbar() {
     await comments();
     scrollToCommentSectionStart();
@@ -507,6 +514,14 @@
         return;
       }
 
+      let createdCommentBody = /** @type {{ id?: string } | null} */ (null);
+      try {
+        createdCommentBody = await res.json();
+      } catch {
+        /* empty */
+      }
+      const createdCommentId = createdCommentBody?.id;
+
       commentContent = '';
       commentImage = null;
       if (commentImageEl) commentImageEl.value = '';
@@ -528,6 +543,7 @@
 
       toast('저장 되었습니다.', 'success');
       await comments();
+      scrollToCreatedComment(createdCommentId);
       await refreshUnreadAlarmCount();
     } catch (error) {
       console.error('❌ 댓글 저장 실패:', error);
@@ -743,8 +759,10 @@
 
       toast('댓글이 수정되었습니다.', 'success');
 
+      const editedCommentId = editingCommentId;
       cancelEditComment();
-      comments();
+      await comments();
+      scrollToCreatedComment(editedCommentId);
     } catch (error) {
       console.error('댓글 수정 실패:', error);
 
