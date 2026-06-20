@@ -13,6 +13,7 @@ const commentRepo = vi.hoisted(() => ({
 }));
 
 const articleRepo = vi.hoisted(() => ({
+  addRead: vi.fn(),
   findArticleById: vi.fn(),
   findArticleAlarmTarget: vi.fn()
 }));
@@ -89,6 +90,31 @@ describe('board comment route auth', () => {
 
     expect(commentRepo.findCommentsByArticle).not.toHaveBeenCalled();
     expect(alarmService.markAsRead).not.toHaveBeenCalled();
+    expect(articleRepo.addRead).not.toHaveBeenCalled();
+  });
+
+  it('updates article read time when authenticated users refresh comments', async () => {
+    articleRepo.findArticleById.mockResolvedValue({
+      id: 'article-1',
+      createdAt: new Date('2026-06-14T11:00:00.000Z')
+    });
+    commentRepo.findCommentsByArticle.mockResolvedValue([]);
+
+    const { GET } =
+      await import('../src/routes/board/[boardId=boardId]/[[pageNo=integer]]/[articleId]/comment/+server.js');
+
+    const response = await GET({
+      params: { boardId: 'free', articleId: 'article-1' },
+      locals: {
+        auth: vi.fn().mockResolvedValue({
+          user: { email: 'session@example.com' }
+        })
+      }
+    });
+
+    expect(response.status).toBe(200);
+    expect(alarmService.markAsRead).toHaveBeenCalledWith('session@example.com', 'article-1');
+    expect(articleRepo.addRead).toHaveBeenCalledWith('article-1', 'session@example.com');
   });
 
   it('uses the authenticated session email for comment updates', async () => {

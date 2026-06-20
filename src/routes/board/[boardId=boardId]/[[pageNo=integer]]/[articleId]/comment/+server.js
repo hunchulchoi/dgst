@@ -1,5 +1,5 @@
 import { error, isHttpError, json } from '@sveltejs/kit';
-import { findArticleAlarmTarget, findArticleById } from '$lib/server/board/articleRepo.js';
+import { addRead, findArticleAlarmTarget, findArticleById } from '$lib/server/board/articleRepo.js';
 import {
   createComment,
   findCommentById,
@@ -102,7 +102,7 @@ export async function GET({ params, locals }) {
     const comments = await findCommentsByArticle(articleId, boardId, BOARD_COMMENT_SELECT);
 
     if (session?.user?.email) {
-      await markAsRead(session.user.email, articleId);
+      await Promise.all([markAsRead(session.user.email, articleId), addRead(articleId, session.user.email)]);
     }
 
     const commentsTree = convertToTree(
