@@ -1950,7 +1950,7 @@
               </Row>
 
               {#if sessionUser?.nickname && comment.state === 'write'}
-                <Row class="mt-2">
+                <Row class="mt-2 comment-actions-row {comment.parentCommentId ? 'comment-actions-row-reply' : ''}">
                   <Col class="comment-actions text-end pe-2 m-0">
                     {#if comment.email === sessionUser?.email}
                       <Button
@@ -2312,6 +2312,9 @@
   }
 
   :global(.article-toolbar .article-action-btn) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     padding: 0.45rem 1rem !important;
     font-size: 1rem !important;
     line-height: 1.35 !important;
@@ -2330,6 +2333,9 @@
     }
 
     :global(.article-toolbar .article-action-btn) {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
       min-height: 44px;
       min-width: 44px;
       padding: 0.5rem 0.75rem !important;
@@ -2487,6 +2493,8 @@
   }
 
   :global(.comment-section) {
+    --reply-comment-indent: 1.75rem;
+    --reply-comment-mobile-indent: 1.5rem;
     width: 100%;
     max-width: min(48rem, 100%);
     margin-right: auto !important;
@@ -2504,6 +2512,11 @@
     gap: 0.35rem;
     justify-content: flex-end;
     align-items: center;
+  }
+
+  :global(.comment-actions-row-reply) {
+    margin-left: calc(-1 * var(--reply-comment-indent));
+    width: calc(100% + var(--reply-comment-indent));
   }
 
   :global(.comment-section .comment-attachment-group) {
@@ -2557,6 +2570,9 @@
     :global(.comment-section .comment-action-btn),
     :global(.comment-section .comment-form-btn),
     :global(.comment-section .comment-toolbar-btn) {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
       min-height: 44px;
       min-width: 44px;
       padding: 0.5rem 1rem !important;
@@ -2586,6 +2602,11 @@
     :global(.comment-actions) {
       gap: 0.45rem;
       justify-content: flex-end;
+    }
+
+    :global(.comment-actions-row-reply) {
+      margin-left: calc(-1 * var(--reply-comment-mobile-indent));
+      width: calc(100% + var(--reply-comment-mobile-indent));
     }
   }
 

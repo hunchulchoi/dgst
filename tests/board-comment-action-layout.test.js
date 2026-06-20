@@ -66,6 +66,16 @@ describe('board comment action layout', () => {
     );
   });
 
+  it('keeps reply comment action buttons outside the reply indentation on mobile', () => {
+    expect(articlePage).toContain("class=\"mt-2 comment-actions-row {comment.parentCommentId ? 'comment-actions-row-reply' : ''}\"");
+    expect(articlePage).toContain(':global(.comment-actions-row-reply)');
+    expect(articlePage).toContain('margin-left: calc(-1 * var(--reply-comment-indent));');
+    expect(articlePage).toContain('width: calc(100% + var(--reply-comment-indent));');
+    expect(articlePage).toMatch(
+      /@media \(max-width: 767\.98px\) \{[\s\S]*:global\(\.comment-actions-row-reply\) \{[\s\S]*margin-left: calc\(-1 \* var\(--reply-comment-mobile-indent\)\);[\s\S]*width: calc\(100% \+ var\(--reply-comment-mobile-indent\)\);/
+    );
+  });
+
   it('scrolls to the comment heading after refreshing comments from the toolbar', () => {
     expect(articlePage).toContain('bind:this={commentSectionEl}');
     expect(articlePage).toContain('async function scrollToCommentSectionStartAfterRender()');
