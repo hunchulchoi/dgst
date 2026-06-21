@@ -135,7 +135,6 @@ describe('fetchBoardArticleList', () => {
       where: {
         articleId: { in: ['article-1', 'article-2'] },
         state: 'write',
-        createdAt: { gte: new Date('2026-06-14T04:45:00.000Z') },
         NOT: { email: 'viewer@example.com' }
       },
       orderBy: { createdAt: 'desc' },
@@ -166,7 +165,7 @@ describe('fetchBoardArticleList', () => {
     expect(result[1].content).toContain('bi-instagram');
   });
 
-  it('marks comment badges as new when latest non-viewer replies after 13:45 KST are newer than the viewer read time', async () => {
+  it('marks comment badges as new when latest non-viewer replies are newer than the viewer read time', async () => {
     const articleFindMany = vi.fn().mockResolvedValue([
       {
         id: 'article-1',
@@ -252,12 +251,72 @@ describe('fetchBoardArticleList', () => {
       where: {
         articleId: { in: ['article-1', 'article-2'] },
         state: 'write',
-        createdAt: { gte: new Date('2026-06-14T04:45:00.000Z') },
         NOT: { email: 'viewer@example.com' }
       },
       orderBy: { createdAt: 'desc' },
       select: { articleId: true, createdAt: true }
     });
+  });
+
+  it('marks never-read article comments as new without a daily badge reset cutoff', async () => {
+    vi.setSystemTime(new Date('2026-06-14T01:30:00.000Z'));
+    const articleFindMany = vi.fn().mockResolvedValue([
+      {
+        id: 'morning-article',
+        title: 'Morning article',
+        createdAt: new Date('2026-06-14T01:00:00.000Z'),
+        nickname: 'writer',
+        email: 'writer@example.com',
+        reads: [],
+        likes: [],
+        hasImage: false,
+        hasVideo: false,
+        hasAudio: false,
+        hasYoutube: false,
+        hasInstagram: false
+      }
+    ]);
+    const commentFindMany = vi.fn().mockResolvedValue([
+      {
+        articleId: 'morning-article',
+        createdAt: new Date('2026-06-14T01:10:00.000Z')
+      }
+    ]);
+
+    prismaModule.getPrisma.mockReturnValue({
+      article: { findMany: articleFindMany },
+      user: { findMany: vi.fn().mockResolvedValue([]) },
+      articleRead: { findMany: vi.fn().mockResolvedValue([]) },
+      comment: { findMany: commentFindMany }
+    });
+    commentRepo.summarizeCommentsByArticles.mockResolvedValue({
+      'morning-article': {
+        count: 1,
+        latestCreatedAt: new Date('2026-06-14T01:10:00.000Z')
+      }
+    });
+
+    const { fetchBoardArticleList } = await import('../src/lib/server/boardArticleList.js');
+
+    const result = await fetchBoardArticleList({
+      boardId: 'free',
+      pageNo: 1,
+      pageUnit: 30,
+      viewerId: 'viewer@example.com'
+    });
+
+    expect(commentFindMany).toHaveBeenCalledWith({
+      where: {
+        articleId: { in: ['morning-article'] },
+        state: 'write',
+        NOT: { email: 'viewer@example.com' }
+      },
+      orderBy: { createdAt: 'desc' },
+      select: { articleId: true, createdAt: true }
+    });
+    expect(result).toMatchObject([
+      { _id: 'morning-article', comment: 1, isNewArticle: true, isNewComment: true }
+    ]);
   });
 
   it('returns early without fan-out queries when there are no board rows', async () => {

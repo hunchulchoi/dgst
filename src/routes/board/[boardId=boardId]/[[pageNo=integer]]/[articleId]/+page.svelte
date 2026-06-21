@@ -2329,7 +2329,8 @@
 
   @media (max-width: 767.98px) {
     :global(.article-toolbar) {
-      gap: 0.5rem;
+      row-gap: 0.625rem;
+      column-gap: 0.875rem;
     }
 
     :global(.article-toolbar .article-action-btn) {

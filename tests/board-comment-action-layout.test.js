@@ -66,6 +66,12 @@ describe('board comment action layout', () => {
     );
   });
 
+  it('adds extra horizontal spacing between mobile article action buttons', () => {
+    expect(articlePage).toMatch(
+      /@media \(max-width: 767\.98px\) \{[\s\S]*:global\(\.article-toolbar\) \{[\s\S]*row-gap: 0\.625rem;[\s\S]*column-gap: 0\.875rem;/
+    );
+  });
+
   it('keeps reply comment action buttons outside the reply indentation on mobile', () => {
     expect(articlePage).toContain("class=\"mt-2 comment-actions-row {comment.parentCommentId ? 'comment-actions-row-reply' : ''}\"");
     expect(articlePage).toContain(':global(.comment-actions-row-reply)');

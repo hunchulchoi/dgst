@@ -4,14 +4,6 @@ import { summarizeCommentsByArticles } from '$lib/server/board/commentRepo.js';
 
 const ONE_HOUR_MS = 60 * 60 * 1000;
 
-function getTodayReplyBadgeThreshold() {
-  const now = new Date();
-  const kstNow = new Date(now.getTime() + 9 * 60 * 60 * 1000);
-  return new Date(
-    Date.UTC(kstNow.getUTCFullYear(), kstNow.getUTCMonth(), kstNow.getUTCDate(), 4, 45, 0, 0)
-  );
-}
-
 /**
  * 게시판 목록 + 최신 댓글 시각/유저 photo (Prisma + JS content icons)
  *
@@ -59,7 +51,6 @@ export async function fetchBoardArticleList({ boardId, pageNo, pageUnit, created
     const articleIds = rows.map((a) => a.id);
     const emails = [...new Set(rows.map((a) => a.email))];
     const newArticleThreshold = new Date(Date.now() - ONE_HOUR_MS);
-    const replyBadgeThreshold = getTodayReplyBadgeThreshold();
 
     const [commentSummaryByArticle, users, articleReads, recentComments] = await Promise.all([
       summarizeCommentsByArticles(articleIds),
@@ -81,7 +72,6 @@ export async function fetchBoardArticleList({ boardId, pageNo, pageUnit, created
             where: {
               articleId: { in: articleIds },
               state: 'write',
-              createdAt: { gte: replyBadgeThreshold },
               NOT: { email: viewerId }
             },
             orderBy: { createdAt: 'desc' },
