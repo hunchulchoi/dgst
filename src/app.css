@@ -310,6 +310,13 @@ body {
   text-decoration: underline;
 }
 
+.dgst-rich-text a,
+.markdown-body a {
+  color: #0366d6;
+  text-decoration: underline;
+  text-underline-offset: 0.12em;
+}
+
 .markdown-body img {
   max-width: 100%;
   box-sizing: content-box;
