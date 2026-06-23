@@ -14,6 +14,24 @@ import {
 // 게임용 댓글: boardId='slot', articleId='slot' 사용
 const SLOT_BOARD_ID = 'slot';
 const SLOT_ARTICLE_ID = 'slot';
+const SLOT_ARTICLE_TITLE = '뺑뺑이';
+
+/** @param {ReturnType<typeof getPrisma>} prisma */
+async function ensureSlotArticle(prisma) {
+  await prisma.article.upsert({
+    where: { id: SLOT_ARTICLE_ID },
+    update: {},
+    create: {
+      id: SLOT_ARTICLE_ID,
+      email: 'system@dgst.me',
+      nickname: '뺑뺑이',
+      boardId: SLOT_BOARD_ID,
+      title: SLOT_ARTICLE_TITLE,
+      content: '',
+      state: 'write'
+    }
+  });
+}
 
 export async function GET({ locals, setHeaders, url }) {
   // 캐시 방지 헤더 설정
@@ -221,6 +239,7 @@ export async function POST(event) {
     const todayEnd = new Date(Date.UTC(kstYear, kstMonth, kstDate, 23, 59, 59, 999) - kstOffset);
 
     const prisma = getPrisma();
+    await ensureSlotArticle(prisma);
 
     // 오늘 받은 댓글 보상 개수 체크 (100점 보상은 하루 10개까지만, 한국 시간 기준 당일 0시~23:59:59)
     const todayRewardCount = await prisma.gameScore.count({
