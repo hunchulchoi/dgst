@@ -2549,6 +2549,7 @@
     flex: 1 1 auto;
     width: 1%;
     min-width: 0;
+    font-size: 16px;
   }
 
   :global(.comment-section .comment-write-group .comment-form-btn) {

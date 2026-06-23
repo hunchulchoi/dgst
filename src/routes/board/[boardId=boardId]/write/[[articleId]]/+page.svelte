@@ -565,6 +565,7 @@
     width: 100%;
     max-width: 100%;
     min-width: 0;
+    font-size: 16px;
   }
 
   :global(.write-action-row) {
