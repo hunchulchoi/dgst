@@ -19,6 +19,7 @@
   import OGPreview from '$lib/components/OGPreview.svelte';
   import sanitizeHtml from 'sanitize-html';
   import { isOnlyOneEmoji } from '$lib/util/emoji.js';
+  import { linkifyPlainUrls } from '$lib/util/linkifyPlainUrls.js';
   import { repairOgCardHtmlEntities } from '$lib/util/ogCardHtmlRepair.js';
   import {
     applyAttachmentImageSizing,
@@ -1227,9 +1228,9 @@
   /** 게시글 본문은 저장 시 정화되고, 표시 전 `processArticleContent()`로 한 번 더 정화한다. */
   /** @param {string} content */
   function getTrustedArticleBodyHtml(content) {
-    return processArticleContent(
-      repairOgCardHtmlEntities(
-        content.replace(/<p>\s*<br\s*\/?>(\s|\u00A0)*<\/p>/g, '<br>')
+    return linkifyPlainUrls(
+      processArticleContent(
+        repairOgCardHtmlEntities(content.replace(/<p>\s*<br\s*\/?>(\s|\u00A0)*<\/p>/g, '<br>'))
       )
     );
   }
