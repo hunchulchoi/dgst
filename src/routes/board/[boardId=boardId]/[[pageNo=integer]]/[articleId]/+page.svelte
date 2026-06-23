@@ -2549,7 +2549,6 @@
     flex: 1 1 auto;
     width: 1%;
     min-width: 0;
-    font-size: 16px;
   }
 
   :global(.comment-section .comment-write-group .comment-form-btn) {
@@ -2598,12 +2597,16 @@
       min-width: 0;
     }
 
-    :global(.comment-section .comment-write-group) {
-      max-width: 100%;
-    }
+  :global(.comment-section .comment-write-group) {
+    max-width: 100%;
+  }
 
-    :global(.comment-actions) {
-      gap: 0.45rem;
+  :global(.comment-section .comment-write-group textarea) {
+    font-size: 16px;
+  }
+
+  :global(.comment-actions) {
+    gap: 0.45rem;
       justify-content: flex-end;
     }
 

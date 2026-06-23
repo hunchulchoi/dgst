@@ -565,7 +565,6 @@
     width: 100%;
     max-width: 100%;
     min-width: 0;
-    font-size: 16px;
   }
 
   :global(.write-action-row) {
@@ -619,6 +618,10 @@
   @media (max-width: 575.98px) {
     .write-form {
       padding-inline: 0.5rem;
+    }
+
+    :global(.write-title-field > .form-control) {
+      font-size: 16px;
     }
   }
 </style>

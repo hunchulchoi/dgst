@@ -11,6 +11,16 @@ const writePage = readFileSync(
 );
 const slotPage = readFileSync('src/routes/games/slot/+page.svelte', 'utf8');
 
+/**
+ * @param {string} source
+ * @param {string} selector
+ */
+const cssBlock = (source, selector) => {
+  const match = source.match(new RegExp(`${selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*\\{([^}]*)\\}`));
+  expect(match).not.toBeNull();
+  return match?.[1] ?? '';
+};
+
 describe('comment write group layout CSS', () => {
   it('keeps textarea submit button on one input-group row', () => {
     expect(articlePage).toContain(':global(.comment-section .comment-write-group)');
@@ -19,15 +29,21 @@ describe('comment write group layout CSS', () => {
     expect(articlePage).toContain('flex: 1 1 auto');
   });
 
-  it('keeps board comment textareas at 16px to prevent mobile focus zoom', () => {
+  it('keeps board comment textarea 16px only on mobile to prevent focus zoom', () => {
+    expect(cssBlock(articlePage, ':global(.comment-section .comment-write-group textarea)')).not.toContain(
+      'font-size: 16px'
+    );
     expect(articlePage).toMatch(
-      /:global\(\.comment-section \.comment-write-group textarea\)\s*\{[^}]*font-size:\s*16px/
+      /@media \(max-width: 767\.98px\)\s*\{[^]*:global\(\.comment-section \.comment-write-group textarea\)\s*\{[^}]*font-size:\s*16px/
     );
   });
 
-  it('keeps board write title input at 16px to prevent mobile focus zoom', () => {
+  it('keeps board write title input 16px only on mobile to prevent focus zoom', () => {
+    expect(cssBlock(writePage, ':global(.write-title-field > .form-control)')).not.toContain(
+      'font-size: 16px'
+    );
     expect(writePage).toMatch(
-      /:global\(\.write-title-field > \.form-control\)\s*\{[^}]*font-size:\s*16px/
+      /@media \(max-width: 575\.98px\)\s*\{[^]*:global\(\.write-title-field > \.form-control\)\s*\{[^}]*font-size:\s*16px/
     );
   });
 
