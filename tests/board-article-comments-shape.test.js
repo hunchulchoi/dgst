@@ -196,7 +196,7 @@ describe('board article load comment shape', () => {
     ]);
   });
 
-  it('marks comments created after the previous read time on initial load', async () => {
+  it('updates article read time without adding unread flags to detail comments', async () => {
     articleRepo.recordArticleRead.mockResolvedValue({
       article: {
         id: 'article-1',
@@ -221,11 +221,11 @@ describe('board article load comment shape', () => {
     });
 
     expect(articleRepo.recordArticleRead).toHaveBeenCalledWith('article-1', 'viewer@example.com');
-    expect(result.lastReadAt).toBe('2026-06-14T00:00:30.000Z');
-    expect(result.currentReadAt).toBe('2026-06-14T12:00:00.000Z');
     expect(result.article.comments).toMatchObject([
-      { id: 'comment-1', isNewSinceLastRead: false },
-      { id: 'comment-2', isNewSinceLastRead: true }
+      { id: 'comment-1', depth: 1 },
+      { id: 'comment-2', depth: 2 }
     ]);
+    expect(result.article.comments[0]).not.toHaveProperty('isNewSinceLastRead');
+    expect(result.article.comments[1]).not.toHaveProperty('isNewSinceLastRead');
   });
 });

@@ -50,7 +50,6 @@
   const boardId = $derived($page.params.boardId ?? 'free');
   const articleId = $derived($page.params.articleId ?? '');
   const pageNo = $derived($page.params.pageNo ?? '1');
-  const guestLastReadStoragePrefix = 'dgst:last-read';
 
   // 애니메이션 관련 상태
   let likeAnimation = $state(false);
@@ -200,7 +199,6 @@
       console.log('📝 댓글 데이터:', d.length, '개');
       // $state 직접 업데이트
       commentData = d;
-      applyGuestLastReadFallback();
       await tick();
       if (!browser) return;
       window.dispatchEvent(new CustomEvent('dgst:normalize-mobile-layout-width'));
@@ -1078,43 +1076,6 @@
     articleLiked = article?.liked ?? false;
   });
 
-  function getGuestLastReadStorageKey() {
-    return `${guestLastReadStoragePrefix}:${boardId}:${articleId}`;
-  }
-
-  /**
-   * @param {Array<any>} comments
-   * @param {string | null | undefined} lastReadAt
-   */
-  function markCommentsNewSince(comments, lastReadAt) {
-    const lastReadAtMs = lastReadAt ? new Date(lastReadAt).getTime() : NaN;
-    if (!Number.isFinite(lastReadAtMs)) return comments;
-
-    return comments.map((comment) => {
-      const createdAtMs = new Date(comment.createdAt).getTime();
-      return {
-        ...comment,
-        isNewSinceLastRead:
-          comment.isNewSinceLastRead || (Number.isFinite(createdAtMs) && createdAtMs > lastReadAtMs)
-      };
-    });
-  }
-
-  function applyGuestLastReadFallback() {
-    if (!browser || sessionUser?.email || !articleId) return;
-
-    try {
-      const key = getGuestLastReadStorageKey();
-      const previousReadAt = localStorage.getItem(key);
-      if (previousReadAt) {
-        commentData = markCommentsNewSince(commentData, previousReadAt);
-      }
-      localStorage.setItem(key, data.currentReadAt ?? new Date().toISOString());
-    } catch {
-      /* localStorage can be unavailable in private or restricted contexts. */
-    }
-  }
-
   $effect(() => {
     console.log('🔄 게시글 상세 페이지 - articleId:', articleId);
     console.log('📝 게시글:', article?.title);
@@ -1284,7 +1245,6 @@
   onMount(async () => {
     embeder = await import('$lib/util/embeder.js');
     await tick();
-    applyGuestLastReadFallback();
     initialCommentLoading = false;
 
     // 인스타그램 임베드 처리
@@ -1820,9 +1780,6 @@
                           locale: ko,
                           addSuffix: true
                         })}
-                        {#if comment.isNewSinceLastRead}
-                          <Badge color="danger" class="comment-new-badge ms-1">NEW</Badge>
-                        {/if}
                       </div>
                     </div>
                   </div>

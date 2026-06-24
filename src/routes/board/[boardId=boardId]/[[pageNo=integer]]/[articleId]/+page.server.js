@@ -55,9 +55,6 @@ export const load = async ({ params, locals, cookies }) => {
 
     const readReceipt = viewerId ? await recordArticleRead(articleId, viewerId) : null;
     article = readReceipt?.article ?? article;
-    const previousReadAt = readReceipt?.previousReadAt ?? null;
-    const currentReadAt = readReceipt?.readAt ?? null;
-    const previousReadAtMs = previousReadAt ? previousReadAt.getTime() : null;
     const requestedPageNo = parseInt(params.pageNo || '1', 10);
     const [comments, author, boardListPayload] = await Promise.all([
       findCommentsByArticle(articleId, boardId, BOARD_COMMENT_SELECT),
@@ -68,12 +65,7 @@ export const load = async ({ params, locals, cookies }) => {
     const commentTree = convertToTree(
       comments.map((c) => ({
         ...toCommentJson(c),
-        id: c.id,
-        isNewSinceLastRead: Boolean(
-          previousReadAtMs &&
-            c.email !== viewerId &&
-            new Date(c.createdAt).getTime() > previousReadAtMs
-        )
+        id: c.id
       }))
     );
 
@@ -129,9 +121,7 @@ export const load = async ({ params, locals, cookies }) => {
       ogTitle,
       ogDescription,
       ogUrl,
-      ogImage,
-      lastReadAt: previousReadAt?.toISOString() ?? null,
-      currentReadAt: currentReadAt?.toISOString() ?? null
+      ogImage
     };
   } catch (err) {
     if (err && typeof err === 'object' && 'status' in err) throw err;
