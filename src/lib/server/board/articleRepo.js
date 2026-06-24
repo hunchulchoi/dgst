@@ -178,10 +178,21 @@ export async function findArticleAuthorProfile(email) {
  * @param {string} id
  * @param {string} viewerId
  */
-export async function addRead(id, viewerId) {
+export async function recordArticleRead(id, viewerId) {
   try {
     const prisma = getPrisma();
-    const article = await prisma.article.findUnique({ where: { id } });
+    const [article, previousRead] = await Promise.all([
+      prisma.article.findUnique({ where: { id } }),
+      /** @type {any} */ (prisma).articleRead.findUnique({
+        where: {
+          articleId_viewerId: {
+            articleId: id,
+            viewerId
+          }
+        },
+        select: { readAt: true }
+      })
+    ]);
     if (!article) return null;
     const readAt = new Date();
     const result = article.reads.includes(viewerId)
@@ -205,10 +216,23 @@ export async function addRead(id, viewerId) {
         readAt
       }
     });
-    return result;
+    return {
+      article: result,
+      previousReadAt: previousRead?.readAt ?? null,
+      readAt
+    };
   } catch {
     return null;
   }
+}
+
+/**
+ * @param {string} id
+ * @param {string} viewerId
+ */
+export async function addRead(id, viewerId) {
+  const result = await recordArticleRead(id, viewerId);
+  return result?.article ?? null;
 }
 
 /**

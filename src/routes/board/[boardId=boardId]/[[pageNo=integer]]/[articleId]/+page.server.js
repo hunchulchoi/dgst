@@ -1,8 +1,8 @@
 import { error } from '@sveltejs/kit';
 import {
-  addRead,
   findArticleAuthorProfile,
   findArticleById,
+  recordArticleRead,
   toArticleJson
 } from '$lib/server/board/articleRepo.js';
 import { findCommentsByArticle, toCommentJson } from '$lib/server/board/commentRepo.js';
@@ -40,7 +40,7 @@ export const load = async ({ params, locals, cookies }) => {
   try {
     const session = await locals.auth();
 
-    const viewerId = session?.user?.email || cookies.get('dgst_device') || `guest-${Date.now()}`;
+    const viewerId = session?.user?.email || cookies.get('dgst_device') || locals.deviceId;
 
     let article = await findArticleById(articleId, boardId, 'write');
     if (!article) {
@@ -53,7 +53,11 @@ export const load = async ({ params, locals, cookies }) => {
       throw error(404, { message: '삭제되었거나 존재하지 않는 게시물입니다.' });
     }
 
-    article = (await addRead(articleId, viewerId)) ?? article;
+    const readReceipt = viewerId ? await recordArticleRead(articleId, viewerId) : null;
+    article = readReceipt?.article ?? article;
+    const previousReadAt = readReceipt?.previousReadAt ?? null;
+    const currentReadAt = readReceipt?.readAt ?? null;
+    const previousReadAtMs = previousReadAt ? previousReadAt.getTime() : null;
     const requestedPageNo = parseInt(params.pageNo || '1', 10);
     const [comments, author, boardListPayload] = await Promise.all([
       findCommentsByArticle(articleId, boardId, BOARD_COMMENT_SELECT),
@@ -64,7 +68,12 @@ export const load = async ({ params, locals, cookies }) => {
     const commentTree = convertToTree(
       comments.map((c) => ({
         ...toCommentJson(c),
-        id: c.id
+        id: c.id,
+        isNewSinceLastRead: Boolean(
+          previousReadAtMs &&
+            c.email !== viewerId &&
+            new Date(c.createdAt).getTime() > previousReadAtMs
+        )
       }))
     );
 
@@ -120,7 +129,9 @@ export const load = async ({ params, locals, cookies }) => {
       ogTitle,
       ogDescription,
       ogUrl,
-      ogImage
+      ogImage,
+      lastReadAt: previousReadAt?.toISOString() ?? null,
+      currentReadAt: currentReadAt?.toISOString() ?? null
     };
   } catch (err) {
     if (err && typeof err === 'object' && 'status' in err) throw err;

@@ -5,6 +5,7 @@ const articleRepo = vi.hoisted(() => ({
   addRead: vi.fn(),
   findArticleAuthorProfile: vi.fn(),
   findArticleById: vi.fn(),
+  recordArticleRead: vi.fn(),
   toArticleJson: vi.fn()
 }));
 
@@ -48,6 +49,7 @@ describe('board article load comment shape', () => {
       likes: []
     });
     articleRepo.addRead.mockResolvedValue(null);
+    articleRepo.recordArticleRead.mockResolvedValue(null);
     articleRepo.findArticleAuthorProfile.mockResolvedValue({
       photo: null,
       introduction: ''
@@ -163,7 +165,7 @@ describe('board article load comment shape', () => {
       status: 404
     });
 
-    expect(articleRepo.addRead).not.toHaveBeenCalled();
+    expect(articleRepo.recordArticleRead).not.toHaveBeenCalled();
     expect(commentRepo.findCommentsByArticle).not.toHaveBeenCalled();
   });
 
@@ -191,6 +193,39 @@ describe('board article load comment shape', () => {
         parentCommentId: 'comment-1',
         depth: 2
       }
+    ]);
+  });
+
+  it('marks comments created after the previous read time on initial load', async () => {
+    articleRepo.recordArticleRead.mockResolvedValue({
+      article: {
+        id: 'article-1',
+        email: 'writer@example.com',
+        title: 'title',
+        content: '<p>body</p>',
+        createdAt: new Date('2026-06-14T11:00:00.000Z'),
+        updatedAt: new Date('2026-06-14T11:00:00.000Z'),
+        likes: []
+      },
+      previousReadAt: new Date('2026-06-14T00:00:30.000Z'),
+      readAt: new Date('2026-06-14T12:00:00.000Z')
+    });
+
+    const { load } =
+      await import('../src/routes/board/[boardId=boardId]/[[pageNo=integer]]/[articleId]/+page.server.js');
+
+    const result = await load({
+      params: { boardId: 'free', articleId: 'article-1', pageNo: '1' },
+      locals: { auth: vi.fn().mockResolvedValue({ user: { email: 'viewer@example.com' } }) },
+      cookies: { get: vi.fn().mockReturnValue('device-1') }
+    });
+
+    expect(articleRepo.recordArticleRead).toHaveBeenCalledWith('article-1', 'viewer@example.com');
+    expect(result.lastReadAt).toBe('2026-06-14T00:00:30.000Z');
+    expect(result.currentReadAt).toBe('2026-06-14T12:00:00.000Z');
+    expect(result.article.comments).toMatchObject([
+      { id: 'comment-1', isNewSinceLastRead: false },
+      { id: 'comment-2', isNewSinceLastRead: true }
     ]);
   });
 });
