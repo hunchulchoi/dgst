@@ -12,7 +12,7 @@ describe('reportClientError', () => {
     const logPost = {
       catch: vi.fn()
     };
-    globalThis.fetch = /** @type {typeof fetch} */ (vi.fn(() => logPost));
+    globalThis.fetch = /** @type {typeof fetch} */ (/** @type {unknown} */ (vi.fn(() => logPost)));
     console.error = vi.fn();
     Object.defineProperty(globalThis, 'location', {
       configurable: true,
