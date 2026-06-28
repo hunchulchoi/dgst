@@ -206,7 +206,7 @@ export function reportClientError(error, context = {}) {
         ...(details && { details }),
         clientAt
       })
-    });
+    }).catch(() => {});
   } catch {
     // 로깅 실패는 사용자 흐름을 방해하지 않음
   }

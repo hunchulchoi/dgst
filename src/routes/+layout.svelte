@@ -11,6 +11,7 @@
   import { onMount } from 'svelte';
   import { reportSlowInitialLoad, reportSlowLoad } from '$lib/util/logSlowLoad.js';
   import { reportClientError } from '$lib/util/reportClientPageError.js';
+  import { isInterruptedFetchError } from '$lib/util/fetchErrors.js';
   import { isFreeBoardLegacyPath } from '$lib/util/boardPaths.js';
   import { alarmCount, boardListReloadKey, boardListReloading } from '$lib/util/store.js';
   import '../app.css';
@@ -159,6 +160,8 @@
       const body = await response.json();
       alarmCount.set(body.count ?? 0);
     } catch (error) {
+      if (isInterruptedFetchError(error)) return;
+
       reportClientError(error, {
         type: 'alarm-unread-count-refresh-error',
         pathname: window.location.pathname,
