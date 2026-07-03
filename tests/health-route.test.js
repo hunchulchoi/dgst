@@ -1,13 +1,13 @@
 // @ts-nocheck
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 describe('health route', () => {
   afterEach(() => {
-    delete process.env.HEALTHCHECK_TOKEN;
+    vi.unstubAllEnvs();
   });
 
   it('hides the health endpoint when the monitor token is missing', async () => {
-    process.env.HEALTHCHECK_TOKEN = 'secret-token';
+    vi.stubEnv('HEALTHCHECK_TOKEN', 'secret-token');
     const { GET } = await import('../src/routes/health/+server.js');
 
     const response = await GET({
@@ -18,7 +18,7 @@ describe('health route', () => {
   });
 
   it('hides the health endpoint when the monitor token is wrong', async () => {
-    process.env.HEALTHCHECK_TOKEN = 'secret-token';
+    vi.stubEnv('HEALTHCHECK_TOKEN', 'secret-token');
     const { GET } = await import('../src/routes/health/+server.js');
 
     const response = await GET({
@@ -31,7 +31,7 @@ describe('health route', () => {
   });
 
   it('returns a no-store ok response when the monitor token matches', async () => {
-    process.env.HEALTHCHECK_TOKEN = 'secret-token';
+    vi.stubEnv('HEALTHCHECK_TOKEN', 'secret-token');
     const { GET } = await import('../src/routes/health/+server.js');
 
     const response = await GET({

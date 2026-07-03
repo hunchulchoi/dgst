@@ -141,3 +141,15 @@ Recent smoke coverage for this branch confirmed:
 - Keep `conf/docker-compose.yml` changes separate from app/runtime commits unless you are explicitly working on deployment config.
 - Do not modify production MongoDB data during migration validation.
 - PostgreSQL can start empty before a fresh migration import, but verify data before switching production traffic.
+## Lotto Cron
+
+로또 645 공식 결과를 주기적으로 동기화하려면 아래 엔드포인트를 호출합니다.
+
+```bash
+curl -s -H "x-cron-secret: $CRON_SECRET" "https://your-domain/api/cron/lotto-official-sync"
+```
+
+- 이 호출은 동행복권 최신 회차를 `GameLog`에 저장합니다.
+- 화면용 요약은 [`/api/board/lotto-summary`](./src/routes/api/board/lotto-summary/+server.js)를 통해 함께 갱신됩니다.
+- 수동으로 특정 회차를 넣고 싶으면 `?drwNo=1180` 같은 쿼리를 붙입니다.
+- 크론이 실패하면 [`/health`](./src/routes/health/+server.js)와 같은 방식으로 `x-cron-secret` 검증을 먼저 확인하세요.

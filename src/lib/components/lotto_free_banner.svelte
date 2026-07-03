@@ -37,15 +37,23 @@
     picksInWeek: number;
   }
 
+  interface LottoSyncResult {
+    added: LottoOfficial | null;
+    tried: boolean;
+    notes: string;
+  }
+
   interface Props {
     session?: { user?: { nickname?: string | null; email?: string | null } } | null;
   }
 
   let { session = null }: Props = $props();
-
   let lottoHistory = $state<LottoHistoryEntry[]>([]);
   let lottoWeekMatch = $state<LottoWeekMatchSummary | null>(null);
   let lottoTotalPicks24h = $state(0);
+  let officialSync = $state<LottoSyncResult | null>(null);
+
+  const LOTTO_HISTORY_MS = 24 * 60 * 60 * 1000;
 
   function ballStyle(n: number): string {
     const t = (n - 1) / 44;
@@ -74,7 +82,18 @@
     return 'success';
   }
 
-  const LOTTO_HISTORY_MS = 24 * 60 * 60 * 1000;
+  function formatHistoryTime(iso: string): string {
+    const at = parseSafeDate(iso);
+    if (!at) return '';
+    if (Date.now() - at.getTime() > LOTTO_HISTORY_MS) {
+      return formatAbsoluteTime(at, 'M/d HH:mm');
+    }
+    return formatAbsoluteTime(at, 'HH:mm');
+  }
+
+  function formatSyncNotes(notes: string): string {
+    return notes.replace(/\s*\|\s*/g, ' · ');
+  }
 
   let expanded = $state(false);
   let loading = $state(false);
@@ -88,15 +107,6 @@
     return mine?.numbers?.length === 6 ? mine.numbers : null;
   });
 
-  function formatHistoryTime(iso: string): string {
-    const at = parseSafeDate(iso);
-    if (!at) return '';
-    if (Date.now() - at.getTime() > LOTTO_HISTORY_MS) {
-      return formatAbsoluteTime(at, 'M/d HH:mm');
-    }
-    return formatAbsoluteTime(at, 'HH:mm');
-  }
-
   async function loadLottoSummary() {
     try {
       const res = await fetch('/api/board/lotto-summary');
@@ -105,6 +115,7 @@
       lottoHistory = body.lottoHistory ?? [];
       lottoWeekMatch = body.lottoWeekMatch ?? null;
       lottoTotalPicks24h = body.lottoTotalPicks24h ?? 0;
+      officialSync = body.officialSync ?? null;
     } catch (err) {
       console.error('lotto summary load failed', err);
     } finally {
@@ -145,23 +156,13 @@
           typeof (json as { message: unknown }).message === 'string'
             ? (json as { message: string }).message
             : `요청 실패 (${res.status})`;
-        await swalFire({
-          icon: 'error',
-          title: '앗!',
-          text: msg,
-          confirmButtonText: '확인'
-        });
+        await swalFire({ icon: 'error', title: '앗!', text: msg, confirmButtonText: '확인' });
         return;
       }
 
       const numbers =
-        typeof json === 'object' &&
-        json !== null &&
-        'numbers' in json &&
-        Array.isArray((json as { numbers: unknown }).numbers)
-          ? (json as { numbers: number[] }).numbers
-              .filter((x) => typeof x === 'number' && Number.isInteger(x))
-              .slice(0, 6)
+        typeof json === 'object' && json !== null && 'numbers' in json && Array.isArray((json as { numbers: unknown }).numbers)
+          ? (json as { numbers: number[] }).numbers.filter((x) => typeof x === 'number' && Number.isInteger(x)).slice(0, 6)
           : [];
 
       if (numbers.length === 6) {
@@ -207,6 +208,7 @@
         await handlePick();
         return;
       }
+
       if (result.dismiss === 'cancel') {
         expanded = true;
       }
@@ -238,9 +240,11 @@
         <Badge color="success" class="align-middle">{lottoTotalPicks24h}</Badge>
       {/if}
     </Button>
+
     <Button color="primary" outline onclick={() => (expanded = !expanded)} type="button">
       {expanded ? '접기' : '펼치기'}
     </Button>
+
     <Button
       color="primary"
       outline
@@ -250,14 +254,19 @@
       type="button"
     >
       {#if refreshing}
-        <span class="spinner-border spinner-border-sm" role="status" aria-label="새로고침 중"
-        ></span>
+        <span class="spinner-border spinner-border-sm" role="status" aria-label="새로고침 중"></span>
       {:else}
         <Icon name="arrow-clockwise" aria-hidden="true" />
       {/if}
       <span class="lotto-refresh-label">새로고침</span>
     </Button>
-    <small class="text-muted ms-auto">무작위 뽑기(1–45)·최근 24시간 기록</small>
+
+    <small class="text-muted ms-auto">
+      무작위 뽑기(1–45)·최근 24시간 기록
+      {#if officialSync?.notes}
+        · 공식 동기화: {formatSyncNotes(officialSync.notes)}
+      {/if}
+    </small>
   </Col>
 
   {#if expanded}
@@ -266,15 +275,21 @@
         <p class="text-muted small mb-0">로또 기록 불러오는 중…</p>
       {:else if lottoWeekMatch?.hasOfficial && lottoWeekMatch.official}
         {@const dr = lottoWeekMatch.official}
+
         <h4 class="h6 text-secondary mb-2">직전 주 &amp; 공식 당첨 비교</h4>
+
         <div class="small text-muted mb-1">
-          비교 구간 · <strong>{lottoWeekMatch.weekLabel}</strong> 서울 기준월~일 / 참고 회차
-          동행복권 <strong>{dr.drwNo}회</strong>
+          비교 구간 · <strong>{lottoWeekMatch.weekLabel}</strong> 서울 기준월~일 / 참고 회차 동행복권 <strong>{dr.drwNo}회</strong>
           {#if dr.drwNoDate}
             (<span>{dr.drwNoDate}</span>)
           {/if}
           · 해당 주 사이트 뽑기 {lottoWeekMatch.picksInWeek}건
         </div>
+
+        {#if officialSync?.notes}
+          <div class="small text-muted mb-2">자동 동기화 · {formatSyncNotes(officialSync.notes)}</div>
+        {/if}
+
         <div class="d-flex flex-wrap align-items-center gap-1 mb-2">
           <span class="text-muted small">당첨 6개</span>
           {#each dr.mains as n (n)}
@@ -352,48 +367,44 @@
       {/if}
 
       <h4 class="h6 text-secondary mb-2">최근 24시간</h4>
-      <ul class="list-unstyled small mb-0 pe-1" style="max-height: 220px; overflow-y: auto">
-        {#each lottoHistory as row (row.id)}
-          <li
-            class={`mb-2 pb-2 ${row.mine === true ? 'rounded-3 px-2 py-2 border border-warning border-2 bg-warning bg-opacity-10 shadow-sm' : 'border-bottom border-secondary-subtle'}`}
-          >
-            <div class="d-flex align-items-start flex-wrap gap-1">
-              {#if row.photo != null && String(row.photo).trim() !== ''}
+      {#if lottoHistory.length}
+        <ul class="list-unstyled mb-0">
+          {#each lottoHistory as row (row.id)}
+            <li class="d-flex flex-wrap align-items-center gap-2 py-1 border-bottom border-secondary-subtle">
+              {#if row.photo && row.photo.trim() !== ''}
                 <img
-                  src={String(row.photo).trim()}
+                  src={row.photo}
                   alt=""
-                  width="26"
-                  height="26"
-                  class="lotto-history-avatar mt-1 flex-shrink-0 object-fit-cover align-top"
+                  width="22"
+                  height="22"
+                  class="lotto-history-avatar me-1 flex-shrink-0 align-middle object-fit-cover"
                   loading="lazy"
-                  decoding="async"
                 />
               {/if}
-              <span class="d-inline-flex flex-wrap align-items-center flex-grow-1 min-w-0">
+              <span class={`fw-medium align-middle ${row.mine === true ? 'text-dark' : ''}`}>
                 {#if row.mine === true}
                   <Badge color="warning" class="me-1">나</Badge>
                 {/if}
-                <span class={`fw-medium align-middle ${row.mine === true ? 'text-dark' : ''}`}
-                  >{row.nickname}</span
-                ><span class="text-muted align-middle">[{formatHistoryTime(row.createdAt)}]</span>
-                <span class="text-muted align-middle"> - </span>
-                <span class="d-inline-flex flex-wrap gap-1 align-middle">
-                  {#each row.numbers as n (n)}
-                    <span
-                      class="d-inline-flex align-items-center justify-content-center rounded-circle text-white fw-bold"
-                      style={`${ballStyle(n)}min-width:1.6rem;height:1.6rem;font-size:0.75rem;`}
-                    >
-                      {n}
-                    </span>
-                  {/each}
-                </span>
+                {row.nickname}
               </span>
-            </div>
-          </li>
-        {:else}
-          <li class="text-muted">아직 기록이 없어요. 첫 주인공이 되어 보세요.</li>
-        {/each}
-      </ul>
+              <span class="text-muted align-middle">[{formatHistoryTime(row.createdAt)}]</span>
+              <span class="text-muted align-middle"> - </span>
+              <span class="d-inline-flex flex-wrap gap-1 align-middle">
+                {#each row.numbers as n (n)}
+                  <span
+                    class="d-inline-flex align-items-center justify-content-center rounded-circle text-white fw-bold"
+                    style={`${ballStyle(n)}min-width:1.6rem;height:1.6rem;font-size:0.75rem;`}
+                  >
+                    {n}
+                  </span>
+                {/each}
+              </span>
+            </li>
+          {/each}
+        </ul>
+      {:else}
+        <li class="text-muted">아직 기록이 없어요. 첫 주인공이 되어 보세요.</li>
+      {/if}
     </Col>
   {/if}
 </Row>
@@ -427,7 +438,7 @@
     }
 
     :global(.lotto-refresh-btn .bi) {
-      font-size: 1.15rem;
+      font-size: 1.05rem;
     }
   }
 </style>
