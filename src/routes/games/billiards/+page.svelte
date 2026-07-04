@@ -3,8 +3,11 @@
   import Matter from 'matter-js';
   import {
     BALL_RADIUS,
+    BALL_FRICTION_AIR,
+    BALL_RESTITUTION,
     BILLIARDS_MODES,
     FOUR_BALL_CHANCES,
+    RAIL_RESTITUTION,
     RAIL_THICKNESS,
     STOP_SPEED,
     TABLE_HEIGHT,
@@ -92,10 +95,10 @@
   ): BallBody {
     const ball = Bodies.circle(x, y, BALL_RADIUS, {
       label: id,
-      restitution: 0.96,
+      restitution: BALL_RESTITUTION,
       friction: 0,
       frictionStatic: 0,
-      frictionAir: 0.018,
+      frictionAir: BALL_FRICTION_AIR,
       render: { fillStyle: color }
     }) as BallBody;
     ball.billiardsRole = role;
@@ -106,7 +109,7 @@
   function makeRail(x: number, y: number, width: number, height: number) {
     return Bodies.rectangle(x, y, width, height, {
       isStatic: true,
-      restitution: 0.98,
+      restitution: RAIL_RESTITUTION,
       friction: 0,
       render: { fillStyle: '#31533b' }
     });

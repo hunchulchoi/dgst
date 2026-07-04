@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
   BILLIARDS_MODES,
+  BALL_FRICTION_AIR,
+  BALL_RESTITUTION,
   FOUR_BALL_CHANCES,
+  MAX_SHOT_SPEED,
+  RAIL_RESTITUTION,
   computeBreathingAimAngle,
   containBallInTable,
   computeShotVelocity,
@@ -62,10 +66,17 @@ describe('billiards game helpers', () => {
   });
 
   it('computes shot velocity from independent angle and power controls', () => {
-    expect(computeShotVelocity(0, 50)).toEqual({ x: 10, y: 0 });
+    expect(computeShotVelocity(0, 50)).toEqual({ x: 12, y: 0 });
     expect(computeShotVelocity(Math.PI / 2, 100).x).toBeCloseTo(0);
-    expect(computeShotVelocity(Math.PI / 2, 100).y).toBeCloseTo(20);
-    expect(computeShotVelocity(Math.PI, 200).x).toBeCloseTo(-20);
+    expect(computeShotVelocity(Math.PI / 2, 100).y).toBeCloseTo(24);
+    expect(computeShotVelocity(Math.PI, 200).x).toBeCloseTo(-24);
+  });
+
+  it('uses snappier billiards physics tuning', () => {
+    expect(MAX_SHOT_SPEED).toBe(24);
+    expect(BALL_RESTITUTION).toBeGreaterThanOrEqual(0.99);
+    expect(RAIL_RESTITUTION).toBeGreaterThan(1);
+    expect(BALL_FRICTION_AIR).toBeLessThan(0.018);
   });
 
   it('sweeps power with an arcade-style eased rhythm', () => {
