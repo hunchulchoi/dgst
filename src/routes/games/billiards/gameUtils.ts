@@ -23,6 +23,9 @@ export const RAIL_THICKNESS = 18;
 export const MAX_SHOT_SPEED = 7.5;
 export const STOP_SPEED = 0.08;
 export const FOUR_BALL_CHANCES = 10;
+export const POWER_SWEEP_MIN = 10;
+export const POWER_SWEEP_MAX = 100;
+export const POWER_SWEEP_PERIOD_MS = 2400;
 
 export function isActiveBilliardsMode(value: unknown): value is ActiveBilliardsMode {
   return value === BILLIARDS_MODES.FOUR_BALL;
@@ -43,6 +46,15 @@ export function computeShotVelocity(angle: number, powerPercent: number): { x: n
     x: Math.cos(angle) * speed,
     y: Math.sin(angle) * speed
   };
+}
+
+export function computeSweepingPower(timeMs: number): number {
+  const halfPeriod = POWER_SWEEP_PERIOD_MS / 2;
+  const wrapped =
+    ((timeMs % POWER_SWEEP_PERIOD_MS) + POWER_SWEEP_PERIOD_MS) % POWER_SWEEP_PERIOD_MS;
+  const progress =
+    wrapped <= halfPeriod ? wrapped / halfPeriod : 1 - (wrapped - halfPeriod) / halfPeriod;
+  return Math.round(POWER_SWEEP_MIN + (POWER_SWEEP_MAX - POWER_SWEEP_MIN) * progress);
 }
 
 export function evaluateFourBallShot(contacts: ShotContact[]): {

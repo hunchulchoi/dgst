@@ -10,6 +10,7 @@
     TABLE_HEIGHT,
     TABLE_WIDTH,
     computeShotVelocity,
+    computeSweepingPower,
     evaluateFourBallShot,
     stopped,
     type ShotContact
@@ -20,7 +21,7 @@
     data: PageData;
   }
 
-  type Status = 'aiming' | 'rolling' | 'scored' | 'miss' | 'game-over';
+  type Status = 'aiming' | 'charging' | 'rolling' | 'scored' | 'miss' | 'game-over';
   type RankEntry = {
     nickname: string;
     mode: string;
@@ -39,6 +40,8 @@
   let aimAngle = $state(-Math.PI / 2);
   let aimPoint = $state<{ x: number; y: number } | null>(null);
   let power = $state(55);
+  let chargeStartedAt = 0;
+  let chargeTimeout: ReturnType<typeof setTimeout> | null = null;
   let rankList = $state<RankEntry[]>([]);
   let myBestScore = $state<number | null>(null);
   let rankLoading = $state(false);
@@ -48,14 +51,16 @@
   const isLoggedIn = $derived(!!data.session?.user?.email);
   const statusText = $derived(
     status === 'aiming'
-      ? '당구대에서 방향을 고르고 힘을 정한 뒤 치세요'
-      : status === 'rolling'
-        ? '공이 멈출 때까지 기다리세요'
-        : status === 'scored'
-          ? '득점! 한 번 더'
-          : status === 'miss'
-            ? '아쉽습니다. 다시 조준하세요'
-            : '게임 종료'
+      ? '방향을 고르고 힘 재기를 누르세요'
+      : status === 'charging'
+        ? '원하는 힘에서 선택하세요'
+        : status === 'rolling'
+          ? '공이 멈출 때까지 기다리세요'
+          : status === 'scored'
+            ? '득점! 한 번 더'
+            : status === 'miss'
+              ? '아쉽습니다. 다시 조준하세요'
+              : '게임 종료'
   );
 
   const Engine = Matter.Engine;
@@ -128,6 +133,7 @@
     aimAngle = -Math.PI / 2;
     aimPoint = null;
     power = 55;
+    stopCharging();
     submittedGameOver = false;
     resetBodies();
   }
@@ -183,6 +189,16 @@
     return status === 'aiming' || status === 'scored' || status === 'miss';
   }
 
+  function canCharge() {
+    return canAim() || status === 'charging';
+  }
+
+  function stopCharging() {
+    if (chargeTimeout) clearTimeout(chargeTimeout);
+    chargeTimeout = null;
+    chargeStartedAt = 0;
+  }
+
   function updateAimFromPointer(event: PointerEvent) {
     if (!cueBall || !canAim()) return;
     const point = getCanvasPoint(event);
@@ -204,14 +220,35 @@
     updateAimFromPointer(event);
   }
 
-  function shoot() {
-    if (!cueBall || !canAim()) return;
-    const velocity = computeShotVelocity(aimAngle, power);
+  function shoot(selectedPower = power) {
+    if (!cueBall || !canCharge()) return;
+    stopCharging();
+    power = selectedPower;
+    const velocity = computeShotVelocity(aimAngle, selectedPower);
     if (Math.hypot(velocity.x, velocity.y) < 0.1) return;
     contacts = [];
     Body.setVelocity(cueBall, velocity);
     status = 'rolling';
     aimPoint = null;
+  }
+
+  function startCharging() {
+    if (!canAim()) return;
+    status = 'charging';
+    chargeStartedAt = performance.now();
+    if (chargeTimeout) clearTimeout(chargeTimeout);
+    chargeTimeout = setTimeout(() => {
+      if (status !== 'charging') return;
+      shoot(power);
+    }, 2400);
+  }
+
+  function lockPowerAndShoot() {
+    if (status !== 'charging') {
+      startCharging();
+      return;
+    }
+    shoot(power);
   }
 
   function drawBall(ctx: CanvasRenderingContext2D, ball: BallBody) {
@@ -298,6 +335,10 @@
     lastFrame = now;
     Engine.update(engine, delta);
 
+    if (status === 'charging') {
+      power = computeSweepingPower(now - chargeStartedAt);
+    }
+
     if (status === 'rolling' && stopped(getTrackedBalls(), STOP_SPEED)) {
       settleShot();
     }
@@ -353,6 +394,7 @@
     frameId = requestAnimationFrame(tick);
 
     return () => {
+      stopCharging();
       if (frameId) cancelAnimationFrame(frameId);
       if (engine) {
         Events.off(engine, 'collisionStart');
@@ -412,20 +454,27 @@
 
   {#if status !== 'game-over'}
     <section class="shot-controls" aria-label="샷 조절">
-      <label class="power-control">
+      <div class="power-control">
         <span>힘</span>
-        <input
-          type="range"
-          min="10"
-          max="100"
-          step="1"
-          bind:value={power}
-          disabled={!canAim()}
+        <div
+          class="power-meter"
           aria-label="샷 힘"
-        />
+          aria-valuemin="10"
+          aria-valuemax="100"
+          aria-valuenow={power}
+        >
+          <div class="power-meter-fill" style={`width: ${power}%`}></div>
+        </div>
         <strong>{power}</strong>
-      </label>
-      <button type="button" class="shoot-button" onclick={shoot} disabled={!canAim()}>치기</button>
+      </div>
+      <button
+        type="button"
+        class="shoot-button"
+        onclick={lockPowerAndShoot}
+        disabled={!canCharge()}
+      >
+        {status === 'charging' ? '선택' : '힘 재기'}
+      </button>
     </section>
   {/if}
 
@@ -586,10 +635,22 @@
     font-weight: 800;
   }
 
-  .power-control input {
+  .power-meter {
+    position: relative;
     width: 100%;
     min-width: 0;
-    accent-color: #f0c05a;
+    height: 18px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.16);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+  }
+
+  .power-meter-fill {
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, #69d17c, #f0c05a 58%, #f36b54);
+    transition: width 60ms linear;
   }
 
   .power-control strong {
@@ -606,8 +667,7 @@
     font-weight: 900;
   }
 
-  .shoot-button:disabled,
-  .power-control input:disabled {
+  .shoot-button:disabled {
     opacity: 0.55;
   }
 

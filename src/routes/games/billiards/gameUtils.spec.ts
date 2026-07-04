@@ -3,6 +3,7 @@ import {
   BILLIARDS_MODES,
   FOUR_BALL_CHANCES,
   computeShotVelocity,
+  computeSweepingPower,
   evaluateFourBallShot,
   isActiveBilliardsMode,
   isValidScore,
@@ -37,6 +38,14 @@ describe('billiards game helpers', () => {
     expect(computeShotVelocity(Math.PI / 2, 100).x).toBeCloseTo(0);
     expect(computeShotVelocity(Math.PI / 2, 100).y).toBeCloseTo(7.5);
     expect(computeShotVelocity(Math.PI, 200).x).toBeCloseTo(-7.5);
+  });
+
+  it('sweeps power back and forth like an arcade meter', () => {
+    expect(computeSweepingPower(0)).toBe(10);
+    expect(computeSweepingPower(600)).toBe(55);
+    expect(computeSweepingPower(1200)).toBe(100);
+    expect(computeSweepingPower(1800)).toBe(55);
+    expect(computeSweepingPower(2400)).toBe(10);
   });
 
   it('accepts only active four-ball submissions for now', () => {
