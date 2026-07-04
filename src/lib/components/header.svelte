@@ -267,15 +267,6 @@
               <span>💣</span><span class="d-none d-sm-inline ms-1">지뢰</span>
             </NavLink>
           </NavItem>
-          <NavItem>
-            <NavLink
-              href="/games/billiards"
-              active={pathname?.startsWith('/games/billiards')}
-              class="px-3 text-center"
-            >
-              <span>🎱</span><span class="d-none d-sm-inline ms-1">당구</span>
-            </NavLink>
-          </NavItem>
         {/if}
         <!--<NavItem>
         <NavLink href="/game/56471" active={pathname?.startsWith('/game/56471')}>
