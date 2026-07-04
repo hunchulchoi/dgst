@@ -5,6 +5,7 @@ import {
   computeBreathingAimAngle,
   containBallInTable,
   computeShotVelocity,
+  computeSpinFromTrack,
   computeSweepingPower,
   computeTouchSpin,
   evaluateFourBallShot,
@@ -67,11 +68,15 @@ describe('billiards game helpers', () => {
     expect(computeShotVelocity(Math.PI, 200).x).toBeCloseTo(-20);
   });
 
-  it('sweeps power back and forth like an arcade meter', () => {
+  it('sweeps power with an arcade-style eased rhythm', () => {
     expect(computeSweepingPower(0)).toBe(10);
-    expect(computeSweepingPower(600)).toBe(55);
+    expect(computeSweepingPower(300)).toBe(49);
+    expect(computeSweepingPower(600)).toBe(78);
+    expect(computeSweepingPower(900)).toBe(94);
     expect(computeSweepingPower(1200)).toBe(100);
-    expect(computeSweepingPower(1800)).toBe(55);
+    expect(computeSweepingPower(1500)).toBe(61);
+    expect(computeSweepingPower(1800)).toBe(33);
+    expect(computeSweepingPower(2100)).toBe(16);
     expect(computeSweepingPower(2400)).toBe(10);
   });
 
@@ -86,6 +91,14 @@ describe('billiards game helpers', () => {
     expect(computeTouchSpin(cue, { x: 180, y: 100 }, 0)).toBe(0);
     expect(computeTouchSpin(cue, { x: 180, y: 170 }, 0)).toBe(100);
     expect(computeTouchSpin(cue, { x: 180, y: 30 }, 0)).toBe(-100);
+  });
+
+  it('computes spin from a dedicated horizontal touch track', () => {
+    expect(computeSpinFromTrack(0, 200)).toBe(-100);
+    expect(computeSpinFromTrack(100, 200)).toBe(0);
+    expect(computeSpinFromTrack(200, 200)).toBe(100);
+    expect(computeSpinFromTrack(260, 200)).toBe(100);
+    expect(computeSpinFromTrack(-40, 200)).toBe(-100);
   });
 
   it('accepts only active four-ball submissions for now', () => {

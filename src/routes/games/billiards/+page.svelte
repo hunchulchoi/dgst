@@ -12,8 +12,8 @@
     containBallInTable,
     computeBreathingAimAngle,
     computeShotVelocity,
+    computeSpinFromTrack,
     computeSweepingPower,
-    computeTouchSpin,
     evaluateFourBallShot,
     stopped,
     type ShotContact
@@ -222,8 +222,21 @@
     event.preventDefault();
     aimAngle = Math.atan2(dy, dx);
     displayAimAngle = aimAngle;
-    spin = computeTouchSpin(cueBall.position, point, aimAngle);
     aimPoint = point;
+  }
+
+  function updateSpinFromPointer(event: PointerEvent) {
+    if (!canAim()) return;
+    const target = event.currentTarget as HTMLElement;
+    const rect = target.getBoundingClientRect();
+    spin = computeSpinFromTrack(event.clientX - rect.left, rect.width);
+    event.preventDefault();
+  }
+
+  function handleSpinPointerDown(event: PointerEvent) {
+    const target = event.currentTarget as HTMLElement;
+    target.setPointerCapture(event.pointerId);
+    updateSpinFromPointer(event);
   }
 
   function handlePointerDown(event: PointerEvent) {
@@ -538,11 +551,17 @@
       <div class="spin-control">
         <span>시네루</span>
         <div
-          class="spin-meter"
+          class="spin-meter spin-pad"
+          role="slider"
+          tabindex="0"
           aria-label="시네루"
           aria-valuemin="-100"
           aria-valuemax="100"
           aria-valuenow={spin}
+          onpointerdown={handleSpinPointerDown}
+          onpointermove={(event) => {
+            if (event.buttons === 1 || event.pointerType === 'touch') updateSpinFromPointer(event);
+          }}
         >
           <div class="spin-meter-center"></div>
           <div
@@ -737,6 +756,12 @@
 
   .spin-meter {
     height: 14px;
+  }
+
+  .spin-pad {
+    cursor: pointer;
+    touch-action: none;
+    user-select: none;
   }
 
   .power-meter-fill {

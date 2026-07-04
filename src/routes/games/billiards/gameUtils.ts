@@ -97,8 +97,10 @@ export function computeSweepingPower(timeMs: number): number {
   const halfPeriod = POWER_SWEEP_PERIOD_MS / 2;
   const wrapped =
     ((timeMs % POWER_SWEEP_PERIOD_MS) + POWER_SWEEP_PERIOD_MS) % POWER_SWEEP_PERIOD_MS;
-  const progress =
-    wrapped <= halfPeriod ? wrapped / halfPeriod : 1 - (wrapped - halfPeriod) / halfPeriod;
+  const phaseProgress =
+    wrapped <= halfPeriod ? wrapped / halfPeriod : (wrapped - halfPeriod) / halfPeriod;
+  const easedProgress = (1 - phaseProgress) * (1 - phaseProgress);
+  const progress = wrapped <= halfPeriod ? 1 - easedProgress : easedProgress;
   return Math.round(POWER_SWEEP_MIN + (POWER_SWEEP_MAX - POWER_SWEEP_MIN) * progress);
 }
 
@@ -122,6 +124,12 @@ export function computeTouchSpin(
   const dy = touch.y - cue.y;
   const perpendicular = -Math.sin(aimAngle) * dx + Math.cos(aimAngle) * dy;
   const normalized = Math.max(-1, Math.min(1, perpendicular / SPIN_TOUCH_RANGE));
+  return Math.round(normalized * 100);
+}
+
+export function computeSpinFromTrack(offsetX: number, width: number): number {
+  if (width <= 0) return 0;
+  const normalized = Math.max(-1, Math.min(1, (offsetX / width) * 2 - 1));
   return Math.round(normalized * 100);
 }
 
