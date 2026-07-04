@@ -13,6 +13,7 @@ import {
   computeSweepingPower,
   computeTouchSpin,
   evaluateFourBallShot,
+  getNextShotSetupStep,
   isActiveBilliardsMode,
   isValidScore,
   stopped
@@ -111,6 +112,12 @@ describe('billiards game helpers', () => {
     expect(computeSpinFromTrack(200, 200)).toBe(100);
     expect(computeSpinFromTrack(260, 200)).toBe(100);
     expect(computeSpinFromTrack(-40, 200)).toBe(-100);
+  });
+
+  it('moves shot setup from angle to spin to power', () => {
+    expect(getNextShotSetupStep('angle')).toBe('spin');
+    expect(getNextShotSetupStep('spin')).toBe('power');
+    expect(getNextShotSetupStep('power')).toBe('power');
   });
 
   it('accepts only active four-ball submissions for now', () => {

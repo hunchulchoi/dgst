@@ -6,6 +6,7 @@ export const BILLIARDS_MODES = {
 export type BilliardsMode = (typeof BILLIARDS_MODES)[keyof typeof BILLIARDS_MODES];
 export type ActiveBilliardsMode = typeof BILLIARDS_MODES.FOUR_BALL;
 export type BallRole = 'cue' | 'red' | 'opponent';
+export type ShotSetupStep = 'angle' | 'spin' | 'power';
 
 export interface ShotContact {
   cueRole: BallRole;
@@ -137,6 +138,12 @@ export function computeSpinFromTrack(offsetX: number, width: number): number {
   if (width <= 0) return 0;
   const normalized = Math.max(-1, Math.min(1, (offsetX / width) * 2 - 1));
   return Math.round(normalized * 100);
+}
+
+export function getNextShotSetupStep(step: ShotSetupStep): ShotSetupStep {
+  if (step === 'angle') return 'spin';
+  if (step === 'spin') return 'power';
+  return 'power';
 }
 
 export function evaluateFourBallShot(contacts: ShotContact[]): {

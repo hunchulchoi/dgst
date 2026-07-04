@@ -18,8 +18,10 @@
     computeSpinFromTrack,
     computeSweepingPower,
     evaluateFourBallShot,
+    getNextShotSetupStep,
     stopped,
-    type ShotContact
+    type ShotContact,
+    type ShotSetupStep
   } from './gameUtils';
   import type { PageData } from './$types';
 
@@ -43,6 +45,7 @@
   let score = $state(0);
   let chances = $state(FOUR_BALL_CHANCES);
   let status = $state<Status>('aiming');
+  let setupStep = $state<ShotSetupStep>('angle');
   let aimAngle = $state(-Math.PI / 2);
   let displayAimAngle = $state(-Math.PI / 2);
   let aimPoint = $state<{ x: number; y: number } | null>(null);
@@ -62,7 +65,11 @@
   const isLoggedIn = $derived(!!data.session?.user?.email);
   const statusText = $derived(
     status === 'aiming'
-      ? '방향을 고르고 힘 재기를 누르세요'
+      ? setupStep === 'angle'
+        ? '각도를 정하고 확정하세요'
+        : setupStep === 'spin'
+          ? '시네루를 정하고 확정하세요'
+          : '힘 재기를 누르세요'
       : status === 'charging'
         ? '원하는 힘에서 선택하세요'
         : status === 'rolling'
@@ -140,6 +147,7 @@
     score = 0;
     chances = FOUR_BALL_CHANCES;
     status = 'aiming';
+    setupStep = 'angle';
     contacts = [];
     aimAngle = -Math.PI / 2;
     displayAimAngle = -Math.PI / 2;
@@ -167,6 +175,7 @@
 
     const result = evaluateFourBallShot(contacts);
     contacts = [];
+    setupStep = 'angle';
 
     if (result.scored) {
       score += 1;
@@ -201,12 +210,29 @@
     };
   }
 
-  function canAim() {
+  function canPrepareShot() {
     return status === 'aiming' || status === 'scored' || status === 'miss';
   }
 
+  function canAim() {
+    return canPrepareShot() && setupStep === 'angle';
+  }
+
+  function canSpin() {
+    return canPrepareShot() && setupStep === 'spin';
+  }
+
   function canCharge() {
-    return canAim() || status === 'charging';
+    return (canPrepareShot() && setupStep === 'power') || status === 'charging';
+  }
+
+  function advanceShotSetupStep() {
+    if (!canPrepareShot()) return;
+    if (setupStep === 'angle') {
+      aimAngle = displayAimAngle;
+      isHoldingAim = false;
+    }
+    setupStep = getNextShotSetupStep(setupStep);
   }
 
   function stopCharging() {
@@ -229,7 +255,7 @@
   }
 
   function updateSpinFromPointer(event: PointerEvent) {
-    if (!canAim()) return;
+    if (!canSpin()) return;
     const target = event.currentTarget as HTMLElement;
     const rect = target.getBoundingClientRect();
     spin = computeSpinFromTrack(event.clientX - rect.left, rect.width);
@@ -277,7 +303,7 @@
   }
 
   function startCharging() {
-    if (!canAim()) return;
+    if (!canCharge() || status === 'charging') return;
     aimAngle = displayAimAngle;
     isHoldingAim = false;
     status = 'charging';
@@ -538,20 +564,16 @@
 
   {#if status !== 'game-over'}
     <section class="shot-controls" aria-label="샷 조절">
-      <div class="power-control">
-        <span>힘</span>
-        <div
-          class="power-meter"
-          aria-label="샷 힘"
-          aria-valuemin="10"
-          aria-valuemax="100"
-          aria-valuenow={power}
-        >
-          <div class="power-meter-fill" style={`width: ${power}%`}></div>
-        </div>
-        <strong>{power}</strong>
-      </div>
-      <div class="spin-control">
+      <button
+        type="button"
+        class:active-step={setupStep === 'angle' && canPrepareShot()}
+        class="step-button"
+        onclick={advanceShotSetupStep}
+        disabled={!canAim()}
+      >
+        각도 확정
+      </button>
+      <div class="spin-control" class:inactive-control={!canSpin()}>
         <span>시네루</span>
         <div
           class="spin-meter spin-pad"
@@ -565,6 +587,7 @@
           onpointermove={(event) => {
             if (event.buttons === 1 || event.pointerType === 'touch') updateSpinFromPointer(event);
           }}
+          class:disabled-pad={!canSpin()}
         >
           <div class="spin-meter-center"></div>
           <div
@@ -578,7 +601,30 @@
       </div>
       <button
         type="button"
-        class="shoot-button"
+        class:active-step={setupStep === 'spin' && canPrepareShot()}
+        class="step-button"
+        onclick={advanceShotSetupStep}
+        disabled={!canSpin()}
+      >
+        시네루 확정
+      </button>
+      <div class="power-control" class:inactive-control={!canCharge()}>
+        <span>힘</span>
+        <div
+          class="power-meter"
+          aria-label="샷 힘"
+          aria-valuemin="10"
+          aria-valuemax="100"
+          aria-valuenow={power}
+        >
+          <div class="power-meter-fill" style={`width: ${power}%`}></div>
+        </div>
+        <strong>{power}</strong>
+      </div>
+      <button
+        type="button"
+        class:active-step={setupStep === 'power' || status === 'charging'}
+        class="shoot-button step-button"
         onclick={lockPowerAndShoot}
         disabled={!canCharge()}
       >
@@ -724,7 +770,7 @@
 
   .shot-controls {
     display: grid;
-    grid-template-columns: 1fr 82px;
+    grid-template-columns: 1fr 96px;
     gap: 10px;
     align-items: stretch;
     margin-top: 12px;
@@ -743,6 +789,10 @@
     border: 1px solid rgba(255, 255, 255, 0.12);
     color: #d8e8d4;
     font-weight: 800;
+  }
+
+  .inactive-control {
+    opacity: 0.55;
   }
 
   .power-meter,
@@ -765,6 +815,11 @@
     cursor: pointer;
     touch-action: none;
     user-select: none;
+  }
+
+  .spin-pad.disabled-pad {
+    cursor: not-allowed;
+    opacity: 0.55;
   }
 
   .power-meter-fill {
@@ -807,16 +862,30 @@
     font-variant-numeric: tabular-nums;
   }
 
-  .shoot-button {
-    grid-row: span 2;
+  .step-button {
     min-height: 48px;
     border: 0;
     border-radius: 8px;
-    background: #f0c05a;
-    color: #1d221a;
+    background: rgba(255, 255, 255, 0.14);
+    color: #d8e8d4;
     font-weight: 900;
   }
 
+  .shot-controls > .step-button:first-child {
+    grid-column: 1 / -1;
+  }
+
+  .step-button.active-step {
+    background: #f0c05a;
+    color: #1d221a;
+  }
+
+  .shoot-button {
+    min-height: 48px;
+    font-weight: 900;
+  }
+
+  .step-button:disabled,
   .shoot-button:disabled {
     opacity: 0.55;
   }
