@@ -20,7 +20,7 @@ export const TABLE_WIDTH = 360;
 export const TABLE_HEIGHT = 560;
 export const BALL_RADIUS = 10;
 export const RAIL_THICKNESS = 18;
-export const MAX_SHOT_POWER = 0.075;
+export const MAX_SHOT_SPEED = 7.5;
 export const STOP_SPEED = 0.08;
 export const FOUR_BALL_CHANCES = 10;
 
@@ -34,6 +34,15 @@ export function isValidScore(value: unknown): value is number {
 
 export function stopped(samples: SpeedSample[], threshold = STOP_SPEED): boolean {
   return samples.every((sample) => sample.speed < threshold);
+}
+
+export function computeShotVelocity(angle: number, powerPercent: number): { x: number; y: number } {
+  const clampedPower = Math.min(100, Math.max(0, powerPercent));
+  const speed = (clampedPower / 100) * MAX_SHOT_SPEED;
+  return {
+    x: Math.cos(angle) * speed,
+    y: Math.sin(angle) * speed
+  };
 }
 
 export function evaluateFourBallShot(contacts: ShotContact[]): {

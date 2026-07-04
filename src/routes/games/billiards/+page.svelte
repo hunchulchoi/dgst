@@ -5,11 +5,11 @@
     BALL_RADIUS,
     BILLIARDS_MODES,
     FOUR_BALL_CHANCES,
-    MAX_SHOT_POWER,
     RAIL_THICKNESS,
     STOP_SPEED,
     TABLE_HEIGHT,
     TABLE_WIDTH,
+    computeShotVelocity,
     evaluateFourBallShot,
     stopped,
     type ShotContact
@@ -21,7 +21,13 @@
   }
 
   type Status = 'aiming' | 'rolling' | 'scored' | 'miss' | 'game-over';
-  type RankEntry = { nickname: string; mode: string; score: number; createdAt?: string; _id?: string };
+  type RankEntry = {
+    nickname: string;
+    mode: string;
+    score: number;
+    createdAt?: string;
+    _id?: string;
+  };
   type BallBody = Matter.Body & { billiardsRole?: 'cue' | 'red'; billiardsId?: string };
 
   let { data }: Props = $props();
@@ -30,8 +36,9 @@
   let score = $state(0);
   let chances = $state(FOUR_BALL_CHANCES);
   let status = $state<Status>('aiming');
-  let aimStart = $state<{ x: number; y: number } | null>(null);
-  let aimCurrent = $state<{ x: number; y: number } | null>(null);
+  let aimAngle = $state(-Math.PI / 2);
+  let aimPoint = $state<{ x: number; y: number } | null>(null);
+  let power = $state(55);
   let rankList = $state<RankEntry[]>([]);
   let myBestScore = $state<number | null>(null);
   let rankLoading = $state(false);
@@ -41,7 +48,7 @@
   const isLoggedIn = $derived(!!data.session?.user?.email);
   const statusText = $derived(
     status === 'aiming'
-      ? '흰 공을 뒤로 끌어 조준하세요'
+      ? '당구대에서 방향을 고르고 힘을 정한 뒤 치세요'
       : status === 'rolling'
         ? '공이 멈출 때까지 기다리세요'
         : status === 'scored'
@@ -63,7 +70,13 @@
   let frameId = 0;
   let lastFrame = 0;
 
-  function makeBall(x: number, y: number, role: 'cue' | 'red', id: string, color: string): BallBody {
+  function makeBall(
+    x: number,
+    y: number,
+    role: 'cue' | 'red',
+    id: string,
+    color: string
+  ): BallBody {
     const ball = Bodies.circle(x, y, BALL_RADIUS, {
       label: id,
       restitution: 0.96,
@@ -112,8 +125,9 @@
     chances = FOUR_BALL_CHANCES;
     status = 'aiming';
     contacts = [];
-    aimStart = null;
-    aimCurrent = null;
+    aimAngle = -Math.PI / 2;
+    aimPoint = null;
+    power = 55;
     submittedGameOver = false;
     resetBodies();
   }
@@ -149,7 +163,8 @@
   }
 
   function recordCueContact(bodyA: BallBody, bodyB: BallBody) {
-    const cue = bodyA.billiardsRole === 'cue' ? bodyA : bodyB.billiardsRole === 'cue' ? bodyB : null;
+    const cue =
+      bodyA.billiardsRole === 'cue' ? bodyA : bodyB.billiardsRole === 'cue' ? bodyB : null;
     const target = cue === bodyA ? bodyB : bodyA;
     if (!cue || target.billiardsRole !== 'red' || !target.billiardsId) return;
     contacts = [...contacts, { cueRole: 'red', targetId: target.billiardsId }];
@@ -168,59 +183,43 @@
     return status === 'aiming' || status === 'scored' || status === 'miss';
   }
 
-  function handlePointerDown(event: PointerEvent) {
+  function updateAimFromPointer(event: PointerEvent) {
     if (!cueBall || !canAim()) return;
     const point = getCanvasPoint(event);
     if (!point) return;
     const dx = point.x - cueBall.position.x;
     const dy = point.y - cueBall.position.y;
-    if (Math.hypot(dx, dy) > BALL_RADIUS * 3.2) return;
+    if (Math.hypot(dx, dy) < BALL_RADIUS * 1.4) return;
     event.preventDefault();
-    canvasEl?.setPointerCapture(event.pointerId);
-    aimStart = { x: cueBall.position.x, y: cueBall.position.y };
-    aimCurrent = point;
+    aimAngle = Math.atan2(dy, dx);
+    aimPoint = point;
+  }
+
+  function handlePointerDown(event: PointerEvent) {
+    updateAimFromPointer(event);
   }
 
   function handlePointerMove(event: PointerEvent) {
-    if (!aimStart) return;
-    const point = getCanvasPoint(event);
-    if (!point) return;
-    event.preventDefault();
-    aimCurrent = point;
+    if (event.buttons !== 1 && event.pointerType === 'mouse') return;
+    updateAimFromPointer(event);
   }
 
-  function handlePointerUp(event: PointerEvent) {
-    if (!cueBall || !aimStart || !aimCurrent || !canAim()) {
-      aimStart = null;
-      aimCurrent = null;
-      return;
-    }
-
-    event.preventDefault();
-    canvasEl?.releasePointerCapture(event.pointerId);
-
-    const dx = cueBall.position.x - aimCurrent.x;
-    const dy = cueBall.position.y - aimCurrent.y;
-    const distance = Math.min(Math.hypot(dx, dy), 110);
-    if (distance < 8) {
-      aimStart = null;
-      aimCurrent = null;
-      return;
-    }
-
-    const scale = (distance / Math.max(Math.hypot(dx, dy), 1)) * MAX_SHOT_POWER;
+  function shoot() {
+    if (!cueBall || !canAim()) return;
+    const velocity = computeShotVelocity(aimAngle, power);
+    if (Math.hypot(velocity.x, velocity.y) < 0.1) return;
     contacts = [];
-    Body.setVelocity(cueBall, { x: dx * scale, y: dy * scale });
+    Body.setVelocity(cueBall, velocity);
     status = 'rolling';
-    aimStart = null;
-    aimCurrent = null;
+    aimPoint = null;
   }
 
   function drawBall(ctx: CanvasRenderingContext2D, ball: BallBody) {
     const role = ball.billiardsRole;
     ctx.beginPath();
     ctx.arc(ball.position.x, ball.position.y, BALL_RADIUS, 0, Math.PI * 2);
-    ctx.fillStyle = role === 'cue' ? '#faf9f1' : ball.billiardsId === 'red-1' ? '#dc342c' : '#bd1f26';
+    ctx.fillStyle =
+      role === 'cue' ? '#faf9f1' : ball.billiardsId === 'red-1' ? '#dc342c' : '#bd1f26';
     ctx.fill();
     ctx.lineWidth = 1.5;
     ctx.strokeStyle = role === 'cue' ? '#d8d0bc' : '#8e1518';
@@ -234,14 +233,12 @@
   }
 
   function drawAim(ctx: CanvasRenderingContext2D) {
-    if (!cueBall || !aimStart || !aimCurrent) return;
-    const dx = cueBall.position.x - aimCurrent.x;
-    const dy = cueBall.position.y - aimCurrent.y;
-    const power = Math.min(Math.hypot(dx, dy), 110);
-    const len = Math.max(28, power * 1.45);
-    const angle = Math.atan2(dy, dx);
-    const endX = cueBall.position.x + Math.cos(angle) * len;
-    const endY = cueBall.position.y + Math.sin(angle) * len;
+    if (!cueBall || !canAim()) return;
+    const len = 58 + power * 1.05;
+    const endX = cueBall.position.x + Math.cos(aimAngle) * len;
+    const endY = cueBall.position.y + Math.sin(aimAngle) * len;
+    const backX = cueBall.position.x - Math.cos(aimAngle) * 28;
+    const backY = cueBall.position.y - Math.sin(aimAngle) * 28;
 
     ctx.save();
     ctx.strokeStyle = 'rgba(255, 236, 158, 0.88)';
@@ -256,8 +253,14 @@
     ctx.lineWidth = 7;
     ctx.beginPath();
     ctx.moveTo(cueBall.position.x, cueBall.position.y);
-    ctx.lineTo(aimCurrent.x, aimCurrent.y);
+    ctx.lineTo(backX, backY);
     ctx.stroke();
+    if (aimPoint) {
+      ctx.beginPath();
+      ctx.arc(aimPoint.x, aimPoint.y, 5, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.46)';
+      ctx.fill();
+    }
     ctx.restore();
   }
 
@@ -270,7 +273,12 @@
     ctx.fillStyle = '#163f2b';
     ctx.fillRect(0, 0, TABLE_WIDTH, TABLE_HEIGHT);
     ctx.fillStyle = '#267044';
-    ctx.fillRect(RAIL_THICKNESS, RAIL_THICKNESS, TABLE_WIDTH - RAIL_THICKNESS * 2, TABLE_HEIGHT - RAIL_THICKNESS * 2);
+    ctx.fillRect(
+      RAIL_THICKNESS,
+      RAIL_THICKNESS,
+      TABLE_WIDTH - RAIL_THICKNESS * 2,
+      TABLE_HEIGHT - RAIL_THICKNESS * 2
+    );
     ctx.strokeStyle = '#d6b36a';
     ctx.lineWidth = 2;
     ctx.strokeRect(
@@ -337,7 +345,8 @@
     resetBodies();
 
     Events.on(engine, 'collisionStart', (event) => {
-      for (const pair of event.pairs) recordCueContact(pair.bodyA as BallBody, pair.bodyB as BallBody);
+      for (const pair of event.pairs)
+        recordCueContact(pair.bodyA as BallBody, pair.bodyB as BallBody);
     });
 
     void loadRank();
@@ -383,7 +392,11 @@
     </div>
   </section>
 
-  <p class="status-line" class:good={status === 'scored'} class:bad={status === 'game-over' || status === 'miss'}>
+  <p
+    class="status-line"
+    class:good={status === 'scored'}
+    class:bad={status === 'game-over' || status === 'miss'}
+  >
     {statusText}
   </p>
 
@@ -394,10 +407,27 @@
       aria-label="4구 당구대"
       onpointerdown={handlePointerDown}
       onpointermove={handlePointerMove}
-      onpointerup={handlePointerUp}
-      onpointercancel={handlePointerUp}
     ></canvas>
   </div>
+
+  {#if status !== 'game-over'}
+    <section class="shot-controls" aria-label="샷 조절">
+      <label class="power-control">
+        <span>힘</span>
+        <input
+          type="range"
+          min="10"
+          max="100"
+          step="1"
+          bind:value={power}
+          disabled={!canAim()}
+          aria-label="샷 힘"
+        />
+        <strong>{power}</strong>
+      </label>
+      <button type="button" class="shoot-button" onclick={shoot} disabled={!canAim()}>치기</button>
+    </section>
+  {/if}
 
   {#if status === 'game-over'}
     <button type="button" class="play-again-button" onclick={newGame}>다시 치기</button>
@@ -532,6 +562,53 @@
     aspect-ratio: 360 / 560;
     touch-action: none;
     user-select: none;
+  }
+
+  .shot-controls {
+    display: grid;
+    grid-template-columns: 1fr 82px;
+    gap: 10px;
+    align-items: stretch;
+    margin-top: 12px;
+  }
+
+  .power-control {
+    display: grid;
+    grid-template-columns: 34px 1fr 34px;
+    gap: 8px;
+    align-items: center;
+    min-height: 48px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: rgba(7, 31, 20, 0.72);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: #d8e8d4;
+    font-weight: 800;
+  }
+
+  .power-control input {
+    width: 100%;
+    min-width: 0;
+    accent-color: #f0c05a;
+  }
+
+  .power-control strong {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .shoot-button {
+    min-height: 48px;
+    border: 0;
+    border-radius: 8px;
+    background: #f0c05a;
+    color: #1d221a;
+    font-weight: 900;
+  }
+
+  .shoot-button:disabled,
+  .power-control input:disabled {
+    opacity: 0.55;
   }
 
   .play-again-button {

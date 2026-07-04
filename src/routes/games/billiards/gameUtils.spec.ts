@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   BILLIARDS_MODES,
   FOUR_BALL_CHANCES,
+  computeShotVelocity,
   evaluateFourBallShot,
   isActiveBilliardsMode,
   isValidScore,
@@ -29,6 +30,13 @@ describe('billiards game helpers', () => {
   it('treats balls as stopped only when every speed is under the threshold', () => {
     expect(stopped([{ speed: 0.01 }, { speed: 0.03 }], 0.05)).toBe(true);
     expect(stopped([{ speed: 0.01 }, { speed: 0.08 }], 0.05)).toBe(false);
+  });
+
+  it('computes shot velocity from independent angle and power controls', () => {
+    expect(computeShotVelocity(0, 50)).toEqual({ x: 3.75, y: 0 });
+    expect(computeShotVelocity(Math.PI / 2, 100).x).toBeCloseTo(0);
+    expect(computeShotVelocity(Math.PI / 2, 100).y).toBeCloseTo(7.5);
+    expect(computeShotVelocity(Math.PI, 200).x).toBeCloseTo(-7.5);
   });
 
   it('accepts only active four-ball submissions for now', () => {
