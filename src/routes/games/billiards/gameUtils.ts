@@ -26,6 +26,10 @@ export const FOUR_BALL_CHANCES = 10;
 export const POWER_SWEEP_MIN = 10;
 export const POWER_SWEEP_MAX = 100;
 export const POWER_SWEEP_PERIOD_MS = 2400;
+export const AIM_BREATH_PERIOD_MS = 1800;
+export const AIM_BREATH_BASE_SWAY = 0.006;
+export const AIM_BREATH_EXTRA_SWAY = 0.028;
+export const SPIN_TOUCH_RANGE = 70;
 
 export function isActiveBilliardsMode(value: unknown): value is ActiveBilliardsMode {
   return value === BILLIARDS_MODES.FOUR_BALL;
@@ -55,6 +59,29 @@ export function computeSweepingPower(timeMs: number): number {
   const progress =
     wrapped <= halfPeriod ? wrapped / halfPeriod : 1 - (wrapped - halfPeriod) / halfPeriod;
   return Math.round(POWER_SWEEP_MIN + (POWER_SWEEP_MAX - POWER_SWEEP_MIN) * progress);
+}
+
+export function computeBreathingAimAngle(
+  baseAngle: number,
+  elapsedMs: number,
+  holdMs: number
+): number {
+  const holdFactor = Math.min(1, Math.max(0, holdMs / 5000));
+  const amplitude = AIM_BREATH_BASE_SWAY + AIM_BREATH_EXTRA_SWAY * holdFactor;
+  const phase = (elapsedMs / AIM_BREATH_PERIOD_MS) * Math.PI * 2;
+  return baseAngle + Math.sin(phase) * amplitude;
+}
+
+export function computeTouchSpin(
+  cue: { x: number; y: number },
+  touch: { x: number; y: number },
+  aimAngle: number
+): number {
+  const dx = touch.x - cue.x;
+  const dy = touch.y - cue.y;
+  const perpendicular = -Math.sin(aimAngle) * dx + Math.cos(aimAngle) * dy;
+  const normalized = Math.max(-1, Math.min(1, perpendicular / SPIN_TOUCH_RANGE));
+  return Math.round(normalized * 100);
 }
 
 export function evaluateFourBallShot(contacts: ShotContact[]): {

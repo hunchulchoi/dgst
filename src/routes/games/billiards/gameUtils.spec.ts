@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest';
 import {
   BILLIARDS_MODES,
   FOUR_BALL_CHANCES,
+  computeBreathingAimAngle,
   computeShotVelocity,
   computeSweepingPower,
+  computeTouchSpin,
   evaluateFourBallShot,
   isActiveBilliardsMode,
   isValidScore,
@@ -46,6 +48,19 @@ describe('billiards game helpers', () => {
     expect(computeSweepingPower(1200)).toBe(100);
     expect(computeSweepingPower(1800)).toBe(55);
     expect(computeSweepingPower(2400)).toBe(10);
+  });
+
+  it('adds breathing sway while the player holds aim', () => {
+    expect(computeBreathingAimAngle(1, 0, 0)).toBeCloseTo(1);
+    expect(computeBreathingAimAngle(1, 450, 0)).toBeCloseTo(1.006);
+    expect(computeBreathingAimAngle(1, 450, 5000)).toBeCloseTo(1.034);
+  });
+
+  it('computes left and right spin from touch offset beside the aim line', () => {
+    const cue = { x: 100, y: 100 };
+    expect(computeTouchSpin(cue, { x: 180, y: 100 }, 0)).toBe(0);
+    expect(computeTouchSpin(cue, { x: 180, y: 170 }, 0)).toBe(100);
+    expect(computeTouchSpin(cue, { x: 180, y: 30 }, 0)).toBe(-100);
   });
 
   it('accepts only active four-ball submissions for now', () => {

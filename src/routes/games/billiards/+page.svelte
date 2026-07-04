@@ -9,8 +9,10 @@
     STOP_SPEED,
     TABLE_HEIGHT,
     TABLE_WIDTH,
+    computeBreathingAimAngle,
     computeShotVelocity,
     computeSweepingPower,
+    computeTouchSpin,
     evaluateFourBallShot,
     stopped,
     type ShotContact
@@ -38,7 +40,12 @@
   let chances = $state(FOUR_BALL_CHANCES);
   let status = $state<Status>('aiming');
   let aimAngle = $state(-Math.PI / 2);
+  let displayAimAngle = $state(-Math.PI / 2);
   let aimPoint = $state<{ x: number; y: number } | null>(null);
+  let aimingStartedAt = 0;
+  let isHoldingAim = false;
+  let spin = $state(0);
+  let activeSpin = 0;
   let power = $state(55);
   let chargeStartedAt = 0;
   let chargeTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -131,7 +138,12 @@
     status = 'aiming';
     contacts = [];
     aimAngle = -Math.PI / 2;
+    displayAimAngle = -Math.PI / 2;
     aimPoint = null;
+    aimingStartedAt = 0;
+    isHoldingAim = false;
+    spin = 0;
+    activeSpin = 0;
     power = 55;
     stopCharging();
     submittedGameOver = false;
@@ -208,10 +220,16 @@
     if (Math.hypot(dx, dy) < BALL_RADIUS * 1.4) return;
     event.preventDefault();
     aimAngle = Math.atan2(dy, dx);
+    displayAimAngle = aimAngle;
+    spin = computeTouchSpin(cueBall.position, point, aimAngle);
     aimPoint = point;
   }
 
   function handlePointerDown(event: PointerEvent) {
+    if (canAim()) {
+      aimingStartedAt = performance.now();
+      isHoldingAim = true;
+    }
     updateAimFromPointer(event);
   }
 
@@ -220,26 +238,37 @@
     updateAimFromPointer(event);
   }
 
+  function handlePointerUp() {
+    if (!canAim()) return;
+    aimAngle = displayAimAngle;
+    isHoldingAim = false;
+  }
+
   function shoot(selectedPower = power) {
     if (!cueBall || !canCharge()) return;
     stopCharging();
+    isHoldingAim = false;
     power = selectedPower;
     const velocity = computeShotVelocity(aimAngle, selectedPower);
     if (Math.hypot(velocity.x, velocity.y) < 0.1) return;
     contacts = [];
     Body.setVelocity(cueBall, velocity);
+    Body.setAngularVelocity(cueBall, spin / 220);
+    activeSpin = spin;
     status = 'rolling';
     aimPoint = null;
   }
 
   function startCharging() {
     if (!canAim()) return;
+    aimAngle = displayAimAngle;
+    isHoldingAim = false;
     status = 'charging';
     chargeStartedAt = performance.now();
     if (chargeTimeout) clearTimeout(chargeTimeout);
     chargeTimeout = setTimeout(() => {
       if (status !== 'charging') return;
-      shoot(power);
+      shoot(10 + Math.floor(Math.random() * 91));
     }, 2400);
   }
 
@@ -270,12 +299,12 @@
   }
 
   function drawAim(ctx: CanvasRenderingContext2D) {
-    if (!cueBall || !canAim()) return;
+    if (!cueBall || !canCharge()) return;
     const len = 58 + power * 1.05;
-    const endX = cueBall.position.x + Math.cos(aimAngle) * len;
-    const endY = cueBall.position.y + Math.sin(aimAngle) * len;
-    const backX = cueBall.position.x - Math.cos(aimAngle) * 28;
-    const backY = cueBall.position.y - Math.sin(aimAngle) * 28;
+    const endX = cueBall.position.x + Math.cos(displayAimAngle) * len;
+    const endY = cueBall.position.y + Math.sin(displayAimAngle) * len;
+    const backX = cueBall.position.x - Math.cos(displayAimAngle) * 28;
+    const backY = cueBall.position.y - Math.sin(displayAimAngle) * 28;
 
     ctx.save();
     ctx.strokeStyle = 'rgba(255, 236, 158, 0.88)';
@@ -335,11 +364,34 @@
     lastFrame = now;
     Engine.update(engine, delta);
 
+    if (isHoldingAim && canAim()) {
+      displayAimAngle = computeBreathingAimAngle(
+        aimAngle,
+        now - aimingStartedAt,
+        now - aimingStartedAt
+      );
+    }
+
     if (status === 'charging') {
       power = computeSweepingPower(now - chargeStartedAt);
     }
 
+    if (status === 'rolling' && cueBall && activeSpin !== 0) {
+      const speed = Math.hypot(cueBall.velocity.x, cueBall.velocity.y);
+      if (speed > STOP_SPEED) {
+        const curve = (activeSpin / 100) * 0.0018 * delta;
+        const cos = Math.cos(curve);
+        const sin = Math.sin(curve);
+        Body.setVelocity(cueBall, {
+          x: cueBall.velocity.x * cos - cueBall.velocity.y * sin,
+          y: cueBall.velocity.x * sin + cueBall.velocity.y * cos
+        });
+        activeSpin *= 0.995;
+      }
+    }
+
     if (status === 'rolling' && stopped(getTrackedBalls(), STOP_SPEED)) {
+      activeSpin = 0;
       settleShot();
     }
 
@@ -449,6 +501,8 @@
       aria-label="4구 당구대"
       onpointerdown={handlePointerDown}
       onpointermove={handlePointerMove}
+      onpointerup={handlePointerUp}
+      onpointercancel={handlePointerUp}
     ></canvas>
   </div>
 
@@ -466,6 +520,25 @@
           <div class="power-meter-fill" style={`width: ${power}%`}></div>
         </div>
         <strong>{power}</strong>
+      </div>
+      <div class="spin-control">
+        <span>시네루</span>
+        <div
+          class="spin-meter"
+          aria-label="시네루"
+          aria-valuemin="-100"
+          aria-valuemax="100"
+          aria-valuenow={spin}
+        >
+          <div class="spin-meter-center"></div>
+          <div
+            class:left-spin={spin < 0}
+            class:right-spin={spin >= 0}
+            class="spin-meter-fill"
+            style={`width: ${Math.abs(spin) / 2}%; left: ${spin < 0 ? 50 - Math.abs(spin) / 2 : 50}%`}
+          ></div>
+        </div>
+        <strong>{spin}</strong>
       </div>
       <button
         type="button"
@@ -621,7 +694,8 @@
     margin-top: 12px;
   }
 
-  .power-control {
+  .power-control,
+  .spin-control {
     display: grid;
     grid-template-columns: 34px 1fr 34px;
     gap: 8px;
@@ -635,7 +709,8 @@
     font-weight: 800;
   }
 
-  .power-meter {
+  .power-meter,
+  .spin-meter {
     position: relative;
     width: 100%;
     min-width: 0;
@@ -646,6 +721,10 @@
     box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
   }
 
+  .spin-meter {
+    height: 14px;
+  }
+
   .power-meter-fill {
     height: 100%;
     border-radius: inherit;
@@ -653,12 +732,41 @@
     transition: width 60ms linear;
   }
 
-  .power-control strong {
+  .spin-meter-center {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: calc(50% - 1px);
+    width: 2px;
+    background: rgba(255, 255, 255, 0.55);
+  }
+
+  .spin-meter-fill {
+    position: absolute;
+    top: 0;
+    height: 100%;
+    border-radius: inherit;
+    transition:
+      width 80ms linear,
+      left 80ms linear;
+  }
+
+  .spin-meter-fill.left-spin {
+    background: #77b7ff;
+  }
+
+  .spin-meter-fill.right-spin {
+    background: #ff9a6a;
+  }
+
+  .power-control strong,
+  .spin-control strong {
     text-align: right;
     font-variant-numeric: tabular-nums;
   }
 
   .shoot-button {
+    grid-row: span 2;
     min-height: 48px;
     border: 0;
     border-radius: 8px;
