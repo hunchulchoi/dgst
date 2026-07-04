@@ -83,11 +83,12 @@ describe('articleRepo', () => {
       id: 'article-1',
       reads: ['viewer@example.com']
     });
+    const findRead = vi.fn().mockResolvedValue(null);
     const upsert = vi.fn().mockResolvedValue({});
 
     prismaModule.getPrisma.mockReturnValue({
       article: { findUnique, update },
-      articleRead: { upsert }
+      articleRead: { findUnique: findRead, upsert }
     });
 
     const { addRead } = await import('../src/lib/server/board/articleRepo.js');
@@ -101,6 +102,10 @@ describe('articleRepo', () => {
     expect(update).toHaveBeenCalledWith({
       where: { id: 'article-1' },
       data: { reads: { push: 'viewer@example.com' } }
+    });
+    expect(findRead).toHaveBeenCalledWith({
+      where: { articleId_viewerId: { articleId: 'article-1', viewerId: 'viewer@example.com' } },
+      select: { readAt: true }
     });
     expect(upsert).toHaveBeenCalledWith({
       where: {

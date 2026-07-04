@@ -189,6 +189,21 @@ model GameScoreWatermelon {
   @@map("game_score_watermelon")
 }
 
+model GameScoreBilliards {
+  id        String   @id @default(cuid())
+  email     String
+  nickname  String
+  mode      String
+  score     Int
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([createdAt(sort: Desc)])
+  @@index([mode, score(sort: Desc), createdAt(sort: Desc)])
+  @@index([email, mode, score(sort: Desc)])
+  @@map("game_score_billiards")
+}
+
 model SlotUserBalance {
   id        String   @id @default(cuid())
   email     String   @unique
