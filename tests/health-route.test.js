@@ -1,44 +1,10 @@
-// @ts-nocheck
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 describe('health route', () => {
-  afterEach(() => {
-    vi.unstubAllEnvs();
-  });
-
-  it('hides the health endpoint when the monitor token is missing', async () => {
-    vi.stubEnv('HEALTHCHECK_TOKEN', 'secret-token');
+  it('returns a no-store ok response without authentication', async () => {
     const { GET } = await import('../src/routes/health/+server.js');
 
-    const response = await GET({
-      request: new Request('https://dgst.me/health')
-    });
-
-    expect(response.status).toBe(404);
-  });
-
-  it('hides the health endpoint when the monitor token is wrong', async () => {
-    vi.stubEnv('HEALTHCHECK_TOKEN', 'secret-token');
-    const { GET } = await import('../src/routes/health/+server.js');
-
-    const response = await GET({
-      request: new Request('https://dgst.me/health', {
-        headers: { 'x-health-token': 'wrong-token' }
-      })
-    });
-
-    expect(response.status).toBe(404);
-  });
-
-  it('returns a no-store ok response when the monitor token matches', async () => {
-    vi.stubEnv('HEALTHCHECK_TOKEN', 'secret-token');
-    const { GET } = await import('../src/routes/health/+server.js');
-
-    const response = await GET({
-      request: new Request('https://dgst.me/health', {
-        headers: { 'x-health-token': 'secret-token' }
-      })
-    });
+    const response = await GET();
     const body = await response.json();
 
     expect(response.status).toBe(200);
