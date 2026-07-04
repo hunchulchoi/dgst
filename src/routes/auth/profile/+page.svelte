@@ -30,6 +30,7 @@
   import imageCompression from 'browser-image-compression';
   import { swalFire } from '$lib/util/swal.js';
   import { isNicknameAllowed } from '$lib/util/nickname.js';
+  import { getProfileSaveErrorMessage } from '$lib/util/profileSubmit.js';
 
   /** @typedef {{ ready: (callback: () => void) => void; execute: (siteKey: string, options: { action: string }) => Promise<string> }} Grecaptcha */
   /** @typedef {{ x: number; y: number; width: number; height: number }} CropData */
@@ -259,13 +260,11 @@
           goto(resolve('/'), { invalidateAll: true });
         });
       } else {
-        const errorData = await res
-          .json()
-          .catch(() => ({ message: '저장 중에 오류가 발생하였습니다.' }));
+        const message = await getProfileSaveErrorMessage(res);
         await swalFire({
           icon: 'error',
           title: '저장 실패',
-          text: errorData.message || '저장 중에 오류가 발생하였습니다.',
+          text: message,
           confirmButtonText: '확인'
         });
       }
