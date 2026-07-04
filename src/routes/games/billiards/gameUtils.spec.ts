@@ -36,10 +36,10 @@ describe('billiards game helpers', () => {
   });
 
   it('computes shot velocity from independent angle and power controls', () => {
-    expect(computeShotVelocity(0, 50)).toEqual({ x: 3.75, y: 0 });
+    expect(computeShotVelocity(0, 50)).toEqual({ x: 5.5, y: 0 });
     expect(computeShotVelocity(Math.PI / 2, 100).x).toBeCloseTo(0);
-    expect(computeShotVelocity(Math.PI / 2, 100).y).toBeCloseTo(7.5);
-    expect(computeShotVelocity(Math.PI, 200).x).toBeCloseTo(-7.5);
+    expect(computeShotVelocity(Math.PI / 2, 100).y).toBeCloseTo(11);
+    expect(computeShotVelocity(Math.PI, 200).x).toBeCloseTo(-11);
   });
 
   it('sweeps power back and forth like an arcade meter', () => {
