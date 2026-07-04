@@ -66,28 +66,29 @@ describe('billiards game helpers', () => {
   });
 
   it('computes shot velocity from independent angle and power controls', () => {
-    expect(computeShotVelocity(0, 50)).toEqual({ x: 12, y: 0 });
+    expect(computeShotVelocity(0, 50)).toEqual({ x: 15, y: 0 });
     expect(computeShotVelocity(Math.PI / 2, 100).x).toBeCloseTo(0);
-    expect(computeShotVelocity(Math.PI / 2, 100).y).toBeCloseTo(24);
-    expect(computeShotVelocity(Math.PI, 200).x).toBeCloseTo(-24);
+    expect(computeShotVelocity(Math.PI / 2, 100).y).toBeCloseTo(30);
+    expect(computeShotVelocity(Math.PI, 200).x).toBeCloseTo(-30);
   });
 
   it('uses snappier billiards physics tuning', () => {
-    expect(MAX_SHOT_SPEED).toBe(24);
+    expect(MAX_SHOT_SPEED).toBe(30);
     expect(BALL_RESTITUTION).toBeGreaterThanOrEqual(0.99);
     expect(RAIL_RESTITUTION).toBeGreaterThan(1);
     expect(BALL_FRICTION_AIR).toBeLessThan(0.018);
   });
 
-  it('sweeps power with an arcade-style eased rhythm', () => {
+  it('sweeps power faster near the low and high ends', () => {
     expect(computeSweepingPower(0)).toBe(10);
-    expect(computeSweepingPower(300)).toBe(49);
-    expect(computeSweepingPower(600)).toBe(78);
-    expect(computeSweepingPower(900)).toBe(94);
+    expect(computeSweepingPower(300)).toBe(44);
+    expect(computeSweepingPower(600)).toBe(55);
+    expect(computeSweepingPower(900)).toBe(66);
+    expect(computeSweepingPower(1140)).toBe(91);
     expect(computeSweepingPower(1200)).toBe(100);
-    expect(computeSweepingPower(1500)).toBe(61);
-    expect(computeSweepingPower(1800)).toBe(33);
-    expect(computeSweepingPower(2100)).toBe(16);
+    expect(computeSweepingPower(1500)).toBe(66);
+    expect(computeSweepingPower(1800)).toBe(55);
+    expect(computeSweepingPower(2100)).toBe(44);
     expect(computeSweepingPower(2400)).toBe(10);
   });
 

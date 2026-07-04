@@ -25,7 +25,7 @@ export const TABLE_WIDTH = 360;
 export const TABLE_HEIGHT = 560;
 export const BALL_RADIUS = 10;
 export const RAIL_THICKNESS = 18;
-export const MAX_SHOT_SPEED = 24;
+export const MAX_SHOT_SPEED = 30;
 export const STOP_SPEED = 0.08;
 export const FOUR_BALL_CHANCES = 10;
 export const BALL_RESTITUTION = 0.99;
@@ -102,8 +102,11 @@ export function computeSweepingPower(timeMs: number): number {
     ((timeMs % POWER_SWEEP_PERIOD_MS) + POWER_SWEEP_PERIOD_MS) % POWER_SWEEP_PERIOD_MS;
   const phaseProgress =
     wrapped <= halfPeriod ? wrapped / halfPeriod : (wrapped - halfPeriod) / halfPeriod;
-  const easedProgress = (1 - phaseProgress) * (1 - phaseProgress);
-  const progress = wrapped <= halfPeriod ? 1 - easedProgress : easedProgress;
+  const edgeFastProgress =
+    phaseProgress <= 0.5
+      ? 2 * phaseProgress - 2 * phaseProgress * phaseProgress
+      : 0.5 + 0.5 * (2 * phaseProgress - 1) * (2 * phaseProgress - 1);
+  const progress = wrapped <= halfPeriod ? edgeFastProgress : 1 - edgeFastProgress;
   return Math.round(POWER_SWEEP_MIN + (POWER_SWEEP_MAX - POWER_SWEEP_MIN) * progress);
 }
 
