@@ -3,6 +3,7 @@ import {
   BILLIARDS_MODES,
   FOUR_BALL_CHANCES,
   computeBreathingAimAngle,
+  containBallInTable,
   computeShotVelocity,
   computeSweepingPower,
   computeTouchSpin,
@@ -33,6 +34,30 @@ describe('billiards game helpers', () => {
   it('treats balls as stopped only when every speed is under the threshold', () => {
     expect(stopped([{ speed: 0.01 }, { speed: 0.03 }], 0.05)).toBe(true);
     expect(stopped([{ speed: 0.01 }, { speed: 0.08 }], 0.05)).toBe(false);
+  });
+
+  it('keeps fast balls inside the billiards table bounds', () => {
+    expect(
+      containBallInTable({
+        position: { x: -12, y: 120 },
+        velocity: { x: -18, y: 2 }
+      })
+    ).toEqual({
+      corrected: true,
+      position: { x: 28, y: 120 },
+      velocity: { x: 18, y: 2 }
+    });
+
+    expect(
+      containBallInTable({
+        position: { x: 370, y: 570 },
+        velocity: { x: 16, y: 14 }
+      })
+    ).toEqual({
+      corrected: true,
+      position: { x: 332, y: 532 },
+      velocity: { x: -16, y: -14 }
+    });
   });
 
   it('computes shot velocity from independent angle and power controls', () => {

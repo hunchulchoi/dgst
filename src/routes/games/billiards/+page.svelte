@@ -9,6 +9,7 @@
     STOP_SPEED,
     TABLE_HEIGHT,
     TABLE_WIDTH,
+    containBallInTable,
     computeBreathingAimAngle,
     computeShotVelocity,
     computeSweepingPower,
@@ -358,11 +359,24 @@
     drawAim(ctx);
   }
 
+  function keepBallsInsideTable() {
+    for (const ball of getTrackedBalls()) {
+      const next = containBallInTable({
+        position: ball.position,
+        velocity: ball.velocity
+      });
+      if (!next.corrected) continue;
+      Body.setPosition(ball, next.position);
+      Body.setVelocity(ball, next.velocity);
+    }
+  }
+
   function tick(now: number) {
     if (!engine) return;
     const delta = lastFrame ? Math.min(now - lastFrame, 32) : 16.66;
     lastFrame = now;
     Engine.update(engine, delta);
+    keepBallsInsideTable();
 
     if (isHoldingAim && canAim()) {
       displayAimAngle = computeBreathingAimAngle(

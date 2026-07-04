@@ -16,6 +16,11 @@ export interface SpeedSample {
   speed: number;
 }
 
+export interface BallBoundarySample {
+  position: { x: number; y: number };
+  velocity: { x: number; y: number };
+}
+
 export const TABLE_WIDTH = 360;
 export const TABLE_HEIGHT = 560;
 export const BALL_RADIUS = 10;
@@ -41,6 +46,42 @@ export function isValidScore(value: unknown): value is number {
 
 export function stopped(samples: SpeedSample[], threshold = STOP_SPEED): boolean {
   return samples.every((sample) => sample.speed < threshold);
+}
+
+export function containBallInTable(sample: BallBoundarySample): {
+  corrected: boolean;
+  position: { x: number; y: number };
+  velocity: { x: number; y: number };
+} {
+  const minX = RAIL_THICKNESS + BALL_RADIUS;
+  const maxX = TABLE_WIDTH - RAIL_THICKNESS - BALL_RADIUS;
+  const minY = RAIL_THICKNESS + BALL_RADIUS;
+  const maxY = TABLE_HEIGHT - RAIL_THICKNESS - BALL_RADIUS;
+  const position = { ...sample.position };
+  const velocity = { ...sample.velocity };
+  let corrected = false;
+
+  if (position.x < minX) {
+    position.x = minX;
+    velocity.x = Math.abs(velocity.x);
+    corrected = true;
+  } else if (position.x > maxX) {
+    position.x = maxX;
+    velocity.x = -Math.abs(velocity.x);
+    corrected = true;
+  }
+
+  if (position.y < minY) {
+    position.y = minY;
+    velocity.y = Math.abs(velocity.y);
+    corrected = true;
+  } else if (position.y > maxY) {
+    position.y = maxY;
+    velocity.y = -Math.abs(velocity.y);
+    corrected = true;
+  }
+
+  return { corrected, position, velocity };
 }
 
 export function computeShotVelocity(angle: number, powerPercent: number): { x: number; y: number } {
