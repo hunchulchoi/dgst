@@ -269,6 +269,17 @@
           </NavItem>
           <NavItem>
             <NavLink
+              href="/games/sudoku"
+              active={pathname?.startsWith('/games/sudoku')}
+              class="px-3 text-center"
+            >
+              <Icon name="grid-3x3" class="text-primary" /><span class="d-none d-sm-inline ms-1"
+                >수도쿠</span
+              >
+            </NavLink>
+          </NavItem>
+          <NavItem>
+            <NavLink
               href="/games/billiards"
               active={pathname?.startsWith('/games/billiards')}
               class="px-3 text-center"

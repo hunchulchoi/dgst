@@ -204,6 +204,22 @@ model GameScoreBilliards {
   @@map("game_score_billiards")
 }
 
+model GameScoreSudoku {
+  id         String   @id @default(cuid())
+  email      String
+  nickname   String
+  difficulty String
+  seconds    Int
+  mistakes   Int      @default(0)
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@index([createdAt(sort: Desc)])
+  @@index([difficulty, seconds, mistakes, createdAt(sort: Desc)])
+  @@index([email, difficulty, seconds, mistakes])
+  @@map("game_score_sudoku")
+}
+
 model SlotUserBalance {
   id        String   @id @default(cuid())
   email     String   @unique
