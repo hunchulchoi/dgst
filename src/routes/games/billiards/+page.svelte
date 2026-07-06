@@ -1517,10 +1517,6 @@
       min-height: 30px;
     }
 
-    .game-shell {
-      padding-top: 96px;
-    }
-
     .bottom-controls {
       grid-template-columns: 84px minmax(0, 1fr);
       gap: 6px;
