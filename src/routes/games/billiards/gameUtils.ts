@@ -132,16 +132,16 @@ export function containBallInTable(sample: BallBoundarySample): {
 
 export function getPocketCenters(): Array<{ x: number; y: number }> {
   const minX = RAIL_THICKNESS;
-  const midX = TABLE_WIDTH / 2;
   const maxX = TABLE_WIDTH - RAIL_THICKNESS;
   const minY = RAIL_THICKNESS;
+  const midY = TABLE_HEIGHT / 2;
   const maxY = TABLE_HEIGHT - RAIL_THICKNESS;
   return [
     { x: minX, y: minY },
-    { x: midX, y: minY },
     { x: maxX, y: minY },
+    { x: minX, y: midY },
+    { x: maxX, y: midY },
     { x: minX, y: maxY },
-    { x: midX, y: maxY },
     { x: maxX, y: maxY }
   ];
 }

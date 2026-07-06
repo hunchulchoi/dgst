@@ -247,14 +247,15 @@ describe('billiards game helpers', () => {
   it('detects balls entering one of six pockets', () => {
     expect(getPocketCenters()).toEqual([
       { x: RAIL_THICKNESS, y: RAIL_THICKNESS },
-      { x: TABLE_WIDTH / 2, y: RAIL_THICKNESS },
       { x: TABLE_WIDTH - RAIL_THICKNESS, y: RAIL_THICKNESS },
+      { x: RAIL_THICKNESS, y: TABLE_HEIGHT / 2 },
+      { x: TABLE_WIDTH - RAIL_THICKNESS, y: TABLE_HEIGHT / 2 },
       { x: RAIL_THICKNESS, y: TABLE_HEIGHT - RAIL_THICKNESS },
-      { x: TABLE_WIDTH / 2, y: TABLE_HEIGHT - RAIL_THICKNESS },
       { x: TABLE_WIDTH - RAIL_THICKNESS, y: TABLE_HEIGHT - RAIL_THICKNESS }
     ]);
     expect(isBallInPocket(getPocketCenters()[0])).toBe(true);
     expect(isBallInPocket({ x: RAIL_THICKNESS + BALL_RADIUS, y: RAIL_THICKNESS + BALL_RADIUS })).toBe(true);
+    expect(isBallInPocket({ x: RAIL_THICKNESS + BALL_RADIUS, y: TABLE_HEIGHT / 2 })).toBe(true);
     expect(isBallInPocket({ x: 180, y: 280 })).toBe(false);
     expect(isBallInPocket({ x: getPocketCenters()[0].x + POCKET_RADIUS + 1, y: RAIL_THICKNESS })).toBe(false);
   });

@@ -175,15 +175,15 @@
   function makePocketRails() {
     const pocketGapHalf = POCKET_RADIUS + BALL_RADIUS * 0.7;
     const minX = RAIL_THICKNESS;
-    const midX = TABLE_WIDTH / 2;
     const maxX = TABLE_WIDTH - RAIL_THICKNESS;
     const minY = RAIL_THICKNESS;
+    const midY = TABLE_HEIGHT / 2;
     const maxY = TABLE_HEIGHT - RAIL_THICKNESS;
     const rails: RailBody[] = [];
 
     const addHorizontalSegments = (y: number) => {
       let start = 0;
-      for (const center of [minX, midX, maxX]) {
+      for (const center of [minX, maxX]) {
         const end = Math.max(start, center - pocketGapHalf);
         if (end - start > 4) {
           rails.push(makeRail((start + end) / 2, y, end - start, RAIL_THICKNESS));
@@ -196,10 +196,18 @@
     };
 
     const addVerticalSegments = (x: number) => {
-      const start = minY + pocketGapHalf;
-      const end = maxY - pocketGapHalf;
-      if (end - start > 4) {
-        rails.push(makeRail(x, (start + end) / 2, RAIL_THICKNESS, end - start));
+      let start = 0;
+      for (const center of [minY, midY, maxY]) {
+        const end = Math.max(start, center - pocketGapHalf);
+        if (end - start > 4) {
+          rails.push(makeRail(x, (start + end) / 2, RAIL_THICKNESS, end - start));
+        }
+        start = Math.min(TABLE_HEIGHT, center + pocketGapHalf);
+      }
+      if (TABLE_HEIGHT - start > 4) {
+        rails.push(
+          makeRail(x, (start + TABLE_HEIGHT) / 2, RAIL_THICKNESS, TABLE_HEIGHT - start)
+        );
       }
     };
 
