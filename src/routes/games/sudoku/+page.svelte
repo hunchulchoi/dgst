@@ -506,6 +506,9 @@
                 class="sudoku-cell"
                 class:sudoku-cell-fixed={isFixed(rowIndex, colIndex)}
                 class:sudoku-cell-selected={selected.row === rowIndex && selected.col === colIndex}
+                class:sudoku-cell-note-selected={noteMode &&
+                  selected.row === rowIndex &&
+                  selected.col === colIndex}
                 class:sudoku-cell-related={isRelated(rowIndex, colIndex)}
                 class:sudoku-cell-same={value !== 0 && value === selectedValue}
                 class:sudoku-cell-wrong={isWrong(rowIndex, colIndex)}
@@ -820,6 +823,11 @@
     outline: 3px solid var(--bs-primary);
     outline-offset: -3px;
     z-index: 1;
+  }
+
+  .sudoku-cell-note-selected {
+    outline-color: var(--bs-secondary-color);
+    box-shadow: inset 0 0 0 3px color-mix(in srgb, var(--bs-secondary-color) 65%, transparent);
   }
 
   .sudoku-cell-wrong {

@@ -33,6 +33,7 @@ describe('game ranking UI', () => {
   it('binds sudoku memo toggle visuals to memo mode state', () => {
     expect(sudokuPage).toContain('function toggleNoteMode(event: MouseEvent)');
     expect(sudokuPage).toContain('class:sudoku-note-toggle-active={noteMode}');
+    expect(sudokuPage).toContain('class:sudoku-cell-note-selected={noteMode');
     expect(sudokuPage).toContain('aria-pressed={noteMode}');
     expect(sudokuPage).toContain('.blur()');
     expect(sudokuPage).toContain('disabled={!started || gameWon}');
