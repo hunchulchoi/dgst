@@ -3,7 +3,8 @@ import { z } from 'zod';
 import { getUnreadAlarmCount, markAsRead } from '$lib/server/alarm/alarmService.js';
 
 const bodySchema = z.object({
-  articleId: z.string().min(1)
+  articleId: z.string().min(1),
+  alarmId: z.string().min(1).optional()
 });
 
 /**
@@ -28,8 +29,10 @@ export async function POST({ locals, request }) {
       return json({ message: 'articleId가 필요합니다.' }, { status: 400 });
     }
 
-    const { articleId } = parsed.data;
-    await markAsRead(session.user.email, articleId);
+    const { articleId, alarmId } = parsed.data;
+    const targetAlarmId =
+      alarmId?.startsWith(`${articleId}_`) || alarmId === articleId ? alarmId : articleId;
+    await markAsRead(session.user.email, targetAlarmId);
     const count = await getUnreadAlarmCount(session.user.email);
 
     return json({ count }, { headers: { 'Cache-Control': 'private, no-cache' } });

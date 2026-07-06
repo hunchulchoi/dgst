@@ -50,6 +50,7 @@
   const boardId = $derived($page.params.boardId ?? 'free');
   const articleId = $derived($page.params.articleId ?? '');
   const pageNo = $derived($page.params.pageNo ?? '1');
+  const alarmId = $derived($page.url.searchParams.get('alarm') ?? '');
 
   // 애니메이션 관련 상태
   let likeAnimation = $state(false);
@@ -454,7 +455,9 @@
 
   let commentLoading = $state(false);
   let commentLoadingMessage = $state('댓글 저장 중...');
-  let commentAudioRecordingTarget = $state(/** @type {'comment' | 'reply' | 'edit' | null} */ (null));
+  let commentAudioRecordingTarget = $state(
+    /** @type {'comment' | 'reply' | 'edit' | null} */ (null)
+  );
   /** @type {MediaRecorder | null} */
   let commentAudioRecorder = null;
   /** @type {Blob[]} */
@@ -1029,7 +1032,7 @@
     fetch('/api/alarm/mark-read', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ articleId })
+      body: JSON.stringify({ articleId, alarmId: alarmId || undefined })
     })
       .then((res) => (res.ok ? res.json() : { count: 0 }))
       .then((body) => {
@@ -1726,7 +1729,9 @@
             <span>의견남기기</span>
             <Badge color="primary">{commentData.length}</Badge>
           </Col>
-          <Col class="text-end article-comment-refresh d-flex align-items-center justify-content-end">
+          <Col
+            class="text-end article-comment-refresh d-flex align-items-center justify-content-end"
+          >
             <Button
               class="comment-toolbar-btn fw-bolder"
               onclick={refreshCommentsFromToolbar}
@@ -1741,9 +1746,7 @@
 
       <Row class="comment-section mb-5 mx-0 px-2">
         {#if initialCommentLoading}
-          <div class="comment-initial-loading text-muted py-3 px-1">
-            댓글을 준비하고 있습니다
-          </div>
+          <div class="comment-initial-loading text-muted py-3 px-1">댓글을 준비하고 있습니다</div>
         {/if}
 
         {#each commentData as comment (commentKey(comment))}
@@ -1816,14 +1819,18 @@
                               aria-label="댓글 이미지 또는 음성 파일 첨부"
                             />
                             <Button
-                              color={commentAudioRecordingTarget === 'edit' ? 'danger' : 'secondary'}
+                              color={commentAudioRecordingTarget === 'edit'
+                                ? 'danger'
+                                : 'secondary'}
                               outline
                               onclick={() => toggleCommentAudioRecording('edit')}
                               class="comment-form-btn"
                               disabled={commentLoading && commentAudioRecordingTarget !== 'edit'}
                             >
                               <Icon
-                                name={commentAudioRecordingTarget === 'edit' ? 'stop-fill' : 'mic-fill'}
+                                name={commentAudioRecordingTarget === 'edit'
+                                  ? 'stop-fill'
+                                  : 'mic-fill'}
                               />
                               {commentAudioRecordingTarget === 'edit' ? '녹음 중지' : '음성 녹음'}
                             </Button>
@@ -1951,7 +1958,11 @@
               </Row>
 
               {#if sessionUser?.nickname && comment.state === 'write'}
-                <Row class="mt-2 comment-actions-row {comment.parentCommentId ? 'comment-actions-row-reply' : ''}">
+                <Row
+                  class="mt-2 comment-actions-row {comment.parentCommentId
+                    ? 'comment-actions-row-reply'
+                    : ''}"
+                >
                   <Col class="comment-actions text-end pe-2 m-0">
                     {#if comment.email === sessionUser?.email}
                       <Button
@@ -2042,7 +2053,9 @@
                     disabled={commentLoading && commentAudioRecordingTarget !== 'reply'}
                     class="comment-form-btn"
                   >
-                    <Icon name={commentAudioRecordingTarget === 'reply' ? 'stop-fill' : 'mic-fill'} />
+                    <Icon
+                      name={commentAudioRecordingTarget === 'reply' ? 'stop-fill' : 'mic-fill'}
+                    />
                     {commentAudioRecordingTarget === 'reply' ? '녹음 중지' : '음성 녹음'}
                   </Button>
                 </InputGroup>
@@ -2093,7 +2106,9 @@
               <span>의견남기기</span>
               <Badge color="primary">{commentData.length}</Badge>
             </Col>
-            <Col class="text-end d-flex align-items-center justify-content-end article-comment-refresh">
+            <Col
+              class="text-end d-flex align-items-center justify-content-end article-comment-refresh"
+            >
               <Button
                 class="comment-toolbar-btn fw-bolder"
                 onclick={refreshCommentsFromToolbar}
@@ -2251,11 +2266,9 @@
                 alt={imageViewerAlt}
                 class="image-viewer__image"
                 draggable="false"
-                style={
-                  imageViewerNaturalWidth
-                    ? `width:${Math.max(1, Math.round(imageViewerNaturalWidth * imageViewerScale))}px;height:auto;max-width:none;`
-                    : 'width:auto;height:auto;max-width:none;'
-                }
+                style={imageViewerNaturalWidth
+                  ? `width:${Math.max(1, Math.round(imageViewerNaturalWidth * imageViewerScale))}px;height:auto;max-width:none;`
+                  : 'width:auto;height:auto;max-width:none;'}
               />
             </div>
           </div>
@@ -2568,7 +2581,7 @@
     white-space: nowrap;
   }
 
-    @media (max-width: 767.98px) {
+  @media (max-width: 767.98px) {
     :global(.comment-section .comment-action-btn),
     :global(.comment-section .comment-form-btn),
     :global(.comment-section .comment-toolbar-btn) {
@@ -2597,16 +2610,16 @@
       min-width: 0;
     }
 
-  :global(.comment-section .comment-write-group) {
-    max-width: 100%;
-  }
+    :global(.comment-section .comment-write-group) {
+      max-width: 100%;
+    }
 
-  :global(.comment-section .comment-write-group textarea) {
-    font-size: 16px;
-  }
+    :global(.comment-section .comment-write-group textarea) {
+      font-size: 16px;
+    }
 
-  :global(.comment-actions) {
-    gap: 0.45rem;
+    :global(.comment-actions) {
+      gap: 0.45rem;
       justify-content: flex-end;
     }
 

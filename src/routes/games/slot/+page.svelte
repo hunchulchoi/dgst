@@ -77,9 +77,9 @@
   let spinning = $state(false);
   let reels = $state(['-', '-', '-']);
   let message = $state('');
-  let rankList = $state<Array<{ nickname: string; balance: number; updatedAt?: string; _id?: string }>>(
-    []
-  );
+  let rankList = $state<
+    Array<{ nickname: string; balance: number; updatedAt?: string; _id?: string }>
+  >([]);
   let comments = $state<
     Array<{
       _id?: string;
@@ -487,6 +487,9 @@
         page: String(page),
         limit: String(commentPerPage)
       });
+      const alarmId = new URLSearchParams(window.location.search).get('alarm');
+      if (alarmId) query.set('alarm', alarmId);
+
       const res = await fetch(`/games/slot/comment?${query.toString()}`, {
         cache: 'no-store',
         headers: {
@@ -834,7 +837,9 @@
           <div class="mb-2">
             <div>보유 점수: <strong>{formatNumber(balance)}</strong></div>
             {#if balanceUpdatedAt}
-              <small class="text-muted">마지막 업데이트 {formatSlotUpdatedAt(balanceUpdatedAt)}</small>
+              <small class="text-muted"
+                >마지막 업데이트 {formatSlotUpdatedAt(balanceUpdatedAt)}</small
+              >
             {/if}
           </div>
           <div class="d-flex justify-content-between align-items-center mb-2">

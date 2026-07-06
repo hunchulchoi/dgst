@@ -105,18 +105,18 @@ export async function getAlarmList(email, limit = 30, hours = 24) {
 }
 
 /**
- * 특정 게시글/댓글과 관련된 사용자의 알람을 읽음 처리
+ * 특정 알람 1개를 읽음 처리
  * @param {string} email
- * @param {string} articleId
+ * @param {string} alarmId
  */
-export async function markAsRead(email, articleId) {
+export async function markAsRead(email, alarmId) {
   try {
     const prisma = getPrisma();
     await prisma.alarm.updateMany({
       where: {
         email,
         readAt: null,
-        OR: [{ id: articleId }, { id: { startsWith: `${articleId}_` } }]
+        id: alarmId
       },
       data: { readAt: new Date() }
     });
@@ -124,7 +124,7 @@ export async function markAsRead(email, articleId) {
     logger.warn({
       message: '[alarm] markAsRead failed',
       email,
-      articleId,
+      alarmId,
       errorMessage: err instanceof Error ? err.message : String(err)
     });
   }

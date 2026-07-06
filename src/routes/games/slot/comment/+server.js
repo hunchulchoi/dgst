@@ -45,6 +45,7 @@ export async function GET(event) {
   const email = typeof session?.user?.email === 'string' ? session.user.email : '';
   const perPageParam = Number(url.searchParams.get('limit') ?? '50');
   const pageParam = Number(url.searchParams.get('page') ?? '1');
+  const alarmId = url.searchParams.get('alarm') ?? '';
   const perPage =
     Number.isFinite(perPageParam) && perPageParam > 0 ? Math.min(perPageParam, 50) : 50;
   const page = Number.isFinite(pageParam) && pageParam > 0 ? Math.floor(pageParam) : 1;
@@ -154,7 +155,11 @@ export async function GET(event) {
       });
 
       // 알림 읽음 처리
-      await markAsRead(email, SLOT_ARTICLE_ID);
+      const targetAlarmId =
+        alarmId === SLOT_ARTICLE_ID || alarmId.startsWith(`${SLOT_ARTICLE_ID}_`)
+          ? alarmId
+          : SLOT_ARTICLE_ID;
+      await markAsRead(email, targetAlarmId);
     } else {
       pagedComments.forEach((c) => {
         delete c.likes;

@@ -64,9 +64,9 @@
                 href={resolve(
                   alarm.boardId === 'slot'
                     ? commentId
-                      ? `/games/slot?cmt=${commentId}`
-                      : `/games/slot`
-                    : `/board/${alarm.boardId}/${alarm.articleId}?a=cmt${alarm.comment}`
+                      ? `/games/slot?cmt=${commentId}&alarm=${alarm.id}`
+                      : `/games/slot?alarm=${alarm.id}`
+                    : `/board/${alarm.boardId}/${alarm.articleId}?a=cmt${alarm.comment}&alarm=${alarm.id}`
                 )}
                 class="alarm-list-link link-underline link-underline-opacity-0 link-offset-2 link-underline-opacity-50-hover stretched-link"
               >
@@ -117,9 +117,9 @@
                 href={resolve(
                   alarm.boardId === 'slot'
                     ? commentIdForGeneral
-                      ? `/games/slot?cmt=${commentIdForGeneral}`
-                      : `/games/slot`
-                    : `/board/${alarm.boardId}/${alarm.articleId}`
+                      ? `/games/slot?cmt=${commentIdForGeneral}&alarm=${alarm.id}`
+                      : `/games/slot?alarm=${alarm.id}`
+                    : `/board/${alarm.boardId}/${alarm.articleId}?alarm=${alarm.id}`
                 )}
                 class="alarm-list-link link-underline link-underline-opacity-0 link-offset-2 link-underline-opacity-50-hover stretched-link"
               >
