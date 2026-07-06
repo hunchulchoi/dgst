@@ -116,7 +116,7 @@ export async function markAsRead(email, alarmId) {
       where: {
         email,
         readAt: null,
-        id: alarmId
+        OR: [{ id: alarmId }, { id: { startsWith: `${alarmId}_` } }]
       },
       data: { readAt: new Date() }
     });

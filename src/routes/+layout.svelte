@@ -147,7 +147,7 @@
   }
 
   async function refreshUnreadAlarmCount() {
-    if (!browser || !data.session?.user?.nickname) {
+    if (!browser || !data.session?.user?.email) {
       alarmCount.set(0);
       return;
     }

@@ -29,10 +29,8 @@ export async function POST({ locals, request }) {
       return json({ message: 'articleId가 필요합니다.' }, { status: 400 });
     }
 
-    const { articleId, alarmId } = parsed.data;
-    const targetAlarmId =
-      alarmId?.startsWith(`${articleId}_`) || alarmId === articleId ? alarmId : articleId;
-    await markAsRead(session.user.email, targetAlarmId);
+    const { articleId } = parsed.data;
+    await markAsRead(session.user.email, articleId);
     const count = await getUnreadAlarmCount(session.user.email);
 
     return json({ count }, { headers: { 'Cache-Control': 'private, no-cache' } });

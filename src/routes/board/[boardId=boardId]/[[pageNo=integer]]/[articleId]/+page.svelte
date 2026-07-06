@@ -234,7 +234,7 @@
   }
 
   async function refreshUnreadAlarmCount() {
-    if (!browser || !data.session?.user?.nickname) {
+    if (!browser || !data.session?.user?.email) {
       alarmCount.set(0);
       return;
     }
@@ -1025,7 +1025,7 @@
 
   /** 게시글 열람 시 알림 읽음 + 헤더 뱃지 갱신 (SSR blocking 제거) */
   $effect(() => {
-    if (!browser || !articleId || !data.session?.user?.nickname) return;
+    if (!browser || !articleId || !data.session?.user?.email) return;
 
     let cancelled = false;
 
