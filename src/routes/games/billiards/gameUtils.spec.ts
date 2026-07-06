@@ -15,13 +15,17 @@ import {
   MAX_SHOT_SPEED,
   POCKET_BALL_CHANCES,
   POCKET_RADIUS,
+  BALL_RADIUS,
   RAIL_BOUNDARY_DAMPING,
   RAIL_CONTACT_SPIN_DAMPING,
   RAIL_CONTACT_STOP_SPEED,
   RAIL_RESTITUTION,
   RAIL_SURFACE_FRICTION,
   RAIL_TANGENT_DAMPING,
+  RAIL_THICKNESS,
   STOP_SNAP_SPEED,
+  TABLE_HEIGHT,
+  TABLE_WIDTH,
   computeBallCollisionEnergyScale,
   computeBreathingAimAngle,
   computeDynamicSpinCurveScale,
@@ -241,10 +245,18 @@ describe('billiards game helpers', () => {
   });
 
   it('detects balls entering one of six pockets', () => {
-    expect(getPocketCenters()).toHaveLength(6);
+    expect(getPocketCenters()).toEqual([
+      { x: RAIL_THICKNESS, y: RAIL_THICKNESS },
+      { x: TABLE_WIDTH / 2, y: RAIL_THICKNESS },
+      { x: TABLE_WIDTH - RAIL_THICKNESS, y: RAIL_THICKNESS },
+      { x: RAIL_THICKNESS, y: TABLE_HEIGHT - RAIL_THICKNESS },
+      { x: TABLE_WIDTH / 2, y: TABLE_HEIGHT - RAIL_THICKNESS },
+      { x: TABLE_WIDTH - RAIL_THICKNESS, y: TABLE_HEIGHT - RAIL_THICKNESS }
+    ]);
     expect(isBallInPocket(getPocketCenters()[0])).toBe(true);
+    expect(isBallInPocket({ x: RAIL_THICKNESS + BALL_RADIUS, y: RAIL_THICKNESS + BALL_RADIUS })).toBe(true);
     expect(isBallInPocket({ x: 180, y: 280 })).toBe(false);
-    expect(isBallInPocket({ x: getPocketCenters()[0].x + POCKET_RADIUS + 1, y: 28 })).toBe(false);
+    expect(isBallInPocket({ x: getPocketCenters()[0].x + POCKET_RADIUS + 1, y: RAIL_THICKNESS })).toBe(false);
   });
 
   it('scores pocket-ball shots with object, combo, clear bonus, and scratch penalty', () => {

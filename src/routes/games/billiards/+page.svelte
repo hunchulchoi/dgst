@@ -174,11 +174,11 @@
 
   function makePocketRails() {
     const pocketGapHalf = POCKET_RADIUS + BALL_RADIUS * 0.7;
-    const minX = RAIL_THICKNESS + BALL_RADIUS;
+    const minX = RAIL_THICKNESS;
     const midX = TABLE_WIDTH / 2;
-    const maxX = TABLE_WIDTH - RAIL_THICKNESS - BALL_RADIUS;
-    const minY = RAIL_THICKNESS + BALL_RADIUS;
-    const maxY = TABLE_HEIGHT - RAIL_THICKNESS - BALL_RADIUS;
+    const maxX = TABLE_WIDTH - RAIL_THICKNESS;
+    const minY = RAIL_THICKNESS;
+    const maxY = TABLE_HEIGHT - RAIL_THICKNESS;
     const rails: RailBody[] = [];
 
     const addHorizontalSegments = (y: number) => {
