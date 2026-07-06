@@ -602,6 +602,11 @@ textarea.form-control {
   height: 1rem !important;
 }
 
+/* reCAPTCHA v3 badge is injected globally and can remain after SPA navigation. */
+.grecaptcha-badge {
+  visibility: hidden !important;
+}
+
 /* Dark mode overrides */
 @media (prefers-color-scheme: dark) {
   :root {

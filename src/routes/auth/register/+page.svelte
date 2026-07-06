@@ -26,12 +26,7 @@
   import imageCompression from 'browser-image-compression';
   import { swalFire } from '$lib/util/swal.js';
   import { isNicknameAllowed } from '$lib/util/nickname.js';
-
-  /** @typedef {{ ready: (callback: () => void) => void; execute: (siteKey: string, options: { action: string }) => Promise<string> }} Grecaptcha */
-  /** @type {Grecaptcha | undefined} */
-  const grecaptcha = browser
-    ? /** @type {Window & { grecaptcha?: Grecaptcha }} */ (window).grecaptcha
-    : undefined;
+  import { getRecaptchaToken } from '$lib/util/recaptchaClient.js';
 
   // Svelte 5 Runes
   let { data } = $props();
@@ -41,22 +36,6 @@
       if (browser) goto(resolve('/'), { replaceState: true });
     }
   });
-
-  /** @returns {Promise<string>} */
-  async function getRecaptchaToken() {
-    return new Promise((resolve, reject) => {
-      if (!grecaptcha) {
-        reject(new Error('reCAPTCHA not loaded'));
-        return;
-      }
-      grecaptcha.ready(() => {
-        grecaptcha
-          .execute(PUBLIC_GOOGLE_RECAPTCHA_SITE_KEY, { action: 'register' })
-          .then(resolve)
-          .catch(reject);
-      });
-    });
-  }
 
   /**
    * 파일 업로드시 미리보기
@@ -129,7 +108,7 @@
     formData.append('introduction', introduction);
 
     try {
-      formData.append('recaptchaToken', await getRecaptchaToken());
+      formData.append('recaptchaToken', await getRecaptchaToken(PUBLIC_GOOGLE_RECAPTCHA_SITE_KEY));
       const res = await fetch('/auth/register', { method: 'PATCH', body: formData });
       console.log('res', res);
 
@@ -306,6 +285,21 @@
     </CardBody>
     <CardFooter class="mb-3">
       <strong>dgst.me는 개인정보를 수집하고 저장하지 않습니다.</strong>
+      <div class="recaptcha-notice text-muted mt-2">
+        이 페이지는 reCAPTCHA로 보호되며 Google
+        <a href="https://policies.google.com/privacy" target="_blank" rel="noreferrer"
+          >개인정보처리방침</a
+        >과
+        <a href="https://policies.google.com/terms" target="_blank" rel="noreferrer">서비스 약관</a
+        >이 적용됩니다.
+      </div>
     </CardFooter>
   </Card>
 </Row>
+
+<style>
+  .recaptcha-notice {
+    font-size: 0.75rem;
+    line-height: 1.35;
+  }
+</style>

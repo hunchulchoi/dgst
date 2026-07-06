@@ -4,20 +4,115 @@ import { verifyRecaptchaToken } from '$lib/server/recaptcha.js';
 import { write } from '$lib/util/fileUpload.js';
 import { invalidateUser } from '$lib/server/auth/userCache.js';
 import { isNicknameAllowed } from '$lib/util/nickname.js';
+import logger from '$lib/util/logger.js';
+import { serializeError } from '$lib/util/formatErrorTrace.js';
 
 import { invalidateSession } from '$lib/server/auth/sessionCache.js';
 
-export async function PATCH({ request, locals, cookies }) {
+const loggedProfileSaveErrors = new WeakSet();
+
+/**
+ * @param {unknown} err
+ * @returns {number | undefined}
+ */
+function getErrorStatus(err) {
+  if (!err || typeof err !== 'object' || !('status' in err)) return undefined;
+  const status = /** @type {{ status?: unknown }} */ (err).status;
+  return typeof status === 'number' ? status : undefined;
+}
+
+/**
+ * @param {unknown} err
+ * @returns {string | undefined}
+ */
+function getErrorMessage(err) {
+  if (err instanceof Error) return err.message;
+  if (!err || typeof err !== 'object') return undefined;
+
+  const parsed = /** @type {{ body?: { message?: unknown }; message?: unknown }} */ (err);
+  if (typeof parsed.body?.message === 'string') return parsed.body.message;
+  if (typeof parsed.message === 'string') return parsed.message;
+  return undefined;
+}
+
+/**
+ * @param {unknown} err
+ * @returns {boolean}
+ */
+function wasProfileSaveErrorLogged(err) {
+  return Boolean(err && typeof err === 'object' && loggedProfileSaveErrors.has(err));
+}
+
+/**
+ * @param {unknown} err
+ */
+function markProfileSaveErrorLogged(err) {
+  if (err && typeof err === 'object') loggedProfileSaveErrors.add(err);
+}
+
+/**
+ * @param {unknown} err
+ * @param {Record<string, unknown>} metadata
+ */
+function logProfileSaveFailure(err, metadata) {
+  const status = getErrorStatus(err);
+  const level = status && status < 500 ? 'warn' : 'error';
+  logger[level]({
+    message: '프로필 저장 실패',
+    event: 'profile.save.failed',
+    status,
+    errorMessage: getErrorMessage(err),
+    error: serializeError(err),
+    ...metadata
+  });
+  markProfileSaveErrorLogged(err);
+}
+
+/**
+ * @param {import('@sveltejs/kit').RequestEvent} event
+ */
+function getRequestMeta(event) {
+  const forwardedFor =
+    event.request.headers.get('x-forwarded-for') || event.request.headers.get('x-real-ip') || '';
+  const clientIp =
+    (forwardedFor ? String(forwardedFor).split(',')[0].trim() : '') ||
+    event.getClientAddress?.() ||
+    'unknown';
+
+  return {
+    pathname: event.url.pathname,
+    method: event.request.method,
+    clientIp,
+    userAgent: event.request.headers.get('user-agent') ?? '',
+    referer: event.request.headers.get('referer') ?? '',
+    requestUrl: event.url.toString(),
+    search: event.url.search
+  };
+}
+
+export async function PATCH(event) {
+  const { request, locals, cookies } = event;
+  let stage = 'session';
+  let email = '';
+  let nicknameLength;
+  let introductionLength;
+  let hasPhotoUpload = false;
+  let profileFailureLogged = false;
+  /** @type {{ type?: string; size?: number } | undefined} */
+  let photo;
+
   try {
     const session = await locals.auth();
-    const email = typeof session?.user?.email === 'string' ? session.user.email : '';
+    email = typeof session?.user?.email === 'string' ? session.user.email : '';
 
     if (!email) {
       throw error(401, { message: '로그인 해 주세요' });
     }
 
+    stage = 'parse-form';
     const formData = await request.formData();
 
+    stage = 'recaptcha';
     const captcha = await verifyRecaptchaToken(
       formData.get('recaptchaToken')?.toString(),
       'register'
@@ -40,6 +135,8 @@ export async function PATCH({ request, locals, cookies }) {
 
     const photoFile = formData.get('photo');
     if (photoFile && photoFile instanceof File && photoFile.size > 0) {
+      hasPhotoUpload = true;
+      photo = { type: photoFile.type, size: photoFile.size };
       // 파일 크기 제한 (10MB)
       const maxSize = 10 * 1024 * 1024;
       if (photoFile.size > maxSize) {
@@ -47,6 +144,7 @@ export async function PATCH({ request, locals, cookies }) {
       }
 
       try {
+        stage = 'file-upload';
         let fileToUpload = photoFile;
         // 움짤 등 서버 크롭 파라미터가 있는지 확인
         const cropX = formData.get('cropX');
@@ -90,6 +188,13 @@ export async function PATCH({ request, locals, cookies }) {
         }
       } catch (uploadErr) {
         console.error('파일 업로드 오류:', uploadErr);
+        logProfileSaveFailure(uploadErr, {
+          stage,
+          user: email,
+          hasPhotoUpload,
+          photo
+        });
+        profileFailureLogged = true;
 
         if (uploadErr instanceof Error && uploadErr.message === '파일 업로드 타임아웃') {
           throw error(408, {
@@ -106,10 +211,14 @@ export async function PATCH({ request, locals, cookies }) {
       }
     }
 
+    stage = 'validate-nickname';
     const nicknameRaw = String(formData.get('nickname') || '');
+    nicknameLength = nicknameRaw.length;
     if (!isNicknameAllowed(nicknameRaw)) {
       throw error(400, { message: '닉네임에 사용할 수 없는 문자가 포함되어 있습니다.' });
     }
+
+    introductionLength = String(formData.get('introduction') || '').length;
 
     /** @type {import('@prisma/client').Prisma.UserUpdateInput} */
     const updateData = {
@@ -126,6 +235,7 @@ export async function PATCH({ request, locals, cookies }) {
     console.debug('update', updateData);
 
     try {
+      stage = 'database-update';
       const existing = await getPrisma().user.findFirst({
         where: { email, state: { not: 'banned' } }
       });
@@ -159,6 +269,16 @@ export async function PATCH({ request, locals, cookies }) {
       });
     } catch (err) {
       console.error('프로필 업데이트 실패:', err);
+      logProfileSaveFailure(err, {
+        stage,
+        user: email,
+        nicknameLength,
+        introductionLength,
+        hasPhotoUpload,
+        photo,
+        storedPhoto: Boolean(storeFileName)
+      });
+      profileFailureLogged = true;
 
       // SvelteKit error는 그대로 throw
       if (err && typeof err === 'object' && 'status' in err) {
@@ -169,6 +289,17 @@ export async function PATCH({ request, locals, cookies }) {
     }
   } catch (topLevelErr) {
     console.error('프로필 업데이트 전체 프로세스 실패:', topLevelErr);
+    if (!profileFailureLogged && !wasProfileSaveErrorLogged(topLevelErr)) {
+      logProfileSaveFailure(topLevelErr, {
+        stage,
+        user: email || undefined,
+        nicknameLength,
+        introductionLength,
+        hasPhotoUpload,
+        photo,
+        ...getRequestMeta(event)
+      });
+    }
 
     // SvelteKit error는 그대로 throw
     if (topLevelErr && typeof topLevelErr === 'object' && 'status' in topLevelErr) {
