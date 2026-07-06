@@ -11,3 +11,6 @@ vite.config.ts.timestamp-*
 /private
 /logs
 /conf
+.antigravitycli/
+pnpm-lock.yaml
+scripts/dgst-bluegreen.sh
