@@ -183,8 +183,18 @@
     return true;
   }
 
-  function resetGame(nextDifficulty: Difficulty = difficulty, confirmReset = true) {
-    if (confirmReset && browser && !window.confirm('게임을 새로 시작하시겠습니까?')) return;
+  function resetGame(
+    nextDifficulty: Difficulty = difficulty,
+    confirmReset = true,
+    reason: 'reset' | 'difficulty' = 'reset'
+  ) {
+    if (confirmReset && browser) {
+      const message =
+        reason === 'difficulty' && started && !gameWon
+          ? '게임을 중지하고 난이도를 변경하시겠습니까?'
+          : '게임을 새로 시작하시겠습니까?';
+      if (!window.confirm(message)) return;
+    }
 
     stopTimer();
     difficulty = nextDifficulty;
@@ -564,7 +574,7 @@
             type="button"
             class="btn btn-outline-primary"
             class:active={difficulty === key}
-            onclick={() => resetGame(key)}
+            onclick={() => resetGame(key, true, 'difficulty')}
           >
             {config.label}
           </button>
