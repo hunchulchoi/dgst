@@ -30,6 +30,13 @@ describe('game ranking UI', () => {
     expect(watermelonPage).toContain('formatScore(r.score)');
   });
 
+  it('binds sudoku memo toggle visuals to memo mode state', () => {
+    expect(sudokuPage).toContain('function toggleNoteMode(event: MouseEvent)');
+    expect(sudokuPage).toContain('class:sudoku-note-toggle-active={noteMode}');
+    expect(sudokuPage).toContain('aria-pressed={noteMode}');
+    expect(sudokuPage).toContain('.blur()');
+  });
+
   it('shows when slot scores were last updated', () => {
     expect(slotPage).toContain('balanceUpdatedAt');
     expect(slotPage).toContain('formatSlotUpdatedAt(balanceUpdatedAt)');

@@ -191,6 +191,7 @@
     userGrid = cloneGrid(puzzle);
     notesGrid = emptyGrid();
     selected = firstOpenCell(puzzle);
+    noteMode = false;
     mistakes = 0;
     elapsed = 0;
     gameWon = false;
@@ -339,6 +340,11 @@
     const nextNotes = cloneGrid(notesGrid);
     nextNotes[row][col] = 0;
     notesGrid = nextNotes;
+  }
+
+  function toggleNoteMode(event: MouseEvent) {
+    noteMode = !noteMode;
+    (event.currentTarget as HTMLButtonElement).blur();
   }
 
   function clearPeerNotes(row: number, col: number, value: number) {
@@ -561,9 +567,11 @@
         </button>
         <button
           type="button"
-          class="btn btn-outline-secondary"
+          class="btn btn-outline-secondary sudoku-note-toggle"
           class:active={noteMode}
-          onclick={() => (noteMode = !noteMode)}
+          class:sudoku-note-toggle-active={noteMode}
+          aria-pressed={noteMode}
+          onclick={toggleNoteMode}
         >
           메모
         </button>
@@ -774,6 +782,27 @@
 
   .sudoku-actions {
     grid-template-columns: repeat(2, 1fr);
+  }
+
+  .sudoku-note-toggle {
+    border-color: var(--bs-secondary);
+    background: var(--bs-body-bg);
+    color: var(--bs-secondary);
+  }
+
+  .sudoku-note-toggle:hover,
+  .sudoku-note-toggle:focus-visible {
+    border-color: var(--bs-secondary);
+    background: var(--bs-tertiary-bg);
+    color: var(--bs-secondary);
+  }
+
+  .sudoku-note-toggle-active,
+  .sudoku-note-toggle-active:hover,
+  .sudoku-note-toggle-active:focus-visible {
+    border-color: var(--bs-primary);
+    background: var(--bs-primary);
+    color: var(--bs-white);
   }
 
   .sudoku-pad {
