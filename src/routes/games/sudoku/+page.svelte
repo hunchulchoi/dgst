@@ -642,6 +642,7 @@
 
   .sudoku-main {
     padding: 1rem;
+    overflow-x: auto;
   }
 
   .sudoku-toolbar {
@@ -672,16 +673,19 @@
     width: min(100%, 620px);
     aspect-ratio: 1;
     display: grid;
-    grid-template-columns: repeat(9, 1fr);
+    grid-template-columns: repeat(9, minmax(0, 1fr));
     border: 3px solid var(--bs-emphasis-color);
     background: var(--bs-emphasis-color);
     margin-inline: auto;
     user-select: none;
+    box-sizing: border-box;
   }
 
   .sudoku-cell {
     position: relative;
     aspect-ratio: 1;
+    min-width: 0;
+    min-height: 0;
     border: 1px solid var(--bs-border-color);
     background: var(--bs-body-bg);
     color: var(--bs-primary);
@@ -734,13 +738,21 @@
   .sudoku-notes {
     width: 82%;
     height: 82%;
+    min-width: 0;
+    min-height: 0;
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    grid-template-rows: repeat(3, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-rows: repeat(3, minmax(0, 1fr));
     color: var(--bs-secondary-color);
     font-size: clamp(0.45rem, 1.5vw, 0.78rem);
     font-weight: 700;
     align-items: center;
+    line-height: 1;
+  }
+
+  .sudoku-notes span {
+    min-width: 0;
+    text-align: center;
   }
 
   .sudoku-panel {
@@ -868,7 +880,7 @@
       padding-inline: 0.5rem;
       padding-top: 0.75rem !important;
       padding-bottom: calc(10.5rem + env(safe-area-inset-bottom)) !important;
-      overflow-x: hidden;
+      overflow-x: auto;
     }
 
     .sudoku-shell {
