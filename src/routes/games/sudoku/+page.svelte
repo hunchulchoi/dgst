@@ -493,33 +493,47 @@
         </div>
       </div>
 
-      <div class="sudoku-board" aria-label="수도쿠 9x9 보드">
-        {#each userGrid as row, rowIndex}
-          {#each row as value, colIndex}
-            <button
-              type="button"
-              class="sudoku-cell"
-              class:sudoku-cell-fixed={isFixed(rowIndex, colIndex)}
-              class:sudoku-cell-selected={selected.row === rowIndex && selected.col === colIndex}
-              class:sudoku-cell-related={isRelated(rowIndex, colIndex)}
-              class:sudoku-cell-same={value !== 0 && value === selectedValue}
-              class:sudoku-cell-wrong={isWrong(rowIndex, colIndex)}
-              aria-label="{rowIndex + 1}행 {colIndex + 1}열 {value || '빈칸'}"
-              onclick={() => selectCell(rowIndex, colIndex)}
-              onkeydown={handleKeydown}
-            >
-              {#if value}
-                {value}
-              {:else if notesGrid[rowIndex][colIndex]}
-                <span class="sudoku-notes">
-                  {#each cellNotes(notesGrid[rowIndex][colIndex]) as note}
-                    <span>{note}</span>
-                  {/each}
-                </span>
-              {/if}
-            </button>
+      <div class="sudoku-board-wrap">
+        <div
+          class="sudoku-board"
+          aria-label="수도쿠 9x9 보드"
+          class:sudoku-board-paused={!started && !gameWon}
+        >
+          {#each userGrid as row, rowIndex}
+            {#each row as value, colIndex}
+              <button
+                type="button"
+                class="sudoku-cell"
+                class:sudoku-cell-fixed={isFixed(rowIndex, colIndex)}
+                class:sudoku-cell-selected={selected.row === rowIndex && selected.col === colIndex}
+                class:sudoku-cell-related={isRelated(rowIndex, colIndex)}
+                class:sudoku-cell-same={value !== 0 && value === selectedValue}
+                class:sudoku-cell-wrong={isWrong(rowIndex, colIndex)}
+                aria-label="{rowIndex + 1}행 {colIndex + 1}열 {value || '빈칸'}"
+                onclick={() => selectCell(rowIndex, colIndex)}
+                onkeydown={handleKeydown}
+              >
+                {#if value}
+                  {value}
+                {:else if notesGrid[rowIndex][colIndex]}
+                  <span class="sudoku-notes">
+                    {#each cellNotes(notesGrid[rowIndex][colIndex]) as note}
+                      <span>{note}</span>
+                    {/each}
+                  </span>
+                {/if}
+              </button>
+            {/each}
           {/each}
-        {/each}
+        </div>
+
+        {#if !started && !gameWon}
+          <div class="sudoku-start-layer" role="presentation">
+            <button type="button" class="btn btn-primary sudoku-start-button" onclick={startGame}>
+              시작
+            </button>
+          </div>
+        {/if}
       </div>
 
       {#if gameWon}
@@ -582,14 +596,6 @@
       </div>
 
       <div class="sudoku-actions">
-        <button
-          type="button"
-          class="btn btn-primary"
-          onclick={startGame}
-          disabled={started || gameWon}
-        >
-          시작
-        </button>
         <button type="button" class="btn btn-outline-danger" onclick={() => resetGame(difficulty)}>
           초기화
         </button>
@@ -725,16 +731,45 @@
     white-space: nowrap;
   }
 
-  .sudoku-board {
+  .sudoku-board-wrap {
+    position: relative;
     width: min(100%, 620px);
+    aspect-ratio: 1;
+    margin-inline: auto;
+  }
+
+  .sudoku-board {
+    width: 100%;
+    height: 100%;
     aspect-ratio: 1;
     display: grid;
     grid-template-columns: repeat(9, minmax(0, 1fr));
     border: 3px solid var(--bs-emphasis-color);
     background: var(--bs-emphasis-color);
-    margin-inline: auto;
     user-select: none;
     box-sizing: border-box;
+  }
+
+  .sudoku-board-paused {
+    filter: blur(1px);
+    opacity: 0.72;
+  }
+
+  .sudoku-start-layer {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    display: grid;
+    place-items: center;
+    background: rgba(0, 0, 0, 0.28);
+  }
+
+  .sudoku-start-button {
+    min-width: 8rem;
+    min-height: 3rem;
+    font-size: 1.1rem;
+    font-weight: 800;
+    box-shadow: 0 0.75rem 1.6rem rgba(0, 0, 0, 0.28);
   }
 
   .sudoku-cell {
@@ -1002,8 +1037,11 @@
       border-radius: 0.375rem;
     }
 
-    .sudoku-board {
+    .sudoku-board-wrap {
       width: min(100%, calc(100vw - 1.75rem));
+    }
+
+    .sudoku-board {
       border-width: 2px;
     }
 
@@ -1069,7 +1107,7 @@
     }
 
     .sudoku-actions {
-      grid-template-columns: repeat(5, minmax(0, 1fr));
+      grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 0.35rem;
     }
 

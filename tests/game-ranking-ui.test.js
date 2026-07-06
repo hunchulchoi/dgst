@@ -45,7 +45,8 @@ describe('game ranking UI', () => {
     expect(sudokuPage).toContain("reason === 'difficulty' && started && !gameWon");
     expect(sudokuPage).toContain('started = false;');
     expect(sudokuPage).toContain('function startGame()');
-    expect(sudokuPage).toContain('disabled={started || gameWon}');
+    expect(sudokuPage).toContain('sudoku-start-layer');
+    expect(sudokuPage).toContain('class:sudoku-board-paused={!started && !gameWon}');
     expect(sudokuPage).toContain('if (started && !gameWon) startTimer();');
   });
 
