@@ -1,10 +1,13 @@
 export const BILLIARDS_MODES = {
   FOUR_BALL: 'four-ball',
+  POCKET_BALL: 'pocket-ball',
   THREE_CUSHION: 'three-cushion'
 } as const;
 
 export type BilliardsMode = (typeof BILLIARDS_MODES)[keyof typeof BILLIARDS_MODES];
-export type ActiveBilliardsMode = typeof BILLIARDS_MODES.FOUR_BALL;
+export type ActiveBilliardsMode =
+  | typeof BILLIARDS_MODES.FOUR_BALL
+  | typeof BILLIARDS_MODES.POCKET_BALL;
 export type BallRole = 'cue' | 'red' | 'opponent';
 export type ShotSetupStep = 'angle' | 'spin' | 'power';
 
@@ -26,22 +29,46 @@ export const TABLE_WIDTH = 360;
 export const TABLE_HEIGHT = 560;
 export const BALL_RADIUS = 10;
 export const RAIL_THICKNESS = 18;
-export const MAX_SHOT_SPEED = 30;
-export const STOP_SPEED = 0.08;
+export const POCKET_RADIUS = 18;
+export const MAX_SHOT_SPEED = 27;
+export const STOP_SPEED = 0.06;
+export const STOP_SNAP_SPEED = 0.14;
+export const MAX_ROLL_DURATION_MS = 12000;
 export const FOUR_BALL_CHANCES = 10;
-export const BALL_RESTITUTION = 0.99;
-export const BALL_FRICTION_AIR = 0.012;
-export const RAIL_RESTITUTION = 1.03;
+export const POCKET_BALL_CHANCES = 12;
+export const POCKET_OBJECT_SCORE = 100;
+export const POCKET_COMBO_BONUS = 50;
+export const POCKET_CLEAR_BONUS_PER_CHANCE = 25;
+export const POCKET_CUE_SCRATCH_PENALTY = 75;
+export const BALL_RESTITUTION = 0.94;
+export const BALL_SURFACE_FRICTION = 0.018;
+export const BALL_STATIC_FRICTION = 0.006;
+export const BALL_FRICTION_AIR = 0.015;
+export const RAIL_RESTITUTION = 0.76;
+export const RAIL_SURFACE_FRICTION = 0.022;
+export const RAIL_BOUNDARY_DAMPING = 0.5;
+export const RAIL_TANGENT_DAMPING = 0.8;
+export const RAIL_CONTACT_STOP_SPEED = 0.75;
+export const RAIL_CONTACT_SPIN_DAMPING = 0.42;
+export const CUE_SPIN_ANGULAR_SCALE = 380;
+export const CUE_SPIN_CURVE_SCALE = 0.001;
+export const CUE_SPIN_DECAY = 0.988;
+export const CUE_SPIN_MIN_SPEED_RATIO = 0.36;
+export const CUE_SPIN_STOP_VALUE = 2;
+export const ANGULAR_FRICTION_DECAY = 0.94;
+export const ANGULAR_STOP_SPEED = 0.018;
+export const DYNAMIC_DRAG_BASE = 0.0018;
+export const DYNAMIC_DRAG_SPEED_SCALE = 0.0048;
 export const POWER_SWEEP_MIN = 10;
 export const POWER_SWEEP_MAX = 100;
-export const POWER_SWEEP_PERIOD_MS = 2400;
+export const POWER_SWEEP_PERIOD_MS = 1600;
 export const AIM_BREATH_PERIOD_MS = 1800;
 export const AIM_BREATH_BASE_SWAY = 0.006;
 export const AIM_BREATH_EXTRA_SWAY = 0.028;
 export const SPIN_TOUCH_RANGE = 70;
 
 export function isActiveBilliardsMode(value: unknown): value is ActiveBilliardsMode {
-  return value === BILLIARDS_MODES.FOUR_BALL;
+  return value === BILLIARDS_MODES.FOUR_BALL || value === BILLIARDS_MODES.POCKET_BALL;
 }
 
 export function isValidScore(value: unknown): value is number {
@@ -50,6 +77,10 @@ export function isValidScore(value: unknown): value is number {
 
 export function stopped(samples: SpeedSample[], threshold = STOP_SPEED): boolean {
   return samples.every((sample) => sample.speed < threshold);
+}
+
+export function shouldSnapStoppedSpeed(speed: number): boolean {
+  return speed <= STOP_SNAP_SPEED;
 }
 
 export function containBallInTable(sample: BallBoundarySample): {
@@ -67,25 +98,66 @@ export function containBallInTable(sample: BallBoundarySample): {
 
   if (position.x < minX) {
     position.x = minX;
-    velocity.x = Math.abs(velocity.x);
+    velocity.x = Math.abs(velocity.x) * RAIL_BOUNDARY_DAMPING;
+    velocity.y *= RAIL_TANGENT_DAMPING;
     corrected = true;
   } else if (position.x > maxX) {
     position.x = maxX;
-    velocity.x = -Math.abs(velocity.x);
+    velocity.x = -Math.abs(velocity.x) * RAIL_BOUNDARY_DAMPING;
+    velocity.y *= RAIL_TANGENT_DAMPING;
     corrected = true;
   }
 
   if (position.y < minY) {
     position.y = minY;
-    velocity.y = Math.abs(velocity.y);
+    velocity.y = Math.abs(velocity.y) * RAIL_BOUNDARY_DAMPING;
+    velocity.x *= RAIL_TANGENT_DAMPING;
     corrected = true;
   } else if (position.y > maxY) {
     position.y = maxY;
-    velocity.y = -Math.abs(velocity.y);
+    velocity.y = -Math.abs(velocity.y) * RAIL_BOUNDARY_DAMPING;
+    velocity.x *= RAIL_TANGENT_DAMPING;
     corrected = true;
   }
 
   return { corrected, position, velocity };
+}
+
+export function getPocketCenters(): Array<{ x: number; y: number }> {
+  const minX = RAIL_THICKNESS + BALL_RADIUS;
+  const midX = TABLE_WIDTH / 2;
+  const maxX = TABLE_WIDTH - RAIL_THICKNESS - BALL_RADIUS;
+  const minY = RAIL_THICKNESS + BALL_RADIUS;
+  const midY = TABLE_HEIGHT / 2;
+  const maxY = TABLE_HEIGHT - RAIL_THICKNESS - BALL_RADIUS;
+  return [
+    { x: minX, y: minY },
+    { x: midX, y: minY },
+    { x: maxX, y: minY },
+    { x: minX, y: maxY },
+    { x: midX, y: maxY },
+    { x: maxX, y: maxY }
+  ];
+}
+
+export function isBallInPocket(
+  position: { x: number; y: number },
+  pocketRadius = POCKET_RADIUS
+): boolean {
+  return getPocketCenters().some(
+    (pocket) => Math.hypot(position.x - pocket.x, position.y - pocket.y) <= pocketRadius
+  );
+}
+
+export function computePocketShotScore(pocketedObjects: number, cueScratched: boolean): number {
+  const objectScore = Math.max(0, pocketedObjects) * POCKET_OBJECT_SCORE;
+  const comboBonus = Math.max(0, pocketedObjects - 1) * POCKET_COMBO_BONUS;
+  const scratchPenalty = cueScratched ? POCKET_CUE_SCRATCH_PENALTY : 0;
+  return Math.max(0, objectScore + comboBonus - scratchPenalty);
+}
+
+export function computePocketClearBonus(remainingChances: number): number {
+  return Math.max(0, remainingChances) * POCKET_CLEAR_BONUS_PER_CHANCE;
 }
 
 export function computeShotVelocity(angle: number, powerPercent: number): { x: number; y: number } {
@@ -95,6 +167,45 @@ export function computeShotVelocity(angle: number, powerPercent: number): { x: n
     x: Math.cos(angle) * speed,
     y: Math.sin(angle) * speed
   };
+}
+
+export function computeSpeedRatio(speed: number): number {
+  return Math.max(0, Math.min(1, speed / MAX_SHOT_SPEED));
+}
+
+export function computeDynamicVelocityScale(speed: number, deltaMs: number): number {
+  const frameScale = Math.max(0, deltaMs / 16.66);
+  const loss =
+    (DYNAMIC_DRAG_BASE + DYNAMIC_DRAG_SPEED_SCALE * computeSpeedRatio(speed)) * frameScale;
+  return Math.max(0.9, 1 - loss);
+}
+
+export function computeRailEnergyScale(speed: number): number {
+  return 0.84 - 0.2 * computeSpeedRatio(speed);
+}
+
+export function computeRailContactVelocityScale(speed: number): number {
+  if (speed <= RAIL_CONTACT_STOP_SPEED) return 0;
+  return 0.9 - 0.12 * computeSpeedRatio(speed);
+}
+
+export function computeBallCollisionEnergyScale(
+  relativeSpeed: number,
+  headOnRatio: number
+): number {
+  const normalizedHeadOn = Math.max(0, Math.min(1, headOnRatio));
+  const speedRatio = computeSpeedRatio(relativeSpeed);
+  const loss = 0.018 + 0.09 * speedRatio * normalizedHeadOn + 0.045 * speedRatio ** 2;
+  return Math.max(0.85, 1 - loss);
+}
+
+export function computeDynamicSpinCurveScale(speed: number): number {
+  const ratio = computeSpeedRatio(speed);
+  return CUE_SPIN_CURVE_SCALE * Math.max(0.18, Math.min(1, ratio));
+}
+
+export function computeDynamicSpinDecay(speed: number): number {
+  return CUE_SPIN_DECAY - 0.006 * (1 - computeSpeedRatio(speed));
 }
 
 export function computeSweepingPower(timeMs: number): number {
