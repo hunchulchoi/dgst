@@ -44,12 +44,12 @@ export const BALL_RESTITUTION = 0.94;
 export const BALL_SURFACE_FRICTION = 0.018;
 export const BALL_STATIC_FRICTION = 0.006;
 export const BALL_FRICTION_AIR = 0.015;
-export const RAIL_RESTITUTION = 0.76;
-export const RAIL_SURFACE_FRICTION = 0.022;
-export const RAIL_BOUNDARY_DAMPING = 0.5;
-export const RAIL_TANGENT_DAMPING = 0.8;
-export const RAIL_CONTACT_STOP_SPEED = 0.75;
-export const RAIL_CONTACT_SPIN_DAMPING = 0.42;
+export const RAIL_RESTITUTION = 0.88;
+export const RAIL_SURFACE_FRICTION = 0.016;
+export const RAIL_BOUNDARY_DAMPING = 0.86;
+export const RAIL_TANGENT_DAMPING = 0.96;
+export const RAIL_CONTACT_STOP_SPEED = 0.35;
+export const RAIL_CONTACT_SPIN_DAMPING = 0.62;
 export const CUE_SPIN_ANGULAR_SCALE = 380;
 export const CUE_SPIN_CURVE_SCALE = 0.001;
 export const CUE_SPIN_DECAY = 0.988;
@@ -187,12 +187,12 @@ export function computeDynamicVelocityScale(speed: number, deltaMs: number): num
 }
 
 export function computeRailEnergyScale(speed: number): number {
-  return 0.84 - 0.2 * computeSpeedRatio(speed);
+  return 0.94 - 0.12 * computeSpeedRatio(speed);
 }
 
 export function computeRailContactVelocityScale(speed: number): number {
   if (speed <= RAIL_CONTACT_STOP_SPEED) return 0;
-  return 0.9 - 0.12 * computeSpeedRatio(speed);
+  return 0.98 - 0.08 * computeSpeedRatio(speed);
 }
 
 export function computeBallCollisionEnergyScale(

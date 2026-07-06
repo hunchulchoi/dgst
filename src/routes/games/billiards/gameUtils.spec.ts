@@ -113,14 +113,15 @@ describe('billiards game helpers', () => {
     expect(computeShotVelocity(0, 25).x).toBeLessThan(4);
   });
 
-  it('uses balanced billiards physics tuning without adding collision energy', () => {
+  it('uses lively billiards physics tuning without adding collision energy', () => {
     expect(MAX_SHOT_SPEED).toBe(27);
     expect(BALL_RESTITUTION).toBeLessThanOrEqual(0.94);
-    expect(RAIL_RESTITUTION).toBeLessThanOrEqual(0.76);
+    expect(RAIL_RESTITUTION).toBeLessThanOrEqual(0.88);
+    expect(RAIL_RESTITUTION).toBeGreaterThan(0.8);
     expect(BALL_SURFACE_FRICTION).toBeGreaterThan(0);
     expect(BALL_STATIC_FRICTION).toBeGreaterThan(0);
     expect(RAIL_SURFACE_FRICTION).toBeGreaterThan(0);
-    expect(RAIL_CONTACT_SPIN_DAMPING).toBeLessThan(0.5);
+    expect(RAIL_CONTACT_SPIN_DAMPING).toBeLessThan(0.7);
     expect(BALL_FRICTION_AIR).toBeGreaterThanOrEqual(0.015);
     expect(ANGULAR_FRICTION_DECAY).toBeLessThan(1);
     expect(ANGULAR_STOP_SPEED).toBeGreaterThan(0);
@@ -142,14 +143,15 @@ describe('billiards game helpers', () => {
 
   it('loses more rail energy on fast cushion hits', () => {
     expect(computeRailEnergyScale(4)).toBeGreaterThan(computeRailEnergyScale(24));
-    expect(computeRailEnergyScale(24)).toBeLessThan(0.7);
-    expect(computeRailEnergyScale(24)).toBeGreaterThanOrEqual(0.62);
+    expect(computeRailEnergyScale(24)).toBeLessThan(0.84);
+    expect(computeRailEnergyScale(24)).toBeGreaterThanOrEqual(0.8);
   });
 
-  it('stops slow balls that stay in cushion contact', () => {
+  it('only stops near-dead balls that stay in cushion contact', () => {
     expect(computeRailContactVelocityScale(RAIL_CONTACT_STOP_SPEED)).toBe(0);
     expect(computeRailContactVelocityScale(RAIL_CONTACT_STOP_SPEED + 0.1)).toBeGreaterThan(0);
     expect(computeRailContactVelocityScale(24)).toBeLessThan(computeRailContactVelocityScale(4));
+    expect(computeRailContactVelocityScale(24)).toBeGreaterThan(0.9);
   });
 
   it('loses more ball collision energy on fast head-on hits than thin hits', () => {
