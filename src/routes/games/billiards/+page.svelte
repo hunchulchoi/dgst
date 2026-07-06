@@ -29,6 +29,10 @@
     computeBallCollisionEnergyScale,
     computeDynamicSpinCurveScale,
     computeDynamicSpinDecay,
+    computeBackspinContactPullScale,
+    computeMasseCurveMultiplier,
+    computeVerticalSpinFromTrack,
+    computeVerticalSpinVelocityScale,
     computeDynamicVelocityScale,
     computeRailContactVelocityScale,
     computeRailEnergyScale,
@@ -80,9 +84,12 @@
   let aimingStartedAt = 0;
   let isHoldingAim = false;
   let spin = $state(0);
+  let verticalSpin = $state(0);
   let spinTipX = $state(0);
   let spinTipY = $state(0);
+  let spinOverlayOpen = $state(false);
   let activeSpin = 0;
+  let activeVerticalSpin = 0;
   let power = $state(55);
   let powerSweepStartedAt = 0;
   let rankList = $state<RankEntry[]>([]);
@@ -95,6 +102,7 @@
   let engine: Matter.Engine | null = null;
   let cueBall: BallBody | null = null;
   let redBalls: BallBody[] = [];
+  let remainingObjectCount = $state(0);
   let frameId = 0;
   let lastFrame = 0;
   let rollingStartedAt = 0;
@@ -102,7 +110,7 @@
   const isLoggedIn = $derived(!!data.session?.user?.email);
   const isPocketBall = $derived(currentMode === BILLIARDS_MODES.POCKET_BALL);
   const modeLabel = $derived(isPocketBall ? '포켓볼' : '4구 당구');
-  const remainingObjects = $derived(redBalls.length);
+  const remainingObjects = $derived(remainingObjectCount);
   const statusText = $derived(
     status === 'aiming'
       ? isPocketBall
@@ -162,17 +170,57 @@
     return rail;
   }
 
+  function makePocketRails() {
+    const pocketGapHalf = POCKET_RADIUS + BALL_RADIUS * 0.7;
+    const minX = RAIL_THICKNESS + BALL_RADIUS;
+    const midX = TABLE_WIDTH / 2;
+    const maxX = TABLE_WIDTH - RAIL_THICKNESS - BALL_RADIUS;
+    const minY = RAIL_THICKNESS + BALL_RADIUS;
+    const maxY = TABLE_HEIGHT - RAIL_THICKNESS - BALL_RADIUS;
+    const rails: RailBody[] = [];
+
+    const addHorizontalSegments = (y: number) => {
+      let start = 0;
+      for (const center of [minX, midX, maxX]) {
+        const end = Math.max(start, center - pocketGapHalf);
+        if (end - start > 4) {
+          rails.push(makeRail((start + end) / 2, y, end - start, RAIL_THICKNESS));
+        }
+        start = Math.min(TABLE_WIDTH, center + pocketGapHalf);
+      }
+      if (TABLE_WIDTH - start > 4) {
+        rails.push(makeRail((start + TABLE_WIDTH) / 2, y, TABLE_WIDTH - start, RAIL_THICKNESS));
+      }
+    };
+
+    const addVerticalSegments = (x: number) => {
+      const start = minY + pocketGapHalf;
+      const end = maxY - pocketGapHalf;
+      if (end - start > 4) {
+        rails.push(makeRail(x, (start + end) / 2, RAIL_THICKNESS, end - start));
+      }
+    };
+
+    addHorizontalSegments(RAIL_THICKNESS / 2);
+    addHorizontalSegments(TABLE_HEIGHT - RAIL_THICKNESS / 2);
+    addVerticalSegments(RAIL_THICKNESS / 2);
+    addVerticalSegments(TABLE_WIDTH - RAIL_THICKNESS / 2);
+    return rails;
+  }
+
   function resetBodies() {
     if (!engine) return;
     Composite.clear(engine.world, false);
 
     const rail = RAIL_THICKNESS;
-    const walls = [
-      makeRail(TABLE_WIDTH / 2, rail / 2, TABLE_WIDTH, rail),
-      makeRail(TABLE_WIDTH / 2, TABLE_HEIGHT - rail / 2, TABLE_WIDTH, rail),
-      makeRail(rail / 2, TABLE_HEIGHT / 2, rail, TABLE_HEIGHT),
-      makeRail(TABLE_WIDTH - rail / 2, TABLE_HEIGHT / 2, rail, TABLE_HEIGHT)
-    ];
+    const walls = isPocketBall
+      ? makePocketRails()
+      : [
+          makeRail(TABLE_WIDTH / 2, rail / 2, TABLE_WIDTH, rail),
+          makeRail(TABLE_WIDTH / 2, TABLE_HEIGHT - rail / 2, TABLE_WIDTH, rail),
+          makeRail(rail / 2, TABLE_HEIGHT / 2, rail, TABLE_HEIGHT),
+          makeRail(TABLE_WIDTH - rail / 2, TABLE_HEIGHT / 2, rail, TABLE_HEIGHT)
+        ];
 
     cueBall = makeBall(TABLE_WIDTH * 0.5, TABLE_HEIGHT * 0.72, 'cue', 'cue', '#f8f7ef');
     if (isPocketBall) {
@@ -195,6 +243,7 @@
     }
 
     Composite.add(engine.world, [...walls, cueBall, ...redBalls]);
+    remainingObjectCount = redBalls.length;
   }
 
   function newGame() {
@@ -208,9 +257,11 @@
     aimingStartedAt = 0;
     isHoldingAim = false;
     spin = 0;
+    verticalSpin = 0;
     spinTipX = 0;
     spinTipY = 0;
     activeSpin = 0;
+    activeVerticalSpin = 0;
     power = 55;
     powerSweepStartedAt = 0;
     rollingStartedAt = 0;
@@ -239,6 +290,7 @@
       Body.setVelocity(ball, { x: 0, y: 0 });
       Body.setAngularVelocity(ball, 0);
     }
+    activeVerticalSpin = 0;
 
     const result = evaluateFourBallShot(contacts);
     contacts = [];
@@ -332,7 +384,10 @@
     const speed = Math.hypot(ball.velocity.x, ball.velocity.y);
     applyVelocityScale(ball, computeRailEnergyScale(speed));
     Body.setAngularVelocity(ball, ball.angularVelocity * RAIL_CONTACT_SPIN_DAMPING);
-    if (ball === cueBall) activeSpin *= RAIL_CONTACT_SPIN_DAMPING;
+    if (ball === cueBall) {
+      activeSpin *= RAIL_CONTACT_SPIN_DAMPING;
+      activeVerticalSpin *= RAIL_CONTACT_SPIN_DAMPING;
+    }
   }
 
   function applyRailContactDrag(bodyA: Matter.Body, bodyB: Matter.Body) {
@@ -344,12 +399,18 @@
     if (scale === 0) {
       Body.setVelocity(ball, { x: 0, y: 0 });
       Body.setAngularVelocity(ball, 0);
-      if (ball === cueBall) activeSpin = 0;
+      if (ball === cueBall) {
+        activeSpin = 0;
+        activeVerticalSpin = 0;
+      }
       return;
     }
     applyVelocityScale(ball, scale);
     Body.setAngularVelocity(ball, ball.angularVelocity * RAIL_CONTACT_SPIN_DAMPING);
-    if (ball === cueBall) activeSpin *= RAIL_CONTACT_SPIN_DAMPING;
+    if (ball === cueBall) {
+      activeSpin *= RAIL_CONTACT_SPIN_DAMPING;
+      activeVerticalSpin *= RAIL_CONTACT_SPIN_DAMPING;
+    }
   }
 
   function applyBallCollisionEnergyLoss(bodyA: Matter.Body, bodyB: Matter.Body) {
@@ -374,6 +435,19 @@
     const scale = computeBallCollisionEnergyScale(relativeSpeed, headOnRatio);
     applyVelocityScale(ballA, scale);
     applyVelocityScale(ballB, scale);
+
+    const cue = ballA === cueBall ? ballA : ballB === cueBall ? ballB : null;
+    if (cue && activeVerticalSpin < 0) {
+      const cueSpeed = Math.hypot(cue.velocity.x, cue.velocity.y);
+      if (cueSpeed > STOP_SPEED) {
+        const pull = computeBackspinContactPullScale(activeVerticalSpin);
+        Body.setVelocity(cue, {
+          x: cue.velocity.x * (1 - pull),
+          y: cue.velocity.y * (1 - pull)
+        });
+        activeVerticalSpin *= 0.55;
+      }
+    }
   }
 
   function getCanvasPoint(event: PointerEvent) {
@@ -411,8 +485,18 @@
 
   function resetSpinTip() {
     spin = 0;
+    verticalSpin = 0;
     spinTipX = 0;
     spinTipY = 0;
+  }
+
+  function openSpinOverlay() {
+    if (!canSpin()) return;
+    spinOverlayOpen = true;
+  }
+
+  function closeSpinOverlay() {
+    spinOverlayOpen = false;
   }
 
   function updateAimFromPointer(event: PointerEvent) {
@@ -434,9 +518,10 @@
     const rect = target.getBoundingClientRect();
     const x = Math.max(0, Math.min(rect.width, event.clientX - rect.left));
     const y = Math.max(0, Math.min(rect.height, event.clientY - rect.top));
-    spinTipX = Math.round((x / rect.width) * 100 - 50);
-    spinTipY = Math.round(50 - (y / rect.height) * 100);
     spin = computeSpinFromTrack(x, rect.width);
+    verticalSpin = computeVerticalSpinFromTrack(y, rect.height);
+    spinTipX = Math.round(spin / 2);
+    spinTipY = Math.round(verticalSpin / 2);
     event.preventDefault();
   }
 
@@ -476,6 +561,7 @@
   function shoot(selectedPower = power) {
     if (!cueBall || !canCharge()) return;
     isHoldingAim = false;
+    closeSpinOverlay();
     power = selectedPower;
     const velocity = computeShotVelocity(aimAngle, selectedPower);
     if (Math.hypot(velocity.x, velocity.y) < 0.1) return;
@@ -483,6 +569,7 @@
     Body.setVelocity(cueBall, velocity);
     Body.setAngularVelocity(cueBall, spin / CUE_SPIN_ANGULAR_SCALE);
     activeSpin = spin;
+    activeVerticalSpin = verticalSpin;
     resetSpinTip();
     status = 'rolling';
     rollingStartedAt = performance.now();
@@ -614,9 +701,11 @@
       if (ball === cueBall) {
         cuePocketedThisShot = true;
         activeSpin = 0;
+        activeVerticalSpin = 0;
         continue;
       }
       redBalls = redBalls.filter((candidate) => candidate !== ball);
+      remainingObjectCount = redBalls.length;
       pocketedThisShot += 1;
       pocketedObject = true;
     }
@@ -639,15 +728,25 @@
       if (shouldSnapStoppedSpeed(speed)) {
         Body.setVelocity(ball, { x: 0, y: 0 });
         Body.setAngularVelocity(ball, 0);
+        if (ball === cueBall) activeVerticalSpin = 0;
         continue;
       }
-      applyVelocityScale(ball, computeDynamicVelocityScale(speed, delta));
+      const velocityScale =
+        ball === cueBall && activeVerticalSpin !== 0
+          ? computeVerticalSpinVelocityScale(speed, delta, activeVerticalSpin)
+          : computeDynamicVelocityScale(speed, delta);
+      applyVelocityScale(ball, velocityScale);
+
+      if (ball === cueBall && activeVerticalSpin !== 0) {
+        activeVerticalSpin *= computeDynamicSpinDecay(speed);
+        if (Math.abs(activeVerticalSpin) < CUE_SPIN_STOP_VALUE) activeVerticalSpin = 0;
+      }
     }
   }
 
   function tick(now: number) {
     if (!engine) return;
-    const delta = lastFrame ? Math.min(now - lastFrame, 32) : 16.66;
+    const delta = lastFrame ? Math.min(now - lastFrame, 16.66) : 16.66;
     lastFrame = now;
     Engine.update(engine, delta);
     handlePocketedBalls();
@@ -673,7 +772,9 @@
       const speed = Math.hypot(cueBall.velocity.x, cueBall.velocity.y);
       const spinSpeedRatio = computeSpeedRatio(speed);
       if (speed > STOP_SPEED && spinSpeedRatio >= CUE_SPIN_MIN_SPEED_RATIO) {
-        const curve = (activeSpin / 100) * computeDynamicSpinCurveScale(speed) * delta;
+        const masseMultiplier = computeMasseCurveMultiplier(activeSpin, activeVerticalSpin);
+        const curve =
+          (activeSpin / 100) * computeDynamicSpinCurveScale(speed) * masseMultiplier * delta;
         const cos = Math.cos(curve);
         const sin = Math.sin(curve);
         Body.setVelocity(cueBall, {
@@ -834,20 +935,14 @@
         <span class="control-label">당점</span>
         <div
           class="tip-ball"
-          role="slider"
+          role="button"
           tabindex="0"
           aria-label="당점"
-          aria-valuemin="-100"
-          aria-valuemax="100"
-          aria-valuenow={spin}
           class:disabled-pad={!canSpin()}
           onpointerdown={(event) => {
             event.stopPropagation();
-            handleSpinPointerDown(event);
-          }}
-          onpointermove={(event) => {
-            event.stopPropagation();
-            if (event.buttons === 1 || event.pointerType === 'touch') updateSpinFromPointer(event);
+            event.preventDefault();
+            openSpinOverlay();
           }}
         >
           <div class="tip-cross horizontal"></div>
@@ -890,6 +985,49 @@
     </aside>
   </section>
 
+  {#if spinOverlayOpen}
+    <div
+      class="spin-overlay"
+      role="presentation"
+      onpointerdown={(event) => {
+        if (event.target === event.currentTarget) closeSpinOverlay();
+      }}
+    >
+      <div class="spin-panel" role="dialog" aria-modal="true" aria-label="당점 조절">
+        <div class="spin-panel-heading">
+          <span>당점</span>
+          <strong>{spin} / {verticalSpin}</strong>
+        </div>
+        <div
+          class="tip-ball expanded"
+          role="slider"
+          tabindex="0"
+          aria-label="당점"
+          aria-valuemin="-100"
+          aria-valuemax="100"
+          aria-valuenow={spin}
+          aria-valuetext={`좌우 ${spin}, 상하 ${verticalSpin}`}
+          onpointerdown={(event) => {
+            event.stopPropagation();
+            handleSpinPointerDown(event);
+          }}
+          onpointermove={(event) => {
+            event.stopPropagation();
+            if (event.buttons === 1 || event.pointerType === 'touch') updateSpinFromPointer(event);
+          }}
+        >
+          <div class="tip-cross horizontal"></div>
+          <div class="tip-cross vertical"></div>
+          <div class="tip-dot" style={`left: ${spinTipX + 50}%; top: ${50 - spinTipY}%;`}></div>
+        </div>
+        <div class="spin-panel-actions">
+          <button type="button" onclick={resetSpinTip}>초기화</button>
+          <button type="button" onclick={closeSpinOverlay}>확인</button>
+        </div>
+      </div>
+    </div>
+  {/if}
+
   {#if status === 'game-over'}
     <button type="button" class="play-again-button" onclick={newGame}>다시 치기</button>
   {/if}
@@ -929,14 +1067,12 @@
   }
 
   .billiards-hud {
-    position: absolute;
-    top: 4px;
-    left: 4px;
-    right: 4px;
+    position: relative;
     z-index: 2;
     display: flex;
     align-items: center;
     justify-content: space-between;
+    flex-wrap: wrap;
     gap: 8px;
     min-height: 32px;
     padding: 4px 6px;
@@ -949,6 +1085,7 @@
     display: flex;
     align-items: baseline;
     gap: 8px;
+    flex: 1 1 190px;
     min-width: 0;
   }
 
@@ -962,7 +1099,7 @@
     color: #d8e8d4;
     font-size: 0.78rem;
     font-weight: 800;
-    white-space: nowrap;
+    line-height: 1.15;
   }
 
   .hud-title .good {
@@ -975,11 +1112,13 @@
 
   .hud-stats {
     display: flex;
+    flex: 1 1 170px;
+    justify-content: flex-end;
+    flex-wrap: wrap;
     gap: 6px;
     color: #b4ccb8;
     font-size: 0.72rem;
     font-weight: 800;
-    white-space: nowrap;
   }
 
   .hud-stats strong {
@@ -989,7 +1128,8 @@
 
   .new-game-button,
   .play-again-button,
-  .shot-button {
+  .shot-button,
+  .spin-panel-actions button {
     border: 0;
     border-radius: 8px;
     font-weight: 900;
@@ -1003,14 +1143,12 @@
   }
 
   .mode-tabs {
-    position: absolute;
-    top: 42px;
-    left: 50%;
+    position: relative;
     z-index: 2;
     display: grid;
     grid-template-columns: repeat(2, 1fr);
     width: min(210px, calc(100% - 16px));
-    transform: translateX(-50%);
+    margin: 6px auto 8px;
     border: 1px solid rgba(255, 255, 255, 0.14);
     border-radius: 8px;
     overflow: hidden;
@@ -1037,8 +1175,8 @@
     align-items: center;
     justify-content: flex-start;
     gap: 8px;
-    min-height: 100svh;
-    padding-top: 78px;
+    min-height: 0;
+    padding-top: 0;
   }
 
   .bottom-controls {
@@ -1076,8 +1214,17 @@
     box-shadow:
       inset 0 0 0 2px rgba(26, 33, 25, 0.18),
       0 4px 12px rgba(0, 0, 0, 0.28);
+    cursor: pointer;
     touch-action: none;
     user-select: none;
+  }
+
+  .tip-ball.expanded {
+    width: min(72vw, 238px);
+    margin: 0 auto;
+    box-shadow:
+      inset 0 0 0 3px rgba(26, 33, 25, 0.2),
+      0 18px 36px rgba(0, 0, 0, 0.34);
   }
 
   .tip-cross {
@@ -1109,6 +1256,66 @@
     background: #d9232e;
     box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.86);
     pointer-events: none;
+  }
+
+  .tip-ball.expanded .tip-dot {
+    width: 18px;
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.9);
+  }
+
+  .spin-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 30;
+    display: grid;
+    place-items: center;
+    padding: 18px;
+    background: rgba(6, 21, 16, 0.62);
+    backdrop-filter: blur(6px);
+  }
+
+  .spin-panel {
+    width: min(100%, 330px);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 8px;
+    background: rgba(22, 63, 43, 0.96);
+    box-shadow: 0 24px 56px rgba(0, 0, 0, 0.42);
+    padding: 14px;
+  }
+
+  .spin-panel-heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    color: #f8f5e8;
+    font-size: 0.95rem;
+    font-weight: 900;
+  }
+
+  .spin-panel-heading strong {
+    min-width: 42px;
+    text-align: right;
+    font-size: 1rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .spin-panel-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 14px;
+  }
+
+  .spin-panel-actions button {
+    min-height: 40px;
+    background: rgba(255, 255, 255, 0.14);
+    color: #f8f5e8;
+  }
+
+  .spin-panel-actions button:last-child {
+    background: #f0c05a;
+    color: #1d221a;
   }
 
   .control-block strong {
@@ -1157,6 +1364,7 @@
     left: 0;
     border-radius: inherit;
     background: linear-gradient(90deg, #69d17c, #f0c05a 58%, #f36b54);
+    transition: width 80ms ease-out;
   }
 
   .power-thumb {
@@ -1168,6 +1376,7 @@
     border-radius: 999px;
     background: #f8f5e8;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.36);
+    transition: left 80ms ease-out;
   }
 
   .power-control {

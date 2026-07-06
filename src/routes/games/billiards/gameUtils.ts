@@ -55,6 +55,12 @@ export const CUE_SPIN_CURVE_SCALE = 0.001;
 export const CUE_SPIN_DECAY = 0.988;
 export const CUE_SPIN_MIN_SPEED_RATIO = 0.36;
 export const CUE_SPIN_STOP_VALUE = 2;
+export const CUE_VERTICAL_SPIN_DRAG_REDUCTION = 0.55;
+export const CUE_VERTICAL_SPIN_BRAKE_BOOST = 1.25;
+export const CUE_MASSE_MIN_SIDE_SPIN = 55;
+export const CUE_MASSE_MIN_VERTICAL_SPIN = 35;
+export const CUE_MASSE_CURVE_BOOST = 2.2;
+export const CUE_BACKSPIN_CONTACT_PULL = 0.32;
 export const ANGULAR_FRICTION_DECAY = 0.94;
 export const ANGULAR_STOP_SPEED = 0.018;
 export const DYNAMIC_DRAG_BASE = 0.0018;
@@ -62,6 +68,7 @@ export const DYNAMIC_DRAG_SPEED_SCALE = 0.0048;
 export const POWER_SWEEP_MIN = 10;
 export const POWER_SWEEP_MAX = 100;
 export const POWER_SWEEP_PERIOD_MS = 1600;
+export const POWER_RESPONSE_EXPONENT = 1.5;
 export const AIM_BREATH_PERIOD_MS = 1800;
 export const AIM_BREATH_BASE_SWAY = 0.006;
 export const AIM_BREATH_EXTRA_SWAY = 0.028;
@@ -162,7 +169,7 @@ export function computePocketClearBonus(remainingChances: number): number {
 
 export function computeShotVelocity(angle: number, powerPercent: number): { x: number; y: number } {
   const clampedPower = Math.min(100, Math.max(0, powerPercent));
-  const speed = (clampedPower / 100) * MAX_SHOT_SPEED;
+  const speed = (clampedPower / 100) ** POWER_RESPONSE_EXPONENT * MAX_SHOT_SPEED;
   return {
     x: Math.cos(angle) * speed,
     y: Math.sin(angle) * speed
@@ -204,21 +211,45 @@ export function computeDynamicSpinCurveScale(speed: number): number {
   return CUE_SPIN_CURVE_SCALE * Math.max(0.18, Math.min(1, ratio));
 }
 
+export function computeMasseCurveMultiplier(sideSpin: number, verticalSpin: number): number {
+  const sideRatio = Math.max(0, Math.min(1, Math.abs(sideSpin) / 100));
+  const verticalRatio = Math.max(0, Math.min(1, Math.abs(verticalSpin) / 100));
+  if (
+    Math.abs(sideSpin) < CUE_MASSE_MIN_SIDE_SPIN ||
+    Math.abs(verticalSpin) < CUE_MASSE_MIN_VERTICAL_SPIN
+  ) {
+    return 1;
+  }
+  return 1 + CUE_MASSE_CURVE_BOOST * sideRatio * verticalRatio;
+}
+
 export function computeDynamicSpinDecay(speed: number): number {
   return CUE_SPIN_DECAY - 0.006 * (1 - computeSpeedRatio(speed));
 }
 
+export function computeVerticalSpinVelocityScale(
+  speed: number,
+  deltaMs: number,
+  verticalSpin: number
+): number {
+  const baseScale = computeDynamicVelocityScale(speed, deltaMs);
+  const baseLoss = 1 - baseScale;
+  const normalizedSpin = Math.max(-1, Math.min(1, verticalSpin / 100));
+  const lossScale =
+    normalizedSpin >= 0
+      ? 1 - CUE_VERTICAL_SPIN_DRAG_REDUCTION * normalizedSpin
+      : 1 + CUE_VERTICAL_SPIN_BRAKE_BOOST * Math.abs(normalizedSpin);
+  return Math.max(0.9, 1 - baseLoss * lossScale);
+}
+
+export function computeBackspinContactPullScale(verticalSpin: number): number {
+  return CUE_BACKSPIN_CONTACT_PULL * Math.max(0, Math.min(1, -verticalSpin / 100));
+}
+
 export function computeSweepingPower(timeMs: number): number {
-  const halfPeriod = POWER_SWEEP_PERIOD_MS / 2;
   const wrapped =
     ((timeMs % POWER_SWEEP_PERIOD_MS) + POWER_SWEEP_PERIOD_MS) % POWER_SWEEP_PERIOD_MS;
-  const phaseProgress =
-    wrapped <= halfPeriod ? wrapped / halfPeriod : (wrapped - halfPeriod) / halfPeriod;
-  const edgeFastProgress =
-    phaseProgress <= 0.5
-      ? 2 * phaseProgress - 2 * phaseProgress * phaseProgress
-      : 0.5 + 0.5 * (2 * phaseProgress - 1) * (2 * phaseProgress - 1);
-  const progress = wrapped <= halfPeriod ? edgeFastProgress : 1 - edgeFastProgress;
+  const progress = (1 - Math.cos((wrapped / POWER_SWEEP_PERIOD_MS) * Math.PI * 2)) / 2;
   return Math.round(POWER_SWEEP_MIN + (POWER_SWEEP_MAX - POWER_SWEEP_MIN) * progress);
 }
 
@@ -248,6 +279,12 @@ export function computeTouchSpin(
 export function computeSpinFromTrack(offsetX: number, width: number): number {
   if (width <= 0) return 0;
   const normalized = Math.max(-1, Math.min(1, (offsetX / width) * 2 - 1));
+  return Math.round(normalized * 100);
+}
+
+export function computeVerticalSpinFromTrack(offsetY: number, height: number): number {
+  if (height <= 0) return 0;
+  const normalized = Math.max(-1, Math.min(1, 1 - (offsetY / height) * 2));
   return Math.round(normalized * 100);
 }
 

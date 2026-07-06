@@ -26,6 +26,10 @@ import {
   computeBreathingAimAngle,
   computeDynamicSpinCurveScale,
   computeDynamicSpinDecay,
+  computeBackspinContactPullScale,
+  computeMasseCurveMultiplier,
+  computeVerticalSpinFromTrack,
+  computeVerticalSpinVelocityScale,
   computeDynamicVelocityScale,
   computePocketClearBonus,
   computePocketShotScore,
@@ -97,10 +101,12 @@ describe('billiards game helpers', () => {
   });
 
   it('computes shot velocity from independent angle and power controls', () => {
-    expect(computeShotVelocity(0, 50)).toEqual({ x: 13.5, y: 0 });
+    expect(computeShotVelocity(0, 50).x).toBeCloseTo(9.55);
+    expect(computeShotVelocity(0, 50).y).toBeCloseTo(0);
     expect(computeShotVelocity(Math.PI / 2, 100).x).toBeCloseTo(0);
     expect(computeShotVelocity(Math.PI / 2, 100).y).toBeCloseTo(27);
     expect(computeShotVelocity(Math.PI, 200).x).toBeCloseTo(-27);
+    expect(computeShotVelocity(0, 25).x).toBeLessThan(4);
   });
 
   it('uses balanced billiards physics tuning without adding collision energy', () => {
@@ -157,16 +163,34 @@ describe('billiards game helpers', () => {
     expect(computeDynamicSpinDecay(4)).toBeLessThan(computeDynamicSpinDecay(24));
   });
 
-  it('sweeps power faster near the low and high ends', () => {
+  it('boosts curve only for high side spin with vertical spin', () => {
+    expect(computeMasseCurveMultiplier(90, 90)).toBeGreaterThan(2);
+    expect(computeMasseCurveMultiplier(90, -90)).toBeGreaterThan(2);
+    expect(computeMasseCurveMultiplier(90, 0)).toBe(1);
+    expect(computeMasseCurveMultiplier(20, 90)).toBe(1);
+  });
+
+  it('uses top spin to roll longer and back spin to brake harder', () => {
+    const base = computeDynamicVelocityScale(16, 16.66);
+    expect(computeVerticalSpinVelocityScale(16, 16.66, 100)).toBeGreaterThan(base);
+    expect(computeVerticalSpinVelocityScale(16, 16.66, -100)).toBeLessThan(base);
+    expect(computeVerticalSpinVelocityScale(16, 16.66, 0)).toBeCloseTo(base);
+    expect(computeBackspinContactPullScale(-100)).toBeGreaterThan(
+      computeBackspinContactPullScale(-40)
+    );
+    expect(computeBackspinContactPullScale(100)).toBe(0);
+  });
+
+  it('sweeps power smoothly between the low and high ends', () => {
     expect(computeSweepingPower(0)).toBe(10);
-    expect(computeSweepingPower(200)).toBe(44);
+    expect(computeSweepingPower(200)).toBe(23);
     expect(computeSweepingPower(400)).toBe(55);
-    expect(computeSweepingPower(600)).toBe(66);
-    expect(computeSweepingPower(760)).toBe(91);
+    expect(computeSweepingPower(600)).toBe(87);
+    expect(computeSweepingPower(760)).toBe(99);
     expect(computeSweepingPower(800)).toBe(100);
-    expect(computeSweepingPower(1000)).toBe(66);
+    expect(computeSweepingPower(1000)).toBe(87);
     expect(computeSweepingPower(1200)).toBe(55);
-    expect(computeSweepingPower(1400)).toBe(44);
+    expect(computeSweepingPower(1400)).toBe(23);
     expect(computeSweepingPower(1600)).toBe(10);
   });
 
@@ -189,6 +213,14 @@ describe('billiards game helpers', () => {
     expect(computeSpinFromTrack(200, 200)).toBe(100);
     expect(computeSpinFromTrack(260, 200)).toBe(100);
     expect(computeSpinFromTrack(-40, 200)).toBe(-100);
+  });
+
+  it('computes top and back spin from a dedicated vertical touch track', () => {
+    expect(computeVerticalSpinFromTrack(0, 200)).toBe(100);
+    expect(computeVerticalSpinFromTrack(100, 200)).toBe(0);
+    expect(computeVerticalSpinFromTrack(200, 200)).toBe(-100);
+    expect(computeVerticalSpinFromTrack(260, 200)).toBe(-100);
+    expect(computeVerticalSpinFromTrack(-40, 200)).toBe(100);
   });
 
   it('moves shot setup from angle to spin to power', () => {
