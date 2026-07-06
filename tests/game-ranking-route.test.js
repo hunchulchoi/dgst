@@ -175,6 +175,91 @@ describe('game ranking routes', () => {
     });
   });
 
+  it('loads sudoku all-time per-user best times with KST score timestamps', async () => {
+    const queryRaw = vi.fn().mockResolvedValue([
+      {
+        email: 'sudoku@example.com',
+        nickname: 'sudoku',
+        difficulty: 'normal',
+        seconds: 180,
+        mistakes: 1,
+        createdAt: '2026-07-06T05:50:09.791Z'
+      }
+    ]);
+    prismaModule.getPrisma.mockReturnValue({ $queryRaw: queryRaw });
+
+    const { GET } = await import('../src/routes/games/sudoku/+server.js');
+    const response = await GET({
+      locals: { auth: vi.fn().mockResolvedValue({ user: { email: 'me@example.com' } }) },
+      url: new URL('https://dgst.me/games/sudoku?rank=1&difficulty=normal')
+    });
+    const body = await response.json();
+
+    expect(body.rank[0]).toEqual({
+      _id: 'sudoku@example.com',
+      nickname: 'sudoku',
+      difficulty: 'normal',
+      seconds: 180,
+      mistakes: 1,
+      createdAt: '2026-07-06T05:50:09.791Z'
+    });
+    expect(body.myBest).toEqual({
+      seconds: 180,
+      mistakes: 1,
+      createdAt: '2026-07-06T05:50:09.791Z'
+    });
+    const rankSql = queryRaw.mock.calls[0][0].join(' ');
+    const myBestSql = queryRaw.mock.calls[1][0].join(' ');
+    expect(rankSql).toContain("created_at AT TIME ZONE 'Asia/Seoul'");
+    expect(myBestSql).toContain("created_at AT TIME ZONE 'Asia/Seoul'");
+  });
+
+  it('loads billiards rankings with KST score timestamps', async () => {
+    const queryRaw = vi
+      .fn()
+      .mockResolvedValueOnce([
+        {
+          email: 'billiards@example.com',
+          nickname: 'billiards',
+          mode: 'four-ball',
+          score: 7,
+          createdAt: '2026-07-06T05:50:09.791Z'
+        }
+      ])
+      .mockResolvedValueOnce([
+        {
+          score: 7,
+          createdAt: '2026-07-06T05:50:09.791Z'
+        }
+      ]);
+    prismaModule.getPrisma.mockReturnValue({ $queryRaw: queryRaw });
+
+    const { GET } = await import('../src/routes/games/billiards/+server.js');
+    const response = await GET({
+      locals: {
+        auth: vi.fn().mockResolvedValue({ user: { email: 'me@example.com', nickname: 'me' } })
+      },
+      url: new URL('https://dgst.me/games/billiards?rank=1&mode=four-ball')
+    });
+    const body = await response.json();
+
+    expect(body.rank[0]).toEqual({
+      _id: 'billiards@example.com',
+      nickname: 'billiards',
+      mode: 'four-ball',
+      score: 7,
+      createdAt: '2026-07-06T05:50:09.791Z'
+    });
+    expect(body.myBest).toEqual({
+      score: 7,
+      createdAt: '2026-07-06T05:50:09.791Z'
+    });
+    const rankSql = queryRaw.mock.calls[0][0].join(' ');
+    const myBestSql = queryRaw.mock.calls[1][0].join(' ');
+    expect(rankSql).toContain("created_at AT TIME ZONE 'Asia/Seoul'");
+    expect(myBestSql).toContain("created_at AT TIME ZONE 'Asia/Seoul'");
+  });
+
   it('loads slot balances with last updated timestamps', async () => {
     const findFirst = vi.fn().mockResolvedValue({
       balance: 1200,

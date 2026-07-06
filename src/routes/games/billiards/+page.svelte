@@ -1,6 +1,8 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import Matter from 'matter-js';
+  import { ko } from 'date-fns/locale';
+  import { formatRelativeTime } from '$lib/util/formatRelativeTime.js';
   import {
     BALL_RADIUS,
     BALL_FRICTION_AIR,
@@ -1042,7 +1044,12 @@
         {#each rankList as item}
           <li>
             <span>{item.nickname}</span>
-            <strong>{item.score}</strong>
+            <span class="rank-meta">
+              <strong>{item.score}</strong>
+              {#if item.createdAt}
+                <small>{formatRelativeTime(item.createdAt, { locale: ko, addSuffix: true })}</small>
+              {/if}
+            </span>
           </li>
         {/each}
       </ol>
@@ -1471,6 +1478,19 @@
 
   .rank-panel li:first-child {
     border-top: 0;
+  }
+
+  .rank-meta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+    white-space: nowrap;
+  }
+
+  .rank-meta small {
+    color: #b4ccb8;
+    font-size: 0.74rem;
   }
 
   .login-note {

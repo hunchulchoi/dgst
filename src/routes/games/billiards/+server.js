@@ -9,9 +9,13 @@ import { BILLIARDS_MODES, isActiveBilliardsMode, isValidScore } from './gameUtil
  * @returns {Promise<Array<{ _id: string; nickname: string; mode: string; score: number; createdAt: string }>>}
  */
 async function getRankTop10(mode) {
-  /** @type {Array<{ email: string; nickname: string; mode: string; score: number; createdAt: Date }>} */
+  /** @type {Array<{ email: string; nickname: string; mode: string; score: number; createdAt: Date | string }>} */
   const rows = await getPrisma().$queryRaw`
-    SELECT email, nickname, mode, score, created_at AS "createdAt"
+    SELECT email, nickname, mode, score,
+           to_char(
+             ((created_at AT TIME ZONE 'Asia/Seoul') AT TIME ZONE 'UTC'),
+             'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'
+           ) AS "createdAt"
     FROM (
       SELECT email, nickname, mode, score, created_at,
              ROW_NUMBER() OVER (PARTITION BY email ORDER BY score DESC, created_at DESC) AS rn
@@ -46,11 +50,19 @@ export async function GET(event) {
     const [rank, myBest] = await Promise.all([
       getRankTop10(mode),
       (async () => {
-        const myDoc = await getPrisma().gameScoreBilliards.findFirst({
-          where: { email, mode },
-          orderBy: [{ score: 'desc' }, { createdAt: 'desc' }],
-          select: { score: true, createdAt: true }
-        });
+        /** @type {Array<{ score: number; createdAt: Date | string }>} */
+        const rows = await getPrisma().$queryRaw`
+          SELECT score,
+                 to_char(
+                   ((created_at AT TIME ZONE 'Asia/Seoul') AT TIME ZONE 'UTC'),
+                   'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'
+                 ) AS "createdAt"
+          FROM game_score_billiards
+          WHERE email = ${email} AND mode = ${mode}
+          ORDER BY score DESC, created_at DESC
+          LIMIT 1
+        `;
+        const myDoc = rows[0];
 
         return myDoc
           ? { score: Number(myDoc.score), createdAt: normalizeToIsoString(myDoc.createdAt) }
