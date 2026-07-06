@@ -751,8 +751,8 @@
   }
 
   .sudoku-board-paused {
-    filter: blur(1px);
-    opacity: 0.72;
+    filter: blur(4px);
+    opacity: 0.42;
   }
 
   .sudoku-start-layer {
@@ -761,7 +761,8 @@
     z-index: 3;
     display: grid;
     place-items: center;
-    background: rgba(0, 0, 0, 0.28);
+    background: rgba(0, 0, 0, 0.46);
+    backdrop-filter: blur(3px);
   }
 
   .sudoku-start-button {
