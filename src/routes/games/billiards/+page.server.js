@@ -1,4 +1,6 @@
-export async function load({ locals }) {
-  const session = await locals.auth();
+import { getGameSession } from '$lib/server/localGameSmokeSession.js';
+
+export async function load(event) {
+  const session = await getGameSession(event);
   return { session };
 }

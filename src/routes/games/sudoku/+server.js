@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto';
 import { error, json } from '@sveltejs/kit';
 import { getPrisma } from '$lib/database/prisma.js';
+import { getGameSession, isLocalGameSmokeSession } from '$lib/server/localGameSmokeSession.js';
 import { normalizeToIsoString } from '$lib/util/formatRelativeTime.js';
 
 const DIFFICULTIES = new Set(['easy', 'normal', 'hard']);
@@ -50,8 +51,9 @@ function normalizeDifficulty(value) {
   return 'normal';
 }
 
-export async function GET({ locals, url }) {
-  const session = await locals.auth();
+export async function GET(event) {
+  const { url } = event;
+  const session = await getGameSession(event);
   const user = session?.user;
   const email = typeof user?.email === 'string' ? user.email : '';
   if (!email) throw error(401, { message: '로그인이 필요합니다.' });
@@ -90,8 +92,9 @@ export async function GET({ locals, url }) {
   return json({ success: true, difficulty });
 }
 
-export async function POST({ locals, request }) {
-  const session = await locals.auth();
+export async function POST(event) {
+  const { request } = event;
+  const session = await getGameSession(event);
   const user = session?.user;
   const email = typeof user?.email === 'string' ? user.email : '';
   if (!email) throw error(401, { message: '로그인이 필요합니다.' });
@@ -107,6 +110,9 @@ export async function POST({ locals, request }) {
 
   if (!Number.isInteger(mistakes) || mistakes < 0 || mistakes > MAX_MISTAKES) {
     throw error(400, { message: '유효한 실수 횟수를 보내 주세요.' });
+  }
+  if (isLocalGameSmokeSession(session)) {
+    return json({ success: true, difficulty, seconds, mistakes, smoke: true });
   }
 
   const nickname =

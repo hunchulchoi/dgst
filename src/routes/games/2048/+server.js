@@ -1,6 +1,7 @@
 import { error, json } from '@sveltejs/kit';
 import { getPrisma } from '$lib/database/prisma.js';
 import { getToday2048Stats } from '$lib/server/game2048Stats.js';
+import { getGameSession, isLocalGameSmokeSession } from '$lib/server/localGameSmokeSession.js';
 import { normalizeToIsoString } from '$lib/util/formatRelativeTime.js';
 
 /**
@@ -27,8 +28,9 @@ async function getRankTop10() {
   }));
 }
 
-export async function GET({ locals, url }) {
-  const session = await locals.auth();
+export async function GET(event) {
+  const { url } = event;
+  const session = await getGameSession(event);
   const user = session?.user;
   const email = typeof user?.email === 'string' ? user.email : '';
   if (!email) throw error(401, { message: '로그인이 필요합니다.' });
@@ -56,8 +58,9 @@ export async function GET({ locals, url }) {
   return json({});
 }
 
-export async function POST({ locals, request }) {
-  const session = await locals.auth();
+export async function POST(event) {
+  const { request } = event;
+  const session = await getGameSession(event);
   const user = session?.user;
   const email = typeof user?.email === 'string' ? user.email : '';
   if (!email) throw error(401, { message: '로그인이 필요합니다.' });
@@ -72,6 +75,7 @@ export async function POST({ locals, request }) {
   if (!Number.isFinite(score) || score < 0) {
     throw error(400, { message: '유효한 점수를 보내 주세요.' });
   }
+  if (isLocalGameSmokeSession(session)) return json({ success: true, score, smoke: true });
 
   const nickname =
     typeof user === 'object' && 'nickname' in user && typeof user.nickname === 'string'

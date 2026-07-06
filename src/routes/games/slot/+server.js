@@ -1,5 +1,6 @@
 import { error, json } from '@sveltejs/kit';
 import { getPrisma } from '$lib/database/prisma.js';
+import { getGameSession, isLocalGameSmokeSession } from '$lib/server/localGameSmokeSession.js';
 import { getTodaySlotStats } from '$lib/server/slotStats.js';
 import { updateSlotUserBalance, ensureSlotUserBalanceFilled } from '$lib/server/slotUserBalance.js';
 import { normalizeToIsoString } from '$lib/util/formatRelativeTime.js';
@@ -9,6 +10,7 @@ const OOPS_TOPUP_DELAY_MS = 5 * 60 * 1000;
 const BASE_SYMBOLS = ['🍒', '🍋', '🔔', '⭐', '7️⃣'];
 const MEDIUM_BALANCE_THRESHOLD = 100_000; // 10만점
 const HIGH_BALANCE_THRESHOLD = 300_000; // 30만점
+const SMOKE_SLOT_BALANCE = 1000;
 
 /**
  * @param {number} [balance]
@@ -117,14 +119,27 @@ async function maybeTopupAfterOOPS(email, nickname) {
   return 0;
 }
 
-export async function POST({ request, locals }) {
-  const session = await locals.auth();
+export async function POST(event) {
+  const { request } = event;
+  const session = await getGameSession(event);
   if (!session?.user?.email) throw error(401, { message: '로그인이 필요합니다.' });
 
   const body = await request.json().catch(() => ({}));
   const bet = Number(body?.bet ?? 0);
   if (!Number.isFinite(bet) || bet <= 0) {
     throw error(400, { message: '잘못된 베팅 금액입니다.' });
+  }
+  if (isLocalGameSmokeSession(session)) {
+    const reels = spinReels(SMOKE_SLOT_BALANCE);
+    const payout = calcPayout(reels, bet);
+    return json({
+      success: true,
+      reels,
+      payout,
+      delta: payout - bet,
+      balance: SMOKE_SLOT_BALANCE - bet + payout,
+      smoke: true
+    });
   }
 
   const email = session.user.email;
@@ -134,6 +149,7 @@ export async function POST({ request, locals }) {
     typeof session.user.nickname === 'string'
       ? session.user.nickname
       : 'anonymous';
+
   const prisma = getPrisma();
   const last = await prisma.gameScore.findFirst({
     where: { email },
@@ -202,8 +218,9 @@ export async function POST({ request, locals }) {
   });
 }
 
-export async function GET({ locals, url }) {
-  const session = await locals.auth();
+export async function GET(event) {
+  const { url } = event;
+  const session = await getGameSession(event);
   if (!session?.user?.email) throw error(401, { message: '로그인이 필요합니다.' });
   const email = session.user.email;
   const nickname =
@@ -212,6 +229,18 @@ export async function GET({ locals, url }) {
     typeof session.user.nickname === 'string'
       ? session.user.nickname
       : 'anonymous';
+  const todayStats = await getTodaySlotStats();
+  if (isLocalGameSmokeSession(session)) {
+    return json({
+      balance: SMOKE_SLOT_BALANCE,
+      balanceUpdatedAt: null,
+      oopsInfo: null,
+      todayStats,
+      ...(url.searchParams.get('rank') ? { rank: [] } : {}),
+      smoke: true
+    });
+  }
+
   const prisma = getPrisma();
   const last = await prisma.gameScore.findFirst({
     where: { email },
@@ -292,8 +321,6 @@ export async function GET({ locals, url }) {
       // 댓글 보상으로 받은 점수가 있고 balance > 0이면 오링이 아니므로 oopsInfo는 null로 유지
     }
   }
-  const todayStats = await getTodaySlotStats();
-
   if (url.searchParams.get('rank')) {
     // slot_user_balance가 비어 있으면 기존 game_scores 기준으로 1회 자동 백필
     await ensureSlotUserBalanceFilled();

@@ -92,6 +92,12 @@
   let contacts: ShotContact[] = [];
   let pocketedThisShot = 0;
   let cuePocketedThisShot = false;
+  let engine: Matter.Engine | null = null;
+  let cueBall: BallBody | null = null;
+  let redBalls: BallBody[] = [];
+  let frameId = 0;
+  let lastFrame = 0;
+  let rollingStartedAt = 0;
 
   const isLoggedIn = $derived(!!data.session?.user?.email);
   const isPocketBall = $derived(currentMode === BILLIARDS_MODES.POCKET_BALL);
@@ -122,13 +128,6 @@
   const Body = Matter.Body;
   const Composite = Matter.Composite;
   const Events = Matter.Events;
-
-  let engine: Matter.Engine | null = null;
-  let cueBall: BallBody | null = null;
-  let redBalls: BallBody[] = [];
-  let frameId = 0;
-  let lastFrame = 0;
-  let rollingStartedAt = 0;
 
   function makeBall(
     x: number,

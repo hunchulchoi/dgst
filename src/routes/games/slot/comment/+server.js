@@ -4,6 +4,7 @@ import { markAsRead, upsertAlarm } from '$lib/server/alarm/alarmService.js';
 import { createComment, findCommentById, toCommentJson } from '$lib/server/board/commentRepo.js';
 import convertToTree from '$lib/util/tree.js';
 import { checkAndLogSessionDevice } from '$lib/server/auth/checkSessionDevice.js';
+import { getGameSession, isLocalGameSmokeSession } from '$lib/server/localGameSmokeSession.js';
 import { updateSlotUserBalance } from '$lib/server/slotUserBalance.js';
 import {
   buildSubmitFingerprint,
@@ -33,13 +34,14 @@ async function ensureSlotArticle(prisma) {
   });
 }
 
-export async function GET({ locals, setHeaders, url }) {
+export async function GET(event) {
+  const { setHeaders, url } = event;
   // 캐시 방지 헤더 설정
   setHeaders({
     'Cache-Control': 'private, max-age=0, no-store, must-revalidate, proxy-revalidate'
   });
 
-  const session = await locals.auth();
+  const session = await getGameSession(event);
   const email = typeof session?.user?.email === 'string' ? session.user.email : '';
   const perPageParam = Number(url.searchParams.get('limit') ?? '50');
   const pageParam = Number(url.searchParams.get('page') ?? '1');
@@ -174,8 +176,8 @@ export async function GET({ locals, setHeaders, url }) {
 }
 
 export async function POST(event) {
-  const { request, locals } = event;
-  const session = await locals.auth();
+  const { request } = event;
+  const session = await getGameSession(event);
   const user = session?.user;
   const email = typeof user?.email === 'string' ? user.email : '';
   if (!email) {
@@ -199,6 +201,23 @@ export async function POST(event) {
 
     if (content.length > 1000) {
       throw error(400, { message: '댓글은 1000자 이하여야 합니다.' });
+    }
+    if (isLocalGameSmokeSession(session)) {
+      return json({
+        success: true,
+        rewardGiven: false,
+        smoke: true,
+        comment: {
+          id: `smoke-${Date.now()}`,
+          _id: `smoke-${Date.now()}`,
+          email,
+          nickname: typeof user?.nickname === 'string' ? user.nickname : '로컬스모크',
+          content,
+          depth: parentCommentId ? 2 : 1,
+          parentCommentId: parentCommentId || undefined,
+          createdAt: new Date().toISOString()
+        }
+      });
     }
 
     const fingerprint = buildSubmitFingerprint([
