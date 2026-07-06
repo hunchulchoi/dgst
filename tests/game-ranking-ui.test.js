@@ -35,6 +35,16 @@ describe('game ranking UI', () => {
     expect(sudokuPage).toContain('class:sudoku-note-toggle-active={noteMode}');
     expect(sudokuPage).toContain('aria-pressed={noteMode}');
     expect(sudokuPage).toContain('.blur()');
+    expect(sudokuPage).toContain('disabled={!started || gameWon}');
+  });
+
+  it('keeps sudoku timer stopped until the start button is pressed', () => {
+    expect(sudokuPage).toContain('function resetGame(nextDifficulty: Difficulty = difficulty');
+    expect(sudokuPage).toContain("window.confirm('게임을 새로 시작하시겠습니까?')");
+    expect(sudokuPage).toContain('started = false;');
+    expect(sudokuPage).toContain('function startGame()');
+    expect(sudokuPage).toContain('disabled={started || gameWon}');
+    expect(sudokuPage).toContain('if (started && !gameWon) startTimer();');
   });
 
   it('shows when slot scores were last updated', () => {

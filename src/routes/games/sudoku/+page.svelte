@@ -72,7 +72,7 @@
   });
 
   onMount(() => {
-    if (!restoreState()) startGame(difficulty);
+    if (!restoreState()) resetGame(difficulty, false);
     return () => stopTimer();
   });
 
@@ -183,7 +183,10 @@
     return true;
   }
 
-  function startGame(nextDifficulty: Difficulty) {
+  function resetGame(nextDifficulty: Difficulty = difficulty, confirmReset = true) {
+    if (confirmReset && browser && !window.confirm('게임을 새로 시작하시겠습니까?')) return;
+
+    stopTimer();
     difficulty = nextDifficulty;
     const nextSolution = generateSolution();
     solution = nextSolution;
@@ -196,10 +199,16 @@
     elapsed = 0;
     gameWon = false;
     submittedWin = false;
+    started = false;
+    saveState();
+    if (isLoggedIn) void loadRank();
+  }
+
+  function startGame() {
+    if (started || gameWon) return;
     started = true;
     startTimer();
     saveState();
-    if (isLoggedIn) void loadRank();
   }
 
   function firstOpenCell(grid: Grid): CellPoint {
@@ -269,7 +278,7 @@
       gameWon = Boolean(saved.gameWon);
       submittedWin = Boolean(saved.submittedWin);
       started = Boolean(saved.started);
-      if (!gameWon) startTimer();
+      if (started && !gameWon) startTimer();
       return true;
     } catch {
       return false;
@@ -313,7 +322,7 @@
 
   function placeValue(value: number) {
     const { row, col } = selected;
-    if (gameWon || isFixed(row, col)) return;
+    if (!started || gameWon || isFixed(row, col)) return;
 
     if (noteMode) {
       const bit = 1 << value;
@@ -333,7 +342,7 @@
 
   function clearCell() {
     const { row, col } = selected;
-    if (gameWon || isFixed(row, col)) return;
+    if (!started || gameWon || isFixed(row, col)) return;
     const next = cloneGrid(userGrid);
     next[row][col] = 0;
     userGrid = next;
@@ -343,6 +352,7 @@
   }
 
   function toggleNoteMode(event: MouseEvent) {
+    if (!started || gameWon) return;
     noteMode = !noteMode;
     (event.currentTarget as HTMLButtonElement).blur();
   }
@@ -366,7 +376,7 @@
 
   function hint() {
     const { row, col } = selected;
-    if (gameWon || isFixed(row, col)) return;
+    if (!started || gameWon || isFixed(row, col)) return;
     const next = cloneGrid(userGrid);
     next[row][col] = solution[row][col];
     userGrid = next;
@@ -554,7 +564,7 @@
             type="button"
             class="btn btn-outline-primary"
             class:active={difficulty === key}
-            onclick={() => startGame(key)}
+            onclick={() => resetGame(key)}
           >
             {config.label}
           </button>
@@ -562,8 +572,16 @@
       </div>
 
       <div class="sudoku-actions">
-        <button type="button" class="btn btn-primary" onclick={() => startGame(difficulty)}>
-          새 게임
+        <button
+          type="button"
+          class="btn btn-primary"
+          onclick={startGame}
+          disabled={started || gameWon}
+        >
+          시작
+        </button>
+        <button type="button" class="btn btn-outline-danger" onclick={() => resetGame(difficulty)}>
+          초기화
         </button>
         <button
           type="button"
@@ -572,16 +590,36 @@
           class:sudoku-note-toggle-active={noteMode}
           aria-pressed={noteMode}
           onclick={toggleNoteMode}
+          disabled={!started || gameWon}
         >
           메모
         </button>
-        <button type="button" class="btn btn-outline-secondary" onclick={clearCell}>지우기</button>
-        <button type="button" class="btn btn-outline-success" onclick={hint}>힌트</button>
+        <button
+          type="button"
+          class="btn btn-outline-secondary"
+          onclick={clearCell}
+          disabled={!started || gameWon}
+        >
+          지우기
+        </button>
+        <button
+          type="button"
+          class="btn btn-outline-success"
+          onclick={hint}
+          disabled={!started || gameWon}
+        >
+          힌트
+        </button>
       </div>
 
       <div class="sudoku-pad" aria-label="숫자 입력">
         {#each DIGITS as value}
-          <button type="button" class="btn btn-light" onclick={() => placeValue(value)}>
+          <button
+            type="button"
+            class="btn btn-light"
+            onclick={() => placeValue(value)}
+            disabled={!started || gameWon}
+          >
             {value}
           </button>
         {/each}
@@ -1021,7 +1059,7 @@
     }
 
     .sudoku-actions {
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+      grid-template-columns: repeat(5, minmax(0, 1fr));
       gap: 0.35rem;
     }
 
