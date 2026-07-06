@@ -43,7 +43,6 @@
     computeShotVelocity,
     computeSpeedRatio,
     computeSpinFromTrack,
-    computeSweepingPower,
     evaluateFourBallShot,
     getPocketCenters,
     isBallInPocket,
@@ -93,7 +92,6 @@
   let activeSpin = 0;
   let activeVerticalSpin = 0;
   let power = $state(55);
-  let powerSweepStartedAt = 0;
   let rankList = $state<RankEntry[]>([]);
   let myBestScore = $state<number | null>(null);
   let rankLoading = $state(false);
@@ -205,9 +203,7 @@
         start = Math.min(TABLE_HEIGHT, center + pocketGapHalf);
       }
       if (TABLE_HEIGHT - start > 4) {
-        rails.push(
-          makeRail(x, (start + TABLE_HEIGHT) / 2, RAIL_THICKNESS, TABLE_HEIGHT - start)
-        );
+        rails.push(makeRail(x, (start + TABLE_HEIGHT) / 2, RAIL_THICKNESS, TABLE_HEIGHT - start));
       }
     };
 
@@ -273,7 +269,6 @@
     activeSpin = 0;
     activeVerticalSpin = 0;
     power = 55;
-    powerSweepStartedAt = 0;
     rollingStartedAt = 0;
     submittedGameOver = false;
     pocketedThisShot = 0;
@@ -541,10 +536,40 @@
     updateSpinFromPointer(event);
   }
 
-  function handlePowerPointerDown(event: PointerEvent) {
+  function updatePowerFromPointer(event: PointerEvent) {
     if (!canCharge()) return;
+    const target = event.currentTarget as HTMLElement;
+    const rect = target.getBoundingClientRect();
+    const x = Math.max(0, Math.min(rect.width, event.clientX - rect.left));
+    power = Math.round(10 + (x / rect.width) * 90);
     event.preventDefault();
-    shoot(power);
+  }
+
+  function handlePowerPointerDown(event: PointerEvent) {
+    const target = event.currentTarget as HTMLElement;
+    target.setPointerCapture(event.pointerId);
+    updatePowerFromPointer(event);
+  }
+
+  function handlePowerKeyDown(event: KeyboardEvent) {
+    if (!canCharge()) return;
+    const step = event.shiftKey ? 10 : 5;
+    if (event.key === 'ArrowLeft' || event.key === 'ArrowDown') {
+      power = Math.max(10, power - step);
+      event.preventDefault();
+    } else if (event.key === 'ArrowRight' || event.key === 'ArrowUp') {
+      power = Math.min(100, power + step);
+      event.preventDefault();
+    } else if (event.key === 'Home') {
+      power = 10;
+      event.preventDefault();
+    } else if (event.key === 'End') {
+      power = 100;
+      event.preventDefault();
+    } else if (event.key === 'Enter' || event.key === ' ') {
+      shoot(power);
+      event.preventDefault();
+    }
   }
 
   function handlePointerDown(event: PointerEvent) {
@@ -584,7 +609,6 @@
     status = 'rolling';
     rollingStartedAt = performance.now();
     aimPoint = null;
-    powerSweepStartedAt = 0;
     resetAimDrag();
   }
 
@@ -769,13 +793,6 @@
         now - aimingStartedAt,
         now - aimingStartedAt
       );
-    }
-
-    if (canPrepareShot()) {
-      if (!powerSweepStartedAt) powerSweepStartedAt = now;
-      power = computeSweepingPower(now - powerSweepStartedAt);
-    } else if (status === 'rolling') {
-      powerSweepStartedAt = 0;
     }
 
     if (status === 'rolling' && cueBall && activeSpin !== 0) {
@@ -979,6 +996,11 @@
             event.stopPropagation();
             handlePowerPointerDown(event);
           }}
+          onpointermove={(event) => {
+            event.stopPropagation();
+            if (event.buttons === 1 || event.pointerType === 'touch') updatePowerFromPointer(event);
+          }}
+          onkeydown={handlePowerKeyDown}
         >
           <div class="power-fill" style={`width: ${power}%;`}></div>
           <div class="power-thumb" style={`left: ${power}%;`}></div>
