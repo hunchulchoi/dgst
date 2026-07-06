@@ -40,6 +40,7 @@
   let elapsed = $state(0);
   let gameWon = $state(false);
   let started = $state(false);
+  let canResume = $state(false);
   let submittedWin = $state(false);
   let rankList = $state<SudokuRank[]>([]);
   let myBest = $state<{ seconds: number; mistakes: number; createdAt?: string } | null>(null);
@@ -208,6 +209,7 @@
     mistakes = 0;
     elapsed = 0;
     gameWon = false;
+    canResume = false;
     submittedWin = false;
     started = false;
     saveState();
@@ -216,6 +218,7 @@
 
   function startGame() {
     if (started || gameWon) return;
+    canResume = false;
     started = true;
     startTimer();
     saveState();
@@ -287,8 +290,8 @@
       elapsed = Number(saved.elapsed ?? 0);
       gameWon = Boolean(saved.gameWon);
       submittedWin = Boolean(saved.submittedWin);
-      started = Boolean(saved.started);
-      if (started && !gameWon) startTimer();
+      canResume = Boolean(saved.started) && !gameWon;
+      started = false;
       return true;
     } catch {
       return false;
@@ -532,9 +535,17 @@
 
         {#if !started && !gameWon}
           <div class="sudoku-start-layer" role="presentation">
-            <button type="button" class="btn btn-primary sudoku-start-button" onclick={startGame}>
-              시작
-            </button>
+            <div class="sudoku-start-panel">
+              <strong>{canResume ? '진행 중인 게임' : '준비 완료'}</strong>
+              <p>
+                {canResume
+                  ? '게임재개를 누르면 시간이 다시 흐릅니다.'
+                  : '시작을 누르면 시간이 흐르고 입력할 수 있습니다.'}
+              </p>
+              <button type="button" class="btn btn-primary sudoku-start-button" onclick={startGame}>
+                {canResume ? '게임재개' : '시작'}
+              </button>
+            </div>
           </div>
         {/if}
       </div>
@@ -766,6 +777,31 @@
     place-items: center;
     background: rgba(0, 0, 0, 0.46);
     backdrop-filter: blur(3px);
+  }
+
+  .sudoku-start-panel {
+    display: grid;
+    gap: 0.7rem;
+    justify-items: center;
+    width: min(82%, 18rem);
+    padding: 1rem;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    border-radius: 0.5rem;
+    background: rgba(20, 22, 26, 0.72);
+    color: #fff;
+    text-align: center;
+    box-shadow: 0 0.9rem 2rem rgba(0, 0, 0, 0.34);
+  }
+
+  .sudoku-start-panel strong {
+    font-size: 1.05rem;
+  }
+
+  .sudoku-start-panel p {
+    margin: 0;
+    color: rgba(255, 255, 255, 0.82);
+    font-size: 0.9rem;
+    line-height: 1.35;
   }
 
   .sudoku-start-button {
