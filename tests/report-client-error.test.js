@@ -43,4 +43,57 @@ describe('reportClientError', () => {
       });
     }
   });
+  it('sends structured details in the log payload', () => {
+    const originalFetch = globalThis.fetch;
+    const originalLocation = globalThis.location;
+    const originalNavigator = globalThis.navigator;
+    const logPost = { catch: vi.fn() };
+    /** @type {RequestInit | undefined} */
+    let capturedInit;
+    const fetchMock = vi.fn((_, init) => {
+      capturedInit = init;
+      return logPost;
+    });
+    globalThis.fetch = /** @type {typeof fetch} */ (/** @type {unknown} */ (fetchMock));
+    Object.defineProperty(globalThis, 'location', {
+      configurable: true,
+      value: {
+        href: 'https://www.dgst.me/board/free/write/abc',
+        pathname: '/board/free/write/abc',
+        search: ''
+      }
+    });
+    Object.defineProperty(globalThis, 'navigator', {
+      configurable: true,
+      value: { userAgent: 'vitest', platform: 'test', language: 'ko-KR' }
+    });
+
+    try {
+      reportClientError(new Error('Minified Lexical error #282'), {
+        type: 'lexical-editor-error',
+        phase: 'lexical-editor-runtime',
+        details: {
+          lexicalErrorCode: '282',
+          rootElementAudioCount: 1
+        }
+      });
+
+      const body = JSON.parse(String(capturedInit?.body ?? '{}'));
+      expect(body.details).toMatchObject({
+        lexicalErrorCode: '282',
+        rootElementAudioCount: 1
+      });
+      expect(body.phase).toBe('lexical-editor-runtime');
+    } finally {
+      globalThis.fetch = originalFetch;
+      Object.defineProperty(globalThis, 'location', {
+        configurable: true,
+        value: originalLocation
+      });
+      Object.defineProperty(globalThis, 'navigator', {
+        configurable: true,
+        value: originalNavigator
+      });
+    }
+  });
 });

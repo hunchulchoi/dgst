@@ -39,6 +39,7 @@
   import { mergeRegister } from '@lexical/utils';
   import { swalFire } from '$lib/util/swal.js';
   import { reportClientError } from '$lib/util/reportClientPageError.js';
+  import { createLexicalEditorFailureDetails } from '$lib/util/lexicalErrorDetails.js';
   import { BOARD_UPLOAD_MAX_BYTES, BOARD_UPLOAD_MAX_MB } from '$lib/util/uploadLimits.js';
 
   let {
@@ -564,11 +565,54 @@
     return lastSyncedEditorData;
   }
 
+  function collectLexicalEditorStateDetails() {
+    const currentEditor = editor;
+    if (!currentEditor) return { editorPresent: false };
+
+    /** @type {Record<string, unknown>} */
+    const details = {
+      editorPresent: true,
+      editorNamespace: currentEditor._config?.namespace,
+      editorEditable: currentEditor.isEditable()
+    };
+
+    try {
+      currentEditor.getEditorState().read(() => {
+        const root = getRoot();
+        const selection = getSelection();
+        details.lexicalRootChildren = root.getChildrenSize();
+        details.lexicalRootTextLength = root.getTextContent().length;
+        details.lexicalRootTextPreview = root.getTextContent().slice(0, 500);
+        details.lexicalSelectionType = selection?.constructor?.name ?? 'none';
+        details.lexicalSelectionTextLength = isRangeSelection(selection)
+          ? selection.getTextContent().length
+          : undefined;
+      });
+    } catch (snapshotError) {
+      details.lexicalSnapshotError =
+        snapshotError instanceof Error ? snapshotError.message : String(snapshotError);
+    }
+
+    return details;
+  }
+
   /**
    * @param {unknown} error
    * @param {string} phase
+   * @param {Record<string, unknown>} [eventDetails]
    */
-  async function notifyEditorFailure(error, phase) {
+  async function notifyEditorFailure(error, phase, eventDetails = {}) {
+    const details = createLexicalEditorFailureDetails({
+      error,
+      phase,
+      editorData,
+      lastSyncedEditorData,
+      isComposing,
+      rootElement: editorElement,
+      editorStateDetails: collectLexicalEditorStateDetails(),
+      eventDetails
+    });
+
     reportClientError(error, {
       type: phase === 'lexical-editor-init' ? 'lexical-editor-init-error' : 'lexical-editor-error',
       message: 'Lexical 에디터 초기화 실패',
@@ -576,7 +620,8 @@
       href: typeof location !== 'undefined' ? location.href : undefined,
       search: typeof location !== 'undefined' ? location.search : undefined,
       importTarget: '$lib/components/LexicalEditor.svelte',
-      phase
+      phase,
+      details
     });
 
     if (editorFailureAlertShown) return;
@@ -593,14 +638,22 @@
   function handleWindowError(event) {
     const error = event.error ?? event.message;
     if (!isLexicalFailure(error)) return;
-    void notifyEditorFailure(error, 'lexical-editor-window-error');
+    void notifyEditorFailure(error, 'lexical-editor-window-error', {
+      eventMessage: event.message,
+      eventFilename: event.filename,
+      eventLineno: event.lineno,
+      eventColno: event.colno
+    });
   }
 
   /** @param {PromiseRejectionEvent} event */
   function handleUnhandledRejection(event) {
     const error = event.reason;
     if (!isLexicalFailure(error)) return;
-    void notifyEditorFailure(error, 'lexical-editor-unhandled-rejection');
+    void notifyEditorFailure(error, 'lexical-editor-unhandled-rejection', {
+      rejectionReasonType: typeof event.reason,
+      rejectionReasonString: String(event.reason ?? '')
+    });
   }
 
   /** @param {HTMLElement} root */
