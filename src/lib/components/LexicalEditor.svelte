@@ -176,7 +176,9 @@
           )
         : undefined;
     const deviceMemory =
-      nav && 'deviceMemory' in nav ? /** @type {{ deviceMemory?: number }} */ (nav).deviceMemory : undefined;
+      nav && 'deviceMemory' in nav
+        ? /** @type {{ deviceMemory?: number }} */ (nav).deviceMemory
+        : undefined;
 
     return {
       online: nav?.onLine,
@@ -186,7 +188,8 @@
       connectionDownlink: connection?.downlink,
       connectionRtt: connection?.rtt,
       saveData: connection?.saveData,
-      crossOriginIsolated: typeof crossOriginIsolated !== 'undefined' ? crossOriginIsolated : undefined,
+      crossOriginIsolated:
+        typeof crossOriginIsolated !== 'undefined' ? crossOriginIsolated : undefined,
       webAssembly: typeof WebAssembly !== 'undefined',
       sharedArrayBuffer: typeof SharedArrayBuffer !== 'undefined',
       worker: typeof Worker !== 'undefined'
@@ -263,7 +266,10 @@
       nav && 'maxTouchPoints' in nav
         ? Number(/** @type {{ maxTouchPoints?: unknown }} */ (nav).maxTouchPoints)
         : 0;
-    return /iPad|iPhone|iPod/i.test(`${ua} ${platform}`) || (platform === 'MacIntel' && maxTouchPoints > 1);
+    return (
+      /iPad|iPhone|iPod/i.test(`${ua} ${platform}`) ||
+      (platform === 'MacIntel' && maxTouchPoints > 1)
+    );
   }
 
   function isSafariLikeClient() {
@@ -307,12 +313,10 @@
     const defaultServerCompressVideoDetails = {
       reason: 'ios-safari-webcodecs-preflight'
     };
-    const details =
-      serverCompressVideoContext ??
-      {
-        ...defaultServerCompressVideoDetails,
-        ...(await createServerVideoCompressionContext(file, DEFAULT_SERVER_VIDEO_COMPRESSION_REASON))
-      };
+    const details = serverCompressVideoContext ?? {
+      ...defaultServerCompressVideoDetails,
+      ...(await createServerVideoCompressionContext(file, DEFAULT_SERVER_VIDEO_COMPRESSION_REASON))
+    };
     reportClientError(new Error('Server video compression selected'), {
       level: 'warn',
       type: 'lexical-video-server-compression-selected',
@@ -541,7 +545,9 @@
       videoId = url.match(/youtu\.be\/([\w-]+)/)?.[1] || null;
     }
 
-    return videoId ? { src: `https://www.youtube.com/embed/${videoId}`, width, height, isShorts } : null;
+    return videoId
+      ? { src: `https://www.youtube.com/embed/${videoId}`, width, height, isShorts }
+      : null;
   }
 
   function syncEditorData() {
@@ -601,7 +607,7 @@
   function preserveMediaHtmlBlocks(root) {
     const candidates = Array.from(
       root.querySelectorAll(
-        '.og-card-blot, img, video, iframe, blockquote.instagram-media, blockquote.tiktok-embed'
+        '.og-card-blot, img, video, audio, iframe, blockquote.instagram-media, blockquote.tiktok-embed'
       )
     );
     const preserved = new Set();
@@ -780,15 +786,8 @@
 
     try {
       setUploadStatus('WebCodecs 압축 준비 중...');
-      const {
-        Input,
-        Output,
-        Conversion,
-        ALL_FORMATS,
-        BlobSource,
-        BufferTarget,
-        Mp4OutputFormat
-      } = await import('mediabunny');
+      const { Input, Output, Conversion, ALL_FORMATS, BlobSource, BufferTarget, Mp4OutputFormat } =
+        await import('mediabunny');
 
       const input = new Input({ source: new BlobSource(file), formats: ALL_FORMATS });
       try {
@@ -1079,16 +1078,7 @@
 
       ffmpeg.on?.('progress', progressHandler);
       try {
-        await ffmpeg.exec([
-          '-i',
-          'input.mp4',
-          '-vn',
-          '-c:a',
-          'aac',
-          '-b:a',
-          '96k',
-          'output.m4a'
-        ]);
+        await ffmpeg.exec(['-i', 'input.mp4', '-vn', '-c:a', 'aac', '-b:a', '96k', 'output.m4a']);
       } finally {
         ffmpeg.off?.('progress', progressHandler);
       }
@@ -1354,14 +1344,23 @@
                 file,
                 'client-compression-did-not-produce-upload-file'
               ));
-            formData.set('serverCompressVideoReason', String(serverCompressVideoContext.reason ?? 'unknown'));
-            formData.set('serverCompressVideoClient', JSON.stringify({
+            formData.set(
+              'serverCompressVideoReason',
+              String(serverCompressVideoContext.reason ?? 'unknown')
+            );
+            formData.set(
+              'serverCompressVideoClient',
+              JSON.stringify({
                 client: serverCompressVideoContext.client,
                 device: serverCompressVideoContext.device,
                 removeVideoAudio,
                 extractVideoAudio
-              }));
-            formData.set('serverCompressVideoWebCodecs', JSON.stringify(serverCompressVideoContext.webCodecs ?? null));
+              })
+            );
+            formData.set(
+              'serverCompressVideoWebCodecs',
+              JSON.stringify(serverCompressVideoContext.webCodecs ?? null)
+            );
           }
 
           const response = await fetch('/board/upload', {
@@ -1411,7 +1410,7 @@
           ? 'lexical-video-upload-failed'
           : failedUploadFile?.type.startsWith('audio/')
             ? 'lexical-audio-upload-failed'
-          : 'lexical-file-upload-failed';
+            : 'lexical-file-upload-failed';
       reportClientError(error, {
         type: uploadFailureType,
         message: 'Lexical file upload failed',

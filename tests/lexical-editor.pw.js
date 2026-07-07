@@ -120,6 +120,26 @@ test('Lexical editor smoke route mounts and syncs typed content', async ({ page 
   await expect(page.locator('[data-testid="editor-html"]')).toContainText('hello lexical smoke');
 });
 
+test('Lexical editor mounts with saved media html initial content', async ({ page }) => {
+  const editor = await gotoSmokeEditor(page, {
+    initialHtml:
+      '<p>before</p><div class="og-card-blot" data-url="https://example.com" contenteditable="false"><a href="https://example.com">Example</a></div><p><img src="/favicon.png" alt="saved image"></p><p>after</p>'
+  });
+
+  await expect(editor).toContainText('before');
+  await expect(page.locator('[data-testid="editor-html"]')).toContainText('og-card-blot');
+  await expect(page.locator('[data-testid="editor-html"]')).toContainText('saved image');
+});
+
+test('Lexical editor mounts with saved audio html initial content', async ({ page }) => {
+  const editor = await gotoSmokeEditor(page, {
+    initialHtml: '<p>before</p><audio src="/audio/test.mp3" controls></audio><p>after</p>'
+  });
+
+  await expect(editor).toContainText('before');
+  await expect(page.locator('[data-testid="editor-html"]')).toContainText('audio');
+});
+
 test('Lexical editor renders Enter-created paragraphs with normal line spacing', async ({
   page
 }) => {

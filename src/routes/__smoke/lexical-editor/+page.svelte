@@ -1,6 +1,7 @@
 <script>
-  import { onMount } from 'svelte';
   import LexicalEditor from '$lib/components/LexicalEditor.svelte';
+
+  let { data } = $props();
 
   let editorData = $state('');
   let insertUrlFromTitle = $state(null);
@@ -18,11 +19,9 @@
     loading = value;
   }
 
-  onMount(() => {
-    const initialHtml = new URLSearchParams(window.location.search).get('initialHtml');
-    if (initialHtml) {
-      editorData = initialHtml;
-    }
+  $effect.pre(() => {
+    if (!data.initialHtml || editorData) return;
+    editorData = data.initialHtml;
   });
 </script>
 
