@@ -140,6 +140,17 @@ test('Lexical editor mounts with saved audio html initial content', async ({ pag
   await expect(page.locator('[data-testid="editor-html"]')).toContainText('audio');
 });
 
+test('Lexical editor wraps saved top-level inline html initial content', async ({ page }) => {
+  const editor = await gotoSmokeEditor(page, {
+    initialHtml:
+      '<p></p><div><img src="/images/jjal/2026/7/7/8pljdvk9_image_1783422625196.webp" alt="" style="max-width:100%;display:block;margin:1em 0" /></div><span>꽃좀 보자</span><p></p>'
+  });
+
+  await expect(editor).toContainText('꽃좀 보자');
+  await expect(page.locator('.swal2-container')).toHaveCount(0);
+  await expect(page.locator('[data-testid="editor-html"]')).toContainText('꽃좀 보자');
+});
+
 test('Lexical editor renders Enter-created paragraphs with normal line spacing', async ({
   page
 }) => {

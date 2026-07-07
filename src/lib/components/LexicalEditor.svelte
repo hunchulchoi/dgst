@@ -5,6 +5,8 @@
     $getRoot as getRoot,
     $getSelection as getSelection,
     $insertNodes as insertNodes,
+    $isDecoratorNode as isDecoratorNode,
+    $isElementNode as isElementNode,
     $isRangeSelection as isRangeSelection,
     COMMAND_PRIORITY_LOW,
     DecoratorNode,
@@ -551,6 +553,42 @@
       : null;
   }
 
+  /** @param {import('lexical').LexicalNode} node */
+  function canAppendToRoot(node) {
+    if (isElementNode(node)) return !node.isInline();
+    if (isDecoratorNode(node)) return !node.isInline();
+    return false;
+  }
+
+  /** @param {import('lexical').LexicalNode[]} nodes */
+  function normalizeGeneratedNodesForRoot(nodes) {
+    /** @type {import('lexical').LexicalNode[]} */
+    const normalized = [];
+    /** @type {ReturnType<typeof createParagraphNode> | null} */
+    let paragraph = null;
+
+    function flushParagraph() {
+      if (paragraph && paragraph.getChildrenSize() > 0) {
+        normalized.push(paragraph);
+      }
+      paragraph = null;
+    }
+
+    for (const node of nodes) {
+      if (canAppendToRoot(node)) {
+        flushParagraph();
+        normalized.push(node);
+        continue;
+      }
+
+      if (!paragraph) paragraph = createParagraphNode();
+      paragraph.append(node);
+    }
+
+    flushParagraph();
+    return normalized;
+  }
+
   function syncEditorData() {
     const currentEditor = editor;
     if (!currentEditor) return;
@@ -697,7 +735,7 @@
         const dom = parser.parseFromString(value, 'text/html');
         preserveMediaHtmlBlocks(dom.body);
         const nodes = generateNodesFromDOM(currentEditor, dom);
-        root.append(...nodes);
+        root.append(...normalizeGeneratedNodesForRoot(nodes));
       }
       if (root.getChildrenSize() === 0) {
         root.append(createParagraphNode());
