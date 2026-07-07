@@ -41,9 +41,13 @@ describe('game ranking UI', () => {
 
   it('keeps sudoku timer stopped until the start button is pressed', () => {
     expect(sudokuPage).toContain('function resetGame(');
+    expect(sudokuPage).toContain('function hasGameProgress(): boolean');
+    expect(sudokuPage).toContain('function changeDifficulty(nextDifficulty: Difficulty)');
     expect(sudokuPage).toContain("'게임을 새로 시작하시겠습니까?'");
     expect(sudokuPage).toContain("'게임을 중지하고 난이도를 변경하시겠습니까?'");
-    expect(sudokuPage).toContain("reason === 'difficulty' && started && !gameWon");
+    expect(sudokuPage).toContain("reason === 'difficulty' && hasGameProgress()");
+    expect(sudokuPage).toContain("resetGame(nextDifficulty, hasGameProgress(), 'difficulty');");
+    expect(sudokuPage).toContain('onclick={() => changeDifficulty(key)}');
     expect(sudokuPage).toContain('started = false;');
     expect(sudokuPage).toContain('function startGame()');
     expect(sudokuPage).toContain('canResume = Boolean(saved.started) && !gameWon;');

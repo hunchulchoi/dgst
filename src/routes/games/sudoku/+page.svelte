@@ -191,7 +191,7 @@
   ) {
     if (confirmReset && browser) {
       const message =
-        reason === 'difficulty' && started && !gameWon
+        reason === 'difficulty' && hasGameProgress()
           ? '게임을 중지하고 난이도를 변경하시겠습니까?'
           : '게임을 새로 시작하시겠습니까?';
       if (!window.confirm(message)) return;
@@ -214,6 +214,20 @@
     started = false;
     saveState();
     if (isLoggedIn) void loadRank();
+  }
+
+  function hasGameProgress(): boolean {
+    if (gameWon) return false;
+    if (started || canResume || elapsed > 0 || mistakes > 0) return true;
+    if (notesGrid.some((row) => row.some((value) => value !== 0))) return true;
+    return userGrid.some((row, rowIndex) =>
+      row.some((value, colIndex) => value !== puzzle[rowIndex][colIndex])
+    );
+  }
+
+  function changeDifficulty(nextDifficulty: Difficulty) {
+    if (nextDifficulty === difficulty && !hasGameProgress()) return;
+    resetGame(nextDifficulty, hasGameProgress(), 'difficulty');
   }
 
   function startGame() {
@@ -602,7 +616,7 @@
             type="button"
             class="btn btn-outline-primary"
             class:active={difficulty === key}
-            onclick={() => resetGame(key, true, 'difficulty')}
+            onclick={() => changeDifficulty(key)}
           >
             {config.label}
           </button>
