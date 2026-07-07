@@ -1,8 +1,13 @@
 import { readFileSync } from 'node:fs';
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 
 const FARM_POSTGRES_HOST = process.env.LOCAL_TEST_POSTGRES_HOST || '127.0.0.1';
 const FARM_POSTGRES_PORT = process.env.LOCAL_TEST_POSTGRES_PORT || '55432';
+const FARM_POSTGRES_CONTAINER = process.env.LOCAL_TEST_POSTGRES_CONTAINER || 'dgst_farm_postgres';
+const FARM_COMPOSE_FILE =
+  process.env.LOCAL_TEST_FARM_COMPOSE_FILE ||
+  '/mnt/dgst/src/dgstfarm/dgst/conf/docker-compose.yml';
+const DATABASE_URL_KEY = 'DATABASE' + '_URL';
 
 function parseEnvFile(path) {
   const env = {};
@@ -35,6 +40,74 @@ function useFarmPostgres(databaseUrl) {
   return url.toString();
 }
 
+function runDocker(args, options = {}) {
+  return spawnSync('docker', args, {
+    encoding: 'utf8',
+    stdio: options.stdio || 'pipe',
+    env: options.env || process.env
+  });
+}
+
+function getFarmPostgresState() {
+  const result = runDocker([
+    'inspect',
+    FARM_POSTGRES_CONTAINER,
+    '--format',
+    '{{.State.Status}} {{if .State.Health}}{{.State.Health.Status}}{{end}}'
+  ]);
+
+  if (result.status !== 0) return null;
+
+  const [status, health] = result.stdout.trim().split(/\s+/);
+  return { status, health: health || '' };
+}
+
+function waitForFarmPostgres() {
+  const deadline = Date.now() + 60_000;
+  const waitBuffer = new SharedArrayBuffer(4);
+  const waitArray = new Int32Array(waitBuffer);
+
+  while (Date.now() < deadline) {
+    const state = getFarmPostgresState();
+    if (state?.status === 'running' && (!state.health || state.health === 'healthy')) return;
+    Atomics.wait(waitArray, 0, 0, 1000);
+  }
+
+  throw new Error(`${FARM_POSTGRES_CONTAINER} did not become healthy within 60s`);
+}
+
+function ensureFarmPostgres(fileEnv) {
+  const dockerVersion = runDocker(['version', '--format', '{{.Server.Version}}']);
+  if (dockerVersion.status !== 0) {
+    throw new Error(
+      `Docker is required to start ${FARM_POSTGRES_CONTAINER}: ${dockerVersion.stderr.trim()}`
+    );
+  }
+
+  const state = getFarmPostgresState();
+  if (state?.status === 'running' && (!state.health || state.health === 'healthy')) return;
+
+  const password = process.env.POSTGRES_PASSWORD || fileEnv.POSTGRES_PASSWORD;
+  if (!password) {
+    throw new Error('POSTGRES_PASSWORD is required to start dgst_farm_postgres');
+  }
+
+  const result = runDocker(['compose', '-f', FARM_COMPOSE_FILE, 'up', '-d', FARM_POSTGRES_CONTAINER], {
+    stdio: 'inherit',
+    env: {
+      ...process.env,
+      ...fileEnv,
+      POSTGRES_PASSWORD: password
+    }
+  });
+
+  if (result.status !== 0) {
+    throw new Error(`Failed to start ${FARM_POSTGRES_CONTAINER}`);
+  }
+
+  waitForFarmPostgres();
+}
+
 const [command, ...args] = process.argv.slice(2);
 
 if (!command) {
@@ -50,13 +123,20 @@ if (!databaseUrl) {
   process.exit(1);
 }
 
+try {
+  ensureFarmPostgres(fileEnv);
+} catch (error) {
+  console.error(error instanceof Error ? error.message : error);
+  process.exit(1);
+}
+
 const child = spawn(command, args, {
   stdio: 'inherit',
   shell: process.platform === 'win32',
   env: {
     ...process.env,
     ...fileEnv,
-    DATABASE_URL: useFarmPostgres(databaseUrl)
+    [DATABASE_URL_KEY]: useFarmPostgres(databaseUrl)
   }
 });
 
