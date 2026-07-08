@@ -1,5 +1,8 @@
 <script lang="ts">
+  import { resolve } from '$app/paths';
   import { onMount } from 'svelte';
+  import { ko } from 'date-fns/locale';
+  import { formatRelativeTime } from '$lib/util/formatRelativeTime.js';
   import type { PageData } from './$types';
   import {
     calculateHardDropScore,
@@ -54,9 +57,18 @@
   let soundEnabled = $state(true);
   let dropInterval = $state<ReturnType<typeof setInterval> | null>(null);
   let stageClearTimeout: ReturnType<typeof setTimeout> | null = null;
+  let rankList = $state<
+    Array<{ nickname: string; score: number; stage?: number; createdAt?: string; _id?: string }>
+  >([]);
+  let myBestScore = $state<number | null>(null);
+  let myBestStage = $state<number | null>(null);
+  let myBestCreatedAt = $state<string | null>(null);
+  let todayStats = $state<{ games: number; users: number }>({ games: 0, users: 0 });
+  let rankLoading = $state(false);
 
   const STORAGE_KEY = 'dgst_tetris_state';
   const SOUND_PREF_KEY = 'dgst_tetris_sound';
+  const isLoggedIn = $derived(!!data.session?.user?.email);
 
   const stageConfig = $derived(getStageConfig(stage));
   const stageProgress = $derived(Math.min(100, (stageLines / stageConfig.linesTarget) * 100));
@@ -116,9 +128,19 @@
     activePiece = null;
     screen = 'playing';
     if (!spawnFromQueue()) {
-      screen = 'gameOver';
+      endGameOver();
+      return;
     }
     startDropTimer();
+    if (isLoggedIn) void logGameStart();
+  }
+
+  /** 게임오버 공통 처리 */
+  function endGameOver() {
+    stopDropTimer();
+    screen = 'gameOver';
+    playTetrisSound('over', soundEnabled);
+    if (isLoggedIn) void submitGameScore(score, stage);
   }
 
   function startDropTimer() {
@@ -172,9 +194,7 @@
     }
 
     if (!spawnFromQueue()) {
-      stopDropTimer();
-      screen = 'gameOver';
-      playTetrisSound('over', soundEnabled);
+      endGameOver();
     }
   }
 
@@ -198,6 +218,7 @@
       screen = 'gameWin';
       activePiece = null;
       playTetrisSound('win', soundEnabled);
+      if (isLoggedIn) void submitGameScore(score, STAGES.length);
       return;
     }
     stage = nextStage;
@@ -208,10 +229,75 @@
     activePiece = null;
     screen = 'playing';
     if (!spawnFromQueue()) {
-      screen = 'gameOver';
+      endGameOver();
       return;
     }
     startDropTimer();
+  }
+
+  async function loadRank() {
+    rankLoading = true;
+    try {
+      const res = await fetch(`/games/tetris?rank=1&_=${Date.now()}`, { cache: 'no-store' });
+      if (res.ok) {
+        const j = await res.json();
+        rankList = j.rank ?? [];
+        if (j.myBest && typeof j.myBest === 'object') {
+          myBestScore = j.myBest.score != null ? Number(j.myBest.score) : null;
+          myBestStage = j.myBest.stage != null ? Number(j.myBest.stage) : null;
+          myBestCreatedAt = j.myBest.createdAt ?? null;
+        } else {
+          myBestScore = null;
+          myBestStage = null;
+          myBestCreatedAt = null;
+        }
+        if (
+          j.todayStats &&
+          typeof j.todayStats.games === 'number' &&
+          typeof j.todayStats.users === 'number'
+        ) {
+          todayStats = { games: j.todayStats.games, users: j.todayStats.users };
+        }
+      }
+    } catch {
+      rankList = [];
+      myBestScore = null;
+      myBestStage = null;
+      myBestCreatedAt = null;
+      todayStats = { games: 0, users: 0 };
+    } finally {
+      rankLoading = false;
+    }
+  }
+
+  async function logGameStart() {
+    try {
+      await fetch('/games/tetris', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'start' })
+      });
+    } catch (err) {
+      console.error('[tetris start log failed]', err);
+    }
+  }
+
+  async function submitGameScore(finalScore: number, finalStage: number) {
+    if (!isLoggedIn || finalScore <= 0) return;
+    try {
+      const res = await fetch('/games/tetris', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ score: finalScore, stage: finalStage })
+      });
+      if (res.ok) await loadRank();
+    } catch (err) {
+      console.error('[tetris score submit failed]', err);
+    }
+  }
+
+  function formatScore(n: number): string {
+    return n >= 1000 ? (n / 1000).toFixed(1).replace(/\.0$/, '') + 'k' : String(n);
   }
 
   function softDrop() {
@@ -252,9 +338,7 @@
     if (holdPiece === null) {
       holdPiece = currentType;
       if (!spawnFromQueue(false)) {
-        stopDropTimer();
-        screen = 'gameOver';
-        playTetrisSound('over', soundEnabled);
+        endGameOver();
       }
       canHold = false;
       return;
@@ -454,6 +538,10 @@
   });
 
   $effect(() => {
+    if (isLoggedIn) loadRank();
+  });
+
+  $effect(() => {
     if (screen === 'playing' || screen === 'paused') {
       saveState();
     }
@@ -474,7 +562,7 @@
 
 <div class="tetris-page container py-3 py-md-4">
   <div class="row justify-content-center g-3">
-    <div class="col-12 col-lg-7 col-xl-6">
+    <div class="col-12 col-md-8 col-lg-7 col-xl-6">
       <div class="card shadow rounded-4 tetris-card">
         <div class="card-body p-3 p-md-4">
           {#if screen === 'menu'}
@@ -585,14 +673,20 @@
                   {#if screen === 'gameOver'}
                     <div class="tetris-overlay tetris-overlay-over">
                       <p class="tetris-overlay-title">게임 오버</p>
-                      <p class="small mb-2">Stage {stage} · {score.toLocaleString()}점</p>
+                      <p class="small mb-2">
+                        Stage {stage} · {score.toLocaleString()}점
+                        {#if isLoggedIn}<span class="d-block text-white-50">랭킹에 반영됨</span>{/if}
+                      </p>
                       <button type="button" class="btn btn-primary btn-sm" onclick={startGame}>다시 하기</button>
                     </div>
                   {/if}
                   {#if screen === 'gameWin'}
                     <div class="tetris-overlay tetris-overlay-win">
                       <p class="tetris-overlay-title">🎉 전체 클리어!</p>
-                      <p class="small mb-2">{score.toLocaleString()}점 · {totalLines}줄</p>
+                      <p class="small mb-2">
+                        {score.toLocaleString()}점 · {totalLines}줄
+                        {#if isLoggedIn}<span class="d-block text-white-50">랭킹에 반영됨</span>{/if}
+                      </p>
                       <button type="button" class="btn btn-warning btn-sm" onclick={startGame}>다시 도전</button>
                     </div>
                   {/if}
@@ -712,6 +806,64 @@
                 </button>
               </div>
             </div>
+          {/if}
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-md-4 col-lg-3">
+      <div class="card shadow rounded-4">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="mb-0">랭킹 Top 10</h5>
+            {#if isLoggedIn}
+              <button
+                class="btn btn-sm btn-outline-secondary"
+                onclick={loadRank}
+                disabled={rankLoading}
+                aria-label="랭킹 새로고침"
+              >
+                🔄
+              </button>
+            {:else}
+              <a href={resolve('/login')} class="btn btn-sm btn-outline-primary">로그인</a>
+            {/if}
+          </div>
+          <p class="small text-muted mb-1">전체 기간 1인 1최고점</p>
+          <p class="small text-muted mb-2">
+            오늘 참여 <strong>{todayStats.users}</strong>명 · 게임 <strong>{todayStats.games}</strong>회
+          </p>
+          {#if isLoggedIn}
+            <p class="small mb-2">
+              내 최고: {myBestScore != null ? formatScore(myBestScore) : '—'}
+              {#if myBestStage != null && myBestStage > 0}
+                <span class="text-muted">· Stage {myBestStage}</span>
+              {/if}
+              {#if myBestCreatedAt}
+                <span class="text-muted d-block">
+                  {formatRelativeTime(myBestCreatedAt, { locale: ko, addSuffix: true })}
+                </span>
+              {/if}
+            </p>
+            <ol class="list-group list-group-numbered">
+              {#each rankList as r (r._id ?? `${r.nickname}:${r.score}`)}
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                  <span>{r.nickname}</span>
+                  <span class="text-end">
+                    <span class="fw-bold font-monospace">{formatScore(r.score)}</span>
+                    {#if r.stage != null && r.stage > 0}
+                      <span class="small text-muted"> · S{r.stage}</span>
+                    {/if}
+                    {#if r.createdAt}
+                      <span class="small text-muted d-block">
+                        {formatRelativeTime(r.createdAt, { locale: ko, addSuffix: true })}
+                      </span>
+                    {/if}
+                  </span>
+                </li>
+              {/each}
+            </ol>
+          {:else}
+            <p class="small text-muted">로그인하면 랭킹을 볼 수 있어요.</p>
           {/if}
         </div>
       </div>

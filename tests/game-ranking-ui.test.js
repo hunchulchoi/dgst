@@ -7,10 +7,11 @@ const minesweeperPage = readFileSync('src/routes/games/minesweeper/+page.svelte'
 const slotPage = readFileSync('src/routes/games/slot/+page.svelte', 'utf8');
 const sudokuPage = readFileSync('src/routes/games/sudoku/+page.svelte', 'utf8');
 const billiardsPage = readFileSync('src/routes/games/billiards/+page.svelte', 'utf8');
+const tetrisPage = readFileSync('src/routes/games/tetris/+page.svelte', 'utf8');
 
 describe('game ranking UI', () => {
-  it('shows all-time rankings with relative score timestamps for 2048, watermelon, and minesweeper', () => {
-    for (const page of [game2048Page, watermelonPage, minesweeperPage]) {
+  it('shows all-time rankings with relative score timestamps for 2048, watermelon, minesweeper, and tetris', () => {
+    for (const page of [game2048Page, watermelonPage, minesweeperPage, tetrisPage]) {
       expect(page).toContain('전체 기간');
       expect(page).toContain('formatRelativeTime');
       expect(page).not.toContain('3일 내');

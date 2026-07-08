@@ -17,6 +17,10 @@ const statsMinesweeper = vi.hoisted(() => ({
   getTodayMinesweeperStats: vi.fn()
 }));
 
+const statsTetris = vi.hoisted(() => ({
+  getTodayTetrisStats: vi.fn()
+}));
+
 const slotStats = vi.hoisted(() => ({
   getTodaySlotStats: vi.fn()
 }));
@@ -25,6 +29,7 @@ vi.mock('$lib/database/prisma.js', () => prismaModule);
 vi.mock('$lib/server/game2048Stats.js', () => stats2048);
 vi.mock('$lib/server/gameWatermelonStats.js', () => statsWatermelon);
 vi.mock('$lib/server/gameMinesweeperStats.js', () => statsMinesweeper);
+vi.mock('$lib/server/gameTetrisStats.js', () => statsTetris);
 vi.mock('$lib/server/slotStats.js', () => slotStats);
 
 describe('game ranking routes', () => {
@@ -34,6 +39,7 @@ describe('game ranking routes', () => {
     stats2048.getToday2048Stats.mockResolvedValue({ games: 0, users: 0 });
     statsWatermelon.getTodayWatermelonStats.mockResolvedValue({ games: 0, users: 0 });
     statsMinesweeper.getTodayMinesweeperStats.mockResolvedValue({ games: 0, users: 0 });
+    statsTetris.getTodayTetrisStats.mockResolvedValue({ games: 0, users: 0 });
     slotStats.getTodaySlotStats.mockResolvedValue({ spins: 0, users: 0 });
   });
 
@@ -308,6 +314,80 @@ describe('game ranking routes', () => {
     expect(findUnique).toHaveBeenCalledWith({
       where: { email: 'me@example.com' },
       select: { balance: true, updatedAt: true }
+    });
+  });
+
+  it('loads tetris all-time per-user best scores from game_logs', async () => {
+    const queryRaw = vi
+      .fn()
+      .mockResolvedValueOnce([
+        {
+          email: 'tetris@example.com',
+          nickname: 'block',
+          score: 4200,
+          stage: 10,
+          createdAt: new Date('2026-06-08T12:00:00.000Z')
+        }
+      ])
+      .mockResolvedValueOnce([
+        {
+          score: 3500,
+          stage: 8,
+          createdAt: new Date('2026-06-07T12:00:00.000Z')
+        }
+      ]);
+    const create = vi.fn();
+    prismaModule.getPrisma.mockReturnValue({
+      $queryRaw: queryRaw,
+      gameLog: { create }
+    });
+
+    const { GET, POST } = await import('../src/routes/games/tetris/+server.js');
+    const response = await GET({
+      locals: { auth: vi.fn().mockResolvedValue({ user: { email: 'me@example.com' } }) },
+      url: new URL('https://dgst.me/games/tetris?rank=1')
+    });
+    const body = await response.json();
+
+    expect(body.rank).toEqual([
+      {
+        _id: 'tetris@example.com',
+        nickname: 'block',
+        score: 4200,
+        stage: 10,
+        createdAt: '2026-06-08T12:00:00.000Z'
+      }
+    ]);
+    expect(body.myBest).toEqual({
+      score: 3500,
+      stage: 8,
+      createdAt: '2026-06-07T12:00:00.000Z'
+    });
+    const sql = queryRaw.mock.calls[0][0].join(' ');
+    expect(sql).toContain('game_logs');
+    expect(sql).toContain('PARTITION BY email');
+
+    const postResponse = await POST({
+      locals: {
+        auth: vi.fn().mockResolvedValue({
+          user: { email: 'me@example.com', nickname: 'me' }
+        })
+      },
+      request: new Request('https://dgst.me/games/tetris', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ score: 1200, stage: 5 })
+      })
+    });
+    const postBody = await postResponse.json();
+    expect(postBody.success).toBe(true);
+    expect(create).toHaveBeenCalledWith({
+      data: {
+        game: 'tetris',
+        action: 'score',
+        email: 'me@example.com',
+        meta: { nickname: 'me', score: 1200, stage: 5 }
+      }
     });
   });
 });
