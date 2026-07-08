@@ -385,6 +385,56 @@
   /** 모바일 버튼 연타 방지 */
   let touchLock = $state(false);
   let boardWrapEl = $state<HTMLDivElement | null>(null);
+  let dragZoneEl = $state<HTMLDivElement | null>(null);
+  let dragAnchorX = 0;
+  let isDragging = $state(false);
+  const DRAG_STEP_PX = 26;
+
+  function canUseTouchControls(): boolean {
+    return screen === 'playing' || screen === 'paused';
+  }
+
+  function handleDragTouchStart(e: TouchEvent) {
+    if (!canUseTouchControls() || !e.touches.length) return;
+    dragAnchorX = e.touches[0].clientX;
+    isDragging = true;
+  }
+
+  function handleDragTouchMove(e: TouchEvent) {
+    if (!isDragging || !canUseTouchControls() || !e.touches.length) return;
+    e.preventDefault();
+    const x = e.touches[0].clientX;
+    let diff = x - dragAnchorX;
+    while (diff >= DRAG_STEP_PX) {
+      runGameAction(() => moveHorizontal(1));
+      dragAnchorX += DRAG_STEP_PX;
+      diff = x - dragAnchorX;
+    }
+    while (diff <= -DRAG_STEP_PX) {
+      runGameAction(() => moveHorizontal(-1));
+      dragAnchorX -= DRAG_STEP_PX;
+      diff = x - dragAnchorX;
+    }
+  }
+
+  function handleDragTouchEnd() {
+    isDragging = false;
+  }
+
+  function bindDragListeners(el: HTMLDivElement | null) {
+    if (!el) return () => {};
+    const onMove = (e: TouchEvent) => handleDragTouchMove(e);
+    el.addEventListener('touchstart', handleDragTouchStart, { passive: true });
+    el.addEventListener('touchmove', onMove, { passive: false });
+    el.addEventListener('touchend', handleDragTouchEnd, { passive: true });
+    el.addEventListener('touchcancel', handleDragTouchEnd, { passive: true });
+    return () => {
+      el.removeEventListener('touchstart', handleDragTouchStart);
+      el.removeEventListener('touchmove', onMove);
+      el.removeEventListener('touchend', handleDragTouchEnd);
+      el.removeEventListener('touchcancel', handleDragTouchEnd);
+    };
+  }
 
   async function focusBoard() {
     await tick();
@@ -728,6 +778,13 @@
       saveState();
     }
   });
+
+  $effect(() => {
+    const cleanups = [bindDragListeners(boardWrapEl), bindDragListeners(dragZoneEl)];
+    return () => {
+      for (const cleanup of cleanups) cleanup();
+    };
+  });
 </script>
 
 <svelte:window onkeydown={handleKeydown} />
@@ -947,61 +1004,42 @@
             <div class="tetris-controls mt-3" aria-label="터치 조작">
               <div class="tetris-controls-split">
                 <div class="tetris-controls-left">
-                  <div class="tetris-controls-row">
-                    <button
-                      type="button"
-                      class="tetris-btn"
-                      aria-label="왼쪽"
-                      onclick={() => withTouchLock(() => moveHorizontal(-1))}
-                    >
-                      ◀
-                    </button>
-                    <button
-                      type="button"
-                      class="tetris-btn"
-                      aria-label="아래"
-                      onclick={() => withTouchLock(softDrop)}
-                    >
-                      ▼
-                    </button>
-                    <button
-                      type="button"
-                      class="tetris-btn"
-                      aria-label="오른쪽"
-                      onclick={() => withTouchLock(() => moveHorizontal(1))}
-                    >
-                      ▶
-                    </button>
+                  <div
+                    class="tetris-drag-zone"
+                    class:tetris-drag-zone-active={isDragging}
+                    bind:this={dragZoneEl}
+                    aria-label="좌우 드래그로 이동"
+                  >
+                    <span class="tetris-drag-zone-label">← 드래그 →</span>
+                    <span class="tetris-drag-zone-hint">보드에서도 드래그 가능</span>
                   </div>
-                  <div class="tetris-controls-row">
-                    <button
-                      type="button"
-                      class="tetris-btn tetris-btn-hold"
-                      class:tetris-btn-disabled={!canHold}
-                      aria-label="홀드"
-                      disabled={!canHold}
-                      onclick={() => withTouchLock(holdPieceAction)}
-                    >
-                      H
-                    </button>
-                    <button
-                      type="button"
-                      class="tetris-btn tetris-btn-drop tetris-btn-wide"
-                      aria-label="하드 드롭"
-                      onclick={() => withTouchLock(dropHard)}
-                    >
-                      ⬇
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    class="tetris-btn tetris-btn-hold"
+                    class:tetris-btn-disabled={!canHold}
+                    aria-label="홀드"
+                    disabled={!canHold}
+                    onclick={() => withTouchLock(holdPieceAction)}
+                  >
+                    H 홀드
+                  </button>
                 </div>
                 <div class="tetris-controls-right">
                   <button
                     type="button"
-                    class="tetris-btn tetris-btn-rotate tetris-btn-rotate-main"
+                    class="tetris-btn tetris-btn-rotate"
                     aria-label="회전"
                     onclick={() => withTouchLock(rotatePieceAction)}
                   >
                     ↻
+                  </button>
+                  <button
+                    type="button"
+                    class="tetris-btn tetris-btn-drop"
+                    aria-label="떨어뜨리기"
+                    onclick={() => withTouchLock(softDrop)}
+                  >
+                    ▼
                   </button>
                 </div>
               </div>
@@ -1098,6 +1136,7 @@
     flex: 1 1 auto;
     max-width: min(100%, 320px);
     outline: none;
+    touch-action: none;
   }
 
   .tetris-board-wrap:focus-visible {
@@ -1255,7 +1294,42 @@
   .tetris-controls-right {
     flex: 0.85;
     display: flex;
+    flex-direction: column;
+    gap: 8px;
     min-width: 0;
+  }
+
+  .tetris-drag-zone {
+    flex: 1;
+    min-height: 116px;
+    border: 2px dashed #9ca3af;
+    border-radius: 12px;
+    background: #f9fafb;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    transition: background 0.12s ease, border-color 0.12s ease;
+  }
+
+  .tetris-drag-zone-active {
+    background: #eef2ff;
+    border-color: #6366f1;
+  }
+
+  .tetris-drag-zone-label {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #374151;
+  }
+
+  .tetris-drag-zone-hint {
+    font-size: 0.7rem;
+    color: #9ca3af;
   }
 
   .tetris-controls-row {
@@ -1295,23 +1369,18 @@
 
   .tetris-btn-rotate {
     background: #4b5563;
-  }
-
-  .tetris-btn-rotate-main {
     flex: 1;
-    width: 100%;
-    min-height: 116px;
+    min-height: 54px;
     max-width: none;
     font-size: 2rem;
   }
 
-  .tetris-btn-wide {
-    flex: 1.6;
-    max-width: none;
-  }
-
   .tetris-btn-drop {
     background: #b45309;
+    flex: 1;
+    min-height: 54px;
+    max-width: none;
+    font-size: 1.6rem;
   }
 
   .tetris-btn-drop:active {
@@ -1319,9 +1388,10 @@
   }
 
   .tetris-btn-hold {
-    flex: 1;
+    min-height: 48px;
     max-width: none;
     background: #6366f1;
+    font-size: 1rem;
   }
 
   .tetris-btn-hold:active {
@@ -1351,9 +1421,8 @@
       min-height: 56px;
     }
 
-    .tetris-btn-rotate-main {
+    .tetris-drag-zone {
       min-height: 128px;
-      font-size: 2.25rem;
     }
   }
 </style>

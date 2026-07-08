@@ -9,6 +9,58 @@ async function clearTetrisSave(page) {
 /** 일시정지 오버레이 */
 const pauseOverlay = (page) => page.locator('.tetris-overlay-title', { hasText: '일시정지' });
 
+/** 터치 드래그로 좌우 이동 시뮬레이션 */
+async function dragHorizontal(page, selector, deltaPx) {
+  await page.locator(selector).evaluate((el, delta) => {
+    const rect = el.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    const endX = cx + delta;
+    const makeTouch = (x) =>
+      new Touch({
+        identifier: 0,
+        target: el,
+        clientX: x,
+        clientY: cy,
+        pageX: x,
+        pageY: cy,
+        radiusX: 1,
+        radiusY: 1,
+        rotationAngle: 0,
+        force: 1
+      });
+    const start = makeTouch(cx);
+    const end = makeTouch(endX);
+    el.dispatchEvent(
+      new TouchEvent('touchstart', {
+        bubbles: true,
+        cancelable: true,
+        touches: [start],
+        targetTouches: [start],
+        changedTouches: [start]
+      })
+    );
+    el.dispatchEvent(
+      new TouchEvent('touchmove', {
+        bubbles: true,
+        cancelable: true,
+        touches: [end],
+        targetTouches: [end],
+        changedTouches: [end]
+      })
+    );
+    el.dispatchEvent(
+      new TouchEvent('touchend', {
+        bubbles: true,
+        cancelable: true,
+        touches: [],
+        targetTouches: [],
+        changedTouches: [end]
+      })
+    );
+  }, deltaPx);
+}
+
 /** 보드에 채워진 셀 좌표 목록 */
 async function getFilledCellPositions(page) {
   return page.evaluate(() => {
@@ -37,12 +89,12 @@ test.describe('tetris smoke', () => {
     await expect(page.locator('.tetris-cell-filled:not(.tetris-cell-ghost)').first()).toBeVisible();
   });
 
-  test('control buttons move active piece', async ({ page }) => {
+  test('touch drag moves active piece', async ({ page }) => {
     await page.getByRole('button', { name: '시작' }).click();
     await expect(page.locator('.tetris-cell-filled:not(.tetris-cell-ghost)').first()).toBeVisible();
 
     const before = await getFilledCellPositions(page);
-    await page.getByRole('button', { name: '오른쪽' }).click();
+    await dragHorizontal(page, '.tetris-board-wrap', 40);
     await page.waitForTimeout(120);
 
     const after = await getFilledCellPositions(page);
@@ -50,7 +102,7 @@ test.describe('tetris smoke', () => {
     expect(after).not.toEqual(before);
   });
 
-  test('control buttons work after autosave pause restore', async ({ page }) => {
+  test('touch drag works after autosave pause restore', async ({ page }) => {
     await page.getByRole('button', { name: '시작' }).click();
     await expect(page.locator('.tetris-cell-filled:not(.tetris-cell-ghost)').first()).toBeVisible();
 
@@ -58,7 +110,7 @@ test.describe('tetris smoke', () => {
     await expect(pauseOverlay(page)).toBeVisible();
 
     const before = await getFilledCellPositions(page);
-    await page.getByRole('button', { name: '왼쪽' }).click();
+    await dragHorizontal(page, '.tetris-drag-zone', -40);
     await page.waitForTimeout(120);
 
     await expect(pauseOverlay(page)).not.toBeVisible();
