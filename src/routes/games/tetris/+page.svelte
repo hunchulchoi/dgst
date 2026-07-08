@@ -1,5 +1,6 @@
 <script lang="ts">
   import { resolve } from '$app/paths';
+  import { beforeNavigate } from '$app/navigation';
   import { onMount } from 'svelte';
   import { ko } from 'date-fns/locale';
   import { formatRelativeTime } from '$lib/util/formatRelativeTime.js';
@@ -31,7 +32,8 @@
     type PieceType,
     COLS,
     ROWS,
-    HIDDEN_ROWS
+    HIDDEN_ROWS,
+    TOTAL_ROWS
   } from './gameUtils.js';
   import { playTetrisSound } from './tetrisSounds.js';
 
@@ -65,9 +67,14 @@
   let myBestCreatedAt = $state<string | null>(null);
   let todayStats = $state<{ games: number; users: number }>({ games: 0, users: 0 });
   let rankLoading = $state(false);
+  let canResume = $state(false);
+  let resumeSummary = $state<{ stage: number; score: number; label: string } | null>(null);
 
   const STORAGE_KEY = 'dgst_tetris_state';
   const SOUND_PREF_KEY = 'dgst_tetris_sound';
+  const SAVE_VERSION = 1;
+  const PIECE_TYPES: PieceType[] = ['I', 'O', 'T', 'S', 'Z', 'J', 'L'];
+  const RESUMABLE_SCREENS: Screen[] = ['playing', 'paused', 'stageClear'];
   const isLoggedIn = $derived(!!data.session?.user?.email);
 
   const stageConfig = $derived(getStageConfig(stage));
@@ -116,6 +123,7 @@
 
   function startGame() {
     if (stageClearTimeout) clearTimeout(stageClearTimeout);
+    clearSave();
     board = createEmptyBoard();
     nextQueue = ensureQueue([]);
     previewPiece = nextQueue[0] ?? 'T';
@@ -139,6 +147,7 @@
   function endGameOver() {
     stopDropTimer();
     screen = 'gameOver';
+    clearSave();
     playTetrisSound('over', soundEnabled);
     if (isLoggedIn) void submitGameScore(score, stage);
   }
@@ -198,14 +207,18 @@
     }
   }
 
-  function handleStageClear() {
-    stopDropTimer();
-    playTetrisSound('stage', soundEnabled);
-    screen = 'stageClear';
+  function scheduleStageClearAdvance() {
     if (stageClearTimeout) clearTimeout(stageClearTimeout);
     stageClearTimeout = setTimeout(() => {
       if (screen === 'stageClear') advanceStage();
     }, 2500);
+  }
+
+  function handleStageClear() {
+    stopDropTimer();
+    playTetrisSound('stage', soundEnabled);
+    screen = 'stageClear';
+    scheduleStageClearAdvance();
   }
 
   function advanceStage() {
@@ -217,6 +230,7 @@
     if (isGameComplete(nextStage)) {
       screen = 'gameWin';
       activePiece = null;
+      clearSave();
       playTetrisSound('win', soundEnabled);
       if (isLoggedIn) void submitGameScore(score, STAGES.length);
       return;
@@ -370,7 +384,8 @@
     if (screen === 'menu' || screen === 'gameOver' || screen === 'gameWin') {
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
-        startGame();
+        if (screen === 'menu' && canResume) resumeSavedGame();
+        else startNewGame();
       }
       return;
     }
@@ -434,6 +449,7 @@
   }
 
   type SavedState = {
+    version: number;
     screen: Screen;
     board: Board;
     activePiece: ActivePiece | null;
@@ -445,27 +461,95 @@
     score: number;
     holdPiece: PieceType | null;
     canHold: boolean;
+    savedAt: string;
   };
 
-  function saveState() {
-    if (screen === 'menu') return;
+  /** 저장 가능한 스냅샷 생성 */
+  function getStateToSave(): SavedState | null {
+    if (!RESUMABLE_SCREENS.includes(screen)) return null;
+    return {
+      version: SAVE_VERSION,
+      screen,
+      board: board.map((row) => [...row]),
+      activePiece: activePiece ? { ...activePiece } : null,
+      nextQueue: [...nextQueue],
+      previewPiece,
+      stage,
+      stageLines,
+      totalLines,
+      score,
+      holdPiece,
+      canHold,
+      savedAt: new Date().toISOString()
+    };
+  }
+
+  function persistState(state: SavedState) {
     try {
-      const state: SavedState = {
-        screen,
-        board,
-        activePiece,
-        nextQueue,
-        previewPiece,
-        stage,
-        stageLines,
-        totalLines,
-        score,
-        holdPiece,
-        canHold
-      };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      refreshResumeInfo();
     } catch (err) {
       console.error('[tetris localStorage save failed]', err);
+    }
+  }
+
+  function saveState() {
+    const state = getStateToSave();
+    if (state) persistState(state);
+  }
+
+  function clearSave() {
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch (err) {
+      console.error('[tetris localStorage clear failed]', err);
+    }
+    refreshResumeInfo();
+  }
+
+  function isValidPieceType(value: unknown): value is PieceType {
+    return typeof value === 'string' && PIECE_TYPES.includes(value as PieceType);
+  }
+
+  function isValidActivePiece(value: unknown): value is ActivePiece {
+    if (!value || typeof value !== 'object') return false;
+    const piece = value as ActivePiece;
+    return (
+      isValidPieceType(piece.type) &&
+      Number.isInteger(piece.rotation) &&
+      piece.rotation >= 0 &&
+      piece.rotation < 4 &&
+      Number.isInteger(piece.x) &&
+      Number.isInteger(piece.y)
+    );
+  }
+
+  /** localStorage 저장값 검증 */
+  function parseSavedState(raw: string): SavedState | null {
+    try {
+      const parsed = JSON.parse(raw) as Partial<SavedState>;
+      if (!parsed || typeof parsed !== 'object') return null;
+      if (!RESUMABLE_SCREENS.includes(parsed.screen as Screen)) return null;
+      if (!Array.isArray(parsed.board) || parsed.board.length !== TOTAL_ROWS) return null;
+      if (!parsed.board.every((row) => Array.isArray(row) && row.length === COLS)) return null;
+      if (
+        !parsed.board.every((row) =>
+          row.every((cell) => cell === null || isValidPieceType(cell))
+        )
+      ) {
+        return null;
+      }
+      if (parsed.activePiece != null && !isValidActivePiece(parsed.activePiece)) return null;
+      if (!Array.isArray(parsed.nextQueue) || parsed.nextQueue.some((p) => !isValidPieceType(p))) {
+        return null;
+      }
+      if (!isValidPieceType(parsed.previewPiece)) return null;
+      if (parsed.holdPiece != null && !isValidPieceType(parsed.holdPiece)) return null;
+      const stageNum = Number(parsed.stage);
+      if (!Number.isInteger(stageNum) || stageNum < 1 || stageNum > STAGES.length) return null;
+      return parsed as SavedState;
+    } catch {
+      return null;
     }
   }
 
@@ -473,20 +557,31 @@
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) return null;
-      const parsed = JSON.parse(raw) as SavedState;
-      if (!parsed || typeof parsed !== 'object') return null;
-      if (!['playing', 'paused', 'stageClear'].includes(parsed.screen)) return null;
-      return parsed;
+      return parseSavedState(raw);
     } catch {
       return null;
     }
   }
 
+  function refreshResumeInfo() {
+    const saved = loadState();
+    if (!saved) {
+      canResume = false;
+      resumeSummary = null;
+      return;
+    }
+    canResume = true;
+    resumeSummary = {
+      stage: saved.stage,
+      score: saved.score,
+      label: getStageConfig(saved.stage).label
+    };
+  }
+
   function restoreState(saved: SavedState) {
-    screen = saved.screen === 'stageClear' ? 'playing' : saved.screen;
-    board = saved.board;
-    activePiece = saved.activePiece;
-    nextQueue = saved.nextQueue;
+    board = saved.board.map((row) => [...row]);
+    activePiece = saved.activePiece ? { ...saved.activePiece } : null;
+    nextQueue = [...saved.nextQueue];
     previewPiece = saved.previewPiece;
     stage = saved.stage;
     stageLines = saved.stageLines;
@@ -494,7 +589,45 @@
     score = saved.score;
     holdPiece = saved.holdPiece ?? null;
     canHold = saved.canHold ?? true;
-    if (screen === 'playing') startDropTimer();
+    screen = saved.screen;
+
+    stopDropTimer();
+    if (stageClearTimeout) {
+      clearTimeout(stageClearTimeout);
+      stageClearTimeout = null;
+    }
+
+    if (screen === 'playing') {
+      screen = 'paused';
+    } else if (screen === 'stageClear') {
+      scheduleStageClearAdvance();
+    }
+  }
+
+  /** 저장된 게임 이어하기 */
+  function resumeSavedGame() {
+    const saved = loadState();
+    if (!saved) return;
+    restoreState(saved);
+  }
+
+  /** 새 게임 (저장 있으면 확인) */
+  function startNewGame() {
+    if (canResume && !confirm('저장된 게임이 있습니다. 새로 시작하시겠습니까?')) return;
+    startGame();
+  }
+
+  /** 메뉴 이동 전 autosave */
+  function goToMenu() {
+    stopDropTimer();
+    if (stageClearTimeout) {
+      clearTimeout(stageClearTimeout);
+      stageClearTimeout = null;
+    }
+    if (screen === 'playing') screen = 'paused';
+    saveState();
+    screen = 'menu';
+    refreshResumeInfo();
   }
 
   function toggleSound() {
@@ -525,16 +658,33 @@
       soundEnabled = true;
     }
 
+    refreshResumeInfo();
     const saved = loadState();
-    if (saved) restoreState(saved);
+    if (saved) {
+      restoreState(saved);
+    }
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') saveState();
+    };
+    const handleBeforeUnload = () => saveState();
 
     window.addEventListener('keydown', handleKeydown);
+    window.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
     return () => {
       window.removeEventListener('keydown', handleKeydown);
+      window.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
       stopDropTimer();
       if (stageClearTimeout) clearTimeout(stageClearTimeout);
       saveState();
     };
+  });
+
+  beforeNavigate(() => {
+    saveState();
   });
 
   $effect(() => {
@@ -542,7 +692,7 @@
   });
 
   $effect(() => {
-    if (screen === 'playing' || screen === 'paused') {
+    if (RESUMABLE_SCREENS.includes(screen)) {
       saveState();
     }
   });
@@ -573,9 +723,24 @@
                 각 스테이지마다 목표 줄 수를 채우면 다음 단계로 넘어갑니다.
               </p>
               <div class="d-flex flex-column align-items-center gap-2">
-                <button type="button" class="btn btn-lg btn-primary px-5" onclick={startGame}>
-                  시작
-                </button>
+                {#if canResume && resumeSummary}
+                  <div class="alert alert-light border w-100 mb-0 py-2 px-3 text-start">
+                    <p class="small fw-semibold mb-1">저장된 게임</p>
+                    <p class="small text-muted mb-0">
+                      Stage {resumeSummary.stage} ({resumeSummary.label}) · {resumeSummary.score.toLocaleString()}점
+                    </p>
+                  </div>
+                  <button type="button" class="btn btn-lg btn-primary px-5" onclick={resumeSavedGame}>
+                    이어하기
+                  </button>
+                  <button type="button" class="btn btn-lg btn-outline-primary px-5" onclick={startNewGame}>
+                    새 게임
+                  </button>
+                {:else}
+                  <button type="button" class="btn btn-lg btn-primary px-5" onclick={startNewGame}>
+                    시작
+                  </button>
+                {/if}
                 <button
                   type="button"
                   class="btn btn-sm btn-outline-secondary"
@@ -625,10 +790,7 @@
                 <button
                   type="button"
                   class="btn btn-sm btn-outline-dark"
-                  onclick={() => {
-                    stopDropTimer();
-                    screen = 'menu';
-                  }}
+                  onclick={goToMenu}
                 >
                   메뉴
                 </button>
@@ -677,7 +839,7 @@
                         Stage {stage} · {score.toLocaleString()}점
                         {#if isLoggedIn}<span class="d-block text-white-50">랭킹에 반영됨</span>{/if}
                       </p>
-                      <button type="button" class="btn btn-primary btn-sm" onclick={startGame}>다시 하기</button>
+                      <button type="button" class="btn btn-primary btn-sm" onclick={startNewGame}>다시 하기</button>
                     </div>
                   {/if}
                   {#if screen === 'gameWin'}
@@ -687,7 +849,7 @@
                         {score.toLocaleString()}점 · {totalLines}줄
                         {#if isLoggedIn}<span class="d-block text-white-50">랭킹에 반영됨</span>{/if}
                       </p>
-                      <button type="button" class="btn btn-warning btn-sm" onclick={startGame}>다시 도전</button>
+                      <button type="button" class="btn btn-warning btn-sm" onclick={startNewGame}>다시 도전</button>
                     </div>
                   {/if}
                 </div>
