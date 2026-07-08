@@ -330,7 +330,7 @@
   }
 
   function moveHorizontal(dx: number) {
-    if (!activePiece || screen !== 'playing') return;
+    if (!activePiece) return;
     const moved = movePiece(activePiece, dx, 0);
     if (canPlace(board, moved)) {
       activePiece = moved;
@@ -339,7 +339,7 @@
   }
 
   function rotatePieceAction() {
-    if (!activePiece || screen !== 'playing') return;
+    if (!activePiece) return;
     const rotated = rotateActivePiece(board, activePiece);
     if (rotated) {
       activePiece = rotated;
@@ -348,7 +348,7 @@
   }
 
   function holdPieceAction() {
-    if (!activePiece || !canHold || screen !== 'playing') return;
+    if (!activePiece || !canHold) return;
     canHold = false;
     const currentType = activePiece.type;
     if (holdPiece === null) {
@@ -373,7 +373,7 @@
   }
 
   function dropHard() {
-    if (!activePiece || screen !== 'playing') return;
+    if (!activePiece) return;
     const result = hardDrop(board, activePiece);
     activePiece = result.piece;
     playTetrisSound('drop', soundEnabled);
@@ -393,8 +393,11 @@
 
   /** 일시정지 중이면 재개 후 게임 입력 처리 */
   function runGameAction(action: () => void) {
-    if (screen === 'paused') resumeGame();
-    if (screen !== 'playing') return;
+    if (screen !== 'playing' && screen !== 'paused') return;
+    if (screen === 'paused') {
+      screen = 'playing';
+      startDropTimer();
+    }
     action();
   }
 
@@ -725,13 +728,6 @@
       saveState();
     }
   });
-
-  $effect(() => {
-    if (screen === 'playing') {
-      dropMs;
-      startDropTimer();
-    }
-  });
 </script>
 
 <svelte:window onkeydown={handleKeydown} />
@@ -833,7 +829,13 @@
             </div>
 
             <div class="tetris-layout">
-              <div class="tetris-board-wrap" bind:this={boardWrapEl} tabindex="0">
+              <div
+                class="tetris-board-wrap"
+                bind:this={boardWrapEl}
+                role="application"
+                aria-label="테트리스 조작 영역"
+                tabindex="-1"
+              >
                 <div class="tetris-board" aria-label="테트리스 보드">
                   {#each displayRows as row, rowIdx (rowIdx)}
                     <div class="tetris-row">

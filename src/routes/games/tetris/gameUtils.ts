@@ -236,9 +236,9 @@ export function calculateHardDropScore(distance: number): number {
   return distance * 2;
 }
 
-/** 스폰 위치 피스 생성 */
+/** 스폰 위치 피스 생성 (히든 버퍼 바로 아래에서 보이도록) */
 export function spawnPiece(type: PieceType): ActivePiece {
-  return { type, rotation: 0, x: 3, y: 0 };
+  return { type, rotation: 0, x: 3, y: HIDDEN_ROWS };
 }
 
 /** 스폰 불가 = 게임오버 */

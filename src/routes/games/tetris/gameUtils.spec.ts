@@ -30,10 +30,10 @@ describe('tetris gameUtils', () => {
     const piece = spawnPiece('O');
     expect(canPlace(board, piece)).toBe(true);
 
-    const atFloor = movePiece(piece, 0, 21);
+    const atFloor = movePiece(piece, 0, 20);
     expect(canPlace(board, atFloor)).toBe(false);
 
-    board[1][4] = 'I';
+    board[3][4] = 'I';
     expect(canPlace(board, spawnPiece('T'))).toBe(false);
   });
 
