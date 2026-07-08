@@ -31,6 +31,7 @@
   import { swalFire } from '$lib/util/swal.js';
   import { isNicknameAllowed } from '$lib/util/nickname.js';
   import { getProfileSaveErrorMessage } from '$lib/util/profileSubmit.js';
+  import { getProfileValidationMessage } from '$lib/util/profileValidation.js';
   import { getRecaptchaToken } from '$lib/util/recaptchaClient.js';
 
   /** @typedef {{ x: number; y: number; width: number; height: number }} CropData */
@@ -169,7 +170,27 @@
   });
 
   const doSubmit = async () => {
-    doValidate();
+    await doValidate();
+
+    if (invalids.nicknameTaken) return;
+
+    const validationMessage = getProfileValidationMessage({
+      nickname,
+      introduction,
+      nicknameInvalid: invalids.nickname,
+      nicknameTaken: invalids.nicknameTaken,
+      introductionInvalid: invalids.introduction
+    });
+
+    if (validationMessage) {
+      await swalFire({
+        icon: 'warning',
+        title: '입력 확인',
+        text: validationMessage,
+        confirmButtonText: '확인'
+      });
+      return;
+    }
 
     const formData = new FormData();
 
@@ -269,22 +290,25 @@
     }
   };
 
-  const doValidate = () => {
-    document
-      .querySelectorAll('.needs-validation')
-      .forEach((el) => changeHandler(/** @type {HTMLInputElement | HTMLTextAreaElement} */ (el)));
+  const doValidate = async () => {
+    await Promise.all(
+      [...document.querySelectorAll('.needs-validation')].map((el) =>
+        changeHandler(/** @type {HTMLInputElement | HTMLTextAreaElement} */ (el))
+      )
+    );
   };
 
-  const invalids = { nickname: false, introduction: false };
+  const invalids = { nickname: false, nicknameTaken: false, introduction: false };
 
   /** @param {HTMLInputElement | HTMLTextAreaElement} target */
   const changeHandler = async (target) => {
     switch (target.id) {
       case 'nickname':
+        invalids.nicknameTaken = false;
         invalids.nickname = !/^.{2,15}$/.test(target.value) || !isNicknameAllowed(target.value);
 
         if (!invalids.nickname) {
-          fetch(`/auth/register/${target.value}`).then(async (res) => {
+          return fetch(`/auth/register/${target.value}`).then(async (res) => {
             if (res.status !== 204) {
               await swalFire({
                 icon: 'warning',
@@ -292,6 +316,7 @@
                 text: '사용중인 아이디 입니다.',
                 confirmButtonText: '확인'
               });
+              invalids.nicknameTaken = true;
               invalids.nickname = true;
             }
           });
@@ -302,10 +327,6 @@
         invalids.introduction = !target.value;
     }
   };
-
-  let isInvalid = $derived(
-    !(nickname && !invalids.nickname && introduction && !invalids.introduction)
-  );
 </script>
 
 <svelte:head>
@@ -389,7 +410,7 @@
           </FormGroup>
           <hr />
           <div class="text-end">
-            <Button size="lg" onclick={doSubmit} color="success" disabled={isInvalid}>
+            <Button size="lg" onclick={doSubmit} color="success">
               <Icon name="arrow-through-heart-fill" class="pe-2" />수정
             </Button>
           </div>
