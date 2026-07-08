@@ -39,6 +39,7 @@
 
   let screen = $state<Screen>('menu');
   let canvasEl = $state<HTMLCanvasElement | null>(null);
+  let dragBarEl = $state<HTMLDivElement | null>(null);
   let ctx: CanvasRenderingContext2D | null = null;
   let paddle = $state<Paddle>(createPaddle());
   let ball = $state<Ball | null>(null);
@@ -50,7 +51,11 @@
   let frameId = 0;
   let stageClearTimeout: ReturnType<typeof setTimeout> | null = null;
   let keys = $state({ left: false, right: false });
-  let pointerX = $state<number | null>(null);
+  let dragBarActive = $state(false);
+  let dragStartX = 0;
+  let dragMoved = false;
+
+  const dragThumbPercent = $derived(((paddle.x + paddle.width / 2) / CANVAS_WIDTH) * 100);
 
   let rankList = $state<
     Array<{ nickname: string; score: number; stage?: number; createdAt?: string; _id?: string }>
@@ -168,12 +173,6 @@
     if (keys.left) paddle = movePaddle(paddle, -PADDLE_SPEED);
     if (keys.right) paddle = movePaddle(paddle, PADDLE_SPEED);
 
-    if (pointerX !== null && screen === 'playing') {
-      const targetX = pointerX - paddle.width / 2;
-      const clamped = Math.max(0, Math.min(CANVAS_WIDTH - paddle.width, targetX));
-      paddle = { ...paddle, x: clamped };
-    }
-
     if (!ball) return;
 
     if (!ballLaunched) {
@@ -273,7 +272,7 @@
       ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
       ctx.fillStyle = '#fff';
       ctx.font = 'bold 18px system-ui, sans-serif';
-      ctx.fillText('클릭 또는 스페이스로 발사', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2);
+      ctx.fillText('아래 바 드래그 · 탭하면 발사', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2);
     }
 
     if (screen === 'paused') {
@@ -356,20 +355,50 @@
     if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') keys = { ...keys, right: false };
   }
 
-  function handleCanvasClick() {
-    if (screen === 'ready') launchBall();
-    else if (screen === 'paused') resumeGame();
+  function mapClientXToGameX(clientX: number): number {
+    if (!dragBarEl) return CANVAS_WIDTH / 2;
+    const rect = dragBarEl.getBoundingClientRect();
+    const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    return ratio * CANVAS_WIDTH;
   }
 
-  function handlePointerMove(e: PointerEvent) {
-    if (!canvasEl) return;
-    const rect = canvasEl.getBoundingClientRect();
-    const scaleX = CANVAS_WIDTH / rect.width;
-    pointerX = (e.clientX - rect.left) * scaleX;
+  function setPaddleFromGameX(gameX: number) {
+    const targetX = gameX - paddle.width / 2;
+    const clamped = Math.max(0, Math.min(CANVAS_WIDTH - paddle.width, targetX));
+    paddle = { ...paddle, x: clamped };
   }
 
-  function handlePointerLeave() {
-    pointerX = null;
+  function handleDragBarPointerDown(e: PointerEvent) {
+    if (screen !== 'playing' && screen !== 'ready' && screen !== 'paused') return;
+    const el = e.currentTarget as HTMLElement;
+    dragBarActive = true;
+    dragStartX = e.clientX;
+    dragMoved = false;
+    if (screen !== 'paused') {
+      setPaddleFromGameX(mapClientXToGameX(e.clientX));
+    }
+    el.setPointerCapture(e.pointerId);
+  }
+
+  function handleDragBarPointerMove(e: PointerEvent) {
+    if (!dragBarActive || screen === 'paused') return;
+    if (Math.abs(e.clientX - dragStartX) > 8) dragMoved = true;
+    setPaddleFromGameX(mapClientXToGameX(e.clientX));
+  }
+
+  function handleDragBarPointerUp(e: PointerEvent) {
+    if (!dragBarActive) return;
+    const el = e.currentTarget as HTMLElement;
+    dragBarActive = false;
+    if (!dragMoved) {
+      if (screen === 'ready') launchBall();
+      else if (screen === 'paused') resumeGame();
+    }
+    try {
+      el.releasePointerCapture(e.pointerId);
+    } catch {
+      /* pointer already released */
+    }
   }
 
   async function loadRank() {
@@ -480,7 +509,7 @@
                 시작
               </button>
               <div class="mt-3 small text-muted">
-                ← → 또는 마우스/터치로 패들 이동 · 스페이스로 발사
+                키보드 ← → 이동 · 아래 바 드래그/탭 · 스페이스 발사
               </div>
             </div>
           {:else if screen === 'gameOver'}
@@ -514,11 +543,37 @@
                 class="breakout-canvas"
                 width={CANVAS_WIDTH}
                 height={CANVAS_HEIGHT}
-                onclick={handleCanvasClick}
-                onpointermove={handlePointerMove}
-                onpointerleave={handlePointerLeave}
                 aria-label="블록깨기 게임"
               ></canvas>
+            </div>
+            <div
+              class="breakout-drag-bar"
+              bind:this={dragBarEl}
+              role="slider"
+              aria-label="패들 조작 바"
+              aria-valuemin={0}
+              aria-valuemax={CANVAS_WIDTH}
+              aria-valuenow={Math.round(paddle.x + paddle.width / 2)}
+              onpointerdown={handleDragBarPointerDown}
+              onpointermove={handleDragBarPointerMove}
+              onpointerup={handleDragBarPointerUp}
+              onpointercancel={handleDragBarPointerUp}
+            >
+              <div class="breakout-drag-track" aria-hidden="true"></div>
+              <div
+                class="breakout-drag-thumb"
+                style="left: {dragThumbPercent}%"
+                aria-hidden="true"
+              ></div>
+              <span class="breakout-drag-hint">
+                {#if screen === 'ready'}
+                  드래그로 이동 · 탭하면 발사
+                {:else if screen === 'paused'}
+                  탭하면 재개
+                {:else}
+                  드래그로 패들 이동
+                {/if}
+              </span>
             </div>
             <div class="d-flex justify-content-center gap-2 mt-3 flex-wrap">
               <button
@@ -530,38 +585,6 @@
               </button>
               <button type="button" class="btn btn-sm btn-outline-secondary" onclick={goToMenu}>
                 메뉴
-              </button>
-            </div>
-            <div class="d-flex d-md-none justify-content-center gap-2 mt-2">
-              <button
-                type="button"
-                class="btn btn-outline-primary breakout-touch-btn"
-                aria-label="왼쪽"
-                onpointerdown={() => (keys = { ...keys, left: true })}
-                onpointerup={() => (keys = { ...keys, left: false })}
-                onpointerleave={() => (keys = { ...keys, left: false })}
-              >
-                ◀
-              </button>
-              <button
-                type="button"
-                class="btn btn-primary breakout-touch-btn"
-                aria-label="발사"
-                onclick={() => {
-                  if (screen === 'ready') launchBall();
-                }}
-              >
-                ●
-              </button>
-              <button
-                type="button"
-                class="btn btn-outline-primary breakout-touch-btn"
-                aria-label="오른쪽"
-                onpointerdown={() => (keys = { ...keys, right: true })}
-                onpointerup={() => (keys = { ...keys, right: false })}
-                onpointerleave={() => (keys = { ...keys, right: false })}
-              >
-                ▶
               </button>
             </div>
           {/if}
@@ -641,14 +664,61 @@
     height: auto;
     aspect-ratio: 480 / 640;
     touch-action: none;
-    cursor: crosshair;
+    pointer-events: none;
+    user-select: none;
   }
 
-  .breakout-touch-btn {
-    width: 64px;
-    height: 48px;
-    font-size: 1.25rem;
-    touch-action: manipulation;
+  .breakout-drag-bar {
+    position: relative;
+    width: 100%;
+    max-width: 480px;
+    margin: 0.75rem auto 0;
+    height: 56px;
+    border-radius: 12px;
+    background: #1a1a2e;
+    border: 1px solid rgba(144, 202, 249, 0.35);
+    touch-action: none;
     user-select: none;
+    cursor: grab;
+    overflow: hidden;
+  }
+
+  .breakout-drag-bar:active {
+    cursor: grabbing;
+  }
+
+  .breakout-drag-track {
+    position: absolute;
+    left: 12px;
+    right: 12px;
+    top: 50%;
+    height: 6px;
+    transform: translateY(-50%);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.12);
+  }
+
+  .breakout-drag-thumb {
+    position: absolute;
+    top: 50%;
+    width: 48px;
+    height: 14px;
+    transform: translate(-50%, -50%);
+    border-radius: 6px;
+    background: linear-gradient(180deg, #f5f5f5 0%, #cfd8dc 100%);
+    border: 2px solid #90caf9;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+    pointer-events: none;
+  }
+
+  .breakout-drag-hint {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.45);
+    pointer-events: none;
   }
 </style>
