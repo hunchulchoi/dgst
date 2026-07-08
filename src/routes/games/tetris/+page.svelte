@@ -386,12 +386,59 @@
   let touchLock = $state(false);
   let boardWrapEl = $state<HTMLDivElement | null>(null);
   let dragZoneEl = $state<HTMLDivElement | null>(null);
+  let dropBtnEl = $state<HTMLButtonElement | null>(null);
   let dragAnchorX = 0;
   let isDragging = $state(false);
   const DRAG_STEP_PX = 26;
 
+  let dropTouchStartY = 0;
+  let dropDragAnchorY = 0;
+  let dropDragStartAt = 0;
+  let dropSoftDropCount = 0;
+  let isDropDragging = $state(false);
+  let dropRepeatTimer: ReturnType<typeof setTimeout> | null = null;
+  const DROP_DRAG_STEP_PX = 28;
+  const DROP_DRAG_MIN_STEP_PX = 14;
+  const DROP_DRAG_ACTIVATE_PX = 14;
+  const DROP_TAP_MAX_PX = 10;
+
   function canUseTouchControls(): boolean {
     return screen === 'playing' || screen === 'paused';
+  }
+
+  function clearDropRepeatTimer() {
+    if (dropRepeatTimer) {
+      clearTimeout(dropRepeatTimer);
+      dropRepeatTimer = null;
+    }
+  }
+
+  /** 홀드 시간·반복 횟수에 따라 소프트 드롭 간격 단축 */
+  function getDropRepeatIntervalMs(): number {
+    const holdMs = Date.now() - dropDragStartAt;
+    const accel = Math.min(60, Math.floor(holdMs / 300) * 15 + dropSoftDropCount * 4);
+    return Math.max(40, 120 - accel);
+  }
+
+  function getDropDragStepPx(): number {
+    const holdMs = Date.now() - dropDragStartAt;
+    const shrink = Math.floor(holdMs / 350) * 4;
+    return Math.max(DROP_DRAG_MIN_STEP_PX, DROP_DRAG_STEP_PX - shrink);
+  }
+
+  function triggerSoftDropFromDrag() {
+    dropSoftDropCount += 1;
+    runGameAction(softDrop);
+  }
+
+  function scheduleDropRepeat() {
+    clearDropRepeatTimer();
+    dropRepeatTimer = setTimeout(() => {
+      dropRepeatTimer = null;
+      if (!isDropDragging || !canUseTouchControls()) return;
+      triggerSoftDropFromDrag();
+      scheduleDropRepeat();
+    }, getDropRepeatIntervalMs());
   }
 
   function handleDragTouchStart(e: TouchEvent) {
@@ -421,7 +468,44 @@
     isDragging = false;
   }
 
-  function bindDragListeners(el: HTMLDivElement | null) {
+  function handleDropTouchStart(e: TouchEvent) {
+    if (!canUseTouchControls() || !e.touches.length) return;
+    dropTouchStartY = e.touches[0].clientY;
+    dropDragAnchorY = dropTouchStartY;
+    dropDragStartAt = Date.now();
+    dropSoftDropCount = 0;
+    isDropDragging = true;
+  }
+
+  function handleDropTouchMove(e: TouchEvent) {
+    if (!isDropDragging || !canUseTouchControls() || !e.touches.length) return;
+    const y = e.touches[0].clientY;
+    const dy = y - dropDragAnchorY;
+    if (y - dropTouchStartY < DROP_DRAG_ACTIVATE_PX) return;
+
+    e.preventDefault();
+    const step = getDropDragStepPx();
+    let diff = dy;
+    while (diff >= step) {
+      triggerSoftDropFromDrag();
+      dropDragAnchorY += step;
+      diff = y - dropDragAnchorY;
+    }
+    if (!dropRepeatTimer) scheduleDropRepeat();
+  }
+
+  function handleDropTouchEnd(e: TouchEvent) {
+    clearDropRepeatTimer();
+    isDropDragging = false;
+    if (!canUseTouchControls() || !e.changedTouches.length) return;
+
+    const totalDy = Math.abs(e.changedTouches[0].clientY - dropTouchStartY);
+    if (dropSoftDropCount === 0 && totalDy < DROP_TAP_MAX_PX) {
+      withTouchLock(() => runGameAction(dropHard));
+    }
+  }
+
+  function bindHorizontalDragListeners(el: HTMLDivElement | null) {
     if (!el) return () => {};
     const onMove = (e: TouchEvent) => handleDragTouchMove(e);
     el.addEventListener('touchstart', handleDragTouchStart, { passive: true });
@@ -433,6 +517,22 @@
       el.removeEventListener('touchmove', onMove);
       el.removeEventListener('touchend', handleDragTouchEnd);
       el.removeEventListener('touchcancel', handleDragTouchEnd);
+    };
+  }
+
+  function bindDropDragListeners(el: HTMLButtonElement | null) {
+    if (!el) return () => {};
+    const onMove = (e: TouchEvent) => handleDropTouchMove(e);
+    el.addEventListener('touchstart', handleDropTouchStart, { passive: true });
+    el.addEventListener('touchmove', onMove, { passive: false });
+    el.addEventListener('touchend', handleDropTouchEnd, { passive: true });
+    el.addEventListener('touchcancel', handleDropTouchEnd, { passive: true });
+    return () => {
+      el.removeEventListener('touchstart', handleDropTouchStart);
+      el.removeEventListener('touchmove', onMove);
+      el.removeEventListener('touchend', handleDropTouchEnd);
+      el.removeEventListener('touchcancel', handleDropTouchEnd);
+      clearDropRepeatTimer();
     };
   }
 
@@ -780,7 +880,11 @@
   });
 
   $effect(() => {
-    const cleanups = [bindDragListeners(boardWrapEl), bindDragListeners(dragZoneEl)];
+    const cleanups = [
+      bindHorizontalDragListeners(boardWrapEl),
+      bindHorizontalDragListeners(dragZoneEl),
+      bindDropDragListeners(dropBtnEl)
+    ];
     return () => {
       for (const cleanup of cleanups) cleanup();
     };
@@ -1036,10 +1140,16 @@
                   <button
                     type="button"
                     class="tetris-btn tetris-btn-drop"
-                    aria-label="떨어뜨리기"
-                    onclick={() => withTouchLock(softDrop)}
+                    class:tetris-btn-drop-active={isDropDragging}
+                    bind:this={dropBtnEl}
+                    aria-label="탭 하드드롭, 아래 드래그 소프트드롭"
+                    onclick={(e) => {
+                      if ('ontouchstart' in window) return;
+                      withTouchLock(dropHard);
+                    }}
                   >
-                    ▼
+                    <span class="tetris-drop-icon">⬇</span>
+                    <span class="tetris-drop-hint">탭·↓드래그</span>
                   </button>
                 </div>
               </div>
@@ -1381,6 +1491,26 @@
     min-height: 54px;
     max-width: none;
     font-size: 1.6rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    line-height: 1;
+  }
+
+  .tetris-btn-drop-active {
+    background: #d97706;
+  }
+
+  .tetris-drop-icon {
+    font-size: 1.6rem;
+  }
+
+  .tetris-drop-hint {
+    font-size: 0.62rem;
+    font-weight: 600;
+    opacity: 0.9;
   }
 
   .tetris-btn-drop:active {
