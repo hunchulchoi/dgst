@@ -46,6 +46,14 @@ export function getPrismaAdapter() {
       await sessionCache.invalidateSessionsForUser(user.id);
       return updated;
     },
+    async linkAccount(account) {
+      return base.linkAccount({
+        userId: account.userId,
+        type: account.type,
+        provider: account.provider,
+        providerAccountId: account.providerAccountId
+      });
+    },
     async getSessionAndUser(sessionToken) {
       try {
         const cached = await sessionCache.getCachedSessionAndUser(sessionToken);
