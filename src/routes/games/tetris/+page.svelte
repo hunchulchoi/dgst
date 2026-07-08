@@ -382,157 +382,228 @@
     settlePiece(locked, result.distance);
   }
 
-  /** 모바일 버튼 연타 방지 */
-  let touchLock = $state(false);
+  /** 모바일 한 손 제스처 조작 */
   let boardWrapEl = $state<HTMLDivElement | null>(null);
-  let dragZoneEl = $state<HTMLDivElement | null>(null);
-  let dropBtnEl = $state<HTMLButtonElement | null>(null);
-  let dragAnchorX = 0;
-  let isDragging = $state(false);
-  const DRAG_STEP_PX = 26;
+  let gestureStartX = 0;
+  let gestureStartY = 0;
+  let gestureAnchorX = 0;
+  let gestureAnchorY = 0;
+  let gestureStartAt = 0;
+  let gestureActive = false;
+  let gestureMoved = $state(false);
+  let gestureSoftDropCount = 0;
+  let longPressTriggered = false;
+  let gestureMode: 'horizontal' | 'down' | null = null;
+  let longPressTimer: ReturnType<typeof setTimeout> | null = null;
+  let softDropRepeatTimer: ReturnType<typeof setTimeout> | null = null;
 
-  let dropTouchStartY = 0;
-  let dropDragAnchorY = 0;
-  let dropDragStartAt = 0;
-  let dropSoftDropCount = 0;
-  let isDropDragging = $state(false);
-  let dropRepeatTimer: ReturnType<typeof setTimeout> | null = null;
-  const DROP_DRAG_STEP_PX = 28;
-  const DROP_DRAG_MIN_STEP_PX = 14;
-  const DROP_DRAG_ACTIVATE_PX = 14;
-  const DROP_TAP_MAX_PX = 10;
+  const SWIPE_STEP_PX = 26;
+  const SWIPE_TAP_MAX_PX = 12;
+  const SWIPE_TAP_MAX_MS = 280;
+  const LONG_PRESS_MS = 450;
+  const FLICK_UP_MIN_PX = 42;
+  const FLICK_UP_MAX_MS = 320;
+  const FLICK_UP_MIN_SPEED = 0.38;
+  const DOWN_ACTIVATE_PX = 14;
+  const SOFT_DROP_STEP_PX = 28;
+  const SOFT_DROP_MIN_STEP_PX = 14;
 
   function canUseTouchControls(): boolean {
     return screen === 'playing' || screen === 'paused';
   }
 
-  function clearDropRepeatTimer() {
-    if (dropRepeatTimer) {
-      clearTimeout(dropRepeatTimer);
-      dropRepeatTimer = null;
+  function shouldIgnoreGestureTarget(target: EventTarget | null): boolean {
+    if (!(target instanceof Element)) return true;
+    const overlay = target.closest('.tetris-overlay');
+    if (!overlay) return false;
+    return !!target.closest('button, a, input');
+  }
+
+  function cancelLongPressTimer() {
+    if (longPressTimer) {
+      clearTimeout(longPressTimer);
+      longPressTimer = null;
     }
   }
 
-  /** 홀드 시간·반복 횟수에 따라 소프트 드롭 간격 단축 */
-  function getDropRepeatIntervalMs(): number {
-    const holdMs = Date.now() - dropDragStartAt;
-    const accel = Math.min(60, Math.floor(holdMs / 300) * 15 + dropSoftDropCount * 4);
+  function clearSoftDropRepeatTimer() {
+    if (softDropRepeatTimer) {
+      clearTimeout(softDropRepeatTimer);
+      softDropRepeatTimer = null;
+    }
+  }
+
+  function resetGestureState() {
+    gestureActive = false;
+    gestureMoved = false;
+    gestureSoftDropCount = 0;
+    longPressTriggered = false;
+    gestureMode = null;
+    cancelLongPressTimer();
+    clearSoftDropRepeatTimer();
+  }
+
+  function getSoftDropRepeatIntervalMs(): number {
+    const holdMs = Date.now() - gestureStartAt;
+    const accel = Math.min(60, Math.floor(holdMs / 300) * 15 + gestureSoftDropCount * 4);
     return Math.max(40, 120 - accel);
   }
 
-  function getDropDragStepPx(): number {
-    const holdMs = Date.now() - dropDragStartAt;
+  function getSoftDropStepPx(): number {
+    const holdMs = Date.now() - gestureStartAt;
     const shrink = Math.floor(holdMs / 350) * 4;
-    return Math.max(DROP_DRAG_MIN_STEP_PX, DROP_DRAG_STEP_PX - shrink);
+    return Math.max(SOFT_DROP_MIN_STEP_PX, SOFT_DROP_STEP_PX - shrink);
   }
 
-  function triggerSoftDropFromDrag() {
-    dropSoftDropCount += 1;
+  function triggerSoftDropFromGesture() {
+    gestureSoftDropCount += 1;
     runGameAction(softDrop);
   }
 
-  function scheduleDropRepeat() {
-    clearDropRepeatTimer();
-    dropRepeatTimer = setTimeout(() => {
-      dropRepeatTimer = null;
-      if (!isDropDragging || !canUseTouchControls()) return;
-      triggerSoftDropFromDrag();
-      scheduleDropRepeat();
-    }, getDropRepeatIntervalMs());
+  function scheduleSoftDropRepeat() {
+    clearSoftDropRepeatTimer();
+    softDropRepeatTimer = setTimeout(() => {
+      softDropRepeatTimer = null;
+      if (!gestureActive || gestureMode !== 'down' || !canUseTouchControls()) return;
+      triggerSoftDropFromGesture();
+      scheduleSoftDropRepeat();
+    }, getSoftDropRepeatIntervalMs());
   }
 
-  function handleDragTouchStart(e: TouchEvent) {
-    if (!canUseTouchControls() || !e.touches.length) return;
-    dragAnchorX = e.touches[0].clientX;
-    isDragging = true;
+  function handleGestureTouchStart(e: TouchEvent) {
+    if (!canUseTouchControls() || !e.touches.length || shouldIgnoreGestureTarget(e.target)) return;
+    const touch = e.touches[0];
+    gestureStartX = gestureAnchorX = touch.clientX;
+    gestureStartY = gestureAnchorY = touch.clientY;
+    gestureStartAt = Date.now();
+    gestureActive = true;
+    gestureMoved = false;
+    gestureSoftDropCount = 0;
+    longPressTriggered = false;
+    gestureMode = null;
+
+    cancelLongPressTimer();
+    longPressTimer = setTimeout(() => {
+      longPressTimer = null;
+      if (!gestureActive || gestureMoved) return;
+      longPressTriggered = true;
+      runGameAction(holdPieceAction);
+    }, LONG_PRESS_MS);
   }
 
-  function handleDragTouchMove(e: TouchEvent) {
-    if (!isDragging || !canUseTouchControls() || !e.touches.length) return;
-    e.preventDefault();
-    const x = e.touches[0].clientX;
-    let diff = x - dragAnchorX;
-    while (diff >= DRAG_STEP_PX) {
-      runGameAction(() => moveHorizontal(1));
-      dragAnchorX += DRAG_STEP_PX;
-      diff = x - dragAnchorX;
+  function handleGestureTouchMove(e: TouchEvent) {
+    if (!gestureActive || !canUseTouchControls() || !e.touches.length || longPressTriggered) return;
+
+    const touch = e.touches[0];
+    const x = touch.clientX;
+    const y = touch.clientY;
+    const totalDx = x - gestureStartX;
+    const totalDy = y - gestureStartY;
+
+    if (Math.abs(totalDx) > SWIPE_TAP_MAX_PX || Math.abs(totalDy) > SWIPE_TAP_MAX_PX) {
+      gestureMoved = true;
+      cancelLongPressTimer();
     }
-    while (diff <= -DRAG_STEP_PX) {
-      runGameAction(() => moveHorizontal(-1));
-      dragAnchorX -= DRAG_STEP_PX;
-      diff = x - dragAnchorX;
-    }
-  }
 
-  function handleDragTouchEnd() {
-    isDragging = false;
-  }
-
-  function handleDropTouchStart(e: TouchEvent) {
-    if (!canUseTouchControls() || !e.touches.length) return;
-    dropTouchStartY = e.touches[0].clientY;
-    dropDragAnchorY = dropTouchStartY;
-    dropDragStartAt = Date.now();
-    dropSoftDropCount = 0;
-    isDropDragging = true;
-  }
-
-  function handleDropTouchMove(e: TouchEvent) {
-    if (!isDropDragging || !canUseTouchControls() || !e.touches.length) return;
-    const y = e.touches[0].clientY;
-    const dy = y - dropDragAnchorY;
-    if (y - dropTouchStartY < DROP_DRAG_ACTIVATE_PX) return;
+    if (!gestureMoved) return;
 
     e.preventDefault();
-    const step = getDropDragStepPx();
-    let diff = dy;
-    while (diff >= step) {
-      triggerSoftDropFromDrag();
-      dropDragAnchorY += step;
-      diff = y - dropDragAnchorY;
+
+    if (!gestureMode) {
+      if (Math.abs(totalDx) >= DOWN_ACTIVATE_PX || Math.abs(totalDy) >= DOWN_ACTIVATE_PX) {
+        if (Math.abs(totalDx) > Math.abs(totalDy)) {
+          gestureMode = 'horizontal';
+        } else if (totalDy > 0) {
+          gestureMode = 'down';
+          gestureAnchorY = y;
+        }
+      }
     }
-    if (!dropRepeatTimer) scheduleDropRepeat();
-  }
 
-  function handleDropTouchEnd(e: TouchEvent) {
-    clearDropRepeatTimer();
-    isDropDragging = false;
-    if (!canUseTouchControls() || !e.changedTouches.length) return;
+    if (gestureMode === 'horizontal') {
+      let diff = x - gestureAnchorX;
+      while (diff >= SWIPE_STEP_PX) {
+        runGameAction(() => moveHorizontal(1));
+        gestureAnchorX += SWIPE_STEP_PX;
+        diff = x - gestureAnchorX;
+      }
+      while (diff <= -SWIPE_STEP_PX) {
+        runGameAction(() => moveHorizontal(-1));
+        gestureAnchorX -= SWIPE_STEP_PX;
+        diff = x - gestureAnchorX;
+      }
+      return;
+    }
 
-    const totalDy = Math.abs(e.changedTouches[0].clientY - dropTouchStartY);
-    if (dropSoftDropCount === 0 && totalDy < DROP_TAP_MAX_PX) {
-      withTouchLock(() => runGameAction(dropHard));
+    if (gestureMode === 'down') {
+      const step = getSoftDropStepPx();
+      let diff = y - gestureAnchorY;
+      while (diff >= step) {
+        triggerSoftDropFromGesture();
+        gestureAnchorY += step;
+        diff = y - gestureAnchorY;
+      }
+      if (!softDropRepeatTimer) scheduleSoftDropRepeat();
     }
   }
 
-  function bindHorizontalDragListeners(el: HTMLDivElement | null) {
-    if (!el) return () => {};
-    const onMove = (e: TouchEvent) => handleDragTouchMove(e);
-    el.addEventListener('touchstart', handleDragTouchStart, { passive: true });
-    el.addEventListener('touchmove', onMove, { passive: false });
-    el.addEventListener('touchend', handleDragTouchEnd, { passive: true });
-    el.addEventListener('touchcancel', handleDragTouchEnd, { passive: true });
-    return () => {
-      el.removeEventListener('touchstart', handleDragTouchStart);
-      el.removeEventListener('touchmove', onMove);
-      el.removeEventListener('touchend', handleDragTouchEnd);
-      el.removeEventListener('touchcancel', handleDragTouchEnd);
-    };
+  function handleGestureTouchEnd(e: TouchEvent) {
+    cancelLongPressTimer();
+    clearSoftDropRepeatTimer();
+
+    if (!gestureActive || !canUseTouchControls()) {
+      resetGestureState();
+      return;
+    }
+
+    if (longPressTriggered) {
+      resetGestureState();
+      return;
+    }
+
+    if (!e.changedTouches.length) {
+      resetGestureState();
+      return;
+    }
+
+    const touch = e.changedTouches[0];
+    const dx = touch.clientX - gestureStartX;
+    const dy = touch.clientY - gestureStartY;
+    const duration = Date.now() - gestureStartAt;
+
+    if (
+      !gestureMoved &&
+      Math.abs(dx) < SWIPE_TAP_MAX_PX &&
+      Math.abs(dy) < SWIPE_TAP_MAX_PX &&
+      duration < SWIPE_TAP_MAX_MS
+    ) {
+      runGameAction(rotatePieceAction);
+    } else if (
+      dy < -FLICK_UP_MIN_PX &&
+      duration <= FLICK_UP_MAX_MS &&
+      Math.abs(dy) / duration >= FLICK_UP_MIN_SPEED &&
+      Math.abs(dy) > Math.abs(dx)
+    ) {
+      runGameAction(dropHard);
+    }
+
+    resetGestureState();
   }
 
-  function bindDropDragListeners(el: HTMLButtonElement | null) {
+  function bindGestureListeners(el: HTMLDivElement | null) {
     if (!el) return () => {};
-    const onMove = (e: TouchEvent) => handleDropTouchMove(e);
-    el.addEventListener('touchstart', handleDropTouchStart, { passive: true });
+    const onMove = (e: TouchEvent) => handleGestureTouchMove(e);
+    el.addEventListener('touchstart', handleGestureTouchStart, { passive: true });
     el.addEventListener('touchmove', onMove, { passive: false });
-    el.addEventListener('touchend', handleDropTouchEnd, { passive: true });
-    el.addEventListener('touchcancel', handleDropTouchEnd, { passive: true });
+    el.addEventListener('touchend', handleGestureTouchEnd, { passive: true });
+    el.addEventListener('touchcancel', handleGestureTouchEnd, { passive: true });
     return () => {
-      el.removeEventListener('touchstart', handleDropTouchStart);
+      el.removeEventListener('touchstart', handleGestureTouchStart);
       el.removeEventListener('touchmove', onMove);
-      el.removeEventListener('touchend', handleDropTouchEnd);
-      el.removeEventListener('touchcancel', handleDropTouchEnd);
-      clearDropRepeatTimer();
+      el.removeEventListener('touchend', handleGestureTouchEnd);
+      el.removeEventListener('touchcancel', handleGestureTouchEnd);
+      cancelLongPressTimer();
+      clearSoftDropRepeatTimer();
     };
   }
 
@@ -823,17 +894,6 @@
     if (soundEnabled) playTetrisSound('move', true);
   }
 
-  /** 모바일 버튼 연타 방지 */
-  function withTouchLock(fn: () => void) {
-    if (touchLock) return;
-    if (screen !== 'playing' && screen !== 'paused') return;
-    touchLock = true;
-    runGameAction(fn);
-    setTimeout(() => {
-      touchLock = false;
-    }, 80);
-  }
-
   onMount(() => {
     try {
       soundEnabled = localStorage.getItem(SOUND_PREF_KEY) !== '0';
@@ -880,14 +940,8 @@
   });
 
   $effect(() => {
-    const cleanups = [
-      bindHorizontalDragListeners(boardWrapEl),
-      bindHorizontalDragListeners(dragZoneEl),
-      bindDropDragListeners(dropBtnEl)
-    ];
-    return () => {
-      for (const cleanup of cleanups) cleanup();
-    };
+    const cleanup = bindGestureListeners(boardWrapEl);
+    return cleanup;
   });
 </script>
 
@@ -992,6 +1046,7 @@
             <div class="tetris-layout">
               <div
                 class="tetris-board-wrap"
+                class:tetris-board-gesturing={gestureMoved}
                 bind:this={boardWrapEl}
                 role="application"
                 aria-label="테트리스 조작 영역"
@@ -1014,7 +1069,7 @@
                   {#if screen === 'paused'}
                     <div class="tetris-overlay">
                       <p class="tetris-overlay-title">일시정지</p>
-                      <p class="small text-white-50 mb-2">방향키 또는 ▶로 계속</p>
+                      <p class="small text-white-50 mb-2">스와이프·탭 또는 ▶로 계속</p>
                       <button type="button" class="btn btn-light btn-sm" onclick={resumeGame}>계속</button>
                     </div>
                   {/if}
@@ -1091,6 +1146,16 @@
                     {/each}
                   </div>
                 </div>
+                <div class="tetris-panel d-md-none">
+                  <p class="tetris-panel-label small text-muted mb-1">터치 조작</p>
+                  <ul class="small text-muted mb-0 ps-3 tetris-gesture-list">
+                    <li>← → 스와이프 이동</li>
+                    <li>↓ 스와이프 소프트 드롭</li>
+                    <li>↑ 빠르게 하드 드롭</li>
+                    <li>탭 회전</li>
+                    <li>길게 누르기 홀드</li>
+                  </ul>
+                </div>
                 <div class="tetris-panel d-none d-md-block">
                   <p class="tetris-panel-label small text-muted mb-1">조작</p>
                   <ul class="small text-muted mb-0 ps-3">
@@ -1103,56 +1168,6 @@
                   </ul>
                 </div>
               </aside>
-            </div>
-
-            <div class="tetris-controls mt-3" aria-label="터치 조작">
-              <div class="tetris-controls-split">
-                <div class="tetris-controls-left">
-                  <div
-                    class="tetris-drag-zone"
-                    class:tetris-drag-zone-active={isDragging}
-                    bind:this={dragZoneEl}
-                    aria-label="좌우 드래그로 이동"
-                  >
-                    <span class="tetris-drag-zone-label">← 드래그 →</span>
-                    <span class="tetris-drag-zone-hint">보드에서도 드래그 가능</span>
-                  </div>
-                  <button
-                    type="button"
-                    class="tetris-btn tetris-btn-hold"
-                    class:tetris-btn-disabled={!canHold}
-                    aria-label="홀드"
-                    disabled={!canHold}
-                    onclick={() => withTouchLock(holdPieceAction)}
-                  >
-                    H 홀드
-                  </button>
-                </div>
-                <div class="tetris-controls-right">
-                  <button
-                    type="button"
-                    class="tetris-btn tetris-btn-rotate"
-                    aria-label="회전"
-                    onclick={() => withTouchLock(rotatePieceAction)}
-                  >
-                    ↻
-                  </button>
-                  <button
-                    type="button"
-                    class="tetris-btn tetris-btn-drop"
-                    class:tetris-btn-drop-active={isDropDragging}
-                    bind:this={dropBtnEl}
-                    aria-label="탭 하드드롭, 아래 드래그 소프트드롭"
-                    onclick={(e) => {
-                      if ('ontouchstart' in window) return;
-                      withTouchLock(dropHard);
-                    }}
-                  >
-                    <span class="tetris-drop-icon">⬇</span>
-                    <span class="tetris-drop-hint">탭·↓드래그</span>
-                  </button>
-                </div>
-              </div>
             </div>
           {/if}
         </div>
@@ -1252,6 +1267,15 @@
   .tetris-board-wrap:focus-visible {
     box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.45);
     border-radius: 10px;
+  }
+
+  .tetris-board-gesturing {
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.3);
+    border-radius: 10px;
+  }
+
+  .tetris-gesture-list li {
+    margin-bottom: 2px;
   }
 
   .tetris-board {
@@ -1377,163 +1401,6 @@
     font-size: 1.25rem;
   }
 
-  .tetris-controls {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    width: 100%;
-    max-width: 360px;
-    margin-inline: auto;
-  }
-
-  .tetris-controls-split {
-    display: flex;
-    gap: 10px;
-    align-items: stretch;
-    width: 100%;
-  }
-
-  .tetris-controls-left {
-    flex: 1.35;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    min-width: 0;
-  }
-
-  .tetris-controls-right {
-    flex: 0.85;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    min-width: 0;
-  }
-
-  .tetris-drag-zone {
-    flex: 1;
-    min-height: 116px;
-    border: 2px dashed #9ca3af;
-    border-radius: 12px;
-    background: #f9fafb;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 4px;
-    touch-action: none;
-    user-select: none;
-    -webkit-user-select: none;
-    transition: background 0.12s ease, border-color 0.12s ease;
-  }
-
-  .tetris-drag-zone-active {
-    background: #eef2ff;
-    border-color: #6366f1;
-  }
-
-  .tetris-drag-zone-label {
-    font-size: 1.1rem;
-    font-weight: 700;
-    color: #374151;
-  }
-
-  .tetris-drag-zone-hint {
-    font-size: 0.7rem;
-    color: #9ca3af;
-  }
-
-  .tetris-controls-row {
-    display: flex;
-    gap: 8px;
-    justify-content: center;
-  }
-
-  .tetris-controls-left .tetris-controls-row {
-    justify-content: stretch;
-  }
-
-  .tetris-controls-left .tetris-btn {
-    flex: 1;
-    max-width: none;
-  }
-
-  .tetris-btn {
-    flex: 1;
-    min-height: 52px;
-    max-width: 96px;
-    border: none;
-    border-radius: 12px;
-    background: #374151;
-    color: #fff;
-    font-size: 1.35rem;
-    font-weight: 700;
-    touch-action: manipulation;
-    -webkit-tap-highlight-color: transparent;
-    transition: transform 0.08s ease, background 0.08s ease;
-  }
-
-  .tetris-btn:active {
-    transform: scale(0.95);
-    background: #1f2937;
-  }
-
-  .tetris-btn-rotate {
-    background: #4b5563;
-    flex: 1;
-    min-height: 54px;
-    max-width: none;
-    font-size: 2rem;
-  }
-
-  .tetris-btn-drop {
-    background: #b45309;
-    flex: 1;
-    min-height: 54px;
-    max-width: none;
-    font-size: 1.6rem;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 2px;
-    line-height: 1;
-  }
-
-  .tetris-btn-drop-active {
-    background: #d97706;
-  }
-
-  .tetris-drop-icon {
-    font-size: 1.6rem;
-  }
-
-  .tetris-drop-hint {
-    font-size: 0.62rem;
-    font-weight: 600;
-    opacity: 0.9;
-  }
-
-  .tetris-btn-drop:active {
-    background: #92400e;
-  }
-
-  .tetris-btn-hold {
-    min-height: 48px;
-    max-width: none;
-    background: #6366f1;
-    font-size: 1rem;
-  }
-
-  .tetris-btn-hold:active {
-    background: #4f46e5;
-  }
-
-  .tetris-btn-disabled,
-  .tetris-btn:disabled {
-    opacity: 0.45;
-    pointer-events: none;
-  }
-
   @media (max-width: 575.98px) {
     .tetris-side {
       flex: 0 0 84px;
@@ -1545,14 +1412,6 @@
 
     .tetris-preview-row {
       grid-template-columns: repeat(4, 12px);
-    }
-
-    .tetris-btn {
-      min-height: 56px;
-    }
-
-    .tetris-drag-zone {
-      min-height: 128px;
     }
   }
 </style>

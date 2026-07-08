@@ -110,7 +110,7 @@ test.describe('tetris smoke', () => {
     await expect(pauseOverlay(page)).toBeVisible();
 
     const before = await getFilledCellPositions(page);
-    await dragHorizontal(page, '.tetris-drag-zone', -40);
+    await dragHorizontal(page, '.tetris-board-wrap', -40);
     await page.waitForTimeout(120);
 
     await expect(pauseOverlay(page)).not.toBeVisible();
