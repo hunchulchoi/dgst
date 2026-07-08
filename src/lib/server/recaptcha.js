@@ -1,4 +1,4 @@
-import { GOOGLE_RECAPTCHA_SECRET_KEY } from '$env/static/private';
+import { env as privateEnv } from '$env/dynamic/private';
 import logger from '$lib/util/logger.js';
 
 /**
@@ -9,7 +9,8 @@ import logger from '$lib/util/logger.js';
  * @returns {Promise<{ ok: true } | { ok: false, message: string }>}
  */
 export async function verifyRecaptchaToken(token, expectedAction = 'register', minScore = 0.5) {
-  if (!GOOGLE_RECAPTCHA_SECRET_KEY) {
+  const secret = privateEnv.GOOGLE_RECAPTCHA_SECRET_KEY;
+  if (!secret) {
     logger.warn({ message: 'GOOGLE_RECAPTCHA_SECRET_KEY not set; skipping verification' });
     return { ok: true };
   }
@@ -20,7 +21,7 @@ export async function verifyRecaptchaToken(token, expectedAction = 'register', m
 
   try {
     const body = new URLSearchParams({
-      secret: GOOGLE_RECAPTCHA_SECRET_KEY,
+      secret,
       response: token
     });
 

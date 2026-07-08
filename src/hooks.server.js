@@ -1,13 +1,6 @@
 import { SvelteKitAuth } from '@auth/sveltekit';
 import GoogleProvider from '@auth/core/providers/google';
-import {
-  NEXTAUTH_SECRET,
-  GOOGLE_CLIENT_ID,
-  GOOGLE_CLIENT_SECRET,
-  KAKAO_CLIENT_ID,
-  KAKAO_CLIENT_SECRET,
-  NODE_ENV
-} from '$env/static/private';
+import { env as privateEnv } from '$env/dynamic/private';
 import { getPrisma } from '$lib/database/prisma.js';
 import { getPrismaAdapter } from '$lib/server/auth/prismaAdapter.js';
 import { checkAuthRateLimit } from '$lib/server/auth/rateLimit.js';
@@ -37,8 +30,8 @@ import KakaoProvider from '@auth/core/providers/kakao';
 // SvelteKit 2 + @auth/sveltekit v1.x 호환
 const providers = [
   GoogleProvider({
-    clientId: GOOGLE_CLIENT_ID,
-    clientSecret: GOOGLE_CLIENT_SECRET,
+    clientId: privateEnv.GOOGLE_CLIENT_ID,
+    clientSecret: privateEnv.GOOGLE_CLIENT_SECRET,
     profile(profile) {
       // 사용자 정보에 필요한 필드만 저장 (name/image 등 불필요한 값 제외)
       return {
@@ -55,8 +48,8 @@ const providers = [
     }
   }),
   KakaoProvider({
-    clientId: KAKAO_CLIENT_ID,
-    clientSecret: KAKAO_CLIENT_SECRET,
+    clientId: privateEnv.KAKAO_CLIENT_ID,
+    clientSecret: privateEnv.KAKAO_CLIENT_SECRET,
     profile(profile) {
       const kakaoAccount = profile.kakao_account || {};
       const kakaoId = String(profile.id);
@@ -108,10 +101,6 @@ export const {
   },
   callbacks: {
     async signIn(params) {
-      console.debug('=======auth callback signIn====');
-      console.debug('params', params);
-      console.debug('=======//auth callback signIn====');
-
       if (!params.profile && params.user) return true;
       if (params.account?.provider === 'kakao') return true;
 
@@ -184,17 +173,20 @@ export const {
   },
   cookies: {
     sessionToken: {
-      name: NODE_ENV === 'production' ? '__Secure-authjs.session-token' : 'authjs.session-token',
+      name:
+        privateEnv.NODE_ENV === 'production'
+          ? '__Secure-authjs.session-token'
+          : 'authjs.session-token',
       options: {
         httpOnly: true,
         sameSite: 'lax',
         path: '/',
-        secure: NODE_ENV === 'production',
+        secure: privateEnv.NODE_ENV === 'production',
         maxAge: 30 * 24 * 60 * 60
       }
     }
   },
-  secret: NEXTAUTH_SECRET,
+  secret: privateEnv.NEXTAUTH_SECRET,
   trustHost: true,
   debug: false
 });
@@ -207,7 +199,7 @@ const DEVICE_CACHE_TTL_SECONDS = 30 * 24 * 60 * 60;
 const DAU_TTL_SECONDS = 48 * 60 * 60;
 const DEVICE_NS = 'device';
 const AUTH_SESSION_COOKIE_NAME =
-  NODE_ENV === 'production' ? '__Secure-authjs.session-token' : 'authjs.session-token';
+  privateEnv.NODE_ENV === 'production' ? '__Secure-authjs.session-token' : 'authjs.session-token';
 
 /** @param {import('@sveltejs/kit').RequestEvent} event */
 const getRequestMeta = (event) => {
@@ -279,7 +271,7 @@ export async function handle({ event, resolve }) {
       path: '/',
       httpOnly: true,
       sameSite: 'lax',
-      secure: NODE_ENV === 'production',
+      secure: privateEnv.NODE_ENV === 'production',
       maxAge: DEVICE_COOKIE_MAX_AGE_DAYS * 24 * 60 * 60
     });
   }
