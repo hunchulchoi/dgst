@@ -945,61 +945,65 @@
             </div>
 
             <div class="tetris-controls mt-3" aria-label="터치 조작">
-              <div class="tetris-controls-row">
-                <button
-                  type="button"
-                  class="tetris-btn tetris-btn-hold"
-                  class:tetris-btn-disabled={!canHold}
-                  aria-label="홀드"
-                  disabled={!canHold}
-                  onclick={() => withTouchLock(holdPieceAction)}
-                >
-                  H
-                </button>
-              </div>
-              <div class="tetris-controls-row">
-                <button
-                  type="button"
-                  class="tetris-btn"
-                  aria-label="왼쪽"
-                  onclick={() => withTouchLock(() => moveHorizontal(-1))}
-                >
-                  ◀
-                </button>
-                <button
-                  type="button"
-                  class="tetris-btn tetris-btn-rotate"
-                  aria-label="회전"
-                  onclick={() => withTouchLock(rotatePieceAction)}
-                >
-                  ↻
-                </button>
-                <button
-                  type="button"
-                  class="tetris-btn"
-                  aria-label="오른쪽"
-                  onclick={() => withTouchLock(() => moveHorizontal(1))}
-                >
-                  ▶
-                </button>
-              </div>
-              <div class="tetris-controls-row">
-                <button
-                  type="button"
-                  class="tetris-btn tetris-btn-wide"
-                  aria-label="아래"
-                  onclick={() => withTouchLock(softDrop)}
-                >
-                  ▼
-                </button>
-                <button
-                  type="button"
-                  class="tetris-btn tetris-btn-drop"
-                  aria-label="하드 드롭"
-                  onclick={() => withTouchLock(dropHard)}
-                >
-                  ⬇
-                </button>
+              <div class="tetris-controls-split">
+                <div class="tetris-controls-left">
+                  <div class="tetris-controls-row">
+                    <button
+                      type="button"
+                      class="tetris-btn"
+                      aria-label="왼쪽"
+                      onclick={() => withTouchLock(() => moveHorizontal(-1))}
+                    >
+                      ◀
+                    </button>
+                    <button
+                      type="button"
+                      class="tetris-btn"
+                      aria-label="아래"
+                      onclick={() => withTouchLock(softDrop)}
+                    >
+                      ▼
+                    </button>
+                    <button
+                      type="button"
+                      class="tetris-btn"
+                      aria-label="오른쪽"
+                      onclick={() => withTouchLock(() => moveHorizontal(1))}
+                    >
+                      ▶
+                    </button>
+                  </div>
+                  <div class="tetris-controls-row">
+                    <button
+                      type="button"
+                      class="tetris-btn tetris-btn-hold"
+                      class:tetris-btn-disabled={!canHold}
+                      aria-label="홀드"
+                      disabled={!canHold}
+                      onclick={() => withTouchLock(holdPieceAction)}
+                    >
+                      H
+                    </button>
+                    <button
+                      type="button"
+                      class="tetris-btn tetris-btn-drop tetris-btn-wide"
+                      aria-label="하드 드롭"
+                      onclick={() => withTouchLock(dropHard)}
+                    >
+                      ⬇
+                    </button>
+                  </div>
+                </div>
+                <div class="tetris-controls-right">
+                  <button
+                    type="button"
+                    class="tetris-btn tetris-btn-rotate tetris-btn-rotate-main"
+                    aria-label="회전"
+                    onclick={() => withTouchLock(rotatePieceAction)}
+                  >
+                    ↻
+                  </button>
+                </div>
               </div>
             </div>
           {/if}
@@ -1228,14 +1232,45 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
-    max-width: 320px;
+    width: 100%;
+    max-width: 360px;
     margin-inline: auto;
+  }
+
+  .tetris-controls-split {
+    display: flex;
+    gap: 10px;
+    align-items: stretch;
+    width: 100%;
+  }
+
+  .tetris-controls-left {
+    flex: 1.35;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .tetris-controls-right {
+    flex: 0.85;
+    display: flex;
+    min-width: 0;
   }
 
   .tetris-controls-row {
     display: flex;
     gap: 8px;
     justify-content: center;
+  }
+
+  .tetris-controls-left .tetris-controls-row {
+    justify-content: stretch;
+  }
+
+  .tetris-controls-left .tetris-btn {
+    flex: 1;
+    max-width: none;
   }
 
   .tetris-btn {
@@ -1262,12 +1297,20 @@
     background: #4b5563;
   }
 
+  .tetris-btn-rotate-main {
+    flex: 1;
+    width: 100%;
+    min-height: 116px;
+    max-width: none;
+    font-size: 2rem;
+  }
+
   .tetris-btn-wide {
-    max-width: 140px;
+    flex: 1.6;
+    max-width: none;
   }
 
   .tetris-btn-drop {
-    max-width: 140px;
     background: #b45309;
   }
 
@@ -1276,7 +1319,8 @@
   }
 
   .tetris-btn-hold {
-    max-width: 100%;
+    flex: 1;
+    max-width: none;
     background: #6366f1;
   }
 
@@ -1305,6 +1349,11 @@
 
     .tetris-btn {
       min-height: 56px;
+    }
+
+    .tetris-btn-rotate-main {
+      min-height: 128px;
+      font-size: 2.25rem;
     }
   }
 </style>
