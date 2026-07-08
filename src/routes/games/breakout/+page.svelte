@@ -8,25 +8,54 @@
     BALL_RADIUS,
     CANVAS_HEIGHT,
     CANVAS_WIDTH,
+    COMBO_WINDOW_MS,
+    createActiveEffects,
     createBall,
     createBricks,
+    createDropsFromDestroyedBricks,
+    createLaserShot,
+    createMultiballBalls,
     createPaddle,
+    createPowerUpDrop,
+    destroyAllBreakableBricks,
+    getActiveEffectLabels,
+    getEffectiveBallSpeed,
+    getEffectivePaddleWidth,
+    getStageClearBonus,
     getStageConfig,
     handleBrickCollision,
+    handleInvincibleBrickCollision,
+    handleLaserBrickCollision,
     handlePaddleCollision,
+    handlePowerUpPaddleCollision,
     handleWallCollision,
     INITIAL_LIVES,
     isBallLost,
     isGameComplete,
+    isInvincibleBallActive,
+    isLaserActive,
     isStageClear,
+    LASER_INTERVAL_MS,
+    MAX_LIVES,
     moveBall,
+    moveLasers,
     movePaddle,
+    movePowerUps,
+    normalizeAllBallSpeeds,
     normalizeBallSpeed,
     PADDLE_SPEED,
+    POWER_UP_META,
+    resizePaddle,
     STAGES,
+    applyTimedPowerUp,
+    calculateComboBonus,
+    type ActiveEffects,
     type Ball,
     type Brick,
-    type Paddle
+    type Laser,
+    type Paddle,
+    type PowerUp,
+    type PowerUpType
   } from './gameUtils.js';
 
   interface BreakoutPageProps {
@@ -42,8 +71,17 @@
   let dragBarEl = $state<HTMLDivElement | null>(null);
   let ctx: CanvasRenderingContext2D | null = null;
   let paddle = $state<Paddle>(createPaddle());
-  let ball = $state<Ball | null>(null);
+  let balls = $state<Ball[]>([]);
   let bricks = $state<Brick[]>([]);
+  let powerUps = $state<PowerUp[]>([]);
+  let lasers = $state<Laser[]>([]);
+  let activeEffects = $state<ActiveEffects>(createActiveEffects());
+  let effectToast = $state<string | null>(null);
+  let effectToastUntil = 0;
+  let shieldCharges = $state(0);
+  let comboCount = $state(0);
+  let lastComboAt = 0;
+  let lastLaserShotAt = 0;
   let stage = $state(1);
   let score = $state(0);
   let lives = $state(INITIAL_LIVES);
@@ -68,6 +106,93 @@
 
   const isLoggedIn = $derived(!!data.session?.user?.email);
   const stageConfig = $derived(getStageConfig(stage));
+
+  function resetRoundState() {
+    powerUps = [];
+    lasers = [];
+    activeEffects = createActiveEffects();
+    effectToast = null;
+    effectToastUntil = 0;
+    shieldCharges = 0;
+    comboCount = 0;
+    lastComboAt = 0;
+    lastLaserShotAt = 0;
+  }
+
+  function addScoreFromBricks(destroyed: Brick[], baseScore: number, now: number) {
+    if (destroyed.length === 0) return;
+    if (now - lastComboAt <= COMBO_WINDOW_MS) comboCount += destroyed.length;
+    else comboCount = destroyed.length;
+    lastComboAt = now;
+    score += calculateComboBonus(comboCount, baseScore);
+  }
+
+  function appendDropsFromDestroyed(destroyed: Brick[], current: PowerUp[]): PowerUp[] {
+    let next = current;
+    for (const drop of createDropsFromDestroyedBricks(destroyed)) {
+      next = [...next, createPowerUpDrop(drop.brick, drop.type)];
+    }
+    return next;
+  }
+
+  function syncPaddleWidth() {
+    const now = Date.now();
+    const targetWidth = getEffectivePaddleWidth(activeEffects, now);
+    if (Math.abs(paddle.width - targetWidth) > 0.5) {
+      paddle = resizePaddle(paddle, targetWidth);
+    }
+  }
+
+  function showEffectToast(message: string) {
+    effectToast = message;
+    effectToastUntil = Date.now() + 1800;
+  }
+
+  function applyCollectedPowerUp(type: PowerUpType) {
+    const now = Date.now();
+    const meta = POWER_UP_META[type];
+    showEffectToast(meta.bad ? `⚠ ${meta.label}` : meta.label);
+
+    switch (type) {
+      case 'multiball': {
+        const config = getStageConfig(stage);
+        const speed = getEffectiveBallSpeed(config.ballSpeed, activeEffects, now);
+        const source = balls[0] ?? createBall(paddle, speed);
+        balls = createMultiballBalls(source, speed);
+        break;
+      }
+      case 'extraLife':
+        lives = Math.min(MAX_LIVES, lives + 1);
+        break;
+      case 'expand':
+      case 'shrink':
+      case 'slow':
+      case 'fast':
+      case 'invincible':
+      case 'laser':
+        activeEffects = applyTimedPowerUp(type, activeEffects, now);
+        syncPaddleWidth();
+        {
+          const config = getStageConfig(stage);
+          const speed = getEffectiveBallSpeed(config.ballSpeed, activeEffects, now);
+          balls = normalizeAllBallSpeeds(balls, speed);
+        }
+        break;
+      case 'shield':
+        shieldCharges = Math.min(2, shieldCharges + 1);
+        break;
+      case 'bomb': {
+        const blast = destroyAllBreakableBricks(bricks, stage);
+        bricks = blast.bricks;
+        addScoreFromBricks(blast.destroyed, blast.scoreGained, now);
+        powerUps = appendDropsFromDestroyed(blast.destroyed, powerUps);
+        if (isStageClear(bricks)) scheduleStageClear();
+        break;
+      }
+      default:
+        break;
+    }
+  }
 
   function initCanvasContext(): boolean {
     if (!canvasEl) return false;
@@ -102,9 +227,10 @@
     stage = 1;
     score = 0;
     lives = INITIAL_LIVES;
+    resetRoundState();
     paddle = createPaddle();
     bricks = createBricks(stage);
-    ball = createBall(paddle, stageConfig.ballSpeed);
+    balls = [createBall(paddle, stageConfig.ballSpeed)];
     ballLaunched = false;
     screen = 'ready';
     await tick();
@@ -115,29 +241,41 @@
 
   function startStage(stageNum: number) {
     stage = stageNum;
+    resetRoundState();
     paddle = createPaddle();
     bricks = createBricks(stage);
     const config = getStageConfig(stage);
-    ball = createBall(paddle, config.ballSpeed);
+    balls = [createBall(paddle, config.ballSpeed)];
     ballLaunched = false;
     screen = 'ready';
   }
 
   function launchBall() {
-    if (!ball || ballLaunched) return;
+    if (balls.length === 0 || ballLaunched) return;
     ballLaunched = true;
     screen = 'playing';
   }
 
   function loseLife() {
+    if (shieldCharges > 0) {
+      shieldCharges -= 1;
+      showEffectToast('보호막 발동!');
+      const config = getStageConfig(stage);
+      balls = [createBall(paddle, getEffectiveBallSpeed(config.ballSpeed, activeEffects, Date.now()))];
+      ballLaunched = false;
+      screen = 'ready';
+      return;
+    }
     lives -= 1;
     if (lives <= 0) {
       endGameOver();
       return;
     }
+    activeEffects = createActiveEffects();
+    powerUps = [];
     paddle = createPaddle();
     const config = getStageConfig(stage);
-    ball = createBall(paddle, config.ballSpeed);
+    balls = [createBall(paddle, config.ballSpeed)];
     ballLaunched = false;
     screen = 'ready';
   }
@@ -161,6 +299,9 @@
 
   function scheduleStageClear() {
     screen = 'stageClear';
+    const bonus = getStageClearBonus(stage);
+    score += bonus;
+    showEffectToast(`스테이지 클리어 +${bonus}`);
     if (stageClearTimeout) clearTimeout(stageClearTimeout);
     stageClearTimeout = setTimeout(() => {
       advanceStage();
@@ -170,37 +311,89 @@
   function updateGame() {
     if (screen !== 'playing' && screen !== 'ready') return;
 
+    const now = Date.now();
+    if (effectToast && now > effectToastUntil) effectToast = null;
+
+    syncPaddleWidth();
+
     if (keys.left) paddle = movePaddle(paddle, -PADDLE_SPEED);
     if (keys.right) paddle = movePaddle(paddle, PADDLE_SPEED);
 
-    if (!ball) return;
+    powerUps = movePowerUps(powerUps);
+    lasers = moveLasers(lasers);
+
+    let nextPowerUps = powerUps;
+
+    if (isLaserActive(activeEffects, now) && now - lastLaserShotAt >= LASER_INTERVAL_MS) {
+      lasers = [...lasers, createLaserShot(paddle)];
+      lastLaserShotAt = now;
+    }
+
+    if (lasers.length > 0) {
+      const laserHit = handleLaserBrickCollision(lasers, bricks, stage);
+      lasers = laserHit.lasers;
+      bricks = laserHit.bricks;
+      addScoreFromBricks(laserHit.destroyedBricks, laserHit.scoreGained, now);
+      nextPowerUps = appendDropsFromDestroyed(laserHit.destroyedBricks, nextPowerUps);
+    }
 
     if (!ballLaunched) {
-      ball = { ...ball, x: paddle.x + paddle.width / 2, y: paddle.y - BALL_RADIUS - 2 };
+      balls = balls.map((b) => ({
+        ...b,
+        x: paddle.x + paddle.width / 2,
+        y: paddle.y - BALL_RADIUS - 2
+      }));
+      powerUps = nextPowerUps;
+      if (isStageClear(bricks)) scheduleStageClear();
       return;
     }
 
     const config = getStageConfig(stage);
-    let nextBall = moveBall(ball);
-    nextBall = handleWallCollision(nextBall);
+    const ballSpeed = getEffectiveBallSpeed(config.ballSpeed, activeEffects, now);
+    const invincible = isInvincibleBallActive(activeEffects, now);
 
-    const paddleHit = handlePaddleCollision(nextBall, paddle);
-    nextBall = paddleHit.ball;
+    let nextBricks = bricks;
+    const survivingBalls: Ball[] = [];
 
-    const brickHit = handleBrickCollision(nextBall, bricks, stage);
-    nextBall = brickHit.ball;
-    if (brickHit.hit) {
-      bricks = brickHit.bricks;
-      score += brickHit.scoreGained;
+    for (const ball of balls) {
+      let nextBall = moveBall(ball);
+      nextBall = handleWallCollision(nextBall);
+
+      const paddleHit = handlePaddleCollision(nextBall, paddle);
+      nextBall = paddleHit.ball;
+
+      if (invincible) {
+        const pierce = handleInvincibleBrickCollision(nextBall, nextBricks, stage);
+        nextBricks = pierce.bricks;
+        addScoreFromBricks(pierce.destroyedBricks, pierce.scoreGained, now);
+        nextPowerUps = appendDropsFromDestroyed(pierce.destroyedBricks, nextPowerUps);
+      } else {
+        const brickHit = handleBrickCollision(nextBall, nextBricks, stage);
+        nextBall = brickHit.ball;
+        if (brickHit.hit) {
+          nextBricks = brickHit.bricks;
+          addScoreFromBricks(brickHit.destroyedBricks, brickHit.scoreGained, now);
+          nextPowerUps = appendDropsFromDestroyed(brickHit.destroyedBricks, nextPowerUps);
+        }
+      }
+
+      nextBall = normalizeBallSpeed(nextBall, ballSpeed);
+      if (!isBallLost(nextBall)) survivingBalls.push(nextBall);
     }
 
-    nextBall = normalizeBallSpeed(nextBall, config.ballSpeed);
-    ball = nextBall;
+    bricks = nextBricks;
+    const collected = handlePowerUpPaddleCollision(nextPowerUps, paddle);
+    powerUps = collected.powerUps;
+    for (const item of collected.collected) {
+      applyCollectedPowerUp(item.type);
+    }
 
-    if (isBallLost(ball)) {
+    if (survivingBalls.length === 0) {
       loseLife();
       return;
     }
+
+    balls = survivingBalls;
 
     if (isStageClear(bricks)) {
       scheduleStageClear();
@@ -209,6 +402,8 @@
 
   function drawGame() {
     if (!ctx) return;
+    const now = Date.now();
+    const invincible = isInvincibleBallActive(activeEffects, now);
     ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
     const gradient = ctx.createLinearGradient(0, 0, 0, CANVAS_HEIGHT);
@@ -229,16 +424,78 @@
         ctx.fillStyle = 'rgba(255,255,255,0.3)';
         ctx.fillRect(brick.x + 2, brick.y + brick.height / 2 - 1, brick.width - 4, 2);
       }
+      if (brick.type === 'explosive') {
+        ctx.fillStyle = 'rgba(0,0,0,0.35)';
+        ctx.font = 'bold 11px system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('💥', brick.x + brick.width / 2, brick.y + brick.height / 2 + 4);
+      }
+      if (brick.type === 'iron') {
+        ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+        ctx.beginPath();
+        ctx.moveTo(brick.x + 4, brick.y + 4);
+        ctx.lineTo(brick.x + brick.width - 4, brick.y + brick.height - 4);
+        ctx.moveTo(brick.x + brick.width - 4, brick.y + 4);
+        ctx.lineTo(brick.x + 4, brick.y + brick.height - 4);
+        ctx.stroke();
+      }
+      if (brick.type === 'rainbow') {
+        ctx.fillStyle = 'rgba(255,255,255,0.7)';
+        ctx.font = 'bold 11px system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('🌈', brick.x + brick.width / 2, brick.y + brick.height / 2 + 4);
+      }
     }
 
-    ctx.fillStyle = '#e0e0e0';
+    for (const laser of lasers) {
+      if (!laser.alive) continue;
+      ctx.strokeStyle = '#ff5252';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(laser.x, laser.y + 10);
+      ctx.lineTo(laser.x, laser.y - 10);
+      ctx.stroke();
+    }
+
+    for (const item of powerUps) {
+      if (!item.alive) continue;
+      const meta = POWER_UP_META[item.type];
+      ctx.fillStyle = meta.color;
+      drawRoundRect(ctx, item.x, item.y, item.width, item.height, 5);
+      ctx.fill();
+      ctx.strokeStyle = meta.bad ? '#c62828' : '#ffffff';
+      ctx.lineWidth = meta.bad ? 2 : 1;
+      ctx.stroke();
+      ctx.fillStyle = meta.bad ? '#5d0000' : '#1a237e';
+      ctx.font = 'bold 10px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(meta.symbol, item.x + item.width / 2, item.y + item.height / 2 + 3);
+    }
+
+    const paddleColor =
+      activeEffects.shrinkPaddleUntil > now
+        ? '#ffccbc'
+        : activeEffects.expandPaddleUntil > now
+          ? '#c8e6c9'
+          : '#e0e0e0';
+    ctx.fillStyle = paddleColor;
     drawRoundRect(ctx, paddle.x, paddle.y, paddle.width, paddle.height, 6);
     ctx.fill();
     ctx.strokeStyle = '#90caf9';
     ctx.lineWidth = 2;
     ctx.stroke();
 
-    if (ball) {
+    for (const ball of balls) {
+      if (invincible) {
+        ctx.save();
+        ctx.globalAlpha = 0.35;
+        ctx.fillStyle = '#ffeb3b';
+        ctx.beginPath();
+        ctx.arc(ball.x, ball.y, ball.radius + 6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
       const ballGrad = ctx.createRadialGradient(
         ball.x - 2,
         ball.y - 2,
@@ -248,7 +505,10 @@
         ball.radius
       );
       ballGrad.addColorStop(0, '#ffffff');
-      ballGrad.addColorStop(1, '#64b5f6');
+      ballGrad.addColorStop(
+        1,
+        invincible ? '#ffb300' : activeEffects.fastBallsUntil > now ? '#ef5350' : '#64b5f6'
+      );
       ctx.fillStyle = ballGrad;
       ctx.beginPath();
       ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
@@ -262,10 +522,33 @@
     ctx.fillText(`스테이지 ${stage}`, 12, 44);
     ctx.textAlign = 'right';
     ctx.fillText(`❤️ ${lives}`, CANVAS_WIDTH - 12, 24);
+    if (balls.length > 1) {
+      ctx.fillText(`● ${balls.length}`, CANVAS_WIDTH - 12, 44);
+    }
     ctx.textAlign = 'center';
     ctx.font = '12px system-ui, sans-serif';
     ctx.fillStyle = 'rgba(255,255,255,0.5)';
     ctx.fillText(stageConfig.label, CANVAS_WIDTH / 2, 44);
+
+    if (comboCount > 1) {
+      ctx.fillText(`콤보 x${comboCount}`, CANVAS_WIDTH / 2, 80);
+    }
+
+    const activeEffectLabels = getActiveEffectLabels(activeEffects, now, shieldCharges);
+
+    if (activeEffectLabels.length > 0) {
+      ctx.fillStyle = 'rgba(255,255,255,0.75)';
+      ctx.font = '11px system-ui, sans-serif';
+      ctx.fillText(activeEffectLabels.join(' · '), CANVAS_WIDTH / 2, 62);
+    }
+
+    if (effectToast) {
+      ctx.fillStyle = 'rgba(0,0,0,0.55)';
+      ctx.fillRect(CANVAS_WIDTH / 2 - 90, CANVAS_HEIGHT - 88, 180, 28);
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 13px system-ui, sans-serif';
+      ctx.fillText(effectToast, CANVAS_WIDTH / 2, CANVAS_HEIGHT - 70);
+    }
 
     if (screen === 'ready') {
       ctx.fillStyle = 'rgba(0,0,0,0.5)';
@@ -501,9 +784,9 @@
           {#if screen === 'menu'}
             <div class="text-center py-3">
               <h2 class="mb-2">🎯 블록깨기</h2>
-              <p class="text-muted mb-4">
-                10단계 스테이지를 클리어하세요!<br />
-                패들로 공을 튕겨 모든 블록을 깨뜨리세요.
+              <p class="text-muted mb-4 small">
+                패들로 공 받기 · 블록 제거 · 아이템 획득<br />
+                🟦일반 🟥내구(2타) 🟨폭발 ⬛철(무적) 🌈특수
               </p>
               <button type="button" class="btn btn-primary btn-lg px-5" onclick={startGame}>
                 시작
