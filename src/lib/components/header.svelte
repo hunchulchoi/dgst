@@ -287,6 +287,15 @@
               <span>🎱</span><span class="d-none d-sm-inline ms-1">당구</span>
             </NavLink>
           </NavItem>
+          <NavItem>
+            <NavLink
+              href="/games/tetris"
+              active={pathname?.startsWith('/games/tetris')}
+              class="px-3 text-center"
+            >
+              <span>🧱</span><span class="d-none d-sm-inline ms-1">테트리스</span>
+            </NavLink>
+          </NavItem>
         {/if}
         <!--<NavItem>
         <NavLink href="/game/56471" active={pathname?.startsWith('/game/56471')}>
