@@ -1,7 +1,7 @@
 <script lang="ts">
   import { resolve } from '$app/paths';
   import { beforeNavigate } from '$app/navigation';
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import { ko } from 'date-fns/locale';
   import { formatRelativeTime } from '$lib/util/formatRelativeTime.js';
   import type { PageData } from './$types';
@@ -141,6 +141,7 @@
     }
     startDropTimer();
     if (isLoggedIn) void logGameStart();
+    void focusBoard();
   }
 
   /** 게임오버 공통 처리 */
@@ -176,6 +177,7 @@
     if (screen !== 'paused') return;
     screen = 'playing';
     startDropTimer();
+    void focusBoard();
   }
 
   function togglePause() {
@@ -380,7 +382,34 @@
     settlePiece(locked, result.distance);
   }
 
+  /** 모바일 버튼 연타 방지 */
+  let touchLock = $state(false);
+  let boardWrapEl = $state<HTMLDivElement | null>(null);
+
+  async function focusBoard() {
+    await tick();
+    boardWrapEl?.focus({ preventScroll: true });
+  }
+
+  /** 일시정지 중이면 재개 후 게임 입력 처리 */
+  function runGameAction(action: () => void) {
+    if (screen === 'paused') resumeGame();
+    if (screen !== 'playing') return;
+    action();
+  }
+
   function handleKeydown(e: KeyboardEvent) {
+    const target = e.target;
+    if (
+      target instanceof HTMLElement &&
+      (target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.tagName === 'SELECT' ||
+        target.isContentEditable)
+    ) {
+      return;
+    }
+
     if (screen === 'menu' || screen === 'gameOver' || screen === 'gameWin') {
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
@@ -396,24 +425,25 @@
       }
       return;
     }
+
     switch (e.key) {
       case 'ArrowLeft':
       case 'a':
       case 'A':
         e.preventDefault();
-        moveHorizontal(-1);
+        runGameAction(() => moveHorizontal(-1));
         break;
       case 'ArrowRight':
       case 'd':
       case 'D':
         e.preventDefault();
-        moveHorizontal(1);
+        runGameAction(() => moveHorizontal(1));
         break;
       case 'ArrowDown':
       case 's':
       case 'S':
         e.preventDefault();
-        softDrop();
+        runGameAction(softDrop);
         break;
       case 'ArrowUp':
       case 'w':
@@ -421,17 +451,16 @@
       case 'x':
       case 'X':
         e.preventDefault();
-        rotatePieceAction();
+        runGameAction(rotatePieceAction);
         break;
       case ' ':
         e.preventDefault();
-        dropHard();
+        runGameAction(dropHard);
         break;
       case 'c':
       case 'C':
-      case 'Shift':
         e.preventDefault();
-        holdPieceAction();
+        runGameAction(holdPieceAction);
         break;
       case 'p':
       case 'P':
@@ -609,6 +638,7 @@
     const saved = loadState();
     if (!saved) return;
     restoreState(saved);
+    void focusBoard();
   }
 
   /** 새 게임 (저장 있으면 확인) */
@@ -641,11 +671,11 @@
   }
 
   /** 모바일 버튼 연타 방지 */
-  let touchLock = $state(false);
   function withTouchLock(fn: () => void) {
-    if (touchLock || screen !== 'playing') return;
+    if (touchLock) return;
+    if (screen !== 'playing' && screen !== 'paused') return;
     touchLock = true;
-    fn();
+    runGameAction(fn);
     setTimeout(() => {
       touchLock = false;
     }, 80);
@@ -662,6 +692,7 @@
     const saved = loadState();
     if (saved) {
       restoreState(saved);
+      void focusBoard();
     }
 
     const handleVisibilityChange = () => {
@@ -669,12 +700,10 @@
     };
     const handleBeforeUnload = () => saveState();
 
-    window.addEventListener('keydown', handleKeydown);
     window.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('beforeunload', handleBeforeUnload);
 
     return () => {
-      window.removeEventListener('keydown', handleKeydown);
       window.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('beforeunload', handleBeforeUnload);
       stopDropTimer();
@@ -704,6 +733,8 @@
     }
   });
 </script>
+
+<svelte:window onkeydown={handleKeydown} />
 
 <svelte:head>
   <title>테트리스 | dgst.me</title>
@@ -802,7 +833,7 @@
             </div>
 
             <div class="tetris-layout">
-              <div class="tetris-board-wrap">
+              <div class="tetris-board-wrap" bind:this={boardWrapEl} tabindex="0">
                 <div class="tetris-board" aria-label="테트리스 보드">
                   {#each displayRows as row, rowIdx (rowIdx)}
                     <div class="tetris-row">
@@ -820,6 +851,7 @@
                   {#if screen === 'paused'}
                     <div class="tetris-overlay">
                       <p class="tetris-overlay-title">일시정지</p>
+                      <p class="small text-white-50 mb-2">방향키 또는 ▶로 계속</p>
                       <button type="button" class="btn btn-light btn-sm" onclick={resumeGame}>계속</button>
                     </div>
                   {/if}
@@ -903,7 +935,7 @@
                     <li>↑ 회전</li>
                     <li>↓ 소프트 드롭</li>
                     <li>Space 하드 드롭</li>
-                    <li>C / Shift 홀드</li>
+                    <li>C 홀드</li>
                     <li>P 일시정지</li>
                   </ul>
                 </div>
@@ -1059,6 +1091,12 @@
   .tetris-board-wrap {
     flex: 1 1 auto;
     max-width: min(100%, 320px);
+    outline: none;
+  }
+
+  .tetris-board-wrap:focus-visible {
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.45);
+    border-radius: 10px;
   }
 
   .tetris-board {
