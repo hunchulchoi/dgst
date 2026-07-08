@@ -43,7 +43,7 @@ const providers = [
         emailVerified: profile.email_verified ?? true,
         state: 'registered',
         grade: 'user',
-        last_modified: new Date()
+        lastModified: new Date()
       };
     }
   }),
@@ -67,7 +67,7 @@ const providers = [
         emailVerified: true,
         state: 'registered',
         grade: 'user',
-        last_modified: new Date()
+        lastModified: new Date()
       };
     }
   })
