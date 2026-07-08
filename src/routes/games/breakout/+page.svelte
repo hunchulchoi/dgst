@@ -1,6 +1,6 @@
 <script lang="ts">
   import { resolve } from '$app/paths';
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import { ko } from 'date-fns/locale';
   import { formatRelativeTime } from '$lib/util/formatRelativeTime.js';
   import type { PageData } from './$types';
@@ -64,7 +64,35 @@
   const isLoggedIn = $derived(!!data.session?.user?.email);
   const stageConfig = $derived(getStageConfig(stage));
 
-  function startGame() {
+  function initCanvasContext(): boolean {
+    if (!canvasEl) return false;
+    const context = canvasEl.getContext('2d');
+    if (!context) return false;
+    const dpr = window.devicePixelRatio || 1;
+    canvasEl.width = CANVAS_WIDTH * dpr;
+    canvasEl.height = CANVAS_HEIGHT * dpr;
+    context.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx = context;
+    return true;
+  }
+
+  function drawRoundRect(
+    context: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    r: number
+  ) {
+    context.beginPath();
+    if (typeof context.roundRect === 'function') {
+      context.roundRect(x, y, w, h, r);
+    } else {
+      context.rect(x, y, w, h);
+    }
+  }
+
+  async function startGame() {
     if (stageClearTimeout) clearTimeout(stageClearTimeout);
     stage = 1;
     score = 0;
@@ -74,8 +102,10 @@
     ball = createBall(paddle, stageConfig.ballSpeed);
     ballLaunched = false;
     screen = 'ready';
-    if (isLoggedIn) void logGameStart();
+    await tick();
+    initCanvasContext();
     startLoop();
+    if (isLoggedIn) void logGameStart();
   }
 
   function startStage(stageNum: number) {
@@ -191,8 +221,7 @@
     for (const brick of bricks) {
       if (!brick.alive) continue;
       ctx.fillStyle = brick.color;
-      ctx.beginPath();
-      ctx.roundRect(brick.x, brick.y, brick.width, brick.height, 4);
+      drawRoundRect(ctx, brick.x, brick.y, brick.width, brick.height, 4);
       ctx.fill();
       ctx.strokeStyle = 'rgba(255,255,255,0.2)';
       ctx.lineWidth = 1;
@@ -204,8 +233,7 @@
     }
 
     ctx.fillStyle = '#e0e0e0';
-    ctx.beginPath();
-    ctx.roundRect(paddle.x, paddle.y, paddle.width, paddle.height, 6);
+    drawRoundRect(ctx, paddle.x, paddle.y, paddle.width, paddle.height, 6);
     ctx.fill();
     ctx.strokeStyle = '#90caf9';
     ctx.lineWidth = 2;
@@ -314,7 +342,7 @@
       e.preventDefault();
       if (screen === 'menu') return;
       if (screen === 'ready') launchBall();
-      else if (screen === 'playing' || screen === 'ready') togglePause();
+      else if (screen === 'playing') togglePause();
       else if (screen === 'paused') resumeGame();
     }
     if (e.key === 'Escape') {
@@ -410,17 +438,15 @@
   }
 
   onMount(() => {
-    if (canvasEl) {
-      ctx = canvasEl.getContext('2d');
-      const dpr = window.devicePixelRatio || 1;
-      canvasEl.width = CANVAS_WIDTH * dpr;
-      canvasEl.height = CANVAS_HEIGHT * dpr;
-      if (ctx) ctx.scale(dpr, dpr);
-    }
     return () => {
       stopLoop();
       if (stageClearTimeout) clearTimeout(stageClearTimeout);
     };
+  });
+
+  $effect(() => {
+    if (canvasEl) initCanvasContext();
+    else ctx = null;
   });
 
   $effect(() => {
