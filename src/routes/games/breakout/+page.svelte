@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { beforeNavigate } from '$app/navigation';
   import { resolve } from '$app/paths';
   import { onMount, tick } from 'svelte';
   import { ko } from 'date-fns/locale';
@@ -105,6 +106,7 @@
   let myBestCreatedAt = $state<string | null>(null);
   let todayStats = $state<{ games: number; users: number }>({ games: 0, users: 0 });
   let rankLoading = $state(false);
+  let submittedScoreKey: string | null = null;
 
   const isLoggedIn = $derived(!!data.session?.user?.email);
   const stageConfig = $derived(getStageConfig(stage));
@@ -758,6 +760,9 @@
 
   async function submitGameScore(finalScore: number, finalStage: number) {
     if (!isLoggedIn || finalScore <= 0) return;
+    const scoreKey = `${finalScore}:${finalStage}`;
+    if (submittedScoreKey === scoreKey) return;
+    submittedScoreKey = scoreKey;
     try {
       const res = await fetch('/games/breakout', {
         method: 'POST',
@@ -766,8 +771,25 @@
       });
       if (res.ok) await loadRank();
     } catch (err) {
+      submittedScoreKey = null;
       console.error('[breakout score submit failed]', err);
     }
+  }
+
+  function submitScoreOnLeave() {
+    if (!isLoggedIn || score <= 0) return;
+    const scoreKey = `${score}:${stage}`;
+    if (submittedScoreKey === scoreKey) return;
+    submittedScoreKey = scoreKey;
+    fetch('/games/breakout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ score, stage }),
+      keepalive: true
+    }).catch((err) => {
+      submittedScoreKey = null;
+      console.error('[breakout leave score submit failed]', err);
+    });
   }
 
   function formatScore(n: number): string {
@@ -775,10 +797,24 @@
   }
 
   onMount(() => {
+    const handleBeforeUnload = () => submitScoreOnLeave();
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') submitScoreOnLeave();
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
     return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      submitScoreOnLeave();
       stopLoop();
       if (stageClearTimeout) clearTimeout(stageClearTimeout);
     };
+  });
+
+  beforeNavigate(() => {
+    submitScoreOnLeave();
   });
 
   $effect(() => {
@@ -858,6 +894,7 @@
               class="breakout-drag-bar"
               bind:this={dragBarEl}
               role="slider"
+              tabindex="0"
               aria-label="패들 조작 바"
               aria-valuemin={0}
               aria-valuemax={CANVAS_WIDTH}
@@ -884,11 +921,7 @@
               </span>
             </div>
             <div class="d-flex justify-content-center gap-2 mt-3 flex-wrap">
-              <button
-                type="button"
-                class="btn btn-sm btn-outline-secondary"
-                onclick={togglePause}
-              >
+              <button type="button" class="btn btn-sm btn-outline-secondary" onclick={togglePause}>
                 {screen === 'paused' ? '재개' : '일시정지'}
               </button>
               <button type="button" class="btn btn-sm btn-outline-secondary" onclick={goToMenu}>
@@ -909,8 +942,10 @@
               <p class="text-muted small mb-0">아직 기록이 없습니다.</p>
             {:else}
               <ol class="list-group list-group-numbered list-group-flush">
-                {#each rankList as r, i}
-                  <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                {#each rankList as r, i (r._id ?? `${r.nickname}:${r.score}:${i}`)}
+                  <li
+                    class="list-group-item d-flex justify-content-between align-items-center px-0"
+                  >
                     <span>
                       <strong>{r.nickname}</strong>
                       <span class="text-muted small ms-1">
