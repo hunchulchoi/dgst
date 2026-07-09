@@ -30,6 +30,8 @@
     handlePowerUpPaddleCollision,
     handleWallCollision,
     INITIAL_LIVES,
+    resolveLifeLoss,
+    shouldContinueGameLoop,
     isBallLost,
     isGameComplete,
     isInvincibleBallActive,
@@ -257,31 +259,42 @@
   }
 
   function loseLife() {
-    if (shieldCharges > 0) {
-      shieldCharges -= 1;
+    const result = resolveLifeLoss(lives, shieldCharges);
+    lives = result.lives;
+    shieldCharges = result.shieldCharges;
+
+    if (result.gameOver) {
+      endGameOver();
+      return;
+    }
+
+    const config = getStageConfig(stage);
+    const ballSpeed = getEffectiveBallSpeed(config.ballSpeed, activeEffects, Date.now());
+
+    if (result.shieldUsed) {
       showEffectToast('보호막 발동!');
-      const config = getStageConfig(stage);
-      balls = [createBall(paddle, getEffectiveBallSpeed(config.ballSpeed, activeEffects, Date.now()))];
+      balls = [createBall(paddle, ballSpeed)];
       ballLaunched = false;
       screen = 'ready';
       return;
     }
-    lives -= 1;
-    if (lives <= 0) {
-      endGameOver();
-      return;
-    }
+
     activeEffects = createActiveEffects();
     powerUps = [];
     paddle = createPaddle();
-    const config = getStageConfig(stage);
-    balls = [createBall(paddle, config.ballSpeed)];
+    balls = [createBall(paddle, ballSpeed)];
     ballLaunched = false;
     screen = 'ready';
   }
 
   function endGameOver() {
+    if (stageClearTimeout) {
+      clearTimeout(stageClearTimeout);
+      stageClearTimeout = null;
+    }
     stopLoop();
+    ballLaunched = false;
+    balls = [];
     screen = 'gameOver';
     if (isLoggedIn) void submitGameScore(score, stage);
   }
@@ -310,6 +323,10 @@
 
   function updateGame() {
     if (screen !== 'playing' && screen !== 'ready') return;
+    if (lives <= 0) {
+      endGameOver();
+      return;
+    }
 
     const now = Date.now();
     if (effectToast && now > effectToastUntil) effectToast = null;
@@ -576,9 +593,17 @@
   }
 
   function gameLoop() {
+    if (!shouldContinueGameLoop(screen)) {
+      frameId = 0;
+      return;
+    }
     updateGame();
     drawGame();
-    frameId = requestAnimationFrame(gameLoop);
+    if (shouldContinueGameLoop(screen)) {
+      frameId = requestAnimationFrame(gameLoop);
+    } else {
+      frameId = 0;
+    }
   }
 
   function startLoop() {

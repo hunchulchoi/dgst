@@ -27,6 +27,8 @@ import {
   isStageClear,
   movePaddle,
   movePowerUps,
+  resolveLifeLoss,
+  shouldContinueGameLoop,
   shouldDropPowerUp,
   STAGES,
   type Ball,
@@ -252,5 +254,35 @@ describe('breakout gameUtils', () => {
     paddle.y = moved[0].y;
     const result = handlePowerUpPaddleCollision(moved, paddle);
     expect(result.collected).toHaveLength(1);
+  });
+
+  it('resolveLifeLoss decrements life when no shield', () => {
+    const result = resolveLifeLoss(3, 0);
+    expect(result).toEqual({ lives: 2, shieldCharges: 0, gameOver: false, shieldUsed: false });
+  });
+
+  it('resolveLifeLoss ends game on last life', () => {
+    const result = resolveLifeLoss(1, 0);
+    expect(result).toEqual({ lives: 0, shieldCharges: 0, gameOver: true, shieldUsed: false });
+  });
+
+  it('resolveLifeLoss uses shield without losing life', () => {
+    const result = resolveLifeLoss(2, 1);
+    expect(result).toEqual({ lives: 2, shieldCharges: 0, gameOver: false, shieldUsed: true });
+  });
+
+  it('resolveLifeLoss ends game at zero lives even with shield', () => {
+    const result = resolveLifeLoss(0, 2);
+    expect(result).toEqual({ lives: 0, shieldCharges: 2, gameOver: true, shieldUsed: false });
+  });
+
+  it('shouldContinueGameLoop only for active screens', () => {
+    expect(shouldContinueGameLoop('playing')).toBe(true);
+    expect(shouldContinueGameLoop('ready')).toBe(true);
+    expect(shouldContinueGameLoop('paused')).toBe(true);
+    expect(shouldContinueGameLoop('stageClear')).toBe(true);
+    expect(shouldContinueGameLoop('gameOver')).toBe(false);
+    expect(shouldContinueGameLoop('gameWin')).toBe(false);
+    expect(shouldContinueGameLoop('menu')).toBe(false);
   });
 });

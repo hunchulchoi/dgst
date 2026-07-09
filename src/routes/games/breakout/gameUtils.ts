@@ -20,6 +20,46 @@ export const BRICK_OFFSET_LEFT = 20;
 export const INITIAL_LIVES = 3;
 export const MAX_LIVES = 5;
 
+export type BreakoutScreen =
+  | 'menu'
+  | 'playing'
+  | 'paused'
+  | 'stageClear'
+  | 'gameOver'
+  | 'gameWin'
+  | 'ready';
+
+export interface LifeLossResult {
+  lives: number;
+  shieldCharges: number;
+  gameOver: boolean;
+  shieldUsed: boolean;
+}
+
+/**
+ * 공 낙하 시 목숨/보호막 처리. lives가 0 이하이면 보호막 없이 즉시 게임오버.
+ */
+export function resolveLifeLoss(lives: number, shieldCharges: number): LifeLossResult {
+  if (lives <= 0) {
+    return { lives, shieldCharges, gameOver: true, shieldUsed: false };
+  }
+  if (shieldCharges > 0) {
+    return { lives, shieldCharges: shieldCharges - 1, gameOver: false, shieldUsed: true };
+  }
+  const nextLives = lives - 1;
+  return {
+    lives: nextLives,
+    shieldCharges,
+    gameOver: nextLives <= 0,
+    shieldUsed: false
+  };
+}
+
+/** 게임 루프를 계속 돌려야 하는 화면인지 */
+export function shouldContinueGameLoop(screen: BreakoutScreen): boolean {
+  return screen === 'playing' || screen === 'ready' || screen === 'paused' || screen === 'stageClear';
+}
+
 export const PADDLE_EXPAND_MULTIPLIER = 1.55;
 export const PADDLE_SHRINK_MULTIPLIER = 0.62;
 export const PADDLE_EXPAND_DURATION_MS = 15_000;
