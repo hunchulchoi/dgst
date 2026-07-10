@@ -174,14 +174,26 @@ export function settlePotSplit(players, pot, winnerIds) {
 }
 
 /**
- * 레이즈 금액 = 현재 콜에 필요한 금액의 2배 (올인 시 잔고만큼)
+ * 레이즈 최소 지불액 (이번 액션에 넣는 칩)
  * @param {number} toCall
- * @param {number} chips
  * @returns {number}
  */
-export function raiseAmount(toCall, chips) {
-  const target = Math.max(toCall * 2, ANTE * 2);
-  return Math.min(chips, Math.max(toCall, target));
+export function minRaisePay(toCall) {
+  if (toCall <= 0) return ANTE * 2;
+  return toCall + Math.max(ANTE, toCall);
+}
+
+/**
+ * 레이즈 금액 클램프. requested = 이번 액션에 넣을 칩
+ * @param {number} toCall
+ * @param {number} chips
+ * @param {number} [requested]
+ * @returns {number}
+ */
+export function raiseAmount(toCall, chips, requested) {
+  const minPay = minRaisePay(toCall);
+  const want = Number.isFinite(requested) && requested > 0 ? Number(requested) : minPay;
+  return Math.min(chips, Math.max(minPay, want));
 }
 
 /**

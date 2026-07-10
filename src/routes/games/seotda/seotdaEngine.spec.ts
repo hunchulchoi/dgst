@@ -5,6 +5,8 @@ import {
   createDeck,
   evaluateHand,
   handStrength,
+  minRaisePay,
+  raiseAmount,
   settlePot,
   settlePotSplit,
   shuffleDeck
@@ -91,6 +93,13 @@ describe('seotdaEngine hands', () => {
 describe('seotdaEngine pot', () => {
   it('ANTE is 10', () => {
     expect(ANTE).toBe(10);
+  });
+
+  it('raiseAmount respects requested size with min clamp', () => {
+    expect(minRaisePay(10)).toBe(20);
+    expect(raiseAmount(10, 500, 50)).toBe(50);
+    expect(raiseAmount(10, 500, 5)).toBe(20); // below min → min
+    expect(raiseAmount(10, 30, 100)).toBe(30); // all-in cap
   });
 
   it('settlePot pays winner the pot and zeros pot', () => {

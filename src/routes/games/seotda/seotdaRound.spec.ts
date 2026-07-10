@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createNewRound, applyPlayerAction, runNpcTurns } from './seotdaRound.js';
-import { chooseNpcAction, NPC_PROFILES } from './seotdaNpc.js';
+import { chooseNpcAction, NPC_PROFILES, npcRaiseChips } from './seotdaNpc.js';
 
 describe('seotdaRound smoke', () => {
   it('start → die → showdown or continue', () => {
@@ -71,11 +71,10 @@ describe('seotdaNpc bluff', () => {
     ];
     let raises = 0;
     for (let n = 0; n < 50; n++) {
-      // deterministic but varying rolls via seed-like sequence
       let i = n;
       const rng = () => {
         i += 1;
-        return (i * 17) % 100 / 100;
+        return ((i * 17) % 100) / 100;
       };
       const a = chooseNpcAction(
         weak,
@@ -85,8 +84,20 @@ describe('seotdaNpc bluff', () => {
       );
       if (a === 'raise') raises++;
     }
-    // 무대뽀 아님: 전부 레이즈도, 거의 0도 아님
     expect(raises).toBeGreaterThan(5);
     expect(raises).toBeLessThan(45);
+  });
+
+  it('npcRaiseChips varies size randomly', () => {
+    const sizes = new Set();
+    for (let n = 0; n < 40; n++) {
+      let i = n;
+      const rng = () => {
+        i += 1;
+        return ((i * 13) % 100) / 100;
+      };
+      sizes.add(npcRaiseChips(10, 1000, rng));
+    }
+    expect(sizes.size).toBeGreaterThan(2);
   });
 });

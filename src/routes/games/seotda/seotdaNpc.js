@@ -1,4 +1,4 @@
-import { evaluateHand, handStrength, raiseAmount, ANTE } from './seotdaEngine.js';
+import { evaluateHand, handStrength, raiseAmount, minRaisePay, ANTE } from './seotdaEngine.js';
 
 /**
  * @typedef {'die' | 'call' | 'raise'} SeotdaAction
@@ -7,9 +7,9 @@ import { evaluateHand, handStrength, raiseAmount, ANTE } from './seotdaEngine.js
 
 /** @type {NpcProfile[]} */
 export const NPC_PROFILES = [
-  { id: 'npc_agwi', name: '아귀', style: 'bluffer', bluff: 0.48 },
-  { id: 'npc_goni', name: '고니', style: 'calm', bluff: 0.28 },
-  { id: 'npc_madam', name: '정마담', style: 'gambler', bluff: 0.55 }
+  { id: 'npc_agwi', name: '아귀', style: 'bluffer', bluff: 0.55 },
+  { id: 'npc_goni', name: '고니', style: 'calm', bluff: 0.35 },
+  { id: 'npc_madam', name: '정마담', style: 'gambler', bluff: 0.6 }
 ];
 
 /**
@@ -28,63 +28,65 @@ export function chooseNpcAction(cards, profile, ctx, rng = Math.random) {
   const canCall = toCall <= chips;
   const canRaise = chips > toCall;
 
-  // 압박 담당이어도 매번 레이즈 아님 — 랜덤
+  // 전원 공통: 가끔 랜덤 뻥카 레이즈 (약한 패에서도)
+  if (canRaise && strength < 0.4 && rng() < 0.18 + profile.bluff * 0.15) {
+    return 'raise';
+  }
+
+  // 압박 담당 — 랜덤
   if (forcePressure && canRaise && toCall < chips) {
     const roll = rng();
-    if (roll < 0.4) return 'raise';
-    if (roll < 0.7 && canCall) return 'call';
-    // 나머지: 아래 성향 로직으로
+    if (roll < 0.45) return 'raise';
+    if (roll < 0.75 && canCall) return 'call';
   }
 
   if (profile.style === 'bluffer') {
-    // 아귀: 허세 있지만 무대뽀 아님. 매 판 기복
-    const mood = rng(); // 판 기질
-    const bluffChance = profile.bluff * (0.55 + mood * 0.7); // ~0.26~0.82
+    const mood = rng();
+    const bluffChance = profile.bluff * (0.5 + mood * 0.9);
 
     if (strength < 0.35) {
-      if (canRaise && rng() < bluffChance * 0.55) return 'raise';
-      if (raiseSeen && canCall && rng() < 0.4 + mood * 0.2) return 'call';
-      if (!canCall || rng() < 0.45) return 'die';
+      if (canRaise && rng() < bluffChance * 0.7) return 'raise';
+      if (raiseSeen && canCall && rng() < 0.35 + mood * 0.25) return 'call';
+      if (!canCall || rng() < 0.4) return 'die';
       return canCall ? 'call' : 'die';
     }
     if (strength < 0.55) {
-      if (canRaise && rng() < 0.28 + bluffChance * 0.25) return 'raise';
+      if (canRaise && rng() < 0.32 + bluffChance * 0.3) return 'raise';
       if (!canCall) return 'die';
-      return rng() < 0.15 ? 'die' : 'call';
+      return rng() < 0.12 ? 'die' : 'call';
     }
-    // 강한 패: 가끔 슬로우, 가끔 레이즈
-    if (canRaise && rng() < 0.45 + mood * 0.25) return 'raise';
+    if (canRaise && rng() < 0.5 + mood * 0.25) return 'raise';
     return canCall ? 'call' : 'die';
   }
 
   if (profile.style === 'calm') {
-    // 고니: 신중
     if (strength < 0.4) {
-      if (toCall === 0) return 'call';
-      if (raiseSeen) return rng() < 0.22 ? 'call' : 'die';
-      return canCall && rng() < 0.35 ? 'call' : 'die';
+      if (toCall === 0) return rng() < 0.12 && canRaise ? 'raise' : 'call';
+      if (raiseSeen) return rng() < 0.25 ? 'call' : 'die';
+      // 가끔 뜬금 뻥카
+      if (canRaise && rng() < 0.12) return 'raise';
+      return canCall && rng() < 0.38 ? 'call' : 'die';
     }
     if (strength < 0.7) {
-      if (canRaise && rng() < 0.18) return 'raise';
+      if (canRaise && rng() < 0.28) return 'raise';
       return canCall ? 'call' : 'die';
     }
-    if (canRaise && rng() < 0.5) return 'raise';
+    if (canRaise && rng() < 0.55) return 'raise';
     return canCall ? 'call' : 'die';
   }
 
-  // 정마담: 기복 큰 도박
+  // 정마담: 기복 + 랜덤 올인급 뻥
   if (strength < 0.45) {
     const r = rng();
-    if (canRaise && r < profile.bluff * 0.7) return 'raise';
-    if (r < 0.55) return 'die';
+    if (canRaise && r < profile.bluff * 0.85) return 'raise';
+    if (r < 0.5) return 'die';
     return canCall ? 'call' : 'die';
   }
-  if (canRaise && rng() < 0.55 + rng() * 0.25) return 'raise';
+  if (canRaise && rng() < 0.5 + rng() * 0.35) return 'raise';
   return canCall ? 'call' : 'die';
 }
 
 /**
- * 판에서 압박 담당 NPC 1명 고름
  * @param {NpcProfile[]} profiles
  * @param {() => number} [rng]
  */
@@ -94,9 +96,23 @@ export function pickPressureNpc(profiles, rng = Math.random) {
 }
 
 /**
+ * NPC 레이즈 금액 — 최소~올인 랜덤 (뻥카 크기 다양)
  * @param {number} toCall
  * @param {number} chips
+ * @param {() => number} [rng]
  */
-export function npcRaiseChips(toCall, chips) {
-  return raiseAmount(Math.max(toCall, ANTE), chips);
+export function npcRaiseChips(toCall, chips, rng = Math.random) {
+  const minPay = minRaisePay(toCall);
+  if (chips <= minPay) return Math.min(chips, Math.max(toCall, minPay));
+
+  const roll = rng();
+  let target;
+  if (roll < 0.3) target = minPay;
+  else if (roll < 0.5) target = minPay + ANTE * (1 + Math.floor(rng() * 3));
+  else if (roll < 0.68) target = Math.floor(chips * (0.15 + rng() * 0.15));
+  else if (roll < 0.82) target = Math.floor(chips * (0.3 + rng() * 0.2));
+  else if (roll < 0.93) target = Math.floor(chips * 0.5);
+  else target = chips; // 올인 뻥카
+
+  return raiseAmount(toCall, chips, target);
 }

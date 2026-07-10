@@ -102,7 +102,13 @@ export async function POST(event) {
       if (!['die', 'call', 'raise'].includes(move)) {
         throw error(400, { message: 'die | call | raise 만 가능' });
       }
-      applyPlayerAction(round, 'user', /** @type {'die'|'call'|'raise'} */ (move));
+      const raisePay = body?.amount != null ? Number(body.amount) : undefined;
+      applyPlayerAction(
+        round,
+        'user',
+        /** @type {'die'|'call'|'raise'} */ (move),
+        Number.isFinite(raisePay) ? raisePay : undefined
+      );
       runNpcTurns(round);
       setRound(user.email, round);
 
@@ -202,7 +208,13 @@ function handleSmoke(email, action, body) {
       throw error(400, { message: '진행 중인 베팅이 없습니다.' });
     }
     const move = String(body?.move ?? '');
-    applyPlayerAction(round, 'user', /** @type {'die'|'call'|'raise'} */ (move));
+    const raisePay = body?.amount != null ? Number(body.amount) : undefined;
+    applyPlayerAction(
+      round,
+      'user',
+      /** @type {'die'|'call'|'raise'} */ (move),
+      Number.isFinite(raisePay) ? raisePay : undefined
+    );
     runNpcTurns(round);
     setRound(email, round);
     const userChips = round.seats.find((s) => s.id === 'user')?.chips ?? 0;

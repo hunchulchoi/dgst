@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onDestroy } from 'svelte';
   import type { PageData } from './$types';
+  import { ANTE, minRaisePay } from './seotdaEngine.js';
 
   interface SeotdaPageProps {
     data: PageData;
@@ -67,6 +68,8 @@
   let revealingId = $state<string | null>(null);
   /** 족보 안내 접기 */
   let guideOpen = $state(false);
+  /** 레이즈에 넣을 칩 */
+  let raiseBet = $state(20);
 
   const PEEL_THRESHOLD = 0.55;
   const PEEL_MAX_PX = 220;
@@ -112,6 +115,19 @@
   );
   const isDraw = $derived(isShowdown && winnerIds.length > 1);
   const userWon = $derived(winnerIds.includes('user') && !isDraw);
+  const toCall = $derived(
+    userSeat ? Math.max(0, (round?.currentBet ?? 0) - userSeat.contrib) : 0
+  );
+  const minRaise = $derived(minRaisePay(toCall));
+  const maxRaise = $derived(userSeat?.chips ?? 0);
+
+  $effect(() => {
+    if (!canAct) return;
+    const min = minRaise;
+    const max = maxRaise;
+    if (raiseBet < min) raiseBet = Math.min(min, max);
+    else if (raiseBet > max) raiseBet = max;
+  });
 
   function clearTimers() {
     for (const t of timers) clearTimeout(t);
@@ -304,7 +320,19 @@
   }
 
   function act(move: 'die' | 'call' | 'raise') {
+    if (move === 'raise') {
+      return post({ action: 'act', move, amount: Number(raiseBet) });
+    }
     return post({ action: 'act', move });
+  }
+
+  function setRaisePreset(kind: 'min' | 'plus' | 'half' | 'all') {
+    const min = minRaise;
+    const max = maxRaise;
+    if (kind === 'min') raiseBet = Math.min(min, max);
+    else if (kind === 'plus') raiseBet = Math.min(max, raiseBet + ANTE * 2);
+    else if (kind === 'half') raiseBet = Math.min(max, Math.max(min, Math.floor(max / 2)));
+    else raiseBet = max;
   }
 
   function nextRound() {
@@ -521,16 +549,62 @@
             {/if}
 
             {#if canAct}
-              <div class="d-flex gap-2 justify-content-center flex-wrap mb-3">
-                <button class="btn btn-outline-secondary" disabled={busy} onclick={() => act('die')}
-                  >다이</button
-                >
-                <button class="btn btn-outline-primary" disabled={busy} onclick={() => act('call')}
-                  >콜</button
-                >
-                <button class="btn btn-danger" disabled={busy} onclick={() => act('raise')}
-                  >레이즈</button
-                >
+              <div class="bet-box rounded-3 border p-3 mb-3">
+                <div class="d-flex justify-content-between align-items-center mb-2 small">
+                  <span>콜 {formatNumber(toCall)} · 레이즈 최소 {formatNumber(minRaise)}</span>
+                  <span class="text-muted">보유 {formatNumber(maxRaise)}</span>
+                </div>
+                <div class="d-flex gap-2 align-items-center mb-2 flex-wrap">
+                  <label class="small mb-0" for="raise-bet">레이즈</label>
+                  <input
+                    id="raise-bet"
+                    class="form-control form-control-sm bet-input"
+                    type="number"
+                    min={minRaise}
+                    max={maxRaise}
+                    bind:value={raiseBet}
+                    onchange={() => {
+                      let v = Number(raiseBet);
+                      if (!Number.isFinite(v)) v = minRaise;
+                      raiseBet = Math.min(maxRaise, Math.max(minRaise, v));
+                    }}
+                  />
+                  <button
+                    type="button"
+                    class="btn btn-sm btn-outline-secondary"
+                    onclick={() => setRaisePreset('min')}>최소</button
+                  >
+                  <button
+                    type="button"
+                    class="btn btn-sm btn-outline-secondary"
+                    onclick={() => setRaisePreset('plus')}>+{ANTE * 2}</button
+                  >
+                  <button
+                    type="button"
+                    class="btn btn-sm btn-outline-secondary"
+                    onclick={() => setRaisePreset('half')}>절반</button
+                  >
+                  <button
+                    type="button"
+                    class="btn btn-sm btn-outline-secondary"
+                    onclick={() => setRaisePreset('all')}>올인</button
+                  >
+                </div>
+                <div class="d-flex gap-2 justify-content-center flex-wrap">
+                  <button class="btn btn-outline-secondary" disabled={busy} onclick={() => act('die')}
+                    >다이</button
+                  >
+                  <button class="btn btn-outline-primary" disabled={busy} onclick={() => act('call')}>
+                    {toCall === 0 ? '체크' : `콜 (${formatNumber(toCall)})`}
+                  </button>
+                  <button
+                    class="btn btn-danger"
+                    disabled={busy || maxRaise < minRaise}
+                    onclick={() => act('raise')}
+                  >
+                    레이즈 ({formatNumber(Math.min(raiseBet, maxRaise))})
+                  </button>
+                </div>
               </div>
             {/if}
 
@@ -775,5 +849,11 @@
   }
   .guide-list {
     font-size: 0.9rem;
+  }
+  .bet-box {
+    background: #faf8f4;
+  }
+  .bet-input {
+    width: 6.5rem;
   }
 </style>

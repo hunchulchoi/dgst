@@ -131,8 +131,9 @@ function markActed(round, actorId, wasRaise) {
  * @param {import('./seotdaState.js').SeotdaRound} round
  * @param {string} seatId
  * @param {'die' | 'call' | 'raise'} action
+ * @param {number} [raisePay] 레이즈 시 이번 액션에 넣을 칩
  */
-export function applyPlayerAction(round, seatId, action) {
+export function applyPlayerAction(round, seatId, action, raisePay) {
   const seat = round.seats.find((s) => s.id === seatId);
   if (!seat || seat.folded || round.phase !== 'betting') {
     throw new Error('지금은 행동할 수 없습니다.');
@@ -158,7 +159,6 @@ export function applyPlayerAction(round, seatId, action) {
     markActed(round, seatId, false);
   } else if (action === 'raise') {
     if ((round.raiseCount ?? 0) >= MAX_RAISES) {
-      // 상한 초과 시 콜로 강등
       const pay = Math.min(toCall, seat.chips);
       seat.chips -= pay;
       seat.contrib += pay;
@@ -167,7 +167,7 @@ export function applyPlayerAction(round, seatId, action) {
       round.log.push(`${seat.name}: ${seat.lastAction} (레이즈 상한)`);
       markActed(round, seatId, false);
     } else {
-      const amount = raiseAmount(toCall, seat.chips);
+      const amount = raiseAmount(toCall, seat.chips, raisePay);
       const pay = Math.min(amount, seat.chips);
       seat.chips -= pay;
       seat.contrib += pay;
@@ -214,7 +214,7 @@ function applyNpcSeatAction(round, seat, rng = Math.random) {
   }
 
   if (action === 'raise') {
-    const pay = npcRaiseChips(toCall, seat.chips);
+    const pay = npcRaiseChips(toCall, seat.chips, rng);
     seat.chips -= pay;
     seat.contrib += pay;
     round.pot += pay;
