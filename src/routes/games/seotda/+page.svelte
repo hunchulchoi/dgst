@@ -33,6 +33,8 @@
     winnerId: string | null;
     winnerIds?: string[];
     showdown: boolean;
+    userFolded?: boolean;
+    revealNpcHands?: boolean;
     seats: SeotdaSeat[];
   }
 
@@ -113,16 +115,24 @@
   function npcCardVisible(npc: SeotdaSeat, card: SeotdaCard): boolean {
     if (npc.folded) return false;
     if (!isShowdown) return false;
+    if (round?.revealNpcHands === false || userSeat?.folded) return false;
     if (hiddenNpcIds.has(npc.id)) return false;
     return !card.hidden && card.month > 0;
   }
 
   /**
-   * 쇼다운 진입 시 NPC 패를 한 명씩 까기
+   * 쇼다운 진입 시 NPC 패를 한 명씩 까기 (유저 다이면 스킵)
    * @param {SeotdaRound} r
    */
   function startShowdownReveal(r: SeotdaRound) {
     clearTimers();
+    const userDead = !!r.seats.find((s) => s.id === 'user')?.folded || r.revealNpcHands === false;
+    if (userDead) {
+      hiddenNpcIds = new Set(r.seats.filter((s) => s.isNpc).map((s) => s.id));
+      revealDone = true;
+      revealingId = null;
+      return;
+    }
     const aliveNpcs = r.seats.filter((s) => s.isNpc && !s.folded);
     hiddenNpcIds = new Set(aliveNpcs.map((s) => s.id));
     revealDone = aliveNpcs.length === 0;
@@ -320,7 +330,7 @@
                         </span>
                       {/each}
                     </div>
-                    {#if npc.handName && !hiddenNpcIds.has(npc.id) && isShowdown && !npc.folded}
+                    {#if npc.handName && !hiddenNpcIds.has(npc.id) && isShowdown && !npc.folded && round.revealNpcHands !== false && !userSeat?.folded}
                       <div class="badge text-bg-dark hand-pop">{npc.handName}</div>
                     {/if}
                     {#if npc.lastAction && !isShowdown}

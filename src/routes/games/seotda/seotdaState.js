@@ -56,13 +56,17 @@ export function clearRound(email) {
 }
 
 /**
- * 클라용 공개 상태 (NPC 패 숨김, 쇼다운 시만 공개)
+ * 클라용 공개 상태 (NPC 패 숨김, 쇼다운이어도 유저 다이면 NPC 안 깜)
  * @param {SeotdaRound} round
  * @param {string} userSeatId
  * @param {(cards: import('./seotdaEngine.js').SeotdaCard[]) => { name: string }} [evalHand]
  */
 export function toPublicState(round, userSeatId = 'user', evalHand) {
-  const revealAll = round.showdown || round.phase === 'showdown';
+  const isShowdown = round.showdown || round.phase === 'showdown';
+  const user = round.seats.find((s) => s.id === userSeatId);
+  const userFolded = !!user?.folded;
+  /** 유저가 살아 있을 때만 NPC 패 공개 */
+  const revealNpcHands = isShowdown && !userFolded;
   return {
     phase: round.phase,
     pot: round.pot,
@@ -71,10 +75,12 @@ export function toPublicState(round, userSeatId = 'user', evalHand) {
     log: round.log.slice(-12),
     winnerId: round.winnerId,
     winnerIds: round.winnerIds ?? (round.winnerId ? [round.winnerId] : []),
-    showdown: revealAll,
+    showdown: isShowdown,
+    userFolded,
+    revealNpcHands,
     seats: round.seats.map((s) => {
       const isUser = s.id === userSeatId;
-      const reveal = isUser || revealAll;
+      const reveal = isUser || (s.isNpc && revealNpcHands);
       /** @type {string | null} */
       let handName = null;
       if (reveal && evalHand && s.cards.length === 2) {

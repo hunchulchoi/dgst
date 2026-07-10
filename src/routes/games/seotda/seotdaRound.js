@@ -304,6 +304,8 @@ export function showdown(round) {
   const alive = round.seats.filter((s) => !s.folded);
   if (alive.length === 0) return;
 
+  const userFolded = !!round.seats.find((s) => s.id === 'user')?.folded;
+
   /** @type {{ seat: (typeof alive)[0]; hand: ReturnType<typeof evaluateHand> }[]} */
   const ranked = alive.map((seat) => ({ seat, hand: evaluateHand(seat.cards) }));
   let bestHand = ranked[0].hand;
@@ -313,8 +315,11 @@ export function showdown(round) {
   const winners = ranked.filter((r) => compareHands(r.hand, bestHand) === 0);
   const winnerIds = winners.map((w) => w.seat.id);
 
-  for (const r of ranked) {
-    round.log.push(`${r.seat.name}: ${r.seat.cards.map(cardLabel).join('·')} → ${r.hand.name}`);
+  // 유저 다이면 NPC 패/족보 로그에 안 남김
+  if (!userFolded) {
+    for (const r of ranked) {
+      round.log.push(`${r.seat.name}: ${r.seat.cards.map(cardLabel).join('·')} → ${r.hand.name}`);
+    }
   }
 
   const settled = settlePotSplit(round.seats, round.pot, winnerIds);
@@ -326,9 +331,17 @@ export function showdown(round) {
   round.showdown = true;
   if (winnerIds.length > 1) {
     const names = winners.map((w) => w.seat.name).join('·');
-    round.log.push(`무승부! ${names} (${bestHand.name}) — 팟 분배`);
+    round.log.push(
+      userFolded
+        ? `무승부 (팟 분배)`
+        : `무승부! ${names} (${bestHand.name}) — 팟 분배`
+    );
   } else {
-    round.log.push(`${winners[0].seat.name} 승리! ${bestHand.name}`);
+    round.log.push(
+      userFolded
+        ? `${winners[0].seat.name} 승리`
+        : `${winners[0].seat.name} 승리! ${bestHand.name}`
+    );
   }
   refillBustNpcs(round);
 }
