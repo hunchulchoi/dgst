@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onDestroy } from 'svelte';
   import type { PageData } from './$types';
 
   interface SeotdaPageProps {
@@ -43,6 +44,18 @@
   let message = $state('');
   let oopsInfo = $state<{ waiting?: boolean } | null>(null);
 
+  /** 쇼다운 연출: 아직 안 깐 NPC id 집합 */
+  let hiddenNpcIds = $state<Set<string>>(new Set());
+  /** 유저 패 딜 플립 */
+  let userCardsFlipped = $state(true);
+  /** 연출 끝난 뒤에만 승패/다음판 표시 */
+  let revealDone = $state(true);
+  /** 지금 까는 좌석 (하이라이트) */
+  let revealingId = $state<string | null>(null);
+
+  /** @type {ReturnType<typeof setTimeout>[]} */
+  let timers: ReturnType<typeof setTimeout>[] = [];
+
   const formatNumber = (value: number | null | undefined): string => {
     if (value == null || Number.isNaN(value)) return '0';
     return Number(value).toLocaleString('ko-KR');
@@ -55,26 +68,94 @@
       round.phase === 'betting' &&
       !userSeat?.folded &&
       !!userSeat?.needsAction &&
-      !busy
+      !busy &&
+      revealDone
   );
   const isShowdown = $derived(!!round && (round.showdown || round.phase === 'showdown'));
+
+  function clearTimers() {
+    for (const t of timers) clearTimeout(t);
+    timers = [];
+  }
+
+  onDestroy(() => clearTimers());
 
   function cardText(card: SeotdaCard): string {
     if (card.hidden || card.month === 0) return '?';
     return `${card.month}${card.gwang ? '광' : ''}`;
   }
 
-  async function refresh() {
-    try {
-      const res = await fetch(`/games/seotda?_=${Date.now()}`, { cache: 'no-store' });
-      if (!res.ok) return;
-      const j = await res.json();
-      balance = Number(j.balance ?? 0);
-      rankList = j.rank ?? [];
-      round = j.round ?? null;
-      oopsInfo = j.oopsInfo ?? null;
-    } catch (err) {
-      console.error('[seotda refresh]', err);
+  function npcCardVisible(npc: SeotdaSeat, card: SeotdaCard): boolean {
+    if (npc.folded) return false;
+    if (!isShowdown) return false;
+    if (hiddenNpcIds.has(npc.id)) return false;
+    return !card.hidden && card.month > 0;
+  }
+
+  /**
+   * 쇼다운 진입 시 NPC 패를 한 명씩 까기
+   * @param {SeotdaRound} r
+   */
+  function startShowdownReveal(r: SeotdaRound) {
+    clearTimers();
+    const aliveNpcs = r.seats.filter((s) => s.isNpc && !s.folded);
+    hiddenNpcIds = new Set(aliveNpcs.map((s) => s.id));
+    revealDone = aliveNpcs.length === 0;
+    revealingId = null;
+
+    let delay = 400;
+    aliveNpcs.forEach((npc, idx) => {
+      const t = setTimeout(() => {
+        revealingId = npc.id;
+        const next = new Set(hiddenNpcIds);
+        next.delete(npc.id);
+        hiddenNpcIds = next;
+        if (idx === aliveNpcs.length - 1) {
+          const done = setTimeout(() => {
+            revealingId = null;
+            revealDone = true;
+          }, 700);
+          timers.push(done);
+        }
+      }, delay);
+      timers.push(t);
+      delay += 900;
+    });
+  }
+
+  /** 새 판 시작 시 내 패 플립 */
+  function startDealFlip() {
+    clearTimers();
+    userCardsFlipped = false;
+    revealDone = true;
+    hiddenNpcIds = new Set();
+    revealingId = null;
+    const t = setTimeout(() => {
+      userCardsFlipped = true;
+    }, 280);
+    timers.push(t);
+  }
+
+  /**
+   * @param {SeotdaRound | null} next
+   * @param {boolean} fromShowdownAct
+   */
+  function applyRound(next: SeotdaRound | null, fromShowdownAct = false) {
+    const wasShowdown = round && (round.showdown || round.phase === 'showdown');
+    const nowShowdown = next && (next.showdown || next.phase === 'showdown');
+    const isNewDeal =
+      next && next.phase === 'betting' && (!round || wasShowdown || round.phase !== 'betting');
+
+    round = next;
+
+    if (nowShowdown && fromShowdownAct) {
+      startShowdownReveal(next);
+    } else if (isNewDeal) {
+      startDealFlip();
+    } else if (!nowShowdown) {
+      hiddenNpcIds = new Set();
+      revealDone = true;
+      revealingId = null;
     }
   }
 
@@ -93,9 +174,21 @@
         return;
       }
       balance = Number(j.balance ?? balance);
-      round = j.round ?? null;
-      if (body.action === 'ack' || (j.round && j.round.showdown)) {
-        await refresh();
+      const next = (j.round as SeotdaRound | null) ?? null;
+      const hitShowdown = !!(next && (next.showdown || next.phase === 'showdown'));
+      applyRound(next, body.action === 'act' && hitShowdown);
+      if (body.action === 'ack' || body.action === 'start') {
+        // 랭킹만 갱신
+        try {
+          const r = await fetch(`/games/seotda?_=${Date.now()}`, { cache: 'no-store' });
+          if (r.ok) {
+            const jj = await r.json();
+            rankList = jj.rank ?? rankList;
+            oopsInfo = jj.oopsInfo ?? null;
+          }
+        } catch {
+          /* ignore */
+        }
       }
     } catch (err) {
       console.error('[seotda post]', err);
@@ -113,7 +206,7 @@
     return post({ action: 'act', move });
   }
 
-  function ack() {
+  function nextRound() {
     return post({ action: 'ack' });
   }
 </script>
@@ -156,18 +249,31 @@
             <div class="seotda-table rounded-4 p-3 mb-3">
               <div class="npc-row d-flex justify-content-around mb-4">
                 {#each npcs as npc (npc.id)}
-                  <div class="seat text-center" class:folded={npc.folded} class:winner={round.winnerId === npc.id}>
+                  <div
+                    class="seat text-center"
+                    class:folded={npc.folded}
+                    class:winner={revealDone && round.winnerId === npc.id}
+                    class:revealing={revealingId === npc.id}
+                  >
                     <div class="fw-semibold">{npc.name}</div>
-                    <div class="small text-muted">{formatNumber(npc.chips)}점</div>
+                    <div class="small opacity-75">{formatNumber(npc.chips)}점</div>
                     <div class="cards my-2">
-                      {#each npc.cards as card, i (i)}
-                        <span class="hwatu" class:gwang={card.gwang && !card.hidden}>{cardText(card)}</span>
+                      {#each npc.cards as card, i (`${npc.id}-${i}`)}
+                        {@const open = npcCardVisible(npc, card)}
+                        <span
+                          class="hwatu-flip"
+                          class:flipped={open}
+                          class:gwang={open && card.gwang}
+                        >
+                          <span class="hwatu-face back">?</span>
+                          <span class="hwatu-face front">{open ? cardText(card) : '?'}</span>
+                        </span>
                       {/each}
                     </div>
-                    {#if npc.handName && isShowdown}
-                      <div class="badge text-bg-dark">{npc.handName}</div>
+                    {#if npc.handName && !hiddenNpcIds.has(npc.id) && isShowdown && !npc.folded}
+                      <div class="badge text-bg-dark hand-pop">{npc.handName}</div>
                     {/if}
-                    {#if npc.lastAction}
+                    {#if npc.lastAction && !isShowdown}
                       <div class="bubble small">{npc.lastAction}</div>
                     {/if}
                   </div>
@@ -176,20 +282,35 @@
 
               <div class="pot text-center mb-4">
                 <div class="display-6 fw-bold">{formatNumber(round.pot)}</div>
-                <div class="small text-muted">팟 · 현재 벳 {formatNumber(round.currentBet)}</div>
+                <div class="small opacity-75">팟 · 현재 벳 {formatNumber(round.currentBet)}</div>
+                {#if isShowdown && !revealDone}
+                  <div class="reveal-hint mt-2">패 까는 중…</div>
+                {/if}
               </div>
 
               {#if userSeat}
-                <div class="seat user-seat text-center" class:folded={userSeat.folded} class:winner={round.winnerId === 'user'}>
+                <div
+                  class="seat user-seat text-center"
+                  class:folded={userSeat.folded}
+                  class:winner={revealDone && round.winnerId === 'user'}
+                >
                   <div class="fw-semibold">나</div>
-                  <div class="small text-muted">{formatNumber(userSeat.chips)}점</div>
+                  <div class="small opacity-75">{formatNumber(userSeat.chips)}점</div>
                   <div class="cards my-2">
-                    {#each userSeat.cards as card, i (i)}
-                      <span class="hwatu open" class:gwang={card.gwang}>{cardText(card)}</span>
+                    {#each userSeat.cards as card, i (`user-${i}`)}
+                      <span
+                        class="hwatu-flip"
+                        class:flipped={userCardsFlipped}
+                        class:gwang={userCardsFlipped && card.gwang}
+                        style="transition-delay: {i * 120}ms"
+                      >
+                        <span class="hwatu-face back">?</span>
+                        <span class="hwatu-face front open">{cardText(card)}</span>
+                      </span>
                     {/each}
                   </div>
-                  {#if userSeat.handName}
-                    <div class="badge text-bg-primary mb-2">{userSeat.handName}</div>
+                  {#if userSeat.handName && userCardsFlipped}
+                    <div class="badge text-bg-primary mb-2 hand-pop">{userSeat.handName}</div>
                   {/if}
                 </div>
               {/if}
@@ -197,18 +318,26 @@
 
             {#if canAct}
               <div class="d-flex gap-2 justify-content-center flex-wrap mb-3">
-                <button class="btn btn-outline-secondary" disabled={busy} onclick={() => act('die')}>다이</button>
-                <button class="btn btn-outline-primary" disabled={busy} onclick={() => act('call')}>콜</button>
-                <button class="btn btn-danger" disabled={busy} onclick={() => act('raise')}>레이즈</button>
+                <button class="btn btn-outline-secondary" disabled={busy} onclick={() => act('die')}
+                  >다이</button
+                >
+                <button class="btn btn-outline-primary" disabled={busy} onclick={() => act('call')}
+                  >콜</button
+                >
+                <button class="btn btn-danger" disabled={busy} onclick={() => act('raise')}
+                  >레이즈</button
+                >
               </div>
             {/if}
 
-            {#if isShowdown}
-              <div class="text-center mb-3">
-                <p class="mb-2">
+            {#if isShowdown && revealDone}
+              <div class="text-center mb-3 result-banner">
+                <p class="mb-2 fs-5 fw-semibold">
                   {#if round.winnerId === 'user'}이겼다!{:else}졌다…{/if}
                 </p>
-                <button class="btn btn-primary" disabled={busy} onclick={ack}>다음 판</button>
+                <button class="btn btn-primary" disabled={busy || balance < 10} onclick={nextRound}>
+                  다음 판
+                </button>
               </div>
             {/if}
 
@@ -249,32 +378,82 @@
     background: linear-gradient(160deg, #1a4d3a 0%, #0f3328 100%);
     color: #f3f0e6;
     min-height: 280px;
+    perspective: 800px;
   }
   .seat.folded {
     opacity: 0.45;
   }
-  .seat.winner .hwatu {
+  .seat.winner .hwatu-flip.flipped .front {
     box-shadow: 0 0 0 2px #f5c542;
   }
-  .hwatu {
-    display: inline-flex;
+  .seat.revealing {
+    transform: scale(1.06);
+    transition: transform 0.25s ease;
+  }
+  .reveal-hint {
+    color: #f5c542;
+    font-weight: 600;
+    animation: pulse 0.9s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    50% {
+      opacity: 0.55;
+    }
+  }
+  .hand-pop {
+    animation: popIn 0.35s ease;
+  }
+  @keyframes popIn {
+    from {
+      transform: scale(0.6);
+      opacity: 0;
+    }
+    to {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+  .result-banner {
+    animation: popIn 0.4s ease;
+  }
+
+  .hwatu-flip {
+    display: inline-block;
+    width: 2.5rem;
+    height: 3.4rem;
+    margin: 0 0.15rem;
+    position: relative;
+    transform-style: preserve-3d;
+    transition: transform 0.45s ease;
+    vertical-align: middle;
+  }
+  .hwatu-flip.flipped {
+    transform: rotateY(180deg);
+  }
+  .hwatu-face {
+    position: absolute;
+    inset: 0;
+    display: flex;
     align-items: center;
     justify-content: center;
-    width: 2.4rem;
-    height: 3.2rem;
-    margin: 0 0.15rem;
     border-radius: 0.35rem;
-    background: #2a2a2a;
-    color: #eee;
     font-weight: 700;
     font-size: 0.85rem;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
   }
-  .hwatu.open {
+  .hwatu-face.back {
+    background: #2a2a2a;
+    color: #eee;
+    border: 1px solid #444;
+  }
+  .hwatu-face.front {
     background: #f7f2e8;
     color: #1a1a1a;
     border: 1px solid #c9b896;
+    transform: rotateY(180deg);
   }
-  .hwatu.gwang {
+  .hwatu-flip.gwang .front {
     color: #c0392b;
   }
   .bubble {

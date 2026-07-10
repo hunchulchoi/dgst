@@ -82,21 +82,11 @@ export async function POST(event) {
     }
 
     if (action === 'start') {
-      let { balance } = await ensureSeotdaBalance(user.email, user.nickname);
-      if (balance === 0) {
-        const topped = await maybeTopupAfterOops(user.email, user.nickname);
-        if (topped > 0) balance = topped;
-      }
-      if (balance < 10) {
-        throw error(400, { message: '보유 점수가 부족합니다. 오링 후 잠시 기다려 주세요.' });
-      }
       if (getRound(user.email)?.phase === 'betting') {
         throw error(400, { message: '이미 진행 중인 판이 있습니다.' });
       }
-      const round = createNewRound(balance);
-      chipsBeforeMap.set(user.email, balance);
-      setRound(user.email, round);
-      return json({ success: true, balance: round.seats[0].chips, round: publicOf(round) });
+      clearRound(user.email);
+      return json(await beginRound(user.email, user.nickname));
     }
 
     if (action === 'act') {
@@ -137,12 +127,12 @@ export async function POST(event) {
     }
 
     if (action === 'ack') {
+      // 쇼다운 확인 후 바로 다음 판
       const round = getRound(user.email);
       if (round && round.phase === 'showdown') {
         clearRound(user.email);
       }
-      const balance = (await ensureSeotdaBalance(user.email, user.nickname)).balance;
-      return json({ success: true, balance, round: null });
+      return json(await beginRound(user.email, user.nickname));
     }
 
     throw error(400, { message: 'action: start | act | ack' });
@@ -155,11 +145,31 @@ export async function POST(event) {
 
 /**
  * @param {string} email
+ * @param {string} nickname
+ */
+async function beginRound(email, nickname) {
+  let { balance } = await ensureSeotdaBalance(email, nickname);
+  if (balance === 0) {
+    const topped = await maybeTopupAfterOops(email, nickname);
+    if (topped > 0) balance = topped;
+  }
+  if (balance < 10) {
+    throw error(400, { message: '보유 점수가 부족합니다. 오링 후 잠시 기다려 주세요.' });
+  }
+  const round = createNewRound(balance);
+  chipsBeforeMap.set(email, balance);
+  setRound(email, round);
+  return { success: true, balance: round.seats[0].chips, round: publicOf(round) };
+}
+
+/**
+ * @param {string} email
  * @param {string} action
  * @param {Record<string, unknown>} body
  */
 function handleSmoke(email, action, body) {
-  if (action === 'start') {
+  if (action === 'start' || action === 'ack') {
+    clearRound(email);
     const round = createNewRound(SMOKE_BALANCE);
     chipsBeforeMap.set(email, SMOKE_BALANCE);
     setRound(email, round);
@@ -176,10 +186,6 @@ function handleSmoke(email, action, body) {
     setRound(email, round);
     const userChips = round.seats.find((s) => s.id === 'user')?.chips ?? 0;
     return json({ success: true, balance: userChips, round: publicOf(round) });
-  }
-  if (action === 'ack') {
-    clearRound(email);
-    return json({ success: true, balance: SMOKE_BALANCE, round: null });
   }
   throw error(400, { message: 'action: start | act | ack' });
 }
