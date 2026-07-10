@@ -11,6 +11,8 @@ import {
 import { NPC_PROFILES, chooseNpcAction, pickPressureNpc, npcRaiseChips } from './seotdaNpc.js';
 
 const NPC_START_CHIPS = 1000;
+/** 한 판 레이즈 횟수 상한 — 무한 콜/레이즈 방지 */
+export const MAX_RAISES = 3;
 
 /**
  * @param {number} userChips
@@ -28,7 +30,8 @@ export function createNewRound(userChips, rng = Math.random) {
       cards: [deck[0], deck[1]],
       folded: false,
       contrib: 0,
-      lastAction: null
+      lastAction: null,
+      needsAction: true
     }
   ];
   deck = deck.slice(2);
@@ -43,7 +46,8 @@ export function createNewRound(userChips, rng = Math.random) {
       cards: [deck[0], deck[1]],
       folded: false,
       contrib: 0,
-      lastAction: null
+      lastAction: null,
+      needsAction: true
     });
     deck = deck.slice(2);
   }
@@ -65,8 +69,9 @@ export function createNewRound(userChips, rng = Math.random) {
     pot,
     currentBet: ANTE,
     seats,
-    turnIndex: 0, // user first
+    turnIndex: 0,
     pressureNpcId,
+    raiseCount: 0,
     log,
     winnerId: null,
     showdown: false,
@@ -75,7 +80,6 @@ export function createNewRound(userChips, rng = Math.random) {
 }
 
 /**
- * NPC 파산 시 리필
  * @param {import('./seotdaState.js').SeotdaRound} round
  */
 export function refillBustNpcs(round) {
@@ -83,6 +87,34 @@ export function refillBustNpcs(round) {
     if (s.isNpc && s.chips <= 0) {
       s.chips = NPC_START_CHIPS;
       round.log.push(`${s.name} 칩 리필`);
+    }
+  }
+}
+
+/**
+ * 아직 행동해야 하는 좌석 (폴드·올인 제외)
+ * @param {import('./seotdaState.js').SeotdaRound} round
+ */
+export function nextSeatNeedingAction(round) {
+  return round.seats.find(
+    (s) => !s.folded && s.needsAction && (s.chips > 0 || s.contrib < round.currentBet)
+  );
+}
+
+/**
+ * @param {import('./seotdaState.js').SeotdaRound} round
+ * @param {string} actorId
+ * @param {boolean} wasRaise
+ */
+function markActed(round, actorId, wasRaise) {
+  const seat = round.seats.find((s) => s.id === actorId);
+  if (seat) seat.needsAction = false;
+  if (wasRaise) {
+    round.raiseCount = (round.raiseCount ?? 0) + 1;
+    for (const s of round.seats) {
+      if (s.id !== actorId && !s.folded && s.chips > 0) {
+        s.needsAction = true;
+      }
     }
   }
 }
@@ -97,11 +129,16 @@ export function applyPlayerAction(round, seatId, action) {
   if (!seat || seat.folded || round.phase !== 'betting') {
     throw new Error('지금은 행동할 수 없습니다.');
   }
+  if (!seat.needsAction) {
+    throw new Error('지금은 당신 차례가 아닙니다.');
+  }
   const toCall = Math.max(0, round.currentBet - seat.contrib);
+  let wasRaise = false;
 
   if (action === 'die') {
     seat.folded = true;
     seat.lastAction = '다이';
+    seat.needsAction = false;
     round.log.push(`${seat.name}: 다이`);
   } else if (action === 'call') {
     const pay = Math.min(toCall, seat.chips);
@@ -110,72 +147,120 @@ export function applyPlayerAction(round, seatId, action) {
     round.pot += pay;
     seat.lastAction = pay < toCall ? '올인' : toCall === 0 ? '체크' : '콜';
     round.log.push(`${seat.name}: ${seat.lastAction} (${pay})`);
+    markActed(round, seatId, false);
   } else if (action === 'raise') {
-    const amount = raiseAmount(toCall, seat.chips);
-    const pay = Math.min(amount, seat.chips);
-    seat.chips -= pay;
-    seat.contrib += pay;
-    round.pot += pay;
-    round.currentBet = Math.max(round.currentBet, seat.contrib);
-    seat.lastAction = pay <= toCall ? '올인' : '레이즈';
-    round.log.push(`${seat.name}: ${seat.lastAction} (${pay})`);
+    if ((round.raiseCount ?? 0) >= MAX_RAISES) {
+      // 상한 초과 시 콜로 강등
+      const pay = Math.min(toCall, seat.chips);
+      seat.chips -= pay;
+      seat.contrib += pay;
+      round.pot += pay;
+      seat.lastAction = toCall === 0 ? '체크' : '콜';
+      round.log.push(`${seat.name}: ${seat.lastAction} (레이즈 상한)`);
+      markActed(round, seatId, false);
+    } else {
+      const amount = raiseAmount(toCall, seat.chips);
+      const pay = Math.min(amount, seat.chips);
+      seat.chips -= pay;
+      seat.contrib += pay;
+      round.pot += pay;
+      const newBet = Math.max(round.currentBet, seat.contrib);
+      wasRaise = newBet > round.currentBet && pay > toCall;
+      round.currentBet = newBet;
+      seat.lastAction = pay <= toCall ? '올인' : wasRaise ? '레이즈' : '올인';
+      round.log.push(`${seat.name}: ${seat.lastAction} (${pay})`);
+      markActed(round, seatId, wasRaise);
+    }
   } else {
     throw new Error('알 수 없는 액션');
   }
 }
 
 /**
+ * NPC 한 명 행동
+ * @param {import('./seotdaState.js').SeotdaRound} round
+ * @param {import('./seotdaState.js').SeotdaSeat} seat
+ * @param {() => number} [rng]
+ */
+function applyNpcSeatAction(round, seat, rng = Math.random) {
+  const profile = NPC_PROFILES.find((p) => p.id === seat.id);
+  if (!profile) {
+    seat.needsAction = false;
+    return;
+  }
+
+  const toCall = Math.max(0, round.currentBet - seat.contrib);
+  const raiseSeen = (round.raiseCount ?? 0) > 0;
+  const forcePressure =
+    seat.id === round.pressureNpcId && !raiseSeen && (round.raiseCount ?? 0) < MAX_RAISES;
+
+  let action = chooseNpcAction(
+    seat.cards,
+    profile,
+    { toCall, chips: seat.chips, pot: round.pot, raiseSeen, forcePressure },
+    rng
+  );
+
+  if (action === 'raise' && (round.raiseCount ?? 0) >= MAX_RAISES) {
+    action = toCall > 0 ? 'call' : 'call';
+  }
+
+  if (action === 'raise') {
+    const pay = npcRaiseChips(toCall, seat.chips);
+    seat.chips -= pay;
+    seat.contrib += pay;
+    round.pot += pay;
+    const newBet = Math.max(round.currentBet, seat.contrib);
+    const wasRaise = newBet > round.currentBet && pay > toCall;
+    round.currentBet = newBet;
+    seat.lastAction = pay <= toCall ? '올인' : wasRaise ? '레이즈' : '올인';
+    round.log.push(`${seat.name}: ${seat.lastAction}! (${pay})`);
+    markActed(round, seat.id, wasRaise);
+  } else if (action === 'call') {
+    const pay = Math.min(toCall, seat.chips);
+    seat.chips -= pay;
+    seat.contrib += pay;
+    round.pot += pay;
+    seat.lastAction = toCall === 0 ? '체크' : pay < toCall ? '올인' : '콜';
+    round.log.push(`${seat.name}: ${seat.lastAction} (${pay})`);
+    markActed(round, seat.id, false);
+  } else {
+    seat.folded = true;
+    seat.lastAction = '다이';
+    seat.needsAction = false;
+    round.log.push(`${seat.name}: 다이`);
+  }
+}
+
+/**
+ * 유저 행동 후 NPC를 유저 차례 또는 쇼다운까지 진행
  * @param {import('./seotdaState.js').SeotdaRound} round
  * @param {() => number} [rng]
  */
 export function runNpcTurns(round, rng = Math.random) {
   if (round.phase !== 'betting') return;
 
-  // 유저 다음부터 한 바퀴 NPC
-  for (let i = 1; i < round.seats.length; i++) {
-    const seat = round.seats[i];
-    if (seat.folded || !seat.isNpc) continue;
-    if (aliveCount(round) <= 1) break;
+  for (let guard = 0; guard < 40; guard++) {
+    finishIfNeeded(round);
+    if (round.phase !== 'betting') return;
 
-    const profile = NPC_PROFILES.find((p) => p.id === seat.id);
-    if (!profile) continue;
-
-    const toCall = Math.max(0, round.currentBet - seat.contrib);
-    const raiseSeen = round.seats.some(
-      (s) => s.id !== seat.id && (s.lastAction === '레이즈' || s.lastAction === '올인')
-    );
-    const forcePressure = seat.id === round.pressureNpcId && !raiseSeen;
-
-    const action = chooseNpcAction(
-      seat.cards,
-      profile,
-      { toCall, chips: seat.chips, pot: round.pot, raiseSeen, forcePressure },
-      rng
-    );
-
-    if (action === 'raise') {
-      const pay = npcRaiseChips(toCall, seat.chips);
-      seat.chips -= pay;
-      seat.contrib += pay;
-      round.pot += pay;
-      round.currentBet = Math.max(round.currentBet, seat.contrib);
-      seat.lastAction = pay <= toCall ? '올인' : '레이즈';
-      round.log.push(`${seat.name}: ${seat.lastAction}! (${pay})`);
-    } else if (action === 'call') {
-      const pay = Math.min(toCall, seat.chips);
-      seat.chips -= pay;
-      seat.contrib += pay;
-      round.pot += pay;
-      seat.lastAction = toCall === 0 ? '체크' : pay < toCall ? '올인' : '콜';
-      round.log.push(`${seat.name}: ${seat.lastAction} (${pay})`);
-    } else {
-      seat.folded = true;
-      seat.lastAction = '다이';
-      round.log.push(`${seat.name}: 다이`);
+    const next = nextSeatNeedingAction(round);
+    if (!next) {
+      showdown(round);
+      return;
     }
+    if (!next.isNpc) {
+      round.turnIndex = round.seats.indexOf(next);
+      return; // 유저 입력 대기
+    }
+    applyNpcSeatAction(round, next, rng);
   }
 
-  finishIfNeeded(round);
+  // 안전장치: 루프 초과 시 강제 쇼다운
+  if (round.phase === 'betting') {
+    round.log.push('베팅 종료 (상한)');
+    showdown(round);
+  }
 }
 
 /**
@@ -203,12 +288,9 @@ export function finishIfNeeded(round) {
     return;
   }
 
-  // 베팅 라운드 종료: 전원 행동했고 콜 맞춤 (간단: NPC 턴 후 쇼다운)
-  const allActed = round.seats.every((s) => s.folded || s.lastAction != null);
-  const matched = round.seats
-    .filter((s) => !s.folded)
-    .every((s) => s.contrib >= round.currentBet || s.chips === 0);
-  if (allActed && matched && alive.length >= 2) {
+  const someoneNeeds = round.seats.some((s) => !s.folded && s.needsAction && s.chips > 0);
+  const matched = alive.every((s) => s.contrib >= round.currentBet || s.chips === 0);
+  if (!someoneNeeds && matched && alive.length >= 2) {
     showdown(round);
   }
 }
@@ -218,6 +300,7 @@ export function finishIfNeeded(round) {
  */
 export function showdown(round) {
   const alive = round.seats.filter((s) => !s.folded);
+  if (alive.length === 0) return;
   let best = alive[0];
   let bestHand = evaluateHand(best.cards);
   for (let i = 1; i < alive.length; i++) {
@@ -229,9 +312,7 @@ export function showdown(round) {
   }
   for (const s of alive) {
     const h = evaluateHand(s.cards);
-    round.log.push(
-      `${s.name}: ${s.cards.map(cardLabel).join('·')} → ${h.name}`
-    );
+    round.log.push(`${s.name}: ${s.cards.map(cardLabel).join('·')} → ${h.name}`);
   }
   const settled = settlePot(round.seats, round.pot, best.id);
   round.seats = /** @type {typeof round.seats} */ (settled.players);
@@ -244,7 +325,6 @@ export function showdown(round) {
 }
 
 /**
- * 유저 칩 변화량 (정산용)
  * @param {number} chipsBefore
  * @param {import('./seotdaState.js').SeotdaRound} round
  */

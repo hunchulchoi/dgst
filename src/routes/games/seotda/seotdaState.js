@@ -11,6 +11,7 @@
  *   folded: boolean;
  *   contrib: number;
  *   lastAction: string | null;
+ *   needsAction?: boolean;
  * }} SeotdaSeat
  * @typedef {{
  *   phase: 'betting' | 'showdown' | 'idle';
@@ -19,6 +20,7 @@
  *   seats: SeotdaSeat[];
  *   turnIndex: number;
  *   pressureNpcId: string | null;
+ *   raiseCount?: number;
  *   log: string[];
  *   winnerId: string | null;
  *   showdown: boolean;
@@ -88,6 +90,7 @@ export function toPublicState(round, userSeatId = 'user', evalHand) {
         folded: s.folded,
         contrib: s.contrib,
         lastAction: s.lastAction,
+        needsAction: !!s.needsAction,
         cards: reveal
           ? s.cards
           : s.cards.map(() => ({ month: 0, gwang: false, hidden: true })),

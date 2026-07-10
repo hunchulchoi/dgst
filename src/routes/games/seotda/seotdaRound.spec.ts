@@ -30,6 +30,23 @@ describe('seotdaRound smoke', () => {
     // after one street of actions should usually be showdown
     expect(round.phase === 'showdown' || round.seats.some((s) => s.lastAction)).toBe(true);
   });
+
+  it('repeated call after npc raise eventually reaches showdown (no infinite street)', () => {
+    // NPCs always raise when they can → used to re-open street forever
+    const alwaysRaise = () => 0.01;
+    const round = createNewRound(5000, alwaysRaise);
+    let guards = 0;
+    while (round.phase === 'betting' && guards < 20) {
+      guards++;
+      const user = round.seats[0];
+      if (user.folded) break;
+      const toCall = Math.max(0, round.currentBet - user.contrib);
+      applyPlayerAction(round, 'user', toCall > 0 ? 'call' : 'call');
+      runNpcTurns(round, alwaysRaise);
+    }
+    expect(round.phase).toBe('showdown');
+    expect(guards).toBeLessThan(20);
+  });
 });
 
 describe('seotdaNpc bluff', () => {

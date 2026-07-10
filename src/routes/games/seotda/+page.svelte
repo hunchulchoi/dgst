@@ -19,6 +19,7 @@
     folded: boolean;
     contrib: number;
     lastAction: string | null;
+    needsAction?: boolean;
     cards: SeotdaCard[];
     handName: string | null;
   }
@@ -49,7 +50,13 @@
 
   const userSeat = $derived(round?.seats.find((s) => s.id === 'user') ?? null);
   const npcs = $derived(round?.seats.filter((s) => s.isNpc) ?? []);
-  const canAct = $derived(!!round && round.phase === 'betting' && !userSeat?.folded && !busy);
+  const canAct = $derived(
+    !!round &&
+      round.phase === 'betting' &&
+      !userSeat?.folded &&
+      !!userSeat?.needsAction &&
+      !busy
+  );
   const isShowdown = $derived(!!round && (round.showdown || round.phase === 'showdown'));
 
   function cardText(card: SeotdaCard): string {
