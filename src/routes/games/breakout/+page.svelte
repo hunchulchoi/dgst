@@ -377,13 +377,17 @@
   }
 
   function launchBall() {
-    if (balls.length === 0 || ballLaunched) return;
+    if (ballLaunched) return;
+    // 파리 잡기는 공 없이 시작 (ready 루프가 balls 비움)
+    if (balls.length === 0 && bonusChallenge !== 'flies') return;
     if (isBonusStage) {
       const limit = getBonusAttemptLimit(bonusChallenge);
       if (bonusAttemptsUsed >= limit) return;
       bonusAttemptsUsed += 1;
       const config = getStageConfig(stage);
-      balls = [createAimedBall(paddle, config.ballSpeed, aimAngle)];
+      if (bonusChallenge !== 'flies') {
+        balls = [createAimedBall(paddle, config.ballSpeed, aimAngle)];
+      }
       resetBonusTargets(stage);
       billiardEndsAt = Date.now() + getBonusTimeLimitMs(bonusChallenge);
       if (bonusChallenge === 'spin') {
