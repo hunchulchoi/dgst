@@ -245,7 +245,7 @@ export const BONUS_STAGE_LIST = [1, 5, 15, 25, 35, 45] as const;
  * 최종 테스트 플래그 — true면 보너스만 진행.
  * 배포 전 false 로 되돌릴 것.
  */
-export const BONUS_ONLY_TEST = true;
+export const BONUS_ONLY_TEST = false;
 const THEME_STAGES = new Set([10, 20, 30, 40, 50]);
 
 const THEME_LABELS: Record<number, string> = {

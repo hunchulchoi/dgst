@@ -635,12 +635,17 @@ describe('breakout gameUtils', () => {
   });
 
   it('bonus-only test jumps between bonus stages', () => {
-    expect(BONUS_ONLY_TEST).toBe(true);
     expect(BONUS_STAGE_LIST).toEqual([1, 5, 15, 25, 35, 45]);
-    expect(getNextStage(1)).toBe(5);
-    expect(getNextStage(5)).toBe(15);
-    expect(getNextStage(45)).toBe(TOTAL_STAGES + 1);
-    expect(isGameComplete(getNextStage(45))).toBe(true);
+    if (BONUS_ONLY_TEST) {
+      expect(getNextStage(1)).toBe(5);
+      expect(getNextStage(5)).toBe(15);
+      expect(getNextStage(45)).toBe(TOTAL_STAGES + 1);
+      expect(isGameComplete(getNextStage(45))).toBe(true);
+    } else {
+      expect(getNextStage(1)).toBe(2);
+      expect(getNextStage(45)).toBe(46);
+      expect(getNextStage(50)).toBe(51);
+    }
   });
 
   it('activates invincible ball for limited time', () => {
