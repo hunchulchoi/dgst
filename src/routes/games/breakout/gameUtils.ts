@@ -246,6 +246,11 @@ export const BONUS_STAGE_LIST = [1, 5, 15, 25, 35, 45] as const;
  * 배포 전 false 로 되돌릴 것.
  */
 export const BONUS_ONLY_TEST = false;
+/**
+ * 게임 시작 스테이지. 최종 테스트용으로 50 가능.
+ * 배포 전 1 로 되돌릴 것.
+ */
+export const START_STAGE = 50;
 const THEME_STAGES = new Set([10, 20, 30, 40, 50]);
 
 const THEME_LABELS: Record<number, string> = {

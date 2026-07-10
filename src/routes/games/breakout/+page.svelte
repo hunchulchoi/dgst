@@ -91,6 +91,7 @@
     getNextStage,
     BONUS_ONLY_TEST,
     BONUS_STAGE_LIST,
+    START_STAGE,
     isInvincibleBallActive,
     isLaserActive,
     isStageClear,
@@ -341,19 +342,23 @@
 
   async function startGame() {
     if (stageClearTimeout) clearTimeout(stageClearTimeout);
-    stage = 1;
     score = 0;
     lives = INITIAL_LIVES;
     resetRoundState();
+    stage = START_STAGE;
     paddle = createPaddle();
     bricks = createBricks(stage);
     prepareBallForStage(stage);
     bonusStageScoreStart = score;
     ballLaunched = false;
-    screen = 'ready';
-    await tick();
-    initCanvasContext();
-    startLoop();
+    if (getStageConfig(stage).kind === 'bonus') {
+      screen = 'bonusIntro';
+    } else {
+      screen = 'ready';
+      await tick();
+      initCanvasContext();
+      startLoop();
+    }
     if (isLoggedIn) void logGameStart();
   }
 
@@ -1815,9 +1820,11 @@
               <p class="text-muted mb-4 small">
                 패들로 공 받기 · 블록 제거 · 아이템 획득<br />
                 🟦일반 🟥내구(2타) 🟨폭발 ⬛철(무적) 🌈특수<br />
-                {BONUS_ONLY_TEST
-                  ? `🧪 보너스만 테스트 · ${BONUS_STAGE_LIST.length}스테이지`
-                  : '50단계 · 테마 · 당구 퍼즐 스테이지 포함'}
+                {START_STAGE > 1
+                  ? `🧪 ${START_STAGE}단계부터 시작 · 테스트`
+                  : BONUS_ONLY_TEST
+                    ? `🧪 보너스만 테스트 · ${BONUS_STAGE_LIST.length}스테이지`
+                    : '50단계 · 테마 · 당구 퍼즐 스테이지 포함'}
               </p>
               <button type="button" class="btn btn-primary btn-lg px-5" onclick={startGame}>
                 시작
