@@ -1457,6 +1457,13 @@ export function bounceFallingStarOffIron(star: FallingStar, _bricks: Brick[]): F
 
 /** 별 소나기용 중간 철 블록 (별이 떨어질 틈 있음) */
 export function createStarRainIronBricks(): Brick[] {
+  return createBonusIronBricks();
+}
+
+/**
+ * 보너스 공통 — 철 블록 1~2개 랜덤 배치 (중간 대역).
+ */
+export function createBonusIronBricks(rng = Math.random): Brick[] {
   const brickWidth =
     (CANVAS_WIDTH - BRICK_OFFSET_LEFT * 2 - BRICK_PADDING * (BRICK_COLS - 1)) / BRICK_COLS;
   const brickHeight = 22;
@@ -1472,8 +1479,23 @@ export function createStarRainIronBricks(): Brick[] {
     color: BRICK_COLORS.iron,
     points: 0
   });
-  // 철 2개 — 좌·우 살짝 어긋난 위치
-  return [makeIron(3, 2), makeIron(4, 6)];
+
+  const count = rng() < 0.5 ? 1 : 2;
+  const rows = [2, 3, 4];
+  const cols = [1, 2, 3, 4, 5, 6, 7, 8];
+  const used = new Set<string>();
+  const out: Brick[] = [];
+  let guard = 0;
+  while (out.length < count && guard < 48) {
+    guard += 1;
+    const row = rows[Math.floor(rng() * rows.length)]!;
+    const col = cols[Math.floor(rng() * cols.length)]!;
+    const key = `${row}:${col}`;
+    if (used.has(key)) continue;
+    used.add(key);
+    out.push(makeIron(row, col));
+  }
+  return out;
 }
 
 /**

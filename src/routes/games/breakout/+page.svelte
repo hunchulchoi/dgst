@@ -28,6 +28,7 @@
     createFallingStar,
     createFallingFly,
     createStarRainIronBricks,
+    createBonusIronBricks,
     shouldSpawnStarRain,
     shouldSpawnFly,
     stepFallingStars,
@@ -68,7 +69,6 @@
     getStageConfig,
     buildBonusClearPerformance,
     handleBrickCollision,
-    handleEnclosedCushionCollision,
     handleTopAndSideCushionCollision,
     handleInvincibleBrickCollision,
     handleLaserBrickCollision,
@@ -295,7 +295,6 @@
       lastStarSpawnAt = 0;
       vaultTargets = [];
       vaultSequence = [];
-      bricks = createStarRainIronBricks();
     } else if (challenge === 'gems') {
       billiardObjects = [];
       bonusCollectibles = createGemCollectibles(stageNum);
@@ -319,6 +318,7 @@
       vaultTargets = [];
       vaultSequence = [];
     }
+    bricks = createBonusIronBricks();
   }
 
   function prepareBallForStage(stageNum: number) {
@@ -485,6 +485,11 @@
         lastLaserShotAt = now;
       }
       lasers = moveLasers(lasers);
+      if (lasers.length > 0) {
+        const laserHit = handleLaserBrickCollision(lasers, bricks, stage);
+        lasers = laserHit.lasers;
+        bricks = laserHit.bricks;
+      }
 
       const elapsed = FLIES_TIME_LIMIT_MS - getBilliardTimeLeftMs(billiardEndsAt, now);
       const diff = getFliesDifficulty(elapsed);
@@ -557,9 +562,21 @@
       return;
     }
 
-    const wall = handleEnclosedCushionCollision(cue);
+    // 모든 보너스 흰공: 상·좌·우 쿠션 + 철 튕김 + 패들로 받기
+    const wall = handleTopAndSideCushionCollision(cue);
     cue = wall.ball;
     if (wall.cushionHit) cushionCount += 1;
+    const brickHit = handleBrickCollision(cue, bricks, stage);
+    cue = brickHit.ball;
+    bricks = brickHit.bricks;
+    const paddleHit = handlePaddleCollision(cue, paddle);
+    if (paddleHit.hit) {
+      cue = paddleHit.ball;
+    } else if (isBallLost(cue)) {
+      showEffectToast('공 놓침!');
+      handleBonusMiss();
+      return;
+    }
 
     if (bonusChallenge === 'billiard' || bonusChallenge === 'movers') {
       let nextObjects = billiardObjects;
@@ -871,10 +888,7 @@
         if (keys.right) aimAngle = clampAimAngle(aimAngle - AIM_ANGLE_STEP);
         balls = [createAimedBall(paddle, getStageConfig(stage).ballSpeed, aimAngle)];
       }
-    } else if (
-      !isBonusStage ||
-      ((bonusChallenge === 'spin' || bonusChallenge === 'flies') && ballLaunched)
-    ) {
+    } else if (!isBonusStage || ballLaunched) {
       if (keys.left) paddle = movePaddle(paddle, -PADDLE_SPEED);
       if (keys.right) paddle = movePaddle(paddle, PADDLE_SPEED);
     }
@@ -1053,15 +1067,15 @@
       ctx.fillText(meta.symbol, item.x + item.width / 2, item.y + item.height / 2 + 3);
     }
     } else {
-      if (bonusChallenge === 'spin') {
-        for (const brick of bricks) {
-          if (!brick.alive) continue;
-          ctx.fillStyle = brick.color;
-          drawRoundRect(ctx, brick.x, brick.y, brick.width, brick.height, 4);
-          ctx.fill();
-          ctx.strokeStyle = 'rgba(255,255,255,0.45)';
-          ctx.lineWidth = 1;
-          ctx.stroke();
+      for (const brick of bricks) {
+        if (!brick.alive) continue;
+        ctx.fillStyle = brick.color;
+        drawRoundRect(ctx, brick.x, brick.y, brick.width, brick.height, 4);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(255,255,255,0.45)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        if (brick.type === 'iron') {
           ctx.beginPath();
           ctx.moveTo(brick.x + 4, brick.y + 4);
           ctx.lineTo(brick.x + brick.width - 4, brick.y + brick.height - 4);
@@ -1160,20 +1174,20 @@
       }
     }
 
-    if (!isBonusStage || !ballLaunched || bonusChallenge === 'spin' || bonusChallenge === 'flies') {
+    // 보너스도 패들 항상 표시 (공 받기)
+    {
       const paddleColor =
         activeEffects.shrinkPaddleUntil > now
           ? '#ffccbc'
           : activeEffects.expandPaddleUntil > now
             ? '#c8e6c9'
-            : bonusChallenge === 'spin' || bonusChallenge === 'flies'
+            : isBonusStage
               ? '#90caf9'
               : '#e0e0e0';
       ctx.fillStyle = paddleColor;
       drawRoundRect(ctx, paddle.x, paddle.y, paddle.width, paddle.height, 6);
       ctx.fill();
-      ctx.strokeStyle =
-        bonusChallenge === 'spin' || bonusChallenge === 'flies' ? '#e3f2fd' : '#90caf9';
+      ctx.strokeStyle = isBonusStage ? '#e3f2fd' : '#90caf9';
       ctx.lineWidth = 2;
       ctx.stroke();
     }
@@ -1837,7 +1851,7 @@
               {#if bonusChallenge === 'stars'}
                 <p class="text-muted mb-3 small">쿠션을 이용해 떠 있는 별을 모두 먹으세요</p>
                 <ul class="list-unstyled text-start mx-auto bonus-intro-rules mb-4">
-                  <li>사방 벽 쿠션 · 공 안 죽음 · {Math.ceil(BILLIARD_TIME_LIMIT_MS / 1000)}초</li>
+                  <li>상·좌·우 쿠션 · <strong>패들로 공 받기</strong> · 철 1~2개 · {Math.ceil(BILLIARD_TIME_LIMIT_MS / 1000)}초</li>
                   <li>흰공으로 <strong>모든 ⭐</strong> 에 닿으면 클리어</li>
                   <li>드래그바 / ← → 로 발사 각도 조절</li>
                   <li>기회 {BONUS_MAX_ATTEMPTS}회 · 1발 클리어 시 점수 ×2</li>
@@ -1863,7 +1877,7 @@
                 <ul class="list-unstyled text-start mx-auto bonus-intro-rules mb-4">
                   <li>◎ 흰공 · ● 빨간 2 · ● 노란 1 — <strong>처음부터 이동</strong></li>
                   <li>쿠션 조건 없음 · 목표 공 전부 적중하면 클리어</li>
-                  <li>사방 쿠션 · 공 안 죽음 · {Math.ceil(MOVERS_TIME_LIMIT_MS / 1000)}초</li>
+                  <li>상·좌·우 쿠션 · <strong>패들로 공 받기</strong> · 철 1~2개 · {Math.ceil(MOVERS_TIME_LIMIT_MS / 1000)}초</li>
                   <li>기회 {BONUS_MAX_ATTEMPTS}회 · 1발 클리어 시 점수 ×2</li>
                 </ul>
               {:else if bonusChallenge === 'gems'}
@@ -1871,7 +1885,7 @@
                 <ul class="list-unstyled text-start mx-auto bonus-intro-rules mb-4">
                   <li>배율: 1쿠션×1 · 2×2 · 3×4 · 4×8 · 5+×16</li>
                   <li>쿠션 먼저 쌓고 <strong>💎 보석</strong> 먹기</li>
-                  <li>모든 보석 회수 시 클리어 · {Math.ceil(BILLIARD_TIME_LIMIT_MS / 1000)}초</li>
+                  <li>모든 보석 회수 시 클리어 · 패들로 공 받기 · {Math.ceil(BILLIARD_TIME_LIMIT_MS / 1000)}초</li>
                   <li>기회 {BONUS_MAX_ATTEMPTS}회 · 1발 클리어 시 점수 ×2</li>
                 </ul>
               {:else if bonusChallenge === 'golden'}
@@ -1879,7 +1893,7 @@
                 <ul class="list-unstyled text-start mx-auto bonus-intro-rules mb-4">
                   <li><strong>원샷</strong> — 기회 1회뿐</li>
                   <li>쿠션 쌓을수록 🪙 점수 배율 ↑</li>
-                  <li>모든 코인 회수 시 클리어 · {Math.ceil(BILLIARD_TIME_LIMIT_MS / 1000)}초</li>
+                  <li>모든 코인 회수 시 클리어 · 패들로 공 받기 · {Math.ceil(BILLIARD_TIME_LIMIT_MS / 1000)}초</li>
                   <li>1발 클리어 시 점수 ×2</li>
                 </ul>
               {:else if bonusChallenge === 'vault'}
@@ -1888,14 +1902,14 @@
                   <li>순서: <strong>{vaultSequence.join(' → ')}</strong> (좌→상→우)</li>
                   <li>기회 {BONUS_MAX_ATTEMPTS}회 · <strong>1발 클리어 시 점수 ×2</strong></li>
                   <li>틀린 번호·시간 초과 시 재조준 (2발째는 ×1)</li>
-                  <li>기본 각도 ≈ 왼쪽 위 · 사방 쿠션 · {Math.ceil(BILLIARD_TIME_LIMIT_MS / 1000)}초</li>
+                  <li>기본 각도 ≈ 왼쪽 위 · 패들로 공 받기 · {Math.ceil(BILLIARD_TIME_LIMIT_MS / 1000)}초</li>
                 </ul>
               {:else}
                 <p class="text-muted mb-3 small">4구 당구 — 쿠션을 이용해 모든 공을 맞추세요</p>
                 <ul class="list-unstyled text-start mx-auto bonus-intro-rules mb-4">
                   <li>◎ 흰공 · ● 빨간 2 · ● 노란 1</li>
                   <li>쿠션 <strong>{getRequiredCushions(stage)}회 이상</strong> + 목표 공 전부 적중</li>
-                  <li>사방 쿠션 · 공 안 죽음 · {Math.ceil(BILLIARD_TIME_LIMIT_MS / 1000)}초</li>
+                  <li>상·좌·우 쿠션 · <strong>패들로 공 받기</strong> · 철 1~2개 · {Math.ceil(BILLIARD_TIME_LIMIT_MS / 1000)}초</li>
                   <li>기회 {BONUS_MAX_ATTEMPTS}회 · 1발 클리어 시 점수 ×2</li>
                 </ul>
               {/if}

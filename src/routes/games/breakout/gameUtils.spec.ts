@@ -43,6 +43,7 @@ import {
   createStarCollectibles,
   createFallingStar,
   createStarRainIronBricks,
+  createBonusIronBricks,
   shouldSpawnStarRain,
   stepFallingStars,
   tryCollectFallingStar,
@@ -526,8 +527,16 @@ describe('breakout gameUtils', () => {
     expect(SPIN_BALL_SPEED).toBeGreaterThan(0);
 
     const irons = createStarRainIronBricks();
-    expect(irons.length).toBe(2);
+    expect(irons.length).toBeGreaterThanOrEqual(1);
+    expect(irons.length).toBeLessThanOrEqual(2);
     expect(irons.every((b) => b.type === 'iron')).toBe(true);
+
+    const one = createBonusIronBricks(() => 0.1);
+    expect(one).toHaveLength(1);
+    let n = 0;
+    const seq = [0.9, 0.05, 0.2, 0.55, 0.8, 0.35];
+    const two = createBonusIronBricks(() => seq[Math.min(n++, seq.length - 1)]!);
+    expect(two).toHaveLength(2);
 
     const star = createFallingStar(0, () => 0.5);
     expect(star.vx).toBe(0);
