@@ -25,6 +25,11 @@ import {
   createAimedBall,
   clampAimAngle,
   aimAngleFromDragRatio,
+  createBilliardObjectBalls,
+  getRequiredCushions,
+  handleEnclosedCushionCollision,
+  isBilliardClear,
+  resolveCueObjectHit,
   TOTAL_STAGES,
   handleBrickCollision,
   handleInvincibleBrickCollision,
@@ -328,6 +333,43 @@ describe('breakout gameUtils', () => {
     expect(resolveBonusMiss(2)).toBe('skip');
     expect(getBonusShotClearMultiplier(1)).toBe(2);
     expect(getBonusShotClearMultiplier(2)).toBe(1);
+  });
+
+  it('billiard 4-ball layout and clear rules', () => {
+    const objects = createBilliardObjectBalls(1);
+    expect(objects).toHaveLength(3);
+    expect(objects.filter((b) => b.kind === 'red')).toHaveLength(2);
+    expect(objects.filter((b) => b.kind === 'yellow')).toHaveLength(1);
+    expect(getRequiredCushions(1)).toBe(1);
+    expect(getRequiredCushions(15)).toBe(2);
+    expect(getRequiredCushions(45)).toBe(4);
+    expect(isBilliardClear(0, 1, objects)).toBe(false);
+    const allHit = objects.map((b) => ({ ...b, hit: true }));
+    expect(isBilliardClear(1, 1, allHit)).toBe(true);
+    expect(isBilliardClear(0, 1, allHit)).toBe(false);
+  });
+
+  it('enclosed cushion and cue-object hit', () => {
+    const wall = handleEnclosedCushionCollision({
+      x: 2,
+      y: 100,
+      vx: -3,
+      vy: 1,
+      radius: 8
+    });
+    expect(wall.cushionHit).toBe(true);
+    expect(wall.ball.vx).toBeGreaterThan(0);
+
+    const paddle = createPaddle();
+    const cue = createAimedBall(paddle, 6, 90);
+    cue.x = 200;
+    cue.y = 200;
+    const obj = createBilliardObjectBalls(1)[0];
+    obj.x = 200;
+    obj.y = 210;
+    const hit = resolveCueObjectHit(cue, obj);
+    expect(hit.scored).toBe(true);
+    expect(hit.obj.hit).toBe(true);
   });
 
   it('detects game complete after final stage', () => {

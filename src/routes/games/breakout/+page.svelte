@@ -8,6 +8,8 @@
   import {
     AIM_ANGLE_STEP,
     BALL_RADIUS,
+    BILLIARD_HIT_SCORE,
+    BILLIARD_TIME_LIMIT_MS,
     BONUS_MAX_ATTEMPTS,
     CANVAS_HEIGHT,
     CANVAS_WIDTH,
@@ -15,6 +17,7 @@
     createActiveEffects,
     createAimedBall,
     createBall,
+    createBilliardObjectBalls,
     createBricks,
     createDropsFromDestroyedBricks,
     createLaserShot,
@@ -27,18 +30,24 @@
     getActiveEffectLabels,
     getAimLineEnd,
     getBonusShotClearMultiplier,
+    getBilliardTimeLeftMs,
     getEffectiveBallSpeed,
     getEffectivePaddleWidth,
+    getRequiredCushions,
     getStageClearBonus,
     getStageConfig,
     handleBrickCollision,
+    handleEnclosedCushionCollision,
     handleInvincibleBrickCollision,
     handleLaserBrickCollision,
     handlePaddleCollision,
     handlePowerUpPaddleCollision,
     handleWallCollision,
     INITIAL_LIVES,
+    isBilliardClear,
+    countHitBilliardBalls,
     resolveBonusMiss,
+    resolveCueObjectHit,
     resolveLifeLoss,
     shouldContinueGameLoop,
     isBallLost,
@@ -58,12 +67,14 @@
     POWER_UP_META,
     resizePaddle,
     STAGES,
+    stepBilliardObject,
     aimAngleFromDragRatio,
     applyTimedPowerUp,
     calculateComboBonus,
     clampAimAngle,
     type ActiveEffects,
     type Ball,
+    type BilliardBall,
     type Brick,
     type Laser,
     type Paddle,
@@ -110,6 +121,10 @@
   let aimAngle = $state(DEFAULT_AIM_ANGLE);
   let bonusAttemptsUsed = $state(0);
   let bonusStageScoreStart = $state(0);
+  let billiardObjects = $state<BilliardBall[]>([]);
+  let cushionCount = $state(0);
+  let billiardEndsAt = $state(0);
+  let requiredCushions = $state(1);
   let frameId = 0;
   let stageClearTimeout: ReturnType<typeof setTimeout> | null = null;
   let keys = $state({ left: false, right: false });
@@ -151,14 +166,25 @@
     lastLaserShotAt = 0;
     aimAngle = DEFAULT_AIM_ANGLE;
     bonusAttemptsUsed = 0;
+    billiardObjects = [];
+    cushionCount = 0;
+    billiardEndsAt = 0;
+    requiredCushions = 1;
   }
 
   function prepareBallForStage(stageNum: number) {
     const config = getStageConfig(stageNum);
     if (config.kind === 'bonus') {
       paddle = createPaddle();
+      bricks = [];
+      billiardObjects = createBilliardObjectBalls(stageNum);
+      cushionCount = 0;
+      requiredCushions = getRequiredCushions(stageNum);
+      billiardEndsAt = 0;
       balls = [createAimedBall(paddle, config.ballSpeed, aimAngle)];
     } else {
+      billiardObjects = [];
+      cushionCount = 0;
       balls = [createBall(paddle, config.ballSpeed)];
     }
   }
@@ -211,6 +237,9 @@
       bonusAttemptsUsed += 1;
       const config = getStageConfig(stage);
       balls = [createAimedBall(paddle, config.ballSpeed, aimAngle)];
+      cushionCount = 0;
+      billiardObjects = createBilliardObjectBalls(stage);
+      billiardEndsAt = Date.now() + BILLIARD_TIME_LIMIT_MS;
     }
     ballLaunched = true;
     screen = 'playing';
@@ -221,8 +250,11 @@
     powerUps = [];
     lasers = [];
     activeEffects = createActiveEffects();
-    bricks = createBricks(stage);
+    bricks = [];
     paddle = createPaddle();
+    billiardObjects = createBilliardObjectBalls(stage);
+    cushionCount = 0;
+    billiardEndsAt = 0;
     balls = [createAimedBall(paddle, config.ballSpeed, aimAngle)];
     ballLaunched = false;
     screen = 'ready';
@@ -246,6 +278,51 @@
     ballLaunched = false;
     balls = [];
     skipBonusStage();
+  }
+
+  function updateBilliardGame(now: number) {
+    if (!ballLaunched) {
+      balls = balls.map((b) => ({
+        ...b,
+        x: paddle.x + paddle.width / 2,
+        y: paddle.y - BALL_RADIUS - 2
+      }));
+      return;
+    }
+
+    if (getBilliardTimeLeftMs(billiardEndsAt, now) <= 0) {
+      showEffectToast('시간 종료!');
+      handleBonusMiss();
+      return;
+    }
+
+    const config = getStageConfig(stage);
+    let cue = balls[0] ?? createAimedBall(paddle, config.ballSpeed, aimAngle);
+    cue = moveBall(cue);
+    const wall = handleEnclosedCushionCollision(cue);
+    cue = wall.ball;
+    if (wall.cushionHit) cushionCount += 1;
+
+    let nextObjects = billiardObjects;
+    for (let i = 0; i < nextObjects.length; i++) {
+      const result = resolveCueObjectHit(cue, nextObjects[i]);
+      cue = result.cue;
+      if (result.scored) {
+        nextObjects = nextObjects.map((b, idx) => (idx === i ? result.obj : b));
+        score += BILLIARD_HIT_SCORE * stage;
+        showEffectToast(
+          result.obj.kind === 'yellow' ? '노란공 적중!' : '빨간공 적중!'
+        );
+      }
+    }
+
+    nextObjects = nextObjects.map(stepBilliardObject);
+    billiardObjects = nextObjects;
+    balls = [normalizeBallSpeed(cue, config.ballSpeed)];
+
+    if (isBilliardClear(cushionCount, requiredCushions, nextObjects)) {
+      scheduleStageClear();
+    }
   }
 
   function addScoreFromBricks(destroyed: Brick[], baseScore: number, now: number) {
@@ -439,9 +516,14 @@
       if (keys.left) aimAngle = clampAimAngle(aimAngle + AIM_ANGLE_STEP);
       if (keys.right) aimAngle = clampAimAngle(aimAngle - AIM_ANGLE_STEP);
       balls = [createAimedBall(paddle, getStageConfig(stage).ballSpeed, aimAngle)];
-    } else {
+    } else if (!isBonusStage) {
       if (keys.left) paddle = movePaddle(paddle, -PADDLE_SPEED);
       if (keys.right) paddle = movePaddle(paddle, PADDLE_SPEED);
+    }
+
+    if (isBonusStage) {
+      updateBilliardGame(now);
+      return;
     }
 
     powerUps = movePowerUps(powerUps);
@@ -535,12 +617,24 @@
     const invincible = isInvincibleBallActive(activeEffects, now);
     ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-    const gradient = ctx.createLinearGradient(0, 0, 0, CANVAS_HEIGHT);
-    gradient.addColorStop(0, '#1a1a2e');
-    gradient.addColorStop(1, '#16213e');
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+    if (isBonusStage) {
+      const felt = ctx.createLinearGradient(0, 0, 0, CANVAS_HEIGHT);
+      felt.addColorStop(0, '#1b5e20');
+      felt.addColorStop(1, '#0d3b12');
+      ctx.fillStyle = felt;
+      ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+      ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+      ctx.lineWidth = 4;
+      ctx.strokeRect(6, 52, CANVAS_WIDTH - 12, CANVAS_HEIGHT - 80);
+    } else {
+      const gradient = ctx.createLinearGradient(0, 0, 0, CANVAS_HEIGHT);
+      gradient.addColorStop(0, '#1a1a2e');
+      gradient.addColorStop(1, '#16213e');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+    }
 
+    if (!isBonusStage) {
     for (const brick of bricks) {
       if (!brick.alive) continue;
       ctx.fillStyle = brick.color;
@@ -600,22 +694,43 @@
       ctx.textAlign = 'center';
       ctx.fillText(meta.symbol, item.x + item.width / 2, item.y + item.height / 2 + 3);
     }
+    } else {
+      for (const obj of billiardObjects) {
+        ctx.globalAlpha = obj.hit ? 0.35 : 1;
+        ctx.fillStyle = obj.color;
+        ctx.beginPath();
+        ctx.arc(obj.x, obj.y, obj.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = obj.hit ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.35)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        if (obj.hit) {
+          ctx.fillStyle = 'rgba(255,255,255,0.85)';
+          ctx.font = 'bold 12px system-ui, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('✓', obj.x, obj.y + 4);
+        }
+        ctx.globalAlpha = 1;
+      }
+    }
 
-    const paddleColor =
-      activeEffects.shrinkPaddleUntil > now
-        ? '#ffccbc'
-        : activeEffects.expandPaddleUntil > now
-          ? '#c8e6c9'
-          : '#e0e0e0';
-    ctx.fillStyle = paddleColor;
-    drawRoundRect(ctx, paddle.x, paddle.y, paddle.width, paddle.height, 6);
-    ctx.fill();
-    ctx.strokeStyle = '#90caf9';
-    ctx.lineWidth = 2;
-    ctx.stroke();
+    if (!isBonusStage || !ballLaunched) {
+      const paddleColor =
+        activeEffects.shrinkPaddleUntil > now
+          ? '#ffccbc'
+          : activeEffects.expandPaddleUntil > now
+            ? '#c8e6c9'
+            : '#e0e0e0';
+      ctx.fillStyle = paddleColor;
+      drawRoundRect(ctx, paddle.x, paddle.y, paddle.width, paddle.height, 6);
+      ctx.fill();
+      ctx.strokeStyle = '#90caf9';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
 
     for (const ball of balls) {
-      if (invincible) {
+      if (!isBonusStage && invincible) {
         ctx.save();
         ctx.globalAlpha = 0.35;
         ctx.fillStyle = '#ffeb3b';
@@ -636,12 +751,23 @@
       ballGrad.addColorStop(0, '#ffffff');
       ballGrad.addColorStop(
         1,
-        invincible ? '#ffb300' : activeEffects.fastBallsUntil > now ? '#ef5350' : '#64b5f6'
+        isBonusStage
+          ? '#eceff1'
+          : invincible
+            ? '#ffb300'
+            : activeEffects.fastBallsUntil > now
+              ? '#ef5350'
+              : '#64b5f6'
       );
       ctx.fillStyle = ballGrad;
       ctx.beginPath();
       ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
       ctx.fill();
+      if (isBonusStage) {
+        ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
     }
 
     ctx.fillStyle = 'rgba(255,255,255,0.85)';
@@ -651,15 +777,26 @@
     ctx.fillText(`스테이지 ${stage}`, 12, 44);
     ctx.textAlign = 'right';
     ctx.fillText(`❤️ ${lives}`, CANVAS_WIDTH - 12, 24);
-    if (balls.length > 1) {
+    if (!isBonusStage && balls.length > 1) {
       ctx.fillText(`● ${balls.length}`, CANVAS_WIDTH - 12, 44);
     }
     ctx.textAlign = 'center';
     ctx.font = '12px system-ui, sans-serif';
     if (stageConfig.kind === 'bonus') {
       ctx.fillStyle = '#ffd54f';
-      ctx.fillText(`★ ${stageConfig.label}`, CANVAS_WIDTH / 2, 44);
+      ctx.fillText(`🎱 ${stageConfig.label}`, CANVAS_WIDTH / 2, 28);
       ctx.font = '11px system-ui, sans-serif';
+      ctx.fillStyle = '#fff';
+      const hitCount = countHitBilliardBalls(billiardObjects);
+      const timeLeft = ballLaunched
+        ? Math.ceil(getBilliardTimeLeftMs(billiardEndsAt, now) / 1000)
+        : Math.ceil(BILLIARD_TIME_LIMIT_MS / 1000);
+      ctx.fillText(
+        `쿠션 ${cushionCount}/${requiredCushions} · 공 ${hitCount}/${billiardObjects.length} · ${timeLeft}s`,
+        CANVAS_WIDTH / 2,
+        46
+      );
+      ctx.fillStyle = '#c8e6c9';
       ctx.fillText(
         `기회 ${Math.max(0, BONUS_MAX_ATTEMPTS - bonusAttemptsUsed)}/${BONUS_MAX_ATTEMPTS}`,
         CANVAS_WIDTH / 2,
@@ -673,20 +810,16 @@
       ctx.fillText(stageConfig.label, CANVAS_WIDTH / 2, 44);
     }
 
-    if (comboCount > 1) {
+    if (!isBonusStage && comboCount > 1) {
       ctx.fillText(`콤보 x${comboCount}`, CANVAS_WIDTH / 2, 80);
     }
 
     const activeEffectLabels = getActiveEffectLabels(activeEffects, now, shieldCharges);
 
-    if (activeEffectLabels.length > 0) {
+    if (!isBonusStage && activeEffectLabels.length > 0) {
       ctx.fillStyle = 'rgba(255,255,255,0.75)';
       ctx.font = '11px system-ui, sans-serif';
-      ctx.fillText(
-        activeEffectLabels.join(' · '),
-        CANVAS_WIDTH / 2,
-        stageConfig.kind === 'bonus' ? 78 : 62
-      );
+      ctx.fillText(activeEffectLabels.join(' · '), CANVAS_WIDTH / 2, 62);
     }
 
     if (effectToast) {
@@ -720,12 +853,12 @@
         ctx.fillStyle = '#ffd54f';
         ctx.font = 'bold 16px system-ui, sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('각도 조준 · 철 사이 벽돌을 깨세요', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 8);
+        ctx.fillText('각도 조준 · 쿠션 후 모든 공 맞추기', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 8);
         ctx.fillStyle = '#fff';
         ctx.font = '13px system-ui, sans-serif';
         const left = BONUS_MAX_ATTEMPTS - bonusAttemptsUsed;
         ctx.fillText(
-          `남은 기회 ${left}회 · 1발 클리어 점수 ×${getBonusShotClearMultiplier(bonusAttemptsUsed + 1)}`,
+          `남은 기회 ${left}회 · 필요 쿠션 ${requiredCushions} · 1발 클리어 ×${getBonusShotClearMultiplier(bonusAttemptsUsed + 1)}`,
           CANVAS_WIDTH / 2,
           CANVAS_HEIGHT / 2 + 18
         );
@@ -753,7 +886,7 @@
       ctx.font = 'bold 22px system-ui, sans-serif';
       const clearLabel =
         stageConfig.kind === 'bonus'
-          ? `보너스 스테이지 ${stage} 클리어!`
+          ? `🎱 당구 챌린지 클리어!`
           : `스테이지 ${stage} 클리어!`;
       ctx.fillText(clearLabel, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2);
     }
@@ -1058,14 +1191,14 @@
             </div>
           {:else if screen === 'bonusIntro'}
             <div class="text-center py-3 bonus-intro">
-              <h2 class="mb-2 text-warning">★ {stageConfig.label} · {stage}단계</h2>
-              <p class="text-muted mb-3 small">당구처럼 각도를 맞춰 철 사이 벽돌을 깨세요</p>
+              <h2 class="mb-2 text-warning">🎱 {stageConfig.label} · {stage}단계</h2>
+              <p class="text-muted mb-3 small">4구 당구 챌린지 — 쿠션을 이용해 모든 공을 맞추세요</p>
               <ul class="list-unstyled text-start mx-auto bonus-intro-rules mb-4">
-                <li>⬛ 철 블록은 <strong>안 깨짐</strong> — 벽에 튕겨 경로 만들기</li>
-                <li>🟦 철 <strong>사이·포켓</strong>에 있는 벽돌만 제거하면 클리어</li>
+                <li>◎ 흰공(플레이어) · ● 빨간공 2 · ● 노란공 1</li>
+                <li>사방 벽이 <strong>쿠션</strong> — 공 안 죽음, {Math.ceil(BILLIARD_TIME_LIMIT_MS / 1000)}초 제한</li>
+                <li>쿠션 <strong>{getRequiredCushions(stage)}회 이상</strong> + 목표 공 <strong>전부</strong> 적중 시 클리어</li>
                 <li>드래그바 / ← → 로 <strong>발사 각도</strong> 조절</li>
                 <li>기회 <strong>{BONUS_MAX_ATTEMPTS}회</strong> · 1발 클리어 시 점수 <strong>×2</strong></li>
-                <li>공 떨어져도 목숨은 <strong>안 깎임</strong> · 2회 실패 시 다음으로</li>
               </ul>
               <button type="button" class="btn btn-warning btn-lg px-5" onclick={dismissBonusIntro}>
                 조준 시작

@@ -728,6 +728,206 @@ export function getBonusShotClearMultiplier(attemptsUsed: number): number {
   return attemptsUsed <= 1 ? BONUS_CLEAR_MULTIPLIER : 1;
 }
 
+// ——— 4구 당구 보너스 ———
+
+export type BilliardBallKind = 'cue' | 'red' | 'yellow';
+
+export interface BilliardBall {
+  id: string;
+  kind: BilliardBallKind;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  radius: number;
+  /** 목표 공(빨강/노랑)이 흰공에 맞았는지 */
+  hit: boolean;
+  color: string;
+}
+
+export const BILLIARD_RADIUS = 11;
+export const BILLIARD_TIME_LIMIT_MS = 45_000;
+export const BILLIARD_TABLE_TOP = 48;
+export const BILLIARD_TABLE_BOTTOM = CANVAS_HEIGHT - 28;
+export const BILLIARD_HIT_SCORE = 120;
+
+const BILLIARD_COLORS: Record<BilliardBallKind, string> = {
+  cue: '#f5f5f5',
+  red: '#e53935',
+  yellow: '#fdd835'
+};
+
+/** 스테이지별 필요 쿠션 횟수 */
+export function getRequiredCushions(stage: number): number {
+  const s = clampStage(stage);
+  if (s <= 5) return 1;
+  if (s <= 15) return 2;
+  if (s <= 25) return 3;
+  if (s <= 35) return 3;
+  return 4;
+}
+
+function makeBilliardBall(
+  id: string,
+  kind: Exclude<BilliardBallKind, 'cue'>,
+  x: number,
+  y: number
+): BilliardBall {
+  return {
+    id,
+    kind,
+    x,
+    y,
+    vx: 0,
+    vy: 0,
+    radius: BILLIARD_RADIUS,
+    hit: false,
+    color: BILLIARD_COLORS[kind]
+  };
+}
+
+/** 보너스 테이블에 빨간 2 + 노란 1 배치 (스테이지별 레이아웃) */
+export function createBilliardObjectBalls(stage: number): BilliardBall[] {
+  const pattern = getStagePattern(stage);
+  const midX = CANVAS_WIDTH / 2;
+  const layouts: Record<string, BilliardBall[]> = {
+    cushion: [
+      makeBilliardBall('r1', 'red', midX - 70, 160),
+      makeBilliardBall('r2', 'red', midX + 80, 280),
+      makeBilliardBall('y1', 'yellow', midX, 220)
+    ],
+    pockets: [
+      makeBilliardBall('r1', 'red', 90, 150),
+      makeBilliardBall('r2', 'red', CANVAS_WIDTH - 90, 150),
+      makeBilliardBall('y1', 'yellow', midX, 320)
+    ],
+    lane: [
+      makeBilliardBall('r1', 'red', midX - 100, 200),
+      makeBilliardBall('r2', 'red', midX + 100, 200),
+      makeBilliardBall('y1', 'yellow', midX, 340)
+    ],
+    cage: [
+      makeBilliardBall('r1', 'red', 120, 180),
+      makeBilliardBall('r2', 'red', CANVAS_WIDTH - 120, 180),
+      makeBilliardBall('y1', 'yellow', midX, 300)
+    ],
+    bank: [
+      makeBilliardBall('r1', 'red', midX - 50, 170),
+      makeBilliardBall('r2', 'red', midX + 60, 260),
+      makeBilliardBall('y1', 'yellow', midX - 20, 360)
+    ]
+  };
+  return layouts[pattern] ?? layouts.cushion;
+}
+
+export function createBilliardCueBall(paddle: Paddle, speed: number, angleDeg: number): Ball {
+  return createAimedBall(paddle, speed, angleDeg);
+}
+
+/**
+ * 사방 쿠션 반사. 바닥도 쿠션 — 공 무한 생존.
+ */
+export function handleEnclosedCushionCollision<T extends { x: number; y: number; vx: number; vy: number; radius: number }>(
+  ball: T
+): { ball: T; cushionHit: boolean } {
+  let { x, y, vx, vy } = ball;
+  const r = ball.radius;
+  let cushionHit = false;
+
+  if (x - r <= 0) {
+    x = r;
+    if (vx < 0) cushionHit = true;
+    vx = Math.abs(vx);
+  } else if (x + r >= CANVAS_WIDTH) {
+    x = CANVAS_WIDTH - r;
+    if (vx > 0) cushionHit = true;
+    vx = -Math.abs(vx);
+  }
+  if (y - r <= BILLIARD_TABLE_TOP) {
+    y = BILLIARD_TABLE_TOP + r;
+    if (vy < 0) cushionHit = true;
+    vy = Math.abs(vy);
+  } else if (y + r >= BILLIARD_TABLE_BOTTOM) {
+    y = BILLIARD_TABLE_BOTTOM - r;
+    if (vy > 0) cushionHit = true;
+    vy = -Math.abs(vy);
+  }
+
+  return { ball: { ...ball, x, y, vx, vy }, cushionHit };
+}
+
+/** 흰공 ↔ 목표공 충돌. 맞으면 hit=true, 간단 탄성 분리 */
+export function resolveCueObjectHit(
+  cue: Ball,
+  obj: BilliardBall
+): { cue: Ball; obj: BilliardBall; scored: boolean } {
+  if (obj.hit) return { cue, obj, scored: false };
+  const dx = obj.x - cue.x;
+  const dy = obj.y - cue.y;
+  const dist = Math.hypot(dx, dy);
+  const minDist = cue.radius + obj.radius;
+  if (dist === 0 || dist >= minDist) return { cue, obj, scored: false };
+
+  const nx = dx / dist;
+  const ny = dy / dist;
+  const overlap = minDist - dist;
+  const cueNext: Ball = {
+    ...cue,
+    x: cue.x - nx * overlap * 0.55,
+    y: cue.y - ny * overlap * 0.55,
+    vx: cue.vx - nx * 1.2,
+    vy: cue.vy - ny * 1.2
+  };
+  const speed = Math.hypot(cue.vx, cue.vy) || 4;
+  const objNext: BilliardBall = {
+    ...obj,
+    hit: true,
+    x: obj.x + nx * overlap * 0.45,
+    y: obj.y + ny * overlap * 0.45,
+    vx: nx * speed * 0.55,
+    vy: ny * speed * 0.55
+  };
+  return { cue: cueNext, obj: objNext, scored: true };
+}
+
+export function moveBilliardObject(ball: BilliardBall): BilliardBall {
+  return { ...ball, x: ball.x + ball.vx, y: ball.y + ball.vy };
+}
+
+/** 목표공끼리·벽 반사 (맞은 뒤 굴러감) */
+export function stepBilliardObject(ball: BilliardBall): BilliardBall {
+  if (!ball.hit && ball.vx === 0 && ball.vy === 0) return ball;
+  let next = moveBilliardObject(ball);
+  const wall = handleEnclosedCushionCollision(next);
+  next = wall.ball;
+  // 약한 마찰
+  next = { ...next, vx: next.vx * 0.995, vy: next.vy * 0.995 };
+  if (Math.hypot(next.vx, next.vy) < 0.15) {
+    next = { ...next, vx: 0, vy: 0 };
+  }
+  return next;
+}
+
+export function countHitBilliardBalls(objects: BilliardBall[]): number {
+  return objects.filter((b) => b.hit).length;
+}
+
+export function isBilliardClear(
+  cushionCount: number,
+  requiredCushions: number,
+  objects: BilliardBall[]
+): boolean {
+  return (
+    cushionCount >= requiredCushions &&
+    objects.length > 0 &&
+    objects.every((b) => b.hit)
+  );
+}
+
+export function getBilliardTimeLeftMs(endsAt: number, now: number): number {
+  return Math.max(0, endsAt - now);
+}
+
 export function movePaddle(paddle: Paddle, dx: number): Paddle {
   let nextX = paddle.x + dx;
   nextX = Math.max(0, Math.min(CANVAS_WIDTH - paddle.width, nextX));
