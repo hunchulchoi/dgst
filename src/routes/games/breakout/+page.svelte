@@ -1668,7 +1668,7 @@
                   <li><strong>패들</strong>로 ⭐ 받기 · 공으로는 안 먹힘</li>
                   <li>중간 <strong>철 블록</strong> — 공만 튕김 · 별은 통과</li>
                   <li>공 놓치면 실패 · <strong>{Math.ceil(getBonusTimeLimitMs('spin') / 1000)}초</strong> 버티면 클리어</li>
-                  <li>기회 {BONUS_MAX_ATTEMPTS}회 · 1발 클리어 시 점수 ×2</li>
+                  <li><strong>원샷</strong> — 기회 1회 · 1발 클리어 시 점수 ×2</li>
                 </ul>
               {:else if bonusChallenge === 'gems'}
                 <p class="text-muted mb-3 small">쿠션을 쌓을수록 보석 점수 배율이 올라갑니다</p>

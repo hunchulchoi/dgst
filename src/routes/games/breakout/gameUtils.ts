@@ -190,7 +190,7 @@ export const AIM_ANGLE_STEP = 2.5;
 export const AIM_LINE_LENGTH = 120;
 
 /** 별 소나기(구 스핀샷): 빠른 공 + 20초 생존·수집 */
-export const SPIN_BALL_SPEED = 9;
+export const SPIN_BALL_SPEED = 5.5;
 export const SPIN_TIME_LIMIT_MS = 20_000;
 export const STAR_RAIN_SPAWN_INTERVAL_MS = 320;
 export const STAR_RAIN_MAX_ACTIVE = 14;
@@ -1356,8 +1356,8 @@ export function createStarRainIronBricks(): Brick[] {
     color: BRICK_COLORS.iron,
     points: 0
   });
-  // 중간 높이 철 소수 — 별 낙하 공간 확보
-  return [makeIron(3, 2), makeIron(3, 5), makeIron(5, 4)];
+  // 철 2개 — 좌·우 살짝 어긋난 위치
+  return [makeIron(3, 2), makeIron(4, 6)];
 }
 
 /**
@@ -1559,7 +1559,7 @@ export function resolveVaultHit(
 }
 
 export function getBonusAttemptLimit(challenge: BonusChallengeType): number {
-  return challenge === 'golden' ? GOLDEN_MAX_ATTEMPTS : BONUS_MAX_ATTEMPTS;
+  return challenge === 'golden' || challenge === 'spin' ? GOLDEN_MAX_ATTEMPTS : BONUS_MAX_ATTEMPTS;
 }
 
 export function movePaddle(paddle: Paddle, dx: number): Paddle {

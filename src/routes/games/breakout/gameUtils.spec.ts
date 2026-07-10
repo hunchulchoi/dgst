@@ -425,7 +425,7 @@ describe('breakout gameUtils', () => {
     expect(getCoinPickupScore(60, 2, 3)).toBe(480);
     expect(getBonusAttemptLimit('golden')).toBe(1);
     expect(getBonusAttemptLimit('vault')).toBe(2);
-    expect(getBonusAttemptLimit('spin')).toBe(2);
+    expect(getBonusAttemptLimit('spin')).toBe(1);
 
     const stars = createStarCollectibles(15);
     expect(stars.length).toBeGreaterThanOrEqual(5);
@@ -448,7 +448,7 @@ describe('breakout gameUtils', () => {
     expect(getBonusTimeLimitMs('spin')).toBe(SPIN_TIME_LIMIT_MS);
 
     const irons = createStarRainIronBricks();
-    expect(irons.length).toBe(3);
+    expect(irons.length).toBe(2);
     expect(irons.every((b) => b.type === 'iron')).toBe(true);
 
     const star = createFallingStar(0, () => 0.5);
