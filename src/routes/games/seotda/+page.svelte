@@ -49,14 +49,27 @@
 
   /** 쇼다운 연출: 아직 안 깐 NPC id 집합 */
   let hiddenNpcIds = $state<Set<string>>(new Set());
-  /** 유저 패 딜 플립 */
-  let userCardsFlipped = $state(true);
+  /** 첫 장 딜 플립 */
+  let openCardFlipped = $state(true);
+  /** 두 번째 장(히든) 까봤는지 — 쇼다운 중이면 이미 연 */
+  let holeRevealed = $state(
+    !!(data.round && ((data.round as SeotdaRound).showdown || (data.round as SeotdaRound).phase === 'showdown'))
+  );
+  /** 패 까기 레이어 */
+  let peelOpen = $state(false);
+  /** 0~1 아래로 당긴 비율 */
+  let peelPull = $state(0);
+  let peelDragging = $state(false);
+  let peelStartY = 0;
   /** 연출 끝난 뒤에만 승패/다음판 표시 */
   let revealDone = $state(true);
   /** 지금 까는 좌석 (하이라이트) */
   let revealingId = $state<string | null>(null);
   /** 족보 안내 접기 */
   let guideOpen = $state(false);
+
+  const PEEL_THRESHOLD = 0.55;
+  const PEEL_MAX_PX = 220;
 
   const HAND_GUIDE = [
     { name: '38광땡', detail: '3광 + 8광', rank: '최강' },
@@ -158,17 +171,68 @@
     });
   }
 
-  /** 새 판 시작 시 내 패 플립 */
+  /** 새 판: 첫 장만 공개, 둘째는 뒷면 */
   function startDealFlip() {
     clearTimers();
-    userCardsFlipped = false;
+    openCardFlipped = false;
+    holeRevealed = false;
+    peelOpen = false;
+    peelPull = 0;
     revealDone = true;
     hiddenNpcIds = new Set();
     revealingId = null;
     const t = setTimeout(() => {
-      userCardsFlipped = true;
+      openCardFlipped = true;
     }, 280);
     timers.push(t);
+  }
+
+  function openPeelLayer() {
+    if (holeRevealed || isShowdown) return;
+    peelOpen = true;
+    peelPull = 0;
+  }
+
+  function closePeelLayer() {
+    peelOpen = false;
+    peelPull = 0;
+    peelDragging = false;
+  }
+
+  function finishPeel() {
+    holeRevealed = true;
+    peelPull = 1;
+    peelDragging = false;
+    const t = setTimeout(() => {
+      peelOpen = false;
+      peelPull = 0;
+    }, 280);
+    timers.push(t);
+  }
+
+  /**
+   * @param {number} clientY
+   */
+  function onPeelStart(clientY: number) {
+    if (holeRevealed) return;
+    peelDragging = true;
+    peelStartY = clientY - peelPull * PEEL_MAX_PX;
+  }
+
+  /**
+   * @param {number} clientY
+   */
+  function onPeelMove(clientY: number) {
+    if (!peelDragging || holeRevealed) return;
+    const dy = Math.max(0, clientY - peelStartY);
+    peelPull = Math.min(1, dy / PEEL_MAX_PX);
+  }
+
+  function onPeelEnd() {
+    if (!peelDragging) return;
+    peelDragging = false;
+    if (peelPull >= PEEL_THRESHOLD) finishPeel();
+    else peelPull = 0;
   }
 
   /**
@@ -184,6 +248,8 @@
     round = next;
 
     if (nowShowdown && fromShowdownAct) {
+      holeRevealed = true;
+      peelOpen = false;
       startShowdownReveal(next);
     } else if (isNewDeal) {
       startDealFlip();
@@ -358,23 +424,101 @@
                   <div class="small opacity-75">{formatNumber(userSeat.chips)}점</div>
                   <div class="cards my-2">
                     {#each userSeat.cards as card, i (`user-${i}`)}
-                      <span
-                        class="hwatu-flip"
-                        class:flipped={userCardsFlipped}
-                        class:gwang={userCardsFlipped && card.gwang}
-                        style="transition-delay: {i * 120}ms"
-                      >
-                        <span class="hwatu-face back">?</span>
-                        <span class="hwatu-face front open">{cardText(card)}</span>
-                      </span>
+                      {#if i === 0}
+                        <span
+                          class="hwatu-flip"
+                          class:flipped={openCardFlipped}
+                          class:gwang={openCardFlipped && card.gwang}
+                        >
+                          <span class="hwatu-face back">?</span>
+                          <span class="hwatu-face front open">{cardText(card)}</span>
+                        </span>
+                      {:else}
+                        <button
+                          type="button"
+                          class="hwatu-flip hole-btn"
+                          class:flipped={holeRevealed || isShowdown}
+                          class:gwang={(holeRevealed || isShowdown) && card.gwang}
+                          class:tap-hint={!holeRevealed && !isShowdown}
+                          disabled={holeRevealed || isShowdown || userSeat.folded}
+                          aria-label={holeRevealed ? cardText(card) : '뒷장 까기'}
+                          onclick={openPeelLayer}
+                        >
+                          <span class="hwatu-face back">?</span>
+                          <span class="hwatu-face front open">{cardText(card)}</span>
+                        </button>
+                      {/if}
                     {/each}
                   </div>
-                  {#if userSeat.handName && userCardsFlipped}
+                  {#if !holeRevealed && !isShowdown && !userSeat.folded}
+                    <div class="small peel-tip">뒷장 눌러서 까기 ↓</div>
+                  {/if}
+                  {#if userSeat.handName && (holeRevealed || isShowdown)}
                     <div class="badge text-bg-primary mb-2 hand-pop">{userSeat.handName}</div>
                   {/if}
                 </div>
               {/if}
             </div>
+
+            {#if peelOpen && userSeat?.cards[1]}
+              <!-- svelte-ignore a11y_no_static_element_interactions -->
+              <div
+                class="peel-backdrop"
+                role="dialog"
+                aria-modal="true"
+                aria-label="패 까기"
+                onclick={(e) => {
+                  if (e.target === e.currentTarget && !peelDragging) closePeelLayer();
+                }}
+                onkeydown={(e) => {
+                  if (e.key === 'Escape') closePeelLayer();
+                }}
+              >
+                <div class="peel-sheet">
+                  <p class="peel-guide mb-3">아래로 쓸어서 패 까기</p>
+                  <!-- svelte-ignore a11y_no_static_element_interactions -->
+                  <div
+                    class="peel-card"
+                    ontouchstart={(e) => {
+                      e.preventDefault();
+                      onPeelStart(e.touches[0].clientY);
+                    }}
+                    ontouchmove={(e) => {
+                      e.preventDefault();
+                      onPeelMove(e.touches[0].clientY);
+                    }}
+                    ontouchend={() => onPeelEnd()}
+                    onmousedown={(e) => onPeelStart(e.clientY)}
+                    onmousemove={(e) => {
+                      if (peelDragging) onPeelMove(e.clientY);
+                    }}
+                    onmouseup={() => onPeelEnd()}
+                    onmouseleave={() => {
+                      if (peelDragging) onPeelEnd();
+                    }}
+                  >
+                    <div class="peel-face">
+                      <span class:gwang-text={userSeat.cards[1].gwang}
+                        >{cardText(userSeat.cards[1])}</span
+                      >
+                    </div>
+                    <div
+                      class="peel-cover"
+                      class:snapping={!peelDragging}
+                      style="transform: translateY({peelPull * PEEL_MAX_PX}px)"
+                    >
+                      <div class="peel-cover-inner">
+                        <span class="peel-q">?</span>
+                        <span class="peel-drag-hint">↓ 쓸기</span>
+                      </div>
+                    </div>
+                  </div>
+                  <button type="button" class="btn btn-sm btn-outline-light mt-3" onclick={closePeelLayer}
+                    >닫기</button
+                  >
+                </div>
+              </div>
+            {/if}
 
             {#if canAct}
               <div class="d-flex gap-2 justify-content-center flex-wrap mb-3">
@@ -517,6 +661,107 @@
   }
   .hwatu-flip.gwang .front {
     color: #c0392b;
+  }
+  button.hwatu-flip {
+    border: none;
+    padding: 0;
+    background: transparent;
+    cursor: pointer;
+  }
+  .hwatu-flip.tap-hint {
+    animation: wiggle 1.4s ease-in-out infinite;
+  }
+  @keyframes wiggle {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-3px);
+    }
+  }
+  .hwatu-flip.tap-hint.flipped {
+    animation: none;
+  }
+  .peel-tip {
+    color: #f5c542;
+    opacity: 0.9;
+  }
+  .peel-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1050;
+    background: rgba(0, 0, 0, 0.72);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    touch-action: none;
+  }
+  .peel-sheet {
+    text-align: center;
+    color: #f3f0e6;
+  }
+  .peel-guide {
+    font-size: 0.95rem;
+    opacity: 0.9;
+  }
+  .peel-card {
+    position: relative;
+    width: min(56vw, 180px);
+    height: min(78vw, 250px);
+    margin: 0 auto;
+    border-radius: 0.75rem;
+    overflow: hidden;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+    user-select: none;
+    touch-action: none;
+    cursor: grab;
+  }
+  .peel-face {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f7f2e8;
+    color: #1a1a1a;
+    font-size: 3.2rem;
+    font-weight: 800;
+    border: 2px solid #c9b896;
+    border-radius: 0.75rem;
+  }
+  .peel-face .gwang-text {
+    color: #c0392b;
+  }
+  .peel-cover {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    will-change: transform;
+  }
+  .peel-cover.snapping {
+    transition: transform 0.25s ease;
+  }
+  .peel-cover-inner {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    background: linear-gradient(160deg, #2c2c2c, #1a1a1a);
+    border: 2px solid #555;
+    border-radius: 0.75rem;
+    color: #eee;
+  }
+  .peel-q {
+    font-size: 3rem;
+    font-weight: 800;
+  }
+  .peel-drag-hint {
+    font-size: 0.9rem;
+    opacity: 0.75;
   }
   .bubble {
     display: inline-block;
