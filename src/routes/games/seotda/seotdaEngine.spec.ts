@@ -6,6 +6,7 @@ import {
   evaluateHand,
   handStrength,
   settlePot,
+  settlePotSplit,
   shuffleDeck
 } from './seotdaEngine.js';
 
@@ -70,6 +71,14 @@ describe('seotdaEngine hands', () => {
     expect(compareHands(gapo, mang)).toBeGreaterThan(0);
   });
 
+  it('same ggeut is a tie (3+4 vs 9+8)', () => {
+    const a = evaluateHand([c(3), c(4)]); // 7
+    const b = evaluateHand([c(9), c(8)]); // 17 → 7
+    expect(a.name).toBe('7끗');
+    expect(b.name).toBe('7끗');
+    expect(compareHands(a, b)).toBe(0);
+  });
+
   it('handStrength is 0..1 and higher for better hands', () => {
     const weak = handStrength(evaluateHand([c(2), c(8)]));
     const strong = handStrength(evaluateHand([c(3, true), c(8, true)]));
@@ -94,6 +103,17 @@ describe('seotdaEngine pot', () => {
     const result = settlePot(players, pot, 'user');
     expect(result.pot).toBe(0);
     expect(result.players.find((p) => p.id === 'user')?.chips).toBe(170);
+  });
+
+  it('settlePotSplit splits pot on tie', () => {
+    const players = [
+      { id: 'user', chips: 100, folded: false, contrib: 40 },
+      { id: 'npc1', chips: 80, folded: false, contrib: 40 }
+    ];
+    const result = settlePotSplit(players, 80, ['user', 'npc1']);
+    expect(result.pot).toBe(0);
+    expect(result.players.find((p) => p.id === 'user')?.chips).toBe(140);
+    expect(result.players.find((p) => p.id === 'npc1')?.chips).toBe(120);
   });
 
   it('settlePot when all fold except one awards pot', () => {

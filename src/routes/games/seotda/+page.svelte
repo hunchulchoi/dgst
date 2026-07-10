@@ -31,6 +31,7 @@
     currentBet: number;
     log: string[];
     winnerId: string | null;
+    winnerIds?: string[];
     showdown: boolean;
     seats: SeotdaSeat[];
   }
@@ -65,7 +66,7 @@
     { name: '장삥', detail: '1 + 10', rank: '특수' },
     { name: '장사', detail: '4 + 10', rank: '특수' },
     { name: '세륙', detail: '4 + 6', rank: '특수' },
-    { name: '갑오 ~ 망통', detail: '월 합 % 10 (9>…>0)', rank: '끗' }
+    { name: '갑오 ~ 망통', detail: '월 합 % 10 (9>…>0), 동점=무승부', rank: '끗' }
   ] as const;
 
   /** @type {ReturnType<typeof setTimeout>[]} */
@@ -87,6 +88,15 @@
       revealDone
   );
   const isShowdown = $derived(!!round && (round.showdown || round.phase === 'showdown'));
+  const winnerIds = $derived(
+    round?.winnerIds?.length
+      ? round.winnerIds
+      : round?.winnerId
+        ? [round.winnerId]
+        : []
+  );
+  const isDraw = $derived(isShowdown && winnerIds.length > 1);
+  const userWon = $derived(winnerIds.includes('user') && !isDraw);
 
   function clearTimers() {
     for (const t of timers) clearTimeout(t);
@@ -292,7 +302,7 @@
                   <div
                     class="seat text-center"
                     class:folded={npc.folded}
-                    class:winner={revealDone && round.winnerId === npc.id}
+                    class:winner={revealDone && winnerIds.includes(npc.id)}
                     class:revealing={revealingId === npc.id}
                   >
                     <div class="fw-semibold">{npc.name}</div>
@@ -332,7 +342,7 @@
                 <div
                   class="seat user-seat text-center"
                   class:folded={userSeat.folded}
-                  class:winner={revealDone && round.winnerId === 'user'}
+                  class:winner={revealDone && winnerIds.includes('user')}
                 >
                   <div class="fw-semibold">나</div>
                   <div class="small opacity-75">{formatNumber(userSeat.chips)}점</div>
@@ -373,7 +383,9 @@
             {#if isShowdown && revealDone}
               <div class="text-center mb-3 result-banner">
                 <p class="mb-2 fs-5 fw-semibold">
-                  {#if round.winnerId === 'user'}이겼다!{:else}졌다…{/if}
+                  {#if isDraw}무승부! 팟 분배
+                  {:else if userWon}이겼다!
+                  {:else}졌다…{/if}
                 </p>
                 <button class="btn btn-primary" disabled={busy || balance < 10} onclick={nextRound}>
                   다음 판

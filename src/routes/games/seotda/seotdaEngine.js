@@ -149,9 +149,27 @@ export function handStrength(hand) {
  * @param {string} winnerId
  */
 export function settlePot(players, pot, winnerId) {
+  return settlePotSplit(players, pot, [winnerId]);
+}
+
+/**
+ * 동점 시 팟 균등 분배 (나머지는 첫 승자에게)
+ * @param {SeotdaPlayerPot[]} players
+ * @param {number} pot
+ * @param {string[]} winnerIds
+ */
+export function settlePotSplit(players, pot, winnerIds) {
   const next = players.map((p) => ({ ...p }));
-  const winner = next.find((p) => p.id === winnerId);
-  if (winner) winner.chips += pot;
+  const ids = winnerIds.filter((id) => next.some((p) => p.id === id));
+  if (ids.length === 0 || pot <= 0) return { players: next, pot: 0 };
+  const share = Math.floor(pot / ids.length);
+  let remainder = pot - share * ids.length;
+  for (const id of ids) {
+    const p = next.find((x) => x.id === id);
+    if (!p) continue;
+    p.chips += share + (remainder > 0 ? 1 : 0);
+    if (remainder > 0) remainder -= 1;
+  }
   return { players: next, pot: 0 };
 }
 

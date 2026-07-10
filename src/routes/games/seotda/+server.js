@@ -110,7 +110,11 @@ export async function POST(event) {
           payout: result.payout,
           delta: result.delta,
           reels: [
-            round.winnerId === 'user' ? 'win' : 'lose',
+            (round.winnerIds?.length ?? 0) > 1
+              ? 'draw'
+              : round.winnerId === 'user'
+                ? 'win'
+                : 'lose',
             String(result.delta),
             round.seats.find((s) => s.id === 'user')?.lastAction ?? '-'
           ]

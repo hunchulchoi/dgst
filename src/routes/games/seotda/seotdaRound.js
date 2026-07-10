@@ -5,6 +5,7 @@ import {
   evaluateHand,
   raiseAmount,
   settlePot,
+  settlePotSplit,
   shuffleDeck,
   cardLabel
 } from './seotdaEngine.js';
@@ -281,6 +282,7 @@ export function finishIfNeeded(round) {
     round.seats = /** @type {typeof round.seats} */ (settled.players);
     round.pot = 0;
     round.winnerId = winner.id;
+    round.winnerIds = [winner.id];
     round.phase = 'showdown';
     round.showdown = true;
     round.log.push(`${winner.name} 승리 (나머지 다이)`);
@@ -301,26 +303,33 @@ export function finishIfNeeded(round) {
 export function showdown(round) {
   const alive = round.seats.filter((s) => !s.folded);
   if (alive.length === 0) return;
-  let best = alive[0];
-  let bestHand = evaluateHand(best.cards);
-  for (let i = 1; i < alive.length; i++) {
-    const h = evaluateHand(alive[i].cards);
-    if (compareHands(h, bestHand) > 0) {
-      best = alive[i];
-      bestHand = h;
-    }
+
+  /** @type {{ seat: (typeof alive)[0]; hand: ReturnType<typeof evaluateHand> }[]} */
+  const ranked = alive.map((seat) => ({ seat, hand: evaluateHand(seat.cards) }));
+  let bestHand = ranked[0].hand;
+  for (let i = 1; i < ranked.length; i++) {
+    if (compareHands(ranked[i].hand, bestHand) > 0) bestHand = ranked[i].hand;
   }
-  for (const s of alive) {
-    const h = evaluateHand(s.cards);
-    round.log.push(`${s.name}: ${s.cards.map(cardLabel).join('·')} → ${h.name}`);
+  const winners = ranked.filter((r) => compareHands(r.hand, bestHand) === 0);
+  const winnerIds = winners.map((w) => w.seat.id);
+
+  for (const r of ranked) {
+    round.log.push(`${r.seat.name}: ${r.seat.cards.map(cardLabel).join('·')} → ${r.hand.name}`);
   }
-  const settled = settlePot(round.seats, round.pot, best.id);
+
+  const settled = settlePotSplit(round.seats, round.pot, winnerIds);
   round.seats = /** @type {typeof round.seats} */ (settled.players);
   round.pot = 0;
-  round.winnerId = best.id;
+  round.winnerIds = winnerIds;
+  round.winnerId = winnerIds.length === 1 ? winnerIds[0] : null;
   round.phase = 'showdown';
   round.showdown = true;
-  round.log.push(`${best.name} 승리! ${bestHand.name}`);
+  if (winnerIds.length > 1) {
+    const names = winners.map((w) => w.seat.name).join('·');
+    round.log.push(`무승부! ${names} (${bestHand.name}) — 팟 분배`);
+  } else {
+    round.log.push(`${winners[0].seat.name} 승리! ${bestHand.name}`);
+  }
   refillBustNpcs(round);
 }
 

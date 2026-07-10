@@ -23,6 +23,7 @@
  *   raiseCount?: number;
  *   log: string[];
  *   winnerId: string | null;
+ *   winnerIds?: string[];
  *   showdown: boolean;
  *   antePaid: number;
  * }} SeotdaRound
@@ -69,6 +70,7 @@ export function toPublicState(round, userSeatId = 'user', evalHand) {
     turnIndex: round.turnIndex,
     log: round.log.slice(-12),
     winnerId: round.winnerId,
+    winnerIds: round.winnerIds ?? (round.winnerId ? [round.winnerId] : []),
     showdown: revealAll,
     seats: round.seats.map((s) => {
       const isUser = s.id === userSeatId;
