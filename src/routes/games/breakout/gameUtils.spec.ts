@@ -702,6 +702,7 @@ describe('breakout gameUtils', () => {
       starRainCaught: 24
     });
     expect(oneShot.shotMultiplier).toBe(2);
+    expect(oneShot.cleared).toBe(true);
     expect(oneShot.grade).toBe('S');
     expect(oneShot.gradeLabel).toBe('PERFECT');
     expect(oneShot.lines.some((l) => l.label.includes('×2'))).toBe(true);
@@ -718,5 +719,20 @@ describe('breakout gameUtils', () => {
     expect(getBonusClearGrade('spin', { attemptsUsed: 1, playScore: 0, starRainCaught: 10 })).toBe(
       'B'
     );
+
+    const failed = buildBonusClearPerformance({
+      challenge: 'flies',
+      stage: 1,
+      playScore: 240,
+      attemptsUsed: 1,
+      fliesCaught: 3,
+      cleared: false
+    });
+    expect(failed.cleared).toBe(false);
+    expect(failed.shotMultiplier).toBe(1);
+    expect(failed.totalAdded).toBe(240);
+    expect(failed.gradeLabel).toBe('FAIL');
+    expect(failed.title).toContain('실패');
+    expect(failed.lines.some((l) => l.label === '클리어 보너스' && l.value === 0)).toBe(true);
   });
 });

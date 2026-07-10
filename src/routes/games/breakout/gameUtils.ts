@@ -911,11 +911,14 @@ export interface BonusClearPerformance {
   totalAdded: number;
   shotMultiplier: number;
   attemptsUsed: number;
+  /** false면 클리어 실패(플레이 점수만) */
+  cleared: boolean;
 }
 
 /**
- * 보너스 클리어 점수 퍼포먼스 데이터.
- * playScore = 스테이지 중 획득분. 1발이면 playScore를 한 번 더 더해 ×2.
+ * 보너스 클리어/실패 점수 퍼포먼스 데이터.
+ * playScore = 스테이지 중 획득분. 클리어+1발이면 playScore ×2 + 클리어 보너스.
+ * 실패면 플레이 점수만(이미 반영된 분), 클리어 보너스·×2 없음.
  */
 export function buildBonusClearPerformance(params: {
   challenge: BonusChallengeType;
@@ -924,38 +927,46 @@ export function buildBonusClearPerformance(params: {
   attemptsUsed: number;
   starRainCaught?: number;
   fliesCaught?: number;
+  cleared?: boolean;
 }): BonusClearPerformance {
   const { challenge, stage, attemptsUsed } = params;
+  const cleared = params.cleared !== false;
   const playScore = Math.max(0, Math.floor(params.playScore));
-  const shotMultiplier = getBonusShotClearMultiplier(attemptsUsed);
-  const clearBonus = getStageClearBonus(stage, attemptsUsed);
-  const displayTotal = playScore * shotMultiplier + clearBonus;
+  const shotMultiplier = cleared ? getBonusShotClearMultiplier(attemptsUsed) : 1;
+  const clearBonus = cleared ? getStageClearBonus(stage, attemptsUsed) : 0;
+  const displayTotal = cleared ? playScore * shotMultiplier + clearBonus : playScore;
 
   const lines: BonusClearScoreLine[] = [
     { label: '플레이 점수', value: playScore, delayMs: 200 }
   ];
-  if (shotMultiplier > 1) {
+  if (cleared && shotMultiplier > 1) {
     lines.push({ label: '1발 클리어 ×2', value: playScore, delayMs: 700 });
   }
-  lines.push({
-    label: shotMultiplier > 1 ? '클리어 보너스 ×2' : '클리어 보너스',
-    value: clearBonus,
-    delayMs: shotMultiplier > 1 ? 1200 : 700
-  });
+  if (cleared) {
+    lines.push({
+      label: shotMultiplier > 1 ? '클리어 보너스 ×2' : '클리어 보너스',
+      value: clearBonus,
+      delayMs: shotMultiplier > 1 ? 1200 : 700
+    });
+  } else {
+    lines.push({ label: '클리어 보너스', value: 0, delayMs: 700 });
+  }
   lines.push({
     label: '합계',
     value: displayTotal,
-    delayMs: shotMultiplier > 1 ? 1700 : 1200
+    delayMs: cleared && shotMultiplier > 1 ? 1700 : 1200
   });
 
-  const grade = getBonusClearGrade(challenge, {
-    attemptsUsed,
-    playScore,
-    starRainCaught: params.starRainCaught ?? 0,
-    fliesCaught: params.fliesCaught ?? 0
-  });
+  const grade = cleared
+    ? getBonusClearGrade(challenge, {
+        attemptsUsed,
+        playScore,
+        starRainCaught: params.starRainCaught ?? 0,
+        fliesCaught: params.fliesCaught ?? 0
+      })
+    : 'C';
 
-  const titles: Record<BonusChallengeType, string> = {
+  const clearTitles: Record<BonusChallengeType, string> = {
     billiard: '🎱 당구 클리어',
     stars: '⭐ 별 클리어',
     spin: '⭐ 별 소나기 결과',
@@ -965,15 +976,34 @@ export function buildBonusClearPerformance(params: {
     golden: '🪙 골든샷 결과',
     vault: '🔐 금고 개방'
   };
+  const failTitles: Record<BonusChallengeType, string> = {
+    billiard: '🎱 당구 실패',
+    stars: '⭐ 별 실패',
+    spin: '⭐ 별 소나기 실패',
+    movers: '🔵 이동 공 실패',
+    flies: '🪰 파리 잡기 실패',
+    gems: '💎 보석 실패',
+    golden: '🪙 골든샷 실패',
+    vault: '🔐 금고 실패'
+  };
 
   return {
-    title: titles[challenge] ?? '보너스 클리어',
+    title: (cleared ? clearTitles : failTitles)[challenge] ?? (cleared ? '보너스 클리어' : '보너스 실패'),
     lines,
     grade,
-    gradeLabel: grade === 'S' ? 'PERFECT' : grade === 'A' ? 'GREAT' : grade === 'B' ? 'GOOD' : 'OK',
+    gradeLabel: cleared
+      ? grade === 'S'
+        ? 'PERFECT'
+        : grade === 'A'
+          ? 'GREAT'
+          : grade === 'B'
+            ? 'GOOD'
+            : 'OK'
+      : 'FAIL',
     totalAdded: displayTotal,
     shotMultiplier,
-    attemptsUsed
+    attemptsUsed,
+    cleared
   };
 }
 

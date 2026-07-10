@@ -433,11 +433,7 @@
   }
 
   function skipBonusStage() {
-    showEffectToast('보너스 실패 · 다음 스테이지');
-    if (stageClearTimeout) clearTimeout(stageClearTimeout);
-    stageClearTimeout = setTimeout(() => {
-      advanceStage();
-    }, 1000);
+    scheduleBonusFailPerformance();
   }
 
   function handleBonusMiss() {
@@ -449,7 +445,33 @@
     }
     ballLaunched = false;
     balls = [];
+    lasers = [];
+    fallingFlies = [];
+    fallingStars = [];
     skipBonusStage();
+  }
+
+  /** 보너스 실패 — 플레이 점수 퍼포먼스 후 다음 스테이지 */
+  function scheduleBonusFailPerformance() {
+    screen = 'stageClear';
+    const playScore = Math.max(0, score - bonusStageScoreStart);
+    const perf = buildBonusClearPerformance({
+      challenge: bonusChallenge,
+      stage,
+      playScore,
+      attemptsUsed: bonusAttemptsUsed,
+      starRainCaught,
+      fliesCaught,
+      cleared: false
+    });
+    bonusClearPerf = perf;
+    bonusClearStartedAt = Date.now();
+    showEffectToast('보너스 실패');
+    if (stageClearTimeout) clearTimeout(stageClearTimeout);
+    stageClearTimeout = setTimeout(() => {
+      bonusClearPerf = null;
+      advanceStage();
+    }, 3200);
   }
 
   function updateBilliardGame(now: number) {
@@ -1438,7 +1460,7 @@
         const perf = bonusClearPerf;
         const cx = CANVAS_WIDTH / 2;
 
-        ctx.fillStyle = '#ffd54f';
+        ctx.fillStyle = perf.cleared ? '#ffd54f' : '#ef9a9a';
         ctx.font = 'bold 22px system-ui, sans-serif';
         ctx.textAlign = 'center';
         ctx.fillText(perf.title, cx, 150);
@@ -1492,10 +1514,14 @@
           ctx.fillText(perf.grade, cx, lineY + 50);
           ctx.font = 'bold 14px system-ui, sans-serif';
           ctx.fillText(perf.gradeLabel, cx, lineY + 78);
-          if (perf.shotMultiplier > 1) {
+          if (perf.cleared && perf.shotMultiplier > 1) {
             ctx.fillStyle = '#ffe082';
             ctx.font = '12px system-ui, sans-serif';
             ctx.fillText('1발 클리어 보너스 적용', cx, lineY + 100);
+          } else if (!perf.cleared) {
+            ctx.fillStyle = '#ef9a9a';
+            ctx.font = '12px system-ui, sans-serif';
+            ctx.fillText('클리어 실패 · 플레이 점수만 반영', cx, lineY + 100);
           }
         }
       } else {
