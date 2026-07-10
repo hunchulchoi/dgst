@@ -27,6 +27,7 @@ import {
   aimAngleFromDragRatio,
   createBilliardObjectBalls,
   createStarCollectibles,
+  createSpinCollectibles,
   createGemCollectibles,
   getBonusChallengeType,
   getCushionMultiplier,
@@ -42,6 +43,10 @@ import {
   handleEnclosedCushionCollision,
   isBilliardClear,
   resolveCueObjectHit,
+  applyBallSpin,
+  clampSpin,
+  decaySpinOnCushion,
+  getSpinAimPreviewPoints,
   TOTAL_STAGES,
   handleBrickCollision,
   handleInvincibleBrickCollision,
@@ -67,7 +72,7 @@ describe('breakout gameUtils', () => {
   it('defines 50 stages with rising difficulty', () => {
     expect(STAGES).toHaveLength(TOTAL_STAGES);
     expect(STAGES).toHaveLength(50);
-    expect(STAGES[0].label).toBe('금고 열기(테스트)');
+    expect(STAGES[0].label).toBe('스핀샷(테스트)');
     expect(STAGES[49].label).toBe('최종');
     expect(STAGES[0].ballSpeed).toBeLessThan(STAGES[49].ballSpeed);
     expect(STAGES[0].kind).toBe('bonus');
@@ -89,7 +94,7 @@ describe('breakout gameUtils', () => {
     expect(getStageKind(1)).toBe('bonus');
     expect(getStageKind(7)).toBe('normal');
     expect(getStageConfig(5).label).toBe('3쿠션 챌린지');
-    expect(getStageConfig(1).label).toBe('금고 열기(테스트)');
+    expect(getStageConfig(1).label).toBe('스핀샷(테스트)');
     expect(getStageConfig(45).label).toBe('금고 열기');
     expect(getStageConfig(35).label).toBe('골든샷');
     expect(getStageConfig(10).label).toBe('철 미로');
@@ -363,7 +368,7 @@ describe('breakout gameUtils', () => {
   });
 
   it('star and gem collectible challenges', () => {
-    expect(getBonusChallengeType(1)).toBe('vault');
+    expect(getBonusChallengeType(1)).toBe('spin');
     expect(getBonusChallengeType(5)).toBe('billiard');
     expect(getBonusChallengeType(15)).toBe('stars');
     expect(getBonusChallengeType(25)).toBe('gems');
@@ -376,6 +381,7 @@ describe('breakout gameUtils', () => {
     expect(getCoinPickupScore(60, 2, 3)).toBe(480);
     expect(getBonusAttemptLimit('golden')).toBe(1);
     expect(getBonusAttemptLimit('vault')).toBe(2);
+    expect(getBonusAttemptLimit('spin')).toBe(2);
 
     const stars = createStarCollectibles(15);
     expect(stars.length).toBeGreaterThanOrEqual(5);
@@ -392,8 +398,41 @@ describe('breakout gameUtils', () => {
     expect(createCoinCollectibles(35).every((c) => c.kind === 'coin')).toBe(true);
   });
 
+  it('spin curves velocity and builds spin collectibles', () => {
+    expect(clampSpin(9)).toBe(3);
+    expect(clampSpin(-9)).toBe(-3);
+    const paddle = createPaddle();
+    const straight = createAimedBall(paddle, 6, 90, 0);
+    expect(straight.spin).toBe(0);
+    expect(straight.vx).toBeCloseTo(0, 5);
+
+    const leftSpin = applyBallSpin({ ...straight, spin: -3 });
+    expect(leftSpin.vx).toBeLessThan(0);
+
+    const rightSpin = applyBallSpin({ ...straight, spin: 3 });
+    expect(rightSpin.vx).toBeGreaterThan(0);
+
+    const decayed = decaySpinOnCushion({ ...straight, spin: 2 });
+    expect(Math.abs(decayed.spin ?? 0)).toBeLessThan(2);
+
+    const items = createSpinCollectibles(1);
+    expect(items).toHaveLength(4);
+    expect(items.every((i) => !i.collected && i.kind === 'star')).toBe(true);
+
+    const preview = getSpinAimPreviewPoints(
+      paddle.x + paddle.width / 2,
+      paddle.y - 10,
+      90,
+      2,
+      6,
+      8
+    );
+    expect(preview).toHaveLength(8);
+    expect(preview[preview.length - 1].x).not.toBeCloseTo(preview[0].x, 0);
+  });
+
   it('vault sequence puzzle accepts correct order only', () => {
-    const puzzle = createVaultPuzzle(1);
+    const puzzle = createVaultPuzzle(5);
     expect(puzzle.sequence).toEqual([1, 2, 3]);
     expect(puzzle.targets).toHaveLength(3);
     const paddle = createPaddle();

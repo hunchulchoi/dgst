@@ -109,6 +109,8 @@ export interface Ball {
   vx: number;
   vy: number;
   radius: number;
+  /** 스핀: 음수=좌커브, 양수=우커브 */
+  spin?: number;
 }
 
 export interface Paddle {
@@ -187,6 +189,17 @@ export const DEFAULT_AIM_ANGLE = 90;
 export const AIM_ANGLE_STEP = 2.5;
 export const AIM_LINE_LENGTH = 120;
 
+/** 스핀샷: 조준 스핀 범위 */
+export const SPIN_MIN = -3;
+export const SPIN_MAX = 3;
+export const SPIN_STEP = 1;
+export const DEFAULT_SPIN = 0;
+/** 프레임당 속도 벡터 회전량(라디안) × spin */
+export const SPIN_CURVE_RATE = 0.028;
+/** 쿠션 히트 시 스핀 감쇠 */
+export const SPIN_CUSHION_DECAY = 0.85;
+export const SPIN_AIM_PREVIEW_STEPS = 12;
+
 const BONUS_STAGES = new Set([1, 5, 15, 25, 35, 45]);
 const THEME_STAGES = new Set([10, 20, 30, 40, 50]);
 
@@ -199,7 +212,7 @@ const THEME_LABELS: Record<number, string> = {
 };
 
 const BONUS_LABELS: Record<number, string> = {
-  1: '금고 열기(테스트)',
+  1: '스핀샷(테스트)',
   5: '3쿠션 챌린지',
   15: '별 먹기',
   25: '보석 회수',
@@ -207,10 +220,16 @@ const BONUS_LABELS: Record<number, string> = {
   45: '금고 열기'
 };
 
-export type BonusChallengeType = 'billiard' | 'stars' | 'gems' | 'golden' | 'vault';
+export type BonusChallengeType =
+  | 'billiard'
+  | 'stars'
+  | 'gems'
+  | 'golden'
+  | 'vault'
+  | 'spin';
 
 const BONUS_CHALLENGE_BY_STAGE: Record<number, BonusChallengeType> = {
-  1: 'vault',
+  1: 'spin',
   5: 'billiard',
   15: 'stars',
   25: 'gems',
@@ -706,15 +725,80 @@ export function dragRatioFromAimAngle(angleDeg: number): number {
 }
 
 /** 조준각으로 공 발사 벡터 생성 */
-export function createAimedBall(paddle: Paddle, speed: number, angleDeg: number): Ball {
+export function createAimedBall(
+  paddle: Paddle,
+  speed: number,
+  angleDeg: number,
+  spin = 0
+): Ball {
   const rad = (clampAimAngle(angleDeg) * Math.PI) / 180;
   return {
     x: paddle.x + paddle.width / 2,
     y: paddle.y - BALL_RADIUS - 2,
     vx: Math.cos(rad) * speed,
     vy: -Math.sin(rad) * speed,
-    radius: BALL_RADIUS
+    radius: BALL_RADIUS,
+    spin: clampSpin(spin)
   };
+}
+
+export function clampSpin(spin: number): number {
+  return Math.max(SPIN_MIN, Math.min(SPIN_MAX, Math.round(spin)));
+}
+
+/**
+ * 스핀으로 속도 벡터를 살짝 회전(커브). 속도 크기는 유지하지 않음 — 호출측에서 normalize.
+ */
+export function applyBallSpin(ball: Ball, curveRate = SPIN_CURVE_RATE): Ball {
+  const spin = ball.spin ?? 0;
+  if (spin === 0) return ball;
+  const angle = spin * curveRate;
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+  return {
+    ...ball,
+    vx: ball.vx * cos - ball.vy * sin,
+    vy: ball.vx * sin + ball.vy * cos
+  };
+}
+
+/** 쿠션 충돌 후 스핀 감쇠 */
+export function decaySpinOnCushion(ball: Ball, factor = SPIN_CUSHION_DECAY): Ball {
+  const spin = ball.spin ?? 0;
+  if (spin === 0) return ball;
+  const next = spin * factor;
+  if (Math.abs(next) < 0.15) return { ...ball, spin: 0 };
+  return { ...ball, spin: next };
+}
+
+/**
+ * 스핀 조준 곡선 미리보기 점들.
+ * 쿠션 반사는 단순화(미포함) — 발사 직후 커브만 표시.
+ */
+export function getSpinAimPreviewPoints(
+  originX: number,
+  originY: number,
+  angleDeg: number,
+  spin: number,
+  speed: number,
+  steps = SPIN_AIM_PREVIEW_STEPS
+): Array<{ x: number; y: number }> {
+  let ball: Ball = {
+    x: originX,
+    y: originY,
+    vx: Math.cos((clampAimAngle(angleDeg) * Math.PI) / 180) * speed,
+    vy: -Math.sin((clampAimAngle(angleDeg) * Math.PI) / 180) * speed,
+    radius: BALL_RADIUS,
+    spin: clampSpin(spin)
+  };
+  const points: Array<{ x: number; y: number }> = [];
+  for (let i = 0; i < steps; i++) {
+    ball = moveBall(ball);
+    ball = applyBallSpin(ball);
+    ball = normalizeBallSpeed(ball, speed);
+    points.push({ x: ball.x, y: ball.y });
+  }
+  return points;
 }
 
 export function getAimLineEnd(
@@ -1017,6 +1101,30 @@ export function createStarCollectibles(stage: number): BonusCollectible[] {
         [midX + 60, 330]
       ];
   return points.map(([x, y], i) => makeCollectible(`star-${i}`, 'star', x, y, STAR_BASE_SCORE));
+}
+
+/**
+ * 스핀샷용 별 배치 — 직선보다 커브가 유리한 좌/우 구석 + 중앙.
+ */
+export function createSpinCollectibles(stage: number): BonusCollectible[] {
+  const midX = CANVAS_WIDTH / 2;
+  const hard = stage >= 45;
+  const points: Array<[number, number]> = hard
+    ? [
+        [midX, 120],
+        [48, 220],
+        [CANVAS_WIDTH - 48, 220],
+        [48, 380],
+        [CANVAS_WIDTH - 48, 380],
+        [midX, 340]
+      ]
+    : [
+        [midX, 130],
+        [52, 250],
+        [CANVAS_WIDTH - 52, 250],
+        [midX, 360]
+      ];
+  return points.map(([x, y], i) => makeCollectible(`spin-${i}`, 'star', x, y, STAR_BASE_SCORE));
 }
 
 /** 보석 배치 */
