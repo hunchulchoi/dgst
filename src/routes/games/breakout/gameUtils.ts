@@ -238,9 +238,9 @@ export const SPIN_CURVE_RATE = 0.028;
 export const SPIN_CUSHION_DECAY = 0.85;
 export const SPIN_AIM_PREVIEW_STEPS = 12;
 
-const BONUS_STAGES = new Set([1, 5, 15, 25, 35, 45]);
-/** 보너스 스테이지 순서 (최종 테스트용) */
-export const BONUS_STAGE_LIST = [1, 5, 15, 25, 35, 45] as const;
+const BONUS_STAGES = new Set([5, 15, 25, 35, 45]);
+/** 보너스 스테이지 순서 */
+export const BONUS_STAGE_LIST = [5, 15, 25, 35, 45] as const;
 /**
  * 최종 테스트 플래그 — true면 보너스만 진행.
  * 배포 전 false 로 되돌릴 것.
@@ -262,7 +262,6 @@ const THEME_LABELS: Record<number, string> = {
 };
 
 const BONUS_LABELS: Record<number, string> = {
-  1: '파리 잡기(테스트)',
   5: '3쿠션 챌린지',
   15: '별 먹기',
   25: '보석 회수',
@@ -281,7 +280,6 @@ export type BonusChallengeType =
   | 'flies';
 
 const BONUS_CHALLENGE_BY_STAGE: Record<number, BonusChallengeType> = {
-  1: 'flies',
   5: 'billiard',
   15: 'stars',
   25: 'gems',
@@ -308,7 +306,6 @@ const NORMAL_PATTERN_POOL: PatternId[] = [
 
 /** 보너스 스테이지별 고정 퍼즐 패턴 */
 const BONUS_PATTERN_BY_STAGE: Record<number, PatternId> = {
-  1: 'cushion',
   5: 'cushion',
   15: 'pockets',
   25: 'lane',

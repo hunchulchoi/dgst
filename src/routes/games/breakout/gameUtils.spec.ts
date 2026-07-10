@@ -99,10 +99,10 @@ describe('breakout gameUtils', () => {
   it('defines 50 stages with rising difficulty', () => {
     expect(STAGES).toHaveLength(TOTAL_STAGES);
     expect(STAGES).toHaveLength(50);
-    expect(STAGES[0].label).toBe('파리 잡기(테스트)');
+    expect(STAGES[0].kind).toBe('normal');
+    expect(STAGES[0].label).toBe('1단계');
     expect(STAGES[49].label).toBe('최종');
     expect(STAGES[0].ballSpeed).toBeLessThan(STAGES[49].ballSpeed);
-    expect(STAGES[0].kind).toBe('bonus');
     expect(STAGES[49].kind).toBe('theme');
     for (const stage of STAGES) {
       const specialSum =
@@ -118,10 +118,10 @@ describe('breakout gameUtils', () => {
     expect(getStageKind(45)).toBe('bonus');
     expect(getStageKind(10)).toBe('theme');
     expect(getStageKind(50)).toBe('theme');
-    expect(getStageKind(1)).toBe('bonus');
+    expect(getStageKind(1)).toBe('normal');
     expect(getStageKind(7)).toBe('normal');
     expect(getStageConfig(5).label).toBe('3쿠션 챌린지');
-    expect(getStageConfig(1).label).toBe('파리 잡기(테스트)');
+    expect(getStageConfig(1).label).toBe('1단계');
     expect(getStageConfig(45).label).toBe('금고 열기');
     expect(getStageConfig(35).label).toBe('골든샷');
     expect(getStageConfig(10).label).toBe('철 미로');
@@ -139,7 +139,7 @@ describe('breakout gameUtils', () => {
       expect(cells).toBeGreaterThan(0);
       expect(getStagePattern(stage)).toBeTruthy();
     }
-    expect(getStagePattern(1)).toBe('cushion');
+    expect(getStagePattern(1)).toBe('full');
     expect(getStagePattern(5)).toBe('cushion');
     expect(getStagePattern(10)).toBe('tunnel');
     expect(getStagePattern(15)).toBe('pockets');
@@ -147,7 +147,7 @@ describe('breakout gameUtils', () => {
   });
 
   it('bonus stages use fixed iron-and-brick puzzle grids', () => {
-    for (const stage of [1, 5, 15, 25, 35, 45]) {
+    for (const stage of [5, 15, 25, 35, 45]) {
       const grid = getBonusPuzzleGrid(stage);
       expect(grid).not.toBeNull();
       const bricks = createBricks(stage);
@@ -162,6 +162,7 @@ describe('breakout gameUtils', () => {
         bricks.map((b) => `${b.type}:${b.x}:${b.y}`)
       );
     }
+    expect(getBonusPuzzleGrid(1)).toBeNull();
   });
 
   it('creates bricks for each stage with destroyable cells', () => {
@@ -392,7 +393,7 @@ describe('breakout gameUtils', () => {
 
   it('returns stage clear bonus by stage', () => {
     expect(getStageClearBonus(2)).toBe(1000);
-    expect(getStageClearBonus(1, 1)).toBe(1500);
+    expect(getStageClearBonus(1, 1)).toBe(750);
     expect(getStageClearBonus(1, 2)).toBe(750);
     expect(getStageClearBonus(10)).toBe(3000);
     expect(getStageClearBonus(50)).toBe(13_000);
@@ -437,12 +438,12 @@ describe('breakout gameUtils', () => {
   });
 
   it('star and gem collectible challenges', () => {
-    expect(getBonusChallengeType(1)).toBe('flies');
     expect(getBonusChallengeType(5)).toBe('billiard');
     expect(getBonusChallengeType(15)).toBe('stars');
     expect(getBonusChallengeType(25)).toBe('gems');
     expect(getBonusChallengeType(35)).toBe('golden');
     expect(getBonusChallengeType(45)).toBe('vault');
+    expect(getStageKind(1)).toBe('normal');
     expect(getCushionMultiplier(1)).toBe(1);
     expect(getCushionMultiplier(3)).toBe(4);
     expect(getCushionMultiplier(5)).toBe(16);
@@ -502,11 +503,11 @@ describe('breakout gameUtils', () => {
     expect(isBilliardClear(0, 0, allHit)).toBe(true);
   });
 
-  it('flies stage: laser hits flies, escape fails, one attempt', () => {
-    expect(getBonusChallengeType(1)).toBe('flies');
+  it('flies helpers: laser hits, escape fails, one attempt', () => {
     expect(getBonusAttemptLimit('flies')).toBe(1);
     expect(getBonusTimeLimitMs('flies')).toBe(FLIES_TIME_LIMIT_MS);
-    expect(getStageConfig(1).label).toBe('파리 잡기(테스트)');
+    // 1단계는 일반 — flies는 타입만 유지
+    expect(getStageKind(1)).toBe('normal');
 
     expect(getFliesDifficulty(0).maxActive).toBe(1);
     expect(getFliesDifficulty(5_000).maxActive).toBe(2);
@@ -635,9 +636,8 @@ describe('breakout gameUtils', () => {
   });
 
   it('bonus-only test jumps between bonus stages', () => {
-    expect(BONUS_STAGE_LIST).toEqual([1, 5, 15, 25, 35, 45]);
+    expect(BONUS_STAGE_LIST).toEqual([5, 15, 25, 35, 45]);
     if (BONUS_ONLY_TEST) {
-      expect(getNextStage(1)).toBe(5);
       expect(getNextStage(5)).toBe(15);
       expect(getNextStage(45)).toBe(TOTAL_STAGES + 1);
       expect(isGameComplete(getNextStage(45))).toBe(true);
