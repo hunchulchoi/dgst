@@ -957,17 +957,19 @@
       }
     }
 
-    if (!isBonusStage || !ballLaunched) {
+    if (!isBonusStage || !ballLaunched || bonusChallenge === 'spin') {
       const paddleColor =
         activeEffects.shrinkPaddleUntil > now
           ? '#ffccbc'
           : activeEffects.expandPaddleUntil > now
             ? '#c8e6c9'
-            : '#e0e0e0';
+            : bonusChallenge === 'spin'
+              ? '#90caf9'
+              : '#e0e0e0';
       ctx.fillStyle = paddleColor;
       drawRoundRect(ctx, paddle.x, paddle.y, paddle.width, paddle.height, 6);
       ctx.fill();
-      ctx.strokeStyle = '#90caf9';
+      ctx.strokeStyle = bonusChallenge === 'spin' ? '#e3f2fd' : '#90caf9';
       ctx.lineWidth = 2;
       ctx.stroke();
     }
