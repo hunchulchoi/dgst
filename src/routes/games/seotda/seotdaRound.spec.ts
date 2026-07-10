@@ -47,6 +47,18 @@ describe('seotdaRound smoke', () => {
     expect(round.phase).toBe('showdown');
     expect(guards).toBeLessThan(20);
   });
+
+  it('carries NPC chips into next round via npcChipMap', () => {
+    const round = createNewRound(
+      1000,
+      () => 0.5,
+      { npc_agwi: 1300, npc_goni: 800, npc_madam: 50 }
+    );
+    // ante 10 deducted
+    expect(round.seats.find((s) => s.id === 'npc_agwi')?.chips).toBe(1290);
+    expect(round.seats.find((s) => s.id === 'npc_goni')?.chips).toBe(790);
+    expect(round.seats.find((s) => s.id === 'npc_madam')?.chips).toBe(40);
+  });
 });
 
 describe('seotdaNpc bluff', () => {

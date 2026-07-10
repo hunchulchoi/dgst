@@ -7,7 +7,7 @@ import {
   maybeTopupAfterOops,
   writeSeotdaScore
 } from './seotdaBalance.js';
-import { clearRound, getRound, setRound, toPublicState } from './seotdaState.js';
+import { clearRound, getRound, setRound, toPublicState, getNpcStacks, saveNpcStacks, resetNpcStacks } from './seotdaState.js';
 import { applyPlayerAction, createNewRound, runNpcTurns, userChipResult } from './seotdaRound.js';
 
 const SMOKE_BALANCE = 1000;
@@ -85,7 +85,11 @@ export async function POST(event) {
       if (getRound(user.email)?.phase === 'betting') {
         throw error(400, { message: '이미 진행 중인 판이 있습니다.' });
       }
+      // 새 테이블: NPC 칩 초기화
+      const prev = getRound(user.email);
+      if (prev) saveNpcStacks(user.email, prev);
       clearRound(user.email);
+      resetNpcStacks(user.email);
       return json(await beginRound(user.email, user.nickname));
     }
 
@@ -120,6 +124,7 @@ export async function POST(event) {
           ]
         });
         chipsBeforeMap.delete(user.email);
+        saveNpcStacks(user.email, round);
         return json({ success: true, balance: result.after, round: publicOf(round) });
       }
 
@@ -131,9 +136,10 @@ export async function POST(event) {
     }
 
     if (action === 'ack') {
-      // 쇼다운 확인 후 바로 다음 판
+      // 쇼다운 확인 후 NPC 칩 유지한 채 다음 판
       const round = getRound(user.email);
       if (round && round.phase === 'showdown') {
+        saveNpcStacks(user.email, round);
         clearRound(user.email);
       }
       return json(await beginRound(user.email, user.nickname));
@@ -160,7 +166,8 @@ async function beginRound(email, nickname) {
   if (balance < 10) {
     throw error(400, { message: '보유 점수가 부족합니다. 오링 후 잠시 기다려 주세요.' });
   }
-  const round = createNewRound(balance);
+  const npcChips = getNpcStacks(email);
+  const round = createNewRound(balance, Math.random, npcChips);
   chipsBeforeMap.set(email, balance);
   setRound(email, round);
   return { success: true, balance: round.seats[0].chips, round: publicOf(round) };
@@ -172,9 +179,19 @@ async function beginRound(email, nickname) {
  * @param {Record<string, unknown>} body
  */
 function handleSmoke(email, action, body) {
-  if (action === 'start' || action === 'ack') {
+  if (action === 'start') {
     clearRound(email);
-    const round = createNewRound(SMOKE_BALANCE);
+    resetNpcStacks(email);
+    const round = createNewRound(SMOKE_BALANCE, Math.random, {});
+    chipsBeforeMap.set(email, SMOKE_BALANCE);
+    setRound(email, round);
+    return json({ success: true, balance: round.seats[0].chips, round: publicOf(round) });
+  }
+  if (action === 'ack') {
+    const prev = getRound(email);
+    if (prev) saveNpcStacks(email, prev);
+    clearRound(email);
+    const round = createNewRound(SMOKE_BALANCE, Math.random, getNpcStacks(email));
     chipsBeforeMap.set(email, SMOKE_BALANCE);
     setRound(email, round);
     return json({ success: true, balance: round.seats[0].chips, round: publicOf(round) });

@@ -32,6 +32,9 @@
 /** @type {Map<string, SeotdaRound>} */
 const rounds = new Map();
 
+/** 테이블별 NPC 칩 잔고 (판 넘어가도 유지) @type {Map<string, Record<string, number>>} */
+const npcStacks = new Map();
+
 /**
  * @param {string} email
  * @returns {SeotdaRound | undefined}
@@ -53,6 +56,36 @@ export function setRound(email, round) {
  */
 export function clearRound(email) {
   rounds.delete(email);
+}
+
+/**
+ * @param {string} email
+ * @returns {Record<string, number>}
+ */
+export function getNpcStacks(email) {
+  return { ...(npcStacks.get(email) ?? {}) };
+}
+
+/**
+ * 쇼다운 후 NPC 칩 스냅샷
+ * @param {string} email
+ * @param {SeotdaRound} round
+ */
+export function saveNpcStacks(email, round) {
+  /** @type {Record<string, number>} */
+  const stacks = {};
+  for (const s of round.seats) {
+    if (s.isNpc) stacks[s.id] = Math.max(0, s.chips);
+  }
+  npcStacks.set(email, stacks);
+}
+
+/**
+ * 새 테이블(판 시작 버튼) — NPC 칩 초기화
+ * @param {string} email
+ */
+export function resetNpcStacks(email) {
+  npcStacks.delete(email);
 }
 
 /**

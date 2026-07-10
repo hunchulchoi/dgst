@@ -11,15 +11,16 @@ import {
 } from './seotdaEngine.js';
 import { NPC_PROFILES, chooseNpcAction, pickPressureNpc, npcRaiseChips } from './seotdaNpc.js';
 
-const NPC_START_CHIPS = 1000;
+export const NPC_START_CHIPS = 1000;
 /** 한 판 레이즈 횟수 상한 — 무한 콜/레이즈 방지 */
 export const MAX_RAISES = 3;
 
 /**
  * @param {number} userChips
  * @param {() => number} [rng]
+ * @param {Record<string, number>} [npcChipMap] 이전 판 NPC 잔고
  */
-export function createNewRound(userChips, rng = Math.random) {
+export function createNewRound(userChips, rng = Math.random, npcChipMap = {}) {
   let deck = shuffleDeck(createDeck(), rng);
   /** @type {import('./seotdaState.js').SeotdaSeat[]} */
   const seats = [
@@ -37,13 +38,20 @@ export function createNewRound(userChips, rng = Math.random) {
   ];
   deck = deck.slice(2);
 
+  const log = /** @type {string[]} */ ([]);
+
   for (const profile of NPC_PROFILES) {
+    let chips = Number(npcChipMap[profile.id] ?? NPC_START_CHIPS);
+    if (!Number.isFinite(chips) || chips <= 0) {
+      chips = NPC_START_CHIPS;
+      log.push(`${profile.name} 칩 리필`);
+    }
     seats.push({
       id: profile.id,
       name: profile.name,
       isNpc: true,
       style: profile.style,
-      chips: NPC_START_CHIPS,
+      chips,
       cards: [deck[0], deck[1]],
       folded: false,
       contrib: 0,
@@ -54,7 +62,6 @@ export function createNewRound(userChips, rng = Math.random) {
   }
 
   let pot = 0;
-  const log = /** @type {string[]} */ ([]);
   for (const s of seats) {
     const pay = Math.min(ANTE, s.chips);
     s.chips -= pay;
