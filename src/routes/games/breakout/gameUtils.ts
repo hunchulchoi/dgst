@@ -961,7 +961,7 @@ export const BILLIARD_TIME_LIMIT_MS = 45_000;
 /** 이동 공 보너스 제한시간 */
 export const MOVERS_TIME_LIMIT_MS = 30_000;
 /** 이동 목표공 순찰 속도 */
-export const MOVERS_BALL_SPEED = 2.2;
+export const MOVERS_BALL_SPEED = 4.4;
 
 /** 보너스 챌린지별 제한시간 */
 export function getBonusTimeLimitMs(challenge: BonusChallengeType): number {
