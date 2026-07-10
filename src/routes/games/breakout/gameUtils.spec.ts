@@ -448,7 +448,7 @@ describe('breakout gameUtils', () => {
     expect(getBonusTimeLimitMs('spin')).toBe(SPIN_TIME_LIMIT_MS);
 
     const irons = createStarRainIronBricks();
-    expect(irons.length).toBeGreaterThanOrEqual(5);
+    expect(irons.length).toBe(3);
     expect(irons.every((b) => b.type === 'iron')).toBe(true);
 
     const star = createFallingStar(0, () => 0.5);

@@ -1356,16 +1356,8 @@ export function createStarRainIronBricks(): Brick[] {
     color: BRICK_COLORS.iron,
     points: 0
   });
-  // 중간 높이 철 몇 개 — 사이 틈으로 별 낙하
-  return [
-    makeIron(2, 1),
-    makeIron(2, 2),
-    makeIron(2, 5),
-    makeIron(2, 6),
-    makeIron(4, 3),
-    makeIron(4, 4),
-    makeIron(4, 7)
-  ];
+  // 중간 높이 철 소수 — 별 낙하 공간 확보
+  return [makeIron(3, 2), makeIron(3, 5), makeIron(5, 4)];
 }
 
 /**
