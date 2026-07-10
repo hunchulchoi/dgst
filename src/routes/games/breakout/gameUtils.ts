@@ -191,6 +191,8 @@ export const AIM_LINE_LENGTH = 120;
 
 /** 별 소나기(구 스핀샷): 빠른 공 + 20초 생존·수집 */
 export const SPIN_BALL_SPEED = 5.5;
+/** 보너스 스테이지 흰공 속도 배율 (일반 곡선 대비) */
+export const BONUS_BALL_SPEED_MULT = 1.4;
 export const SPIN_TIME_LIMIT_MS = 20_000;
 export const STAR_RAIN_SPAWN_INTERVAL_MS = 320;
 export const STAR_RAIN_MAX_ACTIVE = 14;
@@ -509,7 +511,7 @@ export function buildStageConfig(stage: number): StageConfig {
 
   if (kind === 'bonus') {
     label = BONUS_LABELS[clamped] ?? '당구 퍼즐';
-    ballSpeed = roundStageValue(Math.max(4.8, ballSpeed * 0.78), 1);
+    ballSpeed = roundStageValue(Math.max(4.8, ballSpeed * BONUS_BALL_SPEED_MULT), 1);
     if (getBonusChallengeType(clamped) === 'spin') {
       ballSpeed = SPIN_BALL_SPEED;
     }
