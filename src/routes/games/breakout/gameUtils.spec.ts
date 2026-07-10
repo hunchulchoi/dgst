@@ -22,6 +22,8 @@ import {
   getBonusShotClearMultiplier,
   getBonusPuzzleGrid,
   resolveBonusMiss,
+  buildBonusClearPerformance,
+  getBonusClearGrade,
   createAimedBall,
   clampAimAngle,
   aimAngleFromDragRatio,
@@ -559,5 +561,32 @@ describe('breakout gameUtils', () => {
     expect(shouldContinueGameLoop('gameWin')).toBe(false);
     expect(shouldContinueGameLoop('menu')).toBe(false);
     expect(shouldContinueGameLoop('bonusIntro')).toBe(false);
+  });
+
+  it('builds bonus clear performance with grade and score lines', () => {
+    const oneShot = buildBonusClearPerformance({
+      challenge: 'spin',
+      stage: 1,
+      playScore: 800,
+      attemptsUsed: 1,
+      starRainCaught: 24
+    });
+    expect(oneShot.shotMultiplier).toBe(2);
+    expect(oneShot.grade).toBe('S');
+    expect(oneShot.gradeLabel).toBe('PERFECT');
+    expect(oneShot.lines.some((l) => l.label.includes('×2'))).toBe(true);
+    expect(oneShot.totalAdded).toBe(800 * 2 + getStageClearBonus(1, 1));
+
+    const second = buildBonusClearPerformance({
+      challenge: 'billiard',
+      stage: 5,
+      playScore: 400,
+      attemptsUsed: 2
+    });
+    expect(second.shotMultiplier).toBe(1);
+    expect(second.grade).toBe('C');
+    expect(getBonusClearGrade('spin', { attemptsUsed: 1, playScore: 0, starRainCaught: 10 })).toBe(
+      'B'
+    );
   });
 });

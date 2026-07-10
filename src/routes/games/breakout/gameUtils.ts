@@ -838,6 +838,105 @@ export function getBonusShotClearMultiplier(attemptsUsed: number): number {
   return attemptsUsed <= 1 ? BONUS_CLEAR_MULTIPLIER : 1;
 }
 
+export type BonusClearGrade = 'S' | 'A' | 'B' | 'C';
+
+export interface BonusClearScoreLine {
+  label: string;
+  value: number;
+  /** 표시 시작 지연(ms) */
+  delayMs: number;
+}
+
+export interface BonusClearPerformance {
+  title: string;
+  lines: BonusClearScoreLine[];
+  grade: BonusClearGrade;
+  gradeLabel: string;
+  totalAdded: number;
+  shotMultiplier: number;
+  attemptsUsed: number;
+}
+
+/**
+ * 보너스 클리어 점수 퍼포먼스 데이터.
+ * playScore = 스테이지 중 획득분. 1발이면 playScore를 한 번 더 더해 ×2.
+ */
+export function buildBonusClearPerformance(params: {
+  challenge: BonusChallengeType;
+  stage: number;
+  playScore: number;
+  attemptsUsed: number;
+  starRainCaught?: number;
+}): BonusClearPerformance {
+  const { challenge, stage, attemptsUsed } = params;
+  const playScore = Math.max(0, Math.floor(params.playScore));
+  const shotMultiplier = getBonusShotClearMultiplier(attemptsUsed);
+  const clearBonus = getStageClearBonus(stage, attemptsUsed);
+  const displayTotal = playScore * shotMultiplier + clearBonus;
+
+  const lines: BonusClearScoreLine[] = [
+    { label: '플레이 점수', value: playScore, delayMs: 200 }
+  ];
+  if (shotMultiplier > 1) {
+    lines.push({ label: '1발 클리어 ×2', value: playScore, delayMs: 700 });
+  }
+  lines.push({
+    label: shotMultiplier > 1 ? '클리어 보너스 ×2' : '클리어 보너스',
+    value: clearBonus,
+    delayMs: shotMultiplier > 1 ? 1200 : 700
+  });
+  lines.push({
+    label: '합계',
+    value: displayTotal,
+    delayMs: shotMultiplier > 1 ? 1700 : 1200
+  });
+
+  const grade = getBonusClearGrade(challenge, {
+    attemptsUsed,
+    playScore,
+    starRainCaught: params.starRainCaught ?? 0
+  });
+
+  const titles: Record<BonusChallengeType, string> = {
+    billiard: '🎱 당구 클리어',
+    stars: '⭐ 별 클리어',
+    spin: '⭐ 별 소나기 결과',
+    gems: '💎 보석 클리어',
+    golden: '🪙 골든샷 결과',
+    vault: '🔐 금고 개방'
+  };
+
+  return {
+    title: titles[challenge] ?? '보너스 클리어',
+    lines,
+    grade,
+    gradeLabel: grade === 'S' ? 'PERFECT' : grade === 'A' ? 'GREAT' : grade === 'B' ? 'GOOD' : 'OK',
+    totalAdded: displayTotal,
+    shotMultiplier,
+    attemptsUsed
+  };
+}
+
+/** 보너스 클리어 등급 */
+export function getBonusClearGrade(
+  challenge: BonusChallengeType,
+  stats: { attemptsUsed: number; playScore: number; starRainCaught: number }
+): BonusClearGrade {
+  if (challenge === 'spin') {
+    const n = stats.starRainCaught;
+    if (n >= 22) return 'S';
+    if (n >= 14) return 'A';
+    if (n >= 7) return 'B';
+    return 'C';
+  }
+  if (stats.attemptsUsed <= 1) {
+    if (stats.playScore >= 2000) return 'S';
+    return 'A';
+  }
+  if (stats.playScore >= 1200) return 'B';
+  return 'C';
+}
+
 // ——— 4구 당구 보너스 ———
 
 export type BilliardBallKind = 'cue' | 'red' | 'yellow';

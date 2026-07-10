@@ -52,6 +52,7 @@
     getRequiredCushions,
     getStageClearBonus,
     getStageConfig,
+    buildBonusClearPerformance,
     handleBrickCollision,
     handleEnclosedCushionCollision,
     handleTopAndSideCushionCollision,
@@ -98,6 +99,7 @@
     type BilliardBall,
     type BonusChallengeType,
     type BonusCollectible,
+    type BonusClearPerformance,
     type FallingStar,
     type VaultTarget,
     type Brick,
@@ -146,6 +148,8 @@
   let aimAngle = $state(DEFAULT_AIM_ANGLE);
   let bonusAttemptsUsed = $state(0);
   let bonusStageScoreStart = $state(0);
+  let bonusClearPerf = $state<BonusClearPerformance | null>(null);
+  let bonusClearStartedAt = $state(0);
   let billiardObjects = $state<BilliardBall[]>([]);
   let bonusCollectibles = $state<BonusCollectible[]>([]);
   let fallingStars = $state<FallingStar[]>([]);
@@ -203,6 +207,8 @@
     lastLaserShotAt = 0;
     aimAngle = DEFAULT_AIM_ANGLE;
     bonusAttemptsUsed = 0;
+    bonusClearPerf = null;
+    bonusClearStartedAt = 0;
     billiardObjects = [];
     bonusCollectibles = [];
     fallingStars = [];
@@ -697,22 +703,38 @@
 
   function scheduleStageClear() {
     screen = 'stageClear';
+    const playScore = Math.max(0, score - bonusStageScoreStart);
     let clearBonus = getStageClearBonus(stage, isBonusStage ? bonusAttemptsUsed : 1);
-    if (isBonusStage && bonusAttemptsUsed <= 1) {
-      const earned = Math.max(0, score - bonusStageScoreStart);
-      score += earned;
-      clearBonus = getStageClearBonus(stage, 1);
-      showEffectToast(`1발 클리어 ×2! +${earned + clearBonus}`);
-    } else if (isBonusStage) {
-      showEffectToast(`보너스 클리어 +${clearBonus}`);
+
+    if (isBonusStage) {
+      const perf = buildBonusClearPerformance({
+        challenge: bonusChallenge,
+        stage,
+        playScore,
+        attemptsUsed: bonusAttemptsUsed,
+        starRainCaught
+      });
+      bonusClearPerf = perf;
+      bonusClearStartedAt = Date.now();
+
+      if (bonusAttemptsUsed <= 1) {
+        score += playScore;
+        clearBonus = getStageClearBonus(stage, 1);
+      }
+      score += clearBonus;
+      showEffectToast(`${perf.grade} ${perf.gradeLabel}`);
     } else {
+      bonusClearPerf = null;
       showEffectToast(`스테이지 클리어 +${clearBonus}`);
+      score += clearBonus;
     }
-    score += clearBonus;
+
     if (stageClearTimeout) clearTimeout(stageClearTimeout);
+    const holdMs = isBonusStage ? 3200 : 1500;
     stageClearTimeout = setTimeout(() => {
+      bonusClearPerf = null;
       advanceStage();
-    }, 1500);
+    }, holdMs);
   }
 
   function updateGame() {
@@ -1208,25 +1230,89 @@
     }
 
     if (screen === 'stageClear') {
-      ctx.fillStyle = 'rgba(0,0,0,0.5)';
+      ctx.fillStyle = 'rgba(0,0,0,0.62)';
       ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-      ctx.fillStyle = '#ffd54f';
-      ctx.font = 'bold 22px system-ui, sans-serif';
-      const clearLabel =
-        stageConfig.kind === 'bonus'
-          ? bonusChallenge === 'stars'
-            ? '⭐ 별 전부 클리어!'
-            : bonusChallenge === 'spin'
-              ? '⭐ 별 소나기 클리어!'
-              : bonusChallenge === 'gems'
-                ? '💎 보석 회수 클리어!'
-                : bonusChallenge === 'golden'
-                  ? '🪙 골든샷 클리어!'
-                  : bonusChallenge === 'vault'
-                    ? '🔐 금고 개방!'
-                    : '🎱 당구 챌린지 클리어!'
-          : `스테이지 ${stage} 클리어!`;
-      ctx.fillText(clearLabel, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2);
+
+      if (isBonusStage && bonusClearPerf) {
+        const elapsed = now - bonusClearStartedAt;
+        const perf = bonusClearPerf;
+        const cx = CANVAS_WIDTH / 2;
+
+        ctx.fillStyle = '#ffd54f';
+        ctx.font = 'bold 22px system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(perf.title, cx, 150);
+
+        if (bonusChallenge === 'spin' && starRainCaught > 0) {
+          ctx.fillStyle = '#fff9c4';
+          ctx.font = '13px system-ui, sans-serif';
+          ctx.fillText(`먹은 별 ${starRainCaught}개`, cx, 178);
+        }
+
+        let lineY = 220;
+        ctx.font = '15px system-ui, sans-serif';
+        for (const line of perf.lines) {
+          if (elapsed < line.delayMs) break;
+          const isTotal = line.label === '합계';
+          ctx.fillStyle = isTotal ? '#ffd54f' : '#ffffff';
+          ctx.font = isTotal ? 'bold 17px system-ui, sans-serif' : '15px system-ui, sans-serif';
+          ctx.textAlign = 'left';
+          ctx.fillText(line.label, 90, lineY);
+          ctx.textAlign = 'right';
+          const sign = line.value >= 0 ? '+' : '';
+          ctx.fillText(`${sign}${line.value}`, CANVAS_WIDTH - 90, lineY);
+          if (isTotal) {
+            ctx.strokeStyle = 'rgba(255,213,79,0.45)';
+            ctx.beginPath();
+            ctx.moveTo(90, lineY - 22);
+            ctx.lineTo(CANVAS_WIDTH - 90, lineY - 22);
+            ctx.stroke();
+          }
+          lineY += isTotal ? 36 : 30;
+        }
+
+        const gradeDelay = (perf.lines[perf.lines.length - 1]?.delayMs ?? 1200) + 400;
+        if (elapsed >= gradeDelay) {
+          const gradeColor =
+            perf.grade === 'S'
+              ? '#ffeb3b'
+              : perf.grade === 'A'
+                ? '#81d4fa'
+                : perf.grade === 'B'
+                  ? '#a5d6a7'
+                  : '#b0bec5';
+          ctx.fillStyle = gradeColor;
+          ctx.font = 'bold 48px system-ui, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText(perf.grade, cx, lineY + 50);
+          ctx.font = 'bold 14px system-ui, sans-serif';
+          ctx.fillText(perf.gradeLabel, cx, lineY + 78);
+          if (perf.shotMultiplier > 1) {
+            ctx.fillStyle = '#ffe082';
+            ctx.font = '12px system-ui, sans-serif';
+            ctx.fillText('1발 클리어 보너스 적용', cx, lineY + 100);
+          }
+        }
+      } else {
+        ctx.fillStyle = '#ffd54f';
+        ctx.font = 'bold 22px system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        const clearLabel =
+          stageConfig.kind === 'bonus'
+            ? bonusChallenge === 'stars'
+              ? '⭐ 별 전부 클리어!'
+              : bonusChallenge === 'spin'
+                ? '⭐ 별 소나기 클리어!'
+                : bonusChallenge === 'gems'
+                  ? '💎 보석 회수 클리어!'
+                  : bonusChallenge === 'golden'
+                    ? '🪙 골든샷 클리어!'
+                    : bonusChallenge === 'vault'
+                      ? '🔐 금고 개방!'
+                      : '🎱 당구 챌린지 클리어!'
+            : `스테이지 ${stage} 클리어!`;
+        ctx.fillText(clearLabel, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2);
+      }
     }
   }
 
