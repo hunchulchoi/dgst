@@ -48,6 +48,7 @@
     addMultiballBalls,
     growBallsOnPaddleHit,
     isMultiballGrowActive,
+    syncBallRadii,
     createPaddle,
     createPowerUpDrop,
     DEFAULT_AIM_ANGLE,
@@ -486,7 +487,7 @@
       balls = balls.map((b) => ({
         ...b,
         x: paddle.x + paddle.width / 2,
-        y: paddle.y - BALL_RADIUS - 2
+        y: paddle.y - b.radius - 2
       }));
       return;
     }
@@ -755,12 +756,13 @@
       case 'fast':
       case 'invincible':
       case 'laser':
+      case 'bigBall':
         activeEffects = applyTimedPowerUp(type, activeEffects, now);
         syncPaddleWidth();
         {
           const config = getStageConfig(stage);
           const speed = getEffectiveBallSpeed(config.ballSpeed, activeEffects, now);
-          balls = normalizeAllBallSpeeds(balls, speed);
+          balls = normalizeAllBallSpeeds(syncBallRadii(balls, activeEffects, now), speed);
         }
         break;
       case 'shield':
@@ -907,6 +909,7 @@
     if (effectToast && now > effectToastUntil) effectToast = null;
 
     syncPaddleWidth();
+    balls = syncBallRadii(balls, activeEffects, now);
 
     if (isBonusStage && !ballLaunched) {
       if (bonusChallenge === 'flies') {
@@ -950,7 +953,7 @@
       balls = balls.map((b) => ({
         ...b,
         x: paddle.x + paddle.width / 2,
-        y: paddle.y - BALL_RADIUS - 2
+        y: paddle.y - b.radius - 2
       }));
       powerUps = nextPowerUps;
       if (isStageClear(bricks)) scheduleStageClear();
@@ -1280,9 +1283,11 @@
           ? '#eceff1'
           : invincible
             ? '#ffb300'
-            : activeEffects.fastBallsUntil > now
-              ? '#ef5350'
-              : '#64b5f6'
+            : activeEffects.bigBallUntil > now
+              ? '#9575cd'
+              : activeEffects.fastBallsUntil > now
+                ? '#ef5350'
+                : '#64b5f6'
       );
       ctx.fillStyle = ballGrad;
       ctx.beginPath();

@@ -75,6 +75,9 @@ export const LASER_DURATION_MS = 10_000;
 export const MULTIBALL_DURATION_MS = 12_000;
 /** 멀티볼로 늘어날 수 있는 공 최대 개수 */
 export const MAX_MULTIBALL_COUNT = 8;
+/** 거대 공: 반지름 배수 */
+export const BIG_BALL_RADIUS_MULT = 3;
+export const BIG_BALL_DURATION_MS = 12_000;
 export const LASER_INTERVAL_MS = 380;
 export const LASER_SPEED = 11;
 export const COMBO_WINDOW_MS = 1_500;
@@ -92,7 +95,8 @@ export type PowerUpType =
   | 'invincible'
   | 'shield'
   | 'laser'
-  | 'bomb';
+  | 'bomb'
+  | 'bigBall';
 
 export interface Brick {
   x: number;
@@ -152,6 +156,8 @@ export interface ActiveEffects {
   laserUntil: number;
   /** 활성 시 패들로 공 받을 때마다 공 +1 */
   multiballUntil: number;
+  /** 활성 시 공 반지름 × BIG_BALL_RADIUS_MULT */
+  bigBallUntil: number;
 }
 
 export type StageKind = 'normal' | 'theme' | 'bonus';
@@ -617,7 +623,14 @@ export const POWER_UP_META: Record<
   invincible: { label: '무적공', color: '#fff176', symbol: '☄', bad: false, durationMs: INVINCIBLE_BALL_DURATION_MS },
   shield: { label: '보호막', color: '#80cbc4', symbol: '🛡', bad: false },
   laser: { label: '레이저', color: '#ff8a80', symbol: '🔫', bad: false, durationMs: LASER_DURATION_MS },
-  bomb: { label: '전체 폭파', color: '#ff6f00', symbol: '💣', bad: false }
+  bomb: { label: '전체 폭파', color: '#ff6f00', symbol: '💣', bad: false },
+  bigBall: {
+    label: '거대 공',
+    color: '#b39ddb',
+    symbol: '⬤',
+    bad: false,
+    durationMs: BIG_BALL_DURATION_MS
+  }
 };
 
 const POWER_UP_DROP_CHANCE: Record<BrickType, number> = {
@@ -629,10 +642,17 @@ const POWER_UP_DROP_CHANCE: Record<BrickType, number> = {
 };
 
 const GOOD_POWER_UPS: PowerUpType[] = [
-  'multiball', 'expand', 'extraLife', 'slow', 'invincible', 'shield', 'laser'
+  'multiball', 'expand', 'extraLife', 'slow', 'invincible', 'shield', 'laser', 'bigBall'
 ];
 const BAD_POWER_UPS: PowerUpType[] = ['fast', 'shrink'];
-const RAINBOW_POWER_UPS: PowerUpType[] = ['multiball', 'invincible', 'shield', 'laser', 'expand'];
+const RAINBOW_POWER_UPS: PowerUpType[] = [
+  'multiball',
+  'invincible',
+  'shield',
+  'laser',
+  'expand',
+  'bigBall'
+];
 
 /**
  * 폭탄은 풀 균등 추첨 제외.
@@ -657,7 +677,8 @@ export function createActiveEffects(): ActiveEffects {
     fastBallsUntil: 0,
     invincibleBallUntil: 0,
     laserUntil: 0,
-    multiballUntil: 0
+    multiballUntil: 0,
+    bigBallUntil: 0
   };
 }
 
@@ -2364,6 +2385,9 @@ export function applyTimedPowerUp(
     case 'multiball':
       next.multiballUntil = now + duration;
       break;
+    case 'bigBall':
+      next.bigBallUntil = now + duration;
+      break;
     default:
       break;
   }
@@ -2427,6 +2451,21 @@ export function isMultiballGrowActive(effects: ActiveEffects, now: number): bool
   return effects.multiballUntil > now;
 }
 
+export function isBigBallActive(effects: ActiveEffects, now: number): boolean {
+  return effects.bigBallUntil > now;
+}
+
+/** 효과에 따른 공 반지름 */
+export function getEffectiveBallRadius(effects: ActiveEffects, now: number): number {
+  return isBigBallActive(effects, now) ? BALL_RADIUS * BIG_BALL_RADIUS_MULT : BALL_RADIUS;
+}
+
+/** 모든 공 반지름을 현재 효과에 맞춤 */
+export function syncBallRadii(balls: Ball[], effects: ActiveEffects, now: number): Ball[] {
+  const radius = getEffectiveBallRadius(effects, now);
+  return balls.map((ball) => (ball.radius === radius ? ball : { ...ball, radius }));
+}
+
 export function getActiveEffectLabels(
   effects: ActiveEffects,
   now: number,
@@ -2436,6 +2475,9 @@ export function getActiveEffectLabels(
   if (shieldCharges > 0) labels.push(`보호막 x${shieldCharges}`);
   if (effects.multiballUntil > now) {
     labels.push(`멀티볼 ${Math.ceil((effects.multiballUntil - now) / 1000)}s`);
+  }
+  if (effects.bigBallUntil > now) {
+    labels.push(`거대공 ${Math.ceil((effects.bigBallUntil - now) / 1000)}s`);
   }
   if (effects.expandPaddleUntil > now) labels.push(`확대 ${Math.ceil((effects.expandPaddleUntil - now) / 1000)}s`);
   if (effects.shrinkPaddleUntil > now) labels.push(`축소 ${Math.ceil((effects.shrinkPaddleUntil - now) / 1000)}s`);

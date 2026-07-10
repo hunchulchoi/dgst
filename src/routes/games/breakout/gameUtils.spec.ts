@@ -11,6 +11,12 @@ import {
   isMultiballGrowActive,
   MAX_MULTIBALL_COUNT,
   MULTIBALL_DURATION_MS,
+  BIG_BALL_RADIUS_MULT,
+  BIG_BALL_DURATION_MS,
+  BALL_RADIUS,
+  getEffectiveBallRadius,
+  isBigBallActive,
+  syncBallRadii,
   createPaddle,
   createPowerUpDrop,
   damageBrickAt,
@@ -694,6 +700,23 @@ describe('breakout gameUtils', () => {
     expect(capped.length).toBe(MAX_MULTIBALL_COUNT);
     expect(growBallsOnPaddleHit(capped, capped[0]!, 6).length).toBe(MAX_MULTIBALL_COUNT);
     expect(createMultiballBalls(source, 6)).toHaveLength(3);
+  });
+
+  it('bigBall triples radius for limited time', () => {
+    const now = 3_000;
+    const effects = applyTimedPowerUp('bigBall', createActiveEffects(), now);
+    expect(isBigBallActive(effects, now + 1)).toBe(true);
+    expect(isBigBallActive(effects, now + BIG_BALL_DURATION_MS + 1)).toBe(false);
+    expect(getEffectiveBallRadius(effects, now + 1)).toBe(BALL_RADIUS * BIG_BALL_RADIUS_MULT);
+    expect(getEffectiveBallRadius(createActiveEffects(), now)).toBe(BALL_RADIUS);
+
+    const paddle = createPaddle();
+    const ball = createBall(paddle, 5);
+    expect(ball.radius).toBe(BALL_RADIUS);
+    const synced = syncBallRadii([ball], effects, now + 1);
+    expect(synced[0]!.radius).toBe(BALL_RADIUS * BIG_BALL_RADIUS_MULT);
+    const restored = syncBallRadii(synced, createActiveEffects(), now + 1);
+    expect(restored[0]!.radius).toBe(BALL_RADIUS);
   });
 
   it('moves and collects falling power-ups', () => {
