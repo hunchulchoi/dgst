@@ -5,34 +5,38 @@
   import { onMount } from 'svelte';
 
   interface Celebration {
-    active: boolean;
-    clearedAt: string | null;
-    until: string | null;
-    nickname: string | null;
+    id: string;
+    kind: string;
+    game: string;
+    label: string;
+    nickname: string;
+    detail: string;
+    at: string;
+    until: string;
   }
 
-  const SEEN_PREFIX = 'breakout50fw:';
+  const SEEN_PREFIX = 'boardfw:';
 
   let open = $state(false);
-  let nickname = $state('누군가');
+  let items = $state<Celebration[]>([]);
 
-  function seenKey(clearedAt: string) {
-    return `${SEEN_PREFIX}${clearedAt}`;
+  function seenKey(id: string) {
+    return `${SEEN_PREFIX}${id}`;
   }
 
-  function hasSeen(clearedAt: string) {
+  function hasSeen(id: string) {
     if (!browser) return true;
     try {
-      return localStorage.getItem(seenKey(clearedAt)) === '1';
+      return localStorage.getItem(seenKey(id)) === '1';
     } catch {
       return true;
     }
   }
 
-  function markSeen(clearedAt: string) {
+  function markSeen(id: string) {
     if (!browser) return;
     try {
-      localStorage.setItem(seenKey(clearedAt), '1');
+      localStorage.setItem(seenKey(id), '1');
     } catch {
       /* ignore */
     }
@@ -46,19 +50,16 @@
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch(`/games/breakout?celebrate=1&_=${Date.now()}`, {
-          cache: 'no-store'
-        });
+        const res = await fetch(`/games/celebrations?_=${Date.now()}`, { cache: 'no-store' });
         if (!res.ok || cancelled) return;
-        const data = (await res.json()) as { celebration?: Celebration };
-        const c = data.celebration;
-        if (!c?.active || !c.clearedAt) return;
-        if (hasSeen(c.clearedAt)) return;
-        nickname = c.nickname || '누군가';
+        const data = (await res.json()) as { celebrations?: Celebration[] };
+        const list = (data.celebrations ?? []).filter((c) => c?.id && !hasSeen(c.id));
+        if (list.length === 0) return;
+        items = list;
         open = true;
-        markSeen(c.clearedAt);
+        for (const c of list) markSeen(c.id);
       } catch (err) {
-        console.error('[breakout fireworks]', err);
+        console.error('[board fireworks]', err);
       }
     })();
     return () => {
@@ -69,15 +70,24 @@
 
 <Offcanvas
   isOpen={open}
-  header="블록깨기 전체 클리어!"
+  header={items.length > 1 ? `축하 ${items.length}건!` : items[0]?.label || '축하!'}
   toggle={close}
   fade={true}
   class="text-center text-dark rounded-bottom-4"
   style="background: linear-gradient(90deg, rgba(255,213,79,0.95) 0%, rgba(255,152,0,0.9) 55%, rgba(244,81,30,0.92) 100%);"
   placement="top"
 >
-  <div class="neon">
-    🎉 <strong>{nickname}</strong> 님이 블록깨기 <strong>50단계</strong> 클리어! 🎆
+  <div class="cele-list">
+    {#each items as c (c.id)}
+      <div class="neon cele-item">
+        {#if c.kind === 'breakout50'}
+          🎉 <strong>{c.nickname}</strong> 님이 블록깨기 <strong>50단계</strong> 클리어! 🎆
+        {:else}
+          🏆 <strong>{c.nickname}</strong> 님이 <strong>{c.label}</strong>!
+          <span class="detail">{c.detail}</span>
+        {/if}
+      </div>
+    {/each}
   </div>
   {#if open}
     <div class="fw-layer" aria-hidden="true">
@@ -87,7 +97,7 @@
         delay={[200, 1800]}
         infinite
         duration={5000}
-        amount={180}
+        amount={Math.min(120 + items.length * 40, 280)}
         fallDistance="100vh"
       />
     </div>
@@ -95,12 +105,25 @@
 </Offcanvas>
 
 <style>
+  .cele-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  .cele-item {
+    line-height: 1.45;
+  }
+  .detail {
+    display: block;
+    font-size: 0.75em;
+    opacity: 0.92;
+    margin-top: 0.15rem;
+  }
   .neon {
     font-family: 'ChosunGs', serif;
-    font-size: 1.6em;
+    font-size: 1.45em;
     color: #fff;
     text-shadow: 0 0 0.1em rgba(255, 255, 255, 0.7);
-    line-height: 1.4;
   }
   .fw-layer {
     position: fixed;

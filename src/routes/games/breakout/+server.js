@@ -2,7 +2,6 @@ import { error, json } from '@sveltejs/kit';
 import { z } from 'zod';
 import { getPrisma } from '$lib/database/prisma.js';
 import { getTodayBreakoutStats } from '$lib/server/gameBreakoutStats.js';
-import { getBreakoutStage50Celebration } from '$lib/server/breakoutCelebration.js';
 import { getGameSession, isLocalGameSmokeSession } from '$lib/server/localGameSmokeSession.js';
 import { normalizeToIsoString } from '$lib/util/formatRelativeTime.js';
 
@@ -82,11 +81,23 @@ async function getMyBest(email) {
 export async function GET(event) {
   const { url } = event;
 
-  // 자유게시판 폭죽용 — 로그인 불필요
   if (url.searchParams.get('celebrate')) {
-    const celebration = await getBreakoutStage50Celebration();
+    // 하위호환 — 통합 API로 리다이렉트 성격의 응답
+    const { getBoardCelebrations } = await import('$lib/server/boardCelebrations.js');
+    const celebrations = await getBoardCelebrations();
+    const stage50 = celebrations.find((c) => c.kind === 'breakout50');
     return json(
-      { celebration },
+      {
+        celebrations,
+        celebration: stage50
+          ? {
+              active: true,
+              clearedAt: stage50.at,
+              until: stage50.until,
+              nickname: stage50.nickname
+            }
+          : { active: false, clearedAt: null, until: null, nickname: null }
+      },
       { headers: { 'Cache-Control': 'no-store, max-age=0' } }
     );
   }
