@@ -199,13 +199,30 @@ const THEME_LABELS: Record<number, string> = {
 };
 
 const BONUS_LABELS: Record<number, string> = {
-  1: '당구 퍼즐(테스트)',
-  5: '당구 퍼즐',
-  15: '포켓 샷',
-  25: '레인 샷',
-  35: '철 케이지',
-  45: '3쿠션'
+  1: '별 먹기(테스트)',
+  5: '3쿠션 챌린지',
+  15: '별 먹기',
+  25: '보석 회수',
+  35: '별 폭풍',
+  45: '보석 배율'
 };
+
+export type BonusChallengeType = 'billiard' | 'stars' | 'gems';
+
+const BONUS_CHALLENGE_BY_STAGE: Record<number, BonusChallengeType> = {
+  1: 'stars',
+  5: 'billiard',
+  15: 'stars',
+  25: 'gems',
+  35: 'stars',
+  45: 'gems'
+};
+
+/** 보너스 스테이지 챌린지 종류 */
+export function getBonusChallengeType(stage: number): BonusChallengeType {
+  const s = clampStage(stage);
+  return BONUS_CHALLENGE_BY_STAGE[s] ?? 'billiard';
+}
 
 const NORMAL_PATTERN_POOL: PatternId[] = [
   'full',
@@ -926,6 +943,126 @@ export function isBilliardClear(
 
 export function getBilliardTimeLeftMs(endsAt: number, now: number): number {
   return Math.max(0, endsAt - now);
+}
+
+// ——— 별 먹기 / 보석 배율 ———
+
+export type BonusCollectibleKind = 'star' | 'gem';
+
+export interface BonusCollectible {
+  id: string;
+  kind: BonusCollectibleKind;
+  x: number;
+  y: number;
+  radius: number;
+  collected: boolean;
+  value: number;
+}
+
+export const STAR_RADIUS = 12;
+export const GEM_RADIUS = 11;
+export const STAR_BASE_SCORE = 80;
+export const GEM_BASE_SCORE = 100;
+
+/** 쿠션 횟수 → 보석 점수 배율 */
+export function getCushionMultiplier(cushions: number): number {
+  if (cushions <= 1) return 1;
+  if (cushions === 2) return 2;
+  if (cushions === 3) return 4;
+  if (cushions === 4) return 8;
+  return 16;
+}
+
+function makeCollectible(
+  id: string,
+  kind: BonusCollectibleKind,
+  x: number,
+  y: number,
+  value: number
+): BonusCollectible {
+  return {
+    id,
+    kind,
+    x,
+    y,
+    radius: kind === 'star' ? STAR_RADIUS : GEM_RADIUS,
+    collected: false,
+    value
+  };
+}
+
+/** 별 배치 — 스테이지 높을수록 개수↑ */
+export function createStarCollectibles(stage: number): BonusCollectible[] {
+  const midX = CANVAS_WIDTH / 2;
+  const hard = stage >= 35;
+  const points: Array<[number, number]> = hard
+    ? [
+        [midX - 120, 140],
+        [midX + 120, 140],
+        [midX, 200],
+        [midX - 90, 280],
+        [midX + 90, 280],
+        [midX - 40, 360],
+        [midX + 40, 360]
+      ]
+    : [
+        [midX, 150],
+        [midX - 100, 230],
+        [midX + 100, 230],
+        [midX - 60, 330],
+        [midX + 60, 330]
+      ];
+  return points.map(([x, y], i) => makeCollectible(`star-${i}`, 'star', x, y, STAR_BASE_SCORE));
+}
+
+/** 보석 배치 */
+export function createGemCollectibles(stage: number): BonusCollectible[] {
+  const midX = CANVAS_WIDTH / 2;
+  const hard = stage >= 45;
+  const points: Array<[number, number]> = hard
+    ? [
+        [midX - 110, 160],
+        [midX + 110, 160],
+        [midX, 240],
+        [midX - 70, 320],
+        [midX + 70, 320],
+        [midX, 400]
+      ]
+    : [
+        [midX - 90, 170],
+        [midX + 90, 170],
+        [midX, 260],
+        [midX - 50, 360],
+        [midX + 50, 360]
+      ];
+  return points.map(([x, y], i) => makeCollectible(`gem-${i}`, 'gem', x, y, GEM_BASE_SCORE));
+}
+
+export function tryCollectItem(
+  cue: Ball,
+  item: BonusCollectible
+): { item: BonusCollectible; collected: boolean } {
+  if (item.collected) return { item, collected: false };
+  const dist = Math.hypot(item.x - cue.x, item.y - cue.y);
+  if (dist >= cue.radius + item.radius) return { item, collected: false };
+  return { item: { ...item, collected: true }, collected: true };
+}
+
+export function countCollectedItems(items: BonusCollectible[]): number {
+  return items.filter((i) => i.collected).length;
+}
+
+export function isCollectibleClear(items: BonusCollectible[]): boolean {
+  return items.length > 0 && items.every((i) => i.collected);
+}
+
+/** 보석 획득 점수 = 기본 × 스테이지 × 쿠션배율 */
+export function getGemPickupScore(baseValue: number, stage: number, cushions: number): number {
+  return baseValue * stage * getCushionMultiplier(cushions);
+}
+
+export function getStarPickupScore(baseValue: number, stage: number): number {
+  return baseValue * stage;
 }
 
 export function movePaddle(paddle: Paddle, dx: number): Paddle {

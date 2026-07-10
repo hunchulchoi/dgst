@@ -19,6 +19,8 @@
     createBall,
     createBilliardObjectBalls,
     createBricks,
+    createGemCollectibles,
+    createStarCollectibles,
     createDropsFromDestroyedBricks,
     createLaserShot,
     createMultiballBalls,
@@ -30,7 +32,11 @@
     getActiveEffectLabels,
     getAimLineEnd,
     getBonusShotClearMultiplier,
+    getBonusChallengeType,
     getBilliardTimeLeftMs,
+    getCushionMultiplier,
+    getGemPickupScore,
+    getStarPickupScore,
     getEffectiveBallSpeed,
     getEffectivePaddleWidth,
     getRequiredCushions,
@@ -46,6 +52,9 @@
     INITIAL_LIVES,
     isBilliardClear,
     countHitBilliardBalls,
+    countCollectedItems,
+    isCollectibleClear,
+    tryCollectItem,
     resolveBonusMiss,
     resolveCueObjectHit,
     resolveLifeLoss,
@@ -75,6 +84,8 @@
     type ActiveEffects,
     type Ball,
     type BilliardBall,
+    type BonusChallengeType,
+    type BonusCollectible,
     type Brick,
     type Laser,
     type Paddle,
@@ -122,6 +133,7 @@
   let bonusAttemptsUsed = $state(0);
   let bonusStageScoreStart = $state(0);
   let billiardObjects = $state<BilliardBall[]>([]);
+  let bonusCollectibles = $state<BonusCollectible[]>([]);
   let cushionCount = $state(0);
   let billiardEndsAt = $state(0);
   let requiredCushions = $state(1);
@@ -145,6 +157,9 @@
   const isLoggedIn = $derived(!!data.session?.user?.email);
   const stageConfig = $derived(getStageConfig(stage));
   const isBonusStage = $derived(stageConfig.kind === 'bonus');
+  const bonusChallenge = $derived<BonusChallengeType>(
+    isBonusStage ? getBonusChallengeType(stage) : 'billiard'
+  );
   const isBonusAiming = $derived(
     isBonusStage && !ballLaunched && (screen === 'ready' || screen === 'paused')
   );
@@ -167,9 +182,27 @@
     aimAngle = DEFAULT_AIM_ANGLE;
     bonusAttemptsUsed = 0;
     billiardObjects = [];
+    bonusCollectibles = [];
     cushionCount = 0;
     billiardEndsAt = 0;
     requiredCushions = 1;
+  }
+
+  function resetBonusTargets(stageNum: number) {
+    const challenge = getBonusChallengeType(stageNum);
+    cushionCount = 0;
+    requiredCushions = getRequiredCushions(stageNum);
+    billiardEndsAt = 0;
+    if (challenge === 'billiard') {
+      billiardObjects = createBilliardObjectBalls(stageNum);
+      bonusCollectibles = [];
+    } else if (challenge === 'stars') {
+      billiardObjects = [];
+      bonusCollectibles = createStarCollectibles(stageNum);
+    } else {
+      billiardObjects = [];
+      bonusCollectibles = createGemCollectibles(stageNum);
+    }
   }
 
   function prepareBallForStage(stageNum: number) {
@@ -177,13 +210,11 @@
     if (config.kind === 'bonus') {
       paddle = createPaddle();
       bricks = [];
-      billiardObjects = createBilliardObjectBalls(stageNum);
-      cushionCount = 0;
-      requiredCushions = getRequiredCushions(stageNum);
-      billiardEndsAt = 0;
+      resetBonusTargets(stageNum);
       balls = [createAimedBall(paddle, config.ballSpeed, aimAngle)];
     } else {
       billiardObjects = [];
+      bonusCollectibles = [];
       cushionCount = 0;
       balls = [createBall(paddle, config.ballSpeed)];
     }
@@ -237,8 +268,7 @@
       bonusAttemptsUsed += 1;
       const config = getStageConfig(stage);
       balls = [createAimedBall(paddle, config.ballSpeed, aimAngle)];
-      cushionCount = 0;
-      billiardObjects = createBilliardObjectBalls(stage);
+      resetBonusTargets(stage);
       billiardEndsAt = Date.now() + BILLIARD_TIME_LIMIT_MS;
     }
     ballLaunched = true;
@@ -252,9 +282,7 @@
     activeEffects = createActiveEffects();
     bricks = [];
     paddle = createPaddle();
-    billiardObjects = createBilliardObjectBalls(stage);
-    cushionCount = 0;
-    billiardEndsAt = 0;
+    resetBonusTargets(stage);
     balls = [createAimedBall(paddle, config.ballSpeed, aimAngle)];
     ballLaunched = false;
     screen = 'ready';
@@ -303,24 +331,48 @@
     cue = wall.ball;
     if (wall.cushionHit) cushionCount += 1;
 
-    let nextObjects = billiardObjects;
-    for (let i = 0; i < nextObjects.length; i++) {
-      const result = resolveCueObjectHit(cue, nextObjects[i]);
-      cue = result.cue;
-      if (result.scored) {
-        nextObjects = nextObjects.map((b, idx) => (idx === i ? result.obj : b));
-        score += BILLIARD_HIT_SCORE * stage;
-        showEffectToast(
-          result.obj.kind === 'yellow' ? '노란공 적중!' : '빨간공 적중!'
-        );
+    if (bonusChallenge === 'billiard') {
+      let nextObjects = billiardObjects;
+      for (let i = 0; i < nextObjects.length; i++) {
+        const result = resolveCueObjectHit(cue, nextObjects[i]);
+        cue = result.cue;
+        if (result.scored) {
+          nextObjects = nextObjects.map((b, idx) => (idx === i ? result.obj : b));
+          score += BILLIARD_HIT_SCORE * stage;
+          showEffectToast(result.obj.kind === 'yellow' ? '노란공 적중!' : '빨간공 적중!');
+        }
       }
+      nextObjects = nextObjects.map(stepBilliardObject);
+      billiardObjects = nextObjects;
+      balls = [normalizeBallSpeed(cue, config.ballSpeed)];
+      if (isBilliardClear(cushionCount, requiredCushions, nextObjects)) {
+        scheduleStageClear();
+      }
+      return;
     }
 
-    nextObjects = nextObjects.map(stepBilliardObject);
-    billiardObjects = nextObjects;
+    // stars / gems
+    let nextItems = bonusCollectibles;
+    for (let i = 0; i < nextItems.length; i++) {
+      const result = tryCollectItem(cue, nextItems[i]);
+      if (result.collected) {
+        nextItems = nextItems.map((it, idx) => (idx === i ? result.item : it));
+        if (bonusChallenge === 'gems') {
+          const gained = getGemPickupScore(result.item.value, stage, cushionCount);
+          score += gained;
+          showEffectToast(
+            `💎 ×${getCushionMultiplier(cushionCount)} +${gained}`
+          );
+        } else {
+          const gained = getStarPickupScore(result.item.value, stage);
+          score += gained;
+          showEffectToast(`⭐ +${gained}`);
+        }
+      }
+    }
+    bonusCollectibles = nextItems;
     balls = [normalizeBallSpeed(cue, config.ballSpeed)];
-
-    if (isBilliardClear(cushionCount, requiredCushions, nextObjects)) {
+    if (isCollectibleClear(nextItems)) {
       scheduleStageClear();
     }
   }
@@ -712,6 +764,29 @@
         }
         ctx.globalAlpha = 1;
       }
+      for (const item of bonusCollectibles) {
+        if (item.collected) {
+          ctx.globalAlpha = 0.25;
+        }
+        if (item.kind === 'star') {
+          ctx.fillStyle = '#ffd54f';
+          ctx.font = 'bold 22px system-ui, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('⭐', item.x, item.y + 7);
+        } else {
+          ctx.fillStyle = '#80d8ff';
+          ctx.beginPath();
+          ctx.moveTo(item.x, item.y - item.radius);
+          ctx.lineTo(item.x + item.radius, item.y);
+          ctx.lineTo(item.x, item.y + item.radius);
+          ctx.lineTo(item.x - item.radius, item.y);
+          ctx.closePath();
+          ctx.fill();
+          ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+          ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+      }
     }
 
     if (!isBonusStage || !ballLaunched) {
@@ -783,19 +858,35 @@
     ctx.textAlign = 'center';
     ctx.font = '12px system-ui, sans-serif';
     if (stageConfig.kind === 'bonus') {
+      const icon =
+        bonusChallenge === 'stars' ? '⭐' : bonusChallenge === 'gems' ? '💎' : '🎱';
       ctx.fillStyle = '#ffd54f';
-      ctx.fillText(`🎱 ${stageConfig.label}`, CANVAS_WIDTH / 2, 28);
+      ctx.fillText(`${icon} ${stageConfig.label}`, CANVAS_WIDTH / 2, 28);
       ctx.font = '11px system-ui, sans-serif';
       ctx.fillStyle = '#fff';
-      const hitCount = countHitBilliardBalls(billiardObjects);
       const timeLeft = ballLaunched
         ? Math.ceil(getBilliardTimeLeftMs(billiardEndsAt, now) / 1000)
         : Math.ceil(BILLIARD_TIME_LIMIT_MS / 1000);
-      ctx.fillText(
-        `쿠션 ${cushionCount}/${requiredCushions} · 공 ${hitCount}/${billiardObjects.length} · ${timeLeft}s`,
-        CANVAS_WIDTH / 2,
-        46
-      );
+      if (bonusChallenge === 'billiard') {
+        const hitCount = countHitBilliardBalls(billiardObjects);
+        ctx.fillText(
+          `쿠션 ${cushionCount}/${requiredCushions} · 공 ${hitCount}/${billiardObjects.length} · ${timeLeft}s`,
+          CANVAS_WIDTH / 2,
+          46
+        );
+      } else if (bonusChallenge === 'stars') {
+        ctx.fillText(
+          `별 ${countCollectedItems(bonusCollectibles)}/${bonusCollectibles.length} · ${timeLeft}s`,
+          CANVAS_WIDTH / 2,
+          46
+        );
+      } else {
+        ctx.fillText(
+          `보석 ${countCollectedItems(bonusCollectibles)}/${bonusCollectibles.length} · 배율 ×${getCushionMultiplier(cushionCount)} · ${timeLeft}s`,
+          CANVAS_WIDTH / 2,
+          46
+        );
+      }
       ctx.fillStyle = '#c8e6c9';
       ctx.fillText(
         `기회 ${Math.max(0, BONUS_MAX_ATTEMPTS - bonusAttemptsUsed)}/${BONUS_MAX_ATTEMPTS}`,
@@ -853,12 +944,18 @@
         ctx.fillStyle = '#ffd54f';
         ctx.font = 'bold 16px system-ui, sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('각도 조준 · 쿠션 후 모든 공 맞추기', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 8);
+        const aimHint =
+          bonusChallenge === 'stars'
+            ? '각도 조준 · 모든 별 먹기'
+            : bonusChallenge === 'gems'
+              ? '쿠션 쌓고 보석 먹기 (배율↑)'
+              : '각도 조준 · 쿠션 후 모든 공 맞추기';
+        ctx.fillText(aimHint, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 8);
         ctx.fillStyle = '#fff';
         ctx.font = '13px system-ui, sans-serif';
         const left = BONUS_MAX_ATTEMPTS - bonusAttemptsUsed;
         ctx.fillText(
-          `남은 기회 ${left}회 · 필요 쿠션 ${requiredCushions} · 1발 클리어 ×${getBonusShotClearMultiplier(bonusAttemptsUsed + 1)}`,
+          `남은 기회 ${left}회 · 1발 클리어 ×${getBonusShotClearMultiplier(bonusAttemptsUsed + 1)}`,
           CANVAS_WIDTH / 2,
           CANVAS_HEIGHT / 2 + 18
         );
@@ -886,7 +983,11 @@
       ctx.font = 'bold 22px system-ui, sans-serif';
       const clearLabel =
         stageConfig.kind === 'bonus'
-          ? `🎱 당구 챌린지 클리어!`
+          ? bonusChallenge === 'stars'
+            ? '⭐ 별 전부 클리어!'
+            : bonusChallenge === 'gems'
+              ? '💎 보석 회수 클리어!'
+              : '🎱 당구 챌린지 클리어!'
           : `스테이지 ${stage} 클리어!`;
       ctx.fillText(clearLabel, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2);
     }
@@ -1191,15 +1292,39 @@
             </div>
           {:else if screen === 'bonusIntro'}
             <div class="text-center py-3 bonus-intro">
-              <h2 class="mb-2 text-warning">🎱 {stageConfig.label} · {stage}단계</h2>
-              <p class="text-muted mb-3 small">4구 당구 챌린지 — 쿠션을 이용해 모든 공을 맞추세요</p>
-              <ul class="list-unstyled text-start mx-auto bonus-intro-rules mb-4">
-                <li>◎ 흰공(플레이어) · ● 빨간공 2 · ● 노란공 1</li>
-                <li>사방 벽이 <strong>쿠션</strong> — 공 안 죽음, {Math.ceil(BILLIARD_TIME_LIMIT_MS / 1000)}초 제한</li>
-                <li>쿠션 <strong>{getRequiredCushions(stage)}회 이상</strong> + 목표 공 <strong>전부</strong> 적중 시 클리어</li>
-                <li>드래그바 / ← → 로 <strong>발사 각도</strong> 조절</li>
-                <li>기회 <strong>{BONUS_MAX_ATTEMPTS}회</strong> · 1발 클리어 시 점수 <strong>×2</strong></li>
-              </ul>
+              <h2 class="mb-2 text-warning">
+                {bonusChallenge === 'stars'
+                  ? '⭐'
+                  : bonusChallenge === 'gems'
+                    ? '💎'
+                    : '🎱'}
+                {stageConfig.label} · {stage}단계
+              </h2>
+              {#if bonusChallenge === 'stars'}
+                <p class="text-muted mb-3 small">쿠션을 이용해 떠 있는 별을 모두 먹으세요</p>
+                <ul class="list-unstyled text-start mx-auto bonus-intro-rules mb-4">
+                  <li>사방 벽 쿠션 · 공 안 죽음 · {Math.ceil(BILLIARD_TIME_LIMIT_MS / 1000)}초</li>
+                  <li>흰공으로 <strong>모든 ⭐</strong> 에 닿으면 클리어</li>
+                  <li>드래그바 / ← → 로 발사 각도 조절</li>
+                  <li>기회 {BONUS_MAX_ATTEMPTS}회 · 1발 클리어 시 점수 ×2</li>
+                </ul>
+              {:else if bonusChallenge === 'gems'}
+                <p class="text-muted mb-3 small">쿠션을 쌓을수록 보석 점수 배율이 올라갑니다</p>
+                <ul class="list-unstyled text-start mx-auto bonus-intro-rules mb-4">
+                  <li>배율: 1쿠션×1 · 2×2 · 3×4 · 4×8 · 5+×16</li>
+                  <li>쿠션 먼저 쌓고 <strong>💎 보석</strong> 먹기</li>
+                  <li>모든 보석 회수 시 클리어 · {Math.ceil(BILLIARD_TIME_LIMIT_MS / 1000)}초</li>
+                  <li>기회 {BONUS_MAX_ATTEMPTS}회 · 1발 클리어 시 점수 ×2</li>
+                </ul>
+              {:else}
+                <p class="text-muted mb-3 small">4구 당구 — 쿠션을 이용해 모든 공을 맞추세요</p>
+                <ul class="list-unstyled text-start mx-auto bonus-intro-rules mb-4">
+                  <li>◎ 흰공 · ● 빨간 2 · ● 노란 1</li>
+                  <li>쿠션 <strong>{getRequiredCushions(stage)}회 이상</strong> + 목표 공 전부 적중</li>
+                  <li>사방 쿠션 · 공 안 죽음 · {Math.ceil(BILLIARD_TIME_LIMIT_MS / 1000)}초</li>
+                  <li>기회 {BONUS_MAX_ATTEMPTS}회 · 1발 클리어 시 점수 ×2</li>
+                </ul>
+              {/if}
               <button type="button" class="btn btn-warning btn-lg px-5" onclick={dismissBonusIntro}>
                 조준 시작
               </button>
