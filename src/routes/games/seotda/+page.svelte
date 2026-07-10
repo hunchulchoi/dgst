@@ -550,9 +550,9 @@
 
             {#if canAct}
               <div class="bet-box rounded-3 border p-3 mb-3">
-                <div class="d-flex justify-content-between align-items-center mb-2 small">
+                <div class="d-flex justify-content-between align-items-center mb-2 small bet-meta">
                   <span>콜 {formatNumber(toCall)} · 레이즈 최소 {formatNumber(minRaise)}</span>
-                  <span class="text-muted">보유 {formatNumber(maxRaise)}</span>
+                  <span class="bet-meta-sub">보유 {formatNumber(maxRaise)}</span>
                 </div>
                 <div class="d-flex gap-2 align-items-center mb-2 flex-wrap">
                   <label class="small mb-0" for="raise-bet">레이즈</label>
@@ -621,7 +621,7 @@
               </div>
             {/if}
 
-            <div class="log small bg-light rounded-3 p-2" style="max-height: 140px; overflow: auto;">
+            <div class="log small seotda-log rounded-3 border p-2" style="max-height: 140px; overflow: auto;">
               {#each round.log as line, i (i)}
                 <div>{line}</div>
               {/each}
@@ -846,14 +846,59 @@
   }
   .guide-panel {
     background: #f8f6f1;
+    color: #212529;
   }
   .guide-list {
     font-size: 0.9rem;
   }
   .bet-box {
     background: #faf8f4;
+    color: #212529;
+  }
+  .bet-meta-sub {
+    color: #5c636a;
   }
   .bet-input {
     width: 6.5rem;
+  }
+  .seotda-log {
+    background: #f8f9fa;
+    color: #212529;
+  }
+
+  :global([data-bs-theme='dark']) .bet-box {
+    background: #2b3035;
+    border-color: #495057 !important;
+    color: #e9ecef;
+  }
+  :global([data-bs-theme='dark']) .bet-meta-sub {
+    color: #adb5bd;
+  }
+  :global([data-bs-theme='dark']) .bet-box .form-control {
+    background: #212529;
+    border-color: #495057;
+    color: #f8f9fa;
+  }
+  :global([data-bs-theme='dark']) .bet-box .btn-outline-secondary {
+    color: #dee2e6;
+    border-color: #6c757d;
+  }
+  :global([data-bs-theme='dark']) .guide-panel {
+    background: #2b3035;
+    border-color: #495057 !important;
+    color: #e9ecef;
+  }
+  :global([data-bs-theme='dark']) .guide-panel .text-muted {
+    color: #adb5bd !important;
+  }
+  :global([data-bs-theme='dark']) .guide-panel .badge {
+    background: #495057 !important;
+    color: #f8f9fa !important;
+    border-color: #6c757d !important;
+  }
+  :global([data-bs-theme='dark']) .seotda-log {
+    background: #212529;
+    border-color: #495057 !important;
+    color: #dee2e6;
   }
 </style>
