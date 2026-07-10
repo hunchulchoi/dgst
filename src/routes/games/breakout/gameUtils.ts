@@ -197,6 +197,16 @@ export const STAR_RAIN_MAX_ACTIVE = 14;
 export const STAR_RAIN_FALL_MIN = 2.4;
 export const STAR_RAIN_FALL_MAX = 5.2;
 
+/** 파리 잡기: 레이저로 낙하 파리 격추 · 놓치면 실패 */
+export const FLIES_TIME_LIMIT_MS = 20_000;
+export const FLIES_SPAWN_INTERVAL_MS = 480;
+export const FLIES_MAX_ACTIVE = 10;
+export const FLIES_FALL_MIN = 2.2;
+export const FLIES_FALL_MAX = 4.4;
+export const FLIES_LASER_INTERVAL_MS = 220;
+export const FLIES_HIT_SCORE = 80;
+export const FLY_RADIUS = 14;
+
 /** @deprecated 스핀 물리 제거됨 — 호환용 상수만 유지 */
 export const SPIN_MIN = -3;
 export const SPIN_MAX = 3;
@@ -218,7 +228,7 @@ const THEME_LABELS: Record<number, string> = {
 };
 
 const BONUS_LABELS: Record<number, string> = {
-  1: '이동 공(테스트)',
+  1: '파리 잡기(테스트)',
   5: '3쿠션 챌린지',
   15: '별 먹기',
   25: '보석 회수',
@@ -233,10 +243,11 @@ export type BonusChallengeType =
   | 'golden'
   | 'vault'
   | 'spin'
-  | 'movers';
+  | 'movers'
+  | 'flies';
 
 const BONUS_CHALLENGE_BY_STAGE: Record<number, BonusChallengeType> = {
-  1: 'movers',
+  1: 'flies',
   5: 'billiard',
   15: 'stars',
   25: 'gems',
@@ -868,6 +879,7 @@ export function buildBonusClearPerformance(params: {
   playScore: number;
   attemptsUsed: number;
   starRainCaught?: number;
+  fliesCaught?: number;
 }): BonusClearPerformance {
   const { challenge, stage, attemptsUsed } = params;
   const playScore = Math.max(0, Math.floor(params.playScore));
@@ -895,7 +907,8 @@ export function buildBonusClearPerformance(params: {
   const grade = getBonusClearGrade(challenge, {
     attemptsUsed,
     playScore,
-    starRainCaught: params.starRainCaught ?? 0
+    starRainCaught: params.starRainCaught ?? 0,
+    fliesCaught: params.fliesCaught ?? 0
   });
 
   const titles: Record<BonusChallengeType, string> = {
@@ -903,6 +916,7 @@ export function buildBonusClearPerformance(params: {
     stars: '⭐ 별 클리어',
     spin: '⭐ 별 소나기 결과',
     movers: '🔵 이동 공 클리어',
+    flies: '🪰 파리 잡기 결과',
     gems: '💎 보석 클리어',
     golden: '🪙 골든샷 결과',
     vault: '🔐 금고 개방'
@@ -922,13 +936,25 @@ export function buildBonusClearPerformance(params: {
 /** 보너스 클리어 등급 */
 export function getBonusClearGrade(
   challenge: BonusChallengeType,
-  stats: { attemptsUsed: number; playScore: number; starRainCaught: number }
+  stats: {
+    attemptsUsed: number;
+    playScore: number;
+    starRainCaught: number;
+    fliesCaught?: number;
+  }
 ): BonusClearGrade {
   if (challenge === 'spin') {
     const n = stats.starRainCaught;
     if (n >= 22) return 'S';
     if (n >= 14) return 'A';
     if (n >= 7) return 'B';
+    return 'C';
+  }
+  if (challenge === 'flies') {
+    const n = stats.fliesCaught ?? 0;
+    if (n >= 18) return 'S';
+    if (n >= 12) return 'A';
+    if (n >= 6) return 'B';
     return 'C';
   }
   if (stats.attemptsUsed <= 1) {
@@ -967,6 +993,7 @@ export const MOVERS_BALL_SPEED = 4.4;
 export function getBonusTimeLimitMs(challenge: BonusChallengeType): number {
   if (challenge === 'spin') return SPIN_TIME_LIMIT_MS;
   if (challenge === 'movers') return MOVERS_TIME_LIMIT_MS;
+  if (challenge === 'flies') return FLIES_TIME_LIMIT_MS;
   return BILLIARD_TIME_LIMIT_MS;
 }
 export const BILLIARD_TABLE_TOP = 48;
@@ -1406,6 +1433,112 @@ export function createStarRainIronBricks(): Brick[] {
 }
 
 /**
+ * 파리 잡기 — 위에서 떨어지는 파리.
+ */
+export interface FallingFly {
+  id: string;
+  x: number;
+  y: number;
+  vy: number;
+  /** 좌우 흔들림 */
+  vx: number;
+  radius: number;
+  value: number;
+}
+
+/** 떨어지는 파리 1개 생성 */
+export function createFallingFly(seq: number, rng = Math.random): FallingFly {
+  const margin = 28;
+  const speedSpan = FLIES_FALL_MAX - FLIES_FALL_MIN;
+  const drift = (rng() - 0.5) * 1.6;
+  return {
+    id: `fly-${seq}`,
+    x: margin + rng() * (CANVAS_WIDTH - margin * 2),
+    y: BILLIARD_TABLE_TOP + 8 + rng() * 28,
+    vy: FLIES_FALL_MIN + rng() * speedSpan,
+    vx: drift,
+    radius: FLY_RADIUS,
+    value: FLIES_HIT_SCORE
+  };
+}
+
+export function shouldSpawnFly(
+  lastSpawnAt: number,
+  now: number,
+  activeCount: number,
+  intervalMs = FLIES_SPAWN_INTERVAL_MS,
+  maxActive = FLIES_MAX_ACTIVE
+): boolean {
+  if (activeCount >= maxActive) return false;
+  return now - lastSpawnAt >= intervalMs;
+}
+
+/**
+ * 파리 낙하. escaped=true 면 바닥 통과(실패).
+ */
+export function stepFallingFlies(flies: FallingFly[]): {
+  flies: FallingFly[];
+  escaped: boolean;
+} {
+  let escaped = false;
+  const next: FallingFly[] = [];
+  for (const fly of flies) {
+    let vx = fly.vx;
+    let x = fly.x + vx;
+    if (x - fly.radius < 0) {
+      x = fly.radius;
+      vx = Math.abs(vx);
+    } else if (x + fly.radius > CANVAS_WIDTH) {
+      x = CANVAS_WIDTH - fly.radius;
+      vx = -Math.abs(vx);
+    }
+    const y = fly.y + fly.vy;
+    if (y - fly.radius >= CANVAS_HEIGHT) {
+      escaped = true;
+      continue;
+    }
+    next.push({ ...fly, x, y, vx });
+  }
+  return { flies: next, escaped };
+}
+
+/**
+ * 레이저로 파리 격추. 맞은 레이저·파리는 제거.
+ */
+export function resolveLaserFlyHits(
+  lasers: Laser[],
+  flies: FallingFly[]
+): { lasers: Laser[]; flies: FallingFly[]; hitFlies: FallingFly[] } {
+  let nextLasers = lasers.map((l) => ({ ...l }));
+  let nextFlies = [...flies];
+  const hitFlies: FallingFly[] = [];
+
+  for (let li = 0; li < nextLasers.length; li++) {
+    const laser = nextLasers[li];
+    if (!laser.alive) continue;
+    for (let fi = 0; fi < nextFlies.length; fi++) {
+      const fly = nextFlies[fi];
+      if (Math.hypot(laser.x - fly.x, laser.y - fly.y) > fly.radius + 6) continue;
+      hitFlies.push(fly);
+      nextFlies = nextFlies.filter((_, idx) => idx !== fi);
+      nextLasers[li] = { ...laser, alive: false };
+      break;
+    }
+  }
+
+  return {
+    lasers: nextLasers.filter((l) => l.alive),
+    flies: nextFlies,
+    hitFlies
+  };
+}
+
+/** 파리 격추 점수 */
+export function getFlyHitScore(baseValue: number, stage: number): number {
+  return Math.floor(baseValue * Math.max(1, stage));
+}
+
+/**
  * @deprecated 정적 배치 — 별 소나기로 대체
  */
 export function createSpinCollectibles(stage: number): BonusCollectible[] {
@@ -1604,7 +1737,9 @@ export function resolveVaultHit(
 }
 
 export function getBonusAttemptLimit(challenge: BonusChallengeType): number {
-  return challenge === 'golden' || challenge === 'spin' ? GOLDEN_MAX_ATTEMPTS : BONUS_MAX_ATTEMPTS;
+  return challenge === 'golden' || challenge === 'spin' || challenge === 'flies'
+    ? GOLDEN_MAX_ATTEMPTS
+    : BONUS_MAX_ATTEMPTS;
 }
 
 export function movePaddle(paddle: Paddle, dx: number): Paddle {

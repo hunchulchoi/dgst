@@ -33,6 +33,12 @@ import {
   isMoversClear,
   MOVERS_BALL_SPEED,
   MOVERS_TIME_LIMIT_MS,
+  createFallingFly,
+  stepFallingFlies,
+  resolveLaserFlyHits,
+  createLaserShot,
+  FLIES_TIME_LIMIT_MS,
+  getFlyHitScore,
   createStarCollectibles,
   createFallingStar,
   createStarRainIronBricks,
@@ -65,7 +71,6 @@ import {
   handleBrickCollision,
   handleInvincibleBrickCollision,
   handleLaserBrickCollision,
-  createLaserShot,
   handlePowerUpPaddleCollision,
   handleWallCollision,
   isBallLost,
@@ -87,7 +92,7 @@ describe('breakout gameUtils', () => {
   it('defines 50 stages with rising difficulty', () => {
     expect(STAGES).toHaveLength(TOTAL_STAGES);
     expect(STAGES).toHaveLength(50);
-    expect(STAGES[0].label).toBe('이동 공(테스트)');
+    expect(STAGES[0].label).toBe('파리 잡기(테스트)');
     expect(STAGES[49].label).toBe('최종');
     expect(STAGES[0].ballSpeed).toBeLessThan(STAGES[49].ballSpeed);
     expect(STAGES[0].kind).toBe('bonus');
@@ -109,7 +114,7 @@ describe('breakout gameUtils', () => {
     expect(getStageKind(1)).toBe('bonus');
     expect(getStageKind(7)).toBe('normal');
     expect(getStageConfig(5).label).toBe('3쿠션 챌린지');
-    expect(getStageConfig(1).label).toBe('이동 공(테스트)');
+    expect(getStageConfig(1).label).toBe('파리 잡기(테스트)');
     expect(getStageConfig(45).label).toBe('금고 열기');
     expect(getStageConfig(35).label).toBe('골든샷');
     expect(getStageConfig(10).label).toBe('철 미로');
@@ -417,7 +422,7 @@ describe('breakout gameUtils', () => {
   });
 
   it('star and gem collectible challenges', () => {
-    expect(getBonusChallengeType(1)).toBe('movers');
+    expect(getBonusChallengeType(1)).toBe('flies');
     expect(getBonusChallengeType(5)).toBe('billiard');
     expect(getBonusChallengeType(15)).toBe('stars');
     expect(getBonusChallengeType(25)).toBe('gems');
@@ -431,8 +436,10 @@ describe('breakout gameUtils', () => {
     expect(getBonusAttemptLimit('golden')).toBe(1);
     expect(getBonusAttemptLimit('vault')).toBe(2);
     expect(getBonusAttemptLimit('spin')).toBe(1);
+    expect(getBonusAttemptLimit('flies')).toBe(1);
     expect(getBonusAttemptLimit('movers')).toBe(2);
     expect(getBonusTimeLimitMs('movers')).toBe(MOVERS_TIME_LIMIT_MS);
+    expect(getBonusTimeLimitMs('flies')).toBe(FLIES_TIME_LIMIT_MS);
 
     const stars = createStarCollectibles(15);
     expect(stars.length).toBeGreaterThanOrEqual(5);
@@ -449,10 +456,8 @@ describe('breakout gameUtils', () => {
     expect(createCoinCollectibles(35).every((c) => c.kind === 'coin')).toBe(true);
   });
 
-  it('movers stage: moving targets keep speed and clear on all hits', () => {
-    expect(getBonusChallengeType(1)).toBe('movers');
+  it('movers helpers keep speed and clear on all hits', () => {
     expect(getBonusTimeLimitMs('movers')).toBe(MOVERS_TIME_LIMIT_MS);
-    expect(getStageConfig(1).label).toBe('이동 공(테스트)');
 
     const objects = createMovingObjectBalls(1);
     expect(objects).toHaveLength(3);
@@ -480,6 +485,30 @@ describe('breakout gameUtils', () => {
     const allHit = objects.map((b) => ({ ...b, hit: true }));
     expect(isMoversClear(allHit)).toBe(true);
     expect(isBilliardClear(0, 0, allHit)).toBe(true);
+  });
+
+  it('flies stage: laser hits flies, escape fails, one attempt', () => {
+    expect(getBonusChallengeType(1)).toBe('flies');
+    expect(getBonusAttemptLimit('flies')).toBe(1);
+    expect(getBonusTimeLimitMs('flies')).toBe(FLIES_TIME_LIMIT_MS);
+    expect(getStageConfig(1).label).toBe('파리 잡기(테스트)');
+
+    const fly = createFallingFly(0, () => 0.5);
+    const stepped = stepFallingFlies([fly]);
+    expect(stepped.escaped).toBe(false);
+    expect(stepped.flies[0].y).toBeGreaterThan(fly.y);
+
+    const escaping = { ...fly, y: 900, vy: 20 };
+    expect(stepFallingFlies([escaping]).escaped).toBe(true);
+
+    const paddle = createPaddle();
+    const laser = createLaserShot(paddle);
+    laser.x = fly.x;
+    laser.y = fly.y;
+    const hit = resolveLaserFlyHits([laser], [fly]);
+    expect(hit.hitFlies).toHaveLength(1);
+    expect(hit.flies).toHaveLength(0);
+    expect(getFlyHitScore(80, 1)).toBe(80);
   });
 
   it('spin stage is star rain caught by paddle with iron obstacles', () => {

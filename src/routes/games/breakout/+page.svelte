@@ -26,9 +26,16 @@
     createGemCollectibles,
     createStarCollectibles,
     createFallingStar,
+    createFallingFly,
     createStarRainIronBricks,
     shouldSpawnStarRain,
+    shouldSpawnFly,
     stepFallingStars,
+    stepFallingFlies,
+    resolveLaserFlyHits,
+    getFlyHitScore,
+    FLIES_LASER_INTERVAL_MS,
+    FLIES_TIME_LIMIT_MS,
     tryCollectFallingStarWithPaddle,
     bounceFallingStarOffIron,
     createCoinCollectibles,
@@ -107,6 +114,7 @@
     type BonusCollectible,
     type BonusClearPerformance,
     type FallingStar,
+    type FallingFly,
     type VaultTarget,
     type Brick,
     type Laser,
@@ -159,9 +167,13 @@
   let billiardObjects = $state<BilliardBall[]>([]);
   let bonusCollectibles = $state<BonusCollectible[]>([]);
   let fallingStars = $state<FallingStar[]>([]);
+  let fallingFlies = $state<FallingFly[]>([]);
   let starRainCaught = $state(0);
+  let fliesCaught = $state(0);
   let starRainSeq = 0;
+  let flySeq = 0;
   let lastStarSpawnAt = 0;
+  let lastFlySpawnAt = 0;
   let vaultTargets = $state<VaultTarget[]>([]);
   let vaultSequence = $state<number[]>([]);
   let vaultSequenceIndex = $state(0);
@@ -193,7 +205,10 @@
     isBonusStage ? getBonusChallengeType(stage) : 'billiard'
   );
   const isBonusAiming = $derived(
-    isBonusStage && !ballLaunched && (screen === 'ready' || screen === 'paused')
+    isBonusStage &&
+      !ballLaunched &&
+      bonusChallenge !== 'flies' &&
+      (screen === 'ready' || screen === 'paused')
   );
   const dragThumbPercent = $derived(
     isBonusAiming
@@ -218,9 +233,13 @@
     billiardObjects = [];
     bonusCollectibles = [];
     fallingStars = [];
+    fallingFlies = [];
     starRainCaught = 0;
+    fliesCaught = 0;
     starRainSeq = 0;
+    flySeq = 0;
     lastStarSpawnAt = 0;
+    lastFlySpawnAt = 0;
     vaultTargets = [];
     vaultSequence = [];
     vaultSequenceIndex = 0;
@@ -248,6 +267,16 @@
       vaultTargets = [];
       vaultSequence = [];
       requiredCushions = 0;
+    } else if (challenge === 'flies') {
+      billiardObjects = [];
+      bonusCollectibles = [];
+      fallingFlies = [];
+      fliesCaught = 0;
+      flySeq = 0;
+      lastFlySpawnAt = 0;
+      lasers = [];
+      vaultTargets = [];
+      vaultSequence = [];
     } else if (challenge === 'stars') {
       billiardObjects = [];
       bonusCollectibles = createStarCollectibles(stageNum);
@@ -366,6 +395,18 @@
         ];
         lastStarSpawnAt = now;
         starRainCaught = 0;
+      } else if (bonusChallenge === 'flies') {
+        const now = Date.now();
+        balls = [];
+        lasers = [];
+        fallingFlies = [
+          createFallingFly(flySeq++),
+          createFallingFly(flySeq++),
+          createFallingFly(flySeq++)
+        ];
+        lastFlySpawnAt = now;
+        lastLaserShotAt = now;
+        fliesCaught = 0;
       }
     }
     ballLaunched = true;
@@ -418,8 +459,12 @@
     }
 
     if (getBilliardTimeLeftMs(billiardEndsAt, now) <= 0) {
-      if (bonusChallenge === 'spin') {
-        showEffectToast(`별 ${starRainCaught}개 수집!`);
+      if (bonusChallenge === 'spin' || bonusChallenge === 'flies') {
+        if (bonusChallenge === 'flies') {
+          showEffectToast(`파리 ${fliesCaught}마리 격추!`);
+        } else {
+          showEffectToast(`별 ${starRainCaught}개 수집!`);
+        }
         scheduleStageClear();
         return;
       }
@@ -429,6 +474,41 @@
     }
 
     const config = getStageConfig(stage);
+
+    if (bonusChallenge === 'flies') {
+      if (now - lastLaserShotAt >= FLIES_LASER_INTERVAL_MS) {
+        lasers = [...lasers, createLaserShot(paddle)];
+        lastLaserShotAt = now;
+      }
+      lasers = moveLasers(lasers);
+
+      if (shouldSpawnFly(lastFlySpawnAt, now, fallingFlies.length)) {
+        fallingFlies = [...fallingFlies, createFallingFly(flySeq++)];
+        lastFlySpawnAt = now;
+      }
+
+      const stepped = stepFallingFlies(fallingFlies);
+      fallingFlies = stepped.flies;
+      if (stepped.escaped) {
+        showEffectToast('파리 놓침!');
+        lasers = [];
+        handleBonusMiss();
+        return;
+      }
+
+      const hit = resolveLaserFlyHits(lasers, fallingFlies);
+      lasers = hit.lasers;
+      fallingFlies = hit.flies;
+      for (const fly of hit.hitFlies) {
+        fliesCaught += 1;
+        const gained = getFlyHitScore(fly.value, stage);
+        score += gained;
+        showEffectToast(`🪰 ×${fliesCaught} +${gained}`);
+      }
+      balls = [];
+      return;
+    }
+
     let cue = balls[0] ?? createAimedBall(paddle, config.ballSpeed, aimAngle);
     cue = moveBall(cue);
 
@@ -737,7 +817,8 @@
         stage,
         playScore,
         attemptsUsed: bonusAttemptsUsed,
-        starRainCaught
+        starRainCaught,
+        fliesCaught
       });
       bonusClearPerf = perf;
       bonusClearStartedAt = Date.now();
@@ -775,10 +856,19 @@
     syncPaddleWidth();
 
     if (isBonusStage && !ballLaunched) {
-      if (keys.left) aimAngle = clampAimAngle(aimAngle + AIM_ANGLE_STEP);
-      if (keys.right) aimAngle = clampAimAngle(aimAngle - AIM_ANGLE_STEP);
-      balls = [createAimedBall(paddle, getStageConfig(stage).ballSpeed, aimAngle)];
-    } else if (!isBonusStage || (bonusChallenge === 'spin' && ballLaunched)) {
+      if (bonusChallenge === 'flies') {
+        if (keys.left) paddle = movePaddle(paddle, -PADDLE_SPEED);
+        if (keys.right) paddle = movePaddle(paddle, PADDLE_SPEED);
+        balls = [];
+      } else {
+        if (keys.left) aimAngle = clampAimAngle(aimAngle + AIM_ANGLE_STEP);
+        if (keys.right) aimAngle = clampAimAngle(aimAngle - AIM_ANGLE_STEP);
+        balls = [createAimedBall(paddle, getStageConfig(stage).ballSpeed, aimAngle)];
+      }
+    } else if (
+      !isBonusStage ||
+      ((bonusChallenge === 'spin' || bonusChallenge === 'flies') && ballLaunched)
+    ) {
       if (keys.left) paddle = movePaddle(paddle, -PADDLE_SPEED);
       if (keys.right) paddle = movePaddle(paddle, PADDLE_SPEED);
     }
@@ -1032,6 +1122,22 @@
         ctx.textAlign = 'center';
         ctx.fillText('⭐', star.x, star.y + 7);
       }
+      for (const fly of fallingFlies) {
+        ctx.font = 'bold 24px system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('🪰', fly.x, fly.y + 8);
+      }
+      if (bonusChallenge === 'flies') {
+        for (const laser of lasers) {
+          if (!laser.alive) continue;
+          ctx.strokeStyle = '#ff5252';
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.moveTo(laser.x, laser.y + 10);
+          ctx.lineTo(laser.x, laser.y - 10);
+          ctx.stroke();
+        }
+      }
       for (const t of vaultTargets) {
         ctx.fillStyle = t.activated ? '#66bb6a' : '#455a64';
         ctx.beginPath();
@@ -1047,24 +1153,26 @@
       }
     }
 
-    if (!isBonusStage || !ballLaunched || bonusChallenge === 'spin') {
+    if (!isBonusStage || !ballLaunched || bonusChallenge === 'spin' || bonusChallenge === 'flies') {
       const paddleColor =
         activeEffects.shrinkPaddleUntil > now
           ? '#ffccbc'
           : activeEffects.expandPaddleUntil > now
             ? '#c8e6c9'
-            : bonusChallenge === 'spin'
+            : bonusChallenge === 'spin' || bonusChallenge === 'flies'
               ? '#90caf9'
               : '#e0e0e0';
       ctx.fillStyle = paddleColor;
       drawRoundRect(ctx, paddle.x, paddle.y, paddle.width, paddle.height, 6);
       ctx.fill();
-      ctx.strokeStyle = bonusChallenge === 'spin' ? '#e3f2fd' : '#90caf9';
+      ctx.strokeStyle =
+        bonusChallenge === 'spin' || bonusChallenge === 'flies' ? '#e3f2fd' : '#90caf9';
       ctx.lineWidth = 2;
       ctx.stroke();
     }
 
     for (const ball of balls) {
+      if (bonusChallenge === 'flies') break;
       if (!isBonusStage && invincible) {
         ctx.save();
         ctx.globalAlpha = 0.35;
@@ -1129,7 +1237,9 @@
                 ? '🔐'
                 : bonusChallenge === 'movers'
                   ? '🔵'
-                  : '🎱';
+                  : bonusChallenge === 'flies'
+                    ? '🪰'
+                    : '🎱';
       ctx.fillStyle = '#ffd54f';
       ctx.fillText(`${icon} ${stageConfig.label}`, CANVAS_WIDTH / 2, 28);
       ctx.font = '11px system-ui, sans-serif';
@@ -1152,6 +1262,8 @@
           CANVAS_WIDTH / 2,
           46
         );
+      } else if (bonusChallenge === 'flies') {
+        ctx.fillText(`격추 ${fliesCaught} · ${timeLeft}s`, CANVAS_WIDTH / 2, 46);
       } else if (bonusChallenge === 'spin') {
         ctx.fillText(`먹은 별 ${starRainCaught} · ${timeLeft}s`, CANVAS_WIDTH / 2, 46);
       } else if (bonusChallenge === 'stars') {
@@ -1180,7 +1292,7 @@
       }
       ctx.fillStyle = '#c8e6c9';
       ctx.fillText(
-        bonusChallenge === 'golden'
+        bonusChallenge === 'golden' || bonusChallenge === 'flies'
           ? '원샷!'
           : `기회 ${Math.max(0, attemptLimit - bonusAttemptsUsed)}/${attemptLimit}`,
         CANVAS_WIDTH / 2,
@@ -1215,7 +1327,21 @@
     }
 
     if (screen === 'ready') {
-      if (isBonusStage) {
+      if (isBonusStage && bonusChallenge === 'flies') {
+        ctx.fillStyle = 'rgba(0,0,0,0.45)';
+        ctx.fillRect(0, CANVAS_HEIGHT / 2 - 36, CANVAS_WIDTH, 72);
+        ctx.fillStyle = '#ffd54f';
+        ctx.font = 'bold 16px system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('레이저로 파리 격추 · 놓치면 실패', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 8);
+        ctx.fillStyle = '#fff';
+        ctx.font = '13px system-ui, sans-serif';
+        ctx.fillText(
+          `원샷 · ${Math.ceil(getBonusTimeLimitMs('flies') / 1000)}초 버티기`,
+          CANVAS_WIDTH / 2,
+          CANVAS_HEIGHT / 2 + 18
+        );
+      } else if (isBonusStage) {
         const originX = paddle.x + paddle.width / 2;
         const originY = paddle.y - BALL_RADIUS - 2;
         const tip = getAimLineEnd(originX, originY, aimAngle);
@@ -1301,6 +1427,11 @@
           ctx.font = '13px system-ui, sans-serif';
           ctx.fillText(`먹은 별 ${starRainCaught}개`, cx, 178);
         }
+        if (bonusChallenge === 'flies' && fliesCaught > 0) {
+          ctx.fillStyle = '#fff9c4';
+          ctx.font = '13px system-ui, sans-serif';
+          ctx.fillText(`격추 ${fliesCaught}마리`, cx, 178);
+        }
 
         let lineY = 220;
         ctx.font = '15px system-ui, sans-serif';
@@ -1356,15 +1487,17 @@
               ? '⭐ 별 전부 클리어!'
               : bonusChallenge === 'spin'
                 ? '⭐ 별 소나기 클리어!'
-                : bonusChallenge === 'movers'
-                  ? '🔵 이동 공 클리어!'
-                  : bonusChallenge === 'gems'
-                    ? '💎 보석 회수 클리어!'
-                    : bonusChallenge === 'golden'
-                      ? '🪙 골든샷 클리어!'
-                      : bonusChallenge === 'vault'
-                        ? '🔐 금고 개방!'
-                        : '🎱 당구 챌린지 클리어!'
+                : bonusChallenge === 'flies'
+                  ? '🪰 파리 잡기 클리어!'
+                  : bonusChallenge === 'movers'
+                    ? '🔵 이동 공 클리어!'
+                    : bonusChallenge === 'gems'
+                      ? '💎 보석 회수 클리어!'
+                      : bonusChallenge === 'golden'
+                        ? '🪙 골든샷 클리어!'
+                        : bonusChallenge === 'vault'
+                          ? '🔐 금고 개방!'
+                          : '🎱 당구 챌린지 클리어!'
             : `스테이지 ${stage} 클리어!`;
         ctx.fillText(clearLabel, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2);
       }
@@ -1675,15 +1808,17 @@
                   ? '⭐'
                   : bonusChallenge === 'spin'
                     ? '⭐'
-                    : bonusChallenge === 'movers'
-                      ? '🔵'
-                      : bonusChallenge === 'gems'
-                        ? '💎'
-                        : bonusChallenge === 'golden'
-                          ? '🪙'
-                          : bonusChallenge === 'vault'
-                            ? '🔐'
-                            : '🎱'}
+                    : bonusChallenge === 'flies'
+                      ? '🪰'
+                      : bonusChallenge === 'movers'
+                        ? '🔵'
+                        : bonusChallenge === 'gems'
+                          ? '💎'
+                          : bonusChallenge === 'golden'
+                            ? '🪙'
+                            : bonusChallenge === 'vault'
+                              ? '🔐'
+                              : '🎱'}
                 {stageConfig.label} · {stage}단계
               </h2>
               {#if bonusChallenge === 'stars'}
@@ -1700,6 +1835,14 @@
                   <li><strong>패들</strong>로 ⭐ 받기 · 공으로는 안 먹힘</li>
                   <li>중간 <strong>철 블록</strong> — 공만 튕김 · 별은 통과</li>
                   <li>공 놓치면 실패 · <strong>{Math.ceil(getBonusTimeLimitMs('spin') / 1000)}초</strong> 버티면 클리어</li>
+                  <li><strong>원샷</strong> — 기회 1회 · 1발 클리어 시 점수 ×2</li>
+                </ul>
+              {:else if bonusChallenge === 'flies'}
+                <p class="text-muted mb-3 small">떨어지는 파리를 레이저로 잡으세요. 하나라도 놓치면 끝!</p>
+                <ul class="list-unstyled text-start mx-auto bonus-intro-rules mb-4">
+                  <li>패들에서 <strong>레이저 자동 발사</strong></li>
+                  <li>파리 바닥 통과 = <strong>즉시 실패</strong></li>
+                  <li><strong>{Math.ceil(FLIES_TIME_LIMIT_MS / 1000)}초</strong> 버티면 클리어</li>
                   <li><strong>원샷</strong> — 기회 1회 · 1발 클리어 시 점수 ×2</li>
                 </ul>
               {:else if bonusChallenge === 'movers'}
@@ -1744,7 +1887,7 @@
                 </ul>
               {/if}
               <button type="button" class="btn btn-warning btn-lg px-5" onclick={dismissBonusIntro}>
-                조준 시작
+                {bonusChallenge === 'flies' ? '시작' : '조준 시작'}
               </button>
               <div class="mt-3 small text-muted">스페이스 / Enter 로도 시작</div>
             </div>
@@ -1779,7 +1922,11 @@
                 aria-hidden="true"
               ></div>
               <span class="breakout-drag-hint">
-                {#if screen === 'ready' && isBonusStage && bonusChallenge === 'spin'}
+                {#if screen === 'ready' && isBonusStage && bonusChallenge === 'flies'}
+                  드래그로 패들 · 탭하면 시작 (원샷)
+                {:else if screen === 'playing' && isBonusStage && bonusChallenge === 'flies'}
+                  레이저로 파리 격추 · 놓치면 끝
+                {:else if screen === 'ready' && isBonusStage && bonusChallenge === 'spin'}
                   드래그로 각도 · 탭하면 발사 ({getBonusAttemptLimit(bonusChallenge) -
                     bonusAttemptsUsed}/{getBonusAttemptLimit(bonusChallenge)})
                 {:else if screen === 'playing' && isBonusStage && bonusChallenge === 'spin'}
