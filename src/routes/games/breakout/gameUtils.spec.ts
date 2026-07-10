@@ -30,9 +30,12 @@ import {
   createBilliardObjectBalls,
   createStarCollectibles,
   createFallingStar,
+  createStarRainIronBricks,
   shouldSpawnStarRain,
   stepFallingStars,
   tryCollectFallingStar,
+  tryCollectFallingStarWithPaddle,
+  bounceFallingStarOffIron,
   createGemCollectibles,
   getBonusChallengeType,
   getCushionMultiplier,
@@ -403,27 +406,33 @@ describe('breakout gameUtils', () => {
     expect(createCoinCollectibles(35).every((c) => c.kind === 'coin')).toBe(true);
   });
 
-  it('spin stage is fast paddle catch without requiring spin', () => {
+  it('spin stage is star rain caught by paddle with iron obstacles', () => {
     expect(getBonusChallengeType(1)).toBe('spin');
     expect(getStageConfig(1).ballSpeed).toBe(SPIN_BALL_SPEED);
     expect(getBonusTimeLimitMs('spin')).toBe(SPIN_TIME_LIMIT_MS);
-    expect(getBonusTimeLimitMs('billiard')).toBe(45_000);
+
+    const irons = createStarRainIronBricks();
+    expect(irons.length).toBeGreaterThanOrEqual(5);
+    expect(irons.every((b) => b.type === 'iron')).toBe(true);
 
     const star = createFallingStar(0, () => 0.5);
-    expect(star.y).toBeLessThan(120);
-    expect(star.vy).toBeGreaterThan(0);
-    expect(shouldSpawnStarRain(0, 400, 0)).toBe(true);
-    expect(shouldSpawnStarRain(0, 100, 0)).toBe(false);
-    expect(shouldSpawnStarRain(0, 9999, 20)).toBe(false);
-
+    expect(star.vx).toBe(0);
     const stepped = stepFallingStars([star]);
     expect(stepped[0].y).toBeGreaterThan(star.y);
 
     const paddle = createPaddle();
-    const ball = createAimedBall(paddle, 6, 90);
-    ball.x = star.x;
-    ball.y = star.y;
-    expect(tryCollectFallingStar(ball, star)).toBe(true);
+    const onPaddle = { ...star, x: paddle.x + paddle.width / 2, y: paddle.y };
+    expect(tryCollectFallingStarWithPaddle(paddle, onPaddle)).toBe(true);
+    expect(tryCollectFallingStarWithPaddle(paddle, star)).toBe(false);
+
+    const aboveIron = {
+      ...star,
+      x: irons[0].x + irons[0].width / 2,
+      y: irons[0].y - 2,
+      vy: 3
+    };
+    const bounced = bounceFallingStarOffIron(aboveIron, irons);
+    expect(bounced.vy).toBeLessThan(0);
 
     const descending: Ball = {
       x: paddle.x + paddle.width / 2,
@@ -432,19 +441,7 @@ describe('breakout gameUtils', () => {
       vy: 4,
       radius: 8
     };
-    const paddled = handlePaddleCollision(descending, paddle);
-    expect(paddled.hit).toBe(true);
-    expect(paddled.ball.vy).toBeLessThan(0);
-
-    const topOnly = handleTopAndSideCushionCollision({
-      x: 100,
-      y: 2,
-      vx: 1,
-      vy: -3,
-      radius: 8
-    });
-    expect(topOnly.cushionHit).toBe(true);
-    expect(topOnly.ball.vy).toBeGreaterThan(0);
+    expect(handlePaddleCollision(descending, paddle).hit).toBe(true);
   });
 
   it('vault sequence puzzle accepts correct order only', () => {

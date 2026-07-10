@@ -22,9 +22,11 @@
     createGemCollectibles,
     createStarCollectibles,
     createFallingStar,
+    createStarRainIronBricks,
     shouldSpawnStarRain,
     stepFallingStars,
-    tryCollectFallingStar,
+    tryCollectFallingStarWithPaddle,
+    bounceFallingStarOffIron,
     createCoinCollectibles,
     createVaultPuzzle,
     VAULT_AIM_ANGLE,
@@ -250,6 +252,7 @@
       lastStarSpawnAt = 0;
       vaultTargets = [];
       vaultSequence = [];
+      bricks = createStarRainIronBricks();
     } else if (challenge === 'gems') {
       billiardObjects = [];
       bonusCollectibles = createGemCollectibles(stageNum);
@@ -422,6 +425,9 @@
     if (bonusChallenge === 'spin') {
       const sides = handleTopAndSideCushionCollision(cue);
       cue = sides.ball;
+      const brickHit = handleBrickCollision(cue, bricks, stage);
+      cue = brickHit.ball;
+      bricks = brickHit.bricks;
       const paddleHit = handlePaddleCollision(cue, paddle);
       if (paddleHit.hit) {
         cue = paddleHit.ball;
@@ -436,10 +442,12 @@
         lastStarSpawnAt = now;
       }
 
-      let nextStars = stepFallingStars(fallingStars);
+      let nextStars = stepFallingStars(fallingStars).map((s) =>
+        bounceFallingStarOffIron(s, bricks)
+      );
       const kept: FallingStar[] = [];
       for (const star of nextStars) {
-        if (tryCollectFallingStar(cue, star)) {
+        if (tryCollectFallingStarWithPaddle(paddle, star)) {
           starRainCaught += 1;
           const gained = getStarPickupScore(star.value, stage);
           score += gained;
@@ -932,6 +940,23 @@
       ctx.fillText(meta.symbol, item.x + item.width / 2, item.y + item.height / 2 + 3);
     }
     } else {
+      if (bonusChallenge === 'spin') {
+        for (const brick of bricks) {
+          if (!brick.alive) continue;
+          ctx.fillStyle = brick.color;
+          drawRoundRect(ctx, brick.x, brick.y, brick.width, brick.height, 4);
+          ctx.fill();
+          ctx.strokeStyle = 'rgba(255,255,255,0.45)';
+          ctx.lineWidth = 1;
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(brick.x + 4, brick.y + 4);
+          ctx.lineTo(brick.x + brick.width - 4, brick.y + brick.height - 4);
+          ctx.moveTo(brick.x + brick.width - 4, brick.y + 4);
+          ctx.lineTo(brick.x + 4, brick.y + brick.height - 4);
+          ctx.stroke();
+        }
+      }
       for (const obj of billiardObjects) {
         ctx.globalAlpha = obj.hit ? 0.35 : 1;
         ctx.fillStyle = obj.color;
@@ -1190,7 +1215,7 @@
           bonusChallenge === 'stars'
             ? '각도 조준 · 모든 별 먹기'
             : bonusChallenge === 'spin'
-              ? '각도 조준 · 20초간 별 소나기 받기'
+              ? '패들로 별 받기 · 공 유지 · 철 피하기'
               : bonusChallenge === 'gems'
                 ? '쿠션 쌓고 보석 먹기 (배율↑)'
                 : bonusChallenge === 'golden'
@@ -1638,11 +1663,11 @@
                   <li>기회 {BONUS_MAX_ATTEMPTS}회 · 1발 클리어 시 점수 ×2</li>
                 </ul>
               {:else if bonusChallenge === 'spin'}
-                <p class="text-muted mb-3 small">20초 동안 쏟아지는 별을 공으로 많이 먹으세요</p>
+                <p class="text-muted mb-3 small">쏟아지는 별을 패들로 먹고, 공은 떨어뜨리지 마세요</p>
                 <ul class="list-unstyled text-start mx-auto bonus-intro-rules mb-4">
-                  <li>위에서 ⭐가 계속 떨어짐 · 공으로 닿으면 점수</li>
-                  <li><strong>패들로 공 유지</strong> — 놓치면 실패</li>
-                  <li><strong>{Math.ceil(getBonusTimeLimitMs('spin') / 1000)}초</strong> 버티면 클리어 (많이 먹을수록 고득점)</li>
+                  <li><strong>패들</strong>로 ⭐ 받기 · 공으로는 안 먹힘</li>
+                  <li>중간 <strong>철 블록</strong> — 공·별 모두 튕김</li>
+                  <li>공 놓치면 실패 · <strong>{Math.ceil(getBonusTimeLimitMs('spin') / 1000)}초</strong> 버티면 클리어</li>
                   <li>기회 {BONUS_MAX_ATTEMPTS}회 · 1발 클리어 시 점수 ×2</li>
                 </ul>
               {:else if bonusChallenge === 'gems'}
@@ -1718,7 +1743,7 @@
                   드래그로 각도 · 탭하면 발사 ({getBonusAttemptLimit(bonusChallenge) -
                     bonusAttemptsUsed}/{getBonusAttemptLimit(bonusChallenge)})
                 {:else if screen === 'playing' && isBonusStage && bonusChallenge === 'spin'}
-                  드래그로 패들 이동
+                  패들로 별 받기 · 공도 받기
                 {:else if screen === 'ready' && isBonusStage}
                   드래그로 각도 · 탭하면 발사 ({getBonusAttemptLimit(bonusChallenge) -
                     bonusAttemptsUsed}/{getBonusAttemptLimit(bonusChallenge)})

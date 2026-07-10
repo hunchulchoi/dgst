@@ -1258,6 +1258,8 @@ export interface FallingStar {
   x: number;
   y: number;
   vy: number;
+  /** 철 블록 튕김용 가로 속도 */
+  vx: number;
   radius: number;
   value: number;
 }
@@ -1271,6 +1273,7 @@ export function createFallingStar(seq: number, rng = Math.random): FallingStar {
     x: margin + rng() * (CANVAS_WIDTH - margin * 2),
     y: BILLIARD_TABLE_TOP + 8 + rng() * 36,
     vy: STAR_RAIN_FALL_MIN + rng() * speedSpan,
+    vx: 0,
     radius: STAR_RADIUS,
     value: STAR_BASE_SCORE
   };
@@ -1287,15 +1290,115 @@ export function shouldSpawnStarRain(
   return now - lastSpawnAt >= intervalMs;
 }
 
-/** 별 낙하. 화면 아래 벗어나면 제거 */
+/** 별 낙하 + 약한 중력. 화면 아래 벗어나면 제거 */
 export function stepFallingStars(stars: FallingStar[]): FallingStar[] {
   return stars
-    .map((s) => ({ ...s, y: s.y + s.vy }))
+    .map((s) => {
+      let vx = s.vx;
+      let x = s.x + vx;
+      if (x - s.radius < 0) {
+        x = s.radius;
+        vx = Math.abs(vx);
+      } else if (x + s.radius > CANVAS_WIDTH) {
+        x = CANVAS_WIDTH - s.radius;
+        vx = -Math.abs(vx);
+      }
+      return {
+        ...s,
+        x,
+        y: s.y + s.vy,
+        vx: vx * 0.98,
+        vy: s.vy + (s.vy < 0 ? 0.22 : 0.04)
+      };
+    })
     .filter((s) => s.y - s.radius < CANVAS_HEIGHT + 24);
 }
 
+/** @deprecated 공 수집 — 패들 수집 사용 */
 export function tryCollectFallingStar(ball: Ball, star: FallingStar): boolean {
   return Math.hypot(star.x - ball.x, star.y - ball.y) < ball.radius + star.radius;
+}
+
+/** 패들로 별 먹기 */
+export function tryCollectFallingStarWithPaddle(paddle: Paddle, star: FallingStar): boolean {
+  return circleRectCollision(
+    star.x,
+    star.y,
+    star.radius,
+    paddle.x,
+    paddle.y,
+    paddle.width,
+    paddle.height
+  );
+}
+
+/**
+ * 별이 철 블록 윗면에 닿으면 튕김.
+ */
+export function bounceFallingStarOffIron(star: FallingStar, bricks: Brick[]): FallingStar {
+  let next = star;
+  for (const brick of bricks) {
+    if (!brick.alive || brick.type !== 'iron') continue;
+    if (
+      !circleRectCollision(
+        next.x,
+        next.y,
+        next.radius,
+        brick.x,
+        brick.y,
+        brick.width,
+        brick.height
+      )
+    ) {
+      continue;
+    }
+    const brickMid = brick.x + brick.width / 2;
+    const kick = next.x < brickMid ? -1.8 : 1.8;
+    if (next.vy >= 0 && next.y <= brick.y + brick.height * 0.55) {
+      next = {
+        ...next,
+        y: brick.y - next.radius - 1,
+        vy: -Math.max(2.2, Math.abs(next.vy) * 0.65),
+        vx: (next.vx || 0) + kick
+      };
+    } else {
+      next = {
+        ...next,
+        x: next.x < brickMid ? brick.x - next.radius - 1 : brick.x + brick.width + next.radius + 1,
+        vx: kick * 1.4
+      };
+    }
+  }
+  return next;
+}
+
+/** 별 소나기용 중간 철 블록 (별이 떨어질 틈 있음) */
+export function createStarRainIronBricks(): Brick[] {
+  const brickWidth =
+    (CANVAS_WIDTH - BRICK_OFFSET_LEFT * 2 - BRICK_PADDING * (BRICK_COLS - 1)) / BRICK_COLS;
+  const brickHeight = 22;
+  const makeIron = (row: number, col: number): Brick => ({
+    x: BRICK_OFFSET_LEFT + col * (brickWidth + BRICK_PADDING),
+    y: BRICK_OFFSET_TOP + row * (brickHeight + BRICK_PADDING) + 40,
+    width: brickWidth,
+    height: brickHeight,
+    type: 'iron',
+    hits: 0,
+    maxHits: 999,
+    alive: true,
+    color: BRICK_COLORS.iron,
+    points: 0
+  });
+  // 중간 높이 철 몇 개 — 사이 틈으로 별 낙하
+  return [
+    makeIron(2, 1),
+    makeIron(2, 2),
+    makeIron(2, 5),
+    makeIron(2, 6),
+    makeIron(4, 3),
+    makeIron(4, 4),
+    makeIron(4, 7)
+  ];
 }
 
 /**
