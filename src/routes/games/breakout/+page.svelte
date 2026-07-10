@@ -25,12 +25,6 @@
     createCoinCollectibles,
     createVaultPuzzle,
     VAULT_AIM_ANGLE,
-    DEFAULT_SPIN,
-    SPIN_STEP,
-    applyBallSpin,
-    decaySpinOnCushion,
-    clampSpin,
-    getSpinAimPreviewPoints,
     createDropsFromDestroyedBricks,
     createLaserShot,
     createMultiballBalls,
@@ -49,6 +43,7 @@
     getGemPickupScore,
     getStarPickupScore,
     getBonusAttemptLimit,
+    getBonusTimeLimitMs,
     getEffectiveBallSpeed,
     getEffectivePaddleWidth,
     getRequiredCushions,
@@ -145,7 +140,6 @@
   let lives = $state(INITIAL_LIVES);
   let ballLaunched = $state(false);
   let aimAngle = $state(DEFAULT_AIM_ANGLE);
-  let aimSpin = $state(DEFAULT_SPIN);
   let bonusAttemptsUsed = $state(0);
   let bonusStageScoreStart = $state(0);
   let billiardObjects = $state<BilliardBall[]>([]);
@@ -200,7 +194,6 @@
     lastComboAt = 0;
     lastLaserShotAt = 0;
     aimAngle = DEFAULT_AIM_ANGLE;
-    aimSpin = DEFAULT_SPIN;
     bonusAttemptsUsed = 0;
     billiardObjects = [];
     bonusCollectibles = [];
@@ -235,7 +228,6 @@
       bonusCollectibles = createSpinCollectibles(stageNum);
       vaultTargets = [];
       vaultSequence = [];
-      aimSpin = DEFAULT_SPIN;
     } else if (challenge === 'gems') {
       billiardObjects = [];
       bonusCollectibles = createGemCollectibles(stageNum);
@@ -267,7 +259,7 @@
       paddle = createPaddle();
       bricks = [];
       resetBonusTargets(stageNum);
-      balls = [createAimedBall(paddle, config.ballSpeed, aimAngle, aimSpin)];
+      balls = [createAimedBall(paddle, config.ballSpeed, aimAngle)];
     } else {
       billiardObjects = [];
       bonusCollectibles = [];
@@ -327,9 +319,9 @@
       if (bonusAttemptsUsed >= limit) return;
       bonusAttemptsUsed += 1;
       const config = getStageConfig(stage);
-      balls = [createAimedBall(paddle, config.ballSpeed, aimAngle, aimSpin)];
+      balls = [createAimedBall(paddle, config.ballSpeed, aimAngle)];
       resetBonusTargets(stage);
-      billiardEndsAt = Date.now() + BILLIARD_TIME_LIMIT_MS;
+      billiardEndsAt = Date.now() + getBonusTimeLimitMs(bonusChallenge);
     }
     ballLaunched = true;
     screen = 'playing';
@@ -343,7 +335,7 @@
     bricks = [];
     paddle = createPaddle();
     resetBonusTargets(stage);
-    balls = [createAimedBall(paddle, config.ballSpeed, aimAngle, aimSpin)];
+    balls = [createAimedBall(paddle, config.ballSpeed, aimAngle)];
     ballLaunched = false;
     screen = 'ready';
     const limit = getBonusAttemptLimit(getBonusChallengeType(stage));
@@ -387,22 +379,16 @@
     }
 
     const config = getStageConfig(stage);
-    let cue = balls[0] ?? createAimedBall(paddle, config.ballSpeed, aimAngle, aimSpin);
+    let cue = balls[0] ?? createAimedBall(paddle, config.ballSpeed, aimAngle);
     cue = moveBall(cue);
 
     if (bonusChallenge === 'spin') {
-      cue = applyBallSpin(cue);
       const sides = handleTopAndSideCushionCollision(cue);
       cue = sides.ball;
-      if (sides.cushionHit) {
-        cushionCount += 1;
-        cue = decaySpinOnCushion(cue);
-      }
-      const paddleHit = handlePaddleCollision(cue, paddle, { impartSpin: true });
+      if (sides.cushionHit) cushionCount += 1;
+      const paddleHit = handlePaddleCollision(cue, paddle);
       if (paddleHit.hit) {
         cue = paddleHit.ball;
-        const s = cue.spin ?? 0;
-        showEffectToast(`패들 스핀 ${s > 0 ? `+${s}` : s}`);
       } else if (isBallLost(cue)) {
         showEffectToast('공 놓침!');
         handleBonusMiss();
@@ -416,7 +402,7 @@
           nextItems = nextItems.map((it, idx) => (idx === i ? result.item : it));
           const gained = getStarPickupScore(result.item.value, stage);
           score += gained;
-          showEffectToast(`🌀 ⭐ +${gained}`);
+          showEffectToast(`⭐ +${gained}`);
         }
       }
       bonusCollectibles = nextItems;
@@ -710,7 +696,7 @@
     if (isBonusStage && !ballLaunched) {
       if (keys.left) aimAngle = clampAimAngle(aimAngle + AIM_ANGLE_STEP);
       if (keys.right) aimAngle = clampAimAngle(aimAngle - AIM_ANGLE_STEP);
-      balls = [createAimedBall(paddle, getStageConfig(stage).ballSpeed, aimAngle, aimSpin)];
+      balls = [createAimedBall(paddle, getStageConfig(stage).ballSpeed, aimAngle)];
     } else if (!isBonusStage || (bonusChallenge === 'spin' && ballLaunched)) {
       if (keys.left) paddle = movePaddle(paddle, -PADDLE_SPEED);
       if (keys.right) paddle = movePaddle(paddle, PADDLE_SPEED);
@@ -1044,7 +1030,7 @@
       ctx.fillStyle = '#fff';
       const timeLeft = ballLaunched
         ? Math.ceil(getBilliardTimeLeftMs(billiardEndsAt, now) / 1000)
-        : Math.ceil(BILLIARD_TIME_LIMIT_MS / 1000);
+        : Math.ceil(getBonusTimeLimitMs(bonusChallenge) / 1000);
       const attemptLimit = getBonusAttemptLimit(bonusChallenge);
       if (bonusChallenge === 'billiard') {
         const hitCount = countHitBilliardBalls(billiardObjects);
@@ -1054,12 +1040,8 @@
           46
         );
       } else if (bonusChallenge === 'stars' || bonusChallenge === 'spin') {
-        const spinLabel =
-          bonusChallenge === 'spin'
-            ? ` · 스핀 ${aimSpin > 0 ? `+${aimSpin}` : aimSpin}`
-            : '';
         ctx.fillText(
-          `별 ${countCollectedItems(bonusCollectibles)}/${bonusCollectibles.length}${spinLabel} · ${timeLeft}s`,
+          `별 ${countCollectedItems(bonusCollectibles)}/${bonusCollectibles.length} · ${timeLeft}s`,
           CANVAS_WIDTH / 2,
           46
         );
@@ -1121,42 +1103,19 @@
       if (isBonusStage) {
         const originX = paddle.x + paddle.width / 2;
         const originY = paddle.y - BALL_RADIUS - 2;
-        if (bonusChallenge === 'spin') {
-          const preview = getSpinAimPreviewPoints(
-            originX,
-            originY,
-            aimAngle,
-            aimSpin,
-            getStageConfig(stage).ballSpeed
-          );
-          ctx.strokeStyle = 'rgba(129, 212, 250, 0.9)';
-          ctx.lineWidth = 2;
-          ctx.setLineDash([4, 5]);
-          ctx.beginPath();
-          ctx.moveTo(originX, originY);
-          for (const p of preview) ctx.lineTo(p.x, p.y);
-          ctx.stroke();
-          ctx.setLineDash([]);
-          const tip = preview[preview.length - 1] ?? getAimLineEnd(originX, originY, aimAngle);
-          ctx.fillStyle = '#81d4fa';
-          ctx.beginPath();
-          ctx.arc(tip.x, tip.y, 4, 0, Math.PI * 2);
-          ctx.fill();
-        } else {
-          const tip = getAimLineEnd(originX, originY, aimAngle);
-          ctx.strokeStyle = 'rgba(255, 213, 79, 0.85)';
-          ctx.lineWidth = 2;
-          ctx.setLineDash([6, 6]);
-          ctx.beginPath();
-          ctx.moveTo(originX, originY);
-          ctx.lineTo(tip.x, tip.y);
-          ctx.stroke();
-          ctx.setLineDash([]);
-          ctx.fillStyle = '#ffd54f';
-          ctx.beginPath();
-          ctx.arc(tip.x, tip.y, 4, 0, Math.PI * 2);
-          ctx.fill();
-        }
+        const tip = getAimLineEnd(originX, originY, aimAngle);
+        ctx.strokeStyle = 'rgba(255, 213, 79, 0.85)';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([6, 6]);
+        ctx.beginPath();
+        ctx.moveTo(originX, originY);
+        ctx.lineTo(tip.x, tip.y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = '#ffd54f';
+        ctx.beginPath();
+        ctx.arc(tip.x, tip.y, 4, 0, Math.PI * 2);
+        ctx.fill();
 
         ctx.fillStyle = 'rgba(0,0,0,0.45)';
         ctx.fillRect(0, CANVAS_HEIGHT / 2 - 36, CANVAS_WIDTH, 72);
@@ -1167,7 +1126,7 @@
           bonusChallenge === 'stars'
             ? '각도 조준 · 모든 별 먹기'
             : bonusChallenge === 'spin'
-              ? `스핀 ${aimSpin > 0 ? `+${aimSpin}` : aimSpin} · 패들로 받아 스핀 변경`
+              ? '각도 조준 · 패들로 받아 별 먹기'
               : bonusChallenge === 'gems'
                 ? '쿠션 쌓고 보석 먹기 (배율↑)'
                 : bonusChallenge === 'golden'
@@ -1184,7 +1143,7 @@
           bonusChallenge === 'golden'
             ? `단 1발 · 1발 클리어 ×${getBonusShotClearMultiplier(1)}`
             : bonusChallenge === 'spin'
-              ? `↑↓/QE 스핀 · 남은 ${left}회 · 1발 ×${getBonusShotClearMultiplier(bonusAttemptsUsed + 1)}`
+              ? `빠른 공 · ${Math.ceil(getBonusTimeLimitMs('spin') / 1000)}초 · 남은 ${left}회`
               : `남은 기회 ${left}회 · 1발 클리어 ×${getBonusShotClearMultiplier(bonusAttemptsUsed + 1)}`,
           CANVAS_WIDTH / 2,
           CANVAS_HEIGHT / 2 + 18
@@ -1216,7 +1175,7 @@
           ? bonusChallenge === 'stars'
             ? '⭐ 별 전부 클리어!'
             : bonusChallenge === 'spin'
-              ? '🌀 스핀샷 클리어!'
+              ? '⭐ 별 받기 클리어!'
               : bonusChallenge === 'gems'
                 ? '💎 보석 회수 클리어!'
                 : bonusChallenge === 'golden'
@@ -1282,28 +1241,6 @@
   function handleKeydown(e: KeyboardEvent) {
     if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') keys = { ...keys, left: true };
     if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') keys = { ...keys, right: true };
-    if (
-      isBonusAiming &&
-      bonusChallenge === 'spin' &&
-      !e.repeat &&
-      (e.key === 'ArrowUp' ||
-        e.key === 'ArrowDown' ||
-        e.key === 'w' ||
-        e.key === 'W' ||
-        e.key === 's' ||
-        e.key === 'S' ||
-        e.key === 'q' ||
-        e.key === 'Q' ||
-        e.key === 'e' ||
-        e.key === 'E')
-    ) {
-      e.preventDefault();
-      if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W' || e.key === 'q' || e.key === 'Q') {
-        aimSpin = clampSpin(aimSpin + SPIN_STEP);
-      } else {
-        aimSpin = clampSpin(aimSpin - SPIN_STEP);
-      }
-    }
     if (e.key === ' ' || e.key === 'Enter') {
       e.preventDefault();
       if (screen === 'menu') return;
@@ -1321,11 +1258,6 @@
   function handleKeyup(e: KeyboardEvent) {
     if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') keys = { ...keys, left: false };
     if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') keys = { ...keys, right: false };
-  }
-
-  function nudgeAimSpin(delta: number) {
-    if (!isBonusAiming || bonusChallenge !== 'spin') return;
-    aimSpin = clampSpin(aimSpin + delta);
   }
 
   function mapClientXToGameX(clientX: number): number {
@@ -1559,7 +1491,7 @@
                 {bonusChallenge === 'stars'
                   ? '⭐'
                   : bonusChallenge === 'spin'
-                    ? '🌀'
+                    ? '⭐'
                     : bonusChallenge === 'gems'
                       ? '💎'
                       : bonusChallenge === 'golden'
@@ -1578,11 +1510,11 @@
                   <li>기회 {BONUS_MAX_ATTEMPTS}회 · 1발 클리어 시 점수 ×2</li>
                 </ul>
               {:else if bonusChallenge === 'spin'}
-                <p class="text-muted mb-3 small">스핀 커브 + 패들로 받아 스핀을 바꿔 별을 먹으세요</p>
+                <p class="text-muted mb-3 small">빠른 공을 패들로 받아 별을 모두 먹으세요</p>
                 <ul class="list-unstyled text-start mx-auto bonus-intro-rules mb-4">
-                  <li>발사: 각도(←→) + <strong>스핀(↑↓ / 버튼)</strong> −3~+3</li>
-                  <li>플레이 중: <strong>패들로 받기</strong> — 왼쪽=좌커브 · 오른쪽=우커브</li>
-                  <li>바닥 쿠션 없음 · 놓치면 실패 · {Math.ceil(BILLIARD_TIME_LIMIT_MS / 1000)}초</li>
+                  <li>각도 조준 후 발사 · 플레이 중 <strong>패들로 받기</strong></li>
+                  <li>바닥 쿠션 없음 · 놓치면 실패</li>
+                  <li>제한 <strong>{Math.ceil(getBonusTimeLimitMs('spin') / 1000)}초</strong> · 공 빠름</li>
                   <li>기회 {BONUS_MAX_ATTEMPTS}회 · 1발 클리어 시 점수 ×2</li>
                 </ul>
               {:else if bonusChallenge === 'gems'}
@@ -1633,29 +1565,6 @@
                 aria-label="블록깨기 게임"
               ></canvas>
             </div>
-            {#if isBonusAiming && bonusChallenge === 'spin'}
-              <div class="d-flex justify-content-center align-items-center gap-2 my-2 spin-controls">
-                <button
-                  type="button"
-                  class="btn btn-sm btn-outline-secondary"
-                  onclick={() => nudgeAimSpin(-SPIN_STEP)}
-                  aria-label="좌커브 스핀"
-                >
-                  ↺ −
-                </button>
-                <span class="small fw-semibold text-info" style="min-width: 4.5rem; text-align: center">
-                  스핀 {aimSpin > 0 ? `+${aimSpin}` : aimSpin}
-                </span>
-                <button
-                  type="button"
-                  class="btn btn-sm btn-outline-secondary"
-                  onclick={() => nudgeAimSpin(SPIN_STEP)}
-                  aria-label="우커브 스핀"
-                >
-                  + ↻
-                </button>
-              </div>
-            {/if}
             <div
               class="breakout-drag-bar"
               bind:this={dragBarEl}
@@ -1678,10 +1587,10 @@
               ></div>
               <span class="breakout-drag-hint">
                 {#if screen === 'ready' && isBonusStage && bonusChallenge === 'spin'}
-                  각도 드래그 · 스핀 버튼/↑↓ · 탭 발사 ({getBonusAttemptLimit(bonusChallenge) -
+                  드래그로 각도 · 탭하면 발사 ({getBonusAttemptLimit(bonusChallenge) -
                     bonusAttemptsUsed}/{getBonusAttemptLimit(bonusChallenge)})
                 {:else if screen === 'playing' && isBonusStage && bonusChallenge === 'spin'}
-                  드래그로 패들 · 맞는 위치로 스핀
+                  드래그로 패들 이동
                 {:else if screen === 'ready' && isBonusStage}
                   드래그로 각도 · 탭하면 발사 ({getBonusAttemptLimit(bonusChallenge) -
                     bonusAttemptsUsed}/{getBonusAttemptLimit(bonusChallenge)})

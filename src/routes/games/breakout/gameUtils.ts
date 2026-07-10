@@ -189,14 +189,16 @@ export const DEFAULT_AIM_ANGLE = 90;
 export const AIM_ANGLE_STEP = 2.5;
 export const AIM_LINE_LENGTH = 120;
 
-/** 스핀샷: 조준 스핀 범위 */
+/** 별 받기(구 스핀샷): 빠른 공 + 짧은 제한시간 */
+export const SPIN_BALL_SPEED = 9;
+export const SPIN_TIME_LIMIT_MS = 20_000;
+
+/** @deprecated 스핀 물리 제거됨 — 호환용 상수만 유지 */
 export const SPIN_MIN = -3;
 export const SPIN_MAX = 3;
 export const SPIN_STEP = 1;
 export const DEFAULT_SPIN = 0;
-/** 프레임당 속도 벡터 회전량(라디안) × spin */
 export const SPIN_CURVE_RATE = 0.028;
-/** 쿠션 히트 시 스핀 감쇠 */
 export const SPIN_CUSHION_DECAY = 0.85;
 export const SPIN_AIM_PREVIEW_STEPS = 12;
 
@@ -212,7 +214,7 @@ const THEME_LABELS: Record<number, string> = {
 };
 
 const BONUS_LABELS: Record<number, string> = {
-  1: '스핀샷(테스트)',
+  1: '별 받기(테스트)',
   5: '3쿠션 챌린지',
   15: '별 먹기',
   25: '보석 회수',
@@ -465,6 +467,9 @@ export function buildStageConfig(stage: number): StageConfig {
   if (kind === 'bonus') {
     label = BONUS_LABELS[clamped] ?? '당구 퍼즐';
     ballSpeed = roundStageValue(Math.max(4.8, ballSpeed * 0.78), 1);
+    if (getBonusChallengeType(clamped) === 'spin') {
+      ballSpeed = SPIN_BALL_SPEED;
+    }
     // 고정 퍼즐 맵이 타입을 결정 — 비율은 표시/폴백만
     strongRatio = 0;
     explosiveRatio = 0;
@@ -848,6 +853,11 @@ export interface BilliardBall {
 
 export const BILLIARD_RADIUS = 11;
 export const BILLIARD_TIME_LIMIT_MS = 45_000;
+
+/** 보너스 챌린지별 제한시간 */
+export function getBonusTimeLimitMs(challenge: BonusChallengeType): number {
+  return challenge === 'spin' ? SPIN_TIME_LIMIT_MS : BILLIARD_TIME_LIMIT_MS;
+}
 export const BILLIARD_TABLE_TOP = 48;
 export const BILLIARD_TABLE_BOTTOM = CANVAS_HEIGHT - 28;
 export const BILLIARD_HIT_SCORE = 120;
