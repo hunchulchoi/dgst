@@ -326,11 +326,12 @@
     return post({ action: 'act', move });
   }
 
-  function setRaisePreset(kind: 'min' | 'plus' | 'half' | 'all') {
+  function setRaisePreset(kind: 'min' | 'plus' | 'plus100' | 'half' | 'all') {
     const min = minRaise;
     const max = maxRaise;
     if (kind === 'min') raiseBet = Math.min(min, max);
     else if (kind === 'plus') raiseBet = Math.min(max, raiseBet + ANTE * 2);
+    else if (kind === 'plus100') raiseBet = Math.min(max, raiseBet + 100);
     else if (kind === 'half') raiseBet = Math.min(max, Math.max(min, Math.floor(max / 2)));
     else raiseBet = max;
   }
@@ -578,6 +579,11 @@
                     type="button"
                     class="btn btn-sm btn-outline-secondary"
                     onclick={() => setRaisePreset('plus')}>+{ANTE * 2}</button
+                  >
+                  <button
+                    type="button"
+                    class="btn btn-sm btn-outline-secondary"
+                    onclick={() => setRaisePreset('plus100')}>+100</button
                   >
                   <button
                     type="button"
