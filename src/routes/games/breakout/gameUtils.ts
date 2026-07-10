@@ -27,7 +27,8 @@ export type BreakoutScreen =
   | 'stageClear'
   | 'gameOver'
   | 'gameWin'
-  | 'ready';
+  | 'ready'
+  | 'bonusIntro';
 
 export interface LifeLossResult {
   lives: number;
@@ -174,6 +175,14 @@ export interface StageConfig {
 export const TOTAL_STAGES = 50;
 export const BONUS_CLEAR_MULTIPLIER = 2;
 export const BONUS_DROP_CHANCE_MULTIPLIER = 1.35;
+export const BONUS_MAX_ATTEMPTS = 2;
+
+/** 조준각: 수평 기준 도(°). 90=수직 위, 작을수록 오른쪽 */
+export const AIM_ANGLE_MIN = 25;
+export const AIM_ANGLE_MAX = 155;
+export const DEFAULT_AIM_ANGLE = 90;
+export const AIM_ANGLE_STEP = 2.5;
+export const AIM_LINE_LENGTH = 120;
 
 const BONUS_STAGES = new Set([5, 15, 25, 35, 45]);
 const THEME_STAGES = new Set([10, 20, 30, 40, 50]);
@@ -548,6 +557,61 @@ export function createBall(paddle: Paddle, speed: number): Ball {
   };
 }
 
+export function clampAimAngle(angleDeg: number): number {
+  return Math.max(AIM_ANGLE_MIN, Math.min(AIM_ANGLE_MAX, angleDeg));
+}
+
+/** 드래그바 비율(0=왼쪽~1=오른쪽) → 조준각 */
+export function aimAngleFromDragRatio(ratio: number): number {
+  const t = Math.max(0, Math.min(1, ratio));
+  return clampAimAngle(AIM_ANGLE_MAX - t * (AIM_ANGLE_MAX - AIM_ANGLE_MIN));
+}
+
+export function dragRatioFromAimAngle(angleDeg: number): number {
+  const angle = clampAimAngle(angleDeg);
+  return (AIM_ANGLE_MAX - angle) / (AIM_ANGLE_MAX - AIM_ANGLE_MIN);
+}
+
+/** 조준각으로 공 발사 벡터 생성 */
+export function createAimedBall(paddle: Paddle, speed: number, angleDeg: number): Ball {
+  const rad = (clampAimAngle(angleDeg) * Math.PI) / 180;
+  return {
+    x: paddle.x + paddle.width / 2,
+    y: paddle.y - BALL_RADIUS - 2,
+    vx: Math.cos(rad) * speed,
+    vy: -Math.sin(rad) * speed,
+    radius: BALL_RADIUS
+  };
+}
+
+export function getAimLineEnd(
+  originX: number,
+  originY: number,
+  angleDeg: number,
+  length = AIM_LINE_LENGTH
+): { x: number; y: number } {
+  const rad = (clampAimAngle(angleDeg) * Math.PI) / 180;
+  return {
+    x: originX + Math.cos(rad) * length,
+    y: originY - Math.sin(rad) * length
+  };
+}
+
+export type BonusMissResult = 'retry' | 'skip';
+
+/** 보너스 공 낙하: 목숨 안 깎고 재시도 or 스킵 */
+export function resolveBonusMiss(
+  attemptsUsed: number,
+  maxAttempts = BONUS_MAX_ATTEMPTS
+): BonusMissResult {
+  return attemptsUsed < maxAttempts ? 'retry' : 'skip';
+}
+
+/** 1발 클리어면 2배, 2발째면 1배 */
+export function getBonusShotClearMultiplier(attemptsUsed: number): number {
+  return attemptsUsed <= 1 ? BONUS_CLEAR_MULTIPLIER : 1;
+}
+
 export function movePaddle(paddle: Paddle, dx: number): Paddle {
   let nextX = paddle.x + dx;
   nextX = Math.max(0, Math.min(CANVAS_WIDTH - paddle.width, nextX));
@@ -817,9 +881,14 @@ export function calculateComboBonus(combo: number, baseScore: number): number {
   return baseScore + Math.floor(baseScore * 0.25 * (combo - 1));
 }
 
-export function getStageClearBonus(stage: number): number {
+/**
+ * 스테이지 클리어 보너스.
+ * 보너스는 attemptsUsed=1(첫 발)일 때 2배, 2발째는 기본.
+ */
+export function getStageClearBonus(stage: number, bonusAttemptsUsed = 1): number {
   const base = 500 + stage * 250;
-  return getStageKind(stage) === 'bonus' ? base * BONUS_CLEAR_MULTIPLIER : base;
+  if (getStageKind(stage) !== 'bonus') return base;
+  return base * getBonusShotClearMultiplier(bonusAttemptsUsed);
 }
 
 /** 전체 폭파 — 철 블록 제외 */

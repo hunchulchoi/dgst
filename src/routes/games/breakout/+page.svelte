@@ -6,11 +6,14 @@
   import { formatRelativeTime } from '$lib/util/formatRelativeTime.js';
   import type { PageData } from './$types';
   import {
+    AIM_ANGLE_STEP,
     BALL_RADIUS,
+    BONUS_MAX_ATTEMPTS,
     CANVAS_HEIGHT,
     CANVAS_WIDTH,
     COMBO_WINDOW_MS,
     createActiveEffects,
+    createAimedBall,
     createBall,
     createBricks,
     createDropsFromDestroyedBricks,
@@ -18,8 +21,12 @@
     createMultiballBalls,
     createPaddle,
     createPowerUpDrop,
+    DEFAULT_AIM_ANGLE,
     destroyAllBreakableBricks,
+    dragRatioFromAimAngle,
     getActiveEffectLabels,
+    getAimLineEnd,
+    getBonusShotClearMultiplier,
     getEffectiveBallSpeed,
     getEffectivePaddleWidth,
     getStageClearBonus,
@@ -31,6 +38,7 @@
     handlePowerUpPaddleCollision,
     handleWallCollision,
     INITIAL_LIVES,
+    resolveBonusMiss,
     resolveLifeLoss,
     shouldContinueGameLoop,
     isBallLost,
@@ -50,8 +58,10 @@
     POWER_UP_META,
     resizePaddle,
     STAGES,
+    aimAngleFromDragRatio,
     applyTimedPowerUp,
     calculateComboBonus,
+    clampAimAngle,
     type ActiveEffects,
     type Ball,
     type Brick,
@@ -67,7 +77,15 @@
 
   let { data }: BreakoutPageProps = $props();
 
-  type Screen = 'menu' | 'playing' | 'paused' | 'stageClear' | 'gameOver' | 'gameWin' | 'ready';
+  type Screen =
+    | 'menu'
+    | 'playing'
+    | 'paused'
+    | 'stageClear'
+    | 'gameOver'
+    | 'gameWin'
+    | 'ready'
+    | 'bonusIntro';
 
   let screen = $state<Screen>('menu');
   let canvasEl = $state<HTMLCanvasElement | null>(null);
@@ -89,14 +107,15 @@
   let score = $state(0);
   let lives = $state(INITIAL_LIVES);
   let ballLaunched = $state(false);
+  let aimAngle = $state(DEFAULT_AIM_ANGLE);
+  let bonusAttemptsUsed = $state(0);
+  let bonusStageScoreStart = $state(0);
   let frameId = 0;
   let stageClearTimeout: ReturnType<typeof setTimeout> | null = null;
   let keys = $state({ left: false, right: false });
   let dragBarActive = $state(false);
   let dragStartX = 0;
   let dragMoved = false;
-
-  const dragThumbPercent = $derived(((paddle.x + paddle.width / 2) / CANVAS_WIDTH) * 100);
 
   let rankList = $state<
     Array<{ nickname: string; score: number; stage?: number; createdAt?: string; _id?: string }>
@@ -110,6 +129,15 @@
 
   const isLoggedIn = $derived(!!data.session?.user?.email);
   const stageConfig = $derived(getStageConfig(stage));
+  const isBonusStage = $derived(stageConfig.kind === 'bonus');
+  const isBonusAiming = $derived(
+    isBonusStage && !ballLaunched && (screen === 'ready' || screen === 'paused')
+  );
+  const dragThumbPercent = $derived(
+    isBonusAiming
+      ? dragRatioFromAimAngle(aimAngle) * 100
+      : ((paddle.x + paddle.width / 2) / CANVAS_WIDTH) * 100
+  );
 
   function resetRoundState() {
     powerUps = [];
@@ -121,6 +149,103 @@
     comboCount = 0;
     lastComboAt = 0;
     lastLaserShotAt = 0;
+    aimAngle = DEFAULT_AIM_ANGLE;
+    bonusAttemptsUsed = 0;
+  }
+
+  function prepareBallForStage(stageNum: number) {
+    const config = getStageConfig(stageNum);
+    if (config.kind === 'bonus') {
+      paddle = createPaddle();
+      balls = [createAimedBall(paddle, config.ballSpeed, aimAngle)];
+    } else {
+      balls = [createBall(paddle, config.ballSpeed)];
+    }
+  }
+
+  async function startGame() {
+    if (stageClearTimeout) clearTimeout(stageClearTimeout);
+    stage = 1;
+    score = 0;
+    lives = INITIAL_LIVES;
+    resetRoundState();
+    paddle = createPaddle();
+    bricks = createBricks(stage);
+    prepareBallForStage(stage);
+    bonusStageScoreStart = score;
+    ballLaunched = false;
+    screen = 'ready';
+    await tick();
+    initCanvasContext();
+    startLoop();
+    if (isLoggedIn) void logGameStart();
+  }
+
+  function startStage(stageNum: number) {
+    stage = stageNum;
+    resetRoundState();
+    paddle = createPaddle();
+    bricks = createBricks(stage);
+    prepareBallForStage(stage);
+    bonusStageScoreStart = score;
+    ballLaunched = false;
+    if (getStageConfig(stageNum).kind === 'bonus') {
+      screen = 'bonusIntro';
+    } else {
+      screen = 'ready';
+    }
+  }
+
+  async function dismissBonusIntro() {
+    if (screen !== 'bonusIntro') return;
+    screen = 'ready';
+    await tick();
+    initCanvasContext();
+    startLoop();
+  }
+
+  function launchBall() {
+    if (balls.length === 0 || ballLaunched) return;
+    if (isBonusStage) {
+      if (bonusAttemptsUsed >= BONUS_MAX_ATTEMPTS) return;
+      bonusAttemptsUsed += 1;
+      const config = getStageConfig(stage);
+      balls = [createAimedBall(paddle, config.ballSpeed, aimAngle)];
+    }
+    ballLaunched = true;
+    screen = 'playing';
+  }
+
+  function retryBonusAim() {
+    const config = getStageConfig(stage);
+    powerUps = [];
+    lasers = [];
+    activeEffects = createActiveEffects();
+    bricks = createBricks(stage);
+    paddle = createPaddle();
+    balls = [createAimedBall(paddle, config.ballSpeed, aimAngle)];
+    ballLaunched = false;
+    screen = 'ready';
+    showEffectToast(`재조준! (${bonusAttemptsUsed}/${BONUS_MAX_ATTEMPTS})`);
+  }
+
+  function skipBonusStage() {
+    showEffectToast('보너스 실패 · 다음 스테이지');
+    if (stageClearTimeout) clearTimeout(stageClearTimeout);
+    stageClearTimeout = setTimeout(() => {
+      advanceStage();
+    }, 1000);
+  }
+
+  function handleBonusMiss() {
+    const result = resolveBonusMiss(bonusAttemptsUsed);
+    if (result === 'retry') {
+      retryBonusAim();
+      return;
+    }
+    ballLaunched = false;
+    balls = [];
+    skipBonusStage();
   }
 
   function addScoreFromBricks(destroyed: Brick[], baseScore: number, now: number) {
@@ -226,40 +351,6 @@
     }
   }
 
-  async function startGame() {
-    if (stageClearTimeout) clearTimeout(stageClearTimeout);
-    stage = 1;
-    score = 0;
-    lives = INITIAL_LIVES;
-    resetRoundState();
-    paddle = createPaddle();
-    bricks = createBricks(stage);
-    balls = [createBall(paddle, stageConfig.ballSpeed)];
-    ballLaunched = false;
-    screen = 'ready';
-    await tick();
-    initCanvasContext();
-    startLoop();
-    if (isLoggedIn) void logGameStart();
-  }
-
-  function startStage(stageNum: number) {
-    stage = stageNum;
-    resetRoundState();
-    paddle = createPaddle();
-    bricks = createBricks(stage);
-    const config = getStageConfig(stage);
-    balls = [createBall(paddle, config.ballSpeed)];
-    ballLaunched = false;
-    screen = 'ready';
-  }
-
-  function launchBall() {
-    if (balls.length === 0 || ballLaunched) return;
-    ballLaunched = true;
-    screen = 'playing';
-  }
-
   function loseLife() {
     const result = resolveLifeLoss(lives, shieldCharges);
     lives = result.lives;
@@ -314,10 +405,18 @@
 
   function scheduleStageClear() {
     screen = 'stageClear';
-    const bonus = getStageClearBonus(stage);
-    score += bonus;
-    const prefix = stageConfig.kind === 'bonus' ? '보너스 클리어' : '스테이지 클리어';
-    showEffectToast(`${prefix} +${bonus}`);
+    let clearBonus = getStageClearBonus(stage, isBonusStage ? bonusAttemptsUsed : 1);
+    if (isBonusStage && bonusAttemptsUsed <= 1) {
+      const earned = Math.max(0, score - bonusStageScoreStart);
+      score += earned;
+      clearBonus = getStageClearBonus(stage, 1);
+      showEffectToast(`1발 클리어 ×2! +${earned + clearBonus}`);
+    } else if (isBonusStage) {
+      showEffectToast(`보너스 클리어 +${clearBonus}`);
+    } else {
+      showEffectToast(`스테이지 클리어 +${clearBonus}`);
+    }
+    score += clearBonus;
     if (stageClearTimeout) clearTimeout(stageClearTimeout);
     stageClearTimeout = setTimeout(() => {
       advanceStage();
@@ -336,8 +435,14 @@
 
     syncPaddleWidth();
 
-    if (keys.left) paddle = movePaddle(paddle, -PADDLE_SPEED);
-    if (keys.right) paddle = movePaddle(paddle, PADDLE_SPEED);
+    if (isBonusStage && !ballLaunched) {
+      if (keys.left) aimAngle = clampAimAngle(aimAngle + AIM_ANGLE_STEP);
+      if (keys.right) aimAngle = clampAimAngle(aimAngle - AIM_ANGLE_STEP);
+      balls = [createAimedBall(paddle, getStageConfig(stage).ballSpeed, aimAngle)];
+    } else {
+      if (keys.left) paddle = movePaddle(paddle, -PADDLE_SPEED);
+      if (keys.right) paddle = movePaddle(paddle, PADDLE_SPEED);
+    }
 
     powerUps = movePowerUps(powerUps);
     lasers = moveLasers(lasers);
@@ -409,7 +514,11 @@
     }
 
     if (survivingBalls.length === 0) {
-      loseLife();
+      if (isBonusStage) {
+        handleBonusMiss();
+      } else {
+        loseLife();
+      }
       return;
     }
 
@@ -550,6 +659,12 @@
     if (stageConfig.kind === 'bonus') {
       ctx.fillStyle = '#ffd54f';
       ctx.fillText(`★ ${stageConfig.label}`, CANVAS_WIDTH / 2, 44);
+      ctx.font = '11px system-ui, sans-serif';
+      ctx.fillText(
+        `기회 ${Math.max(0, BONUS_MAX_ATTEMPTS - bonusAttemptsUsed)}/${BONUS_MAX_ATTEMPTS}`,
+        CANVAS_WIDTH / 2,
+        62
+      );
     } else if (stageConfig.kind === 'theme') {
       ctx.fillStyle = '#80cbc4';
       ctx.fillText(stageConfig.label, CANVAS_WIDTH / 2, 44);
@@ -567,7 +682,11 @@
     if (activeEffectLabels.length > 0) {
       ctx.fillStyle = 'rgba(255,255,255,0.75)';
       ctx.font = '11px system-ui, sans-serif';
-      ctx.fillText(activeEffectLabels.join(' · '), CANVAS_WIDTH / 2, 62);
+      ctx.fillText(
+        activeEffectLabels.join(' · '),
+        CANVAS_WIDTH / 2,
+        stageConfig.kind === 'bonus' ? 78 : 62
+      );
     }
 
     if (effectToast) {
@@ -579,11 +698,44 @@
     }
 
     if (screen === 'ready') {
-      ctx.fillStyle = 'rgba(0,0,0,0.5)';
-      ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-      ctx.fillStyle = '#fff';
-      ctx.font = 'bold 18px system-ui, sans-serif';
-      ctx.fillText('아래 바 드래그 · 탭하면 발사', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2);
+      if (isBonusStage) {
+        const originX = paddle.x + paddle.width / 2;
+        const originY = paddle.y - BALL_RADIUS - 2;
+        const tip = getAimLineEnd(originX, originY, aimAngle);
+        ctx.strokeStyle = 'rgba(255, 213, 79, 0.85)';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([6, 6]);
+        ctx.beginPath();
+        ctx.moveTo(originX, originY);
+        ctx.lineTo(tip.x, tip.y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = '#ffd54f';
+        ctx.beginPath();
+        ctx.arc(tip.x, tip.y, 4, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = 'rgba(0,0,0,0.45)';
+        ctx.fillRect(0, CANVAS_HEIGHT / 2 - 36, CANVAS_WIDTH, 72);
+        ctx.fillStyle = '#ffd54f';
+        ctx.font = 'bold 16px system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('각도 조준 · 탭/스페이스 발사', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 8);
+        ctx.fillStyle = '#fff';
+        ctx.font = '13px system-ui, sans-serif';
+        const left = BONUS_MAX_ATTEMPTS - bonusAttemptsUsed;
+        ctx.fillText(
+          `남은 기회 ${left}회 · 1발 클리어 점수 ×${getBonusShotClearMultiplier(bonusAttemptsUsed + 1)}`,
+          CANVAS_WIDTH / 2,
+          CANVAS_HEIGHT / 2 + 18
+        );
+      } else {
+        ctx.fillStyle = 'rgba(0,0,0,0.5)';
+        ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 18px system-ui, sans-serif';
+        ctx.fillText('아래 바 드래그 · 탭하면 발사', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2);
+      }
     }
 
     if (screen === 'paused') {
@@ -663,7 +815,8 @@
     if (e.key === ' ' || e.key === 'Enter') {
       e.preventDefault();
       if (screen === 'menu') return;
-      if (screen === 'ready') launchBall();
+      if (screen === 'bonusIntro') void dismissBonusIntro();
+      else if (screen === 'ready') launchBall();
       else if (screen === 'playing') togglePause();
       else if (screen === 'paused') resumeGame();
     }
@@ -691,6 +844,11 @@
     paddle = { ...paddle, x: clamped };
   }
 
+  function setAimFromGameX(gameX: number) {
+    const ratio = Math.max(0, Math.min(1, gameX / CANVAS_WIDTH));
+    aimAngle = aimAngleFromDragRatio(ratio);
+  }
+
   function handleDragBarPointerDown(e: PointerEvent) {
     if (screen !== 'playing' && screen !== 'ready' && screen !== 'paused') return;
     const el = e.currentTarget as HTMLElement;
@@ -698,7 +856,9 @@
     dragStartX = e.clientX;
     dragMoved = false;
     if (screen !== 'paused') {
-      setPaddleFromGameX(mapClientXToGameX(e.clientX));
+      const gameX = mapClientXToGameX(e.clientX);
+      if (isBonusAiming) setAimFromGameX(gameX);
+      else setPaddleFromGameX(gameX);
     }
     el.setPointerCapture(e.pointerId);
   }
@@ -706,7 +866,9 @@
   function handleDragBarPointerMove(e: PointerEvent) {
     if (!dragBarActive || screen === 'paused') return;
     if (Math.abs(e.clientX - dragStartX) > 8) dragMoved = true;
-    setPaddleFromGameX(mapClientXToGameX(e.clientX));
+    const gameX = mapClientXToGameX(e.clientX);
+    if (isBonusAiming) setAimFromGameX(gameX);
+    else setPaddleFromGameX(gameX);
   }
 
   function handleDragBarPointerUp(e: PointerEvent) {
@@ -894,6 +1056,22 @@
                 메뉴
               </button>
             </div>
+          {:else if screen === 'bonusIntro'}
+            <div class="text-center py-3 bonus-intro">
+              <h2 class="mb-2 text-warning">★ 보너스 스테이지 {stage}</h2>
+              <p class="text-muted mb-3 small">각도 조준 · 한 방에 클리어 챌린지</p>
+              <ul class="list-unstyled text-start mx-auto bonus-intro-rules mb-4">
+                <li>드래그바 / ← → 로 <strong>발사 각도</strong> 조절</li>
+                <li>탭 · 스페이스로 <strong>발사</strong> (기회 {BONUS_MAX_ATTEMPTS}회)</li>
+                <li><strong>1발</strong>에 클리어하면 점수 <strong>×2</strong></li>
+                <li>공 떨어져도 목숨은 <strong>안 깎임</strong></li>
+                <li>2회 모두 실패하면 다음 스테이지로</li>
+              </ul>
+              <button type="button" class="btn btn-warning btn-lg px-5" onclick={dismissBonusIntro}>
+                조준 시작
+              </button>
+              <div class="mt-3 small text-muted">스페이스 / Enter 로도 시작</div>
+            </div>
           {:else}
             <div class="breakout-canvas-wrap">
               <canvas
@@ -925,7 +1103,10 @@
                 aria-hidden="true"
               ></div>
               <span class="breakout-drag-hint">
-                {#if screen === 'ready'}
+                {#if screen === 'ready' && isBonusStage}
+                  드래그로 각도 · 탭하면 발사 ({BONUS_MAX_ATTEMPTS - bonusAttemptsUsed}/
+                  {BONUS_MAX_ATTEMPTS})
+                {:else if screen === 'ready'}
                   드래그로 이동 · 탭하면 발사
                 {:else if screen === 'paused'}
                   탭하면 재개
@@ -1004,6 +1185,21 @@
   .breakout-card {
     background: var(--dgst-chrome-bg, #fff);
     overflow: hidden;
+  }
+
+  .bonus-intro-rules {
+    max-width: 320px;
+    font-size: 0.95rem;
+    line-height: 1.7;
+  }
+
+  .bonus-intro-rules li {
+    padding: 0.2rem 0;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  }
+
+  .bonus-intro-rules li:last-child {
+    border-bottom: none;
   }
 
   .breakout-canvas-wrap {

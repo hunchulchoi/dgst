@@ -19,6 +19,11 @@ import {
   getStageConfig,
   getStageKind,
   getStagePattern,
+  getBonusShotClearMultiplier,
+  resolveBonusMiss,
+  createAimedBall,
+  clampAimAngle,
+  aimAngleFromDragRatio,
   TOTAL_STAGES,
   handleBrickCollision,
   handleInvincibleBrickCollision,
@@ -278,8 +283,30 @@ describe('breakout gameUtils', () => {
     expect(getStageClearBonus(1)).toBe(750);
     expect(getStageClearBonus(10)).toBe(3000);
     expect(getStageClearBonus(50)).toBe(13_000);
-    expect(getStageClearBonus(5)).toBe(3500);
-    expect(getStageClearBonus(15)).toBe(8500);
+    expect(getStageClearBonus(5, 1)).toBe(3500);
+    expect(getStageClearBonus(5, 2)).toBe(1750);
+    expect(getStageClearBonus(15, 1)).toBe(8500);
+    expect(getStageClearBonus(15, 2)).toBe(4250);
+  });
+
+  it('bonus aim helpers clamp angle and create velocity', () => {
+    expect(clampAimAngle(0)).toBe(25);
+    expect(clampAimAngle(200)).toBe(155);
+    expect(aimAngleFromDragRatio(0.5)).toBe(90);
+    const paddle = createPaddle();
+    const up = createAimedBall(paddle, 6, 90);
+    expect(up.vx).toBeCloseTo(0, 5);
+    expect(up.vy).toBeCloseTo(-6, 5);
+    const rightish = createAimedBall(paddle, 6, 45);
+    expect(rightish.vx).toBeGreaterThan(0);
+    expect(rightish.vy).toBeLessThan(0);
+  });
+
+  it('bonus miss allows two attempts then skip without life loss', () => {
+    expect(resolveBonusMiss(1)).toBe('retry');
+    expect(resolveBonusMiss(2)).toBe('skip');
+    expect(getBonusShotClearMultiplier(1)).toBe(2);
+    expect(getBonusShotClearMultiplier(2)).toBe(1);
   });
 
   it('detects game complete after final stage', () => {
@@ -345,5 +372,6 @@ describe('breakout gameUtils', () => {
     expect(shouldContinueGameLoop('gameOver')).toBe(false);
     expect(shouldContinueGameLoop('gameWin')).toBe(false);
     expect(shouldContinueGameLoop('menu')).toBe(false);
+    expect(shouldContinueGameLoop('bonusIntro')).toBe(false);
   });
 });
