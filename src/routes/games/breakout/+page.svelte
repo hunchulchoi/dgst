@@ -21,6 +21,8 @@
     createBricks,
     createGemCollectibles,
     createStarCollectibles,
+    createCoinCollectibles,
+    createVaultPuzzle,
     createDropsFromDestroyedBricks,
     createLaserShot,
     createMultiballBalls,
@@ -35,8 +37,10 @@
     getBonusChallengeType,
     getBilliardTimeLeftMs,
     getCushionMultiplier,
+    getCoinPickupScore,
     getGemPickupScore,
     getStarPickupScore,
+    getBonusAttemptLimit,
     getEffectiveBallSpeed,
     getEffectivePaddleWidth,
     getRequiredCushions,
@@ -55,6 +59,7 @@
     countCollectedItems,
     isCollectibleClear,
     tryCollectItem,
+    resolveVaultHit,
     resolveBonusMiss,
     resolveCueObjectHit,
     resolveLifeLoss,
@@ -86,6 +91,7 @@
     type BilliardBall,
     type BonusChallengeType,
     type BonusCollectible,
+    type VaultTarget,
     type Brick,
     type Laser,
     type Paddle,
@@ -134,6 +140,10 @@
   let bonusStageScoreStart = $state(0);
   let billiardObjects = $state<BilliardBall[]>([]);
   let bonusCollectibles = $state<BonusCollectible[]>([]);
+  let vaultTargets = $state<VaultTarget[]>([]);
+  let vaultSequence = $state<number[]>([]);
+  let vaultSequenceIndex = $state(0);
+  let vaultTouchId = $state<string | null>(null);
   let cushionCount = $state(0);
   let billiardEndsAt = $state(0);
   let requiredCushions = $state(1);
@@ -183,6 +193,10 @@
     bonusAttemptsUsed = 0;
     billiardObjects = [];
     bonusCollectibles = [];
+    vaultTargets = [];
+    vaultSequence = [];
+    vaultSequenceIndex = 0;
+    vaultTouchId = null;
     cushionCount = 0;
     billiardEndsAt = 0;
     requiredCushions = 1;
@@ -193,15 +207,34 @@
     cushionCount = 0;
     requiredCushions = getRequiredCushions(stageNum);
     billiardEndsAt = 0;
+    vaultTouchId = null;
+    vaultSequenceIndex = 0;
     if (challenge === 'billiard') {
       billiardObjects = createBilliardObjectBalls(stageNum);
       bonusCollectibles = [];
+      vaultTargets = [];
+      vaultSequence = [];
     } else if (challenge === 'stars') {
       billiardObjects = [];
       bonusCollectibles = createStarCollectibles(stageNum);
-    } else {
+      vaultTargets = [];
+      vaultSequence = [];
+    } else if (challenge === 'gems') {
       billiardObjects = [];
       bonusCollectibles = createGemCollectibles(stageNum);
+      vaultTargets = [];
+      vaultSequence = [];
+    } else if (challenge === 'golden') {
+      billiardObjects = [];
+      bonusCollectibles = createCoinCollectibles(stageNum);
+      vaultTargets = [];
+      vaultSequence = [];
+    } else {
+      billiardObjects = [];
+      bonusCollectibles = [];
+      const puzzle = createVaultPuzzle(stageNum);
+      vaultTargets = puzzle.targets;
+      vaultSequence = puzzle.sequence;
     }
   }
 
@@ -215,6 +248,9 @@
     } else {
       billiardObjects = [];
       bonusCollectibles = [];
+      vaultTargets = [];
+      vaultSequence = [];
+      vaultSequenceIndex = 0;
       cushionCount = 0;
       balls = [createBall(paddle, config.ballSpeed)];
     }
@@ -264,7 +300,8 @@
   function launchBall() {
     if (balls.length === 0 || ballLaunched) return;
     if (isBonusStage) {
-      if (bonusAttemptsUsed >= BONUS_MAX_ATTEMPTS) return;
+      const limit = getBonusAttemptLimit(bonusChallenge);
+      if (bonusAttemptsUsed >= limit) return;
       bonusAttemptsUsed += 1;
       const config = getStageConfig(stage);
       balls = [createAimedBall(paddle, config.ballSpeed, aimAngle)];
@@ -286,7 +323,8 @@
     balls = [createAimedBall(paddle, config.ballSpeed, aimAngle)];
     ballLaunched = false;
     screen = 'ready';
-    showEffectToast(`재조준! (${bonusAttemptsUsed}/${BONUS_MAX_ATTEMPTS})`);
+    const limit = getBonusAttemptLimit(getBonusChallengeType(stage));
+    showEffectToast(`재조준! (${bonusAttemptsUsed}/${limit})`);
   }
 
   function skipBonusStage() {
@@ -351,18 +389,58 @@
       return;
     }
 
-    // stars / gems
+    if (bonusChallenge === 'vault') {
+      const overlapping = vaultTargets.find((t) => {
+        if (t.activated) return false;
+        return Math.hypot(t.x - cue.x, t.y - cue.y) < cue.radius + t.radius;
+      });
+      if (!overlapping) {
+        vaultTouchId = null;
+      } else if (vaultTouchId !== overlapping.id) {
+        vaultTouchId = overlapping.id;
+        const result = resolveVaultHit(
+          vaultTargets,
+          vaultSequence,
+          vaultSequenceIndex,
+          cue
+        );
+        vaultTargets = result.targets;
+        vaultSequenceIndex = result.sequenceIndex;
+        if (result.wrong) {
+          showEffectToast('순서 틀림 · 리셋');
+          score = Math.max(bonusStageScoreStart, score - 50);
+        } else if (result.correct) {
+          score += 150 * stage;
+          showEffectToast(
+            result.complete
+              ? '금고 개방!'
+              : `다음: ${vaultSequence[result.sequenceIndex]}`
+          );
+        }
+        if (result.complete) {
+          balls = [normalizeBallSpeed(cue, config.ballSpeed)];
+          scheduleStageClear();
+          return;
+        }
+      }
+      balls = [normalizeBallSpeed(cue, config.ballSpeed)];
+      return;
+    }
+
+    // stars / gems / golden coins
     let nextItems = bonusCollectibles;
     for (let i = 0; i < nextItems.length; i++) {
       const result = tryCollectItem(cue, nextItems[i]);
       if (result.collected) {
         nextItems = nextItems.map((it, idx) => (idx === i ? result.item : it));
-        if (bonusChallenge === 'gems') {
-          const gained = getGemPickupScore(result.item.value, stage, cushionCount);
+        if (bonusChallenge === 'gems' || bonusChallenge === 'golden') {
+          const gained =
+            bonusChallenge === 'golden'
+              ? getCoinPickupScore(result.item.value, stage, cushionCount)
+              : getGemPickupScore(result.item.value, stage, cushionCount);
           score += gained;
-          showEffectToast(
-            `💎 ×${getCushionMultiplier(cushionCount)} +${gained}`
-          );
+          const icon = bonusChallenge === 'golden' ? '🪙' : '💎';
+          showEffectToast(`${icon} ×${getCushionMultiplier(Math.max(1, cushionCount))} +${gained}`);
         } else {
           const gained = getStarPickupScore(result.item.value, stage);
           score += gained;
@@ -773,6 +851,18 @@
           ctx.font = 'bold 22px system-ui, sans-serif';
           ctx.textAlign = 'center';
           ctx.fillText('⭐', item.x, item.y + 7);
+        } else if (item.kind === 'coin') {
+          ctx.fillStyle = '#ffc107';
+          ctx.beginPath();
+          ctx.arc(item.x, item.y, item.radius, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = '#ff8f00';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+          ctx.fillStyle = '#5d4037';
+          ctx.font = 'bold 11px system-ui, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('₩', item.x, item.y + 4);
         } else {
           ctx.fillStyle = '#80d8ff';
           ctx.beginPath();
@@ -786,6 +876,19 @@
           ctx.stroke();
         }
         ctx.globalAlpha = 1;
+      }
+      for (const t of vaultTargets) {
+        ctx.fillStyle = t.activated ? '#66bb6a' : '#455a64';
+        ctx.beginPath();
+        ctx.arc(t.x, t.y, t.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = t.activated ? '#c8e6c9' : '#ffd54f';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 16px system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(String(t.number), t.x, t.y + 5);
       }
     }
 
@@ -859,7 +962,15 @@
     ctx.font = '12px system-ui, sans-serif';
     if (stageConfig.kind === 'bonus') {
       const icon =
-        bonusChallenge === 'stars' ? '⭐' : bonusChallenge === 'gems' ? '💎' : '🎱';
+        bonusChallenge === 'stars'
+          ? '⭐'
+          : bonusChallenge === 'gems'
+            ? '💎'
+            : bonusChallenge === 'golden'
+              ? '🪙'
+              : bonusChallenge === 'vault'
+                ? '🔐'
+                : '🎱';
       ctx.fillStyle = '#ffd54f';
       ctx.fillText(`${icon} ${stageConfig.label}`, CANVAS_WIDTH / 2, 28);
       ctx.font = '11px system-ui, sans-serif';
@@ -867,6 +978,7 @@
       const timeLeft = ballLaunched
         ? Math.ceil(getBilliardTimeLeftMs(billiardEndsAt, now) / 1000)
         : Math.ceil(BILLIARD_TIME_LIMIT_MS / 1000);
+      const attemptLimit = getBonusAttemptLimit(bonusChallenge);
       if (bonusChallenge === 'billiard') {
         const hitCount = countHitBilliardBalls(billiardObjects);
         ctx.fillText(
@@ -880,16 +992,29 @@
           CANVAS_WIDTH / 2,
           46
         );
-      } else {
+      } else if (bonusChallenge === 'gems') {
         ctx.fillText(
           `보석 ${countCollectedItems(bonusCollectibles)}/${bonusCollectibles.length} · 배율 ×${getCushionMultiplier(cushionCount)} · ${timeLeft}s`,
           CANVAS_WIDTH / 2,
           46
         );
+      } else if (bonusChallenge === 'golden') {
+        ctx.fillText(
+          `코인 ${countCollectedItems(bonusCollectibles)}/${bonusCollectibles.length} · ×${getCushionMultiplier(Math.max(1, cushionCount))} · ${timeLeft}s`,
+          CANVAS_WIDTH / 2,
+          46
+        );
+      } else {
+        const seqLabel = vaultSequence
+          .map((n, i) => (i < vaultSequenceIndex ? `✓${n}` : String(n)))
+          .join('→');
+        ctx.fillText(`순서 ${seqLabel} · ${timeLeft}s`, CANVAS_WIDTH / 2, 46);
       }
       ctx.fillStyle = '#c8e6c9';
       ctx.fillText(
-        `기회 ${Math.max(0, BONUS_MAX_ATTEMPTS - bonusAttemptsUsed)}/${BONUS_MAX_ATTEMPTS}`,
+        bonusChallenge === 'golden'
+          ? '원샷!'
+          : `기회 ${Math.max(0, attemptLimit - bonusAttemptsUsed)}/${attemptLimit}`,
         CANVAS_WIDTH / 2,
         62
       );
@@ -949,13 +1074,20 @@
             ? '각도 조준 · 모든 별 먹기'
             : bonusChallenge === 'gems'
               ? '쿠션 쌓고 보석 먹기 (배율↑)'
-              : '각도 조준 · 쿠션 후 모든 공 맞추기';
+              : bonusChallenge === 'golden'
+                ? '원샷! 쿠션 후 코인 최대 회수'
+                : bonusChallenge === 'vault'
+                  ? `순서대로 맞추기: ${vaultSequence.join('→')}`
+                  : '각도 조준 · 쿠션 후 모든 공 맞추기';
         ctx.fillText(aimHint, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 8);
         ctx.fillStyle = '#fff';
         ctx.font = '13px system-ui, sans-serif';
-        const left = BONUS_MAX_ATTEMPTS - bonusAttemptsUsed;
+        const limit = getBonusAttemptLimit(bonusChallenge);
+        const left = limit - bonusAttemptsUsed;
         ctx.fillText(
-          `남은 기회 ${left}회 · 1발 클리어 ×${getBonusShotClearMultiplier(bonusAttemptsUsed + 1)}`,
+          bonusChallenge === 'golden'
+            ? `단 1발 · 1발 클리어 ×${getBonusShotClearMultiplier(1)}`
+            : `남은 기회 ${left}회 · 1발 클리어 ×${getBonusShotClearMultiplier(bonusAttemptsUsed + 1)}`,
           CANVAS_WIDTH / 2,
           CANVAS_HEIGHT / 2 + 18
         );
@@ -987,7 +1119,11 @@
             ? '⭐ 별 전부 클리어!'
             : bonusChallenge === 'gems'
               ? '💎 보석 회수 클리어!'
-              : '🎱 당구 챌린지 클리어!'
+              : bonusChallenge === 'golden'
+                ? '🪙 골든샷 클리어!'
+                : bonusChallenge === 'vault'
+                  ? '🔐 금고 개방!'
+                  : '🎱 당구 챌린지 클리어!'
           : `스테이지 ${stage} 클리어!`;
       ctx.fillText(clearLabel, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2);
     }
@@ -1297,7 +1433,11 @@
                   ? '⭐'
                   : bonusChallenge === 'gems'
                     ? '💎'
-                    : '🎱'}
+                    : bonusChallenge === 'golden'
+                      ? '🪙'
+                      : bonusChallenge === 'vault'
+                        ? '🔐'
+                        : '🎱'}
                 {stageConfig.label} · {stage}단계
               </h2>
               {#if bonusChallenge === 'stars'}
@@ -1315,6 +1455,22 @@
                   <li>쿠션 먼저 쌓고 <strong>💎 보석</strong> 먹기</li>
                   <li>모든 보석 회수 시 클리어 · {Math.ceil(BILLIARD_TIME_LIMIT_MS / 1000)}초</li>
                   <li>기회 {BONUS_MAX_ATTEMPTS}회 · 1발 클리어 시 점수 ×2</li>
+                </ul>
+              {:else if bonusChallenge === 'golden'}
+                <p class="text-muted mb-3 small">단 한 발! 쿠션 배율로 코인을 최대한 회수하세요</p>
+                <ul class="list-unstyled text-start mx-auto bonus-intro-rules mb-4">
+                  <li><strong>원샷</strong> — 기회 1회뿐</li>
+                  <li>쿠션 쌓을수록 🪙 점수 배율 ↑</li>
+                  <li>모든 코인 회수 시 클리어 · {Math.ceil(BILLIARD_TIME_LIMIT_MS / 1000)}초</li>
+                  <li>1발 클리어 시 점수 ×2</li>
+                </ul>
+              {:else if bonusChallenge === 'vault'}
+                <p class="text-muted mb-3 small">번호 타깃을 정해진 순서로 맞추면 금고가 열립니다</p>
+                <ul class="list-unstyled text-start mx-auto bonus-intro-rules mb-4">
+                  <li>순서: <strong>{vaultSequence.join(' → ')}</strong></li>
+                  <li>틀린 번호 맞으면 <strong>진행 리셋</strong></li>
+                  <li>사방 쿠션 · {Math.ceil(BILLIARD_TIME_LIMIT_MS / 1000)}초 · 기회 {BONUS_MAX_ATTEMPTS}회</li>
+                  <li>1발 클리어 시 점수 ×2</li>
                 </ul>
               {:else}
                 <p class="text-muted mb-3 small">4구 당구 — 쿠션을 이용해 모든 공을 맞추세요</p>
@@ -1362,8 +1518,8 @@
               ></div>
               <span class="breakout-drag-hint">
                 {#if screen === 'ready' && isBonusStage}
-                  드래그로 각도 · 탭하면 발사 ({BONUS_MAX_ATTEMPTS - bonusAttemptsUsed}/
-                  {BONUS_MAX_ATTEMPTS})
+                  드래그로 각도 · 탭하면 발사 ({getBonusAttemptLimit(bonusChallenge) -
+                    bonusAttemptsUsed}/{getBonusAttemptLimit(bonusChallenge)})
                 {:else if screen === 'ready'}
                   드래그로 이동 · 탭하면 발사
                 {:else if screen === 'paused'}

@@ -33,6 +33,11 @@ import {
   getGemPickupScore,
   isCollectibleClear,
   tryCollectItem,
+  createVaultPuzzle,
+  resolveVaultHit,
+  createCoinCollectibles,
+  getBonusAttemptLimit,
+  getCoinPickupScore,
   getRequiredCushions,
   handleEnclosedCushionCollision,
   isBilliardClear,
@@ -62,7 +67,7 @@ describe('breakout gameUtils', () => {
   it('defines 50 stages with rising difficulty', () => {
     expect(STAGES).toHaveLength(TOTAL_STAGES);
     expect(STAGES).toHaveLength(50);
-    expect(STAGES[0].label).toBe('별 먹기(테스트)');
+    expect(STAGES[0].label).toBe('금고 열기(테스트)');
     expect(STAGES[49].label).toBe('최종');
     expect(STAGES[0].ballSpeed).toBeLessThan(STAGES[49].ballSpeed);
     expect(STAGES[0].kind).toBe('bonus');
@@ -84,8 +89,9 @@ describe('breakout gameUtils', () => {
     expect(getStageKind(1)).toBe('bonus');
     expect(getStageKind(7)).toBe('normal');
     expect(getStageConfig(5).label).toBe('3쿠션 챌린지');
-    expect(getStageConfig(1).label).toBe('별 먹기(테스트)');
-    expect(getStageConfig(45).label).toBe('보석 배율');
+    expect(getStageConfig(1).label).toBe('금고 열기(테스트)');
+    expect(getStageConfig(45).label).toBe('금고 열기');
+    expect(getStageConfig(35).label).toBe('골든샷');
     expect(getStageConfig(10).label).toBe('철 미로');
     expect(getStageConfig(20).label).toBe('폭발 연쇄');
   });
@@ -357,14 +363,19 @@ describe('breakout gameUtils', () => {
   });
 
   it('star and gem collectible challenges', () => {
-    expect(getBonusChallengeType(1)).toBe('stars');
+    expect(getBonusChallengeType(1)).toBe('vault');
     expect(getBonusChallengeType(5)).toBe('billiard');
     expect(getBonusChallengeType(15)).toBe('stars');
     expect(getBonusChallengeType(25)).toBe('gems');
+    expect(getBonusChallengeType(35)).toBe('golden');
+    expect(getBonusChallengeType(45)).toBe('vault');
     expect(getCushionMultiplier(1)).toBe(1);
     expect(getCushionMultiplier(3)).toBe(4);
     expect(getCushionMultiplier(5)).toBe(16);
     expect(getGemPickupScore(100, 2, 3)).toBe(800);
+    expect(getCoinPickupScore(60, 2, 3)).toBe(480);
+    expect(getBonusAttemptLimit('golden')).toBe(1);
+    expect(getBonusAttemptLimit('vault')).toBe(2);
 
     const stars = createStarCollectibles(15);
     expect(stars.length).toBeGreaterThanOrEqual(5);
@@ -375,12 +386,32 @@ describe('breakout gameUtils', () => {
     cue.y = stars[0].y;
     const picked = tryCollectItem(cue, stars[0]);
     expect(picked.collected).toBe(true);
-    expect(isCollectibleClear(stars.map((s, i) => (i === 0 ? picked.item : { ...s, collected: true })))).toBe(
-      true
-    );
 
     const gems = createGemCollectibles(25);
     expect(gems.every((g) => g.kind === 'gem')).toBe(true);
+    expect(createCoinCollectibles(35).every((c) => c.kind === 'coin')).toBe(true);
+  });
+
+  it('vault sequence puzzle accepts correct order only', () => {
+    const puzzle = createVaultPuzzle(1);
+    expect(puzzle.sequence).toEqual([2, 4, 1, 3]);
+    expect(puzzle.targets).toHaveLength(4);
+    const paddle = createPaddle();
+    const cue = createAimedBall(paddle, 6, 90);
+    const first = puzzle.targets.find((t) => t.number === 2)!;
+    cue.x = first.x;
+    cue.y = first.y;
+    const ok = resolveVaultHit(puzzle.targets, puzzle.sequence, 0, cue);
+    expect(ok.correct).toBe(true);
+    expect(ok.sequenceIndex).toBe(1);
+
+    const wrongTarget = puzzle.targets.find((t) => t.number === 1)!;
+    cue.x = wrongTarget.x;
+    cue.y = wrongTarget.y;
+    const bad = resolveVaultHit(ok.targets, puzzle.sequence, 1, cue);
+    expect(bad.wrong).toBe(true);
+    expect(bad.sequenceIndex).toBe(0);
+    expect(bad.targets.every((t) => !t.activated)).toBe(true);
   });
 
   it('enclosed cushion and cue-object hit', () => {

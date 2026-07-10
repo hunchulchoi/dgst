@@ -199,23 +199,23 @@ const THEME_LABELS: Record<number, string> = {
 };
 
 const BONUS_LABELS: Record<number, string> = {
-  1: '별 먹기(테스트)',
+  1: '금고 열기(테스트)',
   5: '3쿠션 챌린지',
   15: '별 먹기',
   25: '보석 회수',
-  35: '별 폭풍',
-  45: '보석 배율'
+  35: '골든샷',
+  45: '금고 열기'
 };
 
-export type BonusChallengeType = 'billiard' | 'stars' | 'gems';
+export type BonusChallengeType = 'billiard' | 'stars' | 'gems' | 'golden' | 'vault';
 
 const BONUS_CHALLENGE_BY_STAGE: Record<number, BonusChallengeType> = {
-  1: 'stars',
+  1: 'vault',
   5: 'billiard',
   15: 'stars',
   25: 'gems',
-  35: 'stars',
-  45: 'gems'
+  35: 'golden',
+  45: 'vault'
 };
 
 /** 보너스 스테이지 챌린지 종류 */
@@ -947,7 +947,7 @@ export function getBilliardTimeLeftMs(endsAt: number, now: number): number {
 
 // ——— 별 먹기 / 보석 배율 ———
 
-export type BonusCollectibleKind = 'star' | 'gem';
+export type BonusCollectibleKind = 'star' | 'gem' | 'coin';
 
 export interface BonusCollectible {
   id: string;
@@ -961,8 +961,12 @@ export interface BonusCollectible {
 
 export const STAR_RADIUS = 12;
 export const GEM_RADIUS = 11;
+export const COIN_RADIUS = 10;
 export const STAR_BASE_SCORE = 80;
 export const GEM_BASE_SCORE = 100;
+export const COIN_BASE_SCORE = 60;
+export const VAULT_TARGET_RADIUS = 18;
+export const GOLDEN_MAX_ATTEMPTS = 1;
 
 /** 쿠션 횟수 → 보석 점수 배율 */
 export function getCushionMultiplier(cushions: number): number {
@@ -985,7 +989,7 @@ function makeCollectible(
     kind,
     x,
     y,
-    radius: kind === 'star' ? STAR_RADIUS : GEM_RADIUS,
+    radius: kind === 'star' ? STAR_RADIUS : kind === 'gem' ? GEM_RADIUS : COIN_RADIUS,
     collected: false,
     value
   };
@@ -1063,6 +1067,131 @@ export function getGemPickupScore(baseValue: number, stage: number, cushions: nu
 
 export function getStarPickupScore(baseValue: number, stage: number): number {
   return baseValue * stage;
+}
+
+export function getCoinPickupScore(baseValue: number, stage: number, cushions: number): number {
+  return baseValue * stage * getCushionMultiplier(Math.max(1, cushions));
+}
+
+/** 골든샷용 코인 배치 */
+export function createCoinCollectibles(stage: number): BonusCollectible[] {
+  const midX = CANVAS_WIDTH / 2;
+  const points: Array<[number, number]> = [
+    [midX - 100, 150],
+    [midX + 100, 150],
+    [midX, 220],
+    [midX - 120, 300],
+    [midX + 120, 300],
+    [midX - 50, 380],
+    [midX + 50, 380],
+    [midX, 450]
+  ];
+  return points.map(([x, y], i) => makeCollectible(`coin-${i}`, 'coin', x, y, COIN_BASE_SCORE));
+}
+
+// ——— 금고 열기 (순서 퍼즐) ———
+
+export interface VaultTarget {
+  id: string;
+  number: number;
+  x: number;
+  y: number;
+  radius: number;
+  /** 올바른 순서로 이미 맞췄는지 */
+  activated: boolean;
+}
+
+export interface VaultPuzzle {
+  targets: VaultTarget[];
+  /** 맞춰야 하는 번호 순서 */
+  sequence: number[];
+}
+
+/** 스테이지별 금고 순서 */
+export function createVaultPuzzle(stage: number): VaultPuzzle {
+  const midX = CANVAS_WIDTH / 2;
+  const hard = stage >= 45;
+  const sequence = hard ? [3, 1, 4, 2] : [2, 4, 1, 3];
+  const positions: Record<number, [number, number]> = hard
+    ? {
+        1: [midX - 110, 180],
+        2: [midX + 110, 180],
+        3: [midX - 80, 320],
+        4: [midX + 80, 320]
+      }
+    : {
+        1: [90, 160],
+        2: [CANVAS_WIDTH - 90, 160],
+        3: [90, 340],
+        4: [CANVAS_WIDTH - 90, 340]
+      };
+  const targets: VaultTarget[] = [1, 2, 3, 4].map((n) => ({
+    id: `vault-${n}`,
+    number: n,
+    x: positions[n][0],
+    y: positions[n][1],
+    radius: VAULT_TARGET_RADIUS,
+    activated: false
+  }));
+  return { targets, sequence };
+}
+
+export interface VaultHitResult {
+  targets: VaultTarget[];
+  sequenceIndex: number;
+  correct: boolean;
+  complete: boolean;
+  wrong: boolean;
+}
+
+/**
+ * 금고 타깃 히트. 다음 순서 번호만 인정. 틀린 번호면 진행 리셋.
+ */
+export function resolveVaultHit(
+  targets: VaultTarget[],
+  sequence: number[],
+  sequenceIndex: number,
+  cue: Ball
+): VaultHitResult {
+  let hitNumber: number | null = null;
+  for (const t of targets) {
+    if (t.activated) continue;
+    const dist = Math.hypot(t.x - cue.x, t.y - cue.y);
+    if (dist < cue.radius + t.radius) {
+      hitNumber = t.number;
+      break;
+    }
+  }
+  if (hitNumber == null) {
+    return { targets, sequenceIndex, correct: false, complete: false, wrong: false };
+  }
+
+  const expected = sequence[sequenceIndex];
+  if (hitNumber !== expected) {
+    return {
+      targets: targets.map((t) => ({ ...t, activated: false })),
+      sequenceIndex: 0,
+      correct: false,
+      complete: false,
+      wrong: true
+    };
+  }
+
+  const nextTargets = targets.map((t) =>
+    t.number === hitNumber ? { ...t, activated: true } : t
+  );
+  const nextIndex = sequenceIndex + 1;
+  return {
+    targets: nextTargets,
+    sequenceIndex: nextIndex,
+    correct: true,
+    complete: nextIndex >= sequence.length,
+    wrong: false
+  };
+}
+
+export function getBonusAttemptLimit(challenge: BonusChallengeType): number {
+  return challenge === 'golden' ? GOLDEN_MAX_ATTEMPTS : BONUS_MAX_ATTEMPTS;
 }
 
 export function movePaddle(paddle: Paddle, dx: number): Paddle {
