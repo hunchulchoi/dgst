@@ -1127,9 +1127,10 @@
         ctx.fillText('⭐', star.x, star.y + 7);
       }
       for (const fly of fallingFlies) {
-        ctx.font = 'bold 24px system-ui, sans-serif';
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 28px system-ui, sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('🪰', fly.x, fly.y + 8);
+        ctx.fillText('🪰', fly.x, fly.y + 10);
       }
       if (bonusChallenge === 'flies') {
         for (const laser of lasers) {
