@@ -199,11 +199,12 @@ export const STAR_RAIN_FALL_MAX = 5.2;
 
 /** 파리 잡기: 레이저로 낙하 파리 격추 · 놓치면 실패 */
 export const FLIES_TIME_LIMIT_MS = 20_000;
-export const FLIES_SPAWN_INTERVAL_MS = 480;
-export const FLIES_MAX_ACTIVE = 10;
-export const FLIES_FALL_MIN = 3.2;
-export const FLIES_FALL_MAX = 5.8;
-export const FLIES_LASER_INTERVAL_MS = 220;
+/** 한 마리씩 — 동시 다발 금지 */
+export const FLIES_SPAWN_INTERVAL_MS = 700;
+export const FLIES_MAX_ACTIVE = 1;
+export const FLIES_FALL_MIN = 2.6;
+export const FLIES_FALL_MAX = 4.0;
+export const FLIES_LASER_INTERVAL_MS = 180;
 export const FLIES_HIT_SCORE = 80;
 export const FLY_RADIUS = 14;
 

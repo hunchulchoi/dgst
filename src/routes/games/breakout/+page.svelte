@@ -403,11 +403,7 @@
         const now = Date.now();
         balls = [];
         lasers = [];
-        fallingFlies = [
-          createFallingFly(flySeq++),
-          createFallingFly(flySeq++),
-          createFallingFly(flySeq++)
-        ];
+        fallingFlies = [createFallingFly(flySeq++)];
         lastFlySpawnAt = now;
         lastLaserShotAt = now;
         fliesCaught = 0;
@@ -1338,7 +1334,7 @@
         ctx.fillStyle = '#ffd54f';
         ctx.font = 'bold 16px system-ui, sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('레이저로 파리 격추 · 놓치면 실패', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 8);
+        ctx.fillText('레이저로 파리 격추 · 한 마리씩', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 8);
         ctx.fillStyle = '#fff';
         ctx.font = '13px system-ui, sans-serif';
         ctx.fillText(
@@ -1846,7 +1842,7 @@
                 <p class="text-muted mb-3 small">떨어지는 파리를 레이저로 잡으세요. 하나라도 놓치면 끝!</p>
                 <ul class="list-unstyled text-start mx-auto bonus-intro-rules mb-4">
                   <li>패들에서 <strong>레이저 자동 발사</strong></li>
-                  <li>파리 바닥 통과 = <strong>즉시 실패</strong></li>
+                  <li>파리 <strong>한 마리씩</strong> 낙하 · 바닥 통과 = 즉시 실패</li>
                   <li><strong>{Math.ceil(FLIES_TIME_LIMIT_MS / 1000)}초</strong> 버티면 클리어</li>
                   <li><strong>원샷</strong> — 기회 1회 · 1발 클리어 시 점수 ×2</li>
                 </ul>
