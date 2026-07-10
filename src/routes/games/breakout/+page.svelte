@@ -1232,7 +1232,7 @@
           bonusChallenge === 'golden'
             ? `단 1발 · 1발 클리어 ×${getBonusShotClearMultiplier(1)}`
             : bonusChallenge === 'spin'
-              ? `공 유지 · 별 많이 · ${Math.ceil(getBonusTimeLimitMs('spin') / 1000)}초`
+              ? `원샷 · 공 유지 · ${Math.ceil(getBonusTimeLimitMs('spin') / 1000)}초`
               : `남은 기회 ${left}회 · 1발 클리어 ×${getBonusShotClearMultiplier(bonusAttemptsUsed + 1)}`,
           CANVAS_WIDTH / 2,
           CANVAS_HEIGHT / 2 + 18
