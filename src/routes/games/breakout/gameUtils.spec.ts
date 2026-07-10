@@ -11,11 +11,14 @@ import {
   damageBrickAt,
   destroyAdjacentBricks,
   destroyAllBreakableBricks,
+  getBrickMask,
   getEffectiveBallSpeed,
   getEffectivePaddleWidth,
   buildStageConfig,
   getStageClearBonus,
   getStageConfig,
+  getStageKind,
+  getStagePattern,
   TOTAL_STAGES,
   handleBrickCollision,
   handleInvincibleBrickCollision,
@@ -44,7 +47,8 @@ describe('breakout gameUtils', () => {
     expect(STAGES[0].label).toBe('입문');
     expect(STAGES[49].label).toBe('최종');
     expect(STAGES[0].ballSpeed).toBeLessThan(STAGES[49].ballSpeed);
-    expect(STAGES[0].strongRatio).toBeLessThan(STAGES[49].strongRatio);
+    expect(STAGES[0].kind).toBe('normal');
+    expect(STAGES[49].kind).toBe('theme');
     for (const stage of STAGES) {
       const specialSum =
         stage.strongRatio + stage.explosiveRatio + stage.ironRatio + stage.rainbowRatio;
@@ -53,11 +57,46 @@ describe('breakout gameUtils', () => {
     }
   });
 
-  it('creates bricks for each stage', () => {
+  it('classifies bonus and theme stages', () => {
+    expect(getStageKind(5)).toBe('bonus');
+    expect(getStageKind(15)).toBe('bonus');
+    expect(getStageKind(45)).toBe('bonus');
+    expect(getStageKind(10)).toBe('theme');
+    expect(getStageKind(50)).toBe('theme');
+    expect(getStageKind(1)).toBe('normal');
+    expect(getStageKind(7)).toBe('normal');
+    expect(getStageConfig(5).label).toBe('보너스!');
+    expect(getStageConfig(5).ironRatio).toBe(0);
+    expect(getStageConfig(10).label).toBe('철 미로');
+    expect(getStageConfig(20).label).toBe('폭발 연쇄');
+  });
+
+  it('builds deterministic brick masks per stage', () => {
+    for (let stage = 1; stage <= TOTAL_STAGES; stage++) {
+      const maskA = getBrickMask(stage);
+      const maskB = getBrickMask(stage);
+      expect(maskA).toEqual(maskB);
+      expect(maskA).toHaveLength(6);
+      expect(maskA[0]).toHaveLength(10);
+      const cells = maskA.flat().filter(Boolean).length;
+      expect(cells).toBeGreaterThan(0);
+      expect(getStagePattern(stage)).toBeTruthy();
+    }
+    expect(getStagePattern(1)).toBe('full');
+    expect(getStagePattern(5)).toBe('star');
+    expect(getStagePattern(10)).toBe('tunnel');
+    expect(getStagePattern(15)).toBe('diamond');
+  });
+
+  it('creates bricks for each stage with destroyable cells', () => {
     for (const stage of STAGES) {
       const bricks = createBricks(stage.stage);
-      expect(bricks.length).toBe(60);
+      const maskCells = getBrickMask(stage.stage).flat().filter(Boolean).length;
+      expect(bricks.length).toBeGreaterThan(0);
+      expect(bricks.length).toBeLessThanOrEqual(maskCells + 1);
       expect(bricks.every((b) => b.alive)).toBe(true);
+      expect(bricks.some(isDestroyableBrick)).toBe(true);
+      expect(isStageClear(bricks)).toBe(false);
     }
   });
 
@@ -239,6 +278,8 @@ describe('breakout gameUtils', () => {
     expect(getStageClearBonus(1)).toBe(750);
     expect(getStageClearBonus(10)).toBe(3000);
     expect(getStageClearBonus(50)).toBe(13_000);
+    expect(getStageClearBonus(5)).toBe(3500);
+    expect(getStageClearBonus(15)).toBe(8500);
   });
 
   it('detects game complete after final stage', () => {

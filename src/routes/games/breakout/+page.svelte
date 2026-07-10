@@ -133,7 +133,7 @@
 
   function appendDropsFromDestroyed(destroyed: Brick[], current: PowerUp[]): PowerUp[] {
     let next = current;
-    for (const drop of createDropsFromDestroyedBricks(destroyed)) {
+    for (const drop of createDropsFromDestroyedBricks(destroyed, stage)) {
       next = [...next, createPowerUpDrop(drop.brick, drop.type)];
     }
     return next;
@@ -316,7 +316,8 @@
     screen = 'stageClear';
     const bonus = getStageClearBonus(stage);
     score += bonus;
-    showEffectToast(`스테이지 클리어 +${bonus}`);
+    const prefix = stageConfig.kind === 'bonus' ? '보너스 클리어' : '스테이지 클리어';
+    showEffectToast(`${prefix} +${bonus}`);
     if (stageClearTimeout) clearTimeout(stageClearTimeout);
     stageClearTimeout = setTimeout(() => {
       advanceStage();
@@ -546,8 +547,16 @@
     }
     ctx.textAlign = 'center';
     ctx.font = '12px system-ui, sans-serif';
-    ctx.fillStyle = 'rgba(255,255,255,0.5)';
-    ctx.fillText(stageConfig.label, CANVAS_WIDTH / 2, 44);
+    if (stageConfig.kind === 'bonus') {
+      ctx.fillStyle = '#ffd54f';
+      ctx.fillText(`★ ${stageConfig.label}`, CANVAS_WIDTH / 2, 44);
+    } else if (stageConfig.kind === 'theme') {
+      ctx.fillStyle = '#80cbc4';
+      ctx.fillText(stageConfig.label, CANVAS_WIDTH / 2, 44);
+    } else {
+      ctx.fillStyle = 'rgba(255,255,255,0.5)';
+      ctx.fillText(stageConfig.label, CANVAS_WIDTH / 2, 44);
+    }
 
     if (comboCount > 1) {
       ctx.fillText(`콤보 x${comboCount}`, CANVAS_WIDTH / 2, 80);
@@ -590,7 +599,11 @@
       ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
       ctx.fillStyle = '#ffd54f';
       ctx.font = 'bold 22px system-ui, sans-serif';
-      ctx.fillText(`스테이지 ${stage} 클리어!`, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2);
+      const clearLabel =
+        stageConfig.kind === 'bonus'
+          ? `보너스 스테이지 ${stage} 클리어!`
+          : `스테이지 ${stage} 클리어!`;
+      ctx.fillText(clearLabel, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2);
     }
   }
 
@@ -847,7 +860,8 @@
               <h2 class="mb-2">🎯 블록깨기</h2>
               <p class="text-muted mb-4 small">
                 패들로 공 받기 · 블록 제거 · 아이템 획득<br />
-                🟦일반 🟥내구(2타) 🟨폭발 ⬛철(무적) 🌈특수
+                🟦일반 🟥내구(2타) 🟨폭발 ⬛철(무적) 🌈특수<br />
+                50단계 · 보너스/테마 스테이지 포함
               </p>
               <button type="button" class="btn btn-primary btn-lg px-5" onclick={startGame}>
                 시작
@@ -1016,8 +1030,8 @@
     width: 100%;
     max-width: 480px;
     margin: 0.75rem auto 0;
-    height: 56px;
-    border-radius: 12px;
+    height: 88px;
+    border-radius: 16px;
     background: #1a1a2e;
     border: 1px solid rgba(144, 202, 249, 0.35);
     touch-action: none;
@@ -1032,10 +1046,10 @@
 
   .breakout-drag-track {
     position: absolute;
-    left: 12px;
-    right: 12px;
+    left: 16px;
+    right: 16px;
     top: 50%;
-    height: 6px;
+    height: 10px;
     transform: translateY(-50%);
     border-radius: 999px;
     background: rgba(255, 255, 255, 0.12);
@@ -1044,13 +1058,13 @@
   .breakout-drag-thumb {
     position: absolute;
     top: 50%;
-    width: 48px;
-    height: 14px;
+    width: 72px;
+    height: 28px;
     transform: translate(-50%, -50%);
-    border-radius: 6px;
+    border-radius: 10px;
     background: linear-gradient(180deg, #f5f5f5 0%, #cfd8dc 100%);
     border: 2px solid #90caf9;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
     pointer-events: none;
   }
 
@@ -1060,7 +1074,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.75rem;
+    font-size: 0.85rem;
     color: rgba(255, 255, 255, 0.45);
     pointer-events: none;
   }

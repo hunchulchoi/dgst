@@ -145,9 +145,25 @@ export interface ActiveEffects {
   laserUntil: number;
 }
 
+export type StageKind = 'normal' | 'theme' | 'bonus';
+
+export type PatternId =
+  | 'full'
+  | 'pyramid'
+  | 'diamond'
+  | 'checker'
+  | 'tunnel'
+  | 'U'
+  | 'walls'
+  | 'sparse'
+  | 'heart'
+  | 'star';
+
 export interface StageConfig {
   stage: number;
   label: string;
+  kind: StageKind;
+  pattern: PatternId;
   ballSpeed: number;
   strongRatio: number;
   explosiveRatio: number;
@@ -156,40 +172,206 @@ export interface StageConfig {
 }
 
 export const TOTAL_STAGES = 50;
+export const BONUS_CLEAR_MULTIPLIER = 2;
+export const BONUS_DROP_CHANCE_MULTIPLIER = 1.35;
 
-/** 마일스톤 라벨 — 나머지 단계는 `N단계` */
-const STAGE_MILESTONE_LABELS: Record<number, string> = {
-  1: '입문',
-  5: '초급',
-  10: '중급',
-  15: '숙련',
-  20: '고급',
-  25: '전문',
-  30: '달인',
-  35: '마스터',
-  40: '챔피언',
-  45: '전설',
+const BONUS_STAGES = new Set([5, 15, 25, 35, 45]);
+const THEME_STAGES = new Set([10, 20, 30, 40, 50]);
+
+const THEME_LABELS: Record<number, string> = {
+  10: '철 미로',
+  20: '폭발 연쇄',
+  30: '무지개 사냥',
+  40: '성벽',
   50: '최종'
 };
+
+const NORMAL_PATTERN_POOL: PatternId[] = [
+  'full',
+  'pyramid',
+  'diamond',
+  'checker',
+  'tunnel',
+  'U',
+  'walls',
+  'sparse'
+];
+
+const BONUS_PATTERN_POOL: PatternId[] = ['heart', 'star', 'diamond'];
 
 function roundStageValue(value: number, digits = 2): number {
   const factor = 10 ** digits;
   return Math.round(value * factor) / factor;
 }
 
-/** 스테이지 난이도 곡선 (1→50). 특수 블록 비율 합이 0.9 미만 유지 */
+function clampStage(stage: number): number {
+  return Math.min(Math.max(stage, 1), TOTAL_STAGES);
+}
+
+/** 스테이지 종류: 보너스(5의 배수 중 테마 제외) / 테마(10단위) / 일반 */
+export function getStageKind(stage: number): StageKind {
+  const s = clampStage(stage);
+  if (BONUS_STAGES.has(s)) return 'bonus';
+  if (THEME_STAGES.has(s)) return 'theme';
+  return 'normal';
+}
+
+/** 시드 기반 패턴 선택 — 같은 stage면 항상 같은 패턴 */
+export function getStagePattern(stage: number): PatternId {
+  const s = clampStage(stage);
+  const kind = getStageKind(s);
+  if (kind === 'bonus') {
+    return BONUS_PATTERN_POOL[(s - 1) % BONUS_PATTERN_POOL.length];
+  }
+  if (kind === 'theme') {
+    if (s === 10) return 'tunnel';
+    if (s === 20) return 'checker';
+    if (s === 30) return 'sparse';
+    if (s === 40) return 'walls';
+    return 'diamond';
+  }
+  if (s === 1) return 'full';
+  return NORMAL_PATTERN_POOL[(s - 1) % NORMAL_PATTERN_POOL.length];
+}
+
+function emptyMask(): boolean[][] {
+  return Array.from({ length: BRICK_ROWS }, () => Array.from({ length: BRICK_COLS }, () => false));
+}
+
+function fillMask(predicate: (row: number, col: number) => boolean): boolean[][] {
+  const mask = emptyMask();
+  for (let row = 0; row < BRICK_ROWS; row++) {
+    for (let col = 0; col < BRICK_COLS; col++) {
+      mask[row][col] = predicate(row, col);
+    }
+  }
+  return mask;
+}
+
+function buildPatternMask(pattern: PatternId): boolean[][] {
+  const midCol = (BRICK_COLS - 1) / 2;
+  const midRow = (BRICK_ROWS - 1) / 2;
+
+  switch (pattern) {
+    case 'full':
+      return fillMask(() => true);
+    case 'pyramid':
+      return fillMask((row, col) => {
+        const half = Math.floor(row / 2) + 1;
+        return col >= midCol - half && col <= midCol + half;
+      });
+    case 'diamond':
+      return fillMask((row, col) => {
+        const dist = Math.abs(row - midRow) + Math.abs(col - midCol);
+        return dist <= 3.5;
+      });
+    case 'checker':
+      return fillMask((row, col) => (row + col) % 2 === 0);
+    case 'tunnel':
+      return fillMask((row, col) => col <= 1 || col >= BRICK_COLS - 2 || row === 0 || row === 2 || row === 4);
+    case 'U':
+      return fillMask((row, col) => col === 0 || col === BRICK_COLS - 1 || row === BRICK_ROWS - 1);
+    case 'walls':
+      return fillMask((row, col) => row === 0 || row === BRICK_ROWS - 1 || col === 0 || col === BRICK_COLS - 1 || row === 2);
+    case 'sparse':
+      return fillMask((row, col) => (row + col) % 3 === 0);
+    case 'heart':
+      return fillMask((row, col) => {
+        const x = (col - midCol) / 4.2;
+        const y = (midRow - row + 0.4) / 2.6;
+        const a = x * x + y * y - 1;
+        return a * a * a - x * x * y * y * y < 0;
+      });
+    case 'star':
+      return fillMask((row, col) => {
+        const dx = Math.abs(col - midCol);
+        const dy = Math.abs(row - midRow);
+        return dx + dy <= 3 || (dx <= 1 && dy <= 2) || (dx <= 2 && dy <= 1);
+      });
+    default:
+      return fillMask(() => true);
+  }
+}
+
+/** 스테이지별 블록 배치 마스크 (시드=stage, 재현 가능) */
+export function getBrickMask(stage: number): boolean[][] {
+  return buildPatternMask(getStagePattern(stage));
+}
+
+/** 스테이지 난이도 곡선 + 테마/보너스 오버라이드 */
 export function buildStageConfig(stage: number): StageConfig {
-  const clamped = Math.min(Math.max(stage, 1), TOTAL_STAGES);
+  const clamped = clampStage(stage);
   const t = (clamped - 1) / (TOTAL_STAGES - 1);
-  const ironRatio = clamped === 1 ? 0 : roundStageValue(0.02 + t * 0.16);
+  const kind = getStageKind(clamped);
+  const pattern = getStagePattern(clamped);
+
+  let ballSpeed = roundStageValue(5 + t * 7, 1);
+  let strongRatio = roundStageValue(0.08 + t * 0.4);
+  let explosiveRatio = roundStageValue(0.05 + t * 0.16);
+  let ironRatio = clamped === 1 ? 0 : roundStageValue(0.02 + t * 0.16);
+  let rainbowRatio = roundStageValue(0.03 + Math.sin(t * Math.PI) * 0.02);
+  let label = `${clamped}단계`;
+
+  if (kind === 'bonus') {
+    label = `보너스!`;
+    ballSpeed = roundStageValue(Math.max(4.5, ballSpeed * 0.72), 1);
+    strongRatio = 0.08;
+    explosiveRatio = 0.22;
+    ironRatio = 0;
+    rainbowRatio = 0.28;
+  } else if (kind === 'theme') {
+    label = THEME_LABELS[clamped] ?? label;
+    if (clamped === 10) {
+      ironRatio = 0.28;
+      strongRatio = 0.12;
+      explosiveRatio = 0.08;
+      rainbowRatio = 0.04;
+    } else if (clamped === 20) {
+      explosiveRatio = 0.32;
+      strongRatio = 0.15;
+      ironRatio = 0.04;
+      rainbowRatio = 0.05;
+    } else if (clamped === 30) {
+      rainbowRatio = 0.35;
+      strongRatio = 0.1;
+      explosiveRatio = 0.08;
+      ironRatio = 0.05;
+    } else if (clamped === 40) {
+      ironRatio = 0.22;
+      strongRatio = 0.3;
+      explosiveRatio = 0.12;
+      rainbowRatio = 0.04;
+    } else if (clamped === 50) {
+      label = '최종';
+      ballSpeed = 12;
+      strongRatio = 0.35;
+      explosiveRatio = 0.18;
+      ironRatio = 0.2;
+      rainbowRatio = 0.06;
+    }
+  } else if (clamped === 1) {
+    label = '입문';
+  }
+
+  const specialSum = strongRatio + explosiveRatio + ironRatio + rainbowRatio;
+  if (specialSum >= 0.9) {
+    const scale = 0.88 / specialSum;
+    strongRatio = roundStageValue(strongRatio * scale);
+    explosiveRatio = roundStageValue(explosiveRatio * scale);
+    ironRatio = roundStageValue(ironRatio * scale);
+    rainbowRatio = roundStageValue(rainbowRatio * scale);
+  }
+
   return {
     stage: clamped,
-    label: STAGE_MILESTONE_LABELS[clamped] ?? `${clamped}단계`,
-    ballSpeed: roundStageValue(5 + t * 7, 1),
-    strongRatio: roundStageValue(0.08 + t * 0.4),
-    explosiveRatio: roundStageValue(0.05 + t * 0.16),
+    label,
+    kind,
+    pattern,
+    ballSpeed,
+    strongRatio,
+    explosiveRatio,
     ironRatio,
-    rainbowRatio: roundStageValue(0.03 + Math.sin(t * Math.PI) * 0.02)
+    rainbowRatio
   };
 }
 
@@ -263,50 +445,69 @@ export function createActiveEffects(): ActiveEffects {
   };
 }
 
-/** 스테이지별 블록 생성 */
+/** 스테이지별 블록 생성 — 패턴 마스크 + kind별 비율 */
 export function createBricks(stage: number): Brick[] {
   const config = getStageConfig(stage);
+  const mask = getBrickMask(stage);
   const brickWidth =
     (CANVAS_WIDTH - BRICK_OFFSET_LEFT * 2 - BRICK_PADDING * (BRICK_COLS - 1)) / BRICK_COLS;
   const brickHeight = 22;
   const bricks: Brick[] = [];
 
+  const pushBrick = (row: number, col: number, type: BrickType) => {
+    const maxHits = type === 'strong' ? 2 : type === 'iron' ? 999 : 1;
+    bricks.push({
+      x: BRICK_OFFSET_LEFT + col * (brickWidth + BRICK_PADDING),
+      y: BRICK_OFFSET_TOP + row * (brickHeight + BRICK_PADDING),
+      width: brickWidth,
+      height: brickHeight,
+      type,
+      hits: 0,
+      maxHits,
+      alive: true,
+      color: BRICK_COLORS[type],
+      points: BRICK_POINTS[type]
+    });
+  };
+
+  const rollType = (): BrickType => {
+    const rand = Math.random();
+    let cursor = 0;
+    cursor += config.rainbowRatio;
+    if (rand < cursor) return 'rainbow';
+    cursor += config.ironRatio;
+    if (rand < cursor) return 'iron';
+    cursor += config.explosiveRatio;
+    if (rand < cursor) return 'explosive';
+    cursor += config.strongRatio;
+    if (rand < cursor) return 'strong';
+    return 'normal';
+  };
+
   for (let row = 0; row < BRICK_ROWS; row++) {
     for (let col = 0; col < BRICK_COLS; col++) {
-      const rand = Math.random();
-      let type: BrickType = 'normal';
-      let cursor = 0;
-
-      cursor += config.rainbowRatio;
-      if (rand < cursor) type = 'rainbow';
-      else {
-        cursor += config.ironRatio;
-        if (rand < cursor) type = 'iron';
-        else {
-          cursor += config.explosiveRatio;
-          if (rand < cursor) type = 'explosive';
-          else {
-            cursor += config.strongRatio;
-            if (rand < cursor) type = 'strong';
-          }
-        }
-      }
-
-      const maxHits = type === 'strong' ? 2 : type === 'iron' ? 999 : 1;
-      bricks.push({
-        x: BRICK_OFFSET_LEFT + col * (brickWidth + BRICK_PADDING),
-        y: BRICK_OFFSET_TOP + row * (brickHeight + BRICK_PADDING),
-        width: brickWidth,
-        height: brickHeight,
-        type,
-        hits: 0,
-        maxHits,
-        alive: true,
-        color: BRICK_COLORS[type],
-        points: BRICK_POINTS[type]
-      });
+      if (!mask[row][col]) continue;
+      pushBrick(row, col, rollType());
     }
   }
+
+  // 파괴 가능 블록 최소 1개 보장 (철만 나오거나 마스크 비면 보정)
+  if (bricks.filter(isDestroyableBrick).length === 0) {
+    if (bricks.length > 0) {
+      const idx = Math.floor(bricks.length / 2);
+      bricks[idx] = {
+        ...bricks[idx],
+        type: 'normal',
+        hits: 0,
+        maxHits: 1,
+        color: BRICK_COLORS.normal,
+        points: BRICK_POINTS.normal
+      };
+    } else {
+      pushBrick(Math.floor(BRICK_ROWS / 2), Math.floor(BRICK_COLS / 2), 'normal');
+    }
+  }
+
   return bricks;
 }
 
@@ -617,7 +818,8 @@ export function calculateComboBonus(combo: number, baseScore: number): number {
 }
 
 export function getStageClearBonus(stage: number): number {
-  return 500 + stage * 250;
+  const base = 500 + stage * 250;
+  return getStageKind(stage) === 'bonus' ? base * BONUS_CLEAR_MULTIPLIER : base;
 }
 
 /** 전체 폭파 — 철 블록 제외 */
@@ -629,7 +831,7 @@ export function destroyAllBreakableBricks(bricks: Brick[], stage: number): Brick
   for (let i = 0; i < nextBricks.length; i++) {
     const brick = nextBricks[i];
     if (!isDestroyableBrick(brick)) continue;
-    const damage = damageBrickAt(nextBricks, i, stage, true);
+    const damage = damageBrickAt(nextBricks, i, stage, true, true);
     nextBricks = damage.bricks;
     destroyed.push(...damage.destroyed);
     scoreGained += damage.scoreGained;
@@ -645,9 +847,12 @@ export function normalizeBallSpeed(ball: Ball, targetSpeed: number): Ball {
   return { ...ball, vx: ball.vx * scale, vy: ball.vy * scale };
 }
 
-export function shouldDropPowerUp(brick: Brick): boolean {
+export function shouldDropPowerUp(brick: Brick, stage?: number): boolean {
   if (brick.type === 'rainbow') return true;
-  return Math.random() < POWER_UP_DROP_CHANCE[brick.type];
+  const chance = POWER_UP_DROP_CHANCE[brick.type];
+  const multiplier =
+    stage != null && getStageKind(stage) === 'bonus' ? BONUS_DROP_CHANCE_MULTIPLIER : 1;
+  return Math.random() < Math.min(1, chance * multiplier);
 }
 
 export function pickPowerUpType(brickType: BrickType): PowerUpType {
@@ -859,11 +1064,12 @@ export function normalizeAllBallSpeeds(balls: Ball[], targetSpeed: number): Ball
 
 /** 파괴 블록에서 아이템 드롭 생성 */
 export function createDropsFromDestroyedBricks(
-  destroyedBricks: Brick[]
+  destroyedBricks: Brick[],
+  stage?: number
 ): { brick: Brick; type: PowerUpType }[] {
   const drops: { brick: Brick; type: PowerUpType }[] = [];
   for (const brick of destroyedBricks) {
-    if (!shouldDropPowerUp(brick)) continue;
+    if (!shouldDropPowerUp(brick, stage)) continue;
     drops.push({ brick, type: pickPowerUpType(brick.type) });
   }
   return drops;
