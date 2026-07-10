@@ -1194,7 +1194,7 @@ export function resolveVaultHit(
 }
 
 export function getBonusAttemptLimit(challenge: BonusChallengeType): number {
-  return challenge === 'golden' || challenge === 'vault' ? GOLDEN_MAX_ATTEMPTS : BONUS_MAX_ATTEMPTS;
+  return challenge === 'golden' ? GOLDEN_MAX_ATTEMPTS : BONUS_MAX_ATTEMPTS;
 }
 
 export function movePaddle(paddle: Paddle, dx: number): Paddle {

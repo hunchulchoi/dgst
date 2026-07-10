@@ -375,7 +375,7 @@ describe('breakout gameUtils', () => {
     expect(getGemPickupScore(100, 2, 3)).toBe(800);
     expect(getCoinPickupScore(60, 2, 3)).toBe(480);
     expect(getBonusAttemptLimit('golden')).toBe(1);
-    expect(getBonusAttemptLimit('vault')).toBe(1);
+    expect(getBonusAttemptLimit('vault')).toBe(2);
 
     const stars = createStarCollectibles(15);
     expect(stars.length).toBeGreaterThanOrEqual(5);

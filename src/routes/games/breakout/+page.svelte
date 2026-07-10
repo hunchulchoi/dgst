@@ -410,7 +410,7 @@
         vaultTargets = result.targets;
         vaultSequenceIndex = result.sequenceIndex;
         if (result.wrong) {
-          showEffectToast('순서 틀림 · 실패');
+          showEffectToast('순서 틀림');
           balls = [normalizeBallSpeed(cue, config.ballSpeed)];
           handleBonusMiss();
           return;
@@ -1083,7 +1083,7 @@
               : bonusChallenge === 'golden'
                 ? '원샷! 쿠션 후 코인 최대 회수'
                 : bonusChallenge === 'vault'
-                  ? `원샷 뱅크: ${vaultSequence.join('→')}`
+                  ? `뱅크샷 순서: ${vaultSequence.join('→')}`
                   : '각도 조준 · 쿠션 후 모든 공 맞추기';
         ctx.fillText(aimHint, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 8);
         ctx.fillStyle = '#fff';
@@ -1091,7 +1091,7 @@
         const limit = getBonusAttemptLimit(bonusChallenge);
         const left = limit - bonusAttemptsUsed;
         ctx.fillText(
-          bonusChallenge === 'golden' || bonusChallenge === 'vault'
+          bonusChallenge === 'golden'
             ? `단 1발 · 1발 클리어 ×${getBonusShotClearMultiplier(1)}`
             : `남은 기회 ${left}회 · 1발 클리어 ×${getBonusShotClearMultiplier(bonusAttemptsUsed + 1)}`,
           CANVAS_WIDTH / 2,
@@ -1471,12 +1471,12 @@
                   <li>1발 클리어 시 점수 ×2</li>
                 </ul>
               {:else if bonusChallenge === 'vault'}
-                <p class="text-muted mb-3 small">한 발 뱅크샷으로 번호 순서대로 맞추면 금고가 열립니다</p>
+                <p class="text-muted mb-3 small">뱅크샷으로 번호 순서대로 맞추면 금고가 열립니다</p>
                 <ul class="list-unstyled text-start mx-auto bonus-intro-rules mb-4">
                   <li>순서: <strong>{vaultSequence.join(' → ')}</strong> (좌→상→우)</li>
-                  <li><strong>원샷</strong> — 기회 1회 · 틀리면 즉시 실패</li>
-                  <li>기본 각도 ≈ 왼쪽 위(뱅크 경로) · 미세 조정</li>
-                  <li>사방 쿠션 · {Math.ceil(BILLIARD_TIME_LIMIT_MS / 1000)}초 · 1발 클리어 ×2</li>
+                  <li>기회 {BONUS_MAX_ATTEMPTS}회 · <strong>1발 클리어 시 점수 ×2</strong></li>
+                  <li>틀린 번호·시간 초과 시 재조준 (2발째는 ×1)</li>
+                  <li>기본 각도 ≈ 왼쪽 위 · 사방 쿠션 · {Math.ceil(BILLIARD_TIME_LIMIT_MS / 1000)}초</li>
                 </ul>
               {:else}
                 <p class="text-muted mb-3 small">4구 당구 — 쿠션을 이용해 모든 공을 맞추세요</p>
