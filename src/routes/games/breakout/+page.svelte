@@ -49,6 +49,7 @@
     growBallsOnPaddleHit,
     isMultiballGrowActive,
     syncBallRadii,
+    resetBigBallPierce,
     createPaddle,
     createPowerUpDrop,
     DEFAULT_AIM_ANGLE,
@@ -975,7 +976,10 @@
 
       const paddleHit = handlePaddleCollision(nextBall, paddle);
       nextBall = paddleHit.ball;
-      if (paddleHit.hit) paddleHitBalls.push(nextBall);
+      if (paddleHit.hit) {
+        nextBall = resetBigBallPierce(nextBall);
+        paddleHitBalls.push(nextBall);
+      }
 
       if (invincible) {
         const pierce = handleInvincibleBrickCollision(nextBall, nextBricks, stage);

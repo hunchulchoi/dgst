@@ -12,9 +12,14 @@ import {
   MAX_MULTIBALL_COUNT,
   MULTIBALL_DURATION_MS,
   BIG_BALL_RADIUS_MULT,
+  BIG_BALL_DAMAGE_MULT,
+  BIG_BALL_PIERCE_COUNT,
   BIG_BALL_DURATION_MS,
   BALL_RADIUS,
   getEffectiveBallRadius,
+  getBallHitPower,
+  getBigBallPierceLeft,
+  resetBigBallPierce,
   isBigBallActive,
   syncBallRadii,
   createPaddle,
@@ -715,8 +720,94 @@ describe('breakout gameUtils', () => {
     expect(ball.radius).toBe(BALL_RADIUS);
     const synced = syncBallRadii([ball], effects, now + 1);
     expect(synced[0]!.radius).toBe(BALL_RADIUS * BIG_BALL_RADIUS_MULT);
+    expect(synced[0]!.pierceLeft).toBe(BIG_BALL_PIERCE_COUNT);
     const restored = syncBallRadii(synced, createActiveEffects(), now + 1);
     expect(restored[0]!.radius).toBe(BALL_RADIUS);
+    expect(restored[0]!.pierceLeft).toBeUndefined();
+  });
+
+  it('bigBall hits with 3x damage and one-shots strong bricks', () => {
+    const paddle = createPaddle();
+    const normalBall = createBall(paddle, 5);
+    const bigBall = {
+      ...normalBall,
+      radius: BALL_RADIUS * BIG_BALL_RADIUS_MULT,
+      pierceLeft: 0
+    };
+    expect(getBallHitPower(normalBall)).toBe(1);
+    expect(getBallHitPower(bigBall)).toBe(BIG_BALL_DAMAGE_MULT);
+
+    const strong: Brick = {
+      x: 100,
+      y: 80,
+      width: 40,
+      height: 20,
+      type: 'strong',
+      hits: 0,
+      maxHits: 2,
+      alive: true,
+      color: '#ff7043',
+      points: 30
+    };
+    const oneHit = damageBrickAt([strong], 0, 1, true, false, 1);
+    expect(oneHit.bricks[0]!.alive).toBe(true);
+    expect(oneHit.bricks[0]!.hits).toBe(1);
+
+    const bigHit = damageBrickAt([strong], 0, 1, true, false, BIG_BALL_DAMAGE_MULT);
+    expect(bigHit.bricks[0]!.alive).toBe(false);
+    expect(bigHit.destroyed).toHaveLength(1);
+
+    const colliding = {
+      ...bigBall,
+      x: strong.x + strong.width / 2,
+      y: strong.y + strong.height + bigBall.radius - 1,
+      vy: -5
+    };
+    const result = handleBrickCollision(colliding, [strong], 1);
+    expect(result.hit).toBe(true);
+    expect(result.destroyedBricks).toHaveLength(1);
+  });
+
+  it('bigBall pierces up to 3 bricks without bouncing', () => {
+    const makeBrick = (x: number): Brick => ({
+      x,
+      y: 100,
+      width: 40,
+      height: 20,
+      type: 'normal',
+      hits: 0,
+      maxHits: 1,
+      alive: true,
+      color: '#4fc3f7',
+      points: 10
+    });
+    const bricks = [makeBrick(100), makeBrick(144), makeBrick(188), makeBrick(232)];
+    const ball: Ball = {
+      x: 120,
+      y: 110,
+      vx: 5,
+      vy: -5,
+      radius: BALL_RADIUS * BIG_BALL_RADIUS_MULT,
+      pierceLeft: BIG_BALL_PIERCE_COUNT
+    };
+    expect(getBigBallPierceLeft(ball)).toBe(3);
+
+    const first = handleBrickCollision(ball, bricks, 1);
+    expect(first.hit).toBe(true);
+    expect(first.ball.vy).toBe(ball.vy);
+    expect(first.ball.pierceLeft).toBeLessThan(BIG_BALL_PIERCE_COUNT);
+    expect(first.destroyedBricks.length).toBeGreaterThanOrEqual(1);
+
+    const afterPaddle = resetBigBallPierce({ ...first.ball, pierceLeft: 0 });
+    expect(afterPaddle.pierceLeft).toBe(BIG_BALL_PIERCE_COUNT);
+
+    const noPierce = handleBrickCollision(
+      { ...ball, pierceLeft: 0, y: 110, vy: 5 },
+      [makeBrick(100)],
+      1
+    );
+    expect(noPierce.hit).toBe(true);
+    expect(noPierce.ball.vy).toBeLessThan(0);
   });
 
   it('moves and collects falling power-ups', () => {

@@ -77,6 +77,10 @@ export const MULTIBALL_DURATION_MS = 12_000;
 export const MAX_MULTIBALL_COUNT = 8;
 /** 거대 공: 반지름 배수 */
 export const BIG_BALL_RADIUS_MULT = 3;
+/** 거대 공: 타격 데미지 배수 */
+export const BIG_BALL_DAMAGE_MULT = 3;
+/** 거대 공: 튕기지 않고 관통하는 블록 수 */
+export const BIG_BALL_PIERCE_COUNT = 3;
 export const BIG_BALL_DURATION_MS = 12_000;
 export const LASER_INTERVAL_MS = 380;
 export const LASER_SPEED = 11;
@@ -119,6 +123,8 @@ export interface Ball {
   radius: number;
   /** 스핀: 음수=좌커브, 양수=우커브 */
   spin?: number;
+  /** 거대공 남은 관통 횟수 (패들 맞으면 리셋) */
+  pierceLeft?: number;
 }
 
 export interface Paddle {
@@ -2000,13 +2006,15 @@ export function damageBrickAt(
   index: number,
   stage: number,
   chainExplosion = true,
-  instant = false
+  instant = false,
+  hitPower = 1
 ): BrickDestroyResult {
   const brick = bricks[index];
   if (!brick?.alive) return { bricks, destroyed: [], scoreGained: 0 };
   if (brick.type === 'iron') return { bricks, destroyed: [], scoreGained: 0 };
 
-  const hits = instant ? brick.maxHits : brick.hits + 1;
+  const power = Math.max(1, Math.floor(hitPower));
+  const hits = instant ? brick.maxHits : brick.hits + power;
   const survived = hits < brick.maxHits;
   let nextBricks = bricks.map((b, idx) => {
     if (idx !== index) return b;
@@ -2029,6 +2037,27 @@ export function damageBrickAt(
   }
 
   return { bricks: nextBricks, destroyed, scoreGained };
+}
+
+/** 공 반지름 기준 타격력 (거대공 = ×3) */
+export function getBallHitPower(ball: Ball): number {
+  if (ball.radius >= BALL_RADIUS * BIG_BALL_RADIUS_MULT) return BIG_BALL_DAMAGE_MULT;
+  return 1;
+}
+
+/** 거대공 남은 관통 횟수 */
+export function getBigBallPierceLeft(ball: Ball): number {
+  if (ball.radius < BALL_RADIUS * BIG_BALL_RADIUS_MULT) return 0;
+  return ball.pierceLeft ?? BIG_BALL_PIERCE_COUNT;
+}
+
+/** 패들 히트 시 거대공 관통 횟수 리셋 */
+export function resetBigBallPierce(ball: Ball): Ball {
+  if (ball.radius < BALL_RADIUS * BIG_BALL_RADIUS_MULT) {
+    const { pierceLeft: _, ...rest } = ball;
+    return rest;
+  }
+  return { ...ball, pierceLeft: BIG_BALL_PIERCE_COUNT };
 }
 
 /** 폭발 블록 주변 파괴 */
@@ -2084,12 +2113,59 @@ export interface BrickCollisionResult {
   destroyedBricks: Brick[];
 }
 
-/** 블록 충돌 */
+/** 블록 충돌 — 거대공은 pierceLeft>0 이면 튕기지 않고 최대 3블록 관통 */
 export function handleBrickCollision(
   ball: Ball,
   bricks: Brick[],
   stage: number
 ): BrickCollisionResult {
+  const hitPower = getBallHitPower(ball);
+  let pierceLeft = getBigBallPierceLeft(ball);
+
+  if (pierceLeft > 0) {
+    let nextBricks = bricks;
+    let scoreGained = 0;
+    const destroyedBricks: Brick[] = [];
+    let hitAny = false;
+    let nextPierce = pierceLeft;
+
+    for (let i = 0; i < nextBricks.length && nextPierce > 0; i++) {
+      const brick = nextBricks[i];
+      if (!brick.alive) continue;
+      if (
+        !circleRectCollision(ball.x, ball.y, ball.radius, brick.x, brick.y, brick.width, brick.height)
+      ) {
+        continue;
+      }
+      if (brick.type === 'iron') {
+        return {
+          ball: { ...bounceBallFromBrick(ball, brick), pierceLeft: nextPierce },
+          bricks: nextBricks,
+          scoreGained,
+          hit: true,
+          destroyedBricks
+        };
+      }
+      hitAny = true;
+      const damage = damageBrickAt(nextBricks, i, stage, true, false, hitPower);
+      nextBricks = damage.bricks;
+      destroyedBricks.push(...damage.destroyed);
+      scoreGained += damage.scoreGained;
+      nextPierce -= 1;
+    }
+
+    if (hitAny) {
+      return {
+        ball: { ...ball, pierceLeft: nextPierce },
+        bricks: nextBricks,
+        scoreGained,
+        hit: true,
+        destroyedBricks
+      };
+    }
+    return { ball, bricks, scoreGained: 0, hit: false, destroyedBricks: [] };
+  }
+
   for (let i = 0; i < bricks.length; i++) {
     const brick = bricks[i];
     if (!brick.alive) continue;
@@ -2104,9 +2180,9 @@ export function handleBrickCollision(
       return { ball: bounced, bricks, scoreGained: 0, hit: true, destroyedBricks: [] };
     }
 
-    const damage = damageBrickAt(bricks, i, stage, true);
+    const damage = damageBrickAt(bricks, i, stage, true, false, hitPower);
     return {
-      ball: bounced,
+      ball: { ...bounced, pierceLeft: 0 },
       bricks: damage.bricks,
       scoreGained: damage.scoreGained,
       hit: true,
@@ -2460,10 +2536,22 @@ export function getEffectiveBallRadius(effects: ActiveEffects, now: number): num
   return isBigBallActive(effects, now) ? BALL_RADIUS * BIG_BALL_RADIUS_MULT : BALL_RADIUS;
 }
 
-/** 모든 공 반지름을 현재 효과에 맞춤 */
+/** 모든 공 반지름·관통을 현재 효과에 맞춤 */
 export function syncBallRadii(balls: Ball[], effects: ActiveEffects, now: number): Ball[] {
   const radius = getEffectiveBallRadius(effects, now);
-  return balls.map((ball) => (ball.radius === radius ? ball : { ...ball, radius }));
+  const big = radius >= BALL_RADIUS * BIG_BALL_RADIUS_MULT;
+  return balls.map((ball) => {
+    if (!big) {
+      if (ball.radius === BALL_RADIUS && ball.pierceLeft == null) return ball;
+      const { pierceLeft: _, ...rest } = ball;
+      return { ...rest, radius: BALL_RADIUS };
+    }
+    return {
+      ...ball,
+      radius,
+      pierceLeft: ball.pierceLeft ?? BIG_BALL_PIERCE_COUNT
+    };
+  });
 }
 
 export function getActiveEffectLabels(
@@ -2477,7 +2565,7 @@ export function getActiveEffectLabels(
     labels.push(`멀티볼 ${Math.ceil((effects.multiballUntil - now) / 1000)}s`);
   }
   if (effects.bigBallUntil > now) {
-    labels.push(`거대공 ${Math.ceil((effects.bigBallUntil - now) / 1000)}s`);
+    labels.push(`거대공×3·관통 ${Math.ceil((effects.bigBallUntil - now) / 1000)}s`);
   }
   if (effects.expandPaddleUntil > now) labels.push(`확대 ${Math.ceil((effects.expandPaddleUntil - now) / 1000)}s`);
   if (effects.shrinkPaddleUntil > now) labels.push(`축소 ${Math.ceil((effects.shrinkPaddleUntil - now) / 1000)}s`);
