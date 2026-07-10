@@ -187,7 +187,7 @@ export const DEFAULT_AIM_ANGLE = 90;
 export const AIM_ANGLE_STEP = 2.5;
 export const AIM_LINE_LENGTH = 120;
 
-const BONUS_STAGES = new Set([5, 15, 25, 35, 45]);
+const BONUS_STAGES = new Set([1, 5, 15, 25, 35, 45]);
 const THEME_STAGES = new Set([10, 20, 30, 40, 50]);
 
 const THEME_LABELS: Record<number, string> = {
@@ -199,6 +199,7 @@ const THEME_LABELS: Record<number, string> = {
 };
 
 const BONUS_LABELS: Record<number, string> = {
+  1: '당구 퍼즐(테스트)',
   5: '당구 퍼즐',
   15: '포켓 샷',
   25: '레인 샷',
@@ -219,6 +220,7 @@ const NORMAL_PATTERN_POOL: PatternId[] = [
 
 /** 보너스 스테이지별 고정 퍼즐 패턴 */
 const BONUS_PATTERN_BY_STAGE: Record<number, PatternId> = {
+  1: 'cushion',
   5: 'cushion',
   15: 'pockets',
   25: 'lane',
@@ -462,8 +464,6 @@ export function buildStageConfig(stage: number): StageConfig {
       ironRatio = 0.2;
       rainbowRatio = 0.06;
     }
-  } else if (clamped === 1) {
-    label = '입문';
   }
 
   const specialSum = strongRatio + explosiveRatio + ironRatio + rainbowRatio;

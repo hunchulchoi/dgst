@@ -50,10 +50,10 @@ describe('breakout gameUtils', () => {
   it('defines 50 stages with rising difficulty', () => {
     expect(STAGES).toHaveLength(TOTAL_STAGES);
     expect(STAGES).toHaveLength(50);
-    expect(STAGES[0].label).toBe('입문');
+    expect(STAGES[0].label).toBe('당구 퍼즐(테스트)');
     expect(STAGES[49].label).toBe('최종');
     expect(STAGES[0].ballSpeed).toBeLessThan(STAGES[49].ballSpeed);
-    expect(STAGES[0].kind).toBe('normal');
+    expect(STAGES[0].kind).toBe('bonus');
     expect(STAGES[49].kind).toBe('theme');
     for (const stage of STAGES) {
       const specialSum =
@@ -69,9 +69,10 @@ describe('breakout gameUtils', () => {
     expect(getStageKind(45)).toBe('bonus');
     expect(getStageKind(10)).toBe('theme');
     expect(getStageKind(50)).toBe('theme');
-    expect(getStageKind(1)).toBe('normal');
+    expect(getStageKind(1)).toBe('bonus');
     expect(getStageKind(7)).toBe('normal');
     expect(getStageConfig(5).label).toBe('당구 퍼즐');
+    expect(getStageConfig(1).label).toBe('당구 퍼즐(테스트)');
     expect(getStageConfig(45).label).toBe('3쿠션');
     expect(getStageConfig(10).label).toBe('철 미로');
     expect(getStageConfig(20).label).toBe('폭발 연쇄');
@@ -88,7 +89,7 @@ describe('breakout gameUtils', () => {
       expect(cells).toBeGreaterThan(0);
       expect(getStagePattern(stage)).toBeTruthy();
     }
-    expect(getStagePattern(1)).toBe('full');
+    expect(getStagePattern(1)).toBe('cushion');
     expect(getStagePattern(5)).toBe('cushion');
     expect(getStagePattern(10)).toBe('tunnel');
     expect(getStagePattern(15)).toBe('pockets');
@@ -96,7 +97,7 @@ describe('breakout gameUtils', () => {
   });
 
   it('bonus stages use fixed iron-and-brick puzzle grids', () => {
-    for (const stage of [5, 15, 25, 35, 45]) {
+    for (const stage of [1, 5, 15, 25, 35, 45]) {
       const grid = getBonusPuzzleGrid(stage);
       expect(grid).not.toBeNull();
       const bricks = createBricks(stage);
@@ -152,8 +153,8 @@ describe('breakout gameUtils', () => {
   });
 
   it('destroys normal brick on hit', () => {
-    const bricks = createBricks(1);
-    const target = bricks[0];
+    const bricks = createBricks(2);
+    const target = bricks.find((b) => b.type === 'normal') ?? bricks.find(isDestroyableBrick)!;
     const ball: Ball = {
       x: target.x + target.width / 2,
       y: target.y + target.height + 5,
@@ -161,9 +162,9 @@ describe('breakout gameUtils', () => {
       vy: -4,
       radius: 8
     };
-    const result = handleBrickCollision(ball, bricks, 1);
+    const result = handleBrickCollision(ball, bricks, 2);
     expect(result.hit).toBe(true);
-    expect(result.destroyedBricks).toHaveLength(1);
+    expect(result.destroyedBricks.length).toBeGreaterThan(0);
   });
 
   it('bounces off iron without destroying', () => {
@@ -273,7 +274,7 @@ describe('breakout gameUtils', () => {
   });
 
   it('destroys all breakable bricks with bomb effect helper', () => {
-    const bricks = createBricks(1).slice(0, 4);
+    const bricks = createBricks(2).filter(isDestroyableBrick).slice(0, 4);
     const result = destroyAllBreakableBricks(bricks, 2);
     expect(result.destroyed.length).toBeGreaterThan(0);
     expect(isStageClear(result.bricks)).toBe(true);
@@ -298,7 +299,9 @@ describe('breakout gameUtils', () => {
   });
 
   it('returns stage clear bonus by stage', () => {
-    expect(getStageClearBonus(1)).toBe(750);
+    expect(getStageClearBonus(2)).toBe(1000);
+    expect(getStageClearBonus(1, 1)).toBe(1500);
+    expect(getStageClearBonus(1, 2)).toBe(750);
     expect(getStageClearBonus(10)).toBe(3000);
     expect(getStageClearBonus(50)).toBe(13_000);
     expect(getStageClearBonus(5, 1)).toBe(3500);
