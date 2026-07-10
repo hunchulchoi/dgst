@@ -71,6 +71,10 @@ export const SLOW_BALL_SPEED_RATIO = 0.65;
 export const FAST_BALL_SPEED_RATIO = 1.45;
 export const INVINCIBLE_BALL_DURATION_MS = 8_000;
 export const LASER_DURATION_MS = 10_000;
+/** 멀티볼: 패들 받을 때마다 공 증가 지속 시간 */
+export const MULTIBALL_DURATION_MS = 12_000;
+/** 멀티볼로 늘어날 수 있는 공 최대 개수 */
+export const MAX_MULTIBALL_COUNT = 8;
 export const LASER_INTERVAL_MS = 380;
 export const LASER_SPEED = 11;
 export const COMBO_WINDOW_MS = 1_500;
@@ -146,6 +150,8 @@ export interface ActiveEffects {
   fastBallsUntil: number;
   invincibleBallUntil: number;
   laserUntil: number;
+  /** 활성 시 패들로 공 받을 때마다 공 +1 */
+  multiballUntil: number;
 }
 
 export type StageKind = 'normal' | 'theme' | 'bonus';
@@ -596,7 +602,13 @@ export const POWER_UP_META: Record<
   PowerUpType,
   { label: string; color: string; symbol: string; bad: boolean; durationMs?: number }
 > = {
-  multiball: { label: '멀티볼', color: '#81d4fa', symbol: '●●', bad: false },
+  multiball: {
+    label: '멀티볼',
+    color: '#81d4fa',
+    symbol: '●●',
+    bad: false,
+    durationMs: MULTIBALL_DURATION_MS
+  },
   expand: { label: '패들 확대', color: '#a5d6a7', symbol: '↔', bad: false, durationMs: PADDLE_EXPAND_DURATION_MS },
   extraLife: { label: '추가 목숨', color: '#f48fb1', symbol: '♥', bad: false },
   slow: { label: '슬로우', color: '#ce93d8', symbol: '▼', bad: false, durationMs: SLOW_BALL_DURATION_MS },
@@ -644,7 +656,8 @@ export function createActiveEffects(): ActiveEffects {
     slowBallsUntil: 0,
     fastBallsUntil: 0,
     invincibleBallUntil: 0,
-    laserUntil: 0
+    laserUntil: 0,
+    multiballUntil: 0
   };
 }
 
@@ -2348,6 +2361,9 @@ export function applyTimedPowerUp(
     case 'laser':
       next.laserUntil = now + duration;
       break;
+    case 'multiball':
+      next.multiballUntil = now + duration;
+      break;
     default:
       break;
   }
@@ -2359,12 +2375,56 @@ export function createMultiballBalls(sourceBall: Ball, speed: number): Ball[] {
   const offsets = [-0.45, 0, 0.45];
   return offsets.map((offset) => {
     const angle = baseAngle + offset;
+    let vx = speed * Math.cos(angle);
+    let vy = speed * Math.sin(angle);
+    // 패들 반사 직후처럼 위로 향하게
+    if (vy > 0) vy = -Math.abs(vy);
     return {
       ...sourceBall,
-      vx: speed * Math.cos(angle),
-      vy: speed * Math.sin(angle)
+      vx,
+      vy
     };
   });
+}
+
+/**
+ * 기존 공에 멀티볼 추가 (덮어쓰지 않음). 최대 MAX_MULTIBALL_COUNT.
+ */
+export function addMultiballBalls(
+  existing: Ball[],
+  sourceBall: Ball,
+  speed: number,
+  maxBalls = MAX_MULTIBALL_COUNT
+): Ball[] {
+  if (existing.length >= maxBalls) return existing;
+  const room = maxBalls - existing.length;
+  const extras = createMultiballBalls(sourceBall, speed)
+    .filter((_, i) => i !== 1)
+    .slice(0, room);
+  return [...existing, ...extras];
+}
+
+/**
+ * 패들로 공 받을 때 공 1개 추가. 멀티볼 효과 중 호출.
+ */
+export function growBallsOnPaddleHit(
+  balls: Ball[],
+  hitBall: Ball,
+  speed: number,
+  maxBalls = MAX_MULTIBALL_COUNT
+): Ball[] {
+  if (balls.length >= maxBalls) return balls;
+  const baseAngle = Math.atan2(hitBall.vy, hitBall.vx);
+  const angle = baseAngle + (balls.length % 2 === 0 ? 0.4 : -0.4);
+  let vx = speed * Math.cos(angle);
+  let vy = speed * Math.sin(angle);
+  if (vy > 0) vy = -Math.abs(vy);
+  const extra: Ball = { ...hitBall, vx, vy };
+  return [...balls, normalizeBallSpeed(extra, speed)];
+}
+
+export function isMultiballGrowActive(effects: ActiveEffects, now: number): boolean {
+  return effects.multiballUntil > now;
 }
 
 export function getActiveEffectLabels(
@@ -2374,6 +2434,9 @@ export function getActiveEffectLabels(
 ): string[] {
   const labels: string[] = [];
   if (shieldCharges > 0) labels.push(`보호막 x${shieldCharges}`);
+  if (effects.multiballUntil > now) {
+    labels.push(`멀티볼 ${Math.ceil((effects.multiballUntil - now) / 1000)}s`);
+  }
   if (effects.expandPaddleUntil > now) labels.push(`확대 ${Math.ceil((effects.expandPaddleUntil - now) / 1000)}s`);
   if (effects.shrinkPaddleUntil > now) labels.push(`축소 ${Math.ceil((effects.shrinkPaddleUntil - now) / 1000)}s`);
   if (effects.slowBallsUntil > now) labels.push(`슬로우 ${Math.ceil((effects.slowBallsUntil - now) / 1000)}s`);

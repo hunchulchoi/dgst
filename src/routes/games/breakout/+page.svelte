@@ -45,7 +45,9 @@
     VAULT_AIM_ANGLE,
     createDropsFromDestroyedBricks,
     createLaserShot,
-    createMultiballBalls,
+    addMultiballBalls,
+    growBallsOnPaddleHit,
+    isMultiballGrowActive,
     createPaddle,
     createPowerUpDrop,
     DEFAULT_AIM_ANGLE,
@@ -737,10 +739,11 @@
 
     switch (type) {
       case 'multiball': {
+        activeEffects = applyTimedPowerUp('multiball', activeEffects, now);
         const config = getStageConfig(stage);
         const speed = getEffectiveBallSpeed(config.ballSpeed, activeEffects, now);
         const source = balls[0] ?? createBall(paddle, speed);
-        balls = createMultiballBalls(source, speed);
+        balls = addMultiballBalls(balls, source, speed);
         break;
       }
       case 'extraLife':
@@ -960,6 +963,8 @@
 
     let nextBricks = bricks;
     const survivingBalls: Ball[] = [];
+    const paddleHitBalls: Ball[] = [];
+    const multiballGrow = isMultiballGrowActive(activeEffects, now);
 
     for (const ball of balls) {
       let nextBall = moveBall(ball);
@@ -967,6 +972,7 @@
 
       const paddleHit = handlePaddleCollision(nextBall, paddle);
       nextBall = paddleHit.ball;
+      if (paddleHit.hit) paddleHitBalls.push(nextBall);
 
       if (invincible) {
         const pierce = handleInvincibleBrickCollision(nextBall, nextBricks, stage);
@@ -993,6 +999,11 @@
 
     // 생존 공 먼저 반영 후 파워업 — 멀티볼이 survivingBalls에 덮이지 않게
     balls = survivingBalls;
+    if (multiballGrow) {
+      for (const hitBall of paddleHitBalls) {
+        balls = growBallsOnPaddleHit(balls, hitBall, ballSpeed);
+      }
+    }
     for (const item of collected.collected) {
       applyCollectedPowerUp(item.type);
     }

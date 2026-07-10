@@ -6,6 +6,11 @@ import {
   createBall,
   createBricks,
   createMultiballBalls,
+  addMultiballBalls,
+  growBallsOnPaddleHit,
+  isMultiballGrowActive,
+  MAX_MULTIBALL_COUNT,
+  MULTIBALL_DURATION_MS,
   createPaddle,
   createPowerUpDrop,
   damageBrickAt,
@@ -660,6 +665,35 @@ describe('breakout gameUtils', () => {
     const effects = applyTimedPowerUp('invincible', createActiveEffects(), now);
     expect(isInvincibleBallActive(effects, now + 1)).toBe(true);
     expect(isInvincibleBallActive(effects, now + 8_001)).toBe(false);
+  });
+
+  it('multiball grows on paddle hits and stacks pickups', () => {
+    const now = 1_000;
+    const effects = applyTimedPowerUp('multiball', createActiveEffects(), now);
+    expect(isMultiballGrowActive(effects, now + 1)).toBe(true);
+    expect(isMultiballGrowActive(effects, now + MULTIBALL_DURATION_MS + 1)).toBe(false);
+
+    const paddle = createPaddle();
+    const source = createBall(paddle, 6);
+    source.vy = -6;
+    let balls = [source];
+    balls = addMultiballBalls(balls, source, 6);
+    expect(balls.length).toBe(3);
+
+    balls = addMultiballBalls(balls, balls[0]!, 6);
+    expect(balls.length).toBe(5);
+
+    const grown = growBallsOnPaddleHit(balls, balls[0]!, 6);
+    expect(grown.length).toBe(6);
+    expect(grown[grown.length - 1]!.vy).toBeLessThan(0);
+
+    let capped = grown;
+    while (capped.length < MAX_MULTIBALL_COUNT) {
+      capped = growBallsOnPaddleHit(capped, capped[0]!, 6);
+    }
+    expect(capped.length).toBe(MAX_MULTIBALL_COUNT);
+    expect(growBallsOnPaddleHit(capped, capped[0]!, 6).length).toBe(MAX_MULTIBALL_COUNT);
+    expect(createMultiballBalls(source, 6)).toHaveLength(3);
   });
 
   it('moves and collects falling power-ups', () => {
