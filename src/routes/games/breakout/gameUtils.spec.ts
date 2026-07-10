@@ -28,6 +28,11 @@ import {
   clampAimAngle,
   aimAngleFromDragRatio,
   createBilliardObjectBalls,
+  createMovingObjectBalls,
+  stepMovingObject,
+  isMoversClear,
+  MOVERS_BALL_SPEED,
+  MOVERS_TIME_LIMIT_MS,
   createStarCollectibles,
   createFallingStar,
   createStarRainIronBricks,
@@ -82,7 +87,7 @@ describe('breakout gameUtils', () => {
   it('defines 50 stages with rising difficulty', () => {
     expect(STAGES).toHaveLength(TOTAL_STAGES);
     expect(STAGES).toHaveLength(50);
-    expect(STAGES[0].label).toBe('별 소나기(테스트)');
+    expect(STAGES[0].label).toBe('이동 공(테스트)');
     expect(STAGES[49].label).toBe('최종');
     expect(STAGES[0].ballSpeed).toBeLessThan(STAGES[49].ballSpeed);
     expect(STAGES[0].kind).toBe('bonus');
@@ -104,7 +109,7 @@ describe('breakout gameUtils', () => {
     expect(getStageKind(1)).toBe('bonus');
     expect(getStageKind(7)).toBe('normal');
     expect(getStageConfig(5).label).toBe('3쿠션 챌린지');
-    expect(getStageConfig(1).label).toBe('별 소나기(테스트)');
+    expect(getStageConfig(1).label).toBe('이동 공(테스트)');
     expect(getStageConfig(45).label).toBe('금고 열기');
     expect(getStageConfig(35).label).toBe('골든샷');
     expect(getStageConfig(10).label).toBe('철 미로');
@@ -412,7 +417,7 @@ describe('breakout gameUtils', () => {
   });
 
   it('star and gem collectible challenges', () => {
-    expect(getBonusChallengeType(1)).toBe('spin');
+    expect(getBonusChallengeType(1)).toBe('movers');
     expect(getBonusChallengeType(5)).toBe('billiard');
     expect(getBonusChallengeType(15)).toBe('stars');
     expect(getBonusChallengeType(25)).toBe('gems');
@@ -426,6 +431,8 @@ describe('breakout gameUtils', () => {
     expect(getBonusAttemptLimit('golden')).toBe(1);
     expect(getBonusAttemptLimit('vault')).toBe(2);
     expect(getBonusAttemptLimit('spin')).toBe(1);
+    expect(getBonusAttemptLimit('movers')).toBe(2);
+    expect(getBonusTimeLimitMs('movers')).toBe(MOVERS_TIME_LIMIT_MS);
 
     const stars = createStarCollectibles(15);
     expect(stars.length).toBeGreaterThanOrEqual(5);
@@ -442,10 +449,42 @@ describe('breakout gameUtils', () => {
     expect(createCoinCollectibles(35).every((c) => c.kind === 'coin')).toBe(true);
   });
 
+  it('movers stage: moving targets keep speed and clear on all hits', () => {
+    expect(getBonusChallengeType(1)).toBe('movers');
+    expect(getBonusTimeLimitMs('movers')).toBe(MOVERS_TIME_LIMIT_MS);
+    expect(getStageConfig(1).label).toBe('이동 공(테스트)');
+
+    const objects = createMovingObjectBalls(1);
+    expect(objects).toHaveLength(3);
+    expect(objects.filter((b) => b.kind === 'red')).toHaveLength(2);
+    expect(objects.filter((b) => b.kind === 'yellow')).toHaveLength(1);
+    expect(objects.every((b) => Math.hypot(b.vx, b.vy) > 0)).toBe(true);
+
+    const moved = objects.map((b) => stepMovingObject(b));
+    expect(moved.some((b, i) => b.x !== objects[i].x || b.y !== objects[i].y)).toBe(true);
+    for (const b of moved) {
+      expect(Math.hypot(b.vx, b.vy)).toBeCloseTo(MOVERS_BALL_SPEED, 5);
+    }
+
+    const nearLeft = {
+      ...objects[0],
+      x: objects[0].radius + 1,
+      y: 200,
+      vx: -MOVERS_BALL_SPEED,
+      vy: 0
+    };
+    const bounced = stepMovingObject(nearLeft);
+    expect(bounced.vx).toBeGreaterThan(0);
+
+    expect(isMoversClear(objects)).toBe(false);
+    const allHit = objects.map((b) => ({ ...b, hit: true }));
+    expect(isMoversClear(allHit)).toBe(true);
+    expect(isBilliardClear(0, 0, allHit)).toBe(true);
+  });
+
   it('spin stage is star rain caught by paddle with iron obstacles', () => {
-    expect(getBonusChallengeType(1)).toBe('spin');
-    expect(getStageConfig(1).ballSpeed).toBe(SPIN_BALL_SPEED);
     expect(getBonusTimeLimitMs('spin')).toBe(SPIN_TIME_LIMIT_MS);
+    expect(SPIN_BALL_SPEED).toBeGreaterThan(0);
 
     const irons = createStarRainIronBricks();
     expect(irons.length).toBe(2);

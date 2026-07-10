@@ -218,7 +218,7 @@ const THEME_LABELS: Record<number, string> = {
 };
 
 const BONUS_LABELS: Record<number, string> = {
-  1: '별 소나기(테스트)',
+  1: '이동 공(테스트)',
   5: '3쿠션 챌린지',
   15: '별 먹기',
   25: '보석 회수',
@@ -232,10 +232,11 @@ export type BonusChallengeType =
   | 'gems'
   | 'golden'
   | 'vault'
-  | 'spin';
+  | 'spin'
+  | 'movers';
 
 const BONUS_CHALLENGE_BY_STAGE: Record<number, BonusChallengeType> = {
-  1: 'spin',
+  1: 'movers',
   5: 'billiard',
   15: 'stars',
   25: 'gems',
@@ -901,6 +902,7 @@ export function buildBonusClearPerformance(params: {
     billiard: '🎱 당구 클리어',
     stars: '⭐ 별 클리어',
     spin: '⭐ 별 소나기 결과',
+    movers: '🔵 이동 공 클리어',
     gems: '💎 보석 클리어',
     golden: '🪙 골든샷 결과',
     vault: '🔐 금고 개방'
@@ -956,10 +958,16 @@ export interface BilliardBall {
 
 export const BILLIARD_RADIUS = 11;
 export const BILLIARD_TIME_LIMIT_MS = 45_000;
+/** 이동 공 보너스 제한시간 */
+export const MOVERS_TIME_LIMIT_MS = 30_000;
+/** 이동 목표공 순찰 속도 */
+export const MOVERS_BALL_SPEED = 2.2;
 
 /** 보너스 챌린지별 제한시간 */
 export function getBonusTimeLimitMs(challenge: BonusChallengeType): number {
-  return challenge === 'spin' ? SPIN_TIME_LIMIT_MS : BILLIARD_TIME_LIMIT_MS;
+  if (challenge === 'spin') return SPIN_TIME_LIMIT_MS;
+  if (challenge === 'movers') return MOVERS_TIME_LIMIT_MS;
+  return BILLIARD_TIME_LIMIT_MS;
 }
 export const BILLIARD_TABLE_TOP = 48;
 export const BILLIARD_TABLE_BOTTOM = CANVAS_HEIGHT - 28;
@@ -1032,6 +1040,43 @@ export function createBilliardObjectBalls(stage: number): BilliardBall[] {
     ]
   };
   return layouts[pattern] ?? layouts.cushion;
+}
+
+/**
+ * 이동 공 보너스 — 처음부터 순찰하는 목표 공 3개.
+ * 빨강1 좌우 · 빨강2 대각 · 노랑 상하.
+ */
+export function createMovingObjectBalls(_stage = 1): BilliardBall[] {
+  const midX = CANVAS_WIDTH / 2;
+  const s = MOVERS_BALL_SPEED;
+  const r1 = makeBilliardBall('m-r1', 'red', midX - 90, 180);
+  const r2 = makeBilliardBall('m-r2', 'red', midX + 100, 260);
+  const y1 = makeBilliardBall('m-y1', 'yellow', midX, 320);
+  return [
+    { ...r1, vx: s, vy: 0 },
+    { ...r2, vx: s * 0.75, vy: s * 0.75 },
+    { ...y1, vx: 0, vy: s }
+  ];
+}
+
+/**
+ * 이동 목표공 한 스텝 — 쿠션 반사 후 속도 크기 유지(멈추지 않음).
+ */
+export function stepMovingObject(ball: BilliardBall, speed = MOVERS_BALL_SPEED): BilliardBall {
+  let next = moveBilliardObject(ball);
+  const wall = handleEnclosedCushionCollision(next);
+  next = wall.ball;
+  const mag = Math.hypot(next.vx, next.vy);
+  if (mag < 0.01) {
+    return { ...next, vx: speed, vy: 0 };
+  }
+  const scale = speed / mag;
+  return { ...next, vx: next.vx * scale, vy: next.vy * scale };
+}
+
+/** 이동 공 클리어 — 쿠션 조건 없이 전부 적중 */
+export function isMoversClear(objects: BilliardBall[]): boolean {
+  return objects.length > 0 && objects.every((b) => b.hit);
 }
 
 export function createBilliardCueBall(paddle: Paddle, speed: number, angleDeg: number): Ball {

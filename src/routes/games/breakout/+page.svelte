@@ -18,6 +18,10 @@
     createAimedBall,
     createBall,
     createBilliardObjectBalls,
+    createMovingObjectBalls,
+    isMoversClear,
+    MOVERS_TIME_LIMIT_MS,
+    stepMovingObject,
     createBricks,
     createGemCollectibles,
     createStarCollectibles,
@@ -238,6 +242,12 @@
       bonusCollectibles = [];
       vaultTargets = [];
       vaultSequence = [];
+    } else if (challenge === 'movers') {
+      billiardObjects = createMovingObjectBalls(stageNum);
+      bonusCollectibles = [];
+      vaultTargets = [];
+      vaultSequence = [];
+      requiredCushions = 0;
     } else if (challenge === 'stars') {
       billiardObjects = [];
       bonusCollectibles = createStarCollectibles(stageNum);
@@ -465,7 +475,7 @@
     cue = wall.ball;
     if (wall.cushionHit) cushionCount += 1;
 
-    if (bonusChallenge === 'billiard') {
+    if (bonusChallenge === 'billiard' || bonusChallenge === 'movers') {
       let nextObjects = billiardObjects;
       for (let i = 0; i < nextObjects.length; i++) {
         const result = resolveCueObjectHit(cue, nextObjects[i]);
@@ -476,10 +486,17 @@
           showEffectToast(result.obj.kind === 'yellow' ? '노란공 적중!' : '빨간공 적중!');
         }
       }
-      nextObjects = nextObjects.map(stepBilliardObject);
+      nextObjects =
+        bonusChallenge === 'movers'
+          ? nextObjects.map((b) => stepMovingObject(b))
+          : nextObjects.map(stepBilliardObject);
       billiardObjects = nextObjects;
       balls = [normalizeBallSpeed(cue, config.ballSpeed)];
-      if (isBilliardClear(cushionCount, requiredCushions, nextObjects)) {
+      const cleared =
+        bonusChallenge === 'movers'
+          ? isMoversClear(nextObjects)
+          : isBilliardClear(cushionCount, requiredCushions, nextObjects);
+      if (cleared) {
         scheduleStageClear();
       }
       return;
@@ -1110,7 +1127,9 @@
               ? '🪙'
               : bonusChallenge === 'vault'
                 ? '🔐'
-                : '🎱';
+                : bonusChallenge === 'movers'
+                  ? '🔵'
+                  : '🎱';
       ctx.fillStyle = '#ffd54f';
       ctx.fillText(`${icon} ${stageConfig.label}`, CANVAS_WIDTH / 2, 28);
       ctx.font = '11px system-ui, sans-serif';
@@ -1123,6 +1142,13 @@
         const hitCount = countHitBilliardBalls(billiardObjects);
         ctx.fillText(
           `쿠션 ${cushionCount}/${requiredCushions} · 공 ${hitCount}/${billiardObjects.length} · ${timeLeft}s`,
+          CANVAS_WIDTH / 2,
+          46
+        );
+      } else if (bonusChallenge === 'movers') {
+        const hitCount = countHitBilliardBalls(billiardObjects);
+        ctx.fillText(
+          `이동공 ${hitCount}/${billiardObjects.length} · ${timeLeft}s`,
           CANVAS_WIDTH / 2,
           46
         );
@@ -1216,13 +1242,15 @@
             ? '각도 조준 · 모든 별 먹기'
             : bonusChallenge === 'spin'
               ? '패들로 별 받기 · 공 유지 · 철 피하기'
-              : bonusChallenge === 'gems'
-                ? '쿠션 쌓고 보석 먹기 (배율↑)'
-                : bonusChallenge === 'golden'
-                  ? '원샷! 쿠션 후 코인 최대 회수'
-                  : bonusChallenge === 'vault'
-                    ? `뱅크샷 순서: ${vaultSequence.join('→')}`
-                    : '각도 조준 · 쿠션 후 모든 공 맞추기';
+              : bonusChallenge === 'movers'
+                ? '움직이는 공 전부 맞추기'
+                : bonusChallenge === 'gems'
+                  ? '쿠션 쌓고 보석 먹기 (배율↑)'
+                  : bonusChallenge === 'golden'
+                    ? '원샷! 쿠션 후 코인 최대 회수'
+                    : bonusChallenge === 'vault'
+                      ? `뱅크샷 순서: ${vaultSequence.join('→')}`
+                      : '각도 조준 · 쿠션 후 모든 공 맞추기';
         ctx.fillText(aimHint, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 8);
         ctx.fillStyle = '#fff';
         ctx.font = '13px system-ui, sans-serif';
@@ -1328,13 +1356,15 @@
               ? '⭐ 별 전부 클리어!'
               : bonusChallenge === 'spin'
                 ? '⭐ 별 소나기 클리어!'
-                : bonusChallenge === 'gems'
-                  ? '💎 보석 회수 클리어!'
-                  : bonusChallenge === 'golden'
-                    ? '🪙 골든샷 클리어!'
-                    : bonusChallenge === 'vault'
-                      ? '🔐 금고 개방!'
-                      : '🎱 당구 챌린지 클리어!'
+                : bonusChallenge === 'movers'
+                  ? '🔵 이동 공 클리어!'
+                  : bonusChallenge === 'gems'
+                    ? '💎 보석 회수 클리어!'
+                    : bonusChallenge === 'golden'
+                      ? '🪙 골든샷 클리어!'
+                      : bonusChallenge === 'vault'
+                        ? '🔐 금고 개방!'
+                        : '🎱 당구 챌린지 클리어!'
             : `스테이지 ${stage} 클리어!`;
         ctx.fillText(clearLabel, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2);
       }
@@ -1645,13 +1675,15 @@
                   ? '⭐'
                   : bonusChallenge === 'spin'
                     ? '⭐'
-                    : bonusChallenge === 'gems'
-                      ? '💎'
-                      : bonusChallenge === 'golden'
-                        ? '🪙'
-                        : bonusChallenge === 'vault'
-                          ? '🔐'
-                          : '🎱'}
+                    : bonusChallenge === 'movers'
+                      ? '🔵'
+                      : bonusChallenge === 'gems'
+                        ? '💎'
+                        : bonusChallenge === 'golden'
+                          ? '🪙'
+                          : bonusChallenge === 'vault'
+                            ? '🔐'
+                            : '🎱'}
                 {stageConfig.label} · {stage}단계
               </h2>
               {#if bonusChallenge === 'stars'}
@@ -1669,6 +1701,14 @@
                   <li>중간 <strong>철 블록</strong> — 공만 튕김 · 별은 통과</li>
                   <li>공 놓치면 실패 · <strong>{Math.ceil(getBonusTimeLimitMs('spin') / 1000)}초</strong> 버티면 클리어</li>
                   <li><strong>원샷</strong> — 기회 1회 · 1발 클리어 시 점수 ×2</li>
+                </ul>
+              {:else if bonusChallenge === 'movers'}
+                <p class="text-muted mb-3 small">계속 움직이는 목표 공을 전부 맞추세요</p>
+                <ul class="list-unstyled text-start mx-auto bonus-intro-rules mb-4">
+                  <li>◎ 흰공 · ● 빨간 2 · ● 노란 1 — <strong>처음부터 이동</strong></li>
+                  <li>쿠션 조건 없음 · 목표 공 전부 적중하면 클리어</li>
+                  <li>사방 쿠션 · 공 안 죽음 · {Math.ceil(MOVERS_TIME_LIMIT_MS / 1000)}초</li>
+                  <li>기회 {BONUS_MAX_ATTEMPTS}회 · 1발 클리어 시 점수 ×2</li>
                 </ul>
               {:else if bonusChallenge === 'gems'}
                 <p class="text-muted mb-3 small">쿠션을 쌓을수록 보석 점수 배율이 올라갑니다</p>
