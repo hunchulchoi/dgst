@@ -1107,30 +1107,33 @@ export interface VaultPuzzle {
   sequence: number[];
 }
 
-/** 스테이지별 금고 순서 */
+/** 금고 원샷 권장 조준각 — 좌→상→우 뱅크 경로 */
+export const VAULT_AIM_ANGLE = 130;
+
+/** 스테이지별 금고 — 원샷 뱅크샷 경로(조준 130°)에 맞춘 배치 */
 export function createVaultPuzzle(stage: number): VaultPuzzle {
-  const midX = CANVAS_WIDTH / 2;
   const hard = stage >= 45;
-  const sequence = hard ? [3, 1, 4, 2] : [2, 4, 1, 3];
+  const sequence = hard ? [1, 2, 3, 4] : [1, 2, 3];
+  // aim 130° 쿠션 히트: L(8,310) → T(224,56) → R(472,355) → B(260,604)
   const positions: Record<number, [number, number]> = hard
     ? {
-        1: [midX - 110, 180],
-        2: [midX + 110, 180],
-        3: [midX - 80, 320],
-        4: [midX + 80, 320]
+        1: [28, 310],
+        2: [224, 72],
+        3: [452, 355],
+        4: [366, 480]
       }
     : {
-        1: [90, 160],
-        2: [CANVAS_WIDTH - 90, 160],
-        3: [90, 340],
-        4: [CANVAS_WIDTH - 90, 340]
+        1: [28, 310],
+        2: [224, 72],
+        3: [452, 355]
       };
-  const targets: VaultTarget[] = [1, 2, 3, 4].map((n) => ({
+  const radius = VAULT_TARGET_RADIUS + (hard ? 2 : 6);
+  const targets: VaultTarget[] = sequence.map((n) => ({
     id: `vault-${n}`,
     number: n,
     x: positions[n][0],
     y: positions[n][1],
-    radius: VAULT_TARGET_RADIUS,
+    radius,
     activated: false
   }));
   return { targets, sequence };
@@ -1145,7 +1148,7 @@ export interface VaultHitResult {
 }
 
 /**
- * 금고 타깃 히트. 다음 순서 번호만 인정. 틀린 번호면 진행 리셋.
+ * 금고 타깃 히트. 다음 순서 번호만 인정. 틀린 번호면 wrong=true (원샷 실패).
  */
 export function resolveVaultHit(
   targets: VaultTarget[],
@@ -1169,8 +1172,8 @@ export function resolveVaultHit(
   const expected = sequence[sequenceIndex];
   if (hitNumber !== expected) {
     return {
-      targets: targets.map((t) => ({ ...t, activated: false })),
-      sequenceIndex: 0,
+      targets,
+      sequenceIndex,
       correct: false,
       complete: false,
       wrong: true
@@ -1191,7 +1194,7 @@ export function resolveVaultHit(
 }
 
 export function getBonusAttemptLimit(challenge: BonusChallengeType): number {
-  return challenge === 'golden' ? GOLDEN_MAX_ATTEMPTS : BONUS_MAX_ATTEMPTS;
+  return challenge === 'golden' || challenge === 'vault' ? GOLDEN_MAX_ATTEMPTS : BONUS_MAX_ATTEMPTS;
 }
 
 export function movePaddle(paddle: Paddle, dx: number): Paddle {

@@ -375,7 +375,7 @@ describe('breakout gameUtils', () => {
     expect(getGemPickupScore(100, 2, 3)).toBe(800);
     expect(getCoinPickupScore(60, 2, 3)).toBe(480);
     expect(getBonusAttemptLimit('golden')).toBe(1);
-    expect(getBonusAttemptLimit('vault')).toBe(2);
+    expect(getBonusAttemptLimit('vault')).toBe(1);
 
     const stars = createStarCollectibles(15);
     expect(stars.length).toBeGreaterThanOrEqual(5);
@@ -394,24 +394,29 @@ describe('breakout gameUtils', () => {
 
   it('vault sequence puzzle accepts correct order only', () => {
     const puzzle = createVaultPuzzle(1);
-    expect(puzzle.sequence).toEqual([2, 4, 1, 3]);
-    expect(puzzle.targets).toHaveLength(4);
+    expect(puzzle.sequence).toEqual([1, 2, 3]);
+    expect(puzzle.targets).toHaveLength(3);
     const paddle = createPaddle();
     const cue = createAimedBall(paddle, 6, 90);
-    const first = puzzle.targets.find((t) => t.number === 2)!;
+    const first = puzzle.targets.find((t) => t.number === 1)!;
     cue.x = first.x;
     cue.y = first.y;
     const ok = resolveVaultHit(puzzle.targets, puzzle.sequence, 0, cue);
     expect(ok.correct).toBe(true);
     expect(ok.sequenceIndex).toBe(1);
 
-    const wrongTarget = puzzle.targets.find((t) => t.number === 1)!;
+    const wrongTarget = puzzle.targets.find((t) => t.number === 3)!;
     cue.x = wrongTarget.x;
     cue.y = wrongTarget.y;
     const bad = resolveVaultHit(ok.targets, puzzle.sequence, 1, cue);
     expect(bad.wrong).toBe(true);
-    expect(bad.sequenceIndex).toBe(0);
-    expect(bad.targets.every((t) => !t.activated)).toBe(true);
+    expect(bad.sequenceIndex).toBe(1);
+  });
+
+  it('vault hard stage uses four-target bank path', () => {
+    const hard = createVaultPuzzle(45);
+    expect(hard.sequence).toEqual([1, 2, 3, 4]);
+    expect(hard.targets).toHaveLength(4);
   });
 
   it('enclosed cushion and cue-object hit', () => {
