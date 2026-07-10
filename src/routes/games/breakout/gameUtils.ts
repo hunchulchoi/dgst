@@ -957,6 +957,40 @@ export function handleEnclosedCushionCollision<T extends { x: number; y: number;
   return { ball: { ...ball, x, y, vx, vy }, cushionHit };
 }
 
+/**
+ * 상·좌·우 쿠션만. 바닥은 패들로 받음 (스핀샷).
+ */
+export function handleTopAndSideCushionCollision<T extends { x: number; y: number; vx: number; vy: number; radius: number }>(
+  ball: T
+): { ball: T; cushionHit: boolean } {
+  let { x, y, vx, vy } = ball;
+  const r = ball.radius;
+  let cushionHit = false;
+
+  if (x - r <= 0) {
+    x = r;
+    if (vx < 0) cushionHit = true;
+    vx = Math.abs(vx);
+  } else if (x + r >= CANVAS_WIDTH) {
+    x = CANVAS_WIDTH - r;
+    if (vx > 0) cushionHit = true;
+    vx = -Math.abs(vx);
+  }
+  if (y - r <= BILLIARD_TABLE_TOP) {
+    y = BILLIARD_TABLE_TOP + r;
+    if (vy < 0) cushionHit = true;
+    vy = Math.abs(vy);
+  }
+
+  return { ball: { ...ball, x, y, vx, vy }, cushionHit };
+}
+
+/** 패들 히트 위치(0=왼쪽~1=오른쪽) → 스핀 */
+export function spinFromPaddleHitPos(hitPos: number): number {
+  const t = Math.max(0, Math.min(1, hitPos));
+  return clampSpin(Math.round((t - 0.5) * 2 * SPIN_MAX));
+}
+
 /** 흰공 ↔ 목표공 충돌. 맞으면 hit=true, 간단 탄성 분리 */
 export function resolveCueObjectHit(
   cue: Ball,
@@ -1364,8 +1398,12 @@ export interface PaddleCollisionResult {
   hit: boolean;
 }
 
-/** 패들 충돌 — 맞는 위치에 따라 반사각 변화 */
-export function handlePaddleCollision(ball: Ball, paddle: Paddle): PaddleCollisionResult {
+/** 패들 충돌 — 맞는 위치에 따라 반사각 변화. impartSpin 시 스핀도 부여 */
+export function handlePaddleCollision(
+  ball: Ball,
+  paddle: Paddle,
+  options?: { impartSpin?: boolean }
+): PaddleCollisionResult {
   if (
     !circleRectCollision(ball.x, ball.y, ball.radius, paddle.x, paddle.y, paddle.width, paddle.height)
   ) {
@@ -1379,10 +1417,17 @@ export function handlePaddleCollision(ball: Ball, paddle: Paddle): PaddleCollisi
   const newVx = speed * Math.sin(angle);
   const newVy = -Math.abs(speed * Math.cos(angle));
 
-  return {
-    ball: { ...ball, y: paddle.y - ball.radius - 1, vx: newVx, vy: newVy },
-    hit: true
+  const next: Ball = {
+    ...ball,
+    y: paddle.y - ball.radius - 1,
+    vx: newVx,
+    vy: newVy
   };
+  if (options?.impartSpin) {
+    next.spin = spinFromPaddleHitPos(hitPos);
+  }
+
+  return { ball: next, hit: true };
 }
 
 export function bounceBallFromBrick(ball: Ball, brick: Brick): Ball {

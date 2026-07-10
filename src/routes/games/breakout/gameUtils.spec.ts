@@ -41,16 +41,18 @@ import {
   getCoinPickupScore,
   getRequiredCushions,
   handleEnclosedCushionCollision,
+  handlePaddleCollision,
+  handleTopAndSideCushionCollision,
   isBilliardClear,
   resolveCueObjectHit,
   applyBallSpin,
   clampSpin,
   decaySpinOnCushion,
   getSpinAimPreviewPoints,
+  spinFromPaddleHitPos,
   TOTAL_STAGES,
   handleBrickCollision,
   handleInvincibleBrickCollision,
-  handlePaddleCollision,
   handlePowerUpPaddleCollision,
   handleWallCollision,
   isBallLost,
@@ -429,6 +431,33 @@ describe('breakout gameUtils', () => {
     );
     expect(preview).toHaveLength(8);
     expect(preview[preview.length - 1].x).not.toBeCloseTo(preview[0].x, 0);
+
+    expect(spinFromPaddleHitPos(0)).toBe(-3);
+    expect(spinFromPaddleHitPos(0.5)).toBe(0);
+    expect(spinFromPaddleHitPos(1)).toBe(3);
+
+    const descending: Ball = {
+      x: paddle.x + paddle.width * 0.1,
+      y: paddle.y - 5,
+      vx: 1,
+      vy: 4,
+      radius: 8,
+      spin: 0
+    };
+    const paddled = handlePaddleCollision(descending, paddle, { impartSpin: true });
+    expect(paddled.hit).toBe(true);
+    expect(paddled.ball.spin).toBeLessThan(0);
+    expect(paddled.ball.vy).toBeLessThan(0);
+
+    const topOnly = handleTopAndSideCushionCollision({
+      x: 100,
+      y: 2,
+      vx: 1,
+      vy: -3,
+      radius: 8
+    });
+    expect(topOnly.cushionHit).toBe(true);
+    expect(topOnly.ball.vy).toBeGreaterThan(0);
   });
 
   it('vault sequence puzzle accepts correct order only', () => {

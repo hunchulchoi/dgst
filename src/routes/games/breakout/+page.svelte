@@ -56,6 +56,7 @@
     getStageConfig,
     handleBrickCollision,
     handleEnclosedCushionCollision,
+    handleTopAndSideCushionCollision,
     handleInvincibleBrickCollision,
     handleLaserBrickCollision,
     handlePaddleCollision,
@@ -388,15 +389,47 @@
     const config = getStageConfig(stage);
     let cue = balls[0] ?? createAimedBall(paddle, config.ballSpeed, aimAngle, aimSpin);
     cue = moveBall(cue);
+
     if (bonusChallenge === 'spin') {
       cue = applyBallSpin(cue);
+      const sides = handleTopAndSideCushionCollision(cue);
+      cue = sides.ball;
+      if (sides.cushionHit) {
+        cushionCount += 1;
+        cue = decaySpinOnCushion(cue);
+      }
+      const paddleHit = handlePaddleCollision(cue, paddle, { impartSpin: true });
+      if (paddleHit.hit) {
+        cue = paddleHit.ball;
+        const s = cue.spin ?? 0;
+        showEffectToast(`패들 스핀 ${s > 0 ? `+${s}` : s}`);
+      } else if (isBallLost(cue)) {
+        showEffectToast('공 놓침!');
+        handleBonusMiss();
+        return;
+      }
+
+      let nextItems = bonusCollectibles;
+      for (let i = 0; i < nextItems.length; i++) {
+        const result = tryCollectItem(cue, nextItems[i]);
+        if (result.collected) {
+          nextItems = nextItems.map((it, idx) => (idx === i ? result.item : it));
+          const gained = getStarPickupScore(result.item.value, stage);
+          score += gained;
+          showEffectToast(`🌀 ⭐ +${gained}`);
+        }
+      }
+      bonusCollectibles = nextItems;
+      balls = [normalizeBallSpeed(cue, config.ballSpeed)];
+      if (isCollectibleClear(nextItems)) {
+        scheduleStageClear();
+      }
+      return;
     }
+
     const wall = handleEnclosedCushionCollision(cue);
     cue = wall.ball;
-    if (wall.cushionHit) {
-      cushionCount += 1;
-      if (bonusChallenge === 'spin') cue = decaySpinOnCushion(cue);
-    }
+    if (wall.cushionHit) cushionCount += 1;
 
     if (bonusChallenge === 'billiard') {
       let nextObjects = billiardObjects;
@@ -459,7 +492,7 @@
       return;
     }
 
-    // stars / spin / gems / golden coins
+    // stars / gems / golden coins
     let nextItems = bonusCollectibles;
     for (let i = 0; i < nextItems.length; i++) {
       const result = tryCollectItem(cue, nextItems[i]);
@@ -476,9 +509,7 @@
         } else {
           const gained = getStarPickupScore(result.item.value, stage);
           score += gained;
-          showEffectToast(
-            bonusChallenge === 'spin' ? `🌀 ⭐ +${gained}` : `⭐ +${gained}`
-          );
+          showEffectToast(`⭐ +${gained}`);
         }
       }
     }
@@ -680,7 +711,7 @@
       if (keys.left) aimAngle = clampAimAngle(aimAngle + AIM_ANGLE_STEP);
       if (keys.right) aimAngle = clampAimAngle(aimAngle - AIM_ANGLE_STEP);
       balls = [createAimedBall(paddle, getStageConfig(stage).ballSpeed, aimAngle, aimSpin)];
-    } else if (!isBonusStage) {
+    } else if (!isBonusStage || (bonusChallenge === 'spin' && ballLaunched)) {
       if (keys.left) paddle = movePaddle(paddle, -PADDLE_SPEED);
       if (keys.right) paddle = movePaddle(paddle, PADDLE_SPEED);
     }
@@ -1134,7 +1165,7 @@
           bonusChallenge === 'stars'
             ? '각도 조준 · 모든 별 먹기'
             : bonusChallenge === 'spin'
-              ? `스핀 ${aimSpin > 0 ? `+${aimSpin}` : aimSpin} · 커브로 별 먹기`
+              ? `스핀 ${aimSpin > 0 ? `+${aimSpin}` : aimSpin} · 패들로 받아 스핀 변경`
               : bonusChallenge === 'gems'
                 ? '쿠션 쌓고 보석 먹기 (배율↑)'
                 : bonusChallenge === 'golden'
@@ -1545,11 +1576,11 @@
                   <li>기회 {BONUS_MAX_ATTEMPTS}회 · 1발 클리어 시 점수 ×2</li>
                 </ul>
               {:else if bonusChallenge === 'spin'}
-                <p class="text-muted mb-3 small">스핀으로 커브를 넣어 구석 별까지 한 번에 먹으세요</p>
+                <p class="text-muted mb-3 small">스핀 커브 + 패들로 받아 스핀을 바꿔 별을 먹으세요</p>
                 <ul class="list-unstyled text-start mx-auto bonus-intro-rules mb-4">
-                  <li>각도(←→) + <strong>스핀(↑↓ / Q E)</strong> −3~+3</li>
-                  <li>음수=좌커브 · 양수=우커브 · 조준선이 곡선으로 보임</li>
-                  <li>모든 ⭐ 회수 · 사방 쿠션 · {Math.ceil(BILLIARD_TIME_LIMIT_MS / 1000)}초</li>
+                  <li>발사: 각도(←→) + <strong>스핀(↑↓ / 버튼)</strong> −3~+3</li>
+                  <li>플레이 중: <strong>패들로 받기</strong> — 왼쪽=좌커브 · 오른쪽=우커브</li>
+                  <li>바닥 쿠션 없음 · 놓치면 실패 · {Math.ceil(BILLIARD_TIME_LIMIT_MS / 1000)}초</li>
                   <li>기회 {BONUS_MAX_ATTEMPTS}회 · 1발 클리어 시 점수 ×2</li>
                 </ul>
               {:else if bonusChallenge === 'gems'}
@@ -1647,6 +1678,8 @@
                 {#if screen === 'ready' && isBonusStage && bonusChallenge === 'spin'}
                   각도 드래그 · 스핀 버튼/↑↓ · 탭 발사 ({getBonusAttemptLimit(bonusChallenge) -
                     bonusAttemptsUsed}/{getBonusAttemptLimit(bonusChallenge)})
+                {:else if screen === 'playing' && isBonusStage && bonusChallenge === 'spin'}
+                  드래그로 패들 · 맞는 위치로 스핀
                 {:else if screen === 'ready' && isBonusStage}
                   드래그로 각도 · 탭하면 발사 ({getBonusAttemptLimit(bonusChallenge) -
                     bonusAttemptsUsed}/{getBonusAttemptLimit(bonusChallenge)})
