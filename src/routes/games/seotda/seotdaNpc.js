@@ -7,9 +7,9 @@ import { evaluateHand, handStrength, raiseAmount, ANTE } from './seotdaEngine.js
 
 /** @type {NpcProfile[]} */
 export const NPC_PROFILES = [
-  { id: 'npc_bluffer', name: '허세왕', style: 'bluffer', bluff: 0.75 },
-  { id: 'npc_calm', name: '냉정', style: 'calm', bluff: 0.25 },
-  { id: 'npc_gambler', name: '도박사', style: 'gambler', bluff: 0.65 }
+  { id: 'npc_agwi', name: '아귀', style: 'bluffer', bluff: 0.48 },
+  { id: 'npc_goni', name: '고니', style: 'calm', bluff: 0.28 },
+  { id: 'npc_madam', name: '정마담', style: 'gambler', bluff: 0.55 }
 ];
 
 /**
@@ -28,49 +28,58 @@ export function chooseNpcAction(cards, profile, ctx, rng = Math.random) {
   const canCall = toCall <= chips;
   const canRaise = chips > toCall;
 
-  // 강제 압박: 콜 가능하면 레이즈 우선
+  // 압박 담당이어도 매번 레이즈 아님 — 랜덤
   if (forcePressure && canRaise && toCall < chips) {
-    if (rng() < 0.85) return 'raise';
+    const roll = rng();
+    if (roll < 0.4) return 'raise';
+    if (roll < 0.7 && canCall) return 'call';
+    // 나머지: 아래 성향 로직으로
   }
 
   if (profile.style === 'bluffer') {
-    // 약한 패도 레이즈 자주
+    // 아귀: 허세 있지만 무대뽀 아님. 매 판 기복
+    const mood = rng(); // 판 기질
+    const bluffChance = profile.bluff * (0.55 + mood * 0.7); // ~0.26~0.82
+
     if (strength < 0.35) {
-      if (canRaise && rng() < profile.bluff) return 'raise';
-      if (raiseSeen && canCall && rng() < 0.55) return 'call';
-      if (!canCall || rng() < 0.35) return 'die';
-      return 'call';
-    }
-    if (strength < 0.55) {
-      if (canRaise && rng() < 0.5 + profile.bluff * 0.3) return 'raise';
+      if (canRaise && rng() < bluffChance * 0.55) return 'raise';
+      if (raiseSeen && canCall && rng() < 0.4 + mood * 0.2) return 'call';
+      if (!canCall || rng() < 0.45) return 'die';
       return canCall ? 'call' : 'die';
     }
-    // 강한 패: 슬로우 or 레이즈
-    if (canRaise && rng() < 0.7) return 'raise';
+    if (strength < 0.55) {
+      if (canRaise && rng() < 0.28 + bluffChance * 0.25) return 'raise';
+      if (!canCall) return 'die';
+      return rng() < 0.15 ? 'die' : 'call';
+    }
+    // 강한 패: 가끔 슬로우, 가끔 레이즈
+    if (canRaise && rng() < 0.45 + mood * 0.25) return 'raise';
     return canCall ? 'call' : 'die';
   }
 
   if (profile.style === 'calm') {
+    // 고니: 신중
     if (strength < 0.4) {
       if (toCall === 0) return 'call';
-      if (raiseSeen) return rng() < 0.2 ? 'call' : 'die';
+      if (raiseSeen) return rng() < 0.22 ? 'call' : 'die';
       return canCall && rng() < 0.35 ? 'call' : 'die';
     }
     if (strength < 0.7) {
-      // 가끔 슬로우플레이 (콜만)
-      if (canRaise && rng() < 0.2) return 'raise';
+      if (canRaise && rng() < 0.18) return 'raise';
       return canCall ? 'call' : 'die';
     }
-    if (canRaise && rng() < 0.55) return 'raise';
+    if (canRaise && rng() < 0.5) return 'raise';
     return canCall ? 'call' : 'die';
   }
 
-  // gambler: 극단
+  // 정마담: 기복 큰 도박
   if (strength < 0.45) {
-    if (canRaise && rng() < profile.bluff) return 'raise';
-    return rng() < 0.6 ? 'die' : canCall ? 'call' : 'die';
+    const r = rng();
+    if (canRaise && r < profile.bluff * 0.7) return 'raise';
+    if (r < 0.55) return 'die';
+    return canCall ? 'call' : 'die';
   }
-  if (canRaise && rng() < 0.8) return 'raise';
+  if (canRaise && rng() < 0.55 + rng() * 0.25) return 'raise';
   return canCall ? 'call' : 'die';
 }
 

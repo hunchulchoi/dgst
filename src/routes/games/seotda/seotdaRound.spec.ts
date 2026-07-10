@@ -50,23 +50,31 @@ describe('seotdaRound smoke', () => {
 });
 
 describe('seotdaNpc bluff', () => {
-  it('bluffer often raises weak hands when forced', () => {
+  it('agwi (bluffer) sometimes raises weak hands when forced, not always', () => {
     const profile = NPC_PROFILES.find((p) => p.style === 'bluffer');
-    expect(profile).toBeTruthy();
+    expect(profile?.name).toBe('아귀');
     const weak = [
       { month: 2, gwang: false },
       { month: 8, gwang: false }
     ];
     let raises = 0;
-    for (let n = 0; n < 40; n++) {
+    for (let n = 0; n < 50; n++) {
+      // deterministic but varying rolls via seed-like sequence
+      let i = n;
+      const rng = () => {
+        i += 1;
+        return (i * 17) % 100 / 100;
+      };
       const a = chooseNpcAction(
         weak,
         profile,
         { toCall: 10, chips: 500, pot: 40, raiseSeen: false, forcePressure: true },
-        () => 0.1
+        rng
       );
       if (a === 'raise') raises++;
     }
-    expect(raises).toBeGreaterThan(20);
+    // 무대뽀 아님: 전부 레이즈도, 거의 0도 아님
+    expect(raises).toBeGreaterThan(5);
+    expect(raises).toBeLessThan(45);
   });
 });

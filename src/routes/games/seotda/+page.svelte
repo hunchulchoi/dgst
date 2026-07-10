@@ -286,7 +286,7 @@
 
           {#if !round}
             <div class="text-center py-5">
-              <p class="mb-3">허세왕 · 냉정 · 도박사 가 기다림.</p>
+              <p class="mb-3">아귀 · 고니 · 정마담 이 기다림.</p>
               <button
                 class="btn btn-primary btn-lg rounded-pill px-4"
                 disabled={busy || balance < 10}
