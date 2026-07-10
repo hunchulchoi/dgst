@@ -850,7 +850,7 @@
     if (isGameComplete(nextStage)) {
       stopLoop();
       screen = 'gameWin';
-      if (isLoggedIn) void submitGameScore(score, BONUS_ONLY_TEST ? BONUS_STAGE_LIST.length : STAGES.length);
+      if (isLoggedIn) void submitGameScore(score, BONUS_ONLY_TEST ? BONUS_STAGE_LIST.length : STAGES.length, true);
       return;
     }
     startStage(nextStage);
@@ -1730,16 +1730,16 @@
     }
   }
 
-  async function submitGameScore(finalScore: number, finalStage: number) {
+  async function submitGameScore(finalScore: number, finalStage: number, win = false) {
     if (!isLoggedIn || finalScore <= 0) return;
-    const scoreKey = `${finalScore}:${finalStage}`;
+    const scoreKey = `${finalScore}:${finalStage}:${win ? 'w' : ''}`;
     if (submittedScoreKey === scoreKey) return;
     submittedScoreKey = scoreKey;
     try {
       const res = await fetch('/games/breakout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ score: finalScore, stage: finalStage })
+        body: JSON.stringify({ score: finalScore, stage: finalStage, ...(win ? { win: true } : {}) })
       });
       if (res.ok) await loadRank();
     } catch (err) {

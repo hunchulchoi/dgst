@@ -2,6 +2,7 @@ import { error, json } from '@sveltejs/kit';
 import { z } from 'zod';
 import { getPrisma } from '$lib/database/prisma.js';
 import { getTodayBreakoutStats } from '$lib/server/gameBreakoutStats.js';
+import { getBreakoutStage50Celebration } from '$lib/server/breakoutCelebration.js';
 import { getGameSession, isLocalGameSmokeSession } from '$lib/server/localGameSmokeSession.js';
 import { normalizeToIsoString } from '$lib/util/formatRelativeTime.js';
 
@@ -10,7 +11,9 @@ const BREAKOUT_GAME = 'breakout';
 const scoreBodySchema = z.object({
   action: z.literal('start').optional(),
   score: z.number().finite().nonnegative().optional(),
-  stage: z.number().int().min(1).max(50).optional()
+  stage: z.number().int().min(1).max(50).optional(),
+  /** 50단계 전체 클리어(gameWin) */
+  win: z.boolean().optional()
 });
 
 /**
@@ -78,6 +81,16 @@ async function getMyBest(email) {
 
 export async function GET(event) {
   const { url } = event;
+
+  // 자유게시판 폭죽용 — 로그인 불필요
+  if (url.searchParams.get('celebrate')) {
+    const celebration = await getBreakoutStage50Celebration();
+    return json(
+      { celebration },
+      { headers: { 'Cache-Control': 'no-store, max-age=0' } }
+    );
+  }
+
   const session = await getGameSession(event);
   const user = session?.user;
   const email = typeof user?.email === 'string' ? user.email : '';
@@ -139,7 +152,13 @@ export async function POST(event) {
     throw error(400, { message: '유효한 점수를 보내 주세요.' });
   }
   if (isLocalGameSmokeSession(session)) {
-    return json({ success: true, score, stage: parsed.data.stage ?? 0, smoke: true });
+    return json({
+      success: true,
+      score,
+      stage: parsed.data.stage ?? 0,
+      win: !!parsed.data.win,
+      smoke: true
+    });
   }
 
   await getPrisma().gameLog.create({
@@ -150,7 +169,8 @@ export async function POST(event) {
       meta: {
         nickname,
         score,
-        stage: parsed.data.stage ?? 0
+        stage: parsed.data.stage ?? 0,
+        ...(parsed.data.win ? { win: true } : {})
       }
     }
   });

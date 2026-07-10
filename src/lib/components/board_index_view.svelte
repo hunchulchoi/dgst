@@ -3,6 +3,7 @@
 
   import BoardList from '$lib/components/board_list.svelte';
   import LottoFreeBanner from '$lib/components/lotto_free_banner.svelte';
+  import BreakoutClearFireworks from '$lib/components/breakout_clear_fireworks.svelte';
 
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
@@ -81,6 +82,7 @@
 <main class="container board-chrome-connect mt-0 mb-md-2" style="min-height: 50vh">
   <Row class="board-panel py-2 mx-0">
     {#if boardId === 'free'}
+      <BreakoutClearFireworks />
       <LottoFreeBanner {session} />
     {/if}
     {#if session?.user?.nickname}
