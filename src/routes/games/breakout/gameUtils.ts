@@ -199,14 +199,33 @@ export const STAR_RAIN_FALL_MAX = 5.2;
 
 /** 파리 잡기: 레이저로 낙하 파리 격추 · 놓치면 실패 */
 export const FLIES_TIME_LIMIT_MS = 20_000;
-/** 한 마리씩 — 동시 다발 금지 */
+/** 기본값 — 실제 스폰은 getFliesDifficulty 로 램프 */
 export const FLIES_SPAWN_INTERVAL_MS = 700;
-export const FLIES_MAX_ACTIVE = 1;
-export const FLIES_FALL_MIN = 2.6;
-export const FLIES_FALL_MAX = 4.0;
-export const FLIES_LASER_INTERVAL_MS = 180;
+export const FLIES_MAX_ACTIVE = 3;
+export const FLIES_FALL_MIN = 2.4;
+export const FLIES_FALL_MAX = 3.6;
+export const FLIES_LASER_INTERVAL_MS = 160;
 export const FLIES_HIT_SCORE = 80;
 export const FLY_RADIUS = 14;
+
+export interface FliesDifficulty {
+  maxActive: number;
+  intervalMs: number;
+  /** 낙하 속도 배율 (1~1.4) */
+  fallScale: number;
+}
+
+/**
+ * 경과 시간에 따라 동시 파리·스폰 간격 램프.
+ * 초반 1마리 → 중반 2 → 후반 3. 사람이 패들 레이저로 클리어 가능 수준.
+ */
+export function getFliesDifficulty(elapsedMs: number): FliesDifficulty {
+  const t = Math.max(0, elapsedMs);
+  if (t < 5_000) return { maxActive: 1, intervalMs: 900, fallScale: 1 };
+  if (t < 10_000) return { maxActive: 2, intervalMs: 700, fallScale: 1.1 };
+  if (t < 15_000) return { maxActive: 2, intervalMs: 550, fallScale: 1.2 };
+  return { maxActive: 3, intervalMs: 450, fallScale: 1.35 };
+}
 
 /** @deprecated 스핀 물리 제거됨 — 호환용 상수만 유지 */
 export const SPIN_MIN = -3;
@@ -1448,15 +1467,20 @@ export interface FallingFly {
 }
 
 /** 떨어지는 파리 1개 생성 */
-export function createFallingFly(seq: number, rng = Math.random): FallingFly {
+export function createFallingFly(
+  seq: number,
+  rng = Math.random,
+  fallScale = 1
+): FallingFly {
   const margin = 28;
-  const speedSpan = FLIES_FALL_MAX - FLIES_FALL_MIN;
-  const drift = (rng() - 0.5) * 1.6;
+  const scale = Math.max(0.8, fallScale);
+  const speedSpan = (FLIES_FALL_MAX - FLIES_FALL_MIN) * scale;
+  const drift = (rng() - 0.5) * 1.4;
   return {
     id: `fly-${seq}`,
     x: margin + rng() * (CANVAS_WIDTH - margin * 2),
     y: BILLIARD_TABLE_TOP + 8 + rng() * 28,
-    vy: FLIES_FALL_MIN + rng() * speedSpan,
+    vy: FLIES_FALL_MIN * scale + rng() * speedSpan,
     vx: drift,
     radius: FLY_RADIUS,
     value: FLIES_HIT_SCORE

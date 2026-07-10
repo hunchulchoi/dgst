@@ -38,6 +38,7 @@ import {
   resolveLaserFlyHits,
   createLaserShot,
   FLIES_TIME_LIMIT_MS,
+  getFliesDifficulty,
   getFlyHitScore,
   createStarCollectibles,
   createFallingStar,
