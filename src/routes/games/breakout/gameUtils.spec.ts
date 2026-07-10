@@ -114,18 +114,20 @@ describe('breakout gameUtils', () => {
 
   it('classifies bonus and theme stages', () => {
     expect(getStageKind(5)).toBe('bonus');
+    expect(getStageKind(10)).toBe('bonus');
     expect(getStageKind(15)).toBe('bonus');
     expect(getStageKind(45)).toBe('bonus');
-    expect(getStageKind(10)).toBe('theme');
+    expect(getStageKind(20)).toBe('theme');
     expect(getStageKind(50)).toBe('theme');
     expect(getStageKind(1)).toBe('normal');
     expect(getStageKind(7)).toBe('normal');
     expect(getStageConfig(5).label).toBe('3쿠션 챌린지');
+    expect(getStageConfig(10).label).toBe('이동 공 챌린지');
     expect(getStageConfig(1).label).toBe('1단계');
     expect(getStageConfig(45).label).toBe('금고 열기');
     expect(getStageConfig(35).label).toBe('골든샷');
-    expect(getStageConfig(10).label).toBe('철 미로');
     expect(getStageConfig(20).label).toBe('폭발 연쇄');
+    expect(getStageConfig(30).label).toBe('무지개 사냥');
   });
 
   it('builds deterministic brick masks per stage', () => {
@@ -141,13 +143,14 @@ describe('breakout gameUtils', () => {
     }
     expect(getStagePattern(1)).toBe('full');
     expect(getStagePattern(5)).toBe('cushion');
-    expect(getStagePattern(10)).toBe('tunnel');
+    expect(getStagePattern(10)).toBe('lane');
+    expect(getStagePattern(20)).toBe('checker');
     expect(getStagePattern(15)).toBe('pockets');
     expect(getStagePattern(45)).toBe('bank');
   });
 
   it('bonus stages use fixed iron-and-brick puzzle grids', () => {
-    for (const stage of [5, 15, 25, 35, 45]) {
+    for (const stage of [5, 10, 15, 25, 35, 45]) {
       const grid = getBonusPuzzleGrid(stage);
       expect(grid).not.toBeNull();
       const bricks = createBricks(stage);
@@ -395,7 +398,9 @@ describe('breakout gameUtils', () => {
     expect(getStageClearBonus(2)).toBe(1000);
     expect(getStageClearBonus(1, 1)).toBe(750);
     expect(getStageClearBonus(1, 2)).toBe(750);
-    expect(getStageClearBonus(10)).toBe(3000);
+    expect(getStageClearBonus(10, 1)).toBe(6000);
+    expect(getStageClearBonus(10, 2)).toBe(3000);
+    expect(getStageClearBonus(20)).toBe(5500);
     expect(getStageClearBonus(50)).toBe(13_000);
     expect(getStageClearBonus(5, 1)).toBe(3500);
     expect(getStageClearBonus(5, 2)).toBe(1750);
@@ -439,6 +444,7 @@ describe('breakout gameUtils', () => {
 
   it('star and gem collectible challenges', () => {
     expect(getBonusChallengeType(5)).toBe('billiard');
+    expect(getBonusChallengeType(10)).toBe('movers');
     expect(getBonusChallengeType(15)).toBe('stars');
     expect(getBonusChallengeType(25)).toBe('gems');
     expect(getBonusChallengeType(35)).toBe('golden');
@@ -636,9 +642,10 @@ describe('breakout gameUtils', () => {
   });
 
   it('bonus-only test jumps between bonus stages', () => {
-    expect(BONUS_STAGE_LIST).toEqual([5, 15, 25, 35, 45]);
+    expect(BONUS_STAGE_LIST).toEqual([5, 10, 15, 25, 35, 45]);
     if (BONUS_ONLY_TEST) {
-      expect(getNextStage(5)).toBe(15);
+      expect(getNextStage(5)).toBe(10);
+      expect(getNextStage(10)).toBe(15);
       expect(getNextStage(45)).toBe(TOTAL_STAGES + 1);
       expect(isGameComplete(getNextStage(45))).toBe(true);
     } else {

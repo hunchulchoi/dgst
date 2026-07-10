@@ -990,11 +990,14 @@
     bricks = nextBricks;
     const collected = handlePowerUpPaddleCollision(nextPowerUps, paddle);
     powerUps = collected.powerUps;
+
+    // 생존 공 먼저 반영 후 파워업 — 멀티볼이 survivingBalls에 덮이지 않게
+    balls = survivingBalls;
     for (const item of collected.collected) {
       applyCollectedPowerUp(item.type);
     }
 
-    if (survivingBalls.length === 0) {
+    if (balls.length === 0) {
       if (isBonusStage) {
         handleBonusMiss();
       } else {
@@ -1002,8 +1005,6 @@
       }
       return;
     }
-
-    balls = survivingBalls;
 
     if (isStageClear(bricks)) {
       scheduleStageClear();
@@ -1203,6 +1204,23 @@
 
     // 보너스도 패들 항상 표시 (공 받기)
     {
+      if (!isBonusStage && shieldCharges > 0) {
+        ctx.save();
+        ctx.strokeStyle = 'rgba(128, 203, 196, 0.85)';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.ellipse(
+          paddle.x + paddle.width / 2,
+          paddle.y + paddle.height / 2,
+          paddle.width / 2 + 10,
+          paddle.height + 10,
+          0,
+          Math.PI,
+          Math.PI * 2
+        );
+        ctx.stroke();
+        ctx.restore();
+      }
       const paddleColor =
         activeEffects.shrinkPaddleUntil > now
           ? '#ffccbc'
@@ -1214,8 +1232,13 @@
       ctx.fillStyle = paddleColor;
       drawRoundRect(ctx, paddle.x, paddle.y, paddle.width, paddle.height, 6);
       ctx.fill();
-      ctx.strokeStyle = isBonusStage ? '#e3f2fd' : '#90caf9';
-      ctx.lineWidth = 2;
+      ctx.strokeStyle =
+        !isBonusStage && shieldCharges > 0
+          ? '#80cbc4'
+          : isBonusStage
+            ? '#e3f2fd'
+            : '#90caf9';
+      ctx.lineWidth = !isBonusStage && shieldCharges > 0 ? 3 : 2;
       ctx.stroke();
     }
 

@@ -238,9 +238,9 @@ export const SPIN_CURVE_RATE = 0.028;
 export const SPIN_CUSHION_DECAY = 0.85;
 export const SPIN_AIM_PREVIEW_STEPS = 12;
 
-const BONUS_STAGES = new Set([5, 15, 25, 35, 45]);
+const BONUS_STAGES = new Set([5, 10, 15, 25, 35, 45]);
 /** 보너스 스테이지 순서 */
-export const BONUS_STAGE_LIST = [5, 15, 25, 35, 45] as const;
+export const BONUS_STAGE_LIST = [5, 10, 15, 25, 35, 45] as const;
 /**
  * 최종 테스트 플래그 — true면 보너스만 진행.
  * 배포 전 false 로 되돌릴 것.
@@ -251,10 +251,9 @@ export const BONUS_ONLY_TEST = false;
  * 배포 전 1 로 되돌릴 것.
  */
 export const START_STAGE = 1;
-const THEME_STAGES = new Set([10, 20, 30, 40, 50]);
+const THEME_STAGES = new Set([20, 30, 40, 50]);
 
 const THEME_LABELS: Record<number, string> = {
-  10: '철 미로',
   20: '폭발 연쇄',
   30: '무지개 사냥',
   40: '성벽',
@@ -263,6 +262,7 @@ const THEME_LABELS: Record<number, string> = {
 
 const BONUS_LABELS: Record<number, string> = {
   5: '3쿠션 챌린지',
+  10: '이동 공 챌린지',
   15: '별 먹기',
   25: '보석 회수',
   35: '골든샷',
@@ -281,6 +281,7 @@ export type BonusChallengeType =
 
 const BONUS_CHALLENGE_BY_STAGE: Record<number, BonusChallengeType> = {
   5: 'billiard',
+  10: 'movers',
   15: 'stars',
   25: 'gems',
   35: 'golden',
@@ -307,6 +308,7 @@ const NORMAL_PATTERN_POOL: PatternId[] = [
 /** 보너스 스테이지별 고정 퍼즐 패턴 */
 const BONUS_PATTERN_BY_STAGE: Record<number, PatternId> = {
   5: 'cushion',
+  10: 'lane',
   15: 'pockets',
   25: 'lane',
   35: 'cage',
@@ -426,7 +428,6 @@ export function getStagePattern(stage: number): PatternId {
     return BONUS_PATTERN_BY_STAGE[s] ?? 'cushion';
   }
   if (kind === 'theme') {
-    if (s === 10) return 'tunnel';
     if (s === 20) return 'checker';
     if (s === 30) return 'sparse';
     if (s === 40) return 'walls';
@@ -524,12 +525,7 @@ export function buildStageConfig(stage: number): StageConfig {
     rainbowRatio = 0;
   } else if (kind === 'theme') {
     label = THEME_LABELS[clamped] ?? label;
-    if (clamped === 10) {
-      ironRatio = 0.28;
-      strongRatio = 0.12;
-      explosiveRatio = 0.08;
-      rainbowRatio = 0.04;
-    } else if (clamped === 20) {
+    if (clamped === 20) {
       explosiveRatio = 0.32;
       strongRatio = 0.15;
       ironRatio = 0.04;
