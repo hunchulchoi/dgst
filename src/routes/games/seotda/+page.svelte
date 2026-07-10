@@ -52,6 +52,21 @@
   let revealDone = $state(true);
   /** 지금 까는 좌석 (하이라이트) */
   let revealingId = $state<string | null>(null);
+  /** 족보 안내 접기 */
+  let guideOpen = $state(false);
+
+  const HAND_GUIDE = [
+    { name: '38광땡', detail: '3광 + 8광', rank: '최강' },
+    { name: '13광땡 / 18광땡', detail: '1·3광 또는 1·8광', rank: '광땡' },
+    { name: '장땡 ~ 삥땡', detail: '같은 월 2장 (10>9>…>1)', rank: '땡' },
+    { name: '알리', detail: '1 + 2', rank: '특수' },
+    { name: '독사', detail: '1 + 4', rank: '특수' },
+    { name: '구삥', detail: '1 + 9', rank: '특수' },
+    { name: '장삥', detail: '1 + 10', rank: '특수' },
+    { name: '장사', detail: '4 + 10', rank: '특수' },
+    { name: '세륙', detail: '4 + 6', rank: '특수' },
+    { name: '갑오 ~ 망통', detail: '월 합 % 10 (9>…>0)', rank: '끗' }
+  ] as const;
 
   /** @type {ReturnType<typeof setTimeout>[]} */
   let timers: ReturnType<typeof setTimeout>[] = [];
@@ -226,9 +241,34 @@
             </div>
           </div>
 
-          <p class="small text-muted mb-3">
-            NPC 3명과 라이트 섯다. 다이 / 콜 / 레이즈. 특수족보 없음. 판돈은 섯다 전용 점수.
+          <p class="small text-muted mb-2">
+            NPC 3명과 라이트 섯다. 다이 / 콜 / 레이즈. 특수족보(암행어사 등) 없음.
           </p>
+
+          <div class="mb-3">
+            <button
+              type="button"
+              class="btn btn-sm btn-outline-secondary"
+              aria-expanded={guideOpen}
+              onclick={() => (guideOpen = !guideOpen)}
+            >
+              족보 보기 {guideOpen ? '▲' : '▼'}
+            </button>
+            {#if guideOpen}
+              <div class="guide-panel mt-2 rounded-3 border p-3">
+                <div class="small text-muted mb-2">위가 더 셈 · 라이트 규칙</div>
+                <ol class="guide-list mb-0 ps-3">
+                  {#each HAND_GUIDE as row, i (row.name)}
+                    <li class="mb-1">
+                      <span class="fw-semibold">{i + 1}. {row.name}</span>
+                      <span class="text-muted"> — {row.detail}</span>
+                      <span class="badge text-bg-light border ms-1">{row.rank}</span>
+                    </li>
+                  {/each}
+                </ol>
+              </div>
+            {/if}
+          </div>
 
           {#if message}
             <div class="alert alert-warning py-2">{message}</div>
@@ -462,5 +502,11 @@
     padding: 0.15rem 0.5rem;
     border-radius: 999px;
     background: rgba(255, 255, 255, 0.15);
+  }
+  .guide-panel {
+    background: #f8f6f1;
+  }
+  .guide-list {
+    font-size: 0.9rem;
   }
 </style>
