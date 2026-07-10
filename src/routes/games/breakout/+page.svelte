@@ -872,7 +872,7 @@
             <div class="text-center py-3">
               <h2 class="mb-2 text-success">🎉 전체 클리어!</h2>
               <p class="mb-1">최종 점수: <strong>{formatScore(score)}</strong></p>
-              <p class="text-muted mb-4">10단계 모두 클리어했습니다!</p>
+              <p class="text-muted mb-4">{STAGES.length}단계 모두 클리어했습니다!</p>
               <button type="button" class="btn btn-primary me-2" onclick={startGame}>
                 다시 하기
               </button>

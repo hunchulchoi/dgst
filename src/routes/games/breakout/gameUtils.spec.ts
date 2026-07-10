@@ -13,8 +13,10 @@ import {
   destroyAllBreakableBricks,
   getEffectiveBallSpeed,
   getEffectivePaddleWidth,
+  buildStageConfig,
   getStageClearBonus,
   getStageConfig,
+  TOTAL_STAGES,
   handleBrickCollision,
   handleInvincibleBrickCollision,
   handlePaddleCollision,
@@ -36,6 +38,21 @@ import {
 } from './gameUtils';
 
 describe('breakout gameUtils', () => {
+  it('defines 50 stages with rising difficulty', () => {
+    expect(STAGES).toHaveLength(TOTAL_STAGES);
+    expect(STAGES).toHaveLength(50);
+    expect(STAGES[0].label).toBe('입문');
+    expect(STAGES[49].label).toBe('최종');
+    expect(STAGES[0].ballSpeed).toBeLessThan(STAGES[49].ballSpeed);
+    expect(STAGES[0].strongRatio).toBeLessThan(STAGES[49].strongRatio);
+    for (const stage of STAGES) {
+      const specialSum =
+        stage.strongRatio + stage.explosiveRatio + stage.ironRatio + stage.rainbowRatio;
+      expect(specialSum).toBeLessThan(0.9);
+      expect(buildStageConfig(stage.stage)).toEqual(stage);
+    }
+  });
+
   it('creates bricks for each stage', () => {
     for (const stage of STAGES) {
       const bricks = createBricks(stage.stage);
@@ -221,10 +238,13 @@ describe('breakout gameUtils', () => {
   it('returns stage clear bonus by stage', () => {
     expect(getStageClearBonus(1)).toBe(750);
     expect(getStageClearBonus(10)).toBe(3000);
+    expect(getStageClearBonus(50)).toBe(13_000);
   });
 
   it('detects game complete after final stage', () => {
     expect(isGameComplete(STAGES.length + 1)).toBe(true);
+    expect(isGameComplete(50)).toBe(false);
+    expect(isGameComplete(51)).toBe(true);
   });
 
   it('activates invincible ball for limited time', () => {

@@ -10,7 +10,7 @@ const BREAKOUT_GAME = 'breakout';
 const scoreBodySchema = z.object({
   action: z.literal('start').optional(),
   score: z.number().finite().nonnegative().optional(),
-  stage: z.number().int().min(1).max(10).optional()
+  stage: z.number().int().min(1).max(50).optional()
 });
 
 /**

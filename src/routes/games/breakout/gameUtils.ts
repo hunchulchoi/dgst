@@ -155,18 +155,47 @@ export interface StageConfig {
   rainbowRatio: number;
 }
 
-export const STAGES: StageConfig[] = [
-  { stage: 1, label: '입문', ballSpeed: 5, strongRatio: 0.08, explosiveRatio: 0.05, ironRatio: 0, rainbowRatio: 0.03 },
-  { stage: 2, label: '초급', ballSpeed: 5.5, strongRatio: 0.12, explosiveRatio: 0.08, ironRatio: 0.03, rainbowRatio: 0.03 },
-  { stage: 3, label: '중급', ballSpeed: 6, strongRatio: 0.18, explosiveRatio: 0.1, ironRatio: 0.05, rainbowRatio: 0.04 },
-  { stage: 4, label: '숙련', ballSpeed: 6.5, strongRatio: 0.22, explosiveRatio: 0.12, ironRatio: 0.06, rainbowRatio: 0.04 },
-  { stage: 5, label: '고급', ballSpeed: 7, strongRatio: 0.28, explosiveRatio: 0.14, ironRatio: 0.08, rainbowRatio: 0.05 },
-  { stage: 6, label: '전문', ballSpeed: 7.5, strongRatio: 0.32, explosiveRatio: 0.15, ironRatio: 0.09, rainbowRatio: 0.05 },
-  { stage: 7, label: '달인', ballSpeed: 8, strongRatio: 0.36, explosiveRatio: 0.16, ironRatio: 0.1, rainbowRatio: 0.05 },
-  { stage: 8, label: '마스터', ballSpeed: 8.5, strongRatio: 0.4, explosiveRatio: 0.18, ironRatio: 0.12, rainbowRatio: 0.04 },
-  { stage: 9, label: '챔피언', ballSpeed: 9, strongRatio: 0.44, explosiveRatio: 0.18, ironRatio: 0.14, rainbowRatio: 0.04 },
-  { stage: 10, label: '최종', ballSpeed: 9.5, strongRatio: 0.48, explosiveRatio: 0.2, ironRatio: 0.16, rainbowRatio: 0.03 }
-];
+export const TOTAL_STAGES = 50;
+
+/** 마일스톤 라벨 — 나머지 단계는 `N단계` */
+const STAGE_MILESTONE_LABELS: Record<number, string> = {
+  1: '입문',
+  5: '초급',
+  10: '중급',
+  15: '숙련',
+  20: '고급',
+  25: '전문',
+  30: '달인',
+  35: '마스터',
+  40: '챔피언',
+  45: '전설',
+  50: '최종'
+};
+
+function roundStageValue(value: number, digits = 2): number {
+  const factor = 10 ** digits;
+  return Math.round(value * factor) / factor;
+}
+
+/** 스테이지 난이도 곡선 (1→50). 특수 블록 비율 합이 0.9 미만 유지 */
+export function buildStageConfig(stage: number): StageConfig {
+  const clamped = Math.min(Math.max(stage, 1), TOTAL_STAGES);
+  const t = (clamped - 1) / (TOTAL_STAGES - 1);
+  const ironRatio = clamped === 1 ? 0 : roundStageValue(0.02 + t * 0.16);
+  return {
+    stage: clamped,
+    label: STAGE_MILESTONE_LABELS[clamped] ?? `${clamped}단계`,
+    ballSpeed: roundStageValue(5 + t * 7, 1),
+    strongRatio: roundStageValue(0.08 + t * 0.4),
+    explosiveRatio: roundStageValue(0.05 + t * 0.16),
+    ironRatio,
+    rainbowRatio: roundStageValue(0.03 + Math.sin(t * Math.PI) * 0.02)
+  };
+}
+
+export const STAGES: StageConfig[] = Array.from({ length: TOTAL_STAGES }, (_, i) =>
+  buildStageConfig(i + 1)
+);
 
 export const BRICK_COLORS: Record<BrickType, string> = {
   normal: '#4fc3f7',
