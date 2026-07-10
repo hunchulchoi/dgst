@@ -1845,7 +1845,7 @@
                 <p class="text-muted mb-3 small">떨어지는 파리를 레이저로 잡으세요. 하나라도 놓치면 끝!</p>
                 <ul class="list-unstyled text-start mx-auto bonus-intro-rules mb-4">
                   <li>패들에서 <strong>레이저 자동 발사</strong></li>
-                  <li>초반 1마리 → 점점 늘어남 (최대 3) · 바닥 통과 = 실패</li>
+                  <li>초반 1마리 → 점점 늘어남 (최대 4) · 바닥 통과 = 실패</li>
                   <li><strong>{Math.ceil(FLIES_TIME_LIMIT_MS / 1000)}초</strong> 버티면 클리어</li>
                   <li><strong>원샷</strong> — 기회 1회 · 1발 클리어 시 점수 ×2</li>
                 </ul>

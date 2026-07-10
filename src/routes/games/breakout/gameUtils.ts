@@ -201,10 +201,10 @@ export const STAR_RAIN_FALL_MAX = 5.2;
 export const FLIES_TIME_LIMIT_MS = 20_000;
 /** 기본값 — 실제 스폰은 getFliesDifficulty 로 램프 */
 export const FLIES_SPAWN_INTERVAL_MS = 700;
-export const FLIES_MAX_ACTIVE = 3;
+export const FLIES_MAX_ACTIVE = 4;
 export const FLIES_FALL_MIN = 2.4;
 export const FLIES_FALL_MAX = 3.6;
-export const FLIES_LASER_INTERVAL_MS = 160;
+export const FLIES_LASER_INTERVAL_MS = 150;
 export const FLIES_HIT_SCORE = 80;
 export const FLY_RADIUS = 14;
 
@@ -217,14 +217,14 @@ export interface FliesDifficulty {
 
 /**
  * 경과 시간에 따라 동시 파리·스폰 간격 램프.
- * 초반 1마리 → 중반 2 → 후반 3. 사람이 패들 레이저로 클리어 가능 수준.
+ * 초반 1 → 중반 2 → 후반 3~4. (기준 난이도 ×1.3)
  */
 export function getFliesDifficulty(elapsedMs: number): FliesDifficulty {
   const t = Math.max(0, elapsedMs);
-  if (t < 5_000) return { maxActive: 1, intervalMs: 900, fallScale: 1 };
-  if (t < 10_000) return { maxActive: 2, intervalMs: 700, fallScale: 1.1 };
-  if (t < 15_000) return { maxActive: 2, intervalMs: 550, fallScale: 1.2 };
-  return { maxActive: 3, intervalMs: 450, fallScale: 1.35 };
+  if (t < 3_800) return { maxActive: 1, intervalMs: 690, fallScale: 1.3 };
+  if (t < 7_700) return { maxActive: 2, intervalMs: 540, fallScale: 1.43 };
+  if (t < 11_500) return { maxActive: 3, intervalMs: 420, fallScale: 1.56 };
+  return { maxActive: 4, intervalMs: 350, fallScale: 1.75 };
 }
 
 /** @deprecated 스핀 물리 제거됨 — 호환용 상수만 유지 */

@@ -495,9 +495,10 @@ describe('breakout gameUtils', () => {
     expect(getStageConfig(1).label).toBe('파리 잡기(테스트)');
 
     expect(getFliesDifficulty(0).maxActive).toBe(1);
-    expect(getFliesDifficulty(6_000).maxActive).toBe(2);
-    expect(getFliesDifficulty(16_000).maxActive).toBe(3);
-    expect(getFliesDifficulty(16_000).intervalMs).toBeLessThan(getFliesDifficulty(0).intervalMs);
+    expect(getFliesDifficulty(5_000).maxActive).toBe(2);
+    expect(getFliesDifficulty(12_000).maxActive).toBe(4);
+    expect(getFliesDifficulty(12_000).intervalMs).toBeLessThan(getFliesDifficulty(0).intervalMs);
+    expect(getFliesDifficulty(0).fallScale).toBeCloseTo(1.3);
 
     const fly = createFallingFly(0, () => 0.5);
     const stepped = stepFallingFlies([fly]);
