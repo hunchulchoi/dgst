@@ -77,6 +77,9 @@ import {
   isBallLost,
   isDestroyableBrick,
   isGameComplete,
+  getNextStage,
+  BONUS_ONLY_TEST,
+  BONUS_STAGE_LIST,
   isInvincibleBallActive,
   isStageClear,
   movePaddle,
@@ -610,6 +613,15 @@ describe('breakout gameUtils', () => {
     expect(isGameComplete(STAGES.length + 1)).toBe(true);
     expect(isGameComplete(50)).toBe(false);
     expect(isGameComplete(51)).toBe(true);
+  });
+
+  it('bonus-only test jumps between bonus stages', () => {
+    expect(BONUS_ONLY_TEST).toBe(true);
+    expect(BONUS_STAGE_LIST).toEqual([1, 5, 15, 25, 35, 45]);
+    expect(getNextStage(1)).toBe(5);
+    expect(getNextStage(5)).toBe(15);
+    expect(getNextStage(45)).toBe(TOTAL_STAGES + 1);
+    expect(isGameComplete(getNextStage(45))).toBe(true);
   });
 
   it('activates invincible ball for limited time', () => {

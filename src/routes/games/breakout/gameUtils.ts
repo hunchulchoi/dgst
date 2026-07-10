@@ -237,6 +237,13 @@ export const SPIN_CUSHION_DECAY = 0.85;
 export const SPIN_AIM_PREVIEW_STEPS = 12;
 
 const BONUS_STAGES = new Set([1, 5, 15, 25, 35, 45]);
+/** 보너스 스테이지 순서 (최종 테스트용) */
+export const BONUS_STAGE_LIST = [1, 5, 15, 25, 35, 45] as const;
+/**
+ * 최종 테스트 플래그 — true면 보너스만 진행.
+ * 배포 전 false 로 되돌릴 것.
+ */
+export const BONUS_ONLY_TEST = true;
 const THEME_STAGES = new Set([10, 20, 30, 40, 50]);
 
 const THEME_LABELS: Record<number, string> = {
@@ -720,6 +727,23 @@ export function getStageConfig(stage: number): StageConfig {
 
 export function isGameComplete(stage: number): boolean {
   return stage > STAGES.length;
+}
+
+/**
+ * 클리어 후 다음 스테이지.
+ * BONUS_ONLY_TEST 면 보너스만 순회 → 끝나면 TOTAL_STAGES+1 (클리어).
+ */
+export function getNextStage(current: number): number {
+  if (!BONUS_ONLY_TEST) return current + 1;
+  const idx = BONUS_STAGE_LIST.findIndex((s) => s === current);
+  if (idx >= 0 && idx < BONUS_STAGE_LIST.length - 1) {
+    return BONUS_STAGE_LIST[idx + 1];
+  }
+  if (idx === BONUS_STAGE_LIST.length - 1) {
+    return TOTAL_STAGES + 1;
+  }
+  const next = BONUS_STAGE_LIST.find((s) => s > current);
+  return next ?? TOTAL_STAGES + 1;
 }
 
 export function countDestroyableBricks(bricks: Brick[]): number {

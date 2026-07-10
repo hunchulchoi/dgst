@@ -88,6 +88,9 @@
     shouldContinueGameLoop,
     isBallLost,
     isGameComplete,
+    getNextStage,
+    BONUS_ONLY_TEST,
+    BONUS_STAGE_LIST,
     isInvincibleBallActive,
     isLaserActive,
     isStageClear,
@@ -799,11 +802,11 @@
   }
 
   function advanceStage() {
-    const nextStage = stage + 1;
+    const nextStage = getNextStage(stage);
     if (isGameComplete(nextStage)) {
       stopLoop();
       screen = 'gameWin';
-      if (isLoggedIn) void submitGameScore(score, STAGES.length);
+      if (isLoggedIn) void submitGameScore(score, BONUS_ONLY_TEST ? BONUS_STAGE_LIST.length : STAGES.length);
       return;
     }
     startStage(nextStage);
@@ -1772,7 +1775,9 @@
               <p class="text-muted mb-4 small">
                 패들로 공 받기 · 블록 제거 · 아이템 획득<br />
                 🟦일반 🟥내구(2타) 🟨폭발 ⬛철(무적) 🌈특수<br />
-                50단계 · 테마 · 당구 퍼즐 스테이지 포함
+                {BONUS_ONLY_TEST
+                  ? `🧪 보너스만 테스트 · ${BONUS_STAGE_LIST.length}스테이지`
+                  : '50단계 · 테마 · 당구 퍼즐 스테이지 포함'}
               </p>
               <button type="button" class="btn btn-primary btn-lg px-5" onclick={startGame}>
                 시작
@@ -1797,7 +1802,11 @@
             <div class="text-center py-3">
               <h2 class="mb-2 text-success">🎉 전체 클리어!</h2>
               <p class="mb-1">최종 점수: <strong>{formatScore(score)}</strong></p>
-              <p class="text-muted mb-4">{STAGES.length}단계 모두 클리어했습니다!</p>
+              <p class="text-muted mb-4">
+                {BONUS_ONLY_TEST
+                  ? `보너스 ${BONUS_STAGE_LIST.length}개 모두 클리어!`
+                  : `${STAGES.length}단계 모두 클리어했습니다!`}
+              </p>
               <button type="button" class="btn btn-primary me-2" onclick={startGame}>
                 다시 하기
               </button>
