@@ -189,9 +189,13 @@ export const DEFAULT_AIM_ANGLE = 90;
 export const AIM_ANGLE_STEP = 2.5;
 export const AIM_LINE_LENGTH = 120;
 
-/** 별 받기(구 스핀샷): 빠른 공 + 짧은 제한시간 */
+/** 별 소나기(구 스핀샷): 빠른 공 + 20초 생존·수집 */
 export const SPIN_BALL_SPEED = 9;
 export const SPIN_TIME_LIMIT_MS = 20_000;
+export const STAR_RAIN_SPAWN_INTERVAL_MS = 320;
+export const STAR_RAIN_MAX_ACTIVE = 14;
+export const STAR_RAIN_FALL_MIN = 2.4;
+export const STAR_RAIN_FALL_MAX = 5.2;
 
 /** @deprecated 스핀 물리 제거됨 — 호환용 상수만 유지 */
 export const SPIN_MIN = -3;
@@ -214,7 +218,7 @@ const THEME_LABELS: Record<number, string> = {
 };
 
 const BONUS_LABELS: Record<number, string> = {
-  1: '별 받기(테스트)',
+  1: '별 소나기(테스트)',
   5: '3쿠션 챌린지',
   15: '별 먹기',
   25: '보석 회수',
@@ -1148,7 +1152,55 @@ export function createStarCollectibles(stage: number): BonusCollectible[] {
 }
 
 /**
- * 스핀샷용 별 배치 — 직선보다 커브가 유리한 좌/우 구석 + 중앙.
+ * 별 소나기 — 위에서 떨어지는 별.
+ */
+export interface FallingStar {
+  id: string;
+  x: number;
+  y: number;
+  vy: number;
+  radius: number;
+  value: number;
+}
+
+/** 떨어지는 별 1개 생성 */
+export function createFallingStar(seq: number, rng = Math.random): FallingStar {
+  const margin = 28;
+  const speedSpan = STAR_RAIN_FALL_MAX - STAR_RAIN_FALL_MIN;
+  return {
+    id: `rain-${seq}`,
+    x: margin + rng() * (CANVAS_WIDTH - margin * 2),
+    y: BILLIARD_TABLE_TOP + 8 + rng() * 36,
+    vy: STAR_RAIN_FALL_MIN + rng() * speedSpan,
+    radius: STAR_RADIUS,
+    value: STAR_BASE_SCORE
+  };
+}
+
+export function shouldSpawnStarRain(
+  lastSpawnAt: number,
+  now: number,
+  activeCount: number,
+  intervalMs = STAR_RAIN_SPAWN_INTERVAL_MS,
+  maxActive = STAR_RAIN_MAX_ACTIVE
+): boolean {
+  if (activeCount >= maxActive) return false;
+  return now - lastSpawnAt >= intervalMs;
+}
+
+/** 별 낙하. 화면 아래 벗어나면 제거 */
+export function stepFallingStars(stars: FallingStar[]): FallingStar[] {
+  return stars
+    .map((s) => ({ ...s, y: s.y + s.vy }))
+    .filter((s) => s.y - s.radius < CANVAS_HEIGHT + 24);
+}
+
+export function tryCollectFallingStar(ball: Ball, star: FallingStar): boolean {
+  return Math.hypot(star.x - ball.x, star.y - ball.y) < ball.radius + star.radius;
+}
+
+/**
+ * @deprecated 정적 배치 — 별 소나기로 대체
  */
 export function createSpinCollectibles(stage: number): BonusCollectible[] {
   const midX = CANVAS_WIDTH / 2;

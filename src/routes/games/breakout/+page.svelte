@@ -21,7 +21,10 @@
     createBricks,
     createGemCollectibles,
     createStarCollectibles,
-    createSpinCollectibles,
+    createFallingStar,
+    shouldSpawnStarRain,
+    stepFallingStars,
+    tryCollectFallingStar,
     createCoinCollectibles,
     createVaultPuzzle,
     VAULT_AIM_ANGLE,
@@ -95,6 +98,7 @@
     type BilliardBall,
     type BonusChallengeType,
     type BonusCollectible,
+    type FallingStar,
     type VaultTarget,
     type Brick,
     type Laser,
@@ -144,6 +148,10 @@
   let bonusStageScoreStart = $state(0);
   let billiardObjects = $state<BilliardBall[]>([]);
   let bonusCollectibles = $state<BonusCollectible[]>([]);
+  let fallingStars = $state<FallingStar[]>([]);
+  let starRainCaught = $state(0);
+  let starRainSeq = 0;
+  let lastStarSpawnAt = 0;
   let vaultTargets = $state<VaultTarget[]>([]);
   let vaultSequence = $state<number[]>([]);
   let vaultSequenceIndex = $state(0);
@@ -197,6 +205,10 @@
     bonusAttemptsUsed = 0;
     billiardObjects = [];
     bonusCollectibles = [];
+    fallingStars = [];
+    starRainCaught = 0;
+    starRainSeq = 0;
+    lastStarSpawnAt = 0;
     vaultTargets = [];
     vaultSequence = [];
     vaultSequenceIndex = 0;
@@ -225,7 +237,11 @@
       vaultSequence = [];
     } else if (challenge === 'spin') {
       billiardObjects = [];
-      bonusCollectibles = createSpinCollectibles(stageNum);
+      bonusCollectibles = [];
+      fallingStars = [];
+      starRainCaught = 0;
+      starRainSeq = 0;
+      lastStarSpawnAt = 0;
       vaultTargets = [];
       vaultSequence = [];
     } else if (challenge === 'gems') {
@@ -322,6 +338,16 @@
       balls = [createAimedBall(paddle, config.ballSpeed, aimAngle)];
       resetBonusTargets(stage);
       billiardEndsAt = Date.now() + getBonusTimeLimitMs(bonusChallenge);
+      if (bonusChallenge === 'spin') {
+        const now = Date.now();
+        fallingStars = [
+          createFallingStar(starRainSeq++),
+          createFallingStar(starRainSeq++),
+          createFallingStar(starRainSeq++)
+        ];
+        lastStarSpawnAt = now;
+        starRainCaught = 0;
+      }
     }
     ballLaunched = true;
     screen = 'playing';
@@ -373,6 +399,11 @@
     }
 
     if (getBilliardTimeLeftMs(billiardEndsAt, now) <= 0) {
+      if (bonusChallenge === 'spin') {
+        showEffectToast(`별 ${starRainCaught}개 수집!`);
+        scheduleStageClear();
+        return;
+      }
       showEffectToast('시간 종료!');
       handleBonusMiss();
       return;
@@ -385,7 +416,6 @@
     if (bonusChallenge === 'spin') {
       const sides = handleTopAndSideCushionCollision(cue);
       cue = sides.ball;
-      if (sides.cushionHit) cushionCount += 1;
       const paddleHit = handlePaddleCollision(cue, paddle);
       if (paddleHit.hit) {
         cue = paddleHit.ball;
@@ -395,21 +425,25 @@
         return;
       }
 
-      let nextItems = bonusCollectibles;
-      for (let i = 0; i < nextItems.length; i++) {
-        const result = tryCollectItem(cue, nextItems[i]);
-        if (result.collected) {
-          nextItems = nextItems.map((it, idx) => (idx === i ? result.item : it));
-          const gained = getStarPickupScore(result.item.value, stage);
+      if (shouldSpawnStarRain(lastStarSpawnAt, now, fallingStars.length)) {
+        fallingStars = [...fallingStars, createFallingStar(starRainSeq++)];
+        lastStarSpawnAt = now;
+      }
+
+      let nextStars = stepFallingStars(fallingStars);
+      const kept: FallingStar[] = [];
+      for (const star of nextStars) {
+        if (tryCollectFallingStar(cue, star)) {
+          starRainCaught += 1;
+          const gained = getStarPickupScore(star.value, stage);
           score += gained;
-          showEffectToast(`⭐ +${gained}`);
+          showEffectToast(`⭐ ×${starRainCaught} +${gained}`);
+        } else {
+          kept.push(star);
         }
       }
-      bonusCollectibles = nextItems;
+      fallingStars = kept;
       balls = [normalizeBallSpeed(cue, config.ballSpeed)];
-      if (isCollectibleClear(nextItems)) {
-        scheduleStageClear();
-      }
       return;
     }
 
@@ -928,6 +962,12 @@
         }
         ctx.globalAlpha = 1;
       }
+      for (const star of fallingStars) {
+        ctx.fillStyle = '#ffd54f';
+        ctx.font = 'bold 22px system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('⭐', star.x, star.y + 7);
+      }
       for (const t of vaultTargets) {
         ctx.fillStyle = t.activated ? '#66bb6a' : '#455a64';
         ctx.beginPath();
@@ -1039,7 +1079,9 @@
           CANVAS_WIDTH / 2,
           46
         );
-      } else if (bonusChallenge === 'stars' || bonusChallenge === 'spin') {
+      } else if (bonusChallenge === 'spin') {
+        ctx.fillText(`먹은 별 ${starRainCaught} · ${timeLeft}s`, CANVAS_WIDTH / 2, 46);
+      } else if (bonusChallenge === 'stars') {
         ctx.fillText(
           `별 ${countCollectedItems(bonusCollectibles)}/${bonusCollectibles.length} · ${timeLeft}s`,
           CANVAS_WIDTH / 2,
@@ -1126,7 +1168,7 @@
           bonusChallenge === 'stars'
             ? '각도 조준 · 모든 별 먹기'
             : bonusChallenge === 'spin'
-              ? '각도 조준 · 패들로 받아 별 먹기'
+              ? '각도 조준 · 20초간 별 소나기 받기'
               : bonusChallenge === 'gems'
                 ? '쿠션 쌓고 보석 먹기 (배율↑)'
                 : bonusChallenge === 'golden'
@@ -1143,7 +1185,7 @@
           bonusChallenge === 'golden'
             ? `단 1발 · 1발 클리어 ×${getBonusShotClearMultiplier(1)}`
             : bonusChallenge === 'spin'
-              ? `빠른 공 · ${Math.ceil(getBonusTimeLimitMs('spin') / 1000)}초 · 남은 ${left}회`
+              ? `공 유지 · 별 많이 · ${Math.ceil(getBonusTimeLimitMs('spin') / 1000)}초`
               : `남은 기회 ${left}회 · 1발 클리어 ×${getBonusShotClearMultiplier(bonusAttemptsUsed + 1)}`,
           CANVAS_WIDTH / 2,
           CANVAS_HEIGHT / 2 + 18
@@ -1175,7 +1217,7 @@
           ? bonusChallenge === 'stars'
             ? '⭐ 별 전부 클리어!'
             : bonusChallenge === 'spin'
-              ? '⭐ 별 받기 클리어!'
+              ? '⭐ 별 소나기 클리어!'
               : bonusChallenge === 'gems'
                 ? '💎 보석 회수 클리어!'
                 : bonusChallenge === 'golden'
@@ -1510,11 +1552,11 @@
                   <li>기회 {BONUS_MAX_ATTEMPTS}회 · 1발 클리어 시 점수 ×2</li>
                 </ul>
               {:else if bonusChallenge === 'spin'}
-                <p class="text-muted mb-3 small">빠른 공을 패들로 받아 별을 모두 먹으세요</p>
+                <p class="text-muted mb-3 small">20초 동안 쏟아지는 별을 공으로 많이 먹으세요</p>
                 <ul class="list-unstyled text-start mx-auto bonus-intro-rules mb-4">
-                  <li>각도 조준 후 발사 · 플레이 중 <strong>패들로 받기</strong></li>
-                  <li>바닥 쿠션 없음 · 놓치면 실패</li>
-                  <li>제한 <strong>{Math.ceil(getBonusTimeLimitMs('spin') / 1000)}초</strong> · 공 빠름</li>
+                  <li>위에서 ⭐가 계속 떨어짐 · 공으로 닿으면 점수</li>
+                  <li><strong>패들로 공 유지</strong> — 놓치면 실패</li>
+                  <li><strong>{Math.ceil(getBonusTimeLimitMs('spin') / 1000)}초</strong> 버티면 클리어 (많이 먹을수록 고득점)</li>
                   <li>기회 {BONUS_MAX_ATTEMPTS}회 · 1발 클리어 시 점수 ×2</li>
                 </ul>
               {:else if bonusChallenge === 'gems'}

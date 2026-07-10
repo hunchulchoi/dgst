@@ -27,7 +27,10 @@ import {
   aimAngleFromDragRatio,
   createBilliardObjectBalls,
   createStarCollectibles,
-  createSpinCollectibles,
+  createFallingStar,
+  shouldSpawnStarRain,
+  stepFallingStars,
+  tryCollectFallingStar,
   createGemCollectibles,
   getBonusChallengeType,
   getCushionMultiplier,
@@ -72,7 +75,7 @@ describe('breakout gameUtils', () => {
   it('defines 50 stages with rising difficulty', () => {
     expect(STAGES).toHaveLength(TOTAL_STAGES);
     expect(STAGES).toHaveLength(50);
-    expect(STAGES[0].label).toBe('별 받기(테스트)');
+    expect(STAGES[0].label).toBe('별 소나기(테스트)');
     expect(STAGES[49].label).toBe('최종');
     expect(STAGES[0].ballSpeed).toBeLessThan(STAGES[49].ballSpeed);
     expect(STAGES[0].kind).toBe('bonus');
@@ -94,7 +97,7 @@ describe('breakout gameUtils', () => {
     expect(getStageKind(1)).toBe('bonus');
     expect(getStageKind(7)).toBe('normal');
     expect(getStageConfig(5).label).toBe('3쿠션 챌린지');
-    expect(getStageConfig(1).label).toBe('별 받기(테스트)');
+    expect(getStageConfig(1).label).toBe('별 소나기(테스트)');
     expect(getStageConfig(45).label).toBe('금고 열기');
     expect(getStageConfig(35).label).toBe('골든샷');
     expect(getStageConfig(10).label).toBe('철 미로');
@@ -404,11 +407,22 @@ describe('breakout gameUtils', () => {
     expect(getBonusTimeLimitMs('spin')).toBe(SPIN_TIME_LIMIT_MS);
     expect(getBonusTimeLimitMs('billiard')).toBe(45_000);
 
-    const items = createSpinCollectibles(1);
-    expect(items).toHaveLength(4);
-    expect(items.every((i) => !i.collected && i.kind === 'star')).toBe(true);
+    const star = createFallingStar(0, () => 0.5);
+    expect(star.y).toBeLessThan(120);
+    expect(star.vy).toBeGreaterThan(0);
+    expect(shouldSpawnStarRain(0, 400, 0)).toBe(true);
+    expect(shouldSpawnStarRain(0, 100, 0)).toBe(false);
+    expect(shouldSpawnStarRain(0, 9999, 20)).toBe(false);
+
+    const stepped = stepFallingStars([star]);
+    expect(stepped[0].y).toBeGreaterThan(star.y);
 
     const paddle = createPaddle();
+    const ball = createAimedBall(paddle, 6, 90);
+    ball.x = star.x;
+    ball.y = star.y;
+    expect(tryCollectFallingStar(ball, star)).toBe(true);
+
     const descending: Ball = {
       x: paddle.x + paddle.width / 2,
       y: paddle.y - 5,
