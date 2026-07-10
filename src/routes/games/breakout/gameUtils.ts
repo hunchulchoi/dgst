@@ -617,10 +617,16 @@ const POWER_UP_DROP_CHANCE: Record<BrickType, number> = {
 };
 
 const GOOD_POWER_UPS: PowerUpType[] = [
-  'multiball', 'expand', 'extraLife', 'slow', 'invincible', 'shield', 'laser', 'bomb'
+  'multiball', 'expand', 'extraLife', 'slow', 'invincible', 'shield', 'laser'
 ];
 const BAD_POWER_UPS: PowerUpType[] = ['fast', 'shrink'];
-const RAINBOW_POWER_UPS: PowerUpType[] = ['multiball', 'invincible', 'shield', 'laser', 'bomb', 'expand'];
+const RAINBOW_POWER_UPS: PowerUpType[] = ['multiball', 'invincible', 'shield', 'laser', 'expand'];
+
+/**
+ * 폭탄은 풀 균등 추첨 제외.
+ * 스테이지당 드롭 ~5개 가정 → 1/15 ≈ 3스테이지에 1번.
+ */
+export const BOMB_DROP_CHANCE_PER_PICK = 1 / 15;
 
 let powerUpIdCounter = 0;
 let laserIdCounter = 0;
@@ -2166,13 +2172,16 @@ export function shouldDropPowerUp(brick: Brick, stage?: number): boolean {
   return Math.random() < Math.min(1, chance * multiplier);
 }
 
-export function pickPowerUpType(brickType: BrickType): PowerUpType {
+export function pickPowerUpType(brickType: BrickType, rng = Math.random): PowerUpType {
+  // 폭탄: 별도 희귀 확률 (≈ 3스테이지에 1번)
+  if (rng() < BOMB_DROP_CHANCE_PER_PICK) return 'bomb';
+
   if (brickType === 'rainbow') {
-    return RAINBOW_POWER_UPS[Math.floor(Math.random() * RAINBOW_POWER_UPS.length)];
+    return RAINBOW_POWER_UPS[Math.floor(rng() * RAINBOW_POWER_UPS.length)]!;
   }
   const goodChance = brickType === 'strong' ? 0.62 : 0.5;
-  const pool = Math.random() < goodChance ? GOOD_POWER_UPS : BAD_POWER_UPS;
-  return pool[Math.floor(Math.random() * pool.length)];
+  const pool = rng() < goodChance ? GOOD_POWER_UPS : BAD_POWER_UPS;
+  return pool[Math.floor(rng() * pool.length)]!;
 }
 
 export function createPowerUpDrop(brick: Brick, type: PowerUpType): PowerUp {

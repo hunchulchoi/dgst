@@ -88,6 +88,8 @@ import {
   resolveLifeLoss,
   shouldContinueGameLoop,
   shouldDropPowerUp,
+  pickPowerUpType,
+  BOMB_DROP_CHANCE_PER_PICK,
   STAGES,
   type Ball,
   type Brick
@@ -378,6 +380,14 @@ describe('breakout gameUtils', () => {
     };
     expect(shouldDropPowerUp(brick)).toBe(true);
     vi.restoreAllMocks();
+  });
+
+  it('picks bomb rarely (~1 per 3 stages)', () => {
+    expect(BOMB_DROP_CHANCE_PER_PICK).toBeCloseTo(1 / 15);
+    expect(pickPowerUpType('normal', () => 0)).toBe('bomb');
+    // bomb 문턱 이상이면 일반 풀
+    const notBomb = pickPowerUpType('normal', () => 0.5);
+    expect(notBomb).not.toBe('bomb');
   });
 
   it('returns stage clear bonus by stage', () => {
