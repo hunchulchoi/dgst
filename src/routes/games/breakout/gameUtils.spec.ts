@@ -59,6 +59,8 @@ import {
   TOTAL_STAGES,
   handleBrickCollision,
   handleInvincibleBrickCollision,
+  handleLaserBrickCollision,
+  createLaserShot,
   handlePowerUpPaddleCollision,
   handleWallCollision,
   isBallLost,
@@ -218,6 +220,40 @@ describe('breakout gameUtils', () => {
     expect(result.hit).toBe(true);
     expect(result.destroyedBricks).toHaveLength(0);
     expect(result.bricks[0].alive).toBe(true);
+  });
+
+  it('laser stops on iron without piercing', () => {
+    const paddle = createPaddle();
+    const laser = { ...createLaserShot(paddle), x: 120, y: 110 };
+    const iron: Brick = {
+      x: 100,
+      y: 100,
+      width: 40,
+      height: 20,
+      type: 'iron',
+      hits: 0,
+      maxHits: 999,
+      alive: true,
+      color: '#616161',
+      points: 0
+    };
+    const normal: Brick = {
+      x: 100,
+      y: 60,
+      width: 40,
+      height: 20,
+      type: 'normal',
+      hits: 0,
+      maxHits: 1,
+      alive: true,
+      color: '#42a5f5',
+      points: 10
+    };
+    const hit = handleLaserBrickCollision([laser], [iron, normal], 1);
+    expect(hit.lasers[0].alive).toBe(false);
+    expect(hit.bricks.find((b) => b.type === 'iron')?.alive).toBe(true);
+    expect(hit.bricks.find((b) => b.type === 'normal')?.alive).toBe(true);
+    expect(hit.destroyedBricks).toHaveLength(0);
   });
 
   it('explodes adjacent bricks when explosive block breaks', () => {
@@ -428,11 +464,12 @@ describe('breakout gameUtils', () => {
     const aboveIron = {
       ...star,
       x: irons[0].x + irons[0].width / 2,
-      y: irons[0].y - 2,
+      y: irons[0].y + irons[0].height / 2,
       vy: 3
     };
-    const bounced = bounceFallingStarOffIron(aboveIron, irons);
-    expect(bounced.vy).toBeLessThan(0);
+    const passed = bounceFallingStarOffIron(aboveIron, irons);
+    expect(passed.y).toBe(aboveIron.y);
+    expect(passed.vy).toBe(aboveIron.vy);
 
     const descending: Ball = {
       x: paddle.x + paddle.width / 2,

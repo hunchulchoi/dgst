@@ -1333,43 +1333,10 @@ export function tryCollectFallingStarWithPaddle(paddle: Paddle, star: FallingSta
 }
 
 /**
- * 별이 철 블록 윗면에 닿으면 튕김.
+ * 별은 철에 안 막힘(통과). 공만 철에 튕김 — 갇힘 방지.
  */
-export function bounceFallingStarOffIron(star: FallingStar, bricks: Brick[]): FallingStar {
-  let next = star;
-  for (const brick of bricks) {
-    if (!brick.alive || brick.type !== 'iron') continue;
-    if (
-      !circleRectCollision(
-        next.x,
-        next.y,
-        next.radius,
-        brick.x,
-        brick.y,
-        brick.width,
-        brick.height
-      )
-    ) {
-      continue;
-    }
-    const brickMid = brick.x + brick.width / 2;
-    const kick = next.x < brickMid ? -1.8 : 1.8;
-    if (next.vy >= 0 && next.y <= brick.y + brick.height * 0.55) {
-      next = {
-        ...next,
-        y: brick.y - next.radius - 1,
-        vy: -Math.max(2.2, Math.abs(next.vy) * 0.65),
-        vx: (next.vx || 0) + kick
-      };
-    } else {
-      next = {
-        ...next,
-        x: next.x < brickMid ? brick.x - next.radius - 1 : brick.x + brick.width + next.radius + 1,
-        vx: kick * 1.4
-      };
-    }
-  }
-  return next;
+export function bounceFallingStarOffIron(star: FallingStar, _bricks: Brick[]): FallingStar {
+  return star;
 }
 
 /** 별 소나기용 중간 철 블록 (별이 떨어질 틈 있음) */
@@ -2011,7 +1978,7 @@ export interface LaserCollisionResult {
   destroyedBricks: Brick[];
 }
 
-/** 레이저와 블록 충돌 */
+/** 레이저와 블록 충돌. 철은 파괴 안 되고 레이저만 막힘 */
 export function handleLaserBrickCollision(
   lasers: Laser[],
   bricks: Brick[],
@@ -2028,11 +1995,16 @@ export function handleLaserBrickCollision(
 
     for (let bi = 0; bi < nextBricks.length; bi++) {
       const brick = nextBricks[bi];
-      if (!brick.alive || brick.type === 'iron') continue;
+      if (!brick.alive) continue;
       if (
         !circleRectCollision(laser.x, laser.y, 3, brick.x, brick.y, brick.width, brick.height)
       ) {
         continue;
+      }
+      // 철: 레이저 소멸만 (관통 금지)
+      if (brick.type === 'iron') {
+        nextLasers = nextLasers.map((l, idx) => (idx === li ? { ...l, alive: false } : l));
+        break;
       }
       const damage = damageBrickAt(nextBricks, bi, stage, true);
       nextBricks = damage.bricks;

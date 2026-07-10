@@ -1666,7 +1666,7 @@
                 <p class="text-muted mb-3 small">쏟아지는 별을 패들로 먹고, 공은 떨어뜨리지 마세요</p>
                 <ul class="list-unstyled text-start mx-auto bonus-intro-rules mb-4">
                   <li><strong>패들</strong>로 ⭐ 받기 · 공으로는 안 먹힘</li>
-                  <li>중간 <strong>철 블록</strong> — 공·별 모두 튕김</li>
+                  <li>중간 <strong>철 블록</strong> — 공만 튕김 · 별은 통과</li>
                   <li>공 놓치면 실패 · <strong>{Math.ceil(getBonusTimeLimitMs('spin') / 1000)}초</strong> 버티면 클리어</li>
                   <li>기회 {BONUS_MAX_ATTEMPTS}회 · 1발 클리어 시 점수 ×2</li>
                 </ul>
