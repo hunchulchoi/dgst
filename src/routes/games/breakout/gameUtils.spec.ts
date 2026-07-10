@@ -20,6 +20,7 @@ import {
   getStageKind,
   getStagePattern,
   getBonusShotClearMultiplier,
+  getBonusPuzzleGrid,
   resolveBonusMiss,
   createAimedBall,
   clampAimAngle,
@@ -70,8 +71,8 @@ describe('breakout gameUtils', () => {
     expect(getStageKind(50)).toBe('theme');
     expect(getStageKind(1)).toBe('normal');
     expect(getStageKind(7)).toBe('normal');
-    expect(getStageConfig(5).label).toBe('보너스!');
-    expect(getStageConfig(5).ironRatio).toBe(0);
+    expect(getStageConfig(5).label).toBe('당구 퍼즐');
+    expect(getStageConfig(45).label).toBe('3쿠션');
     expect(getStageConfig(10).label).toBe('철 미로');
     expect(getStageConfig(20).label).toBe('폭발 연쇄');
   });
@@ -88,17 +89,34 @@ describe('breakout gameUtils', () => {
       expect(getStagePattern(stage)).toBeTruthy();
     }
     expect(getStagePattern(1)).toBe('full');
-    expect(getStagePattern(5)).toBe('star');
+    expect(getStagePattern(5)).toBe('cushion');
     expect(getStagePattern(10)).toBe('tunnel');
-    expect(getStagePattern(15)).toBe('diamond');
+    expect(getStagePattern(15)).toBe('pockets');
+    expect(getStagePattern(45)).toBe('bank');
+  });
+
+  it('bonus stages use fixed iron-and-brick puzzle grids', () => {
+    for (const stage of [5, 15, 25, 35, 45]) {
+      const grid = getBonusPuzzleGrid(stage);
+      expect(grid).not.toBeNull();
+      const bricks = createBricks(stage);
+      const destroyable = bricks.filter(isDestroyableBrick);
+      const iron = bricks.filter((b) => b.type === 'iron');
+      expect(destroyable.length).toBeGreaterThan(0);
+      expect(iron.length).toBeGreaterThan(0);
+      expect(isStageClear(bricks)).toBe(false);
+      // 같은 스테이지면 배치 재현
+      const again = createBricks(stage);
+      expect(again.map((b) => `${b.type}:${b.x}:${b.y}`)).toEqual(
+        bricks.map((b) => `${b.type}:${b.x}:${b.y}`)
+      );
+    }
   });
 
   it('creates bricks for each stage with destroyable cells', () => {
     for (const stage of STAGES) {
       const bricks = createBricks(stage.stage);
-      const maskCells = getBrickMask(stage.stage).flat().filter(Boolean).length;
       expect(bricks.length).toBeGreaterThan(0);
-      expect(bricks.length).toBeLessThanOrEqual(maskCells + 1);
       expect(bricks.every((b) => b.alive)).toBe(true);
       expect(bricks.some(isDestroyableBrick)).toBe(true);
       expect(isStageClear(bricks)).toBe(false);

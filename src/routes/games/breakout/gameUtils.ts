@@ -157,8 +157,11 @@ export type PatternId =
   | 'U'
   | 'walls'
   | 'sparse'
-  | 'heart'
-  | 'star';
+  | 'cushion'
+  | 'pockets'
+  | 'lane'
+  | 'cage'
+  | 'bank';
 
 export interface StageConfig {
   stage: number;
@@ -195,6 +198,14 @@ const THEME_LABELS: Record<number, string> = {
   50: '최종'
 };
 
+const BONUS_LABELS: Record<number, string> = {
+  5: '당구 퍼즐',
+  15: '포켓 샷',
+  25: '레인 샷',
+  35: '철 케이지',
+  45: '3쿠션'
+};
+
 const NORMAL_PATTERN_POOL: PatternId[] = [
   'full',
   'pyramid',
@@ -206,7 +217,102 @@ const NORMAL_PATTERN_POOL: PatternId[] = [
   'sparse'
 ];
 
-const BONUS_PATTERN_POOL: PatternId[] = ['heart', 'star', 'diamond'];
+/** 보너스 스테이지별 고정 퍼즐 패턴 */
+const BONUS_PATTERN_BY_STAGE: Record<number, PatternId> = {
+  5: 'cushion',
+  15: 'pockets',
+  25: 'lane',
+  35: 'cage',
+  45: 'bank'
+};
+
+/**
+ * 보너스 퍼즐 맵 — 문자 그리드
+ * . 빈칸 / I 철 / N 일반 / S 내구 / E 폭발 / R 무지개
+ * 철로 통로·포켓을 만들고, 그 사이 벽돌만 깨면 클리어 (당구 3쿠션 감성)
+ */
+const BONUS_PUZZLE_MAPS: Record<PatternId, string[]> = {
+  cushion: [
+    'IIIIIIIIII',
+    'I........I',
+    'I..NNNN..I',
+    'I........I',
+    'I..IIII..I',
+    'I........I'
+  ],
+  pockets: [
+    'I.I....I.I',
+    'I.INNNNI.I',
+    'I.I....I.I',
+    'IIII..IIII',
+    '....NN....',
+    'I........I'
+  ],
+  lane: [
+    'IIII..IIII',
+    'I..N..N..I',
+    'I..IIII..I',
+    'I..N..N..I',
+    'I..IIII..I',
+    'I........I'
+  ],
+  cage: [
+    'IIIIIIIIII',
+    'I.N.II.N.I',
+    'I...II...I',
+    'IIII..IIII',
+    'I.N....N.I',
+    'I........I'
+  ],
+  bank: [
+    'I........I',
+    'I.IIIIII.I',
+    'I.I.NN.I.I',
+    'I.I....I.I',
+    'I.INNNNI.I',
+    'I........I'
+  ],
+  full: [],
+  pyramid: [],
+  diamond: [],
+  checker: [],
+  tunnel: [],
+  U: [],
+  walls: [],
+  sparse: []
+};
+
+function parsePuzzleCell(ch: string): BrickType | null {
+  switch (ch) {
+    case 'I':
+      return 'iron';
+    case 'N':
+      return 'normal';
+    case 'S':
+      return 'strong';
+    case 'E':
+      return 'explosive';
+    case 'R':
+      return 'rainbow';
+    default:
+      return null;
+  }
+}
+
+/** 보너스 스테이지 고정 타입 그리드 (null=빈칸) */
+export function getBonusPuzzleGrid(stage: number): (BrickType | null)[][] | null {
+  if (getStageKind(stage) !== 'bonus') return null;
+  const pattern = getStagePattern(stage);
+  const rows = BONUS_PUZZLE_MAPS[pattern];
+  if (!rows || rows.length === 0) return null;
+  return rows.map((row) =>
+    row
+      .padEnd(BRICK_COLS, '.')
+      .slice(0, BRICK_COLS)
+      .split('')
+      .map((ch) => parsePuzzleCell(ch))
+  );
+}
 
 function roundStageValue(value: number, digits = 2): number {
   const factor = 10 ** digits;
@@ -230,7 +336,7 @@ export function getStagePattern(stage: number): PatternId {
   const s = clampStage(stage);
   const kind = getStageKind(s);
   if (kind === 'bonus') {
-    return BONUS_PATTERN_POOL[(s - 1) % BONUS_PATTERN_POOL.length];
+    return BONUS_PATTERN_BY_STAGE[s] ?? 'cushion';
   }
   if (kind === 'theme') {
     if (s === 10) return 'tunnel';
@@ -260,6 +366,16 @@ function fillMask(predicate: (row: number, col: number) => boolean): boolean[][]
 function buildPatternMask(pattern: PatternId): boolean[][] {
   const midCol = (BRICK_COLS - 1) / 2;
   const midRow = (BRICK_ROWS - 1) / 2;
+  const puzzleRows = BONUS_PUZZLE_MAPS[pattern];
+  if (puzzleRows && puzzleRows.length > 0) {
+    return puzzleRows.map((row) =>
+      row
+        .padEnd(BRICK_COLS, '.')
+        .slice(0, BRICK_COLS)
+        .split('')
+        .map((ch) => parsePuzzleCell(ch) != null)
+    );
+  }
 
   switch (pattern) {
     case 'full':
@@ -284,19 +400,6 @@ function buildPatternMask(pattern: PatternId): boolean[][] {
       return fillMask((row, col) => row === 0 || row === BRICK_ROWS - 1 || col === 0 || col === BRICK_COLS - 1 || row === 2);
     case 'sparse':
       return fillMask((row, col) => (row + col) % 3 === 0);
-    case 'heart':
-      return fillMask((row, col) => {
-        const x = (col - midCol) / 4.2;
-        const y = (midRow - row + 0.4) / 2.6;
-        const a = x * x + y * y - 1;
-        return a * a * a - x * x * y * y * y < 0;
-      });
-    case 'star':
-      return fillMask((row, col) => {
-        const dx = Math.abs(col - midCol);
-        const dy = Math.abs(row - midRow);
-        return dx + dy <= 3 || (dx <= 1 && dy <= 2) || (dx <= 2 && dy <= 1);
-      });
     default:
       return fillMask(() => true);
   }
@@ -322,12 +425,13 @@ export function buildStageConfig(stage: number): StageConfig {
   let label = `${clamped}단계`;
 
   if (kind === 'bonus') {
-    label = `보너스!`;
-    ballSpeed = roundStageValue(Math.max(4.5, ballSpeed * 0.72), 1);
-    strongRatio = 0.08;
-    explosiveRatio = 0.22;
-    ironRatio = 0;
-    rainbowRatio = 0.28;
+    label = BONUS_LABELS[clamped] ?? '당구 퍼즐';
+    ballSpeed = roundStageValue(Math.max(4.8, ballSpeed * 0.78), 1);
+    // 고정 퍼즐 맵이 타입을 결정 — 비율은 표시/폴백만
+    strongRatio = 0;
+    explosiveRatio = 0;
+    ironRatio = 0.4;
+    rainbowRatio = 0;
   } else if (kind === 'theme') {
     label = THEME_LABELS[clamped] ?? label;
     if (clamped === 10) {
@@ -454,10 +558,9 @@ export function createActiveEffects(): ActiveEffects {
   };
 }
 
-/** 스테이지별 블록 생성 — 패턴 마스크 + kind별 비율 */
+/** 스테이지별 블록 생성 — 보너스는 고정 퍼즐, 나머지는 마스크+비율 */
 export function createBricks(stage: number): Brick[] {
   const config = getStageConfig(stage);
-  const mask = getBrickMask(stage);
   const brickWidth =
     (CANVAS_WIDTH - BRICK_OFFSET_LEFT * 2 - BRICK_PADDING * (BRICK_COLS - 1)) / BRICK_COLS;
   const brickHeight = 22;
@@ -479,6 +582,19 @@ export function createBricks(stage: number): Brick[] {
     });
   };
 
+  const puzzle = getBonusPuzzleGrid(stage);
+  if (puzzle) {
+    for (let row = 0; row < BRICK_ROWS; row++) {
+      for (let col = 0; col < BRICK_COLS; col++) {
+        const type = puzzle[row]?.[col] ?? null;
+        if (!type) continue;
+        pushBrick(row, col, type);
+      }
+    }
+    return bricks;
+  }
+
+  const mask = getBrickMask(stage);
   const rollType = (): BrickType => {
     const rand = Math.random();
     let cursor = 0;

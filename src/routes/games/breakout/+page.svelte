@@ -720,7 +720,7 @@
         ctx.fillStyle = '#ffd54f';
         ctx.font = 'bold 16px system-ui, sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('각도 조준 · 탭/스페이스 발사', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 8);
+        ctx.fillText('각도 조준 · 철 사이 벽돌을 깨세요', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 8);
         ctx.fillStyle = '#fff';
         ctx.font = '13px system-ui, sans-serif';
         const left = BONUS_MAX_ATTEMPTS - bonusAttemptsUsed;
@@ -1023,7 +1023,7 @@
               <p class="text-muted mb-4 small">
                 패들로 공 받기 · 블록 제거 · 아이템 획득<br />
                 🟦일반 🟥내구(2타) 🟨폭발 ⬛철(무적) 🌈특수<br />
-                50단계 · 보너스/테마 스테이지 포함
+                50단계 · 테마 · 당구 퍼즐 스테이지 포함
               </p>
               <button type="button" class="btn btn-primary btn-lg px-5" onclick={startGame}>
                 시작
@@ -1058,14 +1058,14 @@
             </div>
           {:else if screen === 'bonusIntro'}
             <div class="text-center py-3 bonus-intro">
-              <h2 class="mb-2 text-warning">★ 보너스 스테이지 {stage}</h2>
-              <p class="text-muted mb-3 small">각도 조준 · 한 방에 클리어 챌린지</p>
+              <h2 class="mb-2 text-warning">★ {stageConfig.label} · {stage}단계</h2>
+              <p class="text-muted mb-3 small">당구처럼 각도를 맞춰 철 사이 벽돌을 깨세요</p>
               <ul class="list-unstyled text-start mx-auto bonus-intro-rules mb-4">
+                <li>⬛ 철 블록은 <strong>안 깨짐</strong> — 벽에 튕겨 경로 만들기</li>
+                <li>🟦 철 <strong>사이·포켓</strong>에 있는 벽돌만 제거하면 클리어</li>
                 <li>드래그바 / ← → 로 <strong>발사 각도</strong> 조절</li>
-                <li>탭 · 스페이스로 <strong>발사</strong> (기회 {BONUS_MAX_ATTEMPTS}회)</li>
-                <li><strong>1발</strong>에 클리어하면 점수 <strong>×2</strong></li>
-                <li>공 떨어져도 목숨은 <strong>안 깎임</strong></li>
-                <li>2회 모두 실패하면 다음 스테이지로</li>
+                <li>기회 <strong>{BONUS_MAX_ATTEMPTS}회</strong> · 1발 클리어 시 점수 <strong>×2</strong></li>
+                <li>공 떨어져도 목숨은 <strong>안 깎임</strong> · 2회 실패 시 다음으로</li>
               </ul>
               <button type="button" class="btn btn-warning btn-lg px-5" onclick={dismissBonusIntro}>
                 조준 시작
