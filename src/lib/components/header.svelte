@@ -240,6 +240,15 @@
           </NavItem>
           <NavItem>
             <NavLink
+              href="/games/seotda"
+              active={pathname?.startsWith('/games/seotda')}
+              class="px-3 text-center"
+            >
+              <span>🃏</span><span class="d-none d-sm-inline ms-1">섯다</span>
+            </NavLink>
+          </NavItem>
+          <NavItem>
+            <NavLink
               href="/games/watermelon"
               active={pathname?.startsWith('/games/watermelon')}
               class="px-3 text-center"

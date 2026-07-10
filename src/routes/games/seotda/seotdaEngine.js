@@ -1,0 +1,175 @@
+/** 섯다 라이트 엔진 — 덱·족보·팟 */
+
+export const ANTE = 10;
+export const SEOTDA_GAME = 'seotda';
+
+/**
+ * @typedef {{ month: number; gwang: boolean }} SeotdaCard
+ * @typedef {{ tier: number; sub: number; name: string; cards: SeotdaCard[] }} SeotdaHand
+ * @typedef {{ id: string; chips: number; folded: boolean; contrib: number }} SeotdaPlayerPot
+ */
+
+/** @returns {SeotdaCard[]} */
+export function createDeck() {
+  /** @type {SeotdaCard[]} */
+  const deck = [];
+  for (let month = 1; month <= 10; month++) {
+    if (month === 1 || month === 3 || month === 8) {
+      deck.push({ month, gwang: true });
+      deck.push({ month, gwang: false });
+    } else {
+      deck.push({ month, gwang: false });
+      deck.push({ month, gwang: false });
+    }
+  }
+  return deck;
+}
+
+/**
+ * Fisher–Yates. rng() → [0,1)
+ * @param {SeotdaCard[]} deck
+ * @param {() => number} [rng]
+ * @returns {SeotdaCard[]}
+ */
+export function shuffleDeck(deck, rng = Math.random) {
+  const out = [...deck];
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    const tmp = out[i];
+    out[i] = out[j];
+    out[j] = tmp;
+  }
+  return out;
+}
+
+/**
+ * @param {SeotdaCard[]} cards
+ * @returns {SeotdaHand}
+ */
+export function evaluateHand(cards) {
+  if (!cards || cards.length !== 2) {
+    return { tier: 0, sub: 0, name: '무효', cards: cards ?? [] };
+  }
+  const [a, b] = cards;
+  const m1 = a.month;
+  const m2 = b.month;
+  const bothGwang = a.gwang && b.gwang;
+  const months = [m1, m2].sort((x, y) => x - y);
+
+  // 광땡
+  if (bothGwang && months[0] === 3 && months[1] === 8) {
+    return { tier: 100, sub: 0, name: '38광땡', cards };
+  }
+  if (bothGwang && months[0] === 1 && months[1] === 3) {
+    return { tier: 90, sub: 1, name: '13광땡', cards };
+  }
+  if (bothGwang && months[0] === 1 && months[1] === 8) {
+    return { tier: 90, sub: 0, name: '18광땡', cards };
+  }
+
+  // 땡 (같은 월)
+  if (m1 === m2) {
+    const names = {
+      10: '장땡',
+      9: '구땡',
+      8: '팔땡',
+      7: '칠땡',
+      6: '육땡',
+      5: '오땡',
+      4: '사땡',
+      3: '삼땡',
+      2: '이땡',
+      1: '삥땡'
+    };
+    return { tier: 80, sub: m1, name: names[/** @type {keyof typeof names} */ (m1)] ?? `${m1}땡`, cards };
+  }
+
+  // 특수 끗 조합
+  const key = `${months[0]}-${months[1]}`;
+  /** @type {Record<string, { tier: number; sub: number; name: string }>} */
+  const specials = {
+    '1-2': { tier: 70, sub: 0, name: '알리' },
+    '1-4': { tier: 60, sub: 0, name: '독사' },
+    '1-9': { tier: 50, sub: 0, name: '구삥' },
+    '1-10': { tier: 40, sub: 0, name: '장삥' },
+    '4-10': { tier: 30, sub: 0, name: '장사' },
+    '4-6': { tier: 20, sub: 0, name: '세륙' }
+  };
+  if (specials[key]) {
+    const s = specials[key];
+    return { tier: s.tier, sub: s.sub, name: s.name, cards };
+  }
+
+  // 끗
+  const ggeut = (m1 + m2) % 10;
+  const ggeutNames = {
+    9: '갑오',
+    8: '8끗',
+    7: '7끗',
+    6: '6끗',
+    5: '5끗',
+    4: '4끗',
+    3: '3끗',
+    2: '2끗',
+    1: '1끗',
+    0: '망통'
+  };
+  return {
+    tier: 10,
+    sub: ggeut,
+    name: ggeutNames[/** @type {keyof typeof ggeutNames} */ (ggeut)] ?? `${ggeut}끗`,
+    cards
+  };
+}
+
+/**
+ * @param {SeotdaHand} a
+ * @param {SeotdaHand} b
+ * @returns {number} >0 if a wins
+ */
+export function compareHands(a, b) {
+  if (a.tier !== b.tier) return a.tier - b.tier;
+  return a.sub - b.sub;
+}
+
+/**
+ * 0~1 패 강도 (NPC용)
+ * @param {SeotdaHand} hand
+ * @returns {number}
+ */
+export function handStrength(hand) {
+  // max ~100, min ~0 (망통 sub0)
+  const raw = hand.tier + hand.sub / 10;
+  return Math.max(0, Math.min(1, raw / 100));
+}
+
+/**
+ * @param {SeotdaPlayerPot[]} players
+ * @param {number} pot
+ * @param {string} winnerId
+ */
+export function settlePot(players, pot, winnerId) {
+  const next = players.map((p) => ({ ...p }));
+  const winner = next.find((p) => p.id === winnerId);
+  if (winner) winner.chips += pot;
+  return { players: next, pot: 0 };
+}
+
+/**
+ * 레이즈 금액 = 현재 콜에 필요한 금액의 2배 (올인 시 잔고만큼)
+ * @param {number} toCall
+ * @param {number} chips
+ * @returns {number}
+ */
+export function raiseAmount(toCall, chips) {
+  const target = Math.max(toCall * 2, ANTE * 2);
+  return Math.min(chips, Math.max(toCall, target));
+}
+
+/**
+ * @param {SeotdaCard} card
+ * @returns {string}
+ */
+export function cardLabel(card) {
+  return `${card.month}${card.gwang ? '광' : ''}`;
+}
