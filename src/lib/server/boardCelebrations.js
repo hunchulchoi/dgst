@@ -253,6 +253,87 @@ async function rank1Sudoku() {
   };
 }
 
+/**
+ * 섯다 — 잔고 1등 "탈환" 시에만 (이미 1등이 또 이기면 제외, 슬롯식 스팸 방지)
+ * @returns {Promise<BoardCelebration | null>}
+ */
+async function rank1Seotda() {
+  /** @type {Array<{
+   *   email: string;
+   *   nickname: string;
+   *   balance: number;
+   *   createdAt: Date;
+   *   prevBalance: number | null;
+   *   maxOther: number;
+   * }>} */
+  const rows = await getPrisma().$queryRaw`
+    WITH latest AS (
+      SELECT
+        email,
+        nickname,
+        balance::int AS balance,
+        created_at,
+        ROW_NUMBER() OVER (PARTITION BY email ORDER BY created_at DESC) AS rn
+      FROM game_scores
+      WHERE game = 'seotda'
+    ),
+    standing AS (
+      SELECT email, nickname, balance, created_at
+      FROM latest
+      WHERE rn = 1 AND balance > 0
+    ),
+    top1 AS (
+      SELECT email, nickname, balance, created_at
+      FROM standing
+      ORDER BY balance DESC, created_at DESC
+      LIMIT 1
+    ),
+    prev AS (
+      SELECT l.balance AS prev_balance
+      FROM latest l
+      INNER JOIN top1 t ON l.email = t.email AND l.rn = 2
+    ),
+    others AS (
+      SELECT COALESCE(MAX(s.balance), 0)::int AS max_other
+      FROM standing s
+      INNER JOIN top1 t ON s.email <> t.email
+    )
+    SELECT
+      t.email,
+      t.nickname,
+      t.balance,
+      t.created_at AS "createdAt",
+      p.prev_balance AS "prevBalance",
+      o.max_other AS "maxOther"
+    FROM top1 t
+    CROSS JOIN others o
+    LEFT JOIN prev p ON TRUE
+  `;
+  if (!rows.length) return null;
+  const top = rows[0];
+  if (!withinWindow(top.createdAt)) return null;
+
+  const balance = Number(top.balance);
+  const maxOther = Number(top.maxOther ?? 0);
+  const prevBalance = top.prevBalance == null ? null : Number(top.prevBalance);
+  // 이번 기록으로 1등 탈환: 지금 1등이고, 직전 잔고로는 1등이 아니었음
+  const isNewLead = balance > maxOther && (prevBalance == null || prevBalance <= maxOther);
+  if (!isNewLead) return null;
+
+  const at = normalizeToIsoString(top.createdAt);
+  if (!at) return null;
+  return {
+    id: `rank1:seotda:${at}`,
+    kind: 'rank1',
+    game: 'seotda',
+    label: '섯다 1등',
+    nickname: top.nickname || 'anonymous',
+    detail: `${balance.toLocaleString()}점`,
+    at,
+    until: untilIso(top.createdAt)
+  };
+}
+
 /** 슬롯은 updatedAt이 매 스핀마다 갱신되어 제외 */
 
 /**
@@ -288,12 +369,16 @@ export async function getBoardCelebrations() {
     rank1FromScoreTable('game_score_watermelon', 'watermelon', '수박게임 1등'),
     rank1Minesweeper(),
     rank1Billiards(),
-    rank1Sudoku()
+    rank1Sudoku(),
+    rank1Seotda()
   ];
 
   const results = await Promise.allSettled(tasks);
   for (const r of results) {
     if (r.status === 'fulfilled' && r.value) out.push(r.value);
+    else if (r.status === 'rejected') {
+      console.error('[celebration rank1]', r.reason);
+    }
   }
 
   // 최신순
