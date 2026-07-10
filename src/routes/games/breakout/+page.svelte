@@ -90,6 +90,7 @@
     resolveCueObjectHit,
     resolveLifeLoss,
     shouldContinueGameLoop,
+    bounceBallOffFloor,
     isBallLost,
     isGameComplete,
     getNextStage,
@@ -820,17 +821,9 @@
       return;
     }
 
+    // 보호막은 루프에서 바닥 튕김 처리 — 여기 오면 목숨만 감소
     const config = getStageConfig(stage);
     const ballSpeed = getEffectiveBallSpeed(config.ballSpeed, activeEffects, Date.now());
-
-    if (result.shieldUsed) {
-      showEffectToast('보호막 발동!');
-      balls = [createBall(paddle, ballSpeed)];
-      ballLaunched = false;
-      screen = 'ready';
-      return;
-    }
-
     activeEffects = createActiveEffects();
     powerUps = [];
     paddle = createPaddle();
@@ -967,6 +960,7 @@
 
     let nextBricks = bricks;
     const survivingBalls: Ball[] = [];
+    const lostBalls: Ball[] = [];
     const paddleHitBalls: Ball[] = [];
     const multiballGrow = isMultiballGrowActive(activeEffects, now);
 
@@ -998,14 +992,24 @@
 
       nextBall = normalizeBallSpeed(nextBall, ballSpeed);
       if (!isBallLost(nextBall)) survivingBalls.push(nextBall);
+      else lostBalls.push(nextBall);
     }
 
     bricks = nextBricks;
     const collected = handlePowerUpPaddleCollision(nextPowerUps, paddle);
     powerUps = collected.powerUps;
 
+    // 보호막: 낙하 공을 바닥에서 위로 튕김 (패들 리셋 없음)
+    let rescued: Ball[] = [];
+    for (const lost of lostBalls) {
+      if (shieldCharges <= 0) break;
+      shieldCharges -= 1;
+      rescued = [...rescued, bounceBallOffFloor(lost, ballSpeed)];
+      showEffectToast('보호막 발동!');
+    }
+
     // 생존 공 먼저 반영 후 파워업 — 멀티볼이 survivingBalls에 덮이지 않게
-    balls = survivingBalls;
+    balls = [...survivingBalls, ...rescued];
     if (multiballGrow) {
       for (const hitBall of paddleHitBalls) {
         balls = growBallsOnPaddleHit(balls, hitBall, ballSpeed);

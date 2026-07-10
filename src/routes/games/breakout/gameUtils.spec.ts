@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   CANVAS_WIDTH,
+  CANVAS_HEIGHT,
   applyTimedPowerUp,
   createActiveEffects,
   createBall,
@@ -102,6 +103,7 @@ import {
   movePaddle,
   movePowerUps,
   resolveLifeLoss,
+  bounceBallOffFloor,
   shouldContinueGameLoop,
   shouldDropPowerUp,
   pickPowerUpType,
@@ -845,6 +847,21 @@ describe('breakout gameUtils', () => {
   it('resolveLifeLoss uses shield without losing life', () => {
     const result = resolveLifeLoss(2, 1);
     expect(result).toEqual({ lives: 2, shieldCharges: 0, gameOver: false, shieldUsed: true });
+  });
+
+  it('bounceBallOffFloor sends ball upward from canvas bottom', () => {
+    const paddle = createPaddle();
+    const fallen = {
+      ...createBall(paddle, 6),
+      y: CANVAS_HEIGHT + 20,
+      vy: 6,
+      vx: 3
+    };
+    const bounced = bounceBallOffFloor(fallen, 6);
+    expect(bounced.y).toBeLessThan(CANVAS_HEIGHT);
+    expect(bounced.y + bounced.radius).toBeLessThanOrEqual(CANVAS_HEIGHT);
+    expect(bounced.vy).toBeLessThan(0);
+    expect(Math.hypot(bounced.vx, bounced.vy)).toBeCloseTo(6, 5);
   });
 
   it('resolveLifeLoss ends game at zero lives even with shield', () => {

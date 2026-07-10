@@ -1927,6 +1927,22 @@ export function isBallLost(ball: Ball): boolean {
   return ball.y - ball.radius > CANVAS_HEIGHT;
 }
 
+/**
+ * 보호막 발동 — 바닥에서 위로 튕김. 플레이 중단 없이 계속.
+ */
+export function bounceBallOffFloor(ball: Ball, speed: number): Ball {
+  const y = CANVAS_HEIGHT - ball.radius - 1;
+  let vx = ball.vx;
+  let vy = ball.vy;
+  if (Math.hypot(vx, vy) < 0.01) {
+    vx = speed * (Math.random() > 0.5 ? 0.55 : -0.55);
+    vy = -speed;
+  } else {
+    vy = -Math.abs(vy);
+  }
+  return normalizeBallSpeed({ ...ball, y, vx, vy }, speed);
+}
+
 export function circleRectCollision(
   cx: number,
   cy: number,
