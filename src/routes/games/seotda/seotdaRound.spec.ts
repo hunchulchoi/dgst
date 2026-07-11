@@ -59,6 +59,17 @@ describe('seotdaRound smoke', () => {
     expect(round.seats.find((s) => s.id === 'npc_goni')?.chips).toBe(790);
     expect(round.seats.find((s) => s.id === 'npc_madam')?.chips).toBe(40);
   });
+
+  it('fresh table NPCs start near player chips', () => {
+    const userChips = 3500;
+    const round = createNewRound(userChips, () => 0.5, {});
+    for (const s of round.seats.filter((x) => x.isNpc)) {
+      // ante already taken; before ante was ~userChips * 0.85~1.15
+      const beforeAnte = s.chips + 10;
+      expect(beforeAnte).toBeGreaterThanOrEqual(Math.floor(userChips * 0.85));
+      expect(beforeAnte).toBeLessThanOrEqual(Math.ceil(userChips * 1.15));
+    }
+  });
 });
 
 describe('seotdaNpc bluff', () => {

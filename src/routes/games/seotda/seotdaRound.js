@@ -16,6 +16,18 @@ export const NPC_START_CHIPS = 1000;
 export const MAX_RAISES = 3;
 
 /**
+ * 플레이어와 비슷한 판돈 (±15% 랜덤)
+ * @param {number} userChips
+ * @param {() => number} [rng]
+ * @returns {number}
+ */
+export function npcStartingChips(userChips, rng = Math.random) {
+  const base = Math.max(ANTE * 10, Math.floor(Number(userChips) || NPC_START_CHIPS));
+  const factor = 0.85 + rng() * 0.3; // 0.85 ~ 1.15
+  return Math.max(ANTE * 10, Math.round(base * factor));
+}
+
+/**
  * @param {number} userChips
  * @param {() => number} [rng]
  * @param {Record<string, number>} [npcChipMap] 이전 판 NPC 잔고
@@ -39,12 +51,15 @@ export function createNewRound(userChips, rng = Math.random, npcChipMap = {}) {
   deck = deck.slice(2);
 
   const log = /** @type {string[]} */ ([]);
+  const hasSavedStacks = Object.keys(npcChipMap).length > 0;
 
   for (const profile of NPC_PROFILES) {
-    let chips = Number(npcChipMap[profile.id] ?? NPC_START_CHIPS);
-    if (!Number.isFinite(chips) || chips <= 0) {
-      chips = NPC_START_CHIPS;
-      log.push(`${profile.name} 칩 리필`);
+    let chips;
+    if (hasSavedStacks && Number.isFinite(Number(npcChipMap[profile.id])) && Number(npcChipMap[profile.id]) > 0) {
+      chips = Number(npcChipMap[profile.id]);
+    } else {
+      chips = npcStartingChips(userChips, rng);
+      if (hasSavedStacks) log.push(`${profile.name} 칩 리필 (${chips})`);
     }
     seats.push({
       id: profile.id,
@@ -89,12 +104,14 @@ export function createNewRound(userChips, rng = Math.random, npcChipMap = {}) {
 
 /**
  * @param {import('./seotdaState.js').SeotdaRound} round
+ * @param {() => number} [rng]
  */
-export function refillBustNpcs(round) {
+export function refillBustNpcs(round, rng = Math.random) {
+  const userChips = round.seats.find((s) => s.id === 'user')?.chips ?? NPC_START_CHIPS;
   for (const s of round.seats) {
     if (s.isNpc && s.chips <= 0) {
-      s.chips = NPC_START_CHIPS;
-      round.log.push(`${s.name} 칩 리필`);
+      s.chips = npcStartingChips(Math.max(userChips, ANTE * 10), rng);
+      round.log.push(`${s.name} 칩 리필 (${s.chips})`);
     }
   }
 }
