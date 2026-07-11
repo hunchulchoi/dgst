@@ -254,6 +254,57 @@ async function rank1Sudoku() {
 }
 
 /**
+ * lead 마킹 도입 전 탈환분 — 현재 1등 폭죽 1회 (12h)
+ * @type {Date}
+ */
+const SEOTDA_RANK1_BOOTSTRAP_AT = new Date('2026-07-11T05:40:00.000Z');
+
+/**
+ * @param {{ nickname: string; balance: number; email: string }} row
+ * @param {Date | string} createdAt
+ * @param {string} id
+ * @returns {BoardCelebration | null}
+ */
+function seotdaRank1Celebration(row, createdAt, id) {
+  const at = normalizeToIsoString(createdAt);
+  if (!at) return null;
+  return {
+    id,
+    kind: 'rank1',
+    game: 'seotda',
+    label: '섯다 1등',
+    nickname: row.nickname || 'anonymous',
+    detail: `${Number(row.balance).toLocaleString()}점`,
+    at,
+    until: untilIso(createdAt)
+  };
+}
+
+/**
+ * 섯다 현재 잔고 1등
+ * @returns {Promise<{ nickname: string; balance: number; email: string } | null>}
+ */
+async function currentSeotdaTop1() {
+  /** @type {Array<{ nickname: string; balance: number; email: string }>} */
+  const rows = await getPrisma().$queryRaw`
+    SELECT email, nickname, balance::int AS balance
+    FROM (
+      SELECT
+        email,
+        nickname,
+        balance,
+        ROW_NUMBER() OVER (PARTITION BY email ORDER BY created_at DESC) AS rn
+      FROM game_scores
+      WHERE game = 'seotda'
+    ) t
+    WHERE rn = 1 AND balance > 0
+    ORDER BY balance DESC
+    LIMIT 1
+  `;
+  return rows[0] ?? null;
+}
+
+/**
  * 섯다 — reels에 lead 마킹된 최근 1등 탈환 (판 정산 시점에 기록)
  * @returns {Promise<BoardCelebration | null>}
  */
@@ -271,19 +322,21 @@ async function rank1Seotda() {
     ORDER BY created_at DESC
     LIMIT 1
   `;
-  if (!rows.length || !withinWindow(rows[0].createdAt)) return null;
-  const at = normalizeToIsoString(rows[0].createdAt);
-  if (!at) return null;
-  return {
-    id: `rank1:seotda:${rows[0].email}:${at}`,
-    kind: 'rank1',
-    game: 'seotda',
-    label: '섯다 1등',
-    nickname: rows[0].nickname || 'anonymous',
-    detail: `${Number(rows[0].balance).toLocaleString()}점`,
-    at,
-    until: untilIso(rows[0].createdAt)
-  };
+  if (rows.length && withinWindow(rows[0].createdAt)) {
+    const at = normalizeToIsoString(rows[0].createdAt);
+    if (!at) return null;
+    return seotdaRank1Celebration(rows[0], rows[0].createdAt, `rank1:seotda:${rows[0].email}:${at}`);
+  }
+
+  // lead 마킹 전 탈환 보정 — 현재 1등 폭죽 1회
+  if (!withinWindow(SEOTDA_RANK1_BOOTSTRAP_AT)) return null;
+  const top = await currentSeotdaTop1();
+  if (!top) return null;
+  return seotdaRank1Celebration(
+    top,
+    SEOTDA_RANK1_BOOTSTRAP_AT,
+    `rank1:seotda:bootstrap:${top.email}`
+  );
 }
 
 /** 슬롯은 updatedAt이 매 스핀마다 갱신되어 제외 */
