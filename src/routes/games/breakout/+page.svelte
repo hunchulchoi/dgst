@@ -29,6 +29,7 @@
     createFallingFly,
     createStarRainIronBricks,
     createBonusIronBricks,
+    zonesFromBonusTargets,
     shouldSpawnStarRain,
     shouldSpawnFly,
     stepFallingStars,
@@ -328,7 +329,14 @@
       vaultTargets = [];
       vaultSequence = [];
     }
-    bricks = createBonusIronBricks();
+    bricks = createBonusIronBricks(
+      Math.random,
+      zonesFromBonusTargets({
+        objects: billiardObjects,
+        collectibles: bonusCollectibles,
+        vaultTargets
+      })
+    );
   }
 
   function prepareBallForStage(stageNum: number) {

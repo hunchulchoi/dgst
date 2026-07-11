@@ -61,6 +61,8 @@ import {
   createFallingStar,
   createStarRainIronBricks,
   createBonusIronBricks,
+  zonesFromBonusTargets,
+  zoneOverlapsBrick,
   shouldSpawnStarRain,
   stepFallingStars,
   tryCollectFallingStar,
@@ -607,6 +609,33 @@ describe('breakout gameUtils', () => {
     const seq = [0.9, 0.05, 0.2, 0.55, 0.8, 0.35];
     const two = createBonusIronBricks(() => seq[Math.min(n++, seq.length - 1)]!);
     expect(two).toHaveLength(2);
+
+    const stars = createStarCollectibles(15);
+    const zones = zonesFromBonusTargets({ collectibles: stars });
+    expect(zones.length).toBe(stars.length);
+    let m = 0;
+    const avoidSeq = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.15, 0.25, 0.35];
+    const avoidedIrons = createBonusIronBricks(
+      () => avoidSeq[Math.min(m++, avoidSeq.length - 1)]!,
+      zones
+    );
+    expect(avoidedIrons.length).toBeGreaterThanOrEqual(1);
+    for (const iron of avoidedIrons) {
+      for (const z of zones) {
+        expect(zoneOverlapsBrick(z, iron, 6)).toBe(false);
+      }
+    }
+
+    const objects = createBilliardObjectBalls(5);
+    const billiardIrons = createBonusIronBricks(
+      () => 0.3,
+      zonesFromBonusTargets({ objects })
+    );
+    for (const iron of billiardIrons) {
+      for (const o of objects) {
+        expect(zoneOverlapsBrick({ x: o.x, y: o.y, radius: o.radius }, iron, 6)).toBe(false);
+      }
+    }
 
     const star = createFallingStar(0, () => 0.5);
     expect(star.vx).toBe(0);

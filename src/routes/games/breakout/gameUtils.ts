@@ -1546,10 +1546,57 @@ export function createStarRainIronBricks(): Brick[] {
   return createBonusIronBricks();
 }
 
+/** 보너스 아이템·목표공과 철이 겹치지 않게 피할 원형 영역 */
+export interface BonusAvoidZone {
+  x: number;
+  y: number;
+  radius: number;
+}
+
+/** 보너스 목표에서 철 회피 존 생성 */
+export function zonesFromBonusTargets(params: {
+  objects?: Array<{ x: number; y: number; radius: number }>;
+  collectibles?: Array<{ x: number; y: number; radius: number }>;
+  vaultTargets?: Array<{ x: number; y: number; radius: number }>;
+}): BonusAvoidZone[] {
+  const zones: BonusAvoidZone[] = [];
+  for (const o of params.objects ?? []) {
+    zones.push({ x: o.x, y: o.y, radius: o.radius });
+  }
+  for (const c of params.collectibles ?? []) {
+    zones.push({ x: c.x, y: c.y, radius: c.radius });
+  }
+  for (const t of params.vaultTargets ?? []) {
+    zones.push({ x: t.x, y: t.y, radius: t.radius });
+  }
+  return zones;
+}
+
+/** 원·사각이 여유(padding) 포함해 겹치는지 */
+export function zoneOverlapsBrick(
+  zone: BonusAvoidZone,
+  brick: Pick<Brick, 'x' | 'y' | 'width' | 'height'>,
+  padding = 6
+): boolean {
+  return circleRectCollision(
+    zone.x,
+    zone.y,
+    zone.radius + padding,
+    brick.x,
+    brick.y,
+    brick.width,
+    brick.height
+  );
+}
+
 /**
  * 보너스 공통 — 철 블록 1~2개 랜덤 배치 (중간 대역).
+ * avoidZones 와 겹치는 칸은 건너뜀.
  */
-export function createBonusIronBricks(rng = Math.random): Brick[] {
+export function createBonusIronBricks(
+  rng = Math.random,
+  avoidZones: BonusAvoidZone[] = []
+): Brick[] {
   const brickWidth =
     (CANVAS_WIDTH - BRICK_OFFSET_LEFT * 2 - BRICK_PADDING * (BRICK_COLS - 1)) / BRICK_COLS;
   const brickHeight = 22;
@@ -1572,14 +1619,16 @@ export function createBonusIronBricks(rng = Math.random): Brick[] {
   const used = new Set<string>();
   const out: Brick[] = [];
   let guard = 0;
-  while (out.length < count && guard < 48) {
+  while (out.length < count && guard < 64) {
     guard += 1;
     const row = rows[Math.floor(rng() * rows.length)]!;
     const col = cols[Math.floor(rng() * cols.length)]!;
     const key = `${row}:${col}`;
     if (used.has(key)) continue;
     used.add(key);
-    out.push(makeIron(row, col));
+    const iron = makeIron(row, col);
+    if (avoidZones.some((z) => zoneOverlapsBrick(z, iron))) continue;
+    out.push(iron);
   }
   return out;
 }
