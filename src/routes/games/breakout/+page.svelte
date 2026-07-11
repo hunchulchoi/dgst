@@ -91,6 +91,10 @@
     resolveLifeLoss,
     shouldContinueGameLoop,
     bounceBallOffFloor,
+    noteIronHit,
+    clearIronStreak,
+    shouldEscapeIronTrap,
+    escapeIronTrap,
     isBallLost,
     isGameComplete,
     getNextStage,
@@ -971,7 +975,7 @@
       const paddleHit = handlePaddleCollision(nextBall, paddle);
       nextBall = paddleHit.ball;
       if (paddleHit.hit) {
-        nextBall = resetBigBallPierce(nextBall);
+        nextBall = clearIronStreak(resetBigBallPierce(nextBall));
         paddleHitBalls.push(nextBall);
       }
 
@@ -980,6 +984,7 @@
         nextBricks = pierce.bricks;
         addScoreFromBricks(pierce.destroyedBricks, pierce.scoreGained, now);
         nextPowerUps = appendDropsFromDestroyed(pierce.destroyedBricks, nextPowerUps);
+        if (pierce.destroyedBricks.length > 0) nextBall = clearIronStreak(nextBall);
       } else {
         const brickHit = handleBrickCollision(nextBall, nextBricks, stage);
         nextBall = brickHit.ball;
@@ -987,6 +992,15 @@
           nextBricks = brickHit.bricks;
           addScoreFromBricks(brickHit.destroyedBricks, brickHit.scoreGained, now);
           nextPowerUps = appendDropsFromDestroyed(brickHit.destroyedBricks, nextPowerUps);
+          if (brickHit.hitIron) {
+            nextBall = noteIronHit(nextBall, now);
+            if (shouldEscapeIronTrap(nextBall, now)) {
+              nextBall = escapeIronTrap(nextBall, ballSpeed);
+              showEffectToast('철 탈출!');
+            }
+          } else {
+            nextBall = clearIronStreak(nextBall);
+          }
         }
       }
 

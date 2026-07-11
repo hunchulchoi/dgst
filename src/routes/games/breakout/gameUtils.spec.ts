@@ -104,6 +104,13 @@ import {
   movePowerUps,
   resolveLifeLoss,
   bounceBallOffFloor,
+  noteIronHit,
+  clearIronStreak,
+  shouldEscapeIronTrap,
+  escapeIronTrap,
+  IRON_TRAP_ESCAPE_MS,
+  IRON_TRAP_MIN_HITS,
+  IRON_TRAP_MAX_HITS,
   shouldContinueGameLoop,
   shouldDropPowerUp,
   pickPowerUpType,
@@ -257,8 +264,36 @@ describe('breakout gameUtils', () => {
     const ball: Ball = { x: 120, y: 125, vx: 2, vy: -4, radius: 8 };
     const result = handleBrickCollision(ball, bricks, 1);
     expect(result.hit).toBe(true);
+    expect(result.hitIron).toBe(true);
     expect(result.destroyedBricks).toHaveLength(0);
     expect(result.bricks[0].alive).toBe(true);
+  });
+
+  it('escapes iron trap after sustained iron-only hits', () => {
+    const paddle = createPaddle();
+    let ball = createBall(paddle, 6);
+    const t0 = 1_000;
+    for (let i = 0; i < IRON_TRAP_MIN_HITS; i++) {
+      ball = noteIronHit(ball, t0 + i * 100);
+    }
+    expect(shouldEscapeIronTrap(ball, t0 + 500)).toBe(false);
+    expect(shouldEscapeIronTrap(ball, t0 + IRON_TRAP_ESCAPE_MS)).toBe(true);
+
+    let capped = createBall(paddle, 6);
+    for (let i = 0; i < IRON_TRAP_MAX_HITS; i++) {
+      capped = noteIronHit(capped, t0);
+    }
+    expect(shouldEscapeIronTrap(capped, t0 + 100)).toBe(true);
+
+    const escaped = escapeIronTrap(
+      { ...ball, x: 200, y: 120, vx: 3, vy: -3 },
+      6,
+      () => 0.5
+    );
+    expect(escaped.vy).toBeGreaterThan(0);
+    expect(escaped.y).toBeGreaterThan(120);
+    expect(escaped.ironStreak).toBeUndefined();
+    expect(clearIronStreak(noteIronHit(ball, t0)).ironStreak).toBeUndefined();
   });
 
   it('laser stops on iron without piercing', () => {

@@ -82,6 +82,12 @@ export const BIG_BALL_DAMAGE_MULT = 3;
 /** 거대 공: 튕기지 않고 관통하는 블록 수 */
 export const BIG_BALL_PIERCE_COUNT = 3;
 export const BIG_BALL_DURATION_MS = 12_000;
+/** 철 블록에만 연속 충돌 시 탈출까지 대기 시간 */
+export const IRON_TRAP_ESCAPE_MS = 4_000;
+/** 철 연속 히트 최소 횟수 (시간 조건과 함께) */
+export const IRON_TRAP_MIN_HITS = 4;
+/** 철 연속 히트 하드캡 — 도달 시 즉시 탈출 */
+export const IRON_TRAP_MAX_HITS = 14;
 export const LASER_INTERVAL_MS = 380;
 export const LASER_SPEED = 11;
 export const COMBO_WINDOW_MS = 1_500;
@@ -125,6 +131,10 @@ export interface Ball {
   spin?: number;
   /** 거대공 남은 관통 횟수 (패들 맞으면 리셋) */
   pierceLeft?: number;
+  /** 철만 연속으로 맞은 횟수 */
+  ironStreak?: number;
+  /** 철 연속 충돌 시작 시각 */
+  ironStreakStartedAt?: number;
 }
 
 export interface Paddle {
@@ -1927,6 +1937,58 @@ export function isBallLost(ball: Ball): boolean {
   return ball.y - ball.radius > CANVAS_HEIGHT;
 }
 
+/** 철 연속 충돌 기록 */
+export function noteIronHit(ball: Ball, now: number): Ball {
+  const streak = (ball.ironStreak ?? 0) + 1;
+  return {
+    ...ball,
+    ironStreak: streak,
+    ironStreakStartedAt: streak === 1 ? now : (ball.ironStreakStartedAt ?? now)
+  };
+}
+
+/** 패들/파괴 가능 블록 등 진행 시 철 스트릭 리셋 */
+export function clearIronStreak(ball: Ball): Ball {
+  if (!ball.ironStreak && !ball.ironStreakStartedAt) return ball;
+  const { ironStreak: _s, ironStreakStartedAt: _t, ...rest } = ball;
+  return rest;
+}
+
+/**
+ * 철에만 오래 갇혔는지.
+ * 최소 IRON_TRAP_MIN_HITS 후 IRON_TRAP_ESCAPE_MS 경과, 또는 MAX_HITS 도달.
+ */
+export function shouldEscapeIronTrap(ball: Ball, now: number): boolean {
+  const streak = ball.ironStreak ?? 0;
+  if (streak >= IRON_TRAP_MAX_HITS) return true;
+  if (streak < IRON_TRAP_MIN_HITS) return false;
+  const started = ball.ironStreakStartedAt ?? now;
+  return now - started >= IRON_TRAP_ESCAPE_MS;
+}
+
+/**
+ * 철 우리 탈출 — 아래로 빼고 패들 쪽으로 각도 재설정.
+ */
+export function escapeIronTrap(ball: Ball, speed: number, rng = Math.random): Ball {
+  const angle = Math.PI / 2 + (rng() - 0.5) * 1.1;
+  const vx = speed * Math.cos(angle);
+  const vy = Math.abs(speed * Math.sin(angle));
+  const x = Math.min(CANVAS_WIDTH - ball.radius - 2, Math.max(ball.radius + 2, ball.x));
+  const y = Math.min(PADDLE_Y - 100, Math.max(ball.y + 48, BRICK_OFFSET_TOP + 120));
+  return clearIronStreak(
+    normalizeBallSpeed(
+      {
+        ...ball,
+        x,
+        y,
+        vx,
+        vy: Math.max(vy, speed * 0.55)
+      },
+      speed
+    )
+  );
+}
+
 /**
  * 보호막 발동 — 바닥에서 위로 튕김. 플레이 중단 없이 계속.
  */
@@ -2127,6 +2189,8 @@ export interface BrickCollisionResult {
   scoreGained: number;
   hit: boolean;
   destroyedBricks: Brick[];
+  /** 이번 충돌이 철만 맞음 */
+  hitIron?: boolean;
 }
 
 /** 블록 충돌 — 거대공은 pierceLeft>0 이면 튕기지 않고 최대 3블록 관통 */
@@ -2159,7 +2223,8 @@ export function handleBrickCollision(
           bricks: nextBricks,
           scoreGained,
           hit: true,
-          destroyedBricks
+          destroyedBricks,
+          hitIron: true
         };
       }
       hitAny = true;
@@ -2193,7 +2258,14 @@ export function handleBrickCollision(
 
     const bounced = bounceBallFromBrick(ball, brick);
     if (brick.type === 'iron') {
-      return { ball: bounced, bricks, scoreGained: 0, hit: true, destroyedBricks: [] };
+      return {
+        ball: bounced,
+        bricks,
+        scoreGained: 0,
+        hit: true,
+        destroyedBricks: [],
+        hitIron: true
+      };
     }
 
     const damage = damageBrickAt(bricks, i, stage, true, false, hitPower);
@@ -2202,7 +2274,8 @@ export function handleBrickCollision(
       bricks: damage.bricks,
       scoreGained: damage.scoreGained,
       hit: true,
-      destroyedBricks: damage.destroyed
+      destroyedBricks: damage.destroyed,
+      hitIron: false
     };
   }
   return { ball, bricks, scoreGained: 0, hit: false, destroyedBricks: [] };
