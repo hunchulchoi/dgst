@@ -3,6 +3,7 @@ import { getGameSession, isLocalGameSmokeSession } from '$lib/server/localGameSm
 import { evaluateHand } from './seotdaEngine.js';
 import {
   ensureSeotdaBalance,
+  getSeotdaMaxOtherBalance,
   getSeotdaRank,
   getTodaySeotdaStats,
   maybeTopupAfterOops,
@@ -118,18 +119,24 @@ export async function POST(event) {
       if (round.phase === 'showdown') {
         const before = chipsBeforeMap.get(user.email) ?? round.seats[0].chips;
         const result = userChipResult(before, round);
+        const maxOther = await getSeotdaMaxOtherBalance(user.email);
+        // 이번 판으로 1등 탈환 (직전엔 1등 아니었음)
+        const tookLead = result.after > maxOther && before <= maxOther;
+        const outcome =
+          (round.winnerIds?.length ?? 0) > 1
+            ? 'draw'
+            : round.winnerId === 'user'
+              ? 'win'
+              : 'lose';
         await writeSeotdaScore(user.email, user.nickname, result.after, {
           bet: result.bet,
           payout: result.payout,
           delta: result.delta,
           reels: [
-            (round.winnerIds?.length ?? 0) > 1
-              ? 'draw'
-              : round.winnerId === 'user'
-                ? 'win'
-                : 'lose',
+            outcome,
             String(result.delta),
-            round.seats.find((s) => s.id === 'user')?.lastAction ?? '-'
+            round.seats.find((s) => s.id === 'user')?.lastAction ?? '-',
+            tookLead ? 'lead' : '-'
           ]
         });
         chipsBeforeMap.delete(user.email);

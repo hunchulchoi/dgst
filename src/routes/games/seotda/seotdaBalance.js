@@ -137,6 +137,34 @@ export async function maybeTopupAfterOops(email, nickname) {
 }
 
 /**
+ * 다른 유저 최신 잔고 중 최대
+ * @param {string} excludeEmail
+ * @returns {Promise<number>}
+ */
+export async function getSeotdaMaxOtherBalance(excludeEmail) {
+  try {
+    /** @type {Array<{ balance: number }>} */
+    const rows = await getPrisma().$queryRaw`
+      SELECT COALESCE(MAX(balance), 0)::int AS balance
+      FROM (
+        SELECT
+          email,
+          balance::int AS balance,
+          ROW_NUMBER() OVER (PARTITION BY email ORDER BY created_at DESC) AS rn
+        FROM game_scores
+        WHERE game = ${SEOTDA_GAME}
+          AND email <> ${excludeEmail}
+      ) t
+      WHERE rn = 1 AND balance > 0
+    `;
+    return Number(rows[0]?.balance ?? 0);
+  } catch (err) {
+    console.error('[seotda getSeotdaMaxOtherBalance]', err);
+    return 0;
+  }
+}
+
+/**
  * @returns {Promise<Array<{ nickname: string; balance: number; email: string; updatedAt: string | null }>>}
  */
 export async function getSeotdaRank(limit = 10) {
