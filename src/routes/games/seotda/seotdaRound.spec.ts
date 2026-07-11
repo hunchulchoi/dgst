@@ -100,4 +100,28 @@ describe('seotdaNpc bluff', () => {
     }
     expect(sizes.size).toBeGreaterThan(2);
   });
+
+  it('facing huge raise: strong hands often all-in call instead of always fold', () => {
+    const profile = NPC_PROFILES.find((p) => p.style === 'bluffer');
+    const strong = [
+      { month: 10, gwang: false },
+      { month: 10, gwang: false }
+    ];
+    let calls = 0;
+    for (let n = 0; n < 40; n++) {
+      let i = n;
+      const rng = () => {
+        i += 1;
+        return ((i * 19) % 100) / 100;
+      };
+      const a = chooseNpcAction(
+        strong,
+        profile,
+        { toCall: 2500, chips: 900, pot: 2600, raiseSeen: true, forcePressure: false },
+        rng
+      );
+      if (a === 'call') calls++;
+    }
+    expect(calls).toBeGreaterThan(15);
+  });
 });

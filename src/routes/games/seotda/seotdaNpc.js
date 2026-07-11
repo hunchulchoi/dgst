@@ -25,8 +25,34 @@ export function chooseNpcAction(cards, profile, ctx, rng = Math.random) {
   const { toCall, chips, raiseSeen, forcePressure } = ctx;
   if (chips <= 0) return 'die';
 
-  const canCall = toCall <= chips;
+  const canFullCall = toCall <= chips;
   const canRaise = chips > toCall;
+  const commitRatio = toCall > 0 ? toCall / Math.max(chips, 1) : 0;
+
+  // 콜 금액 > 보유칩 → 올인 콜 vs 다이 (무조건 다이 금지)
+  if (toCall > 0 && !canFullCall) {
+    let allInChance = strength * 0.65 + profile.bluff * 0.2;
+    if (strength >= 0.55) allInChance += 0.25;
+    else if (strength >= 0.35) allInChance += 0.1;
+    // 아귀·정마담은 큰 벳에도 가끔 따라감
+    if (profile.style !== 'calm') allInChance += 0.08;
+    allInChance = Math.min(0.92, allInChance);
+    return rng() < allInChance ? 'call' : 'die';
+  }
+
+  // 큰 벳(칩의 40%+) — 폴드 남발 줄이고 콜/올인 비중↑
+  if (commitRatio >= 0.4) {
+    let stayChance = strength * 0.75 + profile.bluff * 0.12 + 0.12;
+    if (strength >= 0.5) stayChance += 0.2;
+    stayChance = Math.min(0.9, stayChance);
+    if (rng() < stayChance) {
+      if (canRaise && strength >= 0.55 && rng() < 0.3) return 'raise';
+      return 'call';
+    }
+    // 약한 패만 다이 쪽으로
+    if (strength < 0.4) return 'die';
+    return rng() < 0.45 ? 'call' : 'die';
+  }
 
   // 전원 공통: 가끔 랜덤 뻥카 레이즈 (약한 패에서도)
   if (canRaise && strength < 0.4 && rng() < 0.18 + profile.bluff * 0.15) {
@@ -37,7 +63,7 @@ export function chooseNpcAction(cards, profile, ctx, rng = Math.random) {
   if (forcePressure && canRaise && toCall < chips) {
     const roll = rng();
     if (roll < 0.45) return 'raise';
-    if (roll < 0.75 && canCall) return 'call';
+    if (roll < 0.75 && canFullCall) return 'call';
   }
 
   if (profile.style === 'bluffer') {
@@ -46,44 +72,42 @@ export function chooseNpcAction(cards, profile, ctx, rng = Math.random) {
 
     if (strength < 0.35) {
       if (canRaise && rng() < bluffChance * 0.7) return 'raise';
-      if (raiseSeen && canCall && rng() < 0.35 + mood * 0.25) return 'call';
-      if (!canCall || rng() < 0.4) return 'die';
-      return canCall ? 'call' : 'die';
+      if (raiseSeen && canFullCall && rng() < 0.4 + mood * 0.25) return 'call';
+      if (rng() < 0.35) return 'die';
+      return canFullCall ? 'call' : 'die';
     }
     if (strength < 0.55) {
       if (canRaise && rng() < 0.32 + bluffChance * 0.3) return 'raise';
-      if (!canCall) return 'die';
-      return rng() < 0.12 ? 'die' : 'call';
+      return canFullCall ? (rng() < 0.1 ? 'die' : 'call') : 'die';
     }
     if (canRaise && rng() < 0.5 + mood * 0.25) return 'raise';
-    return canCall ? 'call' : 'die';
+    return canFullCall ? 'call' : 'die';
   }
 
   if (profile.style === 'calm') {
     if (strength < 0.4) {
       if (toCall === 0) return rng() < 0.12 && canRaise ? 'raise' : 'call';
-      if (raiseSeen) return rng() < 0.25 ? 'call' : 'die';
-      // 가끔 뜬금 뻥카
+      if (raiseSeen) return rng() < 0.4 ? 'call' : 'die';
       if (canRaise && rng() < 0.12) return 'raise';
-      return canCall && rng() < 0.38 ? 'call' : 'die';
+      return canFullCall && rng() < 0.4 ? 'call' : 'die';
     }
     if (strength < 0.7) {
       if (canRaise && rng() < 0.28) return 'raise';
-      return canCall ? 'call' : 'die';
+      return canFullCall ? 'call' : 'die';
     }
     if (canRaise && rng() < 0.55) return 'raise';
-    return canCall ? 'call' : 'die';
+    return canFullCall ? 'call' : 'die';
   }
 
-  // 정마담: 기복 + 랜덤 올인급 뻥
+  // 정마담
   if (strength < 0.45) {
     const r = rng();
     if (canRaise && r < profile.bluff * 0.85) return 'raise';
-    if (r < 0.5) return 'die';
-    return canCall ? 'call' : 'die';
+    if (r < 0.45) return 'die';
+    return canFullCall ? 'call' : 'die';
   }
   if (canRaise && rng() < 0.5 + rng() * 0.35) return 'raise';
-  return canCall ? 'call' : 'die';
+  return canFullCall ? 'call' : 'die';
 }
 
 /**
@@ -112,7 +136,7 @@ export function npcRaiseChips(toCall, chips, rng = Math.random) {
   else if (roll < 0.68) target = Math.floor(chips * (0.15 + rng() * 0.15));
   else if (roll < 0.82) target = Math.floor(chips * (0.3 + rng() * 0.2));
   else if (roll < 0.93) target = Math.floor(chips * 0.5);
-  else target = chips; // 올인 뻥카
+  else target = chips;
 
   return raiseAmount(toCall, chips, target);
 }
