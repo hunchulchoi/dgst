@@ -81,7 +81,12 @@ export function evaluateHand(cards) {
       2: '이땡',
       1: '삥땡'
     };
-    return { tier: 80, sub: m1, name: names[/** @type {keyof typeof names} */ (m1)] ?? `${m1}땡`, cards };
+    return {
+      tier: 80,
+      sub: m1,
+      name: names[/** @type {keyof typeof names} */ (m1)] ?? `${m1}땡`,
+      cards
+    };
   }
 
   // 특수 끗 조합
@@ -138,9 +143,28 @@ export function compareHands(a, b) {
  * @returns {number}
  */
 export function handStrength(hand) {
-  // max ~100, min ~0 (망통 sub0)
-  const raw = hand.tier + hand.sub / 10;
-  return Math.max(0, Math.min(1, raw / 100));
+  if (!hand?.cards || hand.cards.length !== 2) return 0;
+
+  // 현재 패를 제외한 모든 상대 2장 조합에 대한 실제 승률.
+  // 족보 tier 간격을 그대로 나누면 갑오도 망통과 같은 약패로 취급된다.
+  const remaining = createDeck();
+  for (const card of hand.cards) {
+    const index = remaining.findIndex(
+      (candidate) => candidate.month === card.month && candidate.gwang === card.gwang
+    );
+    if (index >= 0) remaining.splice(index, 1);
+  }
+
+  let score = 0;
+  let matchups = 0;
+  for (let i = 0; i < remaining.length - 1; i++) {
+    for (let j = i + 1; j < remaining.length; j++) {
+      const result = compareHands(hand, evaluateHand([remaining[i], remaining[j]]));
+      score += result > 0 ? 1 : result === 0 ? 0.5 : 0;
+      matchups += 1;
+    }
+  }
+  return matchups > 0 ? score / matchups : 0;
 }
 
 /**
@@ -192,7 +216,8 @@ export function minRaisePay(toCall) {
  */
 export function raiseAmount(toCall, chips, requested) {
   const minPay = minRaisePay(toCall);
-  const want = Number.isFinite(requested) && requested > 0 ? Number(requested) : minPay;
+  const want =
+    requested != null && Number.isFinite(requested) && requested > 0 ? Number(requested) : minPay;
   return Math.min(chips, Math.max(minPay, want));
 }
 

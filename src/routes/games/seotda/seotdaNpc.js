@@ -15,19 +15,28 @@ export const NPC_PROFILES = [
 /**
  * @param {import('./seotdaEngine.js').SeotdaCard[]} cards
  * @param {NpcProfile} profile
- * @param {{ toCall: number; chips: number; pot: number; raiseSeen: boolean; forcePressure?: boolean }} ctx
+ * @param {{ toCall: number; chips: number; pot: number; raiseSeen: boolean; forcePressure?: boolean; activeOpponents?: number }} ctx
  * @param {() => number} [rng]
  * @returns {SeotdaAction}
  */
 export function chooseNpcAction(cards, profile, ctx, rng = Math.random) {
   const hand = evaluateHand(cards);
-  const strength = handStrength(hand);
-  const { toCall, chips, raiseSeen, forcePressure } = ctx;
+  const headsUpStrength = handStrength(hand);
+  const { toCall, chips, pot, raiseSeen, forcePressure } = ctx;
+  const activeOpponents = Math.max(1, Number(ctx.activeOpponents ?? 1));
+  const strength = Math.pow(headsUpStrength, activeOpponents);
   if (chips <= 0) return 'die';
 
   const canFullCall = toCall <= chips;
   const canRaise = chips > toCall;
   const commitRatio = toCall > 0 ? toCall / Math.max(chips, 1) : 0;
+  const potOdds = toCall > 0 ? toCall / Math.max(1, pot + toCall) : 0;
+
+  // 콜 가격보다 승산이 크게 낮으면 대부분 포기한다. 성향에 따라 가끔만 따라간다.
+  if (toCall > 0 && raiseSeen && strength + 0.08 < potOdds) {
+    const stubbornChance = 0.03 + profile.bluff * 0.08;
+    return rng() < stubbornChance && canFullCall ? 'call' : 'die';
+  }
 
   // 콜 금액 > 보유칩 → 올인 콜 vs 다이 (무조건 다이 금지)
   if (toCall > 0 && !canFullCall) {
@@ -55,15 +64,15 @@ export function chooseNpcAction(cards, profile, ctx, rng = Math.random) {
   }
 
   // 전원 공통: 가끔 랜덤 뻥카 레이즈 (약한 패에서도)
-  if (canRaise && strength < 0.4 && rng() < 0.18 + profile.bluff * 0.15) {
+  if (canRaise && strength < 0.4 && rng() < 0.05 + profile.bluff * 0.08) {
     return 'raise';
   }
 
   // 압박 담당 — 랜덤
   if (forcePressure && canRaise && toCall < chips) {
     const roll = rng();
-    if (roll < 0.45) return 'raise';
-    if (roll < 0.75 && canFullCall) return 'call';
+    if (roll < 0.18) return 'raise';
+    if (roll < 0.55 && canFullCall) return 'call';
   }
 
   if (profile.style === 'bluffer') {
@@ -102,7 +111,7 @@ export function chooseNpcAction(cards, profile, ctx, rng = Math.random) {
   // 정마담
   if (strength < 0.45) {
     const r = rng();
-    if (canRaise && r < profile.bluff * 0.85) return 'raise';
+    if (canRaise && r < profile.bluff * 0.28) return 'raise';
     if (r < 0.45) return 'die';
     return canFullCall ? 'call' : 'die';
   }

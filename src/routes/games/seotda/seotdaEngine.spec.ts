@@ -88,6 +88,15 @@ describe('seotdaEngine hands', () => {
     expect(strong).toBeLessThanOrEqual(1);
     expect(strong).toBeGreaterThan(weak);
   });
+
+  it('handStrength meaningfully separates ordinary ggeut hands', () => {
+    const mang = handStrength(evaluateHand([c(2), c(8)]));
+    const four = handStrength(evaluateHand([c(1), c(3)]));
+    const gapo = handStrength(evaluateHand([c(4), c(5)]));
+
+    expect(four).toBeGreaterThan(mang + 0.15);
+    expect(gapo).toBeGreaterThan(four + 0.15);
+  });
 });
 
 describe('seotdaEngine pot', () => {

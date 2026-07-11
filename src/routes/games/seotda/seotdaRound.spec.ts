@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createNewRound, applyPlayerAction, runNpcTurns } from './seotdaRound.js';
+import { createNewRound, applyPlayerAction, runNpcTurns, showdown } from './seotdaRound.js';
 import { chooseNpcAction, NPC_PROFILES, npcRaiseChips } from './seotdaNpc.js';
 
 describe('seotdaRound smoke', () => {
@@ -49,11 +49,7 @@ describe('seotdaRound smoke', () => {
   });
 
   it('carries NPC chips into next round via npcChipMap', () => {
-    const round = createNewRound(
-      1000,
-      () => 0.5,
-      { npc_agwi: 1300, npc_goni: 800, npc_madam: 50 }
-    );
+    const round = createNewRound(1000, () => 0.5, { npc_agwi: 1300, npc_goni: 800, npc_madam: 50 });
     // ante 10 deducted
     expect(round.seats.find((s) => s.id === 'npc_agwi')?.chips).toBe(1290);
     expect(round.seats.find((s) => s.id === 'npc_goni')?.chips).toBe(790);
@@ -69,6 +65,41 @@ describe('seotdaRound smoke', () => {
       expect(beforeAnte).toBeGreaterThanOrEqual(Math.floor(userChips * 0.85));
       expect(beforeAnte).toBeLessThanOrEqual(Math.ceil(userChips * 1.15));
     }
+  });
+
+  it('pays main and side pots according to each players contribution', () => {
+    const round = createNewRound(1000, () => 0.5);
+    const [user, shortStack, sidePotWinner, loser] = round.seats;
+    user.cards = [
+      { month: 3, gwang: true },
+      { month: 8, gwang: true }
+    ];
+    shortStack.cards = [
+      { month: 2, gwang: false },
+      { month: 8, gwang: false }
+    ];
+    sidePotWinner.cards = [
+      { month: 1, gwang: false },
+      { month: 2, gwang: false }
+    ];
+    loser.cards = [
+      { month: 3, gwang: false },
+      { month: 4, gwang: false }
+    ];
+    user.contrib = 100;
+    shortStack.contrib = 300;
+    sidePotWinner.contrib = 300;
+    loser.contrib = 300;
+    user.chips = 0;
+    shortStack.chips = 0;
+    sidePotWinner.chips = 0;
+    loser.chips = 0;
+    round.pot = 1000;
+
+    showdown(round);
+
+    expect(round.seats.find((seat) => seat.id === user.id)?.chips).toBe(400);
+    expect(round.seats.find((seat) => seat.id === sidePotWinner.id)?.chips).toBe(600);
   });
 });
 

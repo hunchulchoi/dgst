@@ -5,7 +5,6 @@ import {
   evaluateHand,
   raiseAmount,
   settlePot,
-  settlePotSplit,
   shuffleDeck,
   cardLabel
 } from './seotdaEngine.js';
@@ -55,7 +54,11 @@ export function createNewRound(userChips, rng = Math.random, npcChipMap = {}) {
 
   for (const profile of NPC_PROFILES) {
     let chips;
-    if (hasSavedStacks && Number.isFinite(Number(npcChipMap[profile.id])) && Number(npcChipMap[profile.id]) > 0) {
+    if (
+      hasSavedStacks &&
+      Number.isFinite(Number(npcChipMap[profile.id])) &&
+      Number(npcChipMap[profile.id]) > 0
+    ) {
       chips = Number(npcChipMap[profile.id]);
     } else {
       chips = npcStartingChips(userChips, rng);
@@ -222,7 +225,14 @@ function applyNpcSeatAction(round, seat, rng = Math.random) {
   let action = chooseNpcAction(
     seat.cards,
     profile,
-    { toCall, chips: seat.chips, pot: round.pot, raiseSeen, forcePressure },
+    {
+      toCall,
+      chips: seat.chips,
+      pot: round.pot,
+      raiseSeen,
+      forcePressure,
+      activeOpponents: round.seats.filter((other) => other.id !== seat.id && !other.folded).length
+    },
     rng
   );
 
@@ -346,8 +356,7 @@ export function showdown(round) {
     }
   }
 
-  const settled = settlePotSplit(round.seats, round.pot, winnerIds);
-  round.seats = /** @type {typeof round.seats} */ (settled.players);
+  round.seats = settleShowdownPots(round.seats, round.pot);
   round.pot = 0;
   round.winnerIds = winnerIds;
   round.winnerId = winnerIds.length === 1 ? winnerIds[0] : null;
@@ -356,18 +365,55 @@ export function showdown(round) {
   if (winnerIds.length > 1) {
     const names = winners.map((w) => w.seat.name).join('·');
     round.log.push(
-      userFolded
-        ? `무승부 (팟 분배)`
-        : `무승부! ${names} (${bestHand.name}) — 팟 분배`
+      userFolded ? `무승부 (팟 분배)` : `무승부! ${names} (${bestHand.name}) — 팟 분배`
     );
   } else {
     round.log.push(
-      userFolded
-        ? `${winners[0].seat.name} 승리`
-        : `${winners[0].seat.name} 승리! ${bestHand.name}`
+      userFolded ? `${winners[0].seat.name} 승리` : `${winners[0].seat.name} 승리! ${bestHand.name}`
     );
   }
   refillBustNpcs(round);
+}
+
+/**
+ * 기여액 층마다 승자를 다시 계산해 메인팟과 사이드팟을 정산한다.
+ * @param {import('./seotdaState.js').SeotdaSeat[]} seats
+ * @param {number} pot
+ */
+function settleShowdownPots(seats, pot) {
+  const next = seats.map((seat) => ({ ...seat }));
+  const levels = [...new Set(next.map((seat) => seat.contrib).filter((amount) => amount > 0))].sort(
+    (a, b) => a - b
+  );
+  let previous = 0;
+  let paid = 0;
+
+  for (const level of levels) {
+    const contributors = next.filter((seat) => seat.contrib >= level);
+    const layerPot = Math.min((level - previous) * contributors.length, pot - paid);
+    const contenders = contributors.filter((seat) => !seat.folded);
+    if (layerPot <= 0 || contenders.length === 0) {
+      previous = level;
+      continue;
+    }
+
+    let best = evaluateHand(contenders[0].cards);
+    for (let i = 1; i < contenders.length; i++) {
+      const hand = evaluateHand(contenders[i].cards);
+      if (compareHands(hand, best) > 0) best = hand;
+    }
+    const winners = contenders.filter((seat) => compareHands(evaluateHand(seat.cards), best) === 0);
+    const share = Math.floor(layerPot / winners.length);
+    let remainder = layerPot - share * winners.length;
+    for (const winner of winners) {
+      winner.chips += share + (remainder > 0 ? 1 : 0);
+      if (remainder > 0) remainder -= 1;
+    }
+    paid += layerPot;
+    previous = level;
+  }
+
+  return next;
 }
 
 /**
