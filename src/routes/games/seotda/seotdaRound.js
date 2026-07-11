@@ -276,12 +276,13 @@ export function runNpcTurns(round, rng = Math.random) {
   if (round.phase !== 'betting') return;
 
   for (let guard = 0; guard < 40; guard++) {
-    finishIfNeeded(round);
+    finishIfNeeded(round, rng);
     if (round.phase !== 'betting') return;
 
     const next = nextSeatNeedingAction(round);
     if (!next) {
-      showdown(round);
+      showdown(round, rng);
+      if (round.phase === 'betting') continue;
       return;
     }
     if (!next.isNpc) {
@@ -308,7 +309,7 @@ function aliveCount(round) {
 /**
  * @param {import('./seotdaState.js').SeotdaRound} round
  */
-export function finishIfNeeded(round) {
+export function finishIfNeeded(round, rng = Math.random) {
   const alive = round.seats.filter((s) => !s.folded);
   if (alive.length === 1) {
     const winner = alive[0];
@@ -327,14 +328,14 @@ export function finishIfNeeded(round) {
   const someoneNeeds = round.seats.some((s) => !s.folded && s.needsAction && s.chips > 0);
   const matched = alive.every((s) => s.contrib >= round.currentBet || s.chips === 0);
   if (!someoneNeeds && matched && alive.length >= 2) {
-    showdown(round);
+    showdown(round, rng);
   }
 }
 
 /**
  * @param {import('./seotdaState.js').SeotdaRound} round
  */
-export function showdown(round) {
+export function showdown(round, rng = Math.random) {
   const alive = round.seats.filter((s) => !s.folded);
   if (alive.length === 0) return;
 
@@ -356,23 +357,55 @@ export function showdown(round) {
     }
   }
 
+  if (winnerIds.length > 1) {
+    restartAfterTie(round, rng);
+    return;
+  }
+
   round.seats = settleShowdownPots(round.seats, round.pot);
   round.pot = 0;
   round.winnerIds = winnerIds;
   round.winnerId = winnerIds.length === 1 ? winnerIds[0] : null;
   round.phase = 'showdown';
   round.showdown = true;
-  if (winnerIds.length > 1) {
-    const names = winners.map((w) => w.seat.name).join('·');
-    round.log.push(
-      userFolded ? `무승부 (팟 분배)` : `무승부! ${names} (${bestHand.name}) — 팟 분배`
-    );
-  } else {
-    round.log.push(
-      userFolded ? `${winners[0].seat.name} 승리` : `${winners[0].seat.name} 승리! ${bestHand.name}`
-    );
-  }
+  round.log.push(
+    userFolded ? `${winners[0].seat.name} 승리` : `${winners[0].seat.name} 승리! ${bestHand.name}`
+  );
   refillBustNpcs(round);
+}
+
+/**
+ * 팟은 유지하고 다이하지 않은 참가자에게만 새 패를 나눠준다.
+ * @param {import('./seotdaState.js').SeotdaRound} round
+ * @param {() => number} rng
+ */
+function restartAfterTie(round, rng) {
+  let deck = shuffleDeck(createDeck(), rng);
+  const active = round.seats.filter((seat) => !seat.folded);
+
+  for (const seat of round.seats) {
+    seat.contrib = 0;
+    seat.lastAction = null;
+    seat.needsAction = false;
+  }
+  for (const seat of active) {
+    seat.cards = [deck[0], deck[1]];
+    deck = deck.slice(2);
+    seat.needsAction = seat.chips > 0;
+  }
+
+  const activeProfiles = NPC_PROFILES.filter((profile) =>
+    active.some((seat) => seat.id === profile.id)
+  );
+  round.phase = 'betting';
+  round.currentBet = 0;
+  round.raiseCount = 0;
+  round.pressureNpcId = activeProfiles.length > 0 ? pickPressureNpc(activeProfiles, rng) : null;
+  round.turnIndex = round.seats.findIndex((seat) => !seat.folded && seat.needsAction);
+  round.winnerId = null;
+  round.winnerIds = [];
+  round.showdown = false;
+  round.log.push(`무승부! 생존자 ${active.length}명 팟 유지 (${round.pot}) — 재경기`);
 }
 
 /**
@@ -411,6 +444,24 @@ function settleShowdownPots(seats, pot) {
     }
     paid += layerPot;
     previous = level;
+  }
+
+  // 재경기에서 넘어온 팟은 새 베팅 기여액과 무관하게 최종 승자가 가져간다.
+  const carriedPot = pot - paid;
+  const alive = next.filter((seat) => !seat.folded);
+  if (carriedPot > 0 && alive.length > 0) {
+    let best = evaluateHand(alive[0].cards);
+    for (let i = 1; i < alive.length; i++) {
+      const hand = evaluateHand(alive[i].cards);
+      if (compareHands(hand, best) > 0) best = hand;
+    }
+    const winners = alive.filter((seat) => compareHands(evaluateHand(seat.cards), best) === 0);
+    const share = Math.floor(carriedPot / winners.length);
+    let remainder = carriedPot - share * winners.length;
+    for (const winner of winners) {
+      winner.chips += share + (remainder > 0 ? 1 : 0);
+      if (remainder > 0) remainder -= 1;
+    }
   }
 
   return next;

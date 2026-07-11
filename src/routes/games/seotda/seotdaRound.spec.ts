@@ -101,6 +101,67 @@ describe('seotdaRound smoke', () => {
     expect(round.seats.find((seat) => seat.id === user.id)?.chips).toBe(400);
     expect(round.seats.find((seat) => seat.id === sidePotWinner.id)?.chips).toBe(600);
   });
+
+  it('keeps the pot and redeals to active players on a tie', () => {
+    const round = createNewRound(1000, () => 0.5);
+    const [user, npc1, npc2, folded] = round.seats;
+    user.cards = [
+      { month: 3, gwang: false },
+      { month: 4, gwang: false }
+    ];
+    npc1.cards = [
+      { month: 9, gwang: false },
+      { month: 8, gwang: false }
+    ];
+    npc2.cards = [
+      { month: 2, gwang: false },
+      { month: 5, gwang: false }
+    ];
+    folded.folded = true;
+    const potBefore = round.pot;
+
+    showdown(round, () => 0.25);
+
+    expect(round.phase).toBe('betting');
+    expect(round.pot).toBe(potBefore);
+    expect(round.currentBet).toBe(0);
+    expect(round.winnerIds).toEqual([]);
+    expect(user.needsAction).toBe(true);
+    expect(npc1.needsAction).toBe(true);
+    expect(npc2.needsAction).toBe(true);
+    expect(folded.folded).toBe(true);
+    expect(folded.needsAction).toBe(false);
+    expect(round.log.at(-1)).toContain('재경기');
+
+    const chipsBeforeReplayBet = user.chips;
+    user.cards = [
+      { month: 3, gwang: true },
+      { month: 8, gwang: true }
+    ];
+    npc1.cards = [
+      { month: 1, gwang: false },
+      { month: 2, gwang: false }
+    ];
+    npc2.cards = [
+      { month: 2, gwang: false },
+      { month: 5, gwang: false }
+    ];
+    for (const seat of [user, npc1, npc2]) {
+      seat.contrib = 10;
+      seat.chips -= 10;
+      seat.needsAction = false;
+    }
+    round.pot += 30;
+    round.currentBet = 10;
+
+    showdown(round);
+
+    expect(round.phase).toBe('showdown');
+    expect(round.pot).toBe(0);
+    expect(round.seats.find((seat) => seat.id === user.id)?.chips).toBe(
+      chipsBeforeReplayBet - 10 + potBefore + 30
+    );
+  });
 });
 
 describe('seotdaNpc bluff', () => {
