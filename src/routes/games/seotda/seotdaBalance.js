@@ -1,9 +1,23 @@
 import { getPrisma } from '$lib/database/prisma.js';
+import { normalizeToIsoString } from '$lib/util/formatRelativeTime.js';
 import { SEOTDA_GAME } from './seotdaEngine.js';
 
 export const SEOTDA_INITIAL = 1000;
 export const SEOTDA_OOPS_TOPUP = 700;
 export const SEOTDA_OOPS_DELAY_MS = 5 * 60 * 1000;
+
+const KST_OFFSET_MINUTES = 9 * 60;
+
+/**
+ * @param {Date} [baseDate]
+ * @returns {Date}
+ */
+function getKstStartOfDay(baseDate = new Date()) {
+  const utcTime = baseDate.getTime() + baseDate.getTimezoneOffset() * 60_000;
+  const kstDate = new Date(utcTime + KST_OFFSET_MINUTES * 60_000);
+  kstDate.setHours(0, 0, 0, 0);
+  return new Date(kstDate.getTime() - KST_OFFSET_MINUTES * 60_000);
+}
 
 /**
  * @param {string} email
@@ -123,18 +137,19 @@ export async function maybeTopupAfterOops(email, nickname) {
 }
 
 /**
- * @returns {Promise<Array<{ nickname: string; balance: number; email: string }>>}
+ * @returns {Promise<Array<{ nickname: string; balance: number; email: string; updatedAt: string | null }>>}
  */
 export async function getSeotdaRank(limit = 10) {
   try {
-    /** @type {Array<{ email: string; nickname: string; balance: number }>} */
+    /** @type {Array<{ email: string; nickname: string; balance: number; createdAt: Date }>} */
     const rows = await getPrisma().$queryRaw`
-      SELECT email, nickname, balance
+      SELECT email, nickname, balance, "createdAt"
       FROM (
         SELECT
           email,
           nickname,
           balance::int AS balance,
+          created_at AS "createdAt",
           ROW_NUMBER() OVER (PARTITION BY email ORDER BY created_at DESC) AS rn
         FROM game_scores
         WHERE game = ${SEOTDA_GAME}
@@ -146,10 +161,40 @@ export async function getSeotdaRank(limit = 10) {
     return rows.map((r) => ({
       email: r.email,
       nickname: r.nickname,
-      balance: Number(r.balance)
+      balance: Number(r.balance),
+      updatedAt: normalizeToIsoString(r.createdAt)
     }));
   } catch (err) {
     console.error('[seotda getSeotdaRank]', err);
     return [];
+  }
+}
+
+/**
+ * 오늘(KST) 섯다 참여자·판수 (실제 판 bet>0)
+ * @returns {Promise<{ hands: number; users: number }>}
+ */
+export async function getTodaySeotdaStats() {
+  try {
+    const startOfKstDay = getKstStartOfDay();
+    const where = {
+      game: SEOTDA_GAME,
+      bet: { gt: 0 },
+      createdAt: { gte: startOfKstDay }
+    };
+    const [hands, distinctUsers] = await Promise.all([
+      getPrisma().gameScore.count({ where }),
+      getPrisma().gameScore.groupBy({
+        by: ['email'],
+        where
+      })
+    ]);
+    return {
+      hands,
+      users: distinctUsers.length
+    };
+  } catch (err) {
+    console.error('[seotda getTodaySeotdaStats]', err);
+    return { hands: 0, users: 0 };
   }
 }

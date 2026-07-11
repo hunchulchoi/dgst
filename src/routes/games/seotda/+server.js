@@ -4,6 +4,7 @@ import { evaluateHand } from './seotdaEngine.js';
 import {
   ensureSeotdaBalance,
   getSeotdaRank,
+  getTodaySeotdaStats,
   maybeTopupAfterOops,
   writeSeotdaScore
 } from './seotdaBalance.js';
@@ -46,7 +47,8 @@ export async function GET(event) {
         balance: SMOKE_BALANCE,
         rank: [],
         round: round ? publicOf(round) : null,
-        oopsInfo: null
+        oopsInfo: null,
+        todayStats: { hands: 0, users: 0 }
       });
     }
 
@@ -55,13 +57,14 @@ export async function GET(event) {
       const topped = await maybeTopupAfterOops(user.email, user.nickname);
       if (topped > 0) balance = topped;
     }
-    const rank = await getSeotdaRank(10);
+    const [rank, todayStats] = await Promise.all([getSeotdaRank(10), getTodaySeotdaStats()]);
     const round = getRound(user.email);
     return json({
       balance,
       rank,
       round: round ? publicOf(round) : null,
-      oopsInfo: balance === 0 ? { waiting: true } : null
+      oopsInfo: balance === 0 ? { waiting: true } : null,
+      todayStats
     });
   } catch (err) {
     if (err && typeof err === 'object' && 'status' in err) throw err;

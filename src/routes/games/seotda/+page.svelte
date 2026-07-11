@@ -1,6 +1,8 @@
 <script lang="ts">
   import { onDestroy } from 'svelte';
+  import { ko } from 'date-fns/locale';
   import type { PageData } from './$types';
+  import { formatRelativeTime } from '$lib/util/formatRelativeTime.js';
   import { ANTE, minRaisePay } from './seotdaEngine.js';
 
   interface SeotdaPageProps {
@@ -42,7 +44,12 @@
   let { data }: SeotdaPageProps = $props();
 
   let balance = $state(Number(data.balance ?? 0));
-  let rankList = $state<Array<{ nickname: string; balance: number }>>(data.rank ?? []);
+  let rankList = $state<Array<{ nickname: string; balance: number; updatedAt?: string | null }>>(
+    data.rank ?? []
+  );
+  let todayStats = $state<{ hands: number; users: number }>(
+    data.todayStats ?? { hands: 0, users: 0 }
+  );
   let round = $state<SeotdaRound | null>((data.round as SeotdaRound | null) ?? null);
   let busy = $state(false);
   let message = $state('');
@@ -93,6 +100,11 @@
   const formatNumber = (value: number | null | undefined): string => {
     if (value == null || Number.isNaN(value)) return '0';
     return Number(value).toLocaleString('ko-KR');
+  };
+
+  const formatRankAt = (value: string | null | undefined): string => {
+    if (!value) return '';
+    return formatRelativeTime(value, { locale: ko, addSuffix: true });
   };
 
   const userSeat = $derived(round?.seats.find((s) => s.id === 'user') ?? null);
@@ -294,13 +306,14 @@
       const next = (j.round as SeotdaRound | null) ?? null;
       const hitShowdown = !!(next && (next.showdown || next.phase === 'showdown'));
       applyRound(next, body.action === 'act' && hitShowdown);
-      if (body.action === 'ack' || body.action === 'start') {
-        // 랭킹만 갱신
+      if (body.action === 'ack' || body.action === 'start' || hitShowdown) {
+        // 랭킹·오늘 통계 갱신
         try {
           const r = await fetch(`/games/seotda?_=${Date.now()}`, { cache: 'no-store' });
           if (r.ok) {
             const jj = await r.json();
             rankList = jj.rank ?? rankList;
+            todayStats = jj.todayStats ?? todayStats;
             oopsInfo = jj.oopsInfo ?? null;
           }
         } catch {
@@ -638,6 +651,14 @@
     </div>
 
     <div class="col-lg-4">
+      <div class="card shadow rounded-4 border-0 mb-3">
+        <div class="card-body py-3">
+          <div class="d-flex justify-content-between small">
+            <span>오늘 참여자 <strong>{formatNumber(todayStats.users)}</strong></span>
+            <span>오늘 판수 <strong>{formatNumber(todayStats.hands)}</strong></span>
+          </div>
+        </div>
+      </div>
       <div class="card shadow rounded-4 border-0">
         <div class="card-body">
           <h5 class="mb-3">섯다 Top10</h5>
@@ -647,7 +668,12 @@
             <ol class="list-group list-group-numbered list-group-flush">
               {#each rankList as r, i (r.nickname + i)}
                 <li class="list-group-item d-flex justify-content-between align-items-center px-0">
-                  <span>{r.nickname}</span>
+                  <div>
+                    <span>{r.nickname}</span>
+                    {#if r.updatedAt}
+                      <small class="d-block text-muted">{formatRankAt(r.updatedAt)}</small>
+                    {/if}
+                  </div>
                   <span class="fw-bold font-monospace">{formatNumber(r.balance)}</span>
                 </li>
               {/each}
