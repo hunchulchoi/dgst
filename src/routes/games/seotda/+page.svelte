@@ -6,6 +6,7 @@
   import { dynamicAnte, minRaisePay } from './seotdaEngine.js';
   import { MAX_BET_ANTE_MULTIPLIER } from './seotdaRound.js';
   import HwatuCardFace from './HwatuCardFace.svelte';
+  import { HWATU_CARD_URLS } from './hwatuCardAssets';
 
   interface SeotdaPageProps {
     data: PageData;
@@ -361,6 +362,12 @@
     return post({ action: 'ack' });
   }
 </script>
+
+<svelte:head>
+  {#each HWATU_CARD_URLS as href (href)}
+    <link rel="preload" as="image" {href} />
+  {/each}
+</svelte:head>
 
 <div class="container py-3 py-md-4 seotda-page">
   <div class="row g-3">

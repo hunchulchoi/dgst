@@ -26,7 +26,10 @@ function rootRelativeSvelteKitPreloadDeps() {
       if (!entry.isFile() || !entry.name.endsWith('.js')) continue;
 
       const original = readFileSync(path, 'utf8');
-      const rewritten = original.replaceAll('"./_app/immutable/', '"/_app/immutable/');
+      const rewritten = original
+        .replaceAll('"./_app/immutable/', '"/_app/immutable/')
+        .replaceAll("'./_app/immutable/", "'/_app/immutable/")
+        .replaceAll('`./_app/immutable/', '`/_app/immutable/');
       if (rewritten !== original) {
         writeFileSync(path, rewritten);
       }

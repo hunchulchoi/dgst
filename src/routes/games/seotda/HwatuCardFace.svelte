@@ -1,17 +1,5 @@
 <script lang="ts">
-  import card01Gwang from '$lib/assets/hwatu/01-gwang.webp';
-  import card01 from '$lib/assets/hwatu/01.webp';
-  import card02 from '$lib/assets/hwatu/02.webp';
-  import card03Gwang from '$lib/assets/hwatu/03-gwang.webp';
-  import card03 from '$lib/assets/hwatu/03.webp';
-  import card04 from '$lib/assets/hwatu/04.webp';
-  import card05 from '$lib/assets/hwatu/05.webp';
-  import card06 from '$lib/assets/hwatu/06.webp';
-  import card07 from '$lib/assets/hwatu/07.webp';
-  import card08Gwang from '$lib/assets/hwatu/08-gwang.webp';
-  import card08 from '$lib/assets/hwatu/08.webp';
-  import card09 from '$lib/assets/hwatu/09.webp';
-  import card10 from '$lib/assets/hwatu/10.webp';
+  import { HWATU_CARD_IMAGES } from './hwatuCardAssets';
 
   interface Card {
     month: number;
@@ -20,28 +8,18 @@
 
   let { card }: { card: Card } = $props();
 
-  const cardImages: Record<string, string> = {
-    '01-gwang': card01Gwang,
-    '01': card01,
-    '02': card02,
-    '03-gwang': card03Gwang,
-    '03': card03,
-    '04': card04,
-    '05': card05,
-    '06': card06,
-    '07': card07,
-    '08-gwang': card08Gwang,
-    '08': card08,
-    '09': card09,
-    '10': card10
-  };
-
   const imageKey = $derived(`${String(card.month).padStart(2, '0')}${card.gwang ? '-gwang' : ''}`);
-  const imageSrc = $derived(cardImages[imageKey]);
+  const imageSrc = $derived(HWATU_CARD_IMAGES[imageKey]);
 </script>
 
 <span class="hwatu-art" class:gwang={card.gwang}>
-  <img src={imageSrc} alt={`${card.month}월${card.gwang ? ' 광' : ''} 화투패`} draggable="false" />
+  <img
+    src={imageSrc}
+    alt={`${card.month}월${card.gwang ? ' 광' : ''} 화투패`}
+    loading="eager"
+    decoding="sync"
+    draggable="false"
+  />
   <span class="card-label">{card.month}{card.gwang ? ' 광' : ''}</span>
 </span>
 
