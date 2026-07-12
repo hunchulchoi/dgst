@@ -14,6 +14,8 @@ import { NPC_PROFILES, chooseNpcAction, pickPressureNpc, npcRaiseChips } from '.
 export const NPC_START_CHIPS = 1000;
 /** 한 판 레이즈 횟수 상한 — 무한 콜/레이즈 방지 */
 export const MAX_RAISES = 3;
+/** 한 판에서 한 좌석이 낼 수 있는 총액 */
+export const MAX_BET_ANTE_MULTIPLIER = 20;
 
 /**
  * 플레이어와 비슷한 판돈 (±15% 랜덤)
@@ -189,7 +191,9 @@ export function applyPlayerAction(round, seatId, action, raisePay) {
       round.log.push(`${seat.name}: ${seat.lastAction} (레이즈 상한)`);
       markActed(round, seatId, false);
     } else {
-      const amount = raiseAmount(toCall, seat.chips, raisePay, round.antePaid);
+      const remainingLimit = Math.max(0, round.antePaid * MAX_BET_ANTE_MULTIPLIER - seat.contrib);
+      const available = Math.min(seat.chips, remainingLimit);
+      const amount = raiseAmount(toCall, available, raisePay, round.antePaid);
       const pay = Math.min(amount, seat.chips);
       seat.chips -= pay;
       seat.contrib += pay;
@@ -233,6 +237,7 @@ function applyNpcSeatAction(round, seat, rng = Math.random) {
       pot: round.pot,
       raiseSeen,
       forcePressure,
+      ante: round.antePaid,
       activeOpponents: round.seats.filter((other) => other.id !== seat.id && !other.folded).length
     },
     rng
@@ -243,7 +248,9 @@ function applyNpcSeatAction(round, seat, rng = Math.random) {
   }
 
   if (action === 'raise') {
-    const pay = npcRaiseChips(toCall, seat.chips, rng, round.antePaid);
+    const remainingLimit = Math.max(0, round.antePaid * MAX_BET_ANTE_MULTIPLIER - seat.contrib);
+    const available = Math.min(seat.chips, remainingLimit);
+    const pay = npcRaiseChips(toCall, available, rng, round.antePaid);
     seat.chips -= pay;
     seat.contrib += pay;
     round.pot += pay;

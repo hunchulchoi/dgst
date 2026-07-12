@@ -4,6 +4,8 @@
   import type { PageData } from './$types';
   import { formatRelativeTime } from '$lib/util/formatRelativeTime.js';
   import { dynamicAnte, minRaisePay } from './seotdaEngine.js';
+  import { MAX_BET_ANTE_MULTIPLIER } from './seotdaRound.js';
+  import HwatuCardFace from './HwatuCardFace.svelte';
 
   interface SeotdaPageProps {
     data: PageData;
@@ -130,7 +132,14 @@
   const toCall = $derived(userSeat ? Math.max(0, (round?.currentBet ?? 0) - userSeat.contrib) : 0);
   const roundAnte = $derived(round?.antePaid ?? dynamicAnte(balance));
   const minRaise = $derived(minRaisePay(toCall, roundAnte));
-  const maxRaise = $derived(userSeat?.chips ?? 0);
+  const maxRaise = $derived(
+    userSeat
+      ? Math.min(
+          userSeat.chips,
+          Math.max(0, roundAnte * MAX_BET_ANTE_MULTIPLIER - userSeat.contrib)
+        )
+      : 0
+  );
 
   $effect(() => {
     if (!canAct) return;
@@ -433,7 +442,9 @@
                           class:gwang={open && card.gwang}
                         >
                           <span class="hwatu-face back">?</span>
-                          <span class="hwatu-face front">{open ? cardText(card) : '?'}</span>
+                          <span class="hwatu-face front">
+                            {#if open}<HwatuCardFace {card} />{:else}?{/if}
+                          </span>
                         </span>
                       {/each}
                     </div>
@@ -472,7 +483,7 @@
                           class:gwang={openCardFlipped && card.gwang}
                         >
                           <span class="hwatu-face back">?</span>
-                          <span class="hwatu-face front open">{cardText(card)}</span>
+                          <span class="hwatu-face front open"><HwatuCardFace {card} /></span>
                         </span>
                       {:else}
                         <button
@@ -486,7 +497,7 @@
                           onclick={openPeelLayer}
                         >
                           <span class="hwatu-face back">?</span>
-                          <span class="hwatu-face front open">{cardText(card)}</span>
+                          <span class="hwatu-face front open"><HwatuCardFace {card} /></span>
                         </button>
                       {/if}
                     {/each}
@@ -538,11 +549,7 @@
                       if (peelDragging) onPeelEnd();
                     }}
                   >
-                    <div class="peel-face">
-                      <span class:gwang-text={userSeat.cards[1].gwang}
-                        >{cardText(userSeat.cards[1])}</span
-                      >
-                    </div>
+                    <div class="peel-face"><HwatuCardFace card={userSeat.cards[1]} /></div>
                     <div
                       class="peel-cover"
                       class:snapping={!peelDragging}
@@ -608,7 +615,7 @@
                   <button
                     type="button"
                     class="btn btn-sm btn-outline-secondary"
-                    onclick={() => setRaisePreset('all')}>올인</button
+                    onclick={() => setRaisePreset('all')}>최대</button
                   >
                 </div>
                 <div class="d-flex gap-2 justify-content-center flex-wrap">
@@ -742,8 +749,9 @@
 
   .hwatu-flip {
     display: inline-block;
-    width: 2.5rem;
-    height: 3.4rem;
+    width: clamp(2.75rem, 10vw, 3.5rem);
+    aspect-ratio: 5 / 7;
+    height: auto;
     margin: 0 0.15rem;
     position: relative;
     transform-style: preserve-3d;
@@ -847,9 +855,6 @@
     font-weight: 800;
     border: 2px solid #c9b896;
     border-radius: 0.75rem;
-  }
-  .peel-face .gwang-text {
-    color: #c0392b;
   }
   .peel-cover {
     position: absolute;

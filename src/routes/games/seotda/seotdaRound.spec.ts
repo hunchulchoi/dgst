@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { createNewRound, applyPlayerAction, runNpcTurns, showdown } from './seotdaRound.js';
+import {
+  MAX_BET_ANTE_MULTIPLIER,
+  createNewRound,
+  applyPlayerAction,
+  runNpcTurns,
+  showdown
+} from './seotdaRound.js';
 import { chooseNpcAction, NPC_PROFILES, npcRaiseChips } from './seotdaNpc.js';
 
 describe('seotdaRound smoke', () => {
@@ -74,6 +80,16 @@ describe('seotdaRound smoke', () => {
     expect(round.currentBet).toBe(100);
     expect(round.pot).toBe(400);
     expect(round.seats[0].chips).toBe(99_900);
+  });
+
+  it('caps a players total contribution at 20 times the ante', () => {
+    const round = createNewRound(100_000, () => 0.5, {});
+    const user = round.seats[0];
+
+    applyPlayerAction(round, 'user', 'raise', user.chips);
+
+    expect(user.contrib).toBe(round.antePaid * MAX_BET_ANTE_MULTIPLIER);
+    expect(round.currentBet).toBe(round.antePaid * MAX_BET_ANTE_MULTIPLIER);
   });
 
   it('pays main and side pots according to each players contribution', () => {
@@ -235,5 +251,28 @@ describe('seotdaNpc bluff', () => {
       if (a === 'call') calls++;
     }
     expect(calls).toBeGreaterThan(15);
+  });
+
+  it('folds a non-ddang hand against an oversized raise', () => {
+    const profile = NPC_PROFILES.find((p) => p.style === 'bluffer');
+    const ordinary = [
+      { month: 1, gwang: false },
+      { month: 2, gwang: false }
+    ];
+    const action = chooseNpcAction(
+      ordinary,
+      profile,
+      {
+        toCall: 800,
+        chips: 10_000,
+        pot: 500,
+        raiseSeen: true,
+        forcePressure: false,
+        ante: 100
+      },
+      () => 0.99
+    );
+
+    expect(action).toBe('die');
   });
 });
