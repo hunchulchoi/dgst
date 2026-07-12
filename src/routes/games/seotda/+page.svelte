@@ -3,7 +3,7 @@
   import { ko } from 'date-fns/locale';
   import type { PageData } from './$types';
   import { formatRelativeTime } from '$lib/util/formatRelativeTime.js';
-  import { ANTE, minRaisePay } from './seotdaEngine.js';
+  import { dynamicAnte, minRaisePay } from './seotdaEngine.js';
 
   interface SeotdaPageProps {
     data: PageData;
@@ -32,6 +32,7 @@
     phase: string;
     pot: number;
     currentBet: number;
+    antePaid: number;
     log: string[];
     winnerId: string | null;
     winnerIds?: string[];
@@ -61,7 +62,10 @@
   let openCardFlipped = $state(true);
   /** 두 번째 장(히든) 까봤는지 — 쇼다운 중이면 이미 연 */
   let holeRevealed = $state(
-    !!(data.round && ((data.round as SeotdaRound).showdown || (data.round as SeotdaRound).phase === 'showdown'))
+    !!(
+      data.round &&
+      ((data.round as SeotdaRound).showdown || (data.round as SeotdaRound).phase === 'showdown')
+    )
   );
   /** 패 까기 레이어 */
   let peelOpen = $state(false);
@@ -119,18 +123,13 @@
   );
   const isShowdown = $derived(!!round && (round.showdown || round.phase === 'showdown'));
   const winnerIds = $derived(
-    round?.winnerIds?.length
-      ? round.winnerIds
-      : round?.winnerId
-        ? [round.winnerId]
-        : []
+    round?.winnerIds?.length ? round.winnerIds : round?.winnerId ? [round.winnerId] : []
   );
   const isDraw = $derived(isShowdown && winnerIds.length > 1);
   const userWon = $derived(winnerIds.includes('user') && !isDraw);
-  const toCall = $derived(
-    userSeat ? Math.max(0, (round?.currentBet ?? 0) - userSeat.contrib) : 0
-  );
-  const minRaise = $derived(minRaisePay(toCall));
+  const toCall = $derived(userSeat ? Math.max(0, (round?.currentBet ?? 0) - userSeat.contrib) : 0);
+  const roundAnte = $derived(round?.antePaid ?? dynamicAnte(balance));
+  const minRaise = $derived(minRaisePay(toCall, roundAnte));
   const maxRaise = $derived(userSeat?.chips ?? 0);
 
   $effect(() => {
@@ -343,8 +342,8 @@
     const min = minRaise;
     const max = maxRaise;
     if (kind === 'min') raiseBet = Math.min(min, max);
-    else if (kind === 'plus') raiseBet = Math.min(max, raiseBet + ANTE * 2);
-    else if (kind === 'plus100') raiseBet = Math.min(max, raiseBet + 100);
+    else if (kind === 'plus') raiseBet = Math.min(max, raiseBet + roundAnte * 2);
+    else if (kind === 'plus100') raiseBet = Math.min(max, raiseBet + roundAnte * 10);
     else if (kind === 'half') raiseBet = Math.min(max, Math.max(min, Math.floor(max / 2)));
     else raiseBet = max;
   }
@@ -407,10 +406,10 @@
               <p class="mb-3">아귀 · 고니 · 정마담 이 기다림.</p>
               <button
                 class="btn btn-primary btn-lg rounded-pill px-4"
-                disabled={busy || balance < 10}
+                disabled={busy || balance < roundAnte}
                 onclick={startRound}
               >
-                판 시작 (판돈 10)
+                판 시작 (판돈 {formatNumber(roundAnte)})
               </button>
             </div>
           {:else}
@@ -555,8 +554,10 @@
                       </div>
                     </div>
                   </div>
-                  <button type="button" class="btn btn-sm btn-outline-light mt-3" onclick={closePeelLayer}
-                    >닫기</button
+                  <button
+                    type="button"
+                    class="btn btn-sm btn-outline-light mt-3"
+                    onclick={closePeelLayer}>닫기</button
                   >
                 </div>
               </div>
@@ -591,12 +592,13 @@
                   <button
                     type="button"
                     class="btn btn-sm btn-outline-secondary"
-                    onclick={() => setRaisePreset('plus')}>+{ANTE * 2}</button
+                    onclick={() => setRaisePreset('plus')}>+{formatNumber(roundAnte * 2)}</button
                   >
                   <button
                     type="button"
                     class="btn btn-sm btn-outline-secondary"
-                    onclick={() => setRaisePreset('plus100')}>+100</button
+                    onclick={() => setRaisePreset('plus100')}
+                    >+{formatNumber(roundAnte * 10)}</button
                   >
                   <button
                     type="button"
@@ -610,10 +612,16 @@
                   >
                 </div>
                 <div class="d-flex gap-2 justify-content-center flex-wrap">
-                  <button class="btn btn-outline-secondary" disabled={busy} onclick={() => act('die')}
-                    >다이</button
+                  <button
+                    class="btn btn-outline-secondary"
+                    disabled={busy}
+                    onclick={() => act('die')}>다이</button
                   >
-                  <button class="btn btn-outline-primary" disabled={busy} onclick={() => act('call')}>
+                  <button
+                    class="btn btn-outline-primary"
+                    disabled={busy}
+                    onclick={() => act('call')}
+                  >
                     {toCall === 0 ? '체크' : `콜 (${formatNumber(toCall)})`}
                   </button>
                   <button
@@ -640,7 +648,10 @@
               </div>
             {/if}
 
-            <div class="log small seotda-log rounded-3 border p-2" style="max-height: 140px; overflow: auto;">
+            <div
+              class="log small seotda-log rounded-3 border p-2"
+              style="max-height: 140px; overflow: auto;"
+            >
               {#each round.log as line, i (i)}
                 <div>{line}</div>
               {/each}

@@ -3,6 +3,7 @@ import {
   ANTE,
   compareHands,
   createDeck,
+  dynamicAnte,
   evaluateHand,
   handStrength,
   minRaisePay,
@@ -104,11 +105,20 @@ describe('seotdaEngine pot', () => {
     expect(ANTE).toBe(10);
   });
 
+  it('scales ante with bankroll while keeping the starting game unchanged', () => {
+    expect(dynamicAnte(1000)).toBe(10);
+    expect(dynamicAnte(10_000)).toBe(10);
+    expect(dynamicAnte(100_000)).toBe(100);
+    expect(dynamicAnte(6_451_000_000)).toBe(6_451_000);
+  });
+
   it('raiseAmount respects requested size with min clamp', () => {
     expect(minRaisePay(10)).toBe(20);
     expect(raiseAmount(10, 500, 50)).toBe(50);
     expect(raiseAmount(10, 500, 5)).toBe(20); // below min → min
     expect(raiseAmount(10, 30, 100)).toBe(30); // all-in cap
+    expect(minRaisePay(100, 100)).toBe(200);
+    expect(raiseAmount(100, 1000, 50, 100)).toBe(200);
   });
 
   it('settlePot pays winner the pot and zeros pot', () => {

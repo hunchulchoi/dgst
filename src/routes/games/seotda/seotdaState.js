@@ -104,6 +104,7 @@ export function toPublicState(round, userSeatId = 'user', evalHand) {
     phase: round.phase,
     pot: round.pot,
     currentBet: round.currentBet,
+    antePaid: round.antePaid,
     turnIndex: round.turnIndex,
     log: round.log.slice(-12),
     winnerId: round.winnerId,
@@ -132,9 +133,7 @@ export function toPublicState(round, userSeatId = 'user', evalHand) {
         contrib: s.contrib,
         lastAction: s.lastAction,
         needsAction: !!s.needsAction,
-        cards: reveal
-          ? s.cards
-          : s.cards.map(() => ({ month: 0, gwang: false, hidden: true })),
+        cards: reveal ? s.cards : s.cards.map(() => ({ month: 0, gwang: false, hidden: true })),
         handName
       };
     })

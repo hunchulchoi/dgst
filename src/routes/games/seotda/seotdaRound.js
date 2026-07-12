@@ -2,6 +2,7 @@ import {
   ANTE,
   compareHands,
   createDeck,
+  dynamicAnte,
   evaluateHand,
   raiseAmount,
   settlePot,
@@ -32,6 +33,7 @@ export function npcStartingChips(userChips, rng = Math.random) {
  * @param {Record<string, number>} [npcChipMap] 이전 판 NPC 잔고
  */
 export function createNewRound(userChips, rng = Math.random, npcChipMap = {}) {
+  const ante = dynamicAnte(userChips);
   let deck = shuffleDeck(createDeck(), rng);
   /** @type {import('./seotdaState.js').SeotdaSeat[]} */
   const seats = [
@@ -81,19 +83,19 @@ export function createNewRound(userChips, rng = Math.random, npcChipMap = {}) {
 
   let pot = 0;
   for (const s of seats) {
-    const pay = Math.min(ANTE, s.chips);
+    const pay = Math.min(ante, s.chips);
     s.chips -= pay;
     s.contrib += pay;
     pot += pay;
   }
-  log.push(`판돈 ${ANTE}씩 (팟 ${pot})`);
+  log.push(`판돈 ${ante}씩 (팟 ${pot})`);
 
   const pressureNpcId = pickPressureNpc(NPC_PROFILES, rng);
 
   return {
     phase: /** @type {'betting'} */ ('betting'),
     pot,
-    currentBet: ANTE,
+    currentBet: ante,
     seats,
     turnIndex: 0,
     pressureNpcId,
@@ -101,7 +103,7 @@ export function createNewRound(userChips, rng = Math.random, npcChipMap = {}) {
     log,
     winnerId: null,
     showdown: false,
-    antePaid: ANTE
+    antePaid: ante
   };
 }
 
@@ -187,7 +189,7 @@ export function applyPlayerAction(round, seatId, action, raisePay) {
       round.log.push(`${seat.name}: ${seat.lastAction} (레이즈 상한)`);
       markActed(round, seatId, false);
     } else {
-      const amount = raiseAmount(toCall, seat.chips, raisePay);
+      const amount = raiseAmount(toCall, seat.chips, raisePay, round.antePaid);
       const pay = Math.min(amount, seat.chips);
       seat.chips -= pay;
       seat.contrib += pay;
@@ -241,7 +243,7 @@ function applyNpcSeatAction(round, seat, rng = Math.random) {
   }
 
   if (action === 'raise') {
-    const pay = npcRaiseChips(toCall, seat.chips, rng);
+    const pay = npcRaiseChips(toCall, seat.chips, rng, round.antePaid);
     seat.chips -= pay;
     seat.contrib += pay;
     round.pot += pay;

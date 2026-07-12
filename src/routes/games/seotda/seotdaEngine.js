@@ -4,6 +4,15 @@ export const ANTE = 10;
 export const SEOTDA_GAME = 'seotda';
 
 /**
+ * 보유액의 0.1%, 최소 10
+ * @param {number} chips
+ */
+export function dynamicAnte(chips) {
+  const balance = Math.max(0, Math.floor(Number(chips) || 0));
+  return Math.max(ANTE, Math.floor(balance / 1000));
+}
+
+/**
  * @typedef {{ month: number; gwang: boolean }} SeotdaCard
  * @typedef {{ tier: number; sub: number; name: string; cards: SeotdaCard[] }} SeotdaHand
  * @typedef {{ id: string; chips: number; folded: boolean; contrib: number }} SeotdaPlayerPot
@@ -200,11 +209,12 @@ export function settlePotSplit(players, pot, winnerIds) {
 /**
  * 레이즈 최소 지불액 (이번 액션에 넣는 칩)
  * @param {number} toCall
+ * @param {number} [ante]
  * @returns {number}
  */
-export function minRaisePay(toCall) {
-  if (toCall <= 0) return ANTE * 2;
-  return toCall + Math.max(ANTE, toCall);
+export function minRaisePay(toCall, ante = ANTE) {
+  if (toCall <= 0) return ante * 2;
+  return toCall + Math.max(ante, toCall);
 }
 
 /**
@@ -212,10 +222,11 @@ export function minRaisePay(toCall) {
  * @param {number} toCall
  * @param {number} chips
  * @param {number} [requested]
+ * @param {number} [ante]
  * @returns {number}
  */
-export function raiseAmount(toCall, chips, requested) {
-  const minPay = minRaisePay(toCall);
+export function raiseAmount(toCall, chips, requested, ante = ANTE) {
+  const minPay = minRaisePay(toCall, ante);
   const want =
     requested != null && Number.isFinite(requested) && requested > 0 ? Number(requested) : minPay;
   return Math.min(chips, Math.max(minPay, want));

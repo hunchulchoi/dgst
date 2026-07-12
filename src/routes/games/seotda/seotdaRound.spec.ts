@@ -67,6 +67,15 @@ describe('seotdaRound smoke', () => {
     }
   });
 
+  it('charges a bankroll-scaled ante at high balances', () => {
+    const round = createNewRound(100_000, () => 0.5, {});
+
+    expect(round.antePaid).toBe(100);
+    expect(round.currentBet).toBe(100);
+    expect(round.pot).toBe(400);
+    expect(round.seats[0].chips).toBe(99_900);
+  });
+
   it('pays main and side pots according to each players contribution', () => {
     const round = createNewRound(1000, () => 0.5);
     const [user, shortStack, sidePotWinner, loser] = round.seats;

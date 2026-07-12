@@ -133,19 +133,20 @@ export function pickPressureNpc(profiles, rng = Math.random) {
  * @param {number} toCall
  * @param {number} chips
  * @param {() => number} [rng]
+ * @param {number} [ante]
  */
-export function npcRaiseChips(toCall, chips, rng = Math.random) {
-  const minPay = minRaisePay(toCall);
+export function npcRaiseChips(toCall, chips, rng = Math.random, ante = ANTE) {
+  const minPay = minRaisePay(toCall, ante);
   if (chips <= minPay) return Math.min(chips, Math.max(toCall, minPay));
 
   const roll = rng();
   let target;
   if (roll < 0.3) target = minPay;
-  else if (roll < 0.5) target = minPay + ANTE * (1 + Math.floor(rng() * 3));
+  else if (roll < 0.5) target = minPay + ante * (1 + Math.floor(rng() * 3));
   else if (roll < 0.68) target = Math.floor(chips * (0.15 + rng() * 0.15));
   else if (roll < 0.82) target = Math.floor(chips * (0.3 + rng() * 0.2));
   else if (roll < 0.93) target = Math.floor(chips * 0.5);
   else target = chips;
 
-  return raiseAmount(toCall, chips, target);
+  return raiseAmount(toCall, chips, target, ante);
 }
