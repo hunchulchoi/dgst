@@ -974,7 +974,7 @@
     </div>
     {#if rankList.length}
       <ol>
-        {#each rankList as item}
+        {#each rankList as item (item._id ?? `${item.nickname}:${item.score}:${item.createdAt ?? ''}`)}
           <li>
             <span>{item.nickname}</span>
             <span class="rank-meta">
