@@ -527,37 +527,48 @@
                 }}
               >
                 <div class="peel-sheet">
-                  <p class="peel-guide mb-3">아래로 쓸어서 패 까기</p>
-                  <!-- svelte-ignore a11y_no_static_element_interactions -->
-                  <div
-                    class="peel-card"
-                    ontouchstart={(e) => {
-                      e.preventDefault();
-                      onPeelStart(e.touches[0].clientY);
-                    }}
-                    ontouchmove={(e) => {
-                      e.preventDefault();
-                      onPeelMove(e.touches[0].clientY);
-                    }}
-                    ontouchend={() => onPeelEnd()}
-                    onmousedown={(e) => onPeelStart(e.clientY)}
-                    onmousemove={(e) => {
-                      if (peelDragging) onPeelMove(e.clientY);
-                    }}
-                    onmouseup={() => onPeelEnd()}
-                    onmouseleave={() => {
-                      if (peelDragging) onPeelEnd();
-                    }}
-                  >
-                    <div class="peel-face"><HwatuCardFace card={userSeat.cards[1]} /></div>
-                    <div
-                      class="peel-cover"
-                      class:snapping={!peelDragging}
-                      style="transform: translateY({peelPull * PEEL_MAX_PX}px)"
-                    >
-                      <div class="peel-cover-inner">
-                        <span class="peel-q">?</span>
-                        <span class="peel-drag-hint">↓ 쓸기</span>
+                  <p class="peel-guide mb-3">두 번째 패를 아래로 쓸어서 확인</p>
+                  <div class="peel-hand">
+                    <div class="peel-card-wrap">
+                      <span class="peel-card-label">첫 패</span>
+                      <div class="peel-card revealed">
+                        <div class="peel-face"><HwatuCardFace card={userSeat.cards[0]} /></div>
+                      </div>
+                    </div>
+                    <div class="peel-card-wrap">
+                      <span class="peel-card-label">두 번째 패</span>
+                      <!-- svelte-ignore a11y_no_static_element_interactions -->
+                      <div
+                        class="peel-card"
+                        ontouchstart={(e) => {
+                          e.preventDefault();
+                          onPeelStart(e.touches[0].clientY);
+                        }}
+                        ontouchmove={(e) => {
+                          e.preventDefault();
+                          onPeelMove(e.touches[0].clientY);
+                        }}
+                        ontouchend={() => onPeelEnd()}
+                        onmousedown={(e) => onPeelStart(e.clientY)}
+                        onmousemove={(e) => {
+                          if (peelDragging) onPeelMove(e.clientY);
+                        }}
+                        onmouseup={() => onPeelEnd()}
+                        onmouseleave={() => {
+                          if (peelDragging) onPeelEnd();
+                        }}
+                      >
+                        <div class="peel-face"><HwatuCardFace card={userSeat.cards[1]} /></div>
+                        <div
+                          class="peel-cover"
+                          class:snapping={!peelDragging}
+                          style="transform: translateY({peelPull * PEEL_MAX_PX}px)"
+                        >
+                          <div class="peel-cover-inner">
+                            <span class="peel-q">?</span>
+                            <span class="peel-drag-hint">↓ 쓸기</span>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -831,10 +842,26 @@
     font-size: 0.95rem;
     opacity: 0.9;
   }
+  .peel-hand {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    gap: clamp(0.5rem, 3vw, 1.25rem);
+  }
+  .peel-card-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+  .peel-card-label {
+    font-size: 0.8rem;
+    font-weight: 700;
+    opacity: 0.85;
+  }
   .peel-card {
     position: relative;
-    width: min(56vw, 180px);
-    height: min(78vw, 250px);
+    width: min(42vw, 180px);
+    aspect-ratio: 5 / 7;
     margin: 0 auto;
     border-radius: 0.75rem;
     overflow: hidden;
@@ -842,6 +869,9 @@
     user-select: none;
     touch-action: none;
     cursor: grab;
+  }
+  .peel-card.revealed {
+    cursor: default;
   }
   .peel-face {
     position: absolute;

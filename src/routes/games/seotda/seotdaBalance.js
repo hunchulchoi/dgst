@@ -137,31 +137,41 @@ export async function maybeTopupAfterOops(email, nickname) {
 }
 
 /**
- * 다른 유저 최신 잔고 중 최대
- * @param {string} excludeEmail
- * @returns {Promise<number>}
+ * 현재 섯다 1등. 동점이면 가장 최근에 해당 잔고를 기록한 사용자를 우선한다.
+ * @returns {Promise<{ email: string; balance: number } | null>}
  */
-export async function getSeotdaMaxOtherBalance(excludeEmail) {
+export async function getSeotdaCurrentLeader() {
   try {
-    /** @type {Array<{ balance: number }>} */
+    /** @type {Array<{ email: string; balance: number; createdAt: Date }>} */
     const rows = await getPrisma().$queryRaw`
-      SELECT COALESCE(MAX(balance), 0)::int AS balance
+      SELECT email, balance, "createdAt"
       FROM (
         SELECT
           email,
-          balance::int AS balance,
+          balance,
+          created_at AS "createdAt",
           ROW_NUMBER() OVER (PARTITION BY email ORDER BY created_at DESC) AS rn
         FROM game_scores
         WHERE game = ${SEOTDA_GAME}
-          AND email <> ${excludeEmail}
       ) t
       WHERE rn = 1 AND balance > 0
+      ORDER BY balance DESC, "createdAt" DESC
+      LIMIT 1
     `;
-    return Number(rows[0]?.balance ?? 0);
+    return rows[0] ? { email: rows[0].email, balance: Number(rows[0].balance) } : null;
   } catch (err) {
-    console.error('[seotda getSeotdaMaxOtherBalance]', err);
-    return 0;
+    console.error('[seotda getSeotdaCurrentLeader]', err);
+    return null;
   }
+}
+
+/**
+ * @param {{ email: string; balance: number } | null} leaderBefore
+ * @param {string} userEmail
+ * @param {number} balanceAfter
+ */
+export function didSeotdaTakeLead(leaderBefore, userEmail, balanceAfter) {
+  return !!leaderBefore && leaderBefore.email !== userEmail && balanceAfter > leaderBefore.balance;
 }
 
 /**
@@ -176,7 +186,7 @@ export async function getSeotdaRank(limit = 10) {
         SELECT
           email,
           nickname,
-          balance::int AS balance,
+          balance,
           created_at AS "createdAt",
           ROW_NUMBER() OVER (PARTITION BY email ORDER BY created_at DESC) AS rn
         FROM game_scores

@@ -3,13 +3,22 @@ import { getGameSession, isLocalGameSmokeSession } from '$lib/server/localGameSm
 import { evaluateHand } from './seotdaEngine.js';
 import {
   ensureSeotdaBalance,
-  getSeotdaMaxOtherBalance,
+  didSeotdaTakeLead,
+  getSeotdaCurrentLeader,
   getSeotdaRank,
   getTodaySeotdaStats,
   maybeTopupAfterOops,
   writeSeotdaScore
 } from './seotdaBalance.js';
-import { clearRound, getRound, setRound, toPublicState, getNpcStacks, saveNpcStacks, resetNpcStacks } from './seotdaState.js';
+import {
+  clearRound,
+  getRound,
+  setRound,
+  toPublicState,
+  getNpcStacks,
+  saveNpcStacks,
+  resetNpcStacks
+} from './seotdaState.js';
 import { applyPlayerAction, createNewRound, runNpcTurns, userChipResult } from './seotdaRound.js';
 
 const SMOKE_BALANCE = 1000;
@@ -30,7 +39,11 @@ function publicOf(round) {
 async function requireUser(event) {
   const session = await getGameSession(event);
   if (isLocalGameSmokeSession(session)) {
-    return { email: session.user.email, nickname: session.user.nickname || '로컬스모크', smoke: true };
+    return {
+      email: session.user.email,
+      nickname: session.user.nickname || '로컬스모크',
+      smoke: true
+    };
   }
   const email = session?.user?.email;
   if (!email) throw error(401, { message: '로그인이 필요합니다.' });
@@ -119,15 +132,11 @@ export async function POST(event) {
       if (round.phase === 'showdown') {
         const before = chipsBeforeMap.get(user.email) ?? round.seats[0].chips;
         const result = userChipResult(before, round);
-        const maxOther = await getSeotdaMaxOtherBalance(user.email);
-        // 이번 판으로 1등 탈환 (직전엔 1등 아니었음)
-        const tookLead = result.after > maxOther && before <= maxOther;
+        const leaderBefore = await getSeotdaCurrentLeader();
+        // 다른 사용자가 보유하던 1위를 이번 판으로 추월한 경우만 축하한다.
+        const tookLead = didSeotdaTakeLead(leaderBefore, user.email, result.after);
         const outcome =
-          (round.winnerIds?.length ?? 0) > 1
-            ? 'draw'
-            : round.winnerId === 'user'
-              ? 'win'
-              : 'lose';
+          (round.winnerIds?.length ?? 0) > 1 ? 'draw' : round.winnerId === 'user' ? 'win' : 'lose';
         await writeSeotdaScore(user.email, user.nickname, result.after, {
           bet: result.bet,
           payout: result.payout,
