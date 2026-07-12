@@ -21,23 +21,18 @@
     RAIL_RESTITUTION,
     RAIL_THICKNESS,
     RAIL_SURFACE_FRICTION,
-    RAIL_CONTACT_SPIN_DAMPING,
     MAX_ROLL_DURATION_MS,
     STOP_SPEED,
     TABLE_HEIGHT,
     TABLE_WIDTH,
     containBallInTable,
     computeBreathingAimAngle,
-    computeBallCollisionEnergyScale,
     computeDynamicSpinCurveScale,
     computeDynamicSpinDecay,
-    computeBackspinContactPullScale,
     computeMasseCurveMultiplier,
     computeVerticalSpinFromTrack,
     computeVerticalSpinVelocityScale,
     computeDynamicVelocityScale,
-    computeRailContactVelocityScale,
-    computeRailEnergyScale,
     computePocketClearBonus,
     computePocketShotScore,
     computeShotVelocity,
@@ -286,7 +281,9 @@
   }
 
   function getTrackedBalls(): BallBody[] {
-    return cueBall ? [cueBall, ...redBalls] : [];
+    // A scratched cue ball stays referenced so it can be spotted after the shot,
+    // but must not be drawn or clamped back onto the table while it is pocketed.
+    return [...(cueBall && !cuePocketedThisShot ? [cueBall] : []), ...redBalls];
   }
 
   function settleShot() {
@@ -363,96 +360,6 @@
     const target = cue === bodyA ? bodyB : bodyA;
     if (!cue || target.billiardsRole !== 'red' || !target.billiardsId) return;
     contacts = [...contacts, { cueRole: 'red', targetId: target.billiardsId }];
-  }
-
-  function getBallBody(body: Matter.Body) {
-    const ball = body as BallBody;
-    return ball.billiardsRole ? ball : null;
-  }
-
-  function getRailBody(body: Matter.Body) {
-    const rail = body as RailBody;
-    return rail.billiardsRail ? rail : null;
-  }
-
-  function applyVelocityScale(ball: BallBody, scale: number) {
-    Body.setVelocity(ball, {
-      x: ball.velocity.x * scale,
-      y: ball.velocity.y * scale
-    });
-  }
-
-  function applyRailCollisionEnergyLoss(bodyA: Matter.Body, bodyB: Matter.Body) {
-    const ball = getBallBody(bodyA) ?? getBallBody(bodyB);
-    const rail = getRailBody(bodyA) ?? getRailBody(bodyB);
-    if (!ball || !rail) return;
-    const speed = Math.hypot(ball.velocity.x, ball.velocity.y);
-    applyVelocityScale(ball, computeRailEnergyScale(speed));
-    Body.setAngularVelocity(ball, ball.angularVelocity * RAIL_CONTACT_SPIN_DAMPING);
-    if (ball === cueBall) {
-      activeSpin *= RAIL_CONTACT_SPIN_DAMPING;
-      activeVerticalSpin *= RAIL_CONTACT_SPIN_DAMPING;
-    }
-  }
-
-  function applyRailContactDrag(bodyA: Matter.Body, bodyB: Matter.Body) {
-    const ball = getBallBody(bodyA) ?? getBallBody(bodyB);
-    const rail = getRailBody(bodyA) ?? getRailBody(bodyB);
-    if (!ball || !rail) return;
-    const speed = Math.hypot(ball.velocity.x, ball.velocity.y);
-    const scale = computeRailContactVelocityScale(speed);
-    if (scale === 0) {
-      Body.setVelocity(ball, { x: 0, y: 0 });
-      Body.setAngularVelocity(ball, 0);
-      if (ball === cueBall) {
-        activeSpin = 0;
-        activeVerticalSpin = 0;
-      }
-      return;
-    }
-    applyVelocityScale(ball, scale);
-    Body.setAngularVelocity(ball, ball.angularVelocity * RAIL_CONTACT_SPIN_DAMPING);
-    if (ball === cueBall) {
-      activeSpin *= RAIL_CONTACT_SPIN_DAMPING;
-      activeVerticalSpin *= RAIL_CONTACT_SPIN_DAMPING;
-    }
-  }
-
-  function applyBallCollisionEnergyLoss(bodyA: Matter.Body, bodyB: Matter.Body) {
-    const ballA = getBallBody(bodyA);
-    const ballB = getBallBody(bodyB);
-    if (!ballA || !ballB) return;
-    const relativeVelocity = {
-      x: ballA.velocity.x - ballB.velocity.x,
-      y: ballA.velocity.y - ballB.velocity.y
-    };
-    const relativeSpeed = Math.hypot(relativeVelocity.x, relativeVelocity.y);
-    if (relativeSpeed <= STOP_SPEED) return;
-    const normal = {
-      x: ballA.position.x - ballB.position.x,
-      y: ballA.position.y - ballB.position.y
-    };
-    const normalLength = Math.max(1, Math.hypot(normal.x, normal.y));
-    const headOnRatio = Math.abs(
-      (relativeVelocity.x * normal.x + relativeVelocity.y * normal.y) /
-        (relativeSpeed * normalLength)
-    );
-    const scale = computeBallCollisionEnergyScale(relativeSpeed, headOnRatio);
-    applyVelocityScale(ballA, scale);
-    applyVelocityScale(ballB, scale);
-
-    const cue = ballA === cueBall ? ballA : ballB === cueBall ? ballB : null;
-    if (cue && activeVerticalSpin < 0) {
-      const cueSpeed = Math.hypot(cue.velocity.x, cue.velocity.y);
-      if (cueSpeed > STOP_SPEED) {
-        const pull = computeBackspinContactPullScale(activeVerticalSpin);
-        Body.setVelocity(cue, {
-          x: cue.velocity.x * (1 - pull),
-          y: cue.velocity.y * (1 - pull)
-        });
-        activeVerticalSpin *= 0.55;
-      }
-    }
   }
 
   function getCanvasPoint(event: PointerEvent) {
@@ -769,7 +676,10 @@
         ball === cueBall && activeVerticalSpin !== 0
           ? computeVerticalSpinVelocityScale(speed, delta, activeVerticalSpin)
           : computeDynamicVelocityScale(speed, delta);
-      applyVelocityScale(ball, velocityScale);
+      Body.setVelocity(ball, {
+        x: ball.velocity.x * velocityScale,
+        y: ball.velocity.y * velocityScale
+      });
 
       if (ball === cueBall && activeVerticalSpin !== 0) {
         activeVerticalSpin *= computeDynamicSpinDecay(speed);
@@ -874,16 +784,10 @@
     const handleCollisionStart = (event: Matter.IEventCollision<Matter.Engine>) => {
       for (const pair of event.pairs) {
         recordCueContact(pair.bodyA as BallBody, pair.bodyB as BallBody);
-        applyRailCollisionEnergyLoss(pair.bodyA, pair.bodyB);
-        applyBallCollisionEnergyLoss(pair.bodyA, pair.bodyB);
       }
-    };
-    const handleCollisionActive = (event: Matter.IEventCollision<Matter.Engine>) => {
-      for (const pair of event.pairs) applyRailContactDrag(pair.bodyA, pair.bodyB);
     };
 
     Events.on(engine, 'collisionStart', handleCollisionStart);
-    Events.on(engine, 'collisionActive', handleCollisionActive);
 
     void loadRank();
     frameId = requestAnimationFrame(tick);
@@ -892,7 +796,6 @@
       if (frameId) cancelAnimationFrame(frameId);
       if (engine) {
         Events.off(engine, 'collisionStart', handleCollisionStart);
-        Events.off(engine, 'collisionActive', handleCollisionActive);
         Composite.clear(engine.world, false);
         Engine.clear(engine);
       }
