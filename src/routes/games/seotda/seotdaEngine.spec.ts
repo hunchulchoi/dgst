@@ -105,11 +105,14 @@ describe('seotdaEngine pot', () => {
     expect(ANTE).toBe(10);
   });
 
-  it('scales ante with bankroll while keeping the starting game unchanged', () => {
+  it('scales ante progressively with bankroll while keeping the starting game unchanged', () => {
     expect(dynamicAnte(1000)).toBe(10);
     expect(dynamicAnte(10_000)).toBe(10);
     expect(dynamicAnte(100_000)).toBe(100);
-    expect(dynamicAnte(6_451_000_000)).toBe(6_451_000);
+    expect(dynamicAnte(500_000)).toBe(1_300);
+    expect(dynamicAnte(1_000_000)).toBe(2_800);
+    expect(dynamicAnte(10_000_000)).toBe(47_800);
+    expect(dynamicAnte(6_451_000_000)).toBe(32_252_800);
   });
 
   it('raiseAmount respects requested size with min clamp', () => {

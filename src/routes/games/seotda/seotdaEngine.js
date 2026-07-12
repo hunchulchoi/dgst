@@ -4,12 +4,15 @@ export const ANTE = 10;
 export const SEOTDA_GAME = 'seotda';
 
 /**
- * 보유액의 0.1%, 최소 10
+ * 누진 참가비: 10만까지 0.1%, 100만까지 초과분 0.3%, 이후 초과분 0.5%
  * @param {number} chips
  */
 export function dynamicAnte(chips) {
   const balance = Math.max(0, Math.floor(Number(chips) || 0));
-  return Math.max(ANTE, Math.floor(balance / 1000));
+  const firstTier = Math.min(balance, 100_000) * 0.001;
+  const secondTier = Math.min(Math.max(balance - 100_000, 0), 900_000) * 0.003;
+  const topTier = Math.max(balance - 1_000_000, 0) * 0.005;
+  return Math.max(ANTE, Math.floor(firstTier + secondTier + topTier));
 }
 
 /**
