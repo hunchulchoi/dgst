@@ -275,4 +275,27 @@ describe('seotdaNpc bluff', () => {
 
     expect(action).toBe('die');
   });
+
+  it('lets the designated bluff catcher call an oversized raise', () => {
+    const profile = NPC_PROFILES.find((p) => p.style === 'bluffer');
+    const ordinary = [
+      { month: 1, gwang: false },
+      { month: 2, gwang: false }
+    ];
+    const action = chooseNpcAction(
+      ordinary,
+      profile,
+      {
+        toCall: 800,
+        chips: 10_000,
+        pot: 500,
+        raiseSeen: true,
+        bluffCatcher: true,
+        ante: 100
+      },
+      () => 0.3
+    );
+
+    expect(action).toBe('call');
+  });
 });

@@ -237,6 +237,7 @@ function applyNpcSeatAction(round, seat, rng = Math.random) {
       pot: round.pot,
       raiseSeen,
       forcePressure,
+      bluffCatcher: seat.id === round.pressureNpcId && raiseSeen,
       ante: round.antePaid,
       activeOpponents: round.seats.filter((other) => other.id !== seat.id && !other.folded).length
     },

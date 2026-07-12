@@ -15,14 +15,14 @@ export const NPC_PROFILES = [
 /**
  * @param {import('./seotdaEngine.js').SeotdaCard[]} cards
  * @param {NpcProfile} profile
- * @param {{ toCall: number; chips: number; pot: number; raiseSeen: boolean; forcePressure?: boolean; activeOpponents?: number; ante?: number }} ctx
+ * @param {{ toCall: number; chips: number; pot: number; raiseSeen: boolean; forcePressure?: boolean; bluffCatcher?: boolean; activeOpponents?: number; ante?: number }} ctx
  * @param {() => number} [rng]
  * @returns {SeotdaAction}
  */
 export function chooseNpcAction(cards, profile, ctx, rng = Math.random) {
   const hand = evaluateHand(cards);
   const headsUpStrength = handStrength(hand);
-  const { toCall, chips, pot, raiseSeen, forcePressure } = ctx;
+  const { toCall, chips, pot, raiseSeen, forcePressure, bluffCatcher } = ctx;
   const ante = Math.max(ANTE, Number(ctx.ante ?? ANTE));
   const activeOpponents = Math.max(1, Number(ctx.activeOpponents ?? 1));
   const strength = Math.pow(headsUpStrength, activeOpponents);
@@ -33,9 +33,12 @@ export function chooseNpcAction(cards, profile, ctx, rng = Math.random) {
   const commitRatio = toCall > 0 ? toCall / Math.max(chips, 1) : 0;
   const potOdds = toCall > 0 ? toCall / Math.max(1, pot + toCall) : 0;
 
-  // 평소 판돈의 8배 이상 압박은 강한 패의 신호로 본다.
+  // 큰 베팅에도 한 명은 블러프 캐처 역할을 맡고, 나머지도 성향에 따라 일부 콜한다.
   if (raiseSeen && toCall >= ante * 8 && hand.tier < 80) {
-    return rng() < 0.02 && canFullCall ? 'call' : 'die';
+    const catchChance = bluffCatcher
+      ? Math.min(0.75, 0.45 + headsUpStrength * 0.3)
+      : Math.min(0.32, 0.05 + headsUpStrength * 0.22 + profile.bluff * 0.08);
+    return rng() < catchChance && canFullCall ? 'call' : 'die';
   }
 
   // 콜 가격보다 승산이 크게 낮으면 대부분 포기한다. 성향에 따라 가끔만 따라간다.
