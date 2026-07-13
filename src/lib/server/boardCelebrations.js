@@ -4,6 +4,10 @@ import { getBreakoutStage50Celebration } from '$lib/server/breakoutCelebration.j
 
 /** 폭죽 유지 시간 (1등 교체·50클리어 공통) */
 export const BOARD_CELEBRATION_MS = 12 * 60 * 60 * 1000;
+/** @type {Record<string, string>} */
+const FORCED_CELEBRATION_IDS = {
+  'sudoku:hard': '2026-07-13-hard-rank1-replay'
+};
 
 /**
  * @typedef {{
@@ -129,8 +133,11 @@ async function rank1FromScoreTable(table, game, label) {
   };
 }
 
-/** 지뢰찾기 — 모드 중 가장 최근 1등 기록 */
-async function rank1Minesweeper() {
+/**
+ * 지뢰찾기 — 모드별 최근 1등 기록
+ * @returns {Promise<BoardCelebration[]>}
+ */
+export async function rank1Minesweeper() {
   /** @type {Array<{ nickname: string; time: number; mode: string; createdAt: Date }>} */
   const rows = await getPrisma().$queryRaw`
     SELECT nickname, time, mode, created_at AS "createdAt"
@@ -151,24 +158,24 @@ async function rank1Minesweeper() {
   for (const r of rows) {
     if (!modeTop.has(r.mode)) modeTop.set(r.mode, r);
   }
-  let best = null;
+  /** @type {BoardCelebration[]} */
+  const celebrations = [];
   for (const r of modeTop.values()) {
     if (!withinWindow(r.createdAt)) continue;
-    if (!best || new Date(r.createdAt) > new Date(best.createdAt)) best = r;
+    const at = normalizeToIsoString(r.createdAt);
+    if (!at) continue;
+    celebrations.push({
+      id: `rank1:minesweeper:${r.mode}:${at}`,
+      kind: 'rank1',
+      game: 'minesweeper',
+      label: '지뢰찾기 1등',
+      nickname: r.nickname || 'anonymous',
+      detail: `${r.mode} · ${Number(r.time)}초`,
+      at,
+      until: untilIso(r.createdAt)
+    });
   }
-  if (!best) return null;
-  const at = normalizeToIsoString(best.createdAt);
-  if (!at) return null;
-  return {
-    id: `rank1:minesweeper:${best.mode}:${at}`,
-    kind: 'rank1',
-    game: 'minesweeper',
-    label: '지뢰찾기 1등',
-    nickname: best.nickname || 'anonymous',
-    detail: `${best.mode} · ${Number(best.time)}초`,
-    at,
-    until: untilIso(best.createdAt)
-  };
+  return celebrations;
 }
 
 /** 당구 — 모드 중 최근 1등 */
@@ -212,8 +219,11 @@ async function rank1Billiards() {
   };
 }
 
-/** 스도쿠 — 난이도 중 최근 1등 */
-async function rank1Sudoku() {
+/**
+ * 스도쿠 — 난이도별 최근 1등
+ * @returns {Promise<BoardCelebration[]>}
+ */
+export async function rank1Sudoku() {
   /** @type {Array<{ nickname: string; seconds: number; mistakes: number; difficulty: string; createdAt: Date }>} */
   const rows = await getPrisma().$queryRaw`
     SELECT nickname, seconds, mistakes, difficulty, created_at AS "createdAt"
@@ -233,24 +243,25 @@ async function rank1Sudoku() {
   for (const r of rows) {
     if (!diffTop.has(r.difficulty)) diffTop.set(r.difficulty, r);
   }
-  let best = null;
+  /** @type {BoardCelebration[]} */
+  const celebrations = [];
   for (const r of diffTop.values()) {
     if (!withinWindow(r.createdAt)) continue;
-    if (!best || new Date(r.createdAt) > new Date(best.createdAt)) best = r;
+    const at = normalizeToIsoString(r.createdAt);
+    if (!at) continue;
+    const forcedId = FORCED_CELEBRATION_IDS[`sudoku:${r.difficulty}`];
+    celebrations.push({
+      id: `rank1:sudoku:${r.difficulty}:${at}${forcedId ? `:${forcedId}` : ''}`,
+      kind: 'rank1',
+      game: 'sudoku',
+      label: '스도쿠 1등',
+      nickname: r.nickname || 'anonymous',
+      detail: `${r.difficulty} · ${Number(r.seconds)}초`,
+      at,
+      until: untilIso(r.createdAt)
+    });
   }
-  if (!best) return null;
-  const at = normalizeToIsoString(best.createdAt);
-  if (!at) return null;
-  return {
-    id: `rank1:sudoku:${best.difficulty}:${at}`,
-    kind: 'rank1',
-    game: 'sudoku',
-    label: '스도쿠 1등',
-    nickname: best.nickname || 'anonymous',
-    detail: `${best.difficulty} · ${Number(best.seconds)}초`,
-    at,
-    until: untilIso(best.createdAt)
-  };
+  return celebrations;
 }
 
 /**
@@ -346,7 +357,11 @@ export async function getBoardCelebrations() {
 
   const results = await Promise.allSettled(tasks);
   for (const r of results) {
-    if (r.status === 'fulfilled' && r.value) out.push(r.value);
+    if (r.status === 'fulfilled' && Array.isArray(r.value)) {
+      out.push(.../** @type {BoardCelebration[]} */ (r.value));
+    } else if (r.status === 'fulfilled' && r.value) {
+      out.push(/** @type {BoardCelebration} */ (r.value));
+    }
     else if (r.status === 'rejected') {
       console.error('[celebration rank1]', r.reason);
     }
