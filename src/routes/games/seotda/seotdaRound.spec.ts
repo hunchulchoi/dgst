@@ -4,7 +4,9 @@ import {
   createNewRound,
   applyPlayerAction,
   runNpcTurns,
-  showdown
+  seotdaHandLogEntries,
+  showdown,
+  userChipResult
 } from './seotdaRound.js';
 import { chooseNpcAction, NPC_PROFILES, npcRaiseChips } from './seotdaNpc.js';
 
@@ -157,6 +159,7 @@ describe('seotdaRound smoke', () => {
     expect(folded.folded).toBe(true);
     expect(folded.needsAction).toBe(false);
     expect(round.log.at(-1)).toContain('재경기');
+    expect(round.handHistory).toHaveLength(1);
 
     const chipsBeforeReplayBet = user.chips;
     user.cards = [
@@ -173,6 +176,7 @@ describe('seotdaRound smoke', () => {
     ];
     for (const seat of [user, npc1, npc2]) {
       seat.contrib = 10;
+      seat.totalContrib = (seat.totalContrib ?? 0) + 10;
       seat.chips -= 10;
       seat.needsAction = false;
     }
@@ -186,6 +190,49 @@ describe('seotdaRound smoke', () => {
     expect(round.seats.find((seat) => seat.id === user.id)?.chips).toBe(
       chipsBeforeReplayBet - 10 + potBefore + 30
     );
+    expect(round.handHistory).toHaveLength(2);
+    expect(seotdaHandLogEntries(round)).toContain('hand:2:user:3광·8광:38광땡:alive');
+  });
+
+  it('keeps the original bet in accounting when a tie replay has no new user bet', () => {
+    const round = createNewRound(1000, () => 0.5);
+    const user = round.seats[0];
+    const originalBet = user.totalContrib;
+
+    user.cards = [
+      { month: 3, gwang: false },
+      { month: 4, gwang: false }
+    ];
+    round.seats[1].cards = [
+      { month: 9, gwang: false },
+      { month: 8, gwang: false }
+    ];
+    round.seats[2].cards = [
+      { month: 2, gwang: false },
+      { month: 5, gwang: false }
+    ];
+    round.seats[3].folded = true;
+    showdown(round, () => 0.25);
+
+    user.cards = [
+      { month: 3, gwang: true },
+      { month: 8, gwang: true }
+    ];
+    round.seats[1].cards = [
+      { month: 1, gwang: false },
+      { month: 2, gwang: false }
+    ];
+    round.seats[2].cards = [
+      { month: 2, gwang: false },
+      { month: 5, gwang: false }
+    ];
+    for (const seat of round.seats.filter((seat) => !seat.folded)) seat.needsAction = false;
+    showdown(round);
+
+    const result = userChipResult(1000, round);
+    expect(result.bet).toBe(originalBet);
+    expect(result.after).not.toBe(1000);
+    expect(result.payout).toBe(result.bet + result.delta);
   });
 });
 

@@ -10,6 +10,7 @@
  *   cards: SeotdaCard[];
  *   folded: boolean;
  *   contrib: number;
+ *   totalContrib?: number;
  *   lastAction: string | null;
  *   needsAction?: boolean;
  * }} SeotdaSeat
@@ -26,6 +27,16 @@
  *   winnerIds?: string[];
  *   showdown: boolean;
  *   antePaid: number;
+ *   handHistory?: Array<{
+ *     deal: number;
+ *     seats: Array<{
+ *       id: string;
+ *       name: string;
+ *       folded: boolean;
+ *       cards: string[];
+ *       hand: string;
+ *     }>;
+ *   }>;
  * }} SeotdaRound
  */
 

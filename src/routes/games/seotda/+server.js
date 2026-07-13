@@ -19,7 +19,13 @@ import {
   saveNpcStacks,
   resetNpcStacks
 } from './seotdaState.js';
-import { applyPlayerAction, createNewRound, runNpcTurns, userChipResult } from './seotdaRound.js';
+import {
+  applyPlayerAction,
+  createNewRound,
+  runNpcTurns,
+  seotdaHandLogEntries,
+  userChipResult
+} from './seotdaRound.js';
 
 const SMOKE_BALANCE = 1000;
 
@@ -145,7 +151,8 @@ export async function POST(event) {
             outcome,
             String(result.delta),
             round.seats.find((s) => s.id === 'user')?.lastAction ?? '-',
-            tookLead ? 'lead' : '-'
+            tookLead ? 'lead' : '-',
+            ...seotdaHandLogEntries(round)
           ]
         });
         chipsBeforeMap.delete(user.email);

@@ -47,6 +47,7 @@ export function createNewRound(userChips, rng = Math.random, npcChipMap = {}) {
       cards: [deck[0], deck[1]],
       folded: false,
       contrib: 0,
+      totalContrib: 0,
       lastAction: null,
       needsAction: true
     }
@@ -77,6 +78,7 @@ export function createNewRound(userChips, rng = Math.random, npcChipMap = {}) {
       cards: [deck[0], deck[1]],
       folded: false,
       contrib: 0,
+      totalContrib: 0,
       lastAction: null,
       needsAction: true
     });
@@ -88,6 +90,7 @@ export function createNewRound(userChips, rng = Math.random, npcChipMap = {}) {
     const pay = Math.min(ante, s.chips);
     s.chips -= pay;
     s.contrib += pay;
+    s.totalContrib = (s.totalContrib ?? 0) + pay;
     pot += pay;
   }
   log.push(`판돈 ${ante}씩 (팟 ${pot})`);
@@ -105,7 +108,8 @@ export function createNewRound(userChips, rng = Math.random, npcChipMap = {}) {
     log,
     winnerId: null,
     showdown: false,
-    antePaid: ante
+    antePaid: ante,
+    handHistory: []
   };
 }
 
@@ -177,6 +181,7 @@ export function applyPlayerAction(round, seatId, action, raisePay) {
     const pay = Math.min(toCall, seat.chips);
     seat.chips -= pay;
     seat.contrib += pay;
+    seat.totalContrib = (seat.totalContrib ?? seat.contrib - pay) + pay;
     round.pot += pay;
     seat.lastAction = pay < toCall ? '올인' : toCall === 0 ? '체크' : '콜';
     round.log.push(`${seat.name}: ${seat.lastAction} (${pay})`);
@@ -186,6 +191,7 @@ export function applyPlayerAction(round, seatId, action, raisePay) {
       const pay = Math.min(toCall, seat.chips);
       seat.chips -= pay;
       seat.contrib += pay;
+      seat.totalContrib = (seat.totalContrib ?? seat.contrib - pay) + pay;
       round.pot += pay;
       seat.lastAction = toCall === 0 ? '체크' : '콜';
       round.log.push(`${seat.name}: ${seat.lastAction} (레이즈 상한)`);
@@ -197,6 +203,7 @@ export function applyPlayerAction(round, seatId, action, raisePay) {
       const pay = Math.min(amount, seat.chips);
       seat.chips -= pay;
       seat.contrib += pay;
+      seat.totalContrib = (seat.totalContrib ?? seat.contrib - pay) + pay;
       round.pot += pay;
       const newBet = Math.max(round.currentBet, seat.contrib);
       wasRaise = newBet > round.currentBet && pay > toCall;
@@ -254,6 +261,7 @@ function applyNpcSeatAction(round, seat, rng = Math.random) {
     const pay = npcRaiseChips(toCall, available, rng, round.antePaid);
     seat.chips -= pay;
     seat.contrib += pay;
+    seat.totalContrib = (seat.totalContrib ?? seat.contrib - pay) + pay;
     round.pot += pay;
     const newBet = Math.max(round.currentBet, seat.contrib);
     const wasRaise = newBet > round.currentBet && pay > toCall;
@@ -265,6 +273,7 @@ function applyNpcSeatAction(round, seat, rng = Math.random) {
     const pay = Math.min(toCall, seat.chips);
     seat.chips -= pay;
     seat.contrib += pay;
+    seat.totalContrib = (seat.totalContrib ?? seat.contrib - pay) + pay;
     round.pot += pay;
     seat.lastAction = toCall === 0 ? '체크' : pay < toCall ? '올인' : '콜';
     round.log.push(`${seat.name}: ${seat.lastAction} (${pay})`);
@@ -322,6 +331,7 @@ function aliveCount(round) {
 export function finishIfNeeded(round, rng = Math.random) {
   const alive = round.seats.filter((s) => !s.folded);
   if (alive.length === 1) {
+    recordHandSnapshot(round);
     const winner = alive[0];
     const settled = settlePot(round.seats, round.pot, winner.id);
     round.seats = /** @type {typeof round.seats} */ (settled.players);
@@ -348,6 +358,8 @@ export function finishIfNeeded(round, rng = Math.random) {
 export function showdown(round, rng = Math.random) {
   const alive = round.seats.filter((s) => !s.folded);
   if (alive.length === 0) return;
+
+  recordHandSnapshot(round);
 
   const userFolded = !!round.seats.find((s) => s.id === 'user')?.folded;
 
@@ -485,7 +497,38 @@ export function userChipResult(chipsBefore, round) {
   const user = round.seats.find((s) => s.id === 'user');
   const after = user?.chips ?? 0;
   const delta = after - chipsBefore;
-  const bet = user?.contrib ?? Math.max(0, -delta);
+  const bet = user?.totalContrib ?? user?.contrib ?? Math.max(0, -delta);
   const payout = Math.max(0, bet + delta);
   return { after, delta, bet, payout };
+}
+
+/**
+ * 공개 화면과 별개로 서버 저장용 패 스냅샷을 남긴다.
+ * @param {import('./seotdaState.js').SeotdaRound} round
+ */
+function recordHandSnapshot(round) {
+  round.handHistory ??= [];
+  round.handHistory.push({
+    deal: round.handHistory.length + 1,
+    seats: round.seats.map((seat) => ({
+      id: seat.id,
+      name: seat.name,
+      folded: seat.folded,
+      cards: seat.cards.map(cardLabel),
+      hand: evaluateHand(seat.cards).name
+    }))
+  });
+}
+
+/**
+ * game_scores.reels에 저장할 수 있는 읽기 쉬운 패 기록.
+ * @param {import('./seotdaState.js').SeotdaRound} round
+ */
+export function seotdaHandLogEntries(round) {
+  return (round.handHistory ?? []).flatMap((snapshot) =>
+    snapshot.seats.map(
+      (seat) =>
+        `hand:${snapshot.deal}:${seat.id}:${seat.cards.join('·')}:${seat.hand}:${seat.folded ? 'folded' : 'alive'}`
+    )
+  );
 }
