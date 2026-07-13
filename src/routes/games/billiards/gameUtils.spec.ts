@@ -30,6 +30,7 @@ import {
   computeBreathingAimAngle,
   computeDynamicSpinCurveScale,
   computeDynamicSpinDecay,
+  computeSpinAdjustedVelocity,
   computeBackspinContactPullScale,
   computeMasseCurveMultiplier,
   computeVerticalSpinFromTrack,
@@ -127,7 +128,8 @@ describe('billiards game helpers', () => {
     expect(ANGULAR_STOP_SPEED).toBeGreaterThan(0);
     expect(CUE_SPIN_CURVE_SCALE).toBeLessThan(0.0018);
     expect(CUE_SPIN_DECAY).toBeLessThan(0.995);
-    expect(CUE_SPIN_MIN_SPEED_RATIO).toBeGreaterThan(0.3);
+    expect(CUE_SPIN_MIN_SPEED_RATIO).toBeGreaterThan(0.05);
+    expect(CUE_SPIN_MIN_SPEED_RATIO).toBeLessThan(0.25);
     expect(CUE_SPIN_STOP_VALUE).toBeGreaterThan(0);
   });
 
@@ -164,14 +166,35 @@ describe('billiards game helpers', () => {
     expect(headOn).toBeGreaterThanOrEqual(0.85);
   });
 
-  it('weakens spin curve and decay as the cue ball slows', () => {
+  it('weakens spin curve smoothly as the cue ball slows', () => {
+    expect(computeDynamicSpinCurveScale(0)).toBe(0);
     expect(computeDynamicSpinCurveScale(4)).toBeLessThan(computeDynamicSpinCurveScale(24));
     expect(computeDynamicSpinDecay(4)).toBeLessThan(computeDynamicSpinDecay(24));
   });
 
+  it('keeps spin decay consistent across different frame rates', () => {
+    const oneFrame = computeDynamicSpinDecay(18, 16.66);
+    const twoHalfFrames = computeDynamicSpinDecay(18, 8.33) ** 2;
+
+    expect(twoHalfFrames).toBeCloseTo(oneFrame, 6);
+  });
+
+  it('applies a subtle symmetric spin curve without changing speed', () => {
+    const straight = { x: 20, y: 0 };
+    const right = computeSpinAdjustedVelocity(straight, 100, 0, 16.66);
+    const left = computeSpinAdjustedVelocity(straight, -100, 0, 16.66);
+
+    expect(Math.hypot(right.x, right.y)).toBeCloseTo(20, 6);
+    expect(right.y).toBeGreaterThan(0);
+    expect(left.y).toBeCloseTo(-right.y, 6);
+    expect(Math.abs(Math.atan2(right.y, right.x))).toBeLessThan(0.005);
+    expect(computeSpinAdjustedVelocity(straight, 0, 100, 16.66)).toEqual(straight);
+  });
+
   it('boosts curve only for high side spin with vertical spin', () => {
-    expect(computeMasseCurveMultiplier(90, 90)).toBeGreaterThan(2);
-    expect(computeMasseCurveMultiplier(90, -90)).toBeGreaterThan(2);
+    expect(computeMasseCurveMultiplier(90, 90)).toBeGreaterThan(1);
+    expect(computeMasseCurveMultiplier(90, 90)).toBeLessThan(1.6);
+    expect(computeMasseCurveMultiplier(90, -90)).toBeGreaterThan(1);
     expect(computeMasseCurveMultiplier(90, 0)).toBe(1);
     expect(computeMasseCurveMultiplier(20, 90)).toBe(1);
   });

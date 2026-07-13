@@ -15,7 +15,6 @@
     POCKET_BALL_CHANCES,
     POCKET_RADIUS,
     CUE_SPIN_ANGULAR_SCALE,
-    CUE_SPIN_MIN_SPEED_RATIO,
     CUE_SPIN_STOP_VALUE,
     FOUR_BALL_CHANCES,
     RAIL_RESTITUTION,
@@ -27,16 +26,14 @@
     TABLE_WIDTH,
     containBallInTable,
     computeBreathingAimAngle,
-    computeDynamicSpinCurveScale,
     computeDynamicSpinDecay,
-    computeMasseCurveMultiplier,
+    computeSpinAdjustedVelocity,
     computeVerticalSpinFromTrack,
     computeVerticalSpinVelocityScale,
     computeDynamicVelocityScale,
     computePocketClearBonus,
     computePocketShotScore,
     computeShotVelocity,
-    computeSpeedRatio,
     computeSpinFromTrack,
     evaluateFourBallShot,
     getPocketCenters,
@@ -682,7 +679,7 @@
       });
 
       if (ball === cueBall && activeVerticalSpin !== 0) {
-        activeVerticalSpin *= computeDynamicSpinDecay(speed);
+        activeVerticalSpin *= computeDynamicSpinDecay(speed, delta);
         if (Math.abs(activeVerticalSpin) < CUE_SPIN_STOP_VALUE) activeVerticalSpin = 0;
       }
     }
@@ -707,18 +704,18 @@
 
     if (status === 'rolling' && cueBall && activeSpin !== 0) {
       const speed = Math.hypot(cueBall.velocity.x, cueBall.velocity.y);
-      const spinSpeedRatio = computeSpeedRatio(speed);
-      if (speed > STOP_SPEED && spinSpeedRatio >= CUE_SPIN_MIN_SPEED_RATIO) {
-        const masseMultiplier = computeMasseCurveMultiplier(activeSpin, activeVerticalSpin);
-        const curve =
-          (activeSpin / 100) * computeDynamicSpinCurveScale(speed) * masseMultiplier * delta;
-        const cos = Math.cos(curve);
-        const sin = Math.sin(curve);
-        Body.setVelocity(cueBall, {
-          x: cueBall.velocity.x * cos - cueBall.velocity.y * sin,
-          y: cueBall.velocity.x * sin + cueBall.velocity.y * cos
-        });
-        activeSpin *= computeDynamicSpinDecay(speed);
+      const adjustedVelocity = computeSpinAdjustedVelocity(
+        cueBall.velocity,
+        activeSpin,
+        activeVerticalSpin,
+        delta
+      );
+      if (
+        speed > STOP_SPEED &&
+        (adjustedVelocity.x !== cueBall.velocity.x || adjustedVelocity.y !== cueBall.velocity.y)
+      ) {
+        Body.setVelocity(cueBall, adjustedVelocity);
+        activeSpin *= computeDynamicSpinDecay(speed, delta);
         if (Math.abs(activeSpin) < CUE_SPIN_STOP_VALUE) {
           activeSpin = 0;
           Body.setAngularVelocity(cueBall, 0);

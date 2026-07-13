@@ -51,15 +51,15 @@ export const RAIL_TANGENT_DAMPING = 0.96;
 export const RAIL_CONTACT_STOP_SPEED = 0.35;
 export const RAIL_CONTACT_SPIN_DAMPING = 0.62;
 export const CUE_SPIN_ANGULAR_SCALE = 380;
-export const CUE_SPIN_CURVE_SCALE = 0.001;
-export const CUE_SPIN_DECAY = 0.988;
-export const CUE_SPIN_MIN_SPEED_RATIO = 0.36;
+export const CUE_SPIN_CURVE_SCALE = 0.00016;
+export const CUE_SPIN_DECAY = 0.992;
+export const CUE_SPIN_MIN_SPEED_RATIO = 0.14;
 export const CUE_SPIN_STOP_VALUE = 2;
 export const CUE_VERTICAL_SPIN_DRAG_REDUCTION = 0.55;
 export const CUE_VERTICAL_SPIN_BRAKE_BOOST = 1.25;
 export const CUE_MASSE_MIN_SIDE_SPIN = 55;
 export const CUE_MASSE_MIN_VERTICAL_SPIN = 35;
-export const CUE_MASSE_CURVE_BOOST = 2.2;
+export const CUE_MASSE_CURVE_BOOST = 0.55;
 export const CUE_BACKSPIN_CONTACT_PULL = 0.32;
 export const ANGULAR_FRICTION_DECAY = 0.94;
 export const ANGULAR_STOP_SPEED = 0.018;
@@ -207,7 +207,12 @@ export function computeBallCollisionEnergyScale(
 
 export function computeDynamicSpinCurveScale(speed: number): number {
   const ratio = computeSpeedRatio(speed);
-  return CUE_SPIN_CURVE_SCALE * Math.max(0.18, Math.min(1, ratio));
+  const rollingRatio = Math.max(
+    0,
+    Math.min(1, (ratio - CUE_SPIN_MIN_SPEED_RATIO) / (1 - CUE_SPIN_MIN_SPEED_RATIO))
+  );
+  const smoothRatio = rollingRatio * rollingRatio * (3 - 2 * rollingRatio);
+  return CUE_SPIN_CURVE_SCALE * smoothRatio;
 }
 
 export function computeMasseCurveMultiplier(sideSpin: number, verticalSpin: number): number {
@@ -222,8 +227,37 @@ export function computeMasseCurveMultiplier(sideSpin: number, verticalSpin: numb
   return 1 + CUE_MASSE_CURVE_BOOST * sideRatio * verticalRatio;
 }
 
-export function computeDynamicSpinDecay(speed: number): number {
-  return CUE_SPIN_DECAY - 0.006 * (1 - computeSpeedRatio(speed));
+export function computeDynamicSpinDecay(speed: number, deltaMs = 16.66): number {
+  const perFrameRetention = CUE_SPIN_DECAY - 0.004 * (1 - computeSpeedRatio(speed));
+  return perFrameRetention ** Math.max(0, deltaMs / 16.66);
+}
+
+export function computeSpinAdjustedVelocity(
+  velocity: { x: number; y: number },
+  sideSpin: number,
+  verticalSpin: number,
+  deltaMs: number
+): { x: number; y: number } {
+  const speed = Math.hypot(velocity.x, velocity.y);
+  if (speed <= STOP_SPEED || sideSpin === 0) return { ...velocity };
+
+  const curveScale = computeDynamicSpinCurveScale(speed);
+  if (curveScale === 0) return { ...velocity };
+
+  const turn =
+    (Math.max(-100, Math.min(100, sideSpin)) / 100) *
+    curveScale *
+    computeMasseCurveMultiplier(sideSpin, verticalSpin) *
+    Math.max(0, deltaMs);
+  const tangent = { x: -velocity.y / speed, y: velocity.x / speed };
+  const curved = {
+    x: velocity.x + tangent.x * speed * turn,
+    y: velocity.y + tangent.y * speed * turn
+  };
+  const curvedSpeed = Math.hypot(curved.x, curved.y);
+  if (curvedSpeed === 0) return { ...velocity };
+  const preserveSpeed = speed / curvedSpeed;
+  return { x: curved.x * preserveSpeed, y: curved.y * preserveSpeed };
 }
 
 export function computeVerticalSpinVelocityScale(
