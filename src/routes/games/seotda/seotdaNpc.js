@@ -7,10 +7,18 @@ import { evaluateHand, handStrength, raiseAmount, minRaisePay, ANTE } from './se
 
 /** @type {NpcProfile[]} */
 export const NPC_PROFILES = [
-  { id: 'npc_agwi', name: '아귀', style: 'bluffer', bluff: 0.55 },
-  { id: 'npc_goni', name: '고니', style: 'calm', bluff: 0.35 },
-  { id: 'npc_madam', name: '정마담', style: 'gambler', bluff: 0.6 }
+  { id: 'npc_agwi', name: '아귀', style: 'bluffer', bluff: 0.25 },
+  { id: 'npc_goni', name: '고니', style: 'calm', bluff: 0.12 },
+  { id: 'npc_madam', name: '정마담', style: 'gambler', bluff: 0.3 }
 ];
+
+function pressureCallChance(commitRatio, strength, bluffCatcher, profileBluff) {
+  const base =
+    commitRatio <= 0.1 ? 0.45 : commitRatio <= 0.25 ? 0.3 : commitRatio <= 0.4 ? 0.15 : 0.05;
+  const handWeight = 0.85 + strength * 0.3;
+  const roleWeight = bluffCatcher ? 1.1 : 0.8;
+  return Math.min(0.72, base * handWeight * roleWeight + profileBluff * 0.02);
+}
 
 /**
  * @param {import('./seotdaEngine.js').SeotdaCard[]} cards
@@ -33,12 +41,12 @@ export function chooseNpcAction(cards, profile, ctx, rng = Math.random) {
   const commitRatio = toCall > 0 ? toCall / Math.max(chips, 1) : 0;
   const potOdds = toCall > 0 ? toCall / Math.max(1, pot + toCall) : 0;
 
-  // 큰 베팅에도 한 명은 블러프 캐처 역할을 맡고, 나머지도 성향에 따라 일부 콜한다.
+  // 큰 레이즈는 부담률에 따라 혼합 콜한다. 지정 캐처 외 NPC는 빈도를 낮춘다.
   if (raiseSeen && toCall >= ante * 8 && hand.tier < 80) {
-    const catchChance = bluffCatcher
-      ? Math.min(0.75, 0.45 + headsUpStrength * 0.3)
-      : Math.min(0.32, 0.05 + headsUpStrength * 0.22 + profile.bluff * 0.08);
-    return rng() < catchChance && canFullCall ? 'call' : 'die';
+    const catchChance = pressureCallChance(commitRatio, strength, bluffCatcher, profile.bluff);
+    if (rng() >= catchChance || !canFullCall) return 'die';
+    if (canRaise && strength >= 0.68 && commitRatio <= 0.4 && rng() < 0.25) return 'raise';
+    return 'call';
   }
 
   // 콜 가격보다 승산이 크게 낮으면 대부분 포기한다. 성향에 따라 가끔만 따라간다.
@@ -138,24 +146,23 @@ export function pickPressureNpc(profiles, rng = Math.random) {
 }
 
 /**
- * NPC 레이즈 금액 — 최소~올인 랜덤 (뻥카 크기 다양)
+ * NPC 레이즈 금액 — 기본 2~4 ante, 강패일 때만 큰 베팅
  * @param {number} toCall
  * @param {number} chips
  * @param {() => number} [rng]
  * @param {number} [ante]
+ * @param {boolean} [strongHand]
  */
-export function npcRaiseChips(toCall, chips, rng = Math.random, ante = ANTE) {
+export function npcRaiseChips(toCall, chips, rng = Math.random, ante = ANTE, strongHand = false) {
   const minPay = minRaisePay(toCall, ante);
   if (chips <= minPay) return Math.min(chips, Math.max(toCall, minPay));
 
-  const roll = rng();
-  let target;
-  if (roll < 0.3) target = minPay;
-  else if (roll < 0.5) target = minPay + ante * (1 + Math.floor(rng() * 3));
-  else if (roll < 0.68) target = Math.floor(chips * (0.15 + rng() * 0.15));
-  else if (roll < 0.82) target = Math.floor(chips * (0.3 + rng() * 0.2));
-  else if (roll < 0.93) target = Math.floor(chips * 0.5);
-  else target = chips;
+  let target = Math.max(minPay, toCall + ante * (1 + Math.floor(rng() * 3)));
+  if (strongHand) {
+    const roll = rng();
+    if (roll < 0.05) target = chips;
+    else if (roll < 0.25) target = Math.max(target, Math.floor(chips * (0.25 + rng() * 0.25)));
+  }
 
   return raiseAmount(toCall, chips, target, ante);
 }

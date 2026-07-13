@@ -1,4 +1,5 @@
 import { error, json } from '@sveltejs/kit';
+import { checkRateLimit } from '$lib/server/apiRateLimit.js';
 import { getGameSession, isLocalGameSmokeSession } from '$lib/server/localGameSmokeSession.js';
 import { evaluateHand } from './seotdaEngine.js';
 import {
@@ -23,7 +24,7 @@ import {
   applyPlayerAction,
   createNewRound,
   runNpcTurns,
-  seotdaHandLogEntries,
+  seotdaAuditLogEntries,
   userChipResult
 } from './seotdaRound.js';
 
@@ -96,6 +97,14 @@ export async function GET(event) {
 /** @param {import('@sveltejs/kit').RequestEvent} event */
 export async function POST(event) {
   try {
+    const rateLimit = await checkRateLimit(event, {
+      limit: 12,
+      windowSeconds: 10,
+      bucket: 'seotda-post'
+    });
+    if (!rateLimit.allowed) {
+      throw error(429, { message: '요청이 너무 빠릅니다. 잠시 후 다시 시도해 주세요.' });
+    }
     const user = await requireUser(event);
     const body = await event.request.json().catch(() => ({}));
     const action = String(body?.action ?? '');
@@ -112,7 +121,6 @@ export async function POST(event) {
       const prev = getRound(user.email);
       if (prev) saveNpcStacks(user.email, prev);
       clearRound(user.email);
-      resetNpcStacks(user.email);
       return json(await beginRound(user.email, user.nickname));
     }
 
@@ -152,7 +160,7 @@ export async function POST(event) {
             String(result.delta),
             round.seats.find((s) => s.id === 'user')?.lastAction ?? '-',
             tookLead ? 'lead' : '-',
-            ...seotdaHandLogEntries(round)
+            ...seotdaAuditLogEntries(round)
           ]
         });
         chipsBeforeMap.delete(user.email);

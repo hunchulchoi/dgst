@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
   MAX_BET_ANTE_MULTIPLIER,
+  MAX_POT,
+  MAX_TOTAL_BET,
+  NPC_START_CHIPS,
   createNewRound,
   applyPlayerAction,
   runNpcTurns,
+  seotdaAuditLogEntries,
   seotdaHandLogEntries,
   showdown,
   userChipResult
@@ -64,14 +68,11 @@ describe('seotdaRound smoke', () => {
     expect(round.seats.find((s) => s.id === 'npc_madam')?.chips).toBe(40);
   });
 
-  it('fresh table NPCs start near player chips', () => {
+  it('starts NPCs at a fixed buy-in independent of player chips', () => {
     const userChips = 3500;
     const round = createNewRound(userChips, () => 0.5, {});
     for (const s of round.seats.filter((x) => x.isNpc)) {
-      // ante already taken; before ante was ~userChips * 0.85~1.15
-      const beforeAnte = s.chips + 10;
-      expect(beforeAnte).toBeGreaterThanOrEqual(Math.floor(userChips * 0.85));
-      expect(beforeAnte).toBeLessThanOrEqual(Math.ceil(userChips * 1.15));
+      expect(s.chips + round.antePaid).toBe(NPC_START_CHIPS);
     }
   });
 
@@ -92,6 +93,16 @@ describe('seotdaRound smoke', () => {
 
     expect(user.contrib).toBe(round.antePaid * MAX_BET_ANTE_MULTIPLIER);
     expect(round.currentBet).toBe(round.antePaid * MAX_BET_ANTE_MULTIPLIER);
+  });
+
+  it('caps high-bankroll rounds by absolute seat and pot limits', () => {
+    const round = createNewRound(10_000_000_000, () => 0.5, {});
+    const user = round.seats[0];
+
+    applyPlayerAction(round, 'user', 'raise', user.chips);
+
+    expect(user.totalContrib).toBeLessThanOrEqual(MAX_TOTAL_BET);
+    expect(round.pot).toBeLessThanOrEqual(MAX_POT);
   });
 
   it('pays main and side pots according to each players contribution', () => {
@@ -192,6 +203,13 @@ describe('seotdaRound smoke', () => {
     );
     expect(round.handHistory).toHaveLength(2);
     expect(seotdaHandLogEntries(round)).toContain('hand:2:user:3광·8광:38광땡:alive');
+    expect(seotdaAuditLogEntries(round)).toEqual(
+      expect.arrayContaining([
+        expect.stringMatching(/^round:/),
+        expect.stringMatching(/^pot:/),
+        expect.stringContaining('action:')
+      ])
+    );
   });
 
   it('keeps the original bet in accounting when a tie replay has no new user bet', () => {

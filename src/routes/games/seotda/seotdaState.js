@@ -15,6 +15,7 @@
  *   needsAction?: boolean;
  * }} SeotdaSeat
  * @typedef {{
+ *   roundId?: string;
  *   phase: 'betting' | 'showdown' | 'idle';
  *   pot: number;
  *   currentBet: number;
@@ -142,6 +143,7 @@ export function toPublicState(round, userSeatId = 'user', evalHand) {
         chips: s.chips,
         folded: s.folded,
         contrib: s.contrib,
+        totalContrib: s.totalContrib ?? s.contrib,
         lastAction: s.lastAction,
         needsAction: !!s.needsAction,
         cards: reveal ? s.cards : s.cards.map(() => ({ month: 0, gwang: false, hidden: true })),

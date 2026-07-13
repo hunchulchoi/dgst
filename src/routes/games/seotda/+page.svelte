@@ -4,7 +4,7 @@
   import type { PageData } from './$types';
   import { formatRelativeTime } from '$lib/util/formatRelativeTime.js';
   import { dynamicAnte, minRaisePay } from './seotdaEngine.js';
-  import { MAX_BET_ANTE_MULTIPLIER } from './seotdaRound.js';
+  import { MAX_BET_ANTE_MULTIPLIER, MAX_POT, MAX_TOTAL_BET } from './seotdaRound.js';
   import HwatuCardFace from './HwatuCardFace.svelte';
   import { HWATU_CARD_URLS } from './hwatuCardAssets';
 
@@ -25,6 +25,7 @@
     chips: number;
     folded: boolean;
     contrib: number;
+    totalContrib?: number;
     lastAction: string | null;
     needsAction?: boolean;
     cards: SeotdaCard[];
@@ -137,7 +138,9 @@
     userSeat
       ? Math.min(
           userSeat.chips,
-          Math.max(0, roundAnte * MAX_BET_ANTE_MULTIPLIER - userSeat.contrib)
+          Math.max(0, roundAnte * MAX_BET_ANTE_MULTIPLIER - userSeat.contrib),
+          Math.max(0, MAX_TOTAL_BET - (userSeat.totalContrib ?? userSeat.contrib)),
+          Math.max(0, MAX_POT - (round?.pot ?? 0))
         )
       : 0
   );

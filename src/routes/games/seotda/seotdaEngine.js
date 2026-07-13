@@ -1,6 +1,7 @@
 /** 섯다 라이트 엔진 — 덱·족보·팟 */
 
 export const ANTE = 10;
+export const MAX_ANTE = 10_000;
 export const SEOTDA_GAME = 'seotda';
 
 /**
@@ -12,7 +13,7 @@ export function dynamicAnte(chips) {
   const firstTier = Math.min(balance, 100_000) * 0.001;
   const secondTier = Math.min(Math.max(balance - 100_000, 0), 900_000) * 0.003;
   const topTier = Math.max(balance - 1_000_000, 0) * 0.005;
-  return Math.max(ANTE, Math.floor(firstTier + secondTier + topTier));
+  return Math.min(MAX_ANTE, Math.max(ANTE, Math.floor(firstTier + secondTier + topTier)));
 }
 
 /**
