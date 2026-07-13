@@ -7,9 +7,12 @@
   import type { PageData } from './$types';
   import {
     calculateHardDropScore,
-    calculateLineScore,
+    calculatePlacementScore,
+    calculateSoftDropScore,
     canPlace,
     clearLines,
+    createBonusBoard,
+    createBonusQueue,
     createEmptyBoard,
     drawNextPiece,
     ensureQueue,
@@ -43,7 +46,15 @@
 
   let { data }: TetrisPageProps = $props();
 
-  type Screen = 'menu' | 'playing' | 'paused' | 'stageClear' | 'gameOver' | 'gameWin';
+  type Screen =
+    | 'menu'
+    | 'playing'
+    | 'bonus'
+    | 'paused'
+    | 'stageClear'
+    | 'bonusClear'
+    | 'gameOver'
+    | 'gameWin';
 
   let screen = $state<Screen>('menu');
   let board = $state<Board>(createEmptyBoard());
@@ -54,11 +65,22 @@
   let stageLines = $state(0);
   let totalLines = $state(0);
   let score = $state(0);
+  let combo = $state(0);
+  let backToBack = $state(false);
+  let clearFeedback = $state<{ label: string; detail: string; points: number } | null>(null);
   let holdPiece = $state<PieceType | null>(null);
   let canHold = $state(true);
   let soundEnabled = $state(true);
   let dropInterval = $state<ReturnType<typeof setInterval> | null>(null);
   let stageClearTimeout: ReturnType<typeof setTimeout> | null = null;
+  let clearFeedbackTimeout: ReturnType<typeof setTimeout> | null = null;
+  let bonusInterval: ReturnType<typeof setInterval> | null = null;
+  let bonusTimeLeft = $state(0);
+  let bonusLines = $state(0);
+  let bonusSourceStage = $state<number | null>(null);
+  let bonusReviveEarned = $state(false);
+  let reviveTokens = $state(0);
+  let pausedFrom = $state<'playing' | 'bonus'>('playing');
   let rankList = $state<
     Array<{ nickname: string; score: number; stage?: number; createdAt?: string; _id?: string }>
   >([]);
@@ -72,14 +94,21 @@
 
   const STORAGE_KEY = 'dgst_tetris_state';
   const SOUND_PREF_KEY = 'dgst_tetris_sound';
-  const SAVE_VERSION = 1;
+  const SAVE_VERSION = 3;
   const PIECE_TYPES: PieceType[] = ['I', 'O', 'T', 'S', 'Z', 'J', 'L'];
-  const RESUMABLE_SCREENS: Screen[] = ['playing', 'paused', 'stageClear'];
+  const BONUS_AFTER_STAGES = [3, 6, 9] as const;
+  const BONUS_SECONDS = 30;
+  const RESUMABLE_SCREENS: Screen[] = ['playing', 'bonus', 'paused', 'stageClear', 'bonusClear'];
   const isLoggedIn = $derived(!!data.session?.user?.email);
 
   const stageConfig = $derived(getStageConfig(stage));
   const stageProgress = $derived(Math.min(100, (stageLines / stageConfig.linesTarget) * 100));
   const dropMs = $derived(stageConfig.dropIntervalMs);
+  const currentDropMs = $derived(screen === 'bonus' ? 260 : dropMs);
+  const bonusProgress = $derived((bonusTimeLeft / BONUS_SECONDS) * 100);
+  const isBonusContext = $derived(
+    screen === 'bonus' || screen === 'bonusClear' || (screen === 'paused' && pausedFrom === 'bonus')
+  );
 
   /** 렌더용 셀 (고정 블록 + 고스트 + 활성) */
   type RenderCell = { type: PieceType; ghost?: boolean } | null;
@@ -89,7 +118,7 @@
       .slice(HIDDEN_ROWS)
       .map((row) => row.map((cell) => (cell ? { type: cell } : null)));
 
-    if (activePiece && screen === 'playing') {
+    if (activePiece && (screen === 'playing' || screen === 'bonus')) {
       const ghost = getGhostPiece(board, activePiece);
       for (const { x, y } of getPieceCells(ghost)) {
         const row = y - HIDDEN_ROWS;
@@ -114,6 +143,23 @@
     const piece = spawnPiece(drawn.piece);
     if (resetHold) canHold = true;
     if (isSpawnBlocked(board, piece)) {
+      if (screen === 'bonus') {
+        board = createEmptyBoard();
+        combo = 0;
+        backToBack = false;
+        activePiece = piece;
+        return true;
+      }
+      if (reviveTokens > 0) {
+        reviveTokens -= 1;
+        board = createEmptyBoard();
+        combo = 0;
+        backToBack = false;
+        activePiece = piece;
+        showGameFeedback('REVIVE!', '보드 초기화', 0);
+        playTetrisSound('stage', soundEnabled);
+        return true;
+      }
       activePiece = piece;
       return false;
     }
@@ -123,6 +169,8 @@
 
   function startGame() {
     if (stageClearTimeout) clearTimeout(stageClearTimeout);
+    if (clearFeedbackTimeout) clearTimeout(clearFeedbackTimeout);
+    stopBonusTimer();
     clearSave();
     board = createEmptyBoard();
     nextQueue = ensureQueue([]);
@@ -131,6 +179,15 @@
     stageLines = 0;
     totalLines = 0;
     score = 0;
+    combo = 0;
+    backToBack = false;
+    clearFeedback = null;
+    bonusTimeLeft = 0;
+    bonusLines = 0;
+    bonusSourceStage = null;
+    bonusReviveEarned = false;
+    reviveTokens = 0;
+    pausedFrom = 'playing';
     holdPiece = null;
     canHold = true;
     activePiece = null;
@@ -147,6 +204,7 @@
   /** 게임오버 공통 처리 */
   function endGameOver() {
     stopDropTimer();
+    stopBonusTimer();
     screen = 'gameOver';
     clearSave();
     playTetrisSound('over', soundEnabled);
@@ -157,7 +215,7 @@
     stopDropTimer();
     dropInterval = setInterval(() => {
       softDrop();
-    }, dropMs);
+    }, currentDropMs);
   }
 
   function stopDropTimer() {
@@ -168,20 +226,23 @@
   }
 
   function pauseGame() {
-    if (screen !== 'playing') return;
+    if (screen !== 'playing' && screen !== 'bonus') return;
+    pausedFrom = screen;
     screen = 'paused';
     stopDropTimer();
+    stopBonusTimer();
   }
 
   function resumeGame() {
     if (screen !== 'paused') return;
-    screen = 'playing';
+    screen = pausedFrom;
     startDropTimer();
+    if (screen === 'bonus') startBonusTimer();
     void focusBoard();
   }
 
   function togglePause() {
-    if (screen === 'playing') pauseGame();
+    if (screen === 'playing' || screen === 'bonus') pauseGame();
     else if (screen === 'paused') resumeGame();
   }
 
@@ -189,17 +250,24 @@
   function settlePiece(lockedBoard: Board, hardDropDistance = 0) {
     const { board: clearedBoard, linesCleared } = clearLines(lockedBoard);
     board = clearedBoard;
+    const placementScore = calculatePlacementScore(linesCleared, stage, combo, backToBack);
+    const scoreMultiplier = screen === 'bonus' ? 2 : 1;
+    const earnedPlacementScore = placementScore.total * scoreMultiplier;
+    combo = placementScore.nextCombo;
+    backToBack = placementScore.nextBackToBack;
     if (linesCleared > 0) {
-      score += calculateLineScore(linesCleared, stage);
-      stageLines += linesCleared;
+      score += earnedPlacementScore;
+      if (screen === 'bonus') bonusLines += linesCleared;
+      else stageLines += linesCleared;
       totalLines += linesCleared;
+      showClearFeedback(linesCleared, earnedPlacementScore, placementScore.backToBackBonus > 0);
       playTetrisSound('clear', soundEnabled);
     }
     if (hardDropDistance > 0) {
       score += calculateHardDropScore(hardDropDistance);
     }
 
-    if (isStageComplete(stageLines, stage)) {
+    if (screen === 'playing' && isStageComplete(stageLines, stage)) {
       handleStageClear();
       return;
     }
@@ -207,6 +275,76 @@
     if (!spawnFromQueue()) {
       endGameOver();
     }
+  }
+
+  function showGameFeedback(label: string, detail: string, points: number) {
+    if (clearFeedbackTimeout) clearTimeout(clearFeedbackTimeout);
+    clearFeedback = { label, detail, points };
+    clearFeedbackTimeout = setTimeout(() => {
+      clearFeedback = null;
+      clearFeedbackTimeout = null;
+    }, 950);
+  }
+
+  function showClearFeedback(linesCleared: number, points: number, isBackToBack: boolean) {
+    const labels = ['', 'SINGLE', 'DOUBLE', 'TRIPLE', 'TETRIS!'];
+    const detail = [screen === 'bonus' ? '2× BONUS' : '', combo > 1 ? `${combo} COMBO` : '']
+      .filter(Boolean)
+      .join(' · ');
+    showGameFeedback(isBackToBack ? 'BACK-TO-BACK TETRIS!' : labels[linesCleared], detail, points);
+  }
+
+  function stopBonusTimer() {
+    if (bonusInterval) {
+      clearInterval(bonusInterval);
+      bonusInterval = null;
+    }
+  }
+
+  function startBonusTimer() {
+    stopBonusTimer();
+    bonusInterval = setInterval(() => {
+      if (screen !== 'bonus') return;
+      bonusTimeLeft = Math.max(0, bonusTimeLeft - 1);
+      if (bonusTimeLeft === 0) finishBonusStage();
+    }, 1000);
+  }
+
+  function startBonusStage() {
+    if (stageClearTimeout) {
+      clearTimeout(stageClearTimeout);
+      stageClearTimeout = null;
+    }
+    bonusSourceStage = stage;
+    bonusTimeLeft = BONUS_SECONDS;
+    bonusLines = 0;
+    bonusReviveEarned = false;
+    board = createBonusBoard();
+    nextQueue = createBonusQueue();
+    previewPiece = nextQueue[0];
+    holdPiece = null;
+    canHold = true;
+    combo = 0;
+    backToBack = false;
+    activePiece = null;
+    screen = 'bonus';
+    spawnFromQueue();
+    startDropTimer();
+    startBonusTimer();
+    showGameFeedback('BONUS START!', '30초 · 점수 2배', 0);
+    void focusBoard();
+  }
+
+  function finishBonusStage() {
+    if (screen !== 'bonus') return;
+    stopDropTimer();
+    stopBonusTimer();
+    activePiece = null;
+    bonusReviveEarned = bonusLines >= 4;
+    if (bonusReviveEarned) reviveTokens = Math.max(reviveTokens, 1);
+    screen = 'bonusClear';
+    playTetrisSound(bonusReviveEarned ? 'stage' : 'drop', soundEnabled);
+    saveState();
   }
 
   function scheduleStageClearAdvance() {
@@ -228,7 +366,14 @@
       clearTimeout(stageClearTimeout);
       stageClearTimeout = null;
     }
-    const nextStage = stage + 1;
+    if (screen === 'stageClear' && BONUS_AFTER_STAGES.includes(stage as 3 | 6 | 9)) {
+      startBonusStage();
+      return;
+    }
+
+    const nextStage = (bonusSourceStage ?? stage) + 1;
+    bonusSourceStage = null;
+    bonusReviveEarned = false;
     if (isGameComplete(nextStage)) {
       screen = 'gameWin';
       activePiece = null;
@@ -239,10 +384,16 @@
     }
     stage = nextStage;
     stageLines = 0;
+    bonusTimeLeft = 0;
+    bonusLines = 0;
+    combo = 0;
+    backToBack = false;
+    clearFeedback = null;
     board = createEmptyBoard();
     holdPiece = null;
     canHold = true;
     activePiece = null;
+    pausedFrom = 'playing';
     screen = 'playing';
     if (!spawnFromQueue()) {
       endGameOver();
@@ -316,11 +467,12 @@
     return n >= 1000 ? (n / 1000).toFixed(1).replace(/\.0$/, '') + 'k' : String(n);
   }
 
-  function softDrop() {
-    if (!activePiece || screen !== 'playing') return;
+  function softDrop(manual = false) {
+    if (!activePiece || (screen !== 'playing' && screen !== 'bonus')) return;
     const moved = movePiece(activePiece, 0, 1);
     if (canPlace(board, moved)) {
       activePiece = moved;
+      if (manual) score += calculateSoftDropScore(1);
       return;
     }
     playTetrisSound('drop', soundEnabled);
@@ -409,7 +561,7 @@
   const SOFT_DROP_MIN_STEP_PX = 14;
 
   function canUseTouchControls(): boolean {
-    return screen === 'playing' || screen === 'paused';
+    return screen === 'playing' || screen === 'bonus' || screen === 'paused';
   }
 
   function shouldIgnoreGestureTarget(target: EventTarget | null): boolean {
@@ -457,7 +609,7 @@
 
   function triggerSoftDropFromGesture() {
     gestureSoftDropCount += 1;
-    runGameAction(softDrop);
+    runGameAction(() => softDrop(true));
   }
 
   function scheduleSoftDropRepeat() {
@@ -614,10 +766,9 @@
 
   /** 일시정지 중이면 재개 후 게임 입력 처리 */
   function runGameAction(action: () => void) {
-    if (screen !== 'playing' && screen !== 'paused') return;
+    if (screen !== 'playing' && screen !== 'bonus' && screen !== 'paused') return;
     if (screen === 'paused') {
-      screen = 'playing';
-      startDropTimer();
+      resumeGame();
     }
     action();
   }
@@ -642,7 +793,7 @@
       }
       return;
     }
-    if (screen === 'stageClear') {
+    if (screen === 'stageClear' || screen === 'bonusClear') {
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
         advanceStage();
@@ -667,7 +818,7 @@
       case 's':
       case 'S':
         e.preventDefault();
-        runGameAction(softDrop);
+        runGameAction(() => softDrop(true));
         break;
       case 'ArrowUp':
       case 'w':
@@ -714,6 +865,14 @@
     score: number;
     holdPiece: PieceType | null;
     canHold: boolean;
+    combo: number;
+    backToBack: boolean;
+    bonusTimeLeft: number;
+    bonusLines: number;
+    bonusSourceStage: number | null;
+    bonusReviveEarned: boolean;
+    reviveTokens: number;
+    pausedFrom: 'playing' | 'bonus';
     savedAt: string;
   };
 
@@ -733,6 +892,14 @@
       score,
       holdPiece,
       canHold,
+      combo,
+      backToBack,
+      bonusTimeLeft,
+      bonusLines,
+      bonusSourceStage,
+      bonusReviveEarned,
+      reviveTokens,
+      pausedFrom,
       savedAt: new Date().toISOString()
     };
   }
@@ -786,9 +953,7 @@
       if (!Array.isArray(parsed.board) || parsed.board.length !== TOTAL_ROWS) return null;
       if (!parsed.board.every((row) => Array.isArray(row) && row.length === COLS)) return null;
       if (
-        !parsed.board.every((row) =>
-          row.every((cell) => cell === null || isValidPieceType(cell))
-        )
+        !parsed.board.every((row) => row.every((cell) => cell === null || isValidPieceType(cell)))
       ) {
         return null;
       }
@@ -842,9 +1007,19 @@
     score = saved.score;
     holdPiece = saved.holdPiece ?? null;
     canHold = saved.canHold ?? true;
+    combo = Number.isInteger(saved.combo) && saved.combo >= 0 ? saved.combo : 0;
+    backToBack = saved.backToBack === true;
+    bonusTimeLeft = Number.isInteger(saved.bonusTimeLeft) ? Math.max(0, saved.bonusTimeLeft) : 0;
+    bonusLines = Number.isInteger(saved.bonusLines) ? Math.max(0, saved.bonusLines) : 0;
+    bonusSourceStage = Number.isInteger(saved.bonusSourceStage) ? saved.bonusSourceStage : null;
+    bonusReviveEarned = saved.bonusReviveEarned === true;
+    reviveTokens = Number.isInteger(saved.reviveTokens) ? Math.max(0, saved.reviveTokens) : 0;
+    pausedFrom = saved.pausedFrom === 'bonus' ? 'bonus' : 'playing';
+    clearFeedback = null;
     screen = saved.screen;
 
     stopDropTimer();
+    stopBonusTimer();
     if (stageClearTimeout) {
       clearTimeout(stageClearTimeout);
       stageClearTimeout = null;
@@ -852,6 +1027,10 @@
 
     if (screen === 'playing') {
       screen = 'paused';
+      pausedFrom = 'playing';
+    } else if (screen === 'bonus') {
+      screen = 'paused';
+      pausedFrom = 'bonus';
     } else if (screen === 'stageClear') {
       scheduleStageClearAdvance();
     }
@@ -874,11 +1053,15 @@
   /** 메뉴 이동 전 autosave */
   function goToMenu() {
     stopDropTimer();
+    stopBonusTimer();
     if (stageClearTimeout) {
       clearTimeout(stageClearTimeout);
       stageClearTimeout = null;
     }
-    if (screen === 'playing') screen = 'paused';
+    if (screen === 'playing' || screen === 'bonus') {
+      pausedFrom = screen;
+      screen = 'paused';
+    }
     saveState();
     screen = 'menu';
     refreshResumeInfo();
@@ -920,7 +1103,9 @@
       window.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('beforeunload', handleBeforeUnload);
       stopDropTimer();
+      stopBonusTimer();
       if (stageClearTimeout) clearTimeout(stageClearTimeout);
+      if (clearFeedbackTimeout) clearTimeout(clearFeedbackTimeout);
       saveState();
     };
   });
@@ -949,7 +1134,10 @@
 
 <svelte:head>
   <title>테트리스 | dgst.me</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
+  />
 </svelte:head>
 
 <div class="tetris-page container py-3 py-md-4">
@@ -962,7 +1150,7 @@
               <h2 class="mb-2">🧱 테트리스</h2>
               <p class="text-muted mb-4">
                 10단계 스테이지를 클리어하세요!<br />
-                각 스테이지마다 목표 줄 수를 채우면 다음 단계로 넘어갑니다.
+                Stage 3·6·9 뒤에는 30초 보너스 도전이 열립니다.
               </p>
               <div class="d-flex flex-column align-items-center gap-2">
                 {#if canResume && resumeSummary}
@@ -972,10 +1160,18 @@
                       Stage {resumeSummary.stage} ({resumeSummary.label}) · {resumeSummary.score.toLocaleString()}점
                     </p>
                   </div>
-                  <button type="button" class="btn btn-lg btn-primary px-5" onclick={resumeSavedGame}>
+                  <button
+                    type="button"
+                    class="btn btn-lg btn-primary px-5"
+                    onclick={resumeSavedGame}
+                  >
                     이어하기
                   </button>
-                  <button type="button" class="btn btn-lg btn-outline-primary px-5" onclick={startNewGame}>
+                  <button
+                    type="button"
+                    class="btn btn-lg btn-outline-primary px-5"
+                    onclick={startNewGame}
+                  >
                     새 게임
                   </button>
                 {:else}
@@ -996,7 +1192,9 @@
                 <p class="small fw-semibold mb-2">스테이지 목표</p>
                 <ul class="small text-muted mb-0">
                   {#each STAGES as s (s.stage)}
-                    <li>Stage {s.stage} ({s.label}): {s.linesTarget}줄 · 낙하 {s.dropIntervalMs}ms</li>
+                    <li>
+                      Stage {s.stage} ({s.label}): {s.linesTarget}줄 · 낙하 {s.dropIntervalMs}ms
+                    </li>
                   {/each}
                 </ul>
               </div>
@@ -1004,13 +1202,20 @@
           {:else}
             <div class="d-flex justify-content-between align-items-start mb-2 flex-wrap gap-2">
               <div>
-                <h4 class="mb-0">
-                  Stage {stage}
-                  <span class="badge bg-secondary ms-1">{stageConfig.label}</span>
-                </h4>
-                <p class="small text-muted mb-0">
-                  목표 {stageLines}/{stageConfig.linesTarget}줄 · 총 {totalLines}줄
-                </p>
+                {#if isBonusContext}
+                  <h4 class="mb-0 bonus-title">⚡ BONUS <span>{bonusTimeLeft}s</span></h4>
+                  <p class="small text-muted mb-0">
+                    제거 {bonusLines}줄 · 점수 2배 · 4줄이면 부활권
+                  </p>
+                {:else}
+                  <h4 class="mb-0">
+                    Stage {stage}
+                    <span class="badge bg-secondary ms-1">{stageConfig.label}</span>
+                  </h4>
+                  <p class="small text-muted mb-0">
+                    목표 {stageLines}/{stageConfig.linesTarget}줄 · 총 {totalLines}줄
+                  </p>
+                {/if}
               </div>
               <div class="d-flex gap-2">
                 <button
@@ -1025,22 +1230,31 @@
                   type="button"
                   class="btn btn-sm btn-outline-secondary"
                   onclick={togglePause}
-                  disabled={screen === 'stageClear' || screen === 'gameOver' || screen === 'gameWin'}
+                  disabled={screen === 'stageClear' ||
+                    screen === 'bonusClear' ||
+                    screen === 'gameOver' ||
+                    screen === 'gameWin'}
                 >
                   {screen === 'paused' ? '▶' : '⏸'}
                 </button>
-                <button
-                  type="button"
-                  class="btn btn-sm btn-outline-dark"
-                  onclick={goToMenu}
-                >
+                <button type="button" class="btn btn-sm btn-outline-dark" onclick={goToMenu}>
                   메뉴
                 </button>
               </div>
             </div>
 
-            <div class="progress mb-3" style="height: 8px;" role="progressbar" aria-valuenow={stageProgress}>
-              <div class="progress-bar bg-success" style="width: {stageProgress}%"></div>
+            <div
+              class="progress mb-3"
+              style="height: 8px;"
+              role="progressbar"
+              aria-valuenow={isBonusContext ? bonusProgress : stageProgress}
+            >
+              <div
+                class="progress-bar"
+                class:bg-success={!isBonusContext}
+                class:bg-warning={isBonusContext}
+                style="width: {isBonusContext ? bonusProgress : stageProgress}%"
+              ></div>
             </div>
 
             <div class="tetris-layout">
@@ -1052,7 +1266,12 @@
                 aria-label="테트리스 조작 영역"
                 tabindex="-1"
               >
-                <div class="tetris-board" aria-label="테트리스 보드">
+                <div
+                  class="tetris-board"
+                  class:tetris-board-clear={clearFeedback !== null}
+                  class:tetris-board-bonus={isBonusContext}
+                  aria-label="테트리스 보드"
+                >
                   {#each displayRows as row, rowIdx (rowIdx)}
                     <div class="tetris-row">
                       {#each row as cell, colIdx (`${rowIdx}-${colIdx}`)}
@@ -1066,11 +1285,23 @@
                     </div>
                   {/each}
 
+                  {#if clearFeedback}
+                    <div class="tetris-clear-feedback" aria-live="polite">
+                      <strong>{clearFeedback.label}</strong>
+                      {#if clearFeedback.detail}<span>{clearFeedback.detail}</span>{/if}
+                      {#if clearFeedback.points > 0}
+                        <small>+{clearFeedback.points.toLocaleString()}</small>
+                      {/if}
+                    </div>
+                  {/if}
+
                   {#if screen === 'paused'}
                     <div class="tetris-overlay">
                       <p class="tetris-overlay-title">일시정지</p>
                       <p class="small text-white-50 mb-2">스와이프·탭 또는 ▶로 계속</p>
-                      <button type="button" class="btn btn-light btn-sm" onclick={resumeGame}>계속</button>
+                      <button type="button" class="btn btn-light btn-sm" onclick={resumeGame}
+                        >계속</button
+                      >
                     </div>
                   {/if}
                   {#if screen === 'stageClear'}
@@ -1078,7 +1309,25 @@
                       <p class="tetris-overlay-title">Stage {stage} 클리어!</p>
                       <p class="small mb-2">점수 {score.toLocaleString()}</p>
                       <button type="button" class="btn btn-success btn-sm" onclick={advanceStage}>
-                        {stage >= STAGES.length ? '결과 보기' : '다음 스테이지'}
+                        {stage >= STAGES.length
+                          ? '결과 보기'
+                          : BONUS_AFTER_STAGES.includes(stage as 3 | 6 | 9)
+                            ? '보너스 도전'
+                            : '다음 스테이지'}
+                      </button>
+                    </div>
+                  {/if}
+                  {#if screen === 'bonusClear'}
+                    <div class="tetris-overlay tetris-overlay-bonus">
+                      <p class="tetris-overlay-title">
+                        {bonusReviveEarned ? '⚡ 보너스 성공!' : '보너스 종료'}
+                      </p>
+                      <p class="small mb-1">{bonusLines}줄 제거 · 점수 {score.toLocaleString()}</p>
+                      <p class="small mb-3 fw-semibold">
+                        {bonusReviveEarned ? '🛡️ 부활권 1개 획득' : '4줄 제거 시 부활권 획득'}
+                      </p>
+                      <button type="button" class="btn btn-warning btn-sm" onclick={advanceStage}>
+                        Stage {(bonusSourceStage ?? stage) + 1} 시작
                       </button>
                     </div>
                   {/if}
@@ -1087,9 +1336,12 @@
                       <p class="tetris-overlay-title">게임 오버</p>
                       <p class="small mb-2">
                         Stage {stage} · {score.toLocaleString()}점
-                        {#if isLoggedIn}<span class="d-block text-white-50">랭킹에 반영됨</span>{/if}
+                        {#if isLoggedIn}<span class="d-block text-white-50">랭킹에 반영됨</span
+                          >{/if}
                       </p>
-                      <button type="button" class="btn btn-primary btn-sm" onclick={startNewGame}>다시 하기</button>
+                      <button type="button" class="btn btn-primary btn-sm" onclick={startNewGame}
+                        >다시 하기</button
+                      >
                     </div>
                   {/if}
                   {#if screen === 'gameWin'}
@@ -1097,9 +1349,12 @@
                       <p class="tetris-overlay-title">🎉 전체 클리어!</p>
                       <p class="small mb-2">
                         {score.toLocaleString()}점 · {totalLines}줄
-                        {#if isLoggedIn}<span class="d-block text-white-50">랭킹에 반영됨</span>{/if}
+                        {#if isLoggedIn}<span class="d-block text-white-50">랭킹에 반영됨</span
+                          >{/if}
                       </p>
-                      <button type="button" class="btn btn-warning btn-sm" onclick={startNewGame}>다시 도전</button>
+                      <button type="button" class="btn btn-warning btn-sm" onclick={startNewGame}
+                        >다시 도전</button
+                      >
                     </div>
                   {/if}
                 </div>
@@ -1109,7 +1364,21 @@
                 <div class="tetris-panel">
                   <p class="tetris-panel-label">점수</p>
                   <p class="tetris-panel-value">{score.toLocaleString()}</p>
+                  {#if combo > 1 || backToBack}
+                    <p class="tetris-streak mb-0">
+                      {#if combo > 1}{combo} COMBO{/if}
+                      {#if combo > 1 && backToBack}<span> · </span>{/if}
+                      {#if backToBack}<span>B2B</span>{/if}
+                    </p>
+                  {/if}
                 </div>
+                {#if reviveTokens > 0}
+                  <div class="tetris-panel tetris-revive-panel">
+                    <p class="tetris-panel-label">보유 보상</p>
+                    <p class="tetris-panel-value">🛡️ × {reviveTokens}</p>
+                    <p class="tetris-revive-help mb-0">게임오버 시 자동 부활</p>
+                  </div>
+                {/if}
                 <div class="tetris-panel">
                   <p class="tetris-panel-label">홀드</p>
                   <div class="tetris-preview" aria-hidden="true">
@@ -1193,7 +1462,8 @@
           </div>
           <p class="small text-muted mb-1">전체 기간 1인 1최고점</p>
           <p class="small text-muted mb-2">
-            오늘 참여 <strong>{todayStats.users}</strong>명 · 게임 <strong>{todayStats.games}</strong>회
+            오늘 참여 <strong>{todayStats.users}</strong>명 · 게임
+            <strong>{todayStats.games}</strong>회
           </p>
           {#if isLoggedIn}
             <p class="small mb-2">
@@ -1291,6 +1561,90 @@
     gap: 2px;
   }
 
+  .tetris-board-clear {
+    animation: board-pulse 180ms ease-out;
+  }
+
+  .tetris-board-bonus {
+    border-color: #f59e0b;
+    background: linear-gradient(180deg, #1f2937 0%, #172554 100%);
+    box-shadow: 0 0 18px rgba(245, 158, 11, 0.35);
+  }
+
+  .bonus-title {
+    color: #d97706;
+    letter-spacing: 0.04em;
+  }
+
+  .bonus-title span {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .tetris-clear-feedback {
+    position: absolute;
+    z-index: 4;
+    left: 50%;
+    top: 48%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    color: #fff;
+    text-align: center;
+    white-space: nowrap;
+    pointer-events: none;
+    text-shadow:
+      0 2px 6px #000,
+      0 0 14px #fbbf24;
+    animation: clear-pop 950ms ease-out forwards;
+  }
+
+  .tetris-clear-feedback strong {
+    font-size: clamp(1.15rem, 6vw, 1.7rem);
+    letter-spacing: 0.06em;
+  }
+
+  .tetris-clear-feedback span {
+    color: #fde68a;
+    font-weight: 800;
+  }
+
+  .tetris-clear-feedback small {
+    font-weight: 700;
+  }
+
+  .tetris-streak {
+    color: #d97706;
+    font-size: 0.68rem;
+    font-weight: 800;
+    line-height: 1.15;
+  }
+
+  @keyframes board-pulse {
+    50% {
+      box-shadow: 0 0 24px rgba(251, 191, 36, 0.8);
+    }
+  }
+
+  @keyframes clear-pop {
+    0% {
+      opacity: 0;
+      transform: translate(-50%, -35%) scale(0.7);
+    }
+    18% {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1.12);
+    }
+    72% {
+      opacity: 1;
+      transform: translate(-50%, -55%) scale(1);
+    }
+    100% {
+      opacity: 0;
+      transform: translate(-50%, -75%) scale(0.92);
+    }
+  }
+
   .tetris-row {
     display: flex;
     gap: 2px;
@@ -1305,7 +1659,9 @@
 
   .tetris-cell-filled {
     background: var(--cell-color);
-    box-shadow: inset 2px 2px 0 rgba(255, 255, 255, 0.35), inset -2px -2px 0 rgba(0, 0, 0, 0.25);
+    box-shadow:
+      inset 2px 2px 0 rgba(255, 255, 255, 0.35),
+      inset -2px -2px 0 rgba(0, 0, 0, 0.25);
   }
 
   .tetris-cell-ghost {
@@ -1335,6 +1691,10 @@
 
   .tetris-overlay-clear {
     background: rgba(22, 101, 52, 0.88);
+  }
+
+  .tetris-overlay-bonus {
+    background: linear-gradient(145deg, rgba(146, 64, 14, 0.94), rgba(30, 58, 138, 0.94));
   }
 
   .tetris-overlay-over {
@@ -1369,6 +1729,17 @@
     font-weight: 700;
     font-variant-numeric: tabular-nums;
     margin: 0;
+  }
+
+  .tetris-revive-panel {
+    background: #fffbeb;
+    border: 1px solid #fcd34d;
+  }
+
+  .tetris-revive-help {
+    color: #92400e;
+    font-size: 0.62rem;
+    line-height: 1.15;
   }
 
   .tetris-preview {

@@ -2,8 +2,12 @@ import { describe, expect, it } from 'vitest';
 import {
   calculateHardDropScore,
   calculateLineScore,
+  calculatePlacementScore,
+  calculateSoftDropScore,
   canPlace,
   clearLines,
+  createBonusBoard,
+  createBonusQueue,
   createEmptyBoard,
   drawNextPiece,
   getGhostPiece,
@@ -70,6 +74,31 @@ describe('tetris gameUtils', () => {
   it('scores lines and hard drop by stage', () => {
     expect(calculateLineScore(4, 3)).toBe(800 * 3);
     expect(calculateHardDropScore(5)).toBe(10);
+    expect(calculateSoftDropScore(5)).toBe(5);
+  });
+
+  it('rewards consecutive clears with combos', () => {
+    expect(calculatePlacementScore(1, 2, 0, false)).toEqual({
+      lineScore: 200,
+      comboBonus: 0,
+      backToBackBonus: 0,
+      total: 200,
+      nextCombo: 1,
+      nextBackToBack: false
+    });
+    expect(calculatePlacementScore(2, 2, 1, false).comboBonus).toBe(100);
+    expect(calculatePlacementScore(0, 2, 3, false).nextCombo).toBe(0);
+  });
+
+  it('rewards back-to-back tetrises and breaks the chain on a smaller clear', () => {
+    const first = calculatePlacementScore(4, 3, 0, false);
+    expect(first.backToBackBonus).toBe(0);
+    expect(first.nextBackToBack).toBe(true);
+
+    const second = calculatePlacementScore(4, 3, first.nextCombo, first.nextBackToBack);
+    expect(second.backToBackBonus).toBe(1200);
+    expect(second.total).toBe(3750);
+    expect(calculatePlacementScore(1, 3, second.nextCombo, true).nextBackToBack).toBe(false);
   });
 
   it('tracks stage progress and has 10 stages', () => {
@@ -85,5 +114,28 @@ describe('tetris gameUtils', () => {
     expect(first.queue.length).toBeGreaterThan(0);
     const second = drawNextPiece(first.queue);
     expect(second.piece).not.toBe(first.piece);
+  });
+
+  it('creates the deterministic bonus challenge', () => {
+    const board = createBonusBoard();
+    for (let row = 18; row < 22; row++) {
+      expect(board[row].slice(0, 9).every((cell) => cell !== null)).toBe(true);
+      expect(board[row][9]).toBeNull();
+    }
+
+    const queue = createBonusQueue();
+    expect(queue).toHaveLength(42);
+    expect(queue.slice(0, 7)).toEqual(['I', 'T', 'O', 'L', 'J', 'S', 'Z']);
+    expect(queue.slice(7, 14)).toEqual(queue.slice(0, 7));
+  });
+
+  it('lets the opening bonus I-piece clear the four-line well', () => {
+    const board = createBonusBoard();
+    const rotated = rotateActivePiece(board, spawnPiece('I'));
+    expect(rotated).not.toBeNull();
+    const aimed = movePiece(rotated!, 4, 0);
+    const dropped = hardDrop(board, aimed);
+    const result = clearLines(lockPiece(board, dropped.piece));
+    expect(result.linesCleared).toBe(4);
   });
 });

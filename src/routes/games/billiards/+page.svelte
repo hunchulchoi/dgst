@@ -16,6 +16,8 @@
     POCKET_RADIUS,
     CUE_SPIN_ANGULAR_SCALE,
     CUE_SPIN_STOP_VALUE,
+    FOUR_BALL_TARGET_SCORE,
+    FOUR_BALL_TARGET_OPTIONS,
     FOUR_BALL_CHANCES,
     RAIL_RESTITUTION,
     RAIL_THICKNESS,
@@ -26,6 +28,9 @@
     TABLE_WIDTH,
     containBallInTable,
     computeBreathingAimAngle,
+    computeFourBallComboMultiplier,
+    computeFourBallFoulPenalty,
+    computeFourBallShotScore,
     computeDynamicSpinDecay,
     computeSpinAdjustedVelocity,
     computeVerticalSpinFromTrack,
@@ -37,10 +42,13 @@
     computeSpinFromTrack,
     evaluateFourBallShot,
     getPocketCenters,
+    getFourBallNpcDifficulty,
     isBallInPocket,
     shouldSnapStoppedSpeed,
     stopped,
     type ActiveBilliardsMode,
+    type BallRole,
+    type FourBallTargetScore,
     type ShotContact
   } from './gameUtils';
   import type { PageData } from './$types';
@@ -57,8 +65,44 @@
     createdAt?: string;
     _id?: string;
   };
+  type FourBallTurn = 'player' | 'npc';
+  type NpcShotPlan = {
+    angle: number;
+    power: number;
+    defensive: boolean;
+    rating: number;
+  };
+  type ReplayBall = {
+    id: string;
+    role: BallRole;
+    color: string;
+    x: number;
+    y: number;
+  };
+  type ReplayFrame = {
+    at: number;
+    balls: ReplayBall[];
+  };
+  type ShotReplay = {
+    id: string;
+    mode: ActiveBilliardsMode;
+    targetScore: FourBallTargetScore;
+    power: number;
+    sideSpin: number;
+    verticalSpin: number;
+    startedAt: string;
+    scoreBefore: number;
+    outcome: string;
+    frames: ReplayFrame[];
+  };
   type BallBody = Matter.Body & {
-    billiardsRole?: 'cue' | 'red';
+    billiardsRole?: BallRole;
+    billiardsId?: string;
+    billiardsColor?: string;
+  };
+  type DrawableBall = {
+    position: { x: number; y: number };
+    billiardsRole?: BallRole;
     billiardsId?: string;
     billiardsColor?: string;
   };
@@ -69,6 +113,15 @@
   let canvasEl = $state<HTMLCanvasElement | null>(null);
   let currentMode = $state<ActiveBilliardsMode>(BILLIARDS_MODES.FOUR_BALL);
   let score = $state(0);
+  let npcScore = $state(0);
+  let targetScore = $state<FourBallTargetScore>(FOUR_BALL_TARGET_SCORE);
+  let playerCombo = $state(0);
+  let npcCombo = $state(0);
+  let lastShotMultiplier = $state(1);
+  let lastFoulPenalty = $state(0);
+  let currentTurn = $state<FourBallTurn>('player');
+  let npcThinking = $state(false);
+  let npcMessage = $state('');
   let chances = $state(FOUR_BALL_CHANCES);
   let status = $state<Status>('aiming');
   let aimAngle = $state(-Math.PI / 2);
@@ -93,33 +146,65 @@
   let cuePocketedThisShot = false;
   let engine: Matter.Engine | null = null;
   let cueBall: BallBody | null = null;
+  let npcCueBall: BallBody | null = null;
   let redBalls: BallBody[] = [];
   let remainingObjectCount = $state(0);
   let frameId = 0;
   let lastFrame = 0;
   let rollingStartedAt = 0;
+  let npcTimer: ReturnType<typeof setTimeout> | null = null;
+  let npcShotWasDefensive = false;
+  let opponentCueHitThisShot = false;
+  let replayCapture: ShotReplay | null = null;
+  let lastPlayerReplay = $state<ShotReplay | null>(null);
+  let lastReplaySampleAt = 0;
+  let replaying = $state(false);
+  let replayStartedAt = 0;
+  let replayFrameIndex = 0;
+  let reportOpen = $state(false);
+  let reportNote = $state('');
+  let reportSending = $state(false);
+  let reportMessage = $state('');
 
   const isLoggedIn = $derived(!!data.session?.user?.email);
   const isPocketBall = $derived(currentMode === BILLIARDS_MODES.POCKET_BALL);
   const modeLabel = $derived(isPocketBall ? '포켓볼' : '4구 당구');
   const remainingObjects = $derived(remainingObjectCount);
+  const activeCombo = $derived(currentTurn === 'player' ? playerCombo : npcCombo);
+  const activeComboMultiplier = $derived(computeFourBallComboMultiplier(Math.max(1, activeCombo)));
   const statusText = $derived(
-    status === 'aiming'
+    replaying
+      ? '내 마지막 샷 다시보기'
+      : !isPocketBall && status === 'game-over'
+      ? score >= targetScore
+        ? '승리! 겐세이 형을 이겼습니다'
+        : '겐세이 형 승리'
+      : !isPocketBall && npcThinking
+        ? npcMessage || '겐세이 형이 수를 보는 중'
+      : status === 'aiming'
       ? isPocketBall
         ? '공을 포켓에 넣으세요'
-        : '당구대에서 조준하고 게이지를 눌러 샷'
+        : currentTurn === 'player'
+          ? '내 차례 · 조준하고 샷'
+          : '겐세이 형 차례'
       : status === 'charging'
         ? '게이지를 눌러 샷'
-        : status === 'rolling'
-          ? '공이 멈출 때까지 기다리세요'
+          : status === 'rolling'
+          ? `${!isPocketBall && currentTurn === 'npc' ? '겐세이 형' : '내'} 샷 진행 중`
           : status === 'scored'
             ? isPocketBall
               ? '포켓 성공'
-              : '득점! 한 번 더'
+              : `${currentTurn === 'player' ? '득점!' : 'NPC 득점'} ×${lastShotMultiplier}`
             : status === 'miss'
-              ? cuePocketedThisShot
+              ? !isPocketBall && lastFoulPenalty > 0
+                ? `${currentTurn === 'npc' ? 'NPC 차례' : '내 차례'} · 파울 -${lastFoulPenalty}`
+                : !isPocketBall && npcMessage
+                ? npcMessage
+                : cuePocketedThisShot
                 ? '수구 파울'
-                : '아쉽습니다. 다시 조준하세요'
+                : !isPocketBall && currentTurn === 'npc'
+                  ? '실패 · NPC 차례'
+                  : '아쉽습니다. 내 차례'
               : '게임 종료'
   );
 
@@ -132,7 +217,7 @@
   function makeBall(
     x: number,
     y: number,
-    role: 'cue' | 'red',
+    role: BallRole,
     id: string,
     color: string
   ): BallBody {
@@ -220,7 +305,16 @@
           makeRail(TABLE_WIDTH - rail / 2, TABLE_HEIGHT / 2, rail, TABLE_HEIGHT)
         ];
 
-    cueBall = makeBall(TABLE_WIDTH * 0.5, TABLE_HEIGHT * 0.72, 'cue', 'cue', '#f8f7ef');
+    cueBall = makeBall(
+      TABLE_WIDTH * (isPocketBall ? 0.5 : 0.42),
+      TABLE_HEIGHT * 0.72,
+      'cue',
+      'cue',
+      '#f8f7ef'
+    );
+    npcCueBall = isPocketBall
+      ? null
+      : makeBall(TABLE_WIDTH * 0.58, TABLE_HEIGHT * 0.72, 'opponent', 'npc-cue', '#f1e8c8');
     if (isPocketBall) {
       const rackX = TABLE_WIDTH * 0.5;
       const rackY = TABLE_HEIGHT * 0.28;
@@ -240,12 +334,39 @@
       ];
     }
 
-    Composite.add(engine.world, [...walls, cueBall, ...redBalls]);
+    Composite.add(engine.world, [
+      ...walls,
+      cueBall,
+      ...(npcCueBall ? [npcCueBall] : []),
+      ...redBalls
+    ]);
     remainingObjectCount = redBalls.length;
   }
 
   function newGame() {
+    if (npcTimer) clearTimeout(npcTimer);
+    npcTimer = null;
     score = 0;
+    npcScore = 0;
+    playerCombo = 0;
+    npcCombo = 0;
+    lastShotMultiplier = 1;
+    lastFoulPenalty = 0;
+    currentTurn = 'player';
+    npcThinking = false;
+    npcMessage = '';
+    npcShotWasDefensive = false;
+    opponentCueHitThisShot = false;
+    replayCapture = null;
+    lastPlayerReplay = null;
+    lastReplaySampleAt = 0;
+    replaying = false;
+    replayStartedAt = 0;
+    replayFrameIndex = 0;
+    reportOpen = false;
+    reportNote = '';
+    reportSending = false;
+    reportMessage = '';
     chances = isPocketBall ? POCKET_BALL_CHANCES : FOUR_BALL_CHANCES;
     status = 'aiming';
     contacts = [];
@@ -277,10 +398,133 @@
     void loadRank();
   }
 
+  function switchTargetScore(nextTarget: FourBallTargetScore) {
+    if (targetScore === nextTarget || isPocketBall) return;
+    targetScore = nextTarget;
+    rankList = [];
+    myBestScore = null;
+    newGame();
+    void loadRank();
+  }
+
   function getTrackedBalls(): BallBody[] {
     // A scratched cue ball stays referenced so it can be spotted after the shot,
     // but must not be drawn or clamped back onto the table while it is pocketed.
-    return [...(cueBall && !cuePocketedThisShot ? [cueBall] : []), ...redBalls];
+    return [
+      ...(cueBall && !cuePocketedThisShot ? [cueBall] : []),
+      ...(npcCueBall ? [npcCueBall] : []),
+      ...redBalls
+    ];
+  }
+
+  function makeReplayFrame(at: number): ReplayFrame {
+    return {
+      at: Math.max(0, Math.round(at)),
+      balls: getTrackedBalls().map((ball) => ({
+        id: ball.billiardsId ?? ball.label,
+        role: ball.billiardsRole ?? 'red',
+        color: ball.billiardsColor ?? '#d7352a',
+        x: Math.round(ball.position.x * 100) / 100,
+        y: Math.round(ball.position.y * 100) / 100
+      }))
+    };
+  }
+
+  function beginPlayerReplay(selectedPower: number) {
+    const startedAt = performance.now();
+    replayCapture = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      mode: currentMode,
+      targetScore,
+      power: selectedPower,
+      sideSpin: spin,
+      verticalSpin,
+      startedAt: new Date().toISOString(),
+      scoreBefore: score,
+      outcome: '',
+      frames: [makeReplayFrame(0)]
+    };
+    lastReplaySampleAt = startedAt;
+    reportMessage = '';
+  }
+
+  function capturePlayerReplayFrame(now: number, force = false) {
+    if (!replayCapture || replayCapture.frames.length >= 260) return;
+    if (!force && now - lastReplaySampleAt < 50) return;
+    replayCapture.frames.push(makeReplayFrame(now - rollingStartedAt));
+    lastReplaySampleAt = now;
+  }
+
+  function finishPlayerReplay(outcome: string) {
+    if (!replayCapture) return;
+    capturePlayerReplayFrame(performance.now(), true);
+    replayCapture.outcome = outcome;
+    lastPlayerReplay = replayCapture;
+    replayCapture = null;
+  }
+
+  function startReplay() {
+    if (!lastPlayerReplay || status === 'rolling' || npcThinking || replaying) return;
+    replaying = true;
+    replayStartedAt = performance.now();
+    replayFrameIndex = 0;
+    reportMessage = '';
+  }
+
+  function openReport() {
+    if (!lastPlayerReplay || status === 'rolling' || npcThinking || replaying) return;
+    reportNote = '';
+    reportMessage = '';
+    reportOpen = true;
+  }
+
+  function closeReport() {
+    if (reportSending) return;
+    reportOpen = false;
+  }
+
+  function getReportFrames(replay: ShotReplay) {
+    const maxFrames = 80;
+    if (replay.frames.length <= maxFrames) return replay.frames;
+    return Array.from({ length: maxFrames }, (_, index) =>
+      replay.frames[Math.floor((index * (replay.frames.length - 1)) / (maxFrames - 1))]
+    );
+  }
+
+  async function submitShotReport() {
+    if (!lastPlayerReplay || reportSending) return;
+    reportSending = true;
+    reportMessage = '';
+    try {
+      const replay = lastPlayerReplay;
+      const response = await fetch('/games/billiards/report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          note: reportNote.trim(),
+          replay: {
+            ...replay,
+            frames: getReportFrames(replay)
+          }
+        })
+      });
+      if (!response.ok) throw new Error('report failed');
+      reportOpen = false;
+      reportMessage = '오류신고 완료. 고마워요.';
+    } catch {
+      reportMessage = '신고 전송 실패. 다시 눌러주세요.';
+    } finally {
+      reportSending = false;
+    }
+  }
+
+  function finishFourBallGame() {
+    status = 'game-over';
+    npcThinking = false;
+    npcMessage = '';
+    if (npcTimer) clearTimeout(npcTimer);
+    npcTimer = null;
+    void submitScore();
   }
 
   function settleShot() {
@@ -296,6 +540,13 @@
 
     if (isPocketBall) {
       const shotScore = computePocketShotScore(pocketedThisShot, cuePocketedThisShot);
+      finishPlayerReplay(
+        cuePocketedThisShot
+          ? '수구 파울'
+          : pocketedThisShot > 0
+            ? `${pocketedThisShot}개 포켓 · +${shotScore}`
+            : '실패'
+      );
       if (shotScore > 0) score += shotScore;
 
       if (redBalls.length === 0) {
@@ -327,20 +578,71 @@
       return;
     }
 
+    const foulPenalty = computeFourBallFoulPenalty(
+      result.hitRedIds.length,
+      opponentCueHitThisShot
+    );
+    if (currentTurn === 'player') {
+      finishPlayerReplay(
+        foulPenalty > 0 ? `파울 -${foulPenalty}` : result.scored ? '득점' : '실패'
+      );
+    }
+    opponentCueHitThisShot = false;
+    lastFoulPenalty = foulPenalty;
+    if (foulPenalty > 0) {
+      if (currentTurn === 'player') {
+        score = Math.max(0, score - foulPenalty);
+        playerCombo = 0;
+        currentTurn = 'npc';
+        npcMessage = '';
+        status = 'miss';
+        scheduleNpcShot(850);
+      } else {
+        npcScore = Math.max(0, npcScore - foulPenalty);
+        npcCombo = 0;
+        currentTurn = 'player';
+        npcThinking = false;
+        npcMessage = '';
+        npcShotWasDefensive = false;
+        status = 'miss';
+      }
+      return;
+    }
+
     if (result.scored) {
-      score += 1;
-      status = 'scored';
+      if (currentTurn === 'player') {
+        playerCombo += 1;
+        lastShotMultiplier = computeFourBallComboMultiplier(playerCombo);
+        score += computeFourBallShotScore(playerCombo);
+        npcMessage = '';
+        status = 'scored';
+        if (score >= targetScore) finishFourBallGame();
+      } else {
+        npcCombo += 1;
+        lastShotMultiplier = computeFourBallComboMultiplier(npcCombo);
+        npcScore += computeFourBallShotScore(npcCombo);
+        npcMessage = '';
+        status = 'scored';
+        if (npcScore >= targetScore) finishFourBallGame();
+        else scheduleNpcShot(850);
+      }
       return;
     }
 
-    chances = Math.max(0, chances - 1);
-    if (chances === 0) {
-      status = 'game-over';
-      void submitScore();
-      return;
+    if (currentTurn === 'player') {
+      playerCombo = 0;
+      currentTurn = 'npc';
+      npcMessage = '';
+      status = 'miss';
+      scheduleNpcShot(700);
+    } else {
+      npcCombo = 0;
+      currentTurn = 'player';
+      npcThinking = false;
+      npcMessage = npcShotWasDefensive ? '겐세이! 어려운 배치를 남겼습니다' : 'NPC 실패 · 내 차례';
+      npcShotWasDefensive = false;
+      status = 'miss';
     }
-
-    status = 'miss';
   }
 
   function resetCueBall() {
@@ -352,11 +654,195 @@
   }
 
   function recordCueContact(bodyA: BallBody, bodyB: BallBody) {
-    const cue =
-      bodyA.billiardsRole === 'cue' ? bodyA : bodyB.billiardsRole === 'cue' ? bodyB : null;
+    const activeCue = isPocketBall || currentTurn === 'player' ? cueBall : npcCueBall;
+    const cue = bodyA === activeCue ? bodyA : bodyB === activeCue ? bodyB : null;
     const target = cue === bodyA ? bodyB : bodyA;
+    const opposingCue = currentTurn === 'player' ? npcCueBall : cueBall;
+    if (!isPocketBall && cue && target === opposingCue) {
+      opponentCueHitThisShot = true;
+      return;
+    }
     if (!cue || target.billiardsRole !== 'red' || !target.billiardsId) return;
-    contacts = [...contacts, { cueRole: 'red', targetId: target.billiardsId }];
+    contacts = [
+      ...contacts,
+      { cueRole: cue.billiardsRole ?? 'cue', targetId: target.billiardsId }
+    ];
+  }
+
+  function simulateNpcShot(angle: number, selectedPower: number): {
+    rating: number;
+    scored: boolean;
+  } {
+    if (!cueBall || !npcCueBall || redBalls.length < 2) {
+      return { rating: Number.NEGATIVE_INFINITY, scored: false };
+    }
+
+    const simulation = Engine.create({ gravity: { x: 0, y: 0 } });
+    const simPlayer = makeBall(
+      cueBall.position.x,
+      cueBall.position.y,
+      'cue',
+      'sim-player',
+      '#fff'
+    );
+    const simNpc = makeBall(
+      npcCueBall.position.x,
+      npcCueBall.position.y,
+      'opponent',
+      'sim-npc',
+      '#fff'
+    );
+    const simReds = redBalls.map((ball, index) =>
+      makeBall(ball.position.x, ball.position.y, 'red', `sim-red-${index}`, '#d7352a')
+    );
+    const rail = RAIL_THICKNESS;
+    const walls = [
+      makeRail(TABLE_WIDTH / 2, rail / 2, TABLE_WIDTH, rail),
+      makeRail(TABLE_WIDTH / 2, TABLE_HEIGHT - rail / 2, TABLE_WIDTH, rail),
+      makeRail(rail / 2, TABLE_HEIGHT / 2, rail, TABLE_HEIGHT),
+      makeRail(TABLE_WIDTH - rail / 2, TABLE_HEIGHT / 2, rail, TABLE_HEIGHT)
+    ];
+    const movingBalls = [simPlayer, simNpc, ...simReds];
+    const hitIds = new Set<string>();
+    let hitPlayerCue = false;
+    const collisionHandler = (event: Matter.IEventCollision<Matter.Engine>) => {
+      for (const pair of event.pairs) {
+        const other = pair.bodyA === simNpc ? pair.bodyB : pair.bodyB === simNpc ? pair.bodyA : null;
+        if (other === simPlayer) hitPlayerCue = true;
+        const target = other as BallBody | null;
+        if (target?.billiardsRole === 'red' && target.billiardsId) hitIds.add(target.billiardsId);
+      }
+    };
+
+    Events.on(simulation, 'collisionStart', collisionHandler);
+    Composite.add(simulation.world, [...walls, ...movingBalls]);
+    Body.setVelocity(simNpc, computeShotVelocity(angle, selectedPower));
+
+    for (let step = 0; step < 210; step += 1) {
+      Engine.update(simulation, 16.66);
+      for (const ball of movingBalls) {
+        const contained = containBallInTable({ position: ball.position, velocity: ball.velocity });
+        if (contained.corrected) {
+          Body.setPosition(ball, contained.position);
+          Body.setVelocity(ball, contained.velocity);
+        }
+        const speed = Math.hypot(ball.velocity.x, ball.velocity.y);
+        if (shouldSnapStoppedSpeed(speed)) {
+          Body.setVelocity(ball, { x: 0, y: 0 });
+        } else {
+          const scale = computeDynamicVelocityScale(speed, 16.66);
+          Body.setVelocity(ball, {
+            x: ball.velocity.x * scale,
+            y: ball.velocity.y * scale
+          });
+        }
+      }
+      if (step > 20 && stopped(movingBalls, STOP_SPEED)) break;
+    }
+
+    const scored = hitIds.size >= 2 && !hitPlayerCue;
+    const playerToNearestRed = Math.min(
+      ...simReds.map((ball) =>
+        Math.hypot(ball.position.x - simPlayer.position.x, ball.position.y - simPlayer.position.y)
+      )
+    );
+    const redSpread = Math.hypot(
+      simReds[0].position.x - simReds[1].position.x,
+      simReds[0].position.y - simReds[1].position.y
+    );
+    const defenseValue = playerToNearestRed * 1.4 + redSpread * 0.65;
+    const foulPenalty = computeFourBallFoulPenalty(hitIds.size, hitPlayerCue);
+    const rating =
+      (scored ? 100_000 : 0) +
+      hitIds.size * 4_000 +
+      defenseValue -
+      selectedPower -
+      foulPenalty * 10_000;
+
+    Events.off(simulation, 'collisionStart', collisionHandler);
+    Composite.clear(simulation.world, false);
+    Engine.clear(simulation);
+    return { rating, scored };
+  }
+
+  function chooseNpcShot(): NpcShotPlan {
+    if (!npcCueBall || redBalls.length < 2) {
+      return { angle: -Math.PI / 2, power: 55, defensive: true, rating: 0 };
+    }
+
+    const candidates: Array<{ angle: number; power: number }> = [];
+    const offsets = [-0.42, -0.3, -0.2, -0.12, -0.06, 0, 0.06, 0.12, 0.2, 0.3, 0.42];
+    for (const red of redBalls) {
+      const baseAngle = Math.atan2(
+        red.position.y - npcCueBall.position.y,
+        red.position.x - npcCueBall.position.x
+      );
+      for (const offset of offsets) {
+        for (const candidatePower of [48, 64, 80]) {
+          candidates.push({ angle: baseAngle + offset, power: candidatePower });
+        }
+      }
+    }
+    for (let index = 0; index < 18; index += 1) {
+      candidates.push({
+        angle: (index / 18) * Math.PI * 2,
+        power: 55 + (index % 3) * 15
+      });
+    }
+
+    const difficulty = getFourBallNpcDifficulty(targetScore);
+    const selectedCandidates =
+      difficulty.candidateBudget >= candidates.length
+        ? candidates
+        : Array.from({ length: difficulty.candidateBudget }, (_, index) =>
+            candidates[Math.floor((index * candidates.length) / difficulty.candidateBudget)]
+          );
+    let best: NpcShotPlan = {
+      angle: selectedCandidates[0].angle,
+      power: selectedCandidates[0].power,
+      defensive: true,
+      rating: Number.NEGATIVE_INFINITY
+    };
+    for (const candidate of selectedCandidates) {
+      const result = simulateNpcShot(candidate.angle, candidate.power);
+      if (result.rating <= best.rating) continue;
+      best = {
+        ...candidate,
+        defensive: !result.scored,
+        rating: result.rating
+      };
+    }
+    return best;
+  }
+
+  function performNpcShot() {
+    if (isPocketBall || currentTurn !== 'npc' || status === 'game-over' || !npcCueBall) return;
+    const plan = chooseNpcShot();
+    const difficulty = getFourBallNpcDifficulty(targetScore);
+    const aimError = difficulty.aimError * (plan.defensive ? 1.15 : 1);
+    const actualAngle = plan.angle + (Math.random() - 0.5) * aimError * 2;
+    npcShotWasDefensive = plan.defensive;
+    npcMessage = plan.defensive ? '겐세이 노리는 중…' : '득점 코스 발견';
+    npcThinking = false;
+    contacts = [];
+    lastFoulPenalty = 0;
+    opponentCueHitThisShot = false;
+    activeSpin = 0;
+    activeVerticalSpin = 0;
+    Body.setVelocity(npcCueBall, computeShotVelocity(actualAngle, plan.power));
+    Body.setAngularVelocity(npcCueBall, 0);
+    status = 'rolling';
+    rollingStartedAt = performance.now();
+  }
+
+  function scheduleNpcShot(delayMs: number) {
+    if (npcTimer) clearTimeout(npcTimer);
+    npcThinking = true;
+    npcMessage = '겐세이 형이 수를 보는 중…';
+    npcTimer = setTimeout(() => {
+      npcTimer = null;
+      performNpcShot();
+    }, delayMs);
   }
 
   function getCanvasPoint(event: PointerEvent) {
@@ -369,7 +855,11 @@
   }
 
   function canPrepareShot() {
-    return status === 'aiming' || status === 'scored' || status === 'miss';
+    return (
+      !replaying &&
+      (isPocketBall || (currentTurn === 'player' && !npcThinking)) &&
+      (status === 'aiming' || status === 'scored' || status === 'miss')
+    );
   }
 
   function canAim() {
@@ -504,34 +994,44 @@
     power = selectedPower;
     const velocity = computeShotVelocity(aimAngle, selectedPower);
     if (Math.hypot(velocity.x, velocity.y) < 0.1) return;
+    rollingStartedAt = performance.now();
+    beginPlayerReplay(selectedPower);
     contacts = [];
+    lastFoulPenalty = 0;
+    opponentCueHitThisShot = false;
     Body.setVelocity(cueBall, velocity);
     Body.setAngularVelocity(cueBall, spin / CUE_SPIN_ANGULAR_SCALE);
     activeSpin = spin;
     activeVerticalSpin = verticalSpin;
     resetSpinTip();
     status = 'rolling';
-    rollingStartedAt = performance.now();
     aimPoint = null;
     resetAimDrag();
   }
 
-  function drawBall(ctx: CanvasRenderingContext2D, ball: BallBody) {
+  function drawBall(ctx: CanvasRenderingContext2D, ball: DrawableBall) {
     const role = ball.billiardsRole;
     ctx.beginPath();
     ctx.arc(ball.position.x, ball.position.y, BALL_RADIUS, 0, Math.PI * 2);
     ctx.fillStyle =
       role === 'cue'
         ? '#faf9f1'
+        : role === 'opponent'
+          ? '#f1e8c8'
         : (ball.billiardsColor ?? (ball.billiardsId === 'red-1' ? '#dc342c' : '#bd1f26'));
     ctx.fill();
     ctx.lineWidth = 1.5;
-    ctx.strokeStyle = role === 'cue' ? '#d8d0bc' : '#8e1518';
+    ctx.strokeStyle = role === 'cue' ? '#d8d0bc' : role === 'opponent' ? '#bda95f' : '#8e1518';
     ctx.stroke();
     if (role === 'cue') {
       ctx.beginPath();
       ctx.arc(ball.position.x - 3, ball.position.y - 3, 2.3, 0, Math.PI * 2);
       ctx.fillStyle = 'rgba(255, 255, 255, 0.78)';
+      ctx.fill();
+    } else if (role === 'opponent') {
+      ctx.beginPath();
+      ctx.arc(ball.position.x, ball.position.y, 2.8, 0, Math.PI * 2);
+      ctx.fillStyle = '#315b91';
       ctx.fill();
     } else if (isPocketBall) {
       ctx.fillStyle = 'rgba(255, 255, 255, 0.86)';
@@ -612,7 +1112,19 @@
       TABLE_HEIGHT - RAIL_THICKNESS * 2 - 12
     );
 
-    for (const ball of getTrackedBalls()) drawBall(ctx, ball);
+    const replayFrame = replaying ? lastPlayerReplay?.frames[replayFrameIndex] : null;
+    if (replayFrame) {
+      for (const ball of replayFrame.balls) {
+        drawBall(ctx, {
+          position: { x: ball.x, y: ball.y },
+          billiardsRole: ball.role,
+          billiardsId: ball.id,
+          billiardsColor: ball.color
+        });
+      }
+    } else {
+      for (const ball of getTrackedBalls()) drawBall(ctx, ball);
+    }
     drawAim(ctx);
   }
 
@@ -726,6 +1238,22 @@
       }
     }
 
+    if (status === 'rolling' && replayCapture) capturePlayerReplayFrame(now);
+
+    if (replaying && lastPlayerReplay) {
+      const elapsed = now - replayStartedAt;
+      const frames = lastPlayerReplay.frames;
+      for (let index = replayFrameIndex + 1; index < frames.length; index += 1) {
+        if (frames[index].at > elapsed) break;
+        replayFrameIndex = index;
+      }
+      const lastFrameAt = frames[frames.length - 1]?.at ?? 0;
+      if (elapsed > lastFrameAt + 450) {
+        replaying = false;
+        replayFrameIndex = 0;
+      }
+    }
+
     if (
       status === 'rolling' &&
       ((rollingStartedAt && now - rollingStartedAt > MAX_ROLL_DURATION_MS) ||
@@ -744,7 +1272,9 @@
     if (!isLoggedIn) return;
     rankLoading = true;
     try {
-      const res = await fetch(`/games/billiards?rank=1&mode=${currentMode}`);
+      const params = new URLSearchParams({ rank: '1', mode: currentMode });
+      if (!isPocketBall) params.set('target', String(targetScore));
+      const res = await fetch(`/games/billiards?${params.toString()}`);
       if (!res.ok) return;
       const body = await res.json();
       rankList = Array.isArray(body.rank) ? body.rank : [];
@@ -763,7 +1293,7 @@
       const res = await fetch('/games/billiards', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mode: currentMode, score })
+        body: JSON.stringify({ mode: currentMode, score, ...(!isPocketBall ? { target: targetScore } : {}) })
       });
       if (res.ok) await loadRank();
     } catch (error) {
@@ -791,6 +1321,8 @@
 
     return () => {
       if (frameId) cancelAnimationFrame(frameId);
+      if (npcTimer) clearTimeout(npcTimer);
+      npcTimer = null;
       if (engine) {
         Events.off(engine, 'collisionStart', handleCollisionStart);
         Composite.clear(engine.world, false);
@@ -817,12 +1349,19 @@
       </span>
     </div>
     <div class="hud-stats">
-      <span>점수 <strong>{score}</strong></span>
-      <span>기회 <strong>{chances}</strong></span>
       {#if isPocketBall}
+        <span>점수 <strong>{score}</strong></span>
+        <span>기회 <strong>{chances}</strong></span>
         <span>남은공 <strong>{remainingObjects}</strong></span>
+        <span>최고 <strong>{myBestScore ?? '-'}</strong></span>
+      {:else}
+        <span>나 <strong>{score}</strong></span>
+        <span>겐세이 형 <strong>{npcScore}</strong></span>
+        <span>목표 <strong>{targetScore}</strong></span>
+        {#if activeCombo > 0}
+          <span>콤보 <strong>×{activeComboMultiplier}</strong></span>
+        {/if}
       {/if}
-      <span>최고 <strong>{myBestScore ?? '-'}</strong></span>
     </div>
     <button type="button" class="new-game-button" onclick={newGame}>리셋</button>
   </section>
@@ -843,6 +1382,21 @@
       포켓볼
     </button>
   </div>
+
+  {#if !isPocketBall}
+    <div class="target-selector" aria-label="4구 목표 점수와 NPC 난이도">
+      {#each FOUR_BALL_TARGET_OPTIONS as option (option)}
+        <button
+          type="button"
+          class:active={targetScore === option}
+          disabled={status === 'rolling' || npcThinking}
+          onclick={() => switchTargetScore(option)}
+        >
+          {option}
+        </button>
+      {/each}
+    </div>
+  {/if}
 
   <section class="game-shell" aria-label={`${modeLabel} 게임`}>
     <main class="table-wrap">
@@ -917,6 +1471,32 @@
     </aside>
   </section>
 
+  {#if lastPlayerReplay}
+    <div class="shot-review-actions" aria-label="마지막 샷 검토">
+      <button
+        type="button"
+        onclick={startReplay}
+        disabled={status === 'rolling' || npcThinking || replaying}
+      >
+        {replaying ? '재생 중…' : 'REPLAY'}
+      </button>
+      <button
+        type="button"
+        class="report-button"
+        onclick={openReport}
+        disabled={status === 'rolling' || npcThinking || replaying}
+      >
+        오류신고
+      </button>
+      <span>{lastPlayerReplay.outcome}</span>
+    </div>
+  {/if}
+  {#if reportMessage}
+    <p class:report-error={reportMessage.startsWith('신고 전송 실패')} class="report-message" aria-live="polite">
+      {reportMessage}
+    </p>
+  {/if}
+
   {#if spinOverlayOpen}
     <div
       class="spin-overlay"
@@ -957,6 +1537,45 @@
           <button type="button" onclick={closeSpinOverlay}>확인</button>
         </div>
       </div>
+    </div>
+  {/if}
+
+  {#if reportOpen && lastPlayerReplay}
+    <div
+      class="report-overlay"
+      role="presentation"
+      onpointerdown={(event) => {
+        if (event.target === event.currentTarget) closeReport();
+      }}
+    >
+      <form
+        class="report-panel"
+        aria-label="이상한 샷 오류신고"
+        onsubmit={(event) => {
+          event.preventDefault();
+          void submitShotReport();
+        }}
+      >
+        <div class="report-heading">
+          <strong>이상한 샷 신고</strong>
+          <span>{lastPlayerReplay.outcome}</span>
+        </div>
+        <p>샷 궤적과 당점·파워가 자동 첨부됩니다.</p>
+        <label for="shot-report-note">내용 <small>(선택)</small></label>
+        <textarea
+          id="shot-report-note"
+          bind:value={reportNote}
+          maxlength="500"
+          rows="4"
+          placeholder="어떤 움직임이 이상했는지 적어주세요. 비워도 됩니다."
+        ></textarea>
+        <div class="report-actions">
+          <button type="button" onclick={closeReport} disabled={reportSending}>취소</button>
+          <button type="submit" disabled={reportSending}>
+            {reportSending ? '전송 중…' : '신고 보내기'}
+          </button>
+        </div>
+      </form>
     </div>
   {/if}
 
@@ -1104,6 +1723,34 @@
   .mode-tabs button.active {
     background: #f0c05a;
     color: #1d221a;
+  }
+
+  .target-selector {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    width: min(330px, calc(100% - 16px));
+    margin: -2px auto 8px;
+    gap: 4px;
+  }
+
+  .target-selector button {
+    min-height: 28px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 7px;
+    background: rgba(6, 21, 16, 0.76);
+    color: #c9d9c7;
+    font-size: 0.72rem;
+    font-weight: 900;
+  }
+
+  .target-selector button.active {
+    border-color: #f0c05a;
+    background: rgba(240, 192, 90, 0.2);
+    color: #ffe39a;
+  }
+
+  .target-selector button:disabled {
+    opacity: 0.55;
   }
 
   .game-shell {

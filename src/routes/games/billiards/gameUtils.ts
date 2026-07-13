@@ -35,6 +35,12 @@ export const STOP_SPEED = 0.06;
 export const STOP_SNAP_SPEED = 0.14;
 export const MAX_ROLL_DURATION_MS = 12000;
 export const FOUR_BALL_CHANCES = 10;
+export const FOUR_BALL_BASE_SCORE = 10;
+export const FOUR_BALL_TARGET_SCORE = 100;
+export const FOUR_BALL_TARGET_OPTIONS = [50, 100, 200, 300, 500] as const;
+export type FourBallTargetScore = (typeof FOUR_BALL_TARGET_OPTIONS)[number];
+export const FOUR_BALL_MAX_COMBO_MULTIPLIER = 3;
+export const FOUR_BALL_FOUL_PENALTY = 10;
 export const POCKET_BALL_CHANCES = 12;
 export const POCKET_OBJECT_SCORE = 100;
 export const POCKET_COMBO_BONUS = 50;
@@ -332,13 +338,42 @@ export function evaluateFourBallShot(contacts: ShotContact[]): {
   hitRedIds: string[];
 } {
   const hitRedIds = Array.from(
-    new Set(
-      contacts.filter((contact) => contact.cueRole === 'red').map((contact) => contact.targetId)
-    )
+    new Set(contacts.map((contact) => contact.targetId))
   );
 
   return {
     scored: hitRedIds.length >= 2,
     hitRedIds
   };
+}
+
+export function computeFourBallComboMultiplier(streak: number): number {
+  const normalizedStreak = Math.max(1, Math.floor(streak));
+  return Math.min(
+    FOUR_BALL_MAX_COMBO_MULTIPLIER,
+    1 + (normalizedStreak - 1) * 0.5
+  );
+}
+
+export function computeFourBallShotScore(streak: number): number {
+  return FOUR_BALL_BASE_SCORE * computeFourBallComboMultiplier(streak);
+}
+
+export function computeFourBallFoulPenalty(
+  hitRedCount: number,
+  hitOpponentCue: boolean
+): number {
+  return (hitRedCount <= 0 ? FOUR_BALL_FOUL_PENALTY : 0) +
+    (hitOpponentCue ? FOUR_BALL_FOUL_PENALTY : 0);
+}
+
+export function getFourBallNpcDifficulty(targetScore: FourBallTargetScore): {
+  candidateBudget: number;
+  aimError: number;
+} {
+  if (targetScore >= 500) return { candidateBudget: 84, aimError: 0.008 };
+  if (targetScore >= 300) return { candidateBudget: 68, aimError: 0.014 };
+  if (targetScore >= 200) return { candidateBudget: 52, aimError: 0.022 };
+  if (targetScore >= 100) return { candidateBudget: 36, aimError: 0.035 };
+  return { candidateBudget: 22, aimError: 0.055 };
 }

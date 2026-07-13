@@ -2,7 +2,24 @@ import { error, json } from '@sveltejs/kit';
 import { getPrisma } from '$lib/database/prisma.js';
 import { getGameSession, isLocalGameSmokeSession } from '$lib/server/localGameSmokeSession.js';
 import { normalizeToIsoString } from '$lib/util/formatRelativeTime.js';
-import { BILLIARDS_MODES, isActiveBilliardsMode, isValidScore } from './gameUtils';
+import {
+  BILLIARDS_MODES,
+  FOUR_BALL_TARGET_OPTIONS,
+  FOUR_BALL_TARGET_SCORE,
+  isActiveBilliardsMode,
+  isValidScore
+} from './gameUtils';
+
+/** @param {unknown} value @returns {number | null} */
+function getFourBallTarget(value) {
+  const target = Number(value ?? FOUR_BALL_TARGET_SCORE);
+  return FOUR_BALL_TARGET_OPTIONS.some((option) => option === target) ? target : null;
+}
+
+/** @param {string} mode @param {number | null} target */
+function getRankingMode(mode, target) {
+  return mode === BILLIARDS_MODES.FOUR_BALL ? `${mode}-${target}` : mode;
+}
 
 /**
  * @param {string} mode
@@ -45,10 +62,17 @@ export async function GET(event) {
 
   const mode = url.searchParams.get('mode') ?? BILLIARDS_MODES.FOUR_BALL;
   if (!isActiveBilliardsMode(mode)) throw error(400, { message: '지원하지 않는 당구 모드입니다.' });
+  const target = mode === BILLIARDS_MODES.FOUR_BALL
+    ? getFourBallTarget(url.searchParams.get('target'))
+    : null;
+  if (mode === BILLIARDS_MODES.FOUR_BALL && target === null) {
+    throw error(400, { message: '목표 점수가 올바르지 않습니다.' });
+  }
+  const rankingMode = getRankingMode(mode, target);
 
   if (url.searchParams.get('rank')) {
     const [rank, myBest] = await Promise.all([
-      getRankTop10(mode),
+      getRankTop10(rankingMode),
       (async () => {
         /** @type {Array<{ score: number; createdAt: Date | string }>} */
         const rows = await getPrisma().$queryRaw`
@@ -58,7 +82,7 @@ export async function GET(event) {
                    'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'
                  ) AS "createdAt"
           FROM game_score_billiards
-          WHERE email = ${email} AND mode = ${mode}
+          WHERE email = ${email} AND mode = ${rankingMode}
           ORDER BY score DESC, created_at DESC
           LIMIT 1
         `;
@@ -70,7 +94,7 @@ export async function GET(event) {
       })()
     ]);
 
-    return json({ rank, myBest, mode });
+    return json({ rank, myBest, mode, target });
   }
 
   return json({ success: true, mode });
@@ -89,12 +113,18 @@ export async function POST(event) {
   const score = Number(body?.score);
 
   if (!isActiveBilliardsMode(mode)) throw error(400, { message: '지원하지 않는 당구 모드입니다.' });
+  const target = mode === BILLIARDS_MODES.FOUR_BALL ? getFourBallTarget(body?.target) : null;
+  if (mode === BILLIARDS_MODES.FOUR_BALL && target === null) {
+    throw error(400, { message: '목표 점수가 올바르지 않습니다.' });
+  }
   if (!isValidScore(score)) throw error(400, { message: '점수가 올바르지 않습니다.' });
-  if (isLocalGameSmokeSession(session)) return json({ success: true, mode, score, smoke: true });
+  if (isLocalGameSmokeSession(session)) return json({ success: true, mode, target, score, smoke: true });
+
+  const rankingMode = getRankingMode(mode, target);
 
   await getPrisma().gameScoreBilliards.create({
-    data: { email, nickname, mode, score }
+    data: { email, nickname, mode: rankingMode, score }
   });
 
-  return json({ success: true, mode, score });
+  return json({ success: true, mode, target, score });
 }

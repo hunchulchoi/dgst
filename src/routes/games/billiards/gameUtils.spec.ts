@@ -12,6 +12,10 @@ import {
   CUE_SPIN_MIN_SPEED_RATIO,
   CUE_SPIN_STOP_VALUE,
   FOUR_BALL_CHANCES,
+  FOUR_BALL_BASE_SCORE,
+  FOUR_BALL_FOUL_PENALTY,
+  FOUR_BALL_TARGET_SCORE,
+  FOUR_BALL_TARGET_OPTIONS,
   MAX_SHOT_SPEED,
   POCKET_BALL_CHANCES,
   POCKET_RADIUS,
@@ -28,6 +32,10 @@ import {
   TABLE_WIDTH,
   computeBallCollisionEnergyScale,
   computeBreathingAimAngle,
+  computeFourBallComboMultiplier,
+  computeFourBallFoulPenalty,
+  computeFourBallShotScore,
+  getFourBallNpcDifficulty,
   computeDynamicSpinCurveScale,
   computeDynamicSpinDecay,
   computeSpinAdjustedVelocity,
@@ -58,8 +66,8 @@ import {
 describe('billiards game helpers', () => {
   it('scores a four-ball shot after the cue ball contacts both red balls', () => {
     const result = evaluateFourBallShot([
-      { cueRole: 'red', targetId: 'red-1' },
-      { cueRole: 'red', targetId: 'red-2' }
+      { cueRole: 'cue', targetId: 'red-1' },
+      { cueRole: 'cue', targetId: 'red-2' }
     ]);
 
     expect(result.scored).toBe(true);
@@ -67,10 +75,37 @@ describe('billiards game helpers', () => {
   });
 
   it('does not score a four-ball shot after only one red ball contact', () => {
-    const result = evaluateFourBallShot([{ cueRole: 'red', targetId: 'red-1' }]);
+    const result = evaluateFourBallShot([{ cueRole: 'opponent', targetId: 'red-1' }]);
 
     expect(result.scored).toBe(false);
     expect(result.hitRedIds).toEqual(['red-1']);
+  });
+
+  it('rewards consecutive four-ball scores with a capped half-step combo', () => {
+    expect(computeFourBallComboMultiplier(1)).toBe(1);
+    expect(computeFourBallComboMultiplier(2)).toBe(1.5);
+    expect(computeFourBallComboMultiplier(3)).toBe(2);
+    expect(computeFourBallComboMultiplier(5)).toBe(3);
+    expect(computeFourBallComboMultiplier(20)).toBe(3);
+    expect(computeFourBallShotScore(2)).toBe(FOUR_BALL_BASE_SCORE * 1.5);
+    expect(FOUR_BALL_TARGET_SCORE).toBeGreaterThan(computeFourBallShotScore(1));
+    expect(Number.isInteger(computeFourBallShotScore(4))).toBe(true);
+  });
+
+  it('penalizes missing every red and touching the opponent cue ball', () => {
+    expect(computeFourBallFoulPenalty(0, false)).toBe(FOUR_BALL_FOUL_PENALTY);
+    expect(computeFourBallFoulPenalty(1, false)).toBe(0);
+    expect(computeFourBallFoulPenalty(2, true)).toBe(FOUR_BALL_FOUL_PENALTY);
+    expect(computeFourBallFoulPenalty(0, true)).toBe(FOUR_BALL_FOUL_PENALTY * 2);
+  });
+
+  it('raises NPC search strength and accuracy for longer matches', () => {
+    expect(FOUR_BALL_TARGET_OPTIONS).toEqual([50, 100, 200, 300, 500]);
+    const shortMatch = getFourBallNpcDifficulty(50);
+    const longMatch = getFourBallNpcDifficulty(500);
+
+    expect(longMatch.candidateBudget).toBeGreaterThan(shortMatch.candidateBudget);
+    expect(longMatch.aimError).toBeLessThan(shortMatch.aimError);
   });
 
   it('treats balls as stopped only when every speed is under the threshold', () => {

@@ -34,6 +34,15 @@ export interface HardDropResult {
   distance: number;
 }
 
+export interface PlacementScoreResult {
+  lineScore: number;
+  comboBonus: number;
+  backToBackBonus: number;
+  total: number;
+  nextCombo: number;
+  nextBackToBack: boolean;
+}
+
 /** 4×4 피스 매트릭스 (행 우선) */
 const SHAPES: Record<PieceType, readonly number[][]> = {
   I: [
@@ -110,6 +119,18 @@ const LINE_SCORES = [0, 100, 300, 500, 800] as const;
 /** 빈 보드 생성 */
 export function createEmptyBoard(): Board {
   return Array.from({ length: TOTAL_ROWS }, () => Array<BoardCell>(COLS).fill(null));
+}
+
+/** 보너스 스테이지 공용 시작 보드: 오른쪽 한 칸이 빈 4줄 우물 */
+export function createBonusBoard(): Board {
+  const board = createEmptyBoard();
+  const colors: PieceType[] = ['J', 'L', 'S', 'Z'];
+  for (let row = TOTAL_ROWS - 4; row < TOTAL_ROWS; row++) {
+    for (let col = 0; col < COLS - 1; col++) {
+      board[row][col] = colors[(row + col) % colors.length];
+    }
+  }
+  return board;
 }
 
 /** 4×4 매트릭스 90° 시계 회전 */
@@ -236,6 +257,44 @@ export function calculateHardDropScore(distance: number): number {
   return distance * 2;
 }
 
+/** 수동 소프트 드롭 보너스 (한 칸당 1점) */
+export function calculateSoftDropScore(distance: number): number {
+  return Math.max(0, distance);
+}
+
+/** 줄 클리어·콤보·백투백을 합산한 배치 점수 */
+export function calculatePlacementScore(
+  linesCleared: number,
+  stage: number,
+  currentCombo: number,
+  backToBackActive: boolean
+): PlacementScoreResult {
+  if (linesCleared <= 0) {
+    return {
+      lineScore: 0,
+      comboBonus: 0,
+      backToBackBonus: 0,
+      total: 0,
+      nextCombo: 0,
+      nextBackToBack: backToBackActive
+    };
+  }
+
+  const lineScore = calculateLineScore(linesCleared, stage);
+  const nextCombo = currentCombo + 1;
+  const comboBonus = Math.max(0, nextCombo - 1) * 50 * stage;
+  const isTetris = linesCleared === 4;
+  const backToBackBonus = isTetris && backToBackActive ? Math.floor(lineScore * 0.5) : 0;
+  return {
+    lineScore,
+    comboBonus,
+    backToBackBonus,
+    total: lineScore + comboBonus + backToBackBonus,
+    nextCombo,
+    nextBackToBack: isTetris
+  };
+}
+
 /** 스폰 위치 피스 생성 (히든 버퍼 바로 아래에서 보이도록) */
 export function spawnPiece(type: PieceType): ActivePiece {
   return { type, rotation: 0, x: 3, y: HIDDEN_ROWS };
@@ -254,6 +313,12 @@ export function createBag(): PieceType[] {
     [bag[i], bag[j]] = [bag[j], bag[i]];
   }
   return bag;
+}
+
+/** 모든 플레이어에게 동일한 보너스 피스 순서 */
+export function createBonusQueue(): PieceType[] {
+  const sequence: PieceType[] = ['I', 'T', 'O', 'L', 'J', 'S', 'Z'];
+  return Array.from({ length: 6 }, () => sequence).flat();
 }
 
 /** 스테이지 설정 (1-based) */
