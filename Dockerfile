@@ -32,6 +32,8 @@ RUN apt-get update \
 COPY --from=build /app/build .
 COPY --from=build /app/package.json .
 COPY --from=build /app/package-lock.json .
+COPY --from=build /app/prisma ./prisma
+COPY --from=build /app/prisma.config.ts .
 #COPY --from=build /app/patches ./patches
 
 RUN npm ci --omit dev
@@ -44,4 +46,4 @@ USER www-data
 EXPOSE 3000
 
 # 실행
-ENTRYPOINT ["sh", "-c", "BODY_SIZE_LIMIT=100M exec node ."]
+ENTRYPOINT ["sh", "-c", "./node_modules/.bin/prisma migrate deploy && BODY_SIZE_LIMIT=100M exec node ."]

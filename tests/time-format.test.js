@@ -83,7 +83,7 @@ describe('database time contract', () => {
   it('repairs only impossible future board timestamps shifted by the legacy KST conversion', () => {
     const migration = readFileSync(
       new URL(
-        '../prisma/migrations/20260714150000_repair_future_board_timestamps/migration.sql',
+        '../prisma/migrations/20260714154500_force_future_board_timestamp_repair/migration.sql',
         import.meta.url
       ),
       'utf8'
@@ -93,7 +93,8 @@ describe('database time contract', () => {
     expect(migration).toContain('UPDATE "article_reads"');
     expect(migration).toContain('UPDATE "comments"');
     expect(migration.match(/- INTERVAL '9 hours'/g)).toHaveLength(5);
-    expect(migration.match(/> CURRENT_TIMESTAMP/g)).toHaveLength(5);
+    expect(migration.match(/> CURRENT_TIMESTAMP/g)).toHaveLength(10);
+    expect(migration).toContain("RAISE EXCEPTION 'future board timestamps remain after KST repair'");
     expect(migration).not.toContain('UPDATE "sessions"');
     expect(migration).not.toContain('UPDATE "verification_tokens"');
   });
