@@ -98,6 +98,11 @@
     outcome: string;
     frames: ReplayFrame[];
   };
+  type ScoreEffect = {
+    id: number;
+    text: string;
+    tone: 'score' | 'foul';
+  };
   type BallBody = Matter.Body & {
     billiardsRole?: BallRole;
     billiardsId?: string;
@@ -176,6 +181,9 @@
   let shareSending = $state(false);
   let helpPlan = $state<NpcShotPlan | null>(null);
   let helpThinking = $state(false);
+  let scoreEffect = $state<ScoreEffect | null>(null);
+  let scoreEffectId = 0;
+  let scoreEffectTimer: ReturnType<typeof setTimeout> | null = null;
 
   const isLoggedIn = $derived(!!data.session?.user?.email);
   const isPocketBall = $derived(currentMode === BILLIARDS_MODES.POCKET_BALL);
@@ -388,6 +396,9 @@
     reportMessage = '';
     helpPlan = null;
     helpThinking = false;
+    scoreEffect = null;
+    if (scoreEffectTimer) clearTimeout(scoreEffectTimer);
+    scoreEffectTimer = null;
     chances = isPocketBall ? POCKET_BALL_CHANCES : FOUR_BALL_CHANCES;
     status = 'aiming';
     contacts = [];
@@ -599,6 +610,20 @@
     void submitScore();
   }
 
+  function showScoreEffect(amount: number, tone: ScoreEffect['tone']) {
+    if (amount <= 0) return;
+    if (scoreEffectTimer) clearTimeout(scoreEffectTimer);
+    scoreEffect = {
+      id: ++scoreEffectId,
+      text: tone === 'foul' ? `빡 -${amount}` : `+${amount}`,
+      tone
+    };
+    scoreEffectTimer = setTimeout(() => {
+      scoreEffect = null;
+      scoreEffectTimer = null;
+    }, 2500);
+  }
+
   function settleShot() {
     const balls = getTrackedBalls();
     for (const ball of balls) {
@@ -622,7 +647,9 @@
       if (shotScore > 0) score += shotScore;
 
       if (redBalls.length === 0) {
-        score += computePocketClearBonus(chances);
+        const clearBonus = computePocketClearBonus(chances);
+        score += clearBonus;
+        showScoreEffect(shotScore + clearBonus, 'score');
         status = 'game-over';
         pocketedThisShot = 0;
         cuePocketedThisShot = false;
@@ -631,6 +658,7 @@
       }
 
       if (pocketedThisShot > 0 && !cuePocketedThisShot) {
+        showScoreEffect(shotScore, 'score');
         status = 'scored';
         pocketedThisShot = 0;
         cuePocketedThisShot = false;
@@ -659,6 +687,7 @@
     opponentCueHitThisShot = false;
     lastFoulPenalty = foulPenalty;
     if (foulPenalty > 0) {
+      showScoreEffect(foulPenalty, 'foul');
       if (currentTurn === 'player') {
         score = Math.max(0, score - foulPenalty);
         playerCombo = 0;
@@ -682,14 +711,18 @@
       if (currentTurn === 'player') {
         playerCombo += 1;
         lastShotMultiplier = computeFourBallComboMultiplier(playerCombo);
-        score += computeFourBallShotScore(playerCombo);
+        const shotPoints = computeFourBallShotScore(playerCombo);
+        score += shotPoints;
+        showScoreEffect(shotPoints, 'score');
         npcMessage = '';
         status = 'scored';
         if (score >= targetScore) finishFourBallGame();
       } else {
         npcCombo += 1;
         lastShotMultiplier = computeFourBallComboMultiplier(npcCombo);
-        npcScore += computeFourBallShotScore(npcCombo);
+        const shotPoints = computeFourBallShotScore(npcCombo);
+        npcScore += shotPoints;
+        showScoreEffect(shotPoints, 'score');
         npcMessage = '';
         status = 'scored';
         if (npcScore >= targetScore) finishFourBallGame();
@@ -1467,6 +1500,8 @@
       if (frameId) cancelAnimationFrame(frameId);
       if (npcTimer) clearTimeout(npcTimer);
       npcTimer = null;
+      if (scoreEffectTimer) clearTimeout(scoreEffectTimer);
+      scoreEffectTimer = null;
       if (engine) {
         Events.off(engine, 'collisionStart', handleCollisionStart);
         Composite.clear(engine.world, false);
@@ -1570,6 +1605,17 @@
         onpointerup={handlePointerUp}
         onpointercancel={handlePointerUp}
       ></canvas>
+      {#if scoreEffect}
+        {#key scoreEffect.id}
+          <div
+            class="score-effect {scoreEffect.tone}"
+            role="status"
+            aria-live="assertive"
+          >
+            {scoreEffect.text}
+          </div>
+        {/key}
+      {/if}
     </main>
 
     <aside class="bottom-controls" aria-label="당점과 파워">
@@ -2180,6 +2226,69 @@
     height: 100%;
     touch-action: none;
     user-select: none;
+  }
+
+  .score-effect {
+    position: absolute;
+    z-index: 5;
+    top: 42%;
+    left: 50%;
+    pointer-events: none;
+    font-size: clamp(2rem, 10vw, 3.8rem);
+    font-weight: 1000;
+    line-height: 1;
+    letter-spacing: -0.06em;
+    white-space: nowrap;
+    transform: translate(-50%, -50%);
+    animation: score-pop 2.5s cubic-bezier(0.16, 0.9, 0.28, 1) both;
+    -webkit-text-stroke: 1px rgba(20, 16, 7, 0.5);
+  }
+
+  .score-effect.score {
+    color: #ffe169;
+    text-shadow: 0 3px 0 #a46000, 0 8px 22px rgba(255, 214, 73, 0.62);
+  }
+
+  .score-effect.foul {
+    color: #ff765f;
+    text-shadow: 0 3px 0 #781e16, 0 8px 22px rgba(255, 73, 52, 0.66);
+  }
+
+  @keyframes score-pop {
+    0% {
+      opacity: 0;
+      transform: translate(-50%, 25%) scale(0.45) rotate(-7deg);
+    }
+    18% {
+      opacity: 1;
+      transform: translate(-50%, -56%) scale(1.18) rotate(2deg);
+    }
+    35% {
+      transform: translate(-50%, -50%) scale(1) rotate(0deg);
+    }
+    72% {
+      opacity: 1;
+      transform: translate(-50%, -62%) scale(1);
+    }
+    100% {
+      opacity: 0;
+      transform: translate(-50%, -115%) scale(0.92);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .score-effect {
+      animation: score-fade 2.5s ease-out both;
+    }
+  }
+
+  @keyframes score-fade {
+    0%, 80% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+    }
   }
 
   .power-rail {
