@@ -1,0 +1,4 @@
+interface:
+  display_name: "로컬 게임 스모크 테스트"
+  short_description: "DB 없이 mock 로그인으로 게임을 검증합니다"
+  default_prompt: "Use $smoke-test-local-games to run a database-free local smoke test of the game routes."
