@@ -2,6 +2,11 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 const replayPlayer = readFileSync('src/lib/components/BilliardsReplayPlayer.svelte', 'utf8');
+const boardList = readFileSync('src/lib/components/board_list.svelte', 'utf8');
+const boardArticle = readFileSync(
+  'src/routes/board/[boardId=boardId]/[[pageNo=integer]]/[articleId]/+page.svelte',
+  'utf8'
+);
 
 describe('billiards board replay player UI', () => {
   it('visualizes recorded spin and power', () => {
@@ -17,5 +22,14 @@ describe('billiards board replay player UI', () => {
     expect(replayPlayer).not.toContain('<strong>{sideSpin} / {verticalSpin}</strong>');
     expect(replayPlayer).not.toContain('<strong>{powerPercent}</strong>');
     expect(replayPlayer).not.toContain('class="power-scale"');
+  });
+
+  it('marks billiards replay posts with a billiards icon', () => {
+    expect(replayPlayer).toContain('🎱</span> 당구 리플레이');
+    expect(boardList).toContain("article.content?.includes('당구 리플레이를 공유했습니다.')");
+    expect(boardList).toContain('<span aria-label="당구 리플레이">🎱</span>');
+    expect(boardArticle).toContain(
+      '{#if data.billiardsReplay}<span aria-label="당구 리플레이">🎱</span>{/if}'
+    );
   });
 });

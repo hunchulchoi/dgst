@@ -108,7 +108,7 @@
 {#if shot && frames.length > 1}
   <section class="replay-card" aria-label="당구 리플레이">
     <div class="replay-heading">
-      <strong>당구 리플레이</strong>
+      <strong><span aria-hidden="true">🎱</span> 당구 리플레이</strong>
       <span>{shot.mode === 'four-ball' ? '4구' : '포켓볼'} · {shot.outcome}</span>
     </div>
     <canvas bind:this={canvas} width="360" height="560" aria-label="당구 샷 궤적"></canvas>

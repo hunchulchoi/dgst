@@ -1636,6 +1636,7 @@
           <h5
             class="article-title mb-0 !text-[1.3rem] max-md:!text-[1.4rem] !leading-[1.45] font-semibold"
           >
+            {#if data.billiardsReplay}<span aria-label="당구 리플레이">🎱</span>{/if}
             {article.title}
           </h5>
         </Col>
