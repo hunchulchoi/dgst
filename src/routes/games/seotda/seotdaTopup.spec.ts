@@ -57,4 +57,22 @@ describe('resolveSeotdaOops', () => {
       })
     });
   });
+
+  it('refills an existing user left with less than the minimum ante', async () => {
+    vi.setSystemTime(new Date(oopsAt.getTime() + 10 * 60_000));
+    gameScore.findFirst.mockResolvedValueOnce({ createdAt: oopsAt }).mockResolvedValueOnce(null);
+    gameScore.create.mockResolvedValue({});
+
+    await expect(resolveSeotdaOops('legacy@example.com', 'legacy', 7)).resolves.toEqual({
+      balance: 700,
+      oopsInfo: null
+    });
+    expect(gameScore.findFirst).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        where: expect.objectContaining({ balance: { lt: 10 } })
+      })
+    );
+    expect(gameScore.findFirst.mock.calls[0][0].where).not.toHaveProperty('bet');
+  });
 });

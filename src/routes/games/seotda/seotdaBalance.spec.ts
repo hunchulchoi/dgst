@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { didSeotdaTakeLead, getSeotdaOopsTiming } from './seotdaBalance.js';
+import {
+  didSeotdaTakeLead,
+  getSeotdaOopsTiming,
+  isSeotdaOopsBalance
+} from './seotdaBalance.js';
 
 describe('seotda leader celebration', () => {
   it('celebrates only when another users first place is surpassed', () => {
@@ -13,6 +17,12 @@ describe('seotda leader celebration', () => {
 });
 
 describe('seotda oops top-up timing', () => {
+  it('treats every balance below the minimum ante as oops', () => {
+    expect(isSeotdaOopsBalance(0)).toBe(true);
+    expect(isSeotdaOopsBalance(9)).toBe(true);
+    expect(isSeotdaOopsBalance(10)).toBe(false);
+  });
+
   it('returns the remaining wait before five minutes', () => {
     const createdAt = new Date('2026-07-14T00:00:00.000Z');
 

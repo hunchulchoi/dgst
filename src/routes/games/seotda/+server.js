@@ -8,6 +8,7 @@ import {
   getSeotdaCurrentLeader,
   getSeotdaRank,
   getTodaySeotdaStats,
+  isSeotdaOopsBalance,
   resolveSeotdaOops,
   writeSeotdaScore
 } from './seotdaBalance.js';
@@ -75,8 +76,8 @@ export async function GET(event) {
 
     let { balance } = await ensureSeotdaBalance(user.email, user.nickname);
     let oopsInfo = null;
-    if (balance === 0) {
-      const resolved = await resolveSeotdaOops(user.email, user.nickname);
+    if (isSeotdaOopsBalance(balance)) {
+      const resolved = await resolveSeotdaOops(user.email, user.nickname, balance);
       balance = resolved.balance;
       oopsInfo = resolved.oopsInfo;
     }
@@ -201,8 +202,8 @@ export async function POST(event) {
  */
 async function beginRound(email, nickname) {
   let { balance } = await ensureSeotdaBalance(email, nickname);
-  if (balance === 0) {
-    balance = (await resolveSeotdaOops(email, nickname)).balance;
+  if (isSeotdaOopsBalance(balance)) {
+    balance = (await resolveSeotdaOops(email, nickname, balance)).balance;
   }
   if (balance < 10) {
     throw error(400, { message: '보유 점수가 부족합니다. 오링 후 잠시 기다려 주세요.' });

@@ -1,12 +1,17 @@
 import { getPrisma } from '$lib/database/prisma.js';
 import { normalizeToIsoString } from '$lib/util/formatRelativeTime.js';
-import { SEOTDA_GAME } from './seotdaEngine.js';
+import { ANTE, SEOTDA_GAME } from './seotdaEngine.js';
 
 export const SEOTDA_INITIAL = 1000;
 export const SEOTDA_OOPS_TOPUP = 700;
 export const SEOTDA_OOPS_DELAY_MS = 5 * 60 * 1000;
 
 const KST_OFFSET_MINUTES = 9 * 60;
+
+/** @param {number} balance */
+export function isSeotdaOopsBalance(balance) {
+  return Number(balance) < ANTE;
+}
 
 /**
  * @param {Date | string} createdAt
@@ -57,6 +62,7 @@ export async function getSeotdaBalance(email) {
 /**
  * @param {string} email
  * @param {string} nickname
+ * @param {number} [currentBalance]
  * @param {number} balance
  * @param {{ bet?: number; payout?: number; delta?: number; reels?: string[] }} [meta]
  */
@@ -120,21 +126,22 @@ export async function ensureSeotdaBalance(email, nickname) {
  *   oopsInfo: { createdAt: string; remainingMs: number; waiting: true } | null;
  * }>}
  */
-export async function resolveSeotdaOops(email, nickname) {
+export async function resolveSeotdaOops(email, nickname, currentBalance = 0) {
   try {
     const prisma = getPrisma();
+    // 구형 정산 기록은 bet가 0이거나 누락된 경우가 있어 현재 플레이 불가 잔액으로 판별한다.
     const lastOops = await prisma.gameScore.findFirst({
-      where: { email, game: SEOTDA_GAME, bet: { gt: 0 }, balance: 0 },
+      where: { email, game: SEOTDA_GAME, balance: { lt: ANTE } },
       orderBy: { createdAt: 'desc' }
     });
-    if (!lastOops) return { balance: 0, oopsInfo: null };
+    if (!lastOops) return { balance: currentBalance, oopsInfo: null };
 
     const after = await prisma.gameScore.findFirst({
       where: {
         email,
         game: SEOTDA_GAME,
         createdAt: { gt: lastOops.createdAt },
-        balance: { gt: 0 }
+        balance: { gte: ANTE }
       },
       orderBy: { createdAt: 'desc' }
     });
@@ -143,7 +150,7 @@ export async function resolveSeotdaOops(email, nickname) {
     const timing = getSeotdaOopsTiming(lastOops.createdAt);
     if (!timing.ready) {
       return {
-        balance: 0,
+        balance: currentBalance,
         oopsInfo: {
           createdAt: timing.createdAt,
           remainingMs: timing.remainingMs,
@@ -161,7 +168,7 @@ export async function resolveSeotdaOops(email, nickname) {
     return { balance: SEOTDA_OOPS_TOPUP, oopsInfo: null };
   } catch (err) {
     console.error('[seotda resolveSeotdaOops]', err);
-    return { balance: 0, oopsInfo: null };
+    return { balance: currentBalance, oopsInfo: null };
   }
 }
 

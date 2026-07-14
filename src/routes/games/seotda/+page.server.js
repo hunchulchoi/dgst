@@ -3,6 +3,7 @@ import {
   ensureSeotdaBalance,
   getSeotdaRank,
   getTodaySeotdaStats,
+  isSeotdaOopsBalance,
   resolveSeotdaOops
 } from './seotdaBalance.js';
 import { getRound, toPublicState } from './seotdaState.js';
@@ -32,8 +33,8 @@ export async function load(event) {
     const nickname = session?.user?.nickname || session?.user?.name || 'anonymous';
     let { balance } = await ensureSeotdaBalance(email, nickname);
     let oopsInfo = null;
-    if (balance === 0) {
-      const resolved = await resolveSeotdaOops(email, nickname);
+    if (isSeotdaOopsBalance(balance)) {
+      const resolved = await resolveSeotdaOops(email, nickname, balance);
       balance = resolved.balance;
       oopsInfo = resolved.oopsInfo;
     }

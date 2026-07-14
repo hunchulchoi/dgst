@@ -3,7 +3,7 @@
   import { ko } from 'date-fns/locale';
   import type { PageData } from './$types';
   import { formatRelativeTime } from '$lib/util/formatRelativeTime.js';
-  import { dynamicAnte, minRaisePay } from './seotdaEngine.js';
+  import { ANTE, dynamicAnte, minRaisePay } from './seotdaEngine.js';
   import { MAX_BET_ANTE_MULTIPLIER, MAX_POT, MAX_TOTAL_BET } from './seotdaRound.js';
   import HwatuCardFace from './HwatuCardFace.svelte';
   import { HWATU_CARD_URLS } from './hwatuCardAssets';
@@ -175,7 +175,7 @@
   }
 
   onMount(() => {
-    if (balance === 0) void refreshGameState();
+    if (balance < ANTE) void refreshGameState();
   });
 
   onDestroy(() => {
@@ -342,7 +342,7 @@
       }
     } catch (err) {
       console.error('[seotda refresh]', err);
-      if (balance === 0) scheduleTopupRefresh(5_000);
+      if (balance < ANTE) scheduleTopupRefresh(5_000);
     } finally {
       topupRefreshRunning = false;
     }
