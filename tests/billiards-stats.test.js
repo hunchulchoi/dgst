@@ -37,4 +37,25 @@ describe('billiards today stats', () => {
     expect(count).toHaveBeenCalledWith({ where });
     expect(groupBy).toHaveBeenCalledWith({ by: ['email'], where });
   });
+
+  it('combines current and legacy four-ball records', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-07-14T03:00:00.000Z'));
+    const count = vi.fn().mockResolvedValue(12);
+    const groupBy = vi.fn().mockResolvedValue([{ email: 'a@example.com' }]);
+    prismaModule.getPrisma.mockReturnValue({
+      gameScoreBilliards: { count, groupBy }
+    });
+
+    const { getTodayBilliardsStats } = await import('../src/lib/server/gameBilliardsStats.js');
+    const stats = await getTodayBilliardsStats('four-ball');
+    const where = {
+      OR: [{ mode: 'four-ball' }, { mode: { startsWith: 'four-ball-' } }],
+      createdAt: { gte: new Date('2026-07-13T15:00:00.000Z') }
+    };
+
+    expect(stats).toEqual({ games: 12, users: 1 });
+    expect(count).toHaveBeenCalledWith({ where });
+    expect(groupBy).toHaveBeenCalledWith({ by: ['email'], where });
+  });
 });

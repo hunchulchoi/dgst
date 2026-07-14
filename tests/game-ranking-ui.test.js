@@ -26,6 +26,15 @@ describe('game ranking UI', () => {
     }
   });
 
+  it('shows only four-ball, pocket-ball, and art-puzzle billiards rankings', () => {
+    expect(billiardsPage).toContain('aria-label="당구 랭킹 모드"');
+    expect(billiardsPage).toContain("{ mode: BILLIARDS_MODES.FOUR_BALL, label: '4구' }");
+    expect(billiardsPage).toContain("{ mode: BILLIARDS_MODES.POCKET_BALL, label: '포켓볼' }");
+    expect(billiardsPage).toContain("{ mode: BILLIARDS_MODES.ART_PUZZLE, label: '예술구' }");
+    expect(billiardsPage).toContain("? `${value}단계` : String(value)");
+    expect(billiardsPage).not.toContain("params.set('target'");
+  });
+
   it('formats watermelon ranking scores with thousands separators', () => {
     expect(watermelonPage).toContain("Intl.NumberFormat('ko-KR')");
     expect(watermelonPage).toContain('formatScore(myBestScore)');

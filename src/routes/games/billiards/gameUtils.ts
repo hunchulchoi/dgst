@@ -1,6 +1,7 @@
 export const BILLIARDS_MODES = {
   FOUR_BALL: 'four-ball',
   POCKET_BALL: 'pocket-ball',
+  ART_PUZZLE: 'art-puzzle',
   THREE_CUSHION: 'three-cushion'
 } as const;
 
@@ -8,6 +9,9 @@ export type BilliardsMode = (typeof BILLIARDS_MODES)[keyof typeof BILLIARDS_MODE
 export type ActiveBilliardsMode =
   | typeof BILLIARDS_MODES.FOUR_BALL
   | typeof BILLIARDS_MODES.POCKET_BALL;
+export type BilliardsRankingMode =
+  | ActiveBilliardsMode
+  | typeof BILLIARDS_MODES.ART_PUZZLE;
 export type BallRole = 'cue' | 'red' | 'opponent';
 export type ShotSetupStep = 'angle' | 'spin' | 'power';
 
@@ -82,6 +86,10 @@ export const SPIN_TOUCH_RANGE = 70;
 
 export function isActiveBilliardsMode(value: unknown): value is ActiveBilliardsMode {
   return value === BILLIARDS_MODES.FOUR_BALL || value === BILLIARDS_MODES.POCKET_BALL;
+}
+
+export function isBilliardsRankingMode(value: unknown): value is BilliardsRankingMode {
+  return isActiveBilliardsMode(value) || value === BILLIARDS_MODES.ART_PUZZLE;
 }
 
 export function isValidScore(value: unknown): value is number {

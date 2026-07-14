@@ -18,7 +18,9 @@ function getKstStartOfDay(baseDate = new Date()) {
 export async function getTodayBilliardsStats(mode) {
   try {
     const where = {
-      mode,
+      ...(mode === 'four-ball'
+        ? { OR: [{ mode: 'four-ball' }, { mode: { startsWith: 'four-ball-' } }] }
+        : { mode }),
       createdAt: { gte: getKstStartOfDay() }
     };
     const [games, distinctUsers] = await Promise.all([

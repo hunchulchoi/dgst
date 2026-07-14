@@ -36,7 +36,8 @@ describe('fetchBoardArticleList', () => {
         hasVideo: false,
         hasAudio: true,
         hasYoutube: true,
-        hasInstagram: false
+        hasInstagram: false,
+        billiardsReplay: { id: 'replay-1' }
       },
       {
         id: 'article-2',
@@ -50,7 +51,8 @@ describe('fetchBoardArticleList', () => {
         hasVideo: false,
         hasAudio: false,
         hasYoutube: false,
-        hasInstagram: true
+        hasInstagram: true,
+        billiardsReplay: null
       }
     ]);
     const userFindMany = vi.fn().mockResolvedValue([
@@ -117,7 +119,8 @@ describe('fetchBoardArticleList', () => {
         hasVideo: true,
         hasAudio: true,
         hasYoutube: true,
-        hasInstagram: true
+        hasInstagram: true,
+        billiardsReplay: { select: { id: true } }
       }
     });
     expect(commentRepo.summarizeCommentsByArticles).toHaveBeenCalledWith([
@@ -147,6 +150,7 @@ describe('fetchBoardArticleList', () => {
         read: 2,
         like: 1,
         comment: 3,
+        hasBilliardsReplay: true,
         isNewComment: false,
         photo: '/writer1.jpg'
       },
@@ -156,6 +160,7 @@ describe('fetchBoardArticleList', () => {
         read: 0,
         like: 0,
         comment: 0,
+        hasBilliardsReplay: false,
         isNewComment: false
       }
     ]);

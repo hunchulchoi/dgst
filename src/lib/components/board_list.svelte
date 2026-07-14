@@ -132,7 +132,7 @@
           href={resolve(`/board/${boardId}/${currentPageNo}/${article._id}`)}
           class="board-list-link link-underline link-underline-opacity-0 link-offset-2 link-underline-opacity-50-hover stretched-link"
         >
-          {#if article.content?.includes('당구 리플레이를 공유했습니다.')}
+          {#if article.hasBilliardsReplay || article.title?.startsWith('[당구 리플레이]')}
             <span aria-label="당구 리플레이">🎱</span>
           {/if}
           <span class="!text-[1.3rem] max-md:!text-[1.4rem] !leading-[1.45] font-medium"

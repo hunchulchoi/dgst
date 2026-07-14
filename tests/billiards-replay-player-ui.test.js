@@ -27,7 +27,8 @@ describe('billiards board replay player UI', () => {
 
   it('marks billiards replay posts with a billiards icon', () => {
     expect(replayPlayer).toContain('🎱</span> 당구 리플레이');
-    expect(boardList).toContain("article.content?.includes('당구 리플레이를 공유했습니다.')");
+    expect(boardList).toContain('article.hasBilliardsReplay');
+    expect(boardList).toContain("article.title?.startsWith('[당구 리플레이]')");
     expect(boardList).toContain('<span aria-label="당구 리플레이">🎱</span>');
     expect(boardArticle).toContain(
       '{#if data.billiardsReplay}<span aria-label="당구 리플레이">🎱</span>{/if}'

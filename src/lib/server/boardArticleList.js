@@ -42,7 +42,8 @@ export async function fetchBoardArticleList({ boardId, pageNo, pageUnit, created
         hasVideo: true,
         hasAudio: true,
         hasYoutube: true,
-        hasInstagram: true
+        hasInstagram: true,
+        billiardsReplay: { select: { id: true } }
       }
     });
 
@@ -114,6 +115,7 @@ export async function fetchBoardArticleList({ boardId, pageNo, pageUnit, created
         like: a.likes.length,
         comment: commentSummary?.count ?? 0,
         content: contentIconsFromFlags(a),
+        hasBilliardsReplay: Boolean(a.billiardsReplay),
         isNewArticle: Boolean(
           viewerId && a.createdAt > newArticleThreshold && !a.reads.includes(viewerId)
         ),

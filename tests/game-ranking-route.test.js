@@ -283,11 +283,68 @@ describe('game ranking routes', () => {
       createdAt: '2026-07-06T05:50:09.791Z'
     });
     expect(body.todayStats).toEqual({ games: 9, users: 4 });
-    expect(statsBilliards.getTodayBilliardsStats).toHaveBeenCalledWith('four-ball-100');
+    expect(statsBilliards.getTodayBilliardsStats).toHaveBeenCalledWith('four-ball');
     const rankSql = queryRaw.mock.calls[0][0].join(' ');
     const myBestSql = queryRaw.mock.calls[1][0].join(' ');
     expect(rankSql).toContain("created_at AT TIME ZONE 'Asia/Seoul'");
+    expect(rankSql).toContain("mode LIKE 'four-ball-%'");
     expect(myBestSql).toContain("created_at AT TIME ZONE 'Asia/Seoul'");
+    expect(myBestSql).toContain("mode LIKE 'four-ball-%'");
+  });
+
+  it('loads and saves art-puzzle rankings by cleared stage', async () => {
+    const queryRaw = vi
+      .fn()
+      .mockResolvedValueOnce([
+        {
+          email: 'artist@example.com',
+          nickname: 'artist',
+          mode: 'art-puzzle',
+          score: 8,
+          createdAt: '2026-07-06T05:50:09.791Z'
+        }
+      ])
+      .mockResolvedValueOnce([{ score: 8, createdAt: '2026-07-06T05:50:09.791Z' }]);
+    const create = vi.fn().mockResolvedValue({});
+    prismaModule.getPrisma.mockReturnValue({
+      $queryRaw: queryRaw,
+      gameScoreBilliards: { create }
+    });
+
+    const { GET, POST } = await import('../src/routes/games/billiards/+server.js');
+    const locals = {
+      auth: vi.fn().mockResolvedValue({
+        user: { email: 'me@example.com', nickname: 'me' }
+      })
+    };
+    const getResponse = await GET({
+      locals,
+      url: new URL('https://dgst.me/games/billiards?rank=1&mode=art-puzzle')
+    });
+    const getBody = await getResponse.json();
+
+    expect(getBody.mode).toBe('art-puzzle');
+    expect(getBody.rank[0].score).toBe(8);
+    expect(statsBilliards.getTodayBilliardsStats).toHaveBeenCalledWith('art-puzzle');
+
+    const postResponse = await POST({
+      locals,
+      request: new Request('https://dgst.me/games/billiards', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ mode: 'art-puzzle', score: 7 })
+      })
+    });
+
+    expect(postResponse.status).toBe(200);
+    expect(create).toHaveBeenCalledWith({
+      data: {
+        email: 'me@example.com',
+        nickname: 'me',
+        mode: 'art-puzzle',
+        score: 7
+      }
+    });
   });
 
   it('loads slot balances with last updated timestamps', async () => {

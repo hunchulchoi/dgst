@@ -50,6 +50,7 @@
     stopped,
     type ActiveBilliardsMode,
     type BallRole,
+    type BilliardsRankingMode,
     type FourBallTargetScore,
     type ShotContact
   } from './gameUtils';
@@ -169,6 +170,7 @@
   let activeVerticalSpin = 0;
   let power = $state(55);
   let rankList = $state<RankEntry[]>([]);
+  let rankingMode = $state<BilliardsRankingMode>(BILLIARDS_MODES.FOUR_BALL);
   let myBestScore = $state<number | null>(null);
   let todayStats = $state<{ games: number; users: number }>({ games: 0, users: 0 });
   let rankLoading = $state(false);
@@ -229,6 +231,15 @@
   const displayedSpinTipY = $derived(
     replaying && lastPlayerReplay ? Math.round(lastPlayerReplay.verticalSpin / 2) : spinTipY
   );
+  const rankingTabs: Array<{ mode: BilliardsRankingMode; label: string }> = [
+    { mode: BILLIARDS_MODES.FOUR_BALL, label: '4구' },
+    { mode: BILLIARDS_MODES.POCKET_BALL, label: '포켓볼' },
+    { mode: BILLIARDS_MODES.ART_PUZZLE, label: '예술구' }
+  ];
+
+  function formatRankScore(value: number) {
+    return rankingMode === BILLIARDS_MODES.ART_PUZZLE ? `${value}단계` : String(value);
+  }
   const statusText = $derived(
     artMode
       ? artResult === 'success'
@@ -513,21 +524,24 @@
     if (!artMode && currentMode === mode) return;
     artMode = false;
     currentMode = mode;
+    rankingMode = mode;
     rankList = [];
     myBestScore = null;
     todayStats = { games: 0, users: 0 };
     newGame();
-    void loadRank();
+    void loadRank(mode);
   }
 
   function switchToArtMode() {
     if (artMode) return;
     artMode = true;
     currentMode = BILLIARDS_MODES.FOUR_BALL;
+    rankingMode = BILLIARDS_MODES.ART_PUZZLE;
     rankList = [];
     myBestScore = null;
     todayStats = { games: 0, users: 0 };
     newGame();
+    void loadRank(BILLIARDS_MODES.ART_PUZZLE);
   }
 
   function selectArtStage(stage: number) {
@@ -544,11 +558,16 @@
   function switchTargetScore(nextTarget: FourBallTargetScore) {
     if (targetScore === nextTarget || isPocketBall) return;
     targetScore = nextTarget;
+    newGame();
+  }
+
+  function selectRankingMode(mode: BilliardsRankingMode) {
+    if (rankingMode === mode && rankList.length > 0) return;
+    rankingMode = mode;
     rankList = [];
     myBestScore = null;
     todayStats = { games: 0, users: 0 };
-    newGame();
-    void loadRank();
+    void loadRank(mode);
   }
 
   function getTrackedBalls(): BallBody[] {
@@ -751,7 +770,11 @@
     artResult = result.success ? 'success' : 'failed';
     artResultMessage = result.message;
     status = 'game-over';
-    if (result.success) showScoreEffect(artStageNumber * 10, 'score');
+    if (result.success) {
+      score = artStageNumber;
+      showScoreEffect(artStageNumber * 10, 'score');
+      void submitScore(BILLIARDS_MODES.ART_PUZZLE, artStageNumber);
+    }
   }
 
   function settleShot() {
@@ -1646,12 +1669,11 @@
     frameId = requestAnimationFrame(tick);
   }
 
-  async function loadRank() {
-    if (artMode || !isLoggedIn) return;
+  async function loadRank(mode: BilliardsRankingMode = rankingMode) {
+    if (!isLoggedIn) return;
     rankLoading = true;
     try {
-      const params = new URLSearchParams({ rank: '1', mode: currentMode });
-      if (!isPocketBall) params.set('target', String(targetScore));
+      const params = new URLSearchParams({ rank: '1', mode });
       const res = await fetch(`/games/billiards?${params.toString()}`);
       if (!res.ok) return;
       const body = await res.json();
@@ -1666,20 +1688,22 @@
     }
   }
 
-  async function submitScore() {
-    if (artMode || !isLoggedIn || submittedGameOver) return;
+  async function submitScore(
+    mode: BilliardsRankingMode = currentMode,
+    submittedScore = score
+  ) {
+    if (!isLoggedIn || submittedGameOver) return;
     submittedGameOver = true;
     try {
       const res = await fetch('/games/billiards', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          mode: currentMode,
-          score,
-          ...(!isPocketBall ? { target: targetScore } : {})
+          mode,
+          score: submittedScore
         })
       });
-      if (res.ok) await loadRank();
+      if (res.ok && rankingMode === mode) await loadRank(mode);
     } catch (error) {
       console.error('[billiards score submit failed]', error);
     }
@@ -1738,6 +1762,7 @@
     <div class="hud-stats">
       {#if artMode}
         <span>퍼즐 <strong>{artStageNumber}/10</strong></span>
+        <span>최고 <strong>{myBestScore ?? '-'}</strong></span>
       {:else if isPocketBall}
         <span>점수 <strong>{score}</strong></span>
         <span>기회 <strong>{chances}</strong></span>
@@ -2113,11 +2138,21 @@
     </div>
   {/if}
 
-  {#if !artMode}
-    <section class="rank-panel">
+  <section class="rank-panel">
     <div class="rank-heading">
       <h2>랭킹</h2>
       {#if rankLoading}<span>불러오는 중</span>{/if}
+    </div>
+    <div class="rank-mode-tabs" aria-label="당구 랭킹 모드">
+      {#each rankingTabs as tab (tab.mode)}
+        <button
+          type="button"
+          class:active={rankingMode === tab.mode}
+          onclick={() => selectRankingMode(tab.mode)}
+        >
+          {tab.label}
+        </button>
+      {/each}
     </div>
     <p class="rank-today">
       오늘 참여 <strong>{todayStats.users}</strong>명 · 완료
@@ -2129,7 +2164,7 @@
           <li>
             <span>{item.nickname}</span>
             <span class="rank-meta">
-              <strong>{item.score}</strong>
+              <strong>{formatRankScore(item.score)}</strong>
               {#if item.createdAt}
                 <small>{formatRelativeTime(item.createdAt, { locale: ko, addSuffix: true })}</small>
               {/if}
@@ -2140,10 +2175,9 @@
     {:else}
       <p>아직 기록이 없습니다.</p>
     {/if}
-    </section>
-  {/if}
+  </section>
 
-  {#if !artMode && !isLoggedIn}
+  {#if !isLoggedIn}
     <p class="login-note">로그인하면 점수 랭킹을 저장합니다.</p>
   {/if}
 </div>
@@ -2872,6 +2906,28 @@
     align-items: center;
     justify-content: space-between;
     margin-bottom: 8px;
+  }
+
+  .rank-mode-tabs {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+    margin-bottom: 8px;
+  }
+
+  .rank-mode-tabs button {
+    min-height: 30px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 7px;
+    background: rgba(4, 16, 11, 0.6);
+    color: #c9d9c7;
+    font-weight: 900;
+  }
+
+  .rank-mode-tabs button.active {
+    border-color: #f0c05a;
+    background: rgba(240, 192, 90, 0.2);
+    color: #ffe39a;
   }
 
   .rank-heading h2 {
