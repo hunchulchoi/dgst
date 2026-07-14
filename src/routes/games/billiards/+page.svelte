@@ -2008,6 +2008,118 @@
     color: #1d221a;
   }
 
+  .shot-review-actions {
+    display: grid;
+    grid-template-columns: 92px 92px minmax(0, 1fr);
+    align-items: center;
+    gap: 6px;
+    margin-top: 7px;
+  }
+
+  .shot-review-actions button,
+  .report-actions button {
+    min-height: 34px;
+    border: 1px solid rgba(240, 192, 90, 0.45);
+    border-radius: 8px;
+    background: rgba(240, 192, 90, 0.14);
+    color: #ffe39a;
+    font-weight: 900;
+  }
+
+  .shot-review-actions .report-button {
+    border-color: rgba(255, 153, 133, 0.45);
+    background: rgba(255, 118, 92, 0.13);
+    color: #ffc1b5;
+  }
+
+  .shot-review-actions span {
+    overflow: hidden;
+    color: #b4ccb8;
+    font-size: 0.74rem;
+    font-weight: 800;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .report-message {
+    margin: 5px 2px 0;
+    color: #9ee7ac;
+    font-size: 0.78rem;
+    font-weight: 800;
+    text-align: center;
+  }
+
+  .report-message.report-error {
+    color: #ffb1a5;
+  }
+
+  .report-overlay {
+    position: fixed;
+    z-index: 50;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    padding: 16px;
+    background: rgba(1, 7, 5, 0.78);
+    backdrop-filter: blur(4px);
+  }
+
+  .report-panel {
+    display: grid;
+    width: min(100%, 420px);
+    gap: 8px;
+    padding: 16px;
+    border: 1px solid rgba(240, 192, 90, 0.32);
+    border-radius: 12px;
+    background: #102d21;
+    box-shadow: 0 18px 60px rgba(0, 0, 0, 0.48);
+  }
+
+  .report-heading {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .report-heading span,
+  .report-panel p,
+  .report-panel label small {
+    color: #b4ccb8;
+    font-size: 0.78rem;
+  }
+
+  .report-panel p {
+    margin: 0;
+  }
+
+  .report-panel label {
+    font-size: 0.82rem;
+    font-weight: 900;
+  }
+
+  .report-panel textarea {
+    width: 100%;
+    resize: vertical;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 8px;
+    padding: 10px;
+    background: rgba(4, 16, 11, 0.74);
+    color: #f8f5e8;
+    font: inherit;
+  }
+
+  .report-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .report-actions button[type='submit'] {
+    background: #f0c05a;
+    color: #1d221a;
+  }
+
   h2 {
     margin: 0;
     line-height: 1.1;

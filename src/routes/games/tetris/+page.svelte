@@ -14,12 +14,14 @@
     createBonusBoard,
     createBonusQueue,
     createEmptyBoard,
+    createStageBoard,
     drawNextPiece,
     ensureQueue,
     getGhostPiece,
     getPieceCells,
     getShapeMatrix,
     getStageConfig,
+    getStageGarbageRows,
     hardDrop,
     isGameComplete,
     isSpawnBlocked,
@@ -96,19 +98,24 @@
   const SOUND_PREF_KEY = 'dgst_tetris_sound';
   const SAVE_VERSION = 3;
   const PIECE_TYPES: PieceType[] = ['I', 'O', 'T', 'S', 'Z', 'J', 'L'];
-  const BONUS_AFTER_STAGES = [3, 6, 9] as const;
+  const BONUS_AFTER_STAGES = [3, 6, 9, 12, 15, 18] as const;
   const BONUS_SECONDS = 30;
   const RESUMABLE_SCREENS: Screen[] = ['playing', 'bonus', 'paused', 'stageClear', 'bonusClear'];
   const isLoggedIn = $derived(!!data.session?.user?.email);
 
   const stageConfig = $derived(getStageConfig(stage));
   const stageProgress = $derived(Math.min(100, (stageLines / stageConfig.linesTarget) * 100));
+  const stageGarbageRows = $derived(getStageGarbageRows(stage));
   const dropMs = $derived(stageConfig.dropIntervalMs);
   const currentDropMs = $derived(screen === 'bonus' ? 260 : dropMs);
   const bonusProgress = $derived((bonusTimeLeft / BONUS_SECONDS) * 100);
   const isBonusContext = $derived(
     screen === 'bonus' || screen === 'bonusClear' || (screen === 'paused' && pausedFrom === 'bonus')
   );
+
+  function hasBonusAfterStage(stageNumber: number): boolean {
+    return BONUS_AFTER_STAGES.some((bonusStage) => bonusStage === stageNumber);
+  }
 
   /** 렌더용 셀 (고정 블록 + 고스트 + 활성) */
   type RenderCell = { type: PieceType; ghost?: boolean } | null;
@@ -366,7 +373,7 @@
       clearTimeout(stageClearTimeout);
       stageClearTimeout = null;
     }
-    if (screen === 'stageClear' && BONUS_AFTER_STAGES.includes(stage as 3 | 6 | 9)) {
+    if (screen === 'stageClear' && hasBonusAfterStage(stage)) {
       startBonusStage();
       return;
     }
@@ -389,12 +396,12 @@
     combo = 0;
     backToBack = false;
     clearFeedback = null;
-    board = createEmptyBoard();
     holdPiece = null;
     canHold = true;
     activePiece = null;
     pausedFrom = 'playing';
     screen = 'playing';
+    board = createStageBoard(nextStage);
     if (!spawnFromQueue()) {
       endGameOver();
       return;
@@ -1149,8 +1156,8 @@
             <div class="text-center py-3">
               <h2 class="mb-2">🧱 테트리스</h2>
               <p class="text-muted mb-4">
-                10단계 스테이지를 클리어하세요!<br />
-                Stage 3·6·9 뒤에는 30초 보너스 도전이 열립니다.
+                20단계 스테이지를 클리어하세요!<br />
+                3단계마다 30초 보너스 도전이 열립니다.
               </p>
               <div class="d-flex flex-column align-items-center gap-2">
                 {#if canResume && resumeSummary}
@@ -1194,6 +1201,9 @@
                   {#each STAGES as s (s.stage)}
                     <li>
                       Stage {s.stage} ({s.label}): {s.linesTarget}줄 · 낙하 {s.dropIntervalMs}ms
+                      {#if getStageGarbageRows(s.stage) > 0}
+                        · 방해 {getStageGarbageRows(s.stage)}줄
+                      {/if}
                     </li>
                   {/each}
                 </ul>
@@ -1214,6 +1224,8 @@
                   </h4>
                   <p class="small text-muted mb-0">
                     목표 {stageLines}/{stageConfig.linesTarget}줄 · 총 {totalLines}줄
+                    {#if stageGarbageRows > 0}
+                      · 시작 방해 {stageGarbageRows}줄{/if}
                   </p>
                 {/if}
               </div>
@@ -1311,7 +1323,7 @@
                       <button type="button" class="btn btn-success btn-sm" onclick={advanceStage}>
                         {stage >= STAGES.length
                           ? '결과 보기'
-                          : BONUS_AFTER_STAGES.includes(stage as 3 | 6 | 9)
+                          : hasBonusAfterStage(stage)
                             ? '보너스 도전'
                             : '다음 스테이지'}
                       </button>

@@ -109,7 +109,17 @@ export const STAGES: StageConfig[] = [
   { stage: 7, linesTarget: 20, dropIntervalMs: 320, label: '달인' },
   { stage: 8, linesTarget: 22, dropIntervalMs: 270, label: '마스터' },
   { stage: 9, linesTarget: 25, dropIntervalMs: 220, label: '챔피언' },
-  { stage: 10, linesTarget: 30, dropIntervalMs: 180, label: '최종' }
+  { stage: 10, linesTarget: 30, dropIntervalMs: 180, label: '최종' },
+  { stage: 11, linesTarget: 32, dropIntervalMs: 160, label: '극한' },
+  { stage: 12, linesTarget: 34, dropIntervalMs: 145, label: '초월' },
+  { stage: 13, linesTarget: 36, dropIntervalMs: 130, label: '폭풍' },
+  { stage: 14, linesTarget: 38, dropIntervalMs: 115, label: '지옥' },
+  { stage: 15, linesTarget: 40, dropIntervalMs: 100, label: '악몽' },
+  { stage: 16, linesTarget: 42, dropIntervalMs: 90, label: '광속' },
+  { stage: 17, linesTarget: 44, dropIntervalMs: 80, label: '혼돈' },
+  { stage: 18, linesTarget: 46, dropIntervalMs: 70, label: '전설' },
+  { stage: 19, linesTarget: 48, dropIntervalMs: 60, label: '신화' },
+  { stage: 20, linesTarget: 50, dropIntervalMs: 50, label: '무한' }
 ];
 
 const PIECE_TYPES: PieceType[] = ['I', 'O', 'T', 'S', 'Z', 'J', 'L'];
@@ -119,6 +129,31 @@ const LINE_SCORES = [0, 100, 300, 500, 800] as const;
 /** 빈 보드 생성 */
 export function createEmptyBoard(): Board {
   return Array.from({ length: TOTAL_ROWS }, () => Array<BoardCell>(COLS).fill(null));
+}
+
+/** Stage 11부터 2줄, 이후 두 단계마다 한 줄씩 늘어 최대 6줄 */
+export function getStageGarbageRows(stage: number): number {
+  if (stage <= 10) return 0;
+  return Math.min(6, 2 + Math.floor((stage - 11) / 2));
+}
+
+/** 고난도 스테이지 시작 보드. 단계별 고정 패턴이며 각 줄에 구멍 2개를 보장한다. */
+export function createStageBoard(stage: number): Board {
+  const board = createEmptyBoard();
+  const garbageRows = getStageGarbageRows(stage);
+  const colors: PieceType[] = ['J', 'L', 'S', 'Z', 'T'];
+
+  for (let offset = 0; offset < garbageRows; offset++) {
+    const row = TOTAL_ROWS - garbageRows + offset;
+    const firstHole = (stage * 3 + offset * 2) % COLS;
+    const secondHole = (firstHole + 3 + (stage % 4)) % COLS;
+    for (let col = 0; col < COLS; col++) {
+      if (col !== firstHole && col !== secondHole) {
+        board[row][col] = colors[(stage + offset + col) % colors.length];
+      }
+    }
+  }
+  return board;
 }
 
 /** 보너스 스테이지 공용 시작 보드: 오른쪽 한 칸이 빈 4줄 우물 */

@@ -10,7 +10,7 @@ const TETRIS_GAME = 'tetris';
 const scoreBodySchema = z.object({
   action: z.literal('start').optional(),
   score: z.number().finite().nonnegative().optional(),
-  stage: z.number().int().min(1).max(10).optional()
+  stage: z.number().int().min(1).max(20).optional()
 });
 
 /**

@@ -9,9 +9,11 @@ import {
   createBonusBoard,
   createBonusQueue,
   createEmptyBoard,
+  createStageBoard,
   drawNextPiece,
   getGhostPiece,
   getStageConfig,
+  getStageGarbageRows,
   hardDrop,
   isStageComplete,
   lockPiece,
@@ -101,11 +103,26 @@ describe('tetris gameUtils', () => {
     expect(calculatePlacementScore(1, 3, second.nextCombo, true).nextBackToBack).toBe(false);
   });
 
-  it('tracks stage progress and has 10 stages', () => {
-    expect(STAGES.length).toBe(10);
+  it('tracks stage progress and has 20 increasingly fast stages', () => {
+    expect(STAGES.length).toBe(20);
     expect(getStageConfig(1).linesTarget).toBe(5);
+    expect(getStageConfig(20).dropIntervalMs).toBeLessThan(getStageConfig(10).dropIntervalMs);
     expect(isStageComplete(4, 1)).toBe(false);
     expect(isStageComplete(5, 1)).toBe(true);
+  });
+
+  it('adds deterministic garbage rows after stage 10', () => {
+    expect(getStageGarbageRows(10)).toBe(0);
+    expect(getStageGarbageRows(11)).toBe(2);
+    expect(getStageGarbageRows(20)).toBe(6);
+    expect(createStageBoard(10)).toEqual(createEmptyBoard());
+
+    const stage11 = createStageBoard(11);
+    expect(stage11).toEqual(createStageBoard(11));
+    expect(stage11.slice(0, 20).every((row) => row.every((cell) => cell === null))).toBe(true);
+    expect(
+      stage11.slice(20).every((row) => row.some((cell) => cell === null) && row.some(Boolean))
+    ).toBe(true);
   });
 
   it('draws from 7-bag queue without emptying', () => {

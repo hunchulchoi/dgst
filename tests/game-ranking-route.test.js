@@ -382,7 +382,7 @@ describe('game ranking routes', () => {
       request: new Request('https://dgst.me/games/tetris', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ score: 1200, stage: 5 })
+        body: JSON.stringify({ score: 1200, stage: 20 })
       })
     });
     const postBody = await postResponse.json();
@@ -392,7 +392,7 @@ describe('game ranking routes', () => {
         game: 'tetris',
         action: 'score',
         email: 'me@example.com',
-        meta: { nickname: 'me', score: 1200, stage: 5 }
+        meta: { nickname: 'me', score: 1200, stage: 20 }
       }
     });
   });
