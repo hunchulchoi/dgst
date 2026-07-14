@@ -7,6 +7,7 @@ import {
 } from '$lib/server/board/articleRepo.js';
 import { findCommentsByArticle, toCommentJson } from '$lib/server/board/commentRepo.js';
 import { getBoardListPayload } from '$lib/server/boardListLoad.js';
+import { findBilliardsReplayByArticleId } from '$lib/server/billiardsReplayRepo.js';
 import convertToTree from '$lib/util/tree.js';
 
 const BOARD_COMMENT_SELECT = {
@@ -56,10 +57,11 @@ export const load = async ({ params, locals, cookies }) => {
     const readReceipt = viewerId ? await recordArticleRead(articleId, viewerId) : null;
     article = readReceipt?.article ?? article;
     const requestedPageNo = parseInt(params.pageNo || '1', 10);
-    const [comments, author, boardListPayload] = await Promise.all([
+    const [comments, author, boardListPayload, billiardsReplay] = await Promise.all([
       findCommentsByArticle(articleId, boardId, BOARD_COMMENT_SELECT),
       findArticleAuthorProfile(article.email),
-      getBoardListPayload(boardId, requestedPageNo, viewerId)
+      getBoardListPayload(boardId, requestedPageNo, viewerId),
+      findBilliardsReplayByArticleId(articleId)
     ]);
 
     const commentTree = convertToTree(
@@ -117,6 +119,13 @@ export const load = async ({ params, locals, cookies }) => {
       photo: author?.photo || '/icons/unknown-person-icon-4.jpg',
       introduction: author?.introduction,
       insta,
+      billiardsReplay: billiardsReplay
+        ? {
+            id: billiardsReplay.id,
+            data: billiardsReplay.data,
+            createdAt: billiardsReplay.createdAt.toISOString()
+          }
+        : null,
       ...boardListPayload,
       ogTitle,
       ogDescription,

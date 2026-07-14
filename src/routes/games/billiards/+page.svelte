@@ -1,5 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { goto } from '$app/navigation';
+  import { resolve } from '$app/paths';
   import Matter from 'matter-js';
   import { ko } from 'date-fns/locale';
   import { formatRelativeTime } from '$lib/util/formatRelativeTime.js';
@@ -71,6 +73,7 @@
     power: number;
     defensive: boolean;
     rating: number;
+    trajectory?: Array<{ x: number; y: number }>;
   };
   type ReplayBall = {
     id: string;
@@ -156,6 +159,7 @@
   let npcShotWasDefensive = false;
   let opponentCueHitThisShot = false;
   let replayCapture: ShotReplay | null = null;
+  let replayCaptureStartedAt = 0;
   let lastPlayerReplay = $state<ShotReplay | null>(null);
   let lastReplaySampleAt = 0;
   let replaying = $state(false);
@@ -165,6 +169,13 @@
   let reportNote = $state('');
   let reportSending = $state(false);
   let reportMessage = $state('');
+  let shareOpen = $state(false);
+  let shareTitle = $state('');
+  let shareNote = $state('');
+  let shareBoard = $state<'free' | 'bug'>('free');
+  let shareSending = $state(false);
+  let helpPlan = $state<NpcShotPlan | null>(null);
+  let helpThinking = $state(false);
 
   const isLoggedIn = $derived(!!data.session?.user?.email);
   const isPocketBall = $derived(currentMode === BILLIARDS_MODES.POCKET_BALL);
@@ -172,9 +183,7 @@
   const remainingObjects = $derived(remainingObjectCount);
   const activeCombo = $derived(currentTurn === 'player' ? playerCombo : npcCombo);
   const activeComboMultiplier = $derived(computeFourBallComboMultiplier(Math.max(1, activeCombo)));
-  const displayedPower = $derived(
-    replaying && lastPlayerReplay ? lastPlayerReplay.power : power
-  );
+  const displayedPower = $derived(replaying && lastPlayerReplay ? lastPlayerReplay.power : power);
   const displayedSideSpin = $derived(
     replaying && lastPlayerReplay ? lastPlayerReplay.sideSpin : spin
   );
@@ -191,36 +200,36 @@
     replaying
       ? '내 마지막 샷 다시보기'
       : !isPocketBall && status === 'game-over'
-      ? score >= targetScore
-        ? '승리! 겐세이 형을 이겼습니다'
-        : '겐세이 형 승리'
-      : !isPocketBall && npcThinking
-        ? npcMessage || '겐세이 형이 수를 보는 중'
-      : status === 'aiming'
-      ? isPocketBall
-        ? '공을 포켓에 넣으세요'
-        : currentTurn === 'player'
-          ? '내 차례 · 조준하고 샷'
-          : '겐세이 형 차례'
-      : status === 'charging'
-        ? '게이지를 눌러 샷'
-          : status === 'rolling'
-          ? `${!isPocketBall && currentTurn === 'npc' ? '겐세이 형' : '내'} 샷 진행 중`
-          : status === 'scored'
+        ? score >= targetScore
+          ? '승리! 겐세이 형을 이겼습니다'
+          : '겐세이 형 승리'
+        : !isPocketBall && npcThinking
+          ? npcMessage || '겐세이 형이 수를 보는 중'
+          : status === 'aiming'
             ? isPocketBall
-              ? '포켓 성공'
-              : `${currentTurn === 'player' ? '득점!' : 'NPC 득점'} ×${lastShotMultiplier}`
-            : status === 'miss'
-              ? !isPocketBall && lastFoulPenalty > 0
-                ? `${currentTurn === 'npc' ? 'NPC 차례' : '내 차례'} · 파울 -${lastFoulPenalty}`
-                : !isPocketBall && npcMessage
-                ? npcMessage
-                : cuePocketedThisShot
-                ? '수구 파울'
-                : !isPocketBall && currentTurn === 'npc'
-                  ? '실패 · NPC 차례'
-                  : '아쉽습니다. 내 차례'
-              : '게임 종료'
+              ? '공을 포켓에 넣으세요'
+              : currentTurn === 'player'
+                ? '내 차례 · 조준하고 샷'
+                : '겐세이 형 차례'
+            : status === 'charging'
+              ? '게이지를 눌러 샷'
+              : status === 'rolling'
+                ? `${!isPocketBall && currentTurn === 'npc' ? '겐세이 형' : '내'} 샷 진행 중`
+                : status === 'scored'
+                  ? isPocketBall
+                    ? '포켓 성공'
+                    : `${currentTurn === 'player' ? '득점!' : 'NPC 득점'} ×${lastShotMultiplier}`
+                  : status === 'miss'
+                    ? !isPocketBall && lastFoulPenalty > 0
+                      ? `${currentTurn === 'npc' ? 'NPC 차례' : '내 차례'} · 파울 -${lastFoulPenalty}`
+                      : !isPocketBall && npcMessage
+                        ? npcMessage
+                        : cuePocketedThisShot
+                          ? '수구 파울'
+                          : !isPocketBall && currentTurn === 'npc'
+                            ? '실패 · NPC 차례'
+                            : '아쉽습니다. 내 차례'
+                    : '게임 종료'
   );
 
   const Engine = Matter.Engine;
@@ -229,13 +238,7 @@
   const Composite = Matter.Composite;
   const Events = Matter.Events;
 
-  function makeBall(
-    x: number,
-    y: number,
-    role: BallRole,
-    id: string,
-    color: string
-  ): BallBody {
+  function makeBall(x: number, y: number, role: BallRole, id: string, color: string): BallBody {
     const ball = Bodies.circle(x, y, BALL_RADIUS, {
       label: id,
       restitution: BALL_RESTITUTION,
@@ -373,6 +376,7 @@
     npcShotWasDefensive = false;
     opponentCueHitThisShot = false;
     replayCapture = null;
+    replayCaptureStartedAt = 0;
     lastPlayerReplay = null;
     lastReplaySampleAt = 0;
     replaying = false;
@@ -382,6 +386,8 @@
     reportNote = '';
     reportSending = false;
     reportMessage = '';
+    helpPlan = null;
+    helpThinking = false;
     chances = isPocketBall ? POCKET_BALL_CHANCES : FOUR_BALL_CHANCES;
     status = 'aiming';
     contacts = [];
@@ -447,6 +453,7 @@
 
   function beginPlayerReplay(selectedPower: number) {
     const startedAt = performance.now();
+    replayCaptureStartedAt = startedAt;
     replayCapture = {
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       mode: currentMode,
@@ -466,7 +473,7 @@
   function capturePlayerReplayFrame(now: number, force = false) {
     if (!replayCapture || replayCapture.frames.length >= 260) return;
     if (!force && now - lastReplaySampleAt < 50) return;
-    replayCapture.frames.push(makeReplayFrame(now - rollingStartedAt));
+    replayCapture.frames.push(makeReplayFrame(now - replayCaptureStartedAt));
     lastReplaySampleAt = now;
   }
 
@@ -476,6 +483,7 @@
     replayCapture.outcome = outcome;
     lastPlayerReplay = replayCapture;
     replayCapture = null;
+    replayCaptureStartedAt = 0;
   }
 
   function startReplay() {
@@ -498,11 +506,31 @@
     reportOpen = false;
   }
 
+  function openShare() {
+    if (!lastPlayerReplay || status === 'rolling' || npcThinking || replaying) return;
+    if (!isLoggedIn) {
+      reportMessage = '게시판 공유는 로그인 후 가능합니다.';
+      return;
+    }
+    shareTitle = `[당구 리플레이] ${lastPlayerReplay.outcome || '내 샷'}`;
+    shareNote = '';
+    shareBoard = 'free';
+    reportMessage = '';
+    shareOpen = true;
+  }
+
+  function closeShare() {
+    if (shareSending) return;
+    shareOpen = false;
+  }
+
   function getReportFrames(replay: ShotReplay) {
     const maxFrames = 80;
     if (replay.frames.length <= maxFrames) return replay.frames;
-    return Array.from({ length: maxFrames }, (_, index) =>
-      replay.frames[Math.floor((index * (replay.frames.length - 1)) / (maxFrames - 1))]
+    return Array.from(
+      { length: maxFrames },
+      (_, index) =>
+        replay.frames[Math.floor((index * (replay.frames.length - 1)) / (maxFrames - 1))]
     );
   }
 
@@ -530,6 +558,35 @@
       reportMessage = '신고 전송 실패. 다시 눌러주세요.';
     } finally {
       reportSending = false;
+    }
+  }
+
+  async function submitReplayShare() {
+    if (!lastPlayerReplay || shareSending) return;
+    shareSending = true;
+    reportMessage = '';
+    try {
+      const replay = lastPlayerReplay;
+      const response = await fetch('/games/billiards/share', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          boardId: shareBoard,
+          title: shareTitle.trim(),
+          note: shareNote.trim(),
+          replay: { ...replay, frames: getReportFrames(replay) }
+        })
+      });
+      const result = await response.json();
+      if (!response.ok || !result.articleId) {
+        throw new Error(result?.message || 'share failed');
+      }
+      shareOpen = false;
+      await goto(resolve(`/board/${result.boardId}/${result.articleId}`));
+    } catch {
+      reportMessage = '게시판 공유 실패. 다시 눌러주세요.';
+    } finally {
+      shareSending = false;
     }
   }
 
@@ -593,10 +650,7 @@
       return;
     }
 
-    const foulPenalty = computeFourBallFoulPenalty(
-      result.hitRedIds.length,
-      opponentCueHitThisShot
-    );
+    const foulPenalty = computeFourBallFoulPenalty(result.hitRedIds.length, opponentCueHitThisShot);
     if (currentTurn === 'player') {
       finishPlayerReplay(
         foulPenalty > 0 ? `파울 -${foulPenalty}` : result.scored ? '득점' : '실패'
@@ -678,28 +732,25 @@
       return;
     }
     if (!cue || target.billiardsRole !== 'red' || !target.billiardsId) return;
-    contacts = [
-      ...contacts,
-      { cueRole: cue.billiardsRole ?? 'cue', targetId: target.billiardsId }
-    ];
+    contacts = [...contacts, { cueRole: cue.billiardsRole ?? 'cue', targetId: target.billiardsId }];
   }
 
-  function simulateNpcShot(angle: number, selectedPower: number): {
+  function simulateFourBallShot(
+    shooterTurn: FourBallTurn,
+    angle: number,
+    selectedPower: number,
+    captureTrajectory = false
+  ): {
     rating: number;
     scored: boolean;
+    trajectory: Array<{ x: number; y: number }>;
   } {
     if (!cueBall || !npcCueBall || redBalls.length < 2) {
-      return { rating: Number.NEGATIVE_INFINITY, scored: false };
+      return { rating: Number.NEGATIVE_INFINITY, scored: false, trajectory: [] };
     }
 
     const simulation = Engine.create({ gravity: { x: 0, y: 0 } });
-    const simPlayer = makeBall(
-      cueBall.position.x,
-      cueBall.position.y,
-      'cue',
-      'sim-player',
-      '#fff'
-    );
+    const simPlayer = makeBall(cueBall.position.x, cueBall.position.y, 'cue', 'sim-player', '#fff');
     const simNpc = makeBall(
       npcCueBall.position.x,
       npcCueBall.position.y,
@@ -710,6 +761,8 @@
     const simReds = redBalls.map((ball, index) =>
       makeBall(ball.position.x, ball.position.y, 'red', `sim-red-${index}`, '#d7352a')
     );
+    const simShooter = shooterTurn === 'player' ? simPlayer : simNpc;
+    const simOpponent = shooterTurn === 'player' ? simNpc : simPlayer;
     const rail = RAIL_THICKNESS;
     const walls = [
       makeRail(TABLE_WIDTH / 2, rail / 2, TABLE_WIDTH, rail),
@@ -718,12 +771,16 @@
       makeRail(TABLE_WIDTH - rail / 2, TABLE_HEIGHT / 2, rail, TABLE_HEIGHT)
     ];
     const movingBalls = [simPlayer, simNpc, ...simReds];
+    const trajectory = captureTrajectory
+      ? [{ x: simShooter.position.x, y: simShooter.position.y }]
+      : [];
     const hitIds = new Set<string>();
-    let hitPlayerCue = false;
+    let hitOpponentCue = false;
     const collisionHandler = (event: Matter.IEventCollision<Matter.Engine>) => {
       for (const pair of event.pairs) {
-        const other = pair.bodyA === simNpc ? pair.bodyB : pair.bodyB === simNpc ? pair.bodyA : null;
-        if (other === simPlayer) hitPlayerCue = true;
+        const other =
+          pair.bodyA === simShooter ? pair.bodyB : pair.bodyB === simShooter ? pair.bodyA : null;
+        if (other === simOpponent) hitOpponentCue = true;
         const target = other as BallBody | null;
         if (target?.billiardsRole === 'red' && target.billiardsId) hitIds.add(target.billiardsId);
       }
@@ -731,7 +788,7 @@
 
     Events.on(simulation, 'collisionStart', collisionHandler);
     Composite.add(simulation.world, [...walls, ...movingBalls]);
-    Body.setVelocity(simNpc, computeShotVelocity(angle, selectedPower));
+    Body.setVelocity(simShooter, computeShotVelocity(angle, selectedPower));
 
     for (let step = 0; step < 210; step += 1) {
       Engine.update(simulation, 16.66);
@@ -752,21 +809,27 @@
           });
         }
       }
+      if (captureTrajectory && step % 3 === 0) {
+        trajectory.push({ x: simShooter.position.x, y: simShooter.position.y });
+      }
       if (step > 20 && stopped(movingBalls, STOP_SPEED)) break;
     }
 
-    const scored = hitIds.size >= 2 && !hitPlayerCue;
-    const playerToNearestRed = Math.min(
+    const scored = hitIds.size >= 2 && !hitOpponentCue;
+    const opponentToNearestRed = Math.min(
       ...simReds.map((ball) =>
-        Math.hypot(ball.position.x - simPlayer.position.x, ball.position.y - simPlayer.position.y)
+        Math.hypot(
+          ball.position.x - simOpponent.position.x,
+          ball.position.y - simOpponent.position.y
+        )
       )
     );
     const redSpread = Math.hypot(
       simReds[0].position.x - simReds[1].position.x,
       simReds[0].position.y - simReds[1].position.y
     );
-    const defenseValue = playerToNearestRed * 1.4 + redSpread * 0.65;
-    const foulPenalty = computeFourBallFoulPenalty(hitIds.size, hitPlayerCue);
+    const defenseValue = opponentToNearestRed * 1.4 + redSpread * 0.65;
+    const foulPenalty = computeFourBallFoulPenalty(hitIds.size, hitOpponentCue);
     const rating =
       (scored ? 100_000 : 0) +
       hitIds.size * 4_000 +
@@ -777,11 +840,12 @@
     Events.off(simulation, 'collisionStart', collisionHandler);
     Composite.clear(simulation.world, false);
     Engine.clear(simulation);
-    return { rating, scored };
+    return { rating, scored, trajectory };
   }
 
-  function chooseNpcShot(): NpcShotPlan {
-    if (!npcCueBall || redBalls.length < 2) {
+  function chooseFourBallShot(shooterTurn: FourBallTurn, candidateBudget: number): NpcShotPlan {
+    const shooterBall = shooterTurn === 'player' ? cueBall : npcCueBall;
+    if (!shooterBall || redBalls.length < 2) {
       return { angle: -Math.PI / 2, power: 55, defensive: true, rating: 0 };
     }
 
@@ -789,8 +853,8 @@
     const offsets = [-0.42, -0.3, -0.2, -0.12, -0.06, 0, 0.06, 0.12, 0.2, 0.3, 0.42];
     for (const red of redBalls) {
       const baseAngle = Math.atan2(
-        red.position.y - npcCueBall.position.y,
-        red.position.x - npcCueBall.position.x
+        red.position.y - shooterBall.position.y,
+        red.position.x - shooterBall.position.x
       );
       for (const offset of offsets) {
         for (const candidatePower of [48, 64, 80]) {
@@ -805,12 +869,12 @@
       });
     }
 
-    const difficulty = getFourBallNpcDifficulty(targetScore);
     const selectedCandidates =
-      difficulty.candidateBudget >= candidates.length
+      candidateBudget >= candidates.length
         ? candidates
-        : Array.from({ length: difficulty.candidateBudget }, (_, index) =>
-            candidates[Math.floor((index * candidates.length) / difficulty.candidateBudget)]
+        : Array.from(
+            { length: candidateBudget },
+            (_, index) => candidates[Math.floor((index * candidates.length) / candidateBudget)]
           );
     let best: NpcShotPlan = {
       angle: selectedCandidates[0].angle,
@@ -819,7 +883,7 @@
       rating: Number.NEGATIVE_INFINITY
     };
     for (const candidate of selectedCandidates) {
-      const result = simulateNpcShot(candidate.angle, candidate.power);
+      const result = simulateFourBallShot(shooterTurn, candidate.angle, candidate.power);
       if (result.rating <= best.rating) continue;
       best = {
         ...candidate,
@@ -828,6 +892,30 @@
       };
     }
     return best;
+  }
+
+  function chooseNpcShot(): NpcShotPlan {
+    return chooseFourBallShot('npc', getFourBallNpcDifficulty(targetScore).candidateBudget);
+  }
+
+  function showShotHelp() {
+    if (isPocketBall || currentTurn !== 'player' || !canPrepareShot()) return;
+    if (helpPlan) {
+      helpPlan = null;
+      return;
+    }
+
+    helpThinking = true;
+    setTimeout(() => {
+      if (isPocketBall || currentTurn !== 'player' || status === 'rolling') {
+        helpThinking = false;
+        return;
+      }
+      const plan = chooseFourBallShot('player', 52);
+      const preview = simulateFourBallShot('player', plan.angle, plan.power, true);
+      helpPlan = { ...plan, trajectory: preview.trajectory };
+      helpThinking = false;
+    }, 0);
   }
 
   function performNpcShot() {
@@ -872,6 +960,7 @@
   function canPrepareShot() {
     return (
       !replaying &&
+      !helpThinking &&
       (isPocketBall || (currentTurn === 'player' && !npcThinking)) &&
       (status === 'aiming' || status === 'scored' || status === 'miss')
     );
@@ -921,6 +1010,7 @@
     const dy = point.y - cueBall.position.y;
     if (Math.hypot(dx, dy) < BALL_RADIUS * 1.4) return;
     event.preventDefault();
+    helpPlan = null;
     aimAngle = Math.atan2(dy, dx);
     displayAimAngle = aimAngle;
     aimPoint = point;
@@ -932,6 +1022,7 @@
     const rect = target.getBoundingClientRect();
     const x = Math.max(0, Math.min(rect.width, event.clientX - rect.left));
     const y = Math.max(0, Math.min(rect.height, event.clientY - rect.top));
+    helpPlan = null;
     spin = computeSpinFromTrack(x, rect.width);
     verticalSpin = computeVerticalSpinFromTrack(y, rect.height);
     spinTipX = Math.round(spin / 2);
@@ -950,6 +1041,7 @@
     const target = event.currentTarget as HTMLElement;
     const rect = target.getBoundingClientRect();
     const x = Math.max(0, Math.min(rect.width, event.clientX - rect.left));
+    helpPlan = null;
     power = Math.round(10 + (x / rect.width) * 90);
     event.preventDefault();
   }
@@ -964,15 +1056,19 @@
     if (!canCharge()) return;
     const step = event.shiftKey ? 10 : 5;
     if (event.key === 'ArrowLeft' || event.key === 'ArrowDown') {
+      helpPlan = null;
       power = Math.max(10, power - step);
       event.preventDefault();
     } else if (event.key === 'ArrowRight' || event.key === 'ArrowUp') {
+      helpPlan = null;
       power = Math.min(100, power + step);
       event.preventDefault();
     } else if (event.key === 'Home') {
+      helpPlan = null;
       power = 10;
       event.preventDefault();
     } else if (event.key === 'End') {
+      helpPlan = null;
       power = 100;
       event.preventDefault();
     } else if (event.key === 'Enter' || event.key === ' ') {
@@ -1009,6 +1105,7 @@
     power = selectedPower;
     const velocity = computeShotVelocity(aimAngle, selectedPower);
     if (Math.hypot(velocity.x, velocity.y) < 0.1) return;
+    helpPlan = null;
     rollingStartedAt = performance.now();
     beginPlayerReplay(selectedPower);
     contacts = [];
@@ -1033,7 +1130,7 @@
         ? '#faf9f1'
         : role === 'opponent'
           ? '#f1e8c8'
-        : (ball.billiardsColor ?? (ball.billiardsId === 'red-1' ? '#dc342c' : '#bd1f26'));
+          : (ball.billiardsColor ?? (ball.billiardsId === 'red-1' ? '#dc342c' : '#bd1f26'));
     ctx.fill();
     ctx.lineWidth = 1.5;
     ctx.strokeStyle = role === 'cue' ? '#d8d0bc' : role === 'opponent' ? '#bda95f' : '#8e1518';
@@ -1102,6 +1199,33 @@
     ctx.restore();
   }
 
+  function drawHelpTrajectory(ctx: CanvasRenderingContext2D) {
+    const trajectory = helpPlan?.trajectory;
+    if (!trajectory || trajectory.length < 2 || status === 'rolling' || replaying) return;
+
+    ctx.save();
+    ctx.strokeStyle = 'rgba(111, 225, 255, 0.9)';
+    ctx.lineWidth = 2.5;
+    ctx.setLineDash([5, 5]);
+    ctx.beginPath();
+    ctx.moveTo(trajectory[0].x, trajectory[0].y);
+    for (let index = 1; index < trajectory.length; index += 1) {
+      ctx.lineTo(trajectory[index].x, trajectory[index].y);
+    }
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    const end = trajectory[trajectory.length - 1];
+    ctx.beginPath();
+    ctx.arc(end.x, end.y, 5, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(111, 225, 255, 0.34)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(200, 246, 255, 0.92)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.restore();
+  }
+
   function draw() {
     if (!canvasEl || !engine) return;
     const ctx = canvasEl.getContext('2d');
@@ -1141,6 +1265,7 @@
       for (const ball of getTrackedBalls()) drawBall(ctx, ball);
     }
     drawAim(ctx);
+    drawHelpTrajectory(ctx);
   }
 
   function keepBallsInsideTable() {
@@ -1308,7 +1433,11 @@
       const res = await fetch('/games/billiards', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mode: currentMode, score, ...(!isPocketBall ? { target: targetScore } : {}) })
+        body: JSON.stringify({
+          mode: currentMode,
+          score,
+          ...(!isPocketBall ? { target: targetScore } : {})
+        })
       });
       if (res.ok) await loadRank();
     } catch (error) {
@@ -1400,6 +1529,15 @@
 
   {#if !isPocketBall}
     <div class="target-selector" aria-label="4구 목표 점수와 NPC 난이도">
+      <button
+        type="button"
+        class="help-trigger"
+        class:active={!!helpPlan}
+        onclick={showShotHelp}
+        disabled={status === 'rolling' || npcThinking || replaying || helpThinking}
+      >
+        {helpThinking ? '계산…' : helpPlan ? '닫기' : '도움'}
+      </button>
       {#each FOUR_BALL_TARGET_OPTIONS as option (option)}
         <button
           type="button"
@@ -1411,6 +1549,14 @@
         </button>
       {/each}
     </div>
+    {#if helpPlan}
+      <div class="shot-help" aria-label="샷 도움">
+        <span>
+          중앙 당점 · 파워 약 {Math.max(10, helpPlan.power - 8)}~{Math.min(100, helpPlan.power + 8)}
+          · {helpPlan.defensive ? '첫 적구를 노리는 길' : '득점 예상 길'}
+        </span>
+      </div>
+    {/if}
   {/if}
 
   <section class="game-shell" aria-label={`${modeLabel} 게임`}>
@@ -1506,6 +1652,14 @@
       >
         오류신고
       </button>
+      <button
+        type="button"
+        class="share-button"
+        onclick={openShare}
+        disabled={status === 'rolling' || npcThinking || replaying}
+      >
+        게시판 공유
+      </button>
       <span>
         {#if replaying}
           파워 {displayedPower} · 당점 좌우 {displayedSideSpin}, 상하 {displayedVerticalSpin}
@@ -1515,8 +1669,57 @@
       </span>
     </div>
   {/if}
+
+  {#if shareOpen && lastPlayerReplay}
+    <div
+      class="report-overlay"
+      role="presentation"
+      onpointerdown={(event) => {
+        if (event.target === event.currentTarget) closeShare();
+      }}
+    >
+      <form
+        class="report-panel"
+        aria-label="리플레이 게시판 공유"
+        onsubmit={(event) => {
+          event.preventDefault();
+          void submitReplayShare();
+        }}
+      >
+        <div class="report-heading">
+          <strong>게시판에 리플레이 올리기</strong>
+          <span>파워 {lastPlayerReplay.power}</span>
+        </div>
+        <label for="replay-share-board">게시판</label>
+        <select id="replay-share-board" bind:value={shareBoard}>
+          <option value="free">자유게시판</option>
+          <option value="bug">버그신고</option>
+        </select>
+        <label for="replay-share-title">제목</label>
+        <input id="replay-share-title" bind:value={shareTitle} maxlength="80" required />
+        <label for="replay-share-note">내용 <small>(선택)</small></label>
+        <textarea
+          id="replay-share-note"
+          bind:value={shareNote}
+          maxlength="500"
+          rows="4"
+          placeholder="샷 설명을 적어주세요. 비워도 됩니다."
+        ></textarea>
+        <div class="report-actions">
+          <button type="button" onclick={closeShare} disabled={shareSending}>취소</button>
+          <button type="submit" disabled={shareSending}>
+            {shareSending ? '올리는 중…' : '게시하기'}
+          </button>
+        </div>
+      </form>
+    </div>
+  {/if}
   {#if reportMessage}
-    <p class:report-error={reportMessage.startsWith('신고 전송 실패')} class="report-message" aria-live="polite">
+    <p
+      class:report-error={reportMessage.includes('실패')}
+      class="report-message"
+      aria-live="polite"
+    >
       {reportMessage}
     </p>
   {/if}
@@ -1751,8 +1954,8 @@
 
   .target-selector {
     display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    width: min(330px, calc(100% - 16px));
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    width: min(390px, calc(100% - 16px));
     margin: -2px auto 8px;
     gap: 4px;
   }
@@ -1773,8 +1976,34 @@
     color: #ffe39a;
   }
 
+  .target-selector .help-trigger {
+    border-color: rgba(111, 225, 255, 0.44);
+    color: #bdefff;
+  }
+
+  .target-selector .help-trigger.active {
+    border-color: rgba(111, 225, 255, 0.72);
+    background: rgba(111, 225, 255, 0.24);
+    color: #d9f8ff;
+  }
+
   .target-selector button:disabled {
     opacity: 0.55;
+  }
+
+  .shot-help {
+    width: min(430px, calc(100% - 8px));
+    min-height: 22px;
+    margin: -3px auto 7px;
+    text-align: center;
+  }
+
+  .shot-help span {
+    min-width: 0;
+    color: #bdefff;
+    font-size: 0.72rem;
+    font-weight: 800;
+    line-height: 1.25;
   }
 
   .game-shell {
@@ -2034,7 +2263,7 @@
 
   .shot-review-actions {
     display: grid;
-    grid-template-columns: 92px 92px minmax(0, 1fr);
+    grid-template-columns: 82px 82px 96px minmax(0, 1fr);
     align-items: center;
     gap: 6px;
     margin-top: 7px;
@@ -2054,6 +2283,12 @@
     border-color: rgba(255, 153, 133, 0.45);
     background: rgba(255, 118, 92, 0.13);
     color: #ffc1b5;
+  }
+
+  .shot-review-actions .share-button {
+    border-color: rgba(111, 225, 255, 0.45);
+    background: rgba(59, 175, 207, 0.13);
+    color: #bdefff;
   }
 
   .shot-review-actions span {
@@ -2122,7 +2357,9 @@
     font-weight: 900;
   }
 
-  .report-panel textarea {
+  .report-panel textarea,
+  .report-panel input,
+  .report-panel select {
     width: 100%;
     resize: vertical;
     border: 1px solid rgba(255, 255, 255, 0.16);
@@ -2131,6 +2368,10 @@
     background: rgba(4, 16, 11, 0.74);
     color: #f8f5e8;
     font: inherit;
+  }
+
+  .report-panel select {
+    min-height: 42px;
   }
 
   .report-actions {

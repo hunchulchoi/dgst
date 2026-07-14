@@ -16,6 +16,7 @@
   import { alarmCount } from '$lib/util/store.js';
   import { onDestroy, onMount, tick } from 'svelte';
   import BoardList from '$lib/components/board_list.svelte';
+  import BilliardsReplayPlayer from '$lib/components/BilliardsReplayPlayer.svelte';
   import OGPreview from '$lib/components/OGPreview.svelte';
   import sanitizeHtml from 'sanitize-html';
   import { isOnlyOneEmoji } from '$lib/util/emoji.js';
@@ -1651,6 +1652,9 @@
       </Row>
       <Row class="py-3 px-2 mx-0">
         <div class="text-break px-2 article-content max-w-full dgst-rich-text">
+          {#if data.billiardsReplay}
+            <BilliardsReplayPlayer replay={data.billiardsReplay} />
+          {/if}
           <!-- eslint-disable-next-line svelte/no-at-html-tags -- article HTML is sanitized on write and sanitized again before render -->
           {@html getTrustedArticleBodyHtml(article.content)}
         </div>

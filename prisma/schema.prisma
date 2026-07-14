@@ -74,10 +74,22 @@ model Article {
   updatedAt     DateTime  @updatedAt @map("updated_at")
   comments      Comment[]
   readReceipts  ArticleRead[]
+  billiardsReplay BilliardsReplay?
   @@index([email, createdAt(sort: Desc)])
   @@index([email, boardId, state, createdAt(sort: Desc)])
   @@index([boardId, state, createdAt(sort: Desc)])
   @@map("articles")
+}
+
+model BilliardsReplay {
+  id        String   @id
+  articleId String   @unique @map("article_id")
+  email     String
+  data      Json
+  createdAt DateTime @default(now()) @map("created_at")
+  article   Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  @@index([email, createdAt(sort: Desc)])
+  @@map("billiards_replays")
 }
 
 model ArticleRead {
