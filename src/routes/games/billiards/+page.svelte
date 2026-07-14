@@ -172,6 +172,21 @@
   const remainingObjects = $derived(remainingObjectCount);
   const activeCombo = $derived(currentTurn === 'player' ? playerCombo : npcCombo);
   const activeComboMultiplier = $derived(computeFourBallComboMultiplier(Math.max(1, activeCombo)));
+  const displayedPower = $derived(
+    replaying && lastPlayerReplay ? lastPlayerReplay.power : power
+  );
+  const displayedSideSpin = $derived(
+    replaying && lastPlayerReplay ? lastPlayerReplay.sideSpin : spin
+  );
+  const displayedVerticalSpin = $derived(
+    replaying && lastPlayerReplay ? lastPlayerReplay.verticalSpin : verticalSpin
+  );
+  const displayedSpinTipX = $derived(
+    replaying && lastPlayerReplay ? Math.round(lastPlayerReplay.sideSpin / 2) : spinTipX
+  );
+  const displayedSpinTipY = $derived(
+    replaying && lastPlayerReplay ? Math.round(lastPlayerReplay.verticalSpin / 2) : spinTipY
+  );
   const statusText = $derived(
     replaying
       ? '내 마지막 샷 다시보기'
@@ -1428,14 +1443,17 @@
         >
           <div class="tip-cross horizontal"></div>
           <div class="tip-cross vertical"></div>
-          <div class="tip-dot" style={`left: ${spinTipX + 50}%; top: ${50 - spinTipY}%;`}></div>
+          <div
+            class="tip-dot"
+            style={`left: ${displayedSpinTipX + 50}%; top: ${50 - displayedSpinTipY}%;`}
+          ></div>
         </div>
       </div>
 
       <div class="control-block power-control">
         <div class="power-heading">
           <span class="control-label">파워</span>
-          <strong>{power}</strong>
+          <strong>{displayedPower}</strong>
         </div>
         <div
           class="power-rail"
@@ -1444,7 +1462,7 @@
           aria-label="샷 파워"
           aria-valuemin="10"
           aria-valuemax="100"
-          aria-valuenow={power}
+          aria-valuenow={displayedPower}
           class:disabled-pad={!canCharge()}
           onpointerdown={(event) => {
             event.stopPropagation();
@@ -1456,8 +1474,8 @@
           }}
           onkeydown={handlePowerKeyDown}
         >
-          <div class="power-fill" style={`width: ${power}%;`}></div>
-          <div class="power-thumb" style={`left: ${power}%;`}></div>
+          <div class="power-fill" style={`width: ${displayedPower}%;`}></div>
+          <div class="power-thumb" style={`left: ${displayedPower}%;`}></div>
         </div>
         <button
           type="button"
@@ -1488,7 +1506,13 @@
       >
         오류신고
       </button>
-      <span>{lastPlayerReplay.outcome}</span>
+      <span>
+        {#if replaying}
+          파워 {displayedPower} · 당점 좌우 {displayedSideSpin}, 상하 {displayedVerticalSpin}
+        {:else}
+          {lastPlayerReplay.outcome}
+        {/if}
+      </span>
     </div>
   {/if}
   {#if reportMessage}
