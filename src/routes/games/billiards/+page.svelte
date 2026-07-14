@@ -54,7 +54,13 @@
     type FourBallTargetScore,
     type ShotContact
   } from './gameUtils';
-  import { evaluateArtShot, getArtStage } from './artStages';
+  import {
+    computeArtScore,
+    evaluateArtShot,
+    getArtStage,
+    type ArtScoreBreakdown,
+    type ArtShotResult
+  } from './artStages';
   import type { PageData } from './$types';
 
   interface Props {
@@ -144,6 +150,8 @@
   let artShotVerticalSpin = 0;
   let artResult = $state<'idle' | 'success' | 'failed'>('idle');
   let artResultMessage = $state('');
+  let artHelpUsed = false;
+  let artScoreBreakdown = $state<ArtScoreBreakdown | null>(null);
   let score = $state(0);
   let npcScore = $state(0);
   let targetScore = $state<FourBallTargetScore>(FOUR_BALL_TARGET_SCORE);
@@ -238,7 +246,7 @@
   ];
 
   function formatRankScore(value: number) {
-    return rankingMode === BILLIARDS_MODES.ART_PUZZLE ? `${value}단계` : String(value);
+    return rankingMode === BILLIARDS_MODES.ART_PUZZLE ? `${value}점` : String(value);
   }
   const statusText = $derived(
     artMode
@@ -517,6 +525,8 @@
     artShotVerticalSpin = 0;
     artResult = 'idle';
     artResultMessage = '';
+    artHelpUsed = false;
+    artScoreBreakdown = null;
     resetBodies();
   }
 
@@ -757,7 +767,7 @@
   }
 
   function settleArtShot() {
-    const result = evaluateArtShot(currentArtStage, {
+    const shot: ArtShotResult = {
       cueContacts: artCueContacts,
       cushionHits: artCushionHits,
       blackHit: artBlackHit,
@@ -765,15 +775,17 @@
       ballCollisions: artBallCollisions,
       sideSpin: artShotSideSpin,
       verticalSpin: artShotVerticalSpin
-    });
+    };
+    const result = evaluateArtShot(currentArtStage, shot);
     finishPlayerReplay(result.message);
     artResult = result.success ? 'success' : 'failed';
     artResultMessage = result.message;
     status = 'game-over';
     if (result.success) {
-      score = artStageNumber;
-      showScoreEffect(artStageNumber * 10, 'score');
-      void submitScore(BILLIARDS_MODES.ART_PUZZLE, artStageNumber);
+      artScoreBreakdown = computeArtScore(currentArtStage, shot, artHelpUsed);
+      score = artScoreBreakdown.total;
+      showScoreEffect(score, 'score');
+      void submitScore(BILLIARDS_MODES.ART_PUZZLE, score);
     }
   }
 
@@ -1116,6 +1128,7 @@
 
     if (artMode) {
       const solution = currentArtStage.solution;
+      artHelpUsed = true;
       helpPlan = {
         angle: solution.angle,
         power: solution.power,
@@ -1762,7 +1775,7 @@
     <div class="hud-stats">
       {#if artMode}
         <span>퍼즐 <strong>{artStageNumber}/10</strong></span>
-        <span>최고 <strong>{myBestScore ?? '-'}</strong></span>
+        <span>최고 <strong>{myBestScore === null ? '-' : `${myBestScore}점`}</strong></span>
       {:else if isPocketBall}
         <span>점수 <strong>{score}</strong></span>
         <span>기회 <strong>{chances}</strong></span>
@@ -1890,6 +1903,38 @@
             {scoreEffect.text}
           </div>
         {/key}
+      {/if}
+      {#if artMode && status === 'game-over'}
+        <div
+          class="art-result-layer"
+          role="dialog"
+          aria-modal="true"
+          aria-label="예술구 결과"
+          tabindex="-1"
+        >
+          <div class="art-result-card" class:success={artResult === 'success'}>
+            <strong>{artResult === 'success' ? '클리어!' : '도전 실패'}</strong>
+            <p>{artResultMessage}</p>
+            {#if artScoreBreakdown}
+              <strong class="art-score-total">{artScoreBreakdown.total}점</strong>
+              <div class="art-score-breakdown" aria-label="예술구 점수 내역">
+                <span>기본 {artScoreBreakdown.base}</span>
+                <span>{artScoreBreakdown.noHelp ? '무도움' : '도움 사용'} +{artScoreBreakdown.noHelp}</span>
+                <span>시네루 +{artScoreBreakdown.spin}</span>
+                <span>당점 +{artScoreBreakdown.control}</span>
+                <span>쿠션 +{artScoreBreakdown.cushion}</span>
+              </div>
+            {/if}
+            <div class="art-result-actions" class:single={artResult !== 'success'}>
+              <button type="button" class="play-again-button" onclick={newGame}>다시 도전</button>
+              {#if artResult === 'success'}
+                <button type="button" class="next-stage-button" onclick={nextArtStage}
+                  >다음 단계</button
+                >
+              {/if}
+            </div>
+          </div>
+        </div>
       {/if}
     </main>
 
@@ -2127,14 +2172,11 @@
     </div>
   {/if}
 
-  {#if status === 'game-over'}
+  {#if status === 'game-over' && !artMode}
     <div class="game-over-actions">
       <button type="button" class="play-again-button" onclick={newGame}>
-        {artMode ? '다시 도전' : '다시 치기'}
+        다시 치기
       </button>
-      {#if artMode && artResult === 'success'}
-        <button type="button" class="next-stage-button" onclick={nextArtStage}>다음 스테이지</button>
-      {/if}
     </div>
   {/if}
 
@@ -2622,6 +2664,87 @@
     transform: translate(-50%, -50%);
     animation: score-pop 2.5s cubic-bezier(0.16, 0.9, 0.28, 1) both;
     -webkit-text-stroke: 1px rgba(20, 16, 7, 0.5);
+  }
+
+  .art-result-layer {
+    position: absolute;
+    z-index: 7;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    padding: 18px;
+    background: rgba(2, 12, 8, 0.68);
+    backdrop-filter: blur(3px);
+  }
+
+  .art-result-card {
+    width: min(100%, 310px);
+    padding: 18px;
+    border: 1px solid rgba(255, 118, 95, 0.62);
+    border-radius: 12px;
+    background: rgba(12, 39, 27, 0.96);
+    box-shadow: 0 18px 42px rgba(0, 0, 0, 0.45);
+    text-align: center;
+  }
+
+  .art-result-card.success {
+    border-color: rgba(98, 209, 120, 0.72);
+  }
+
+  .art-result-card > strong {
+    color: #ffb1a5;
+    font-size: 1.35rem;
+    font-weight: 1000;
+  }
+
+  .art-result-card.success > strong {
+    color: #9ee7ac;
+  }
+
+  .art-result-card .art-score-total {
+    display: block;
+    margin-bottom: 8px;
+    color: #ffe084;
+    font-size: 1.7rem;
+  }
+
+  .art-score-breakdown {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-bottom: 14px;
+  }
+
+  .art-score-breakdown span {
+    padding: 3px 6px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.1);
+    color: #d8e8d4;
+    font-size: 0.66rem;
+    font-weight: 900;
+  }
+
+  .art-result-card p {
+    margin: 8px 0 14px;
+    color: #d8e8d4;
+    font-size: 0.8rem;
+    font-weight: 800;
+  }
+
+  .art-result-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .art-result-actions.single {
+    grid-template-columns: 1fr;
+  }
+
+  .art-result-actions .play-again-button,
+  .art-result-actions .next-stage-button {
+    margin-top: 0;
   }
 
   .score-effect.score {

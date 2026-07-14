@@ -18,4 +18,19 @@ describe('billiards controls UI', () => {
     expect(billiardsPage).toContain('aria-label="예술구 도움"');
     expect(billiardsPage).toContain("{helpPlan ? '도움 닫기' : '도움'}");
   });
+
+  it('shows art puzzle retry and next-stage actions in a table overlay', () => {
+    expect(billiardsPage).toContain('class="art-result-layer"');
+    expect(billiardsPage).toContain('aria-label="예술구 결과"');
+    expect(billiardsPage).toContain('class="art-result-actions"');
+    expect(billiardsPage).toContain("{#if status === 'game-over' && !artMode}");
+  });
+
+  it('shows art technique score bonuses and remembers help use', () => {
+    expect(billiardsPage).toContain('computeArtScore');
+    expect(billiardsPage).toContain('artHelpUsed = true');
+    expect(billiardsPage).toContain('무도움');
+    expect(billiardsPage).toContain('시네루');
+    expect(billiardsPage).toContain('당점');
+  });
 });

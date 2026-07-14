@@ -48,6 +48,15 @@ export type ArtShotResult = {
   verticalSpin: number;
 };
 
+export type ArtScoreBreakdown = {
+  base: number;
+  noHelp: number;
+  spin: number;
+  control: number;
+  cushion: number;
+  total: number;
+};
+
 const red = (id: string, x: number, y: number, color = '#d7352a'): ArtBallSetup => ({
   id,
   x,
@@ -301,6 +310,29 @@ export const ART_STAGES: ArtStage[] = [
 
 export function getArtStage(stage: number): ArtStage {
   return ART_STAGES.find((item) => item.stage === stage) ?? ART_STAGES[0];
+}
+
+export function computeArtScore(
+  stage: ArtStage,
+  shot: ArtShotResult,
+  helpUsed: boolean
+): ArtScoreBreakdown {
+  const sideSpin = Math.abs(shot.sideSpin);
+  const verticalSpin = Math.abs(shot.verticalSpin);
+  const base = 500 + stage.stage * 200;
+  const noHelp = helpUsed ? 0 : 400;
+  const spin = sideSpin >= 20 ? Math.min(300, Math.round(sideSpin / 10) * 30) : 0;
+  const control = verticalSpin >= 20 ? Math.min(200, Math.round(verticalSpin / 10) * 20) : 0;
+  const cushion = Math.min(new Set(shot.cushionHits).size, 4) * 50;
+
+  return {
+    base,
+    noHelp,
+    spin,
+    control,
+    cushion,
+    total: base + noHelp + spin + control + cushion
+  };
 }
 
 export function evaluateArtShot(stage: ArtStage, shot: ArtShotResult): {

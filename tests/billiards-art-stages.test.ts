@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { ART_STAGES, evaluateArtShot, getArtStage } from '../src/routes/games/billiards/artStages';
+import {
+  ART_STAGES,
+  computeArtScore,
+  evaluateArtShot,
+  getArtStage
+} from '../src/routes/games/billiards/artStages';
 
 describe('billiards art stages', () => {
   it('provides exactly ten progressively harder one-shot puzzles', () => {
@@ -45,5 +50,28 @@ describe('billiards art stages', () => {
         verticalSpin: 0
       })
     ).toEqual({ success: true, message: '한 번에 클리어!' });
+  });
+
+  it('scores difficulty, no-help play, spin, control and unique cushions', () => {
+    const stage = getArtStage(5);
+    const shot = {
+      cueContacts: ['target-1'],
+      cushionHits: ['left', 'left', 'top'],
+      blackHit: false,
+      waypointCount: 1,
+      ballCollisions: 1,
+      sideSpin: 45,
+      verticalSpin: 30
+    };
+
+    expect(computeArtScore(stage, shot, false)).toEqual({
+      base: 1500,
+      noHelp: 400,
+      spin: 150,
+      control: 60,
+      cushion: 100,
+      total: 2210
+    });
+    expect(computeArtScore(stage, shot, true).total).toBe(1810);
   });
 });

@@ -31,7 +31,7 @@ describe('game ranking UI', () => {
     expect(billiardsPage).toContain("{ mode: BILLIARDS_MODES.FOUR_BALL, label: '4구' }");
     expect(billiardsPage).toContain("{ mode: BILLIARDS_MODES.POCKET_BALL, label: '포켓볼' }");
     expect(billiardsPage).toContain("{ mode: BILLIARDS_MODES.ART_PUZZLE, label: '예술구' }");
-    expect(billiardsPage).toContain("? `${value}단계` : String(value)");
+    expect(billiardsPage).toContain("? `${value}점` : String(value)");
     expect(billiardsPage).not.toContain("params.set('target'");
   });
 
