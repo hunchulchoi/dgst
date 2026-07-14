@@ -22,6 +22,7 @@ describe('billiards board replay player UI', () => {
     expect(replayPlayer).not.toContain('<strong>{sideSpin} / {verticalSpin}</strong>');
     expect(replayPlayer).not.toContain('<strong>{powerPercent}</strong>');
     expect(replayPlayer).not.toContain('class="power-scale"');
+    expect(replayPlayer).not.toContain('왼쪽/오른쪽 · 아래/위');
   });
 
   it('marks billiards replay posts with a billiards icon', () => {

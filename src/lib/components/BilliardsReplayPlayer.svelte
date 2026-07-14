@@ -126,7 +126,6 @@
           <span class="spin-cross vertical"></span>
           <span class="replay-spin-dot" style="left: {spinLeft}%; top: {spinTop}%"></span>
         </div>
-        <small>왼쪽/오른쪽 · 아래/위</small>
       </div>
 
       <div class="replay-power-visual" aria-label="리플레이 파워">
@@ -210,8 +209,7 @@
     gap: 6px;
   }
 
-  .visual-heading span,
-  .replay-spin-visual small {
+  .visual-heading span {
     color: #b4ccb8;
     font-size: 0.68rem;
     font-weight: 700;
@@ -258,10 +256,6 @@
     background: #e54832;
     box-shadow: 0 2px 6px rgba(72, 13, 5, 0.58);
     transform: translate(-50%, -50%);
-  }
-
-  .replay-spin-visual > small {
-    text-align: center;
   }
 
   .replay-power-track {

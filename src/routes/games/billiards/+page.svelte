@@ -53,6 +53,7 @@
     type FourBallTargetScore,
     type ShotContact
   } from './gameUtils';
+  import { evaluateArtShot, getArtStage } from './artStages';
   import type { PageData } from './$types';
 
   interface Props {
@@ -114,12 +115,34 @@
     billiardsId?: string;
     billiardsColor?: string;
   };
-  type RailBody = Matter.Body & { billiardsRail?: true };
+  type RailBody = Matter.Body & {
+    billiardsRail?: true;
+    billiardsRailSide?: 'top' | 'right' | 'bottom' | 'left';
+  };
 
   let { data }: Props = $props();
 
   let canvasEl = $state<HTMLCanvasElement | null>(null);
   let currentMode = $state<ActiveBilliardsMode>(BILLIARDS_MODES.FOUR_BALL);
+  let artMode = $state(false);
+  let artStageNumber = $state(1);
+  let artObstacleBalls: BallBody[] = [];
+  let artMovingObstacles: Array<{
+    body: BallBody;
+    origin: { x: number; y: number };
+    axis: 'x' | 'y';
+    range: number;
+    speed: number;
+  }> = [];
+  let artCueContacts: string[] = [];
+  let artCushionHits: string[] = [];
+  let artBlackHit = false;
+  let artWaypointsVisited = new Set<number>();
+  let artBallCollisions = 0;
+  let artShotSideSpin = 0;
+  let artShotVerticalSpin = 0;
+  let artResult = $state<'idle' | 'success' | 'failed'>('idle');
+  let artResultMessage = $state('');
   let score = $state(0);
   let npcScore = $state(0);
   let targetScore = $state<FourBallTargetScore>(FOUR_BALL_TARGET_SCORE);
@@ -187,8 +210,9 @@
   let scoreEffectTimer: ReturnType<typeof setTimeout> | null = null;
 
   const isLoggedIn = $derived(!!data.session?.user?.email);
-  const isPocketBall = $derived(currentMode === BILLIARDS_MODES.POCKET_BALL);
-  const modeLabel = $derived(isPocketBall ? '포켓볼' : '4구 당구');
+  const isPocketBall = $derived(!artMode && currentMode === BILLIARDS_MODES.POCKET_BALL);
+  const currentArtStage = $derived(getArtStage(artStageNumber));
+  const modeLabel = $derived(artMode ? '예술구 퍼즐' : isPocketBall ? '포켓볼' : '4구 당구');
   const remainingObjects = $derived(remainingObjectCount);
   const activeCombo = $derived(currentTurn === 'player' ? playerCombo : npcCombo);
   const activeComboMultiplier = $derived(computeFourBallComboMultiplier(Math.max(1, activeCombo)));
@@ -206,7 +230,13 @@
     replaying && lastPlayerReplay ? Math.round(lastPlayerReplay.verticalSpin / 2) : spinTipY
   );
   const statusText = $derived(
-    replaying
+    artMode
+      ? artResult === 'success'
+        ? '한 번에 클리어!'
+        : artResult === 'failed'
+          ? artResultMessage
+          : currentArtStage.title
+      : replaying
       ? '내 마지막 샷 다시보기'
       : !isPocketBall && status === 'game-over'
         ? score >= targetScore
@@ -262,7 +292,13 @@
     return ball;
   }
 
-  function makeRail(x: number, y: number, width: number, height: number) {
+  function makeRail(
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    side?: RailBody['billiardsRailSide']
+  ) {
     const rail = Bodies.rectangle(x, y, width, height, {
       label: 'rail',
       isStatic: true,
@@ -271,7 +307,18 @@
       render: { fillStyle: '#31533b' }
     }) as RailBody;
     rail.billiardsRail = true;
+    rail.billiardsRailSide = side;
     return rail;
+  }
+
+  function makeStandardRails() {
+    const rail = RAIL_THICKNESS;
+    return [
+      makeRail(TABLE_WIDTH / 2, rail / 2, TABLE_WIDTH, rail, 'top'),
+      makeRail(TABLE_WIDTH / 2, TABLE_HEIGHT - rail / 2, TABLE_WIDTH, rail, 'bottom'),
+      makeRail(rail / 2, TABLE_HEIGHT / 2, rail, TABLE_HEIGHT, 'left'),
+      makeRail(TABLE_WIDTH - rail / 2, TABLE_HEIGHT / 2, rail, TABLE_HEIGHT, 'right')
+    ];
   }
 
   function makePocketRails() {
@@ -322,15 +369,46 @@
     if (!engine) return;
     Composite.clear(engine.world, false);
 
-    const rail = RAIL_THICKNESS;
+    if (artMode) {
+      const stage = currentArtStage;
+      cueBall = makeBall(stage.cue.x, stage.cue.y, 'cue', 'cue', '#f8f7ef');
+      npcCueBall = null;
+      redBalls = stage.targets.map((ball) =>
+        makeBall(ball.x, ball.y, 'red', ball.id, ball.color)
+      );
+      artObstacleBalls = stage.obstacles.map((ball) => {
+        const obstacle = makeBall(ball.x, ball.y, 'red', ball.id, ball.color);
+        obstacle.collisionFilter.category = 0x0002;
+        if (ball.static) Body.setStatic(obstacle, true);
+        return obstacle;
+      });
+      artMovingObstacles = stage.obstacles.flatMap((setup, index) =>
+        setup.moving
+          ? [
+              {
+                body: artObstacleBalls[index],
+                origin: { x: setup.x, y: setup.y },
+                ...setup.moving
+              }
+            ]
+          : []
+      );
+      Composite.add(engine.world, [
+        ...makeStandardRails(),
+        cueBall,
+        ...redBalls,
+        ...artObstacleBalls
+      ]);
+      remainingObjectCount = redBalls.length;
+      return;
+    }
+
+    artObstacleBalls = [];
+    artMovingObstacles = [];
+
     const walls = isPocketBall
       ? makePocketRails()
-      : [
-          makeRail(TABLE_WIDTH / 2, rail / 2, TABLE_WIDTH, rail),
-          makeRail(TABLE_WIDTH / 2, TABLE_HEIGHT - rail / 2, TABLE_WIDTH, rail),
-          makeRail(rail / 2, TABLE_HEIGHT / 2, rail, TABLE_HEIGHT),
-          makeRail(TABLE_WIDTH - rail / 2, TABLE_HEIGHT / 2, rail, TABLE_HEIGHT)
-        ];
+      : makeStandardRails();
 
     cueBall = makeBall(
       TABLE_WIDTH * (isPocketBall ? 0.5 : 0.42),
@@ -419,17 +497,48 @@
     submittedGameOver = false;
     pocketedThisShot = 0;
     cuePocketedThisShot = false;
+    artCueContacts = [];
+    artCushionHits = [];
+    artBlackHit = false;
+    artWaypointsVisited = new Set<number>();
+    artBallCollisions = 0;
+    artShotSideSpin = 0;
+    artShotVerticalSpin = 0;
+    artResult = 'idle';
+    artResultMessage = '';
     resetBodies();
   }
 
   function switchMode(mode: ActiveBilliardsMode) {
-    if (currentMode === mode) return;
+    if (!artMode && currentMode === mode) return;
+    artMode = false;
     currentMode = mode;
     rankList = [];
     myBestScore = null;
     todayStats = { games: 0, users: 0 };
     newGame();
     void loadRank();
+  }
+
+  function switchToArtMode() {
+    if (artMode) return;
+    artMode = true;
+    currentMode = BILLIARDS_MODES.FOUR_BALL;
+    rankList = [];
+    myBestScore = null;
+    todayStats = { games: 0, users: 0 };
+    newGame();
+  }
+
+  function selectArtStage(stage: number) {
+    if (artStageNumber === stage) return;
+    artStageNumber = stage;
+    newGame();
+  }
+
+  function nextArtStage() {
+    if (artStageNumber < 10) artStageNumber += 1;
+    newGame();
   }
 
   function switchTargetScore(nextTarget: FourBallTargetScore) {
@@ -448,7 +557,8 @@
     return [
       ...(cueBall && !cuePocketedThisShot ? [cueBall] : []),
       ...(npcCueBall ? [npcCueBall] : []),
-      ...redBalls
+      ...redBalls,
+      ...artObstacleBalls
     ];
   }
 
@@ -627,6 +737,23 @@
     }, 2500);
   }
 
+  function settleArtShot() {
+    const result = evaluateArtShot(currentArtStage, {
+      cueContacts: artCueContacts,
+      cushionHits: artCushionHits,
+      blackHit: artBlackHit,
+      waypointCount: artWaypointsVisited.size,
+      ballCollisions: artBallCollisions,
+      sideSpin: artShotSideSpin,
+      verticalSpin: artShotVerticalSpin
+    });
+    finishPlayerReplay(result.message);
+    artResult = result.success ? 'success' : 'failed';
+    artResultMessage = result.message;
+    status = 'game-over';
+    if (result.success) showScoreEffect(artStageNumber * 10, 'score');
+  }
+
   function settleShot() {
     const balls = getTrackedBalls();
     for (const ball of balls) {
@@ -634,6 +761,12 @@
       Body.setAngularVelocity(ball, 0);
     }
     activeVerticalSpin = 0;
+
+    if (artMode) {
+      contacts = [];
+      settleArtShot();
+      return;
+    }
 
     const result = evaluateFourBallShot(contacts);
     contacts = [];
@@ -769,6 +902,23 @@
     }
     if (!cue || target.billiardsRole !== 'red' || !target.billiardsId) return;
     contacts = [...contacts, { cueRole: cue.billiardsRole ?? 'cue', targetId: target.billiardsId }];
+  }
+
+  function recordArtCollision(rawBodyA: Matter.Body, rawBodyB: Matter.Body) {
+    const bodyA = rawBodyA as BallBody & RailBody;
+    const bodyB = rawBodyB as BallBody & RailBody;
+    const rail = bodyA.billiardsRail ? bodyA : bodyB.billiardsRail ? bodyB : null;
+    const cue = bodyA === cueBall ? bodyA : bodyB === cueBall ? bodyB : null;
+    const other = cue === bodyA ? bodyB : cue === bodyB ? bodyA : null;
+
+    if (cue && rail?.billiardsRailSide) artCushionHits = [...artCushionHits, rail.billiardsRailSide];
+    if (cue && other?.billiardsId) {
+      artCueContacts = [...artCueContacts, other.billiardsId];
+      if (other.billiardsId.startsWith('black-')) artBlackHit = true;
+    }
+    if (!bodyA.billiardsRail && !bodyB.billiardsRail && bodyA !== cueBall && bodyB !== cueBall) {
+      artBallCollisions += 1;
+    }
   }
 
   function simulateFourBallShot(
@@ -938,6 +1088,18 @@
     if (isPocketBall || currentTurn !== 'player' || !canPrepareShot()) return;
     if (helpPlan) {
       helpPlan = null;
+      return;
+    }
+
+    if (artMode) {
+      const solution = currentArtStage.solution;
+      helpPlan = {
+        angle: solution.angle,
+        power: solution.power,
+        defensive: false,
+        rating: 1,
+        trajectory: solution.trajectory
+      };
       return;
     }
 
@@ -1145,6 +1307,13 @@
     rollingStartedAt = performance.now();
     beginPlayerReplay(selectedPower);
     contacts = [];
+    artCueContacts = [];
+    artCushionHits = [];
+    artBlackHit = false;
+    artWaypointsVisited = new Set<number>();
+    artBallCollisions = 0;
+    artShotSideSpin = spin;
+    artShotVerticalSpin = verticalSpin;
     lastFoulPenalty = 0;
     opponentCueHitThisShot = false;
     Body.setVelocity(cueBall, velocity);
@@ -1200,6 +1369,23 @@
       ctx.lineWidth = 2;
       ctx.strokeStyle = 'rgba(240, 192, 90, 0.58)';
       ctx.stroke();
+    }
+  }
+
+  function drawArtGuides(ctx: CanvasRenderingContext2D) {
+    if (!artMode) return;
+    for (const [index, point] of currentArtStage.waypoints.entries()) {
+      ctx.beginPath();
+      ctx.arc(point.x, point.y, 13, 0, Math.PI * 2);
+      ctx.fillStyle = artWaypointsVisited.has(index)
+        ? 'rgba(98, 209, 120, 0.34)'
+        : 'rgba(111, 225, 255, 0.2)';
+      ctx.fill();
+      ctx.setLineDash([4, 3]);
+      ctx.strokeStyle = artWaypointsVisited.has(index) ? '#8cf0a0' : '#bdefff';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.setLineDash([]);
     }
   }
 
@@ -1286,6 +1472,7 @@
       TABLE_WIDTH - RAIL_THICKNESS * 2 - 12,
       TABLE_HEIGHT - RAIL_THICKNESS * 2 - 12
     );
+    drawArtGuides(ctx);
 
     const replayFrame = replaying ? lastPlayerReplay?.frames[replayFrameIndex] : null;
     if (replayFrame) {
@@ -1377,10 +1564,25 @@
     if (!engine) return;
     const delta = lastFrame ? Math.min(now - lastFrame, 16.66) : 16.66;
     lastFrame = now;
+    for (const obstacle of artMovingObstacles) {
+      const offset = Math.sin(now * obstacle.speed) * obstacle.range;
+      Body.setPosition(obstacle.body, {
+        x: obstacle.origin.x + (obstacle.axis === 'x' ? offset : 0),
+        y: obstacle.origin.y + (obstacle.axis === 'y' ? offset : 0)
+      });
+    }
     Engine.update(engine, delta);
     handlePocketedBalls();
     keepBallsInsideTable();
     if (status === 'rolling') applyDynamicRollingDrag(delta);
+
+    if (artMode && status === 'rolling' && cueBall) {
+      for (const [index, point] of currentArtStage.waypoints.entries()) {
+        if (Math.hypot(cueBall.position.x - point.x, cueBall.position.y - point.y) <= 16) {
+          artWaypointsVisited.add(index);
+        }
+      }
+    }
 
     if (isHoldingAim && canAim()) {
       displayAimAngle = computeBreathingAimAngle(
@@ -1445,7 +1647,7 @@
   }
 
   async function loadRank() {
-    if (!isLoggedIn) return;
+    if (artMode || !isLoggedIn) return;
     rankLoading = true;
     try {
       const params = new URLSearchParams({ rank: '1', mode: currentMode });
@@ -1465,7 +1667,7 @@
   }
 
   async function submitScore() {
-    if (!isLoggedIn || submittedGameOver) return;
+    if (artMode || !isLoggedIn || submittedGameOver) return;
     submittedGameOver = true;
     try {
       const res = await fetch('/games/billiards', {
@@ -1492,7 +1694,8 @@
 
     const handleCollisionStart = (event: Matter.IEventCollision<Matter.Engine>) => {
       for (const pair of event.pairs) {
-        recordCueContact(pair.bodyA as BallBody, pair.bodyB as BallBody);
+        if (artMode) recordArtCollision(pair.bodyA, pair.bodyB);
+        else recordCueContact(pair.bodyA as BallBody, pair.bodyB as BallBody);
       }
     };
 
@@ -1533,7 +1736,9 @@
       </span>
     </div>
     <div class="hud-stats">
-      {#if isPocketBall}
+      {#if artMode}
+        <span>퍼즐 <strong>{artStageNumber}/10</strong></span>
+      {:else if isPocketBall}
         <span>점수 <strong>{score}</strong></span>
         <span>기회 <strong>{chances}</strong></span>
         <span>남은공 <strong>{remainingObjects}</strong></span>
@@ -1565,9 +1770,49 @@
     >
       포켓볼
     </button>
+    <button type="button" class:active={artMode} onclick={switchToArtMode}>예술구</button>
   </div>
 
-  {#if !isPocketBall}
+  {#if artMode}
+    <section class="art-stage-panel" aria-label="예술구 스테이지 선택">
+      <div class="art-stage-toolbar">
+        <button
+          type="button"
+          class="help-trigger"
+          class:active={!!helpPlan}
+          onclick={showShotHelp}
+          disabled={status === 'rolling' || replaying}
+        >
+          {helpPlan ? '도움 닫기' : '도움'}
+        </button>
+        <div class="art-stages" aria-label="예술구 단계">
+          {#each Array.from({ length: 10 }, (_, index) => index + 1) as stage (stage)}
+            <button
+              type="button"
+              class:active={artStageNumber === stage}
+              disabled={status === 'rolling'}
+              onclick={() => selectArtStage(stage)}
+            >
+              {stage}
+            </button>
+          {/each}
+        </div>
+      </div>
+      <div class="art-mission" class:success={artResult === 'success'} class:failed={artResult === 'failed'}>
+        <strong>{currentArtStage.title}</strong>
+        <span>{artResult === 'idle' ? currentArtStage.description : artResultMessage}</span>
+      </div>
+      {#if helpPlan}
+        <div class="shot-help" aria-label="예술구 도움">
+          <span>
+            당점 {currentArtStage.solution.tipLabel} · 파워 약
+            {Math.max(10, currentArtStage.solution.power - 5)}~{Math.min(100, currentArtStage.solution.power + 5)}
+            · 점선은 대략적인 예상 궤적
+          </span>
+        </div>
+      {/if}
+    </section>
+  {:else if !isPocketBall}
     <div class="target-selector" aria-label="4구 목표 점수와 NPC 난이도">
       <button
         type="button"
@@ -1604,7 +1849,7 @@
       <canvas
         bind:this={canvasEl}
         class="billiards-canvas"
-        aria-label="4구 당구대"
+        aria-label={`${modeLabel} 당구대`}
         onpointerdown={handlePointerDown}
         onpointermove={handlePointerMove}
         onpointerup={handlePointerUp}
@@ -1858,10 +2103,18 @@
   {/if}
 
   {#if status === 'game-over'}
-    <button type="button" class="play-again-button" onclick={newGame}>다시 치기</button>
+    <div class="game-over-actions">
+      <button type="button" class="play-again-button" onclick={newGame}>
+        {artMode ? '다시 도전' : '다시 치기'}
+      </button>
+      {#if artMode && artResult === 'success'}
+        <button type="button" class="next-stage-button" onclick={nextArtStage}>다음 스테이지</button>
+      {/if}
+    </div>
   {/if}
 
-  <section class="rank-panel">
+  {#if !artMode}
+    <section class="rank-panel">
     <div class="rank-heading">
       <h2>랭킹</h2>
       {#if rankLoading}<span>불러오는 중</span>{/if}
@@ -1887,9 +2140,10 @@
     {:else}
       <p>아직 기록이 없습니다.</p>
     {/if}
-  </section>
+    </section>
+  {/if}
 
-  {#if !isLoggedIn}
+  {#if !artMode && !isLoggedIn}
     <p class="login-note">로그인하면 점수 랭킹을 저장합니다.</p>
   {/if}
 </div>
@@ -1966,6 +2220,7 @@
 
   .new-game-button,
   .play-again-button,
+  .next-stage-button,
   .shot-button,
   .spin-panel-actions button {
     border: 0;
@@ -1984,8 +2239,8 @@
     position: relative;
     z-index: 2;
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    width: min(210px, calc(100% - 16px));
+    grid-template-columns: repeat(3, 1fr);
+    width: min(300px, calc(100% - 16px));
     margin: 6px auto 8px;
     border: 1px solid rgba(255, 255, 255, 0.14);
     border-radius: 8px;
@@ -2005,6 +2260,84 @@
   .mode-tabs button.active {
     background: #f0c05a;
     color: #1d221a;
+  }
+
+  .art-stage-panel {
+    display: grid;
+    gap: 5px;
+    width: min(430px, calc(100% - 8px));
+    margin: -2px auto 8px;
+  }
+
+  .art-stage-toolbar {
+    display: grid;
+    grid-template-columns: 70px minmax(0, 1fr);
+    gap: 4px;
+  }
+
+  .art-stages {
+    display: grid;
+    gap: 4px;
+    grid-template-columns: repeat(10, 1fr);
+  }
+
+  .art-stage-toolbar button {
+    min-width: 0;
+    min-height: 27px;
+    padding: 0;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 6px;
+    background: rgba(6, 21, 16, 0.76);
+    color: #c9d9c7;
+    font-size: 0.69rem;
+    font-weight: 900;
+  }
+
+  .art-stage-toolbar button.active {
+    border-color: #f0c05a;
+    background: rgba(240, 192, 90, 0.2);
+    color: #ffe39a;
+  }
+
+  .art-stage-toolbar > .help-trigger {
+    border-color: rgba(111, 225, 255, 0.55);
+    color: #bdefff;
+  }
+
+  .art-stage-toolbar > .help-trigger.active {
+    background: rgba(111, 225, 255, 0.24);
+    color: #e2faff;
+  }
+
+  .art-mission {
+    display: flex;
+    align-items: baseline;
+    gap: 7px;
+    min-height: 30px;
+    padding: 6px 8px;
+    border: 1px solid rgba(111, 225, 255, 0.3);
+    border-radius: 7px;
+    background: rgba(6, 21, 16, 0.76);
+  }
+
+  .art-mission strong {
+    flex: 0 0 auto;
+    color: #bdefff;
+    font-size: 0.76rem;
+  }
+
+  .art-mission span {
+    color: #d8e8d4;
+    font-size: 0.7rem;
+    line-height: 1.25;
+  }
+
+  .art-mission.success {
+    border-color: rgba(98, 209, 120, 0.7);
+  }
+
+  .art-mission.failed {
+    border-color: rgba(243, 107, 84, 0.7);
   }
 
   .target-selector {
@@ -2096,11 +2429,15 @@
   }
 
   .tip-ball {
+    --tip-ball-size: 58px;
     position: relative;
-    width: 58px;
-    aspect-ratio: 1;
+    width: var(--tip-ball-size);
+    height: var(--tip-ball-size);
     margin: 0 auto 5px;
+    overflow: hidden;
+    border: 2px solid #d8d0bc;
     border-radius: 50%;
+    clip-path: circle(50% at 50% 50%);
     background:
       radial-gradient(circle at 34% 28%, rgba(255, 255, 255, 0.95), transparent 18%), #f8f7ef;
     box-shadow:
@@ -2112,7 +2449,7 @@
   }
 
   .tip-ball.expanded {
-    width: min(72vw, 238px);
+    --tip-ball-size: min(72vw, 238px);
     margin: 0 auto;
     box-shadow:
       inset 0 0 0 3px rgba(26, 33, 25, 0.2),
@@ -2377,6 +2714,20 @@
     margin-top: 8px;
     background: #f0c05a;
     color: #1d221a;
+  }
+
+  .game-over-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 7px;
+  }
+
+  .next-stage-button {
+    width: 100%;
+    min-height: 40px;
+    margin-top: 8px;
+    background: #62d178;
+    color: #112217;
   }
 
   .shot-review-actions {
