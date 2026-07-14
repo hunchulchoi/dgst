@@ -19,6 +19,7 @@ import {
   lockPiece,
   movePiece,
   rotateActivePiece,
+  shouldShowGhost,
   spawnPiece,
   STAGES
 } from './gameUtils.js';
@@ -71,6 +72,12 @@ describe('tetris gameUtils', () => {
     expect(dropped.distance).toBeGreaterThan(0);
     const ghost = getGhostPiece(board, piece);
     expect(ghost.y).toBe(dropped.piece.y);
+  });
+
+  it('shows the landing ghost only on stage 1', () => {
+    expect(shouldShowGhost(1)).toBe(true);
+    expect(shouldShowGhost(2)).toBe(false);
+    expect(shouldShowGhost(20)).toBe(false);
   });
 
   it('scores lines and hard drop by stage', () => {

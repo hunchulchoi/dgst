@@ -31,6 +31,7 @@
     movePiece,
     PIECE_COLORS,
     rotateActivePiece,
+    shouldShowGhost,
     spawnPiece,
     STAGES,
     type ActivePiece,
@@ -128,11 +129,13 @@
       .map((row) => row.map((cell) => (cell ? { type: cell } : null)));
 
     if (activePiece && (screen === 'playing' || screen === 'bonus')) {
-      const ghost = getGhostPiece(board, activePiece);
-      for (const { x, y } of getPieceCells(ghost)) {
-        const row = y - HIDDEN_ROWS;
-        if (row >= 0 && row < ROWS && x >= 0 && x < COLS && rows[row][x] === null) {
-          rows[row][x] = { type: ghost.type, ghost: true };
+      if (shouldShowGhost(stage)) {
+        const ghost = getGhostPiece(board, activePiece);
+        for (const { x, y } of getPieceCells(ghost)) {
+          const row = y - HIDDEN_ROWS;
+          if (row >= 0 && row < ROWS && x >= 0 && x < COLS && rows[row][x] === null) {
+            rows[row][x] = { type: ghost.type, ghost: true };
+          }
         }
       }
       for (const { x, y } of getPieceCells(activePiece)) {

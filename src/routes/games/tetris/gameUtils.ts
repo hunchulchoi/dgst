@@ -238,6 +238,11 @@ export function getGhostPiece(board: Board, piece: ActivePiece): ActivePiece {
   return ghost;
 }
 
+/** 착지 위치 안내는 입문 Stage 1에서만 제공 */
+export function shouldShowGhost(stage: number): boolean {
+  return stage === 1;
+}
+
 /** 하드 드롭 */
 export function hardDrop(board: Board, piece: ActivePiece): HardDropResult {
   let current = { ...piece };
