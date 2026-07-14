@@ -16,11 +16,7 @@ import {
 async function getRankTop10(mode) {
   /** @type {Array<{ email: string; nickname: string; mode: string; score: number; createdAt: Date | string }>} */
   const rows = await getPrisma().$queryRaw`
-    SELECT email, nickname, mode, score,
-           to_char(
-             ((created_at AT TIME ZONE 'Asia/Seoul') AT TIME ZONE 'UTC'),
-             'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'
-           ) AS "createdAt"
+    SELECT email, nickname, mode, score, created_at AS "createdAt"
     FROM (
       SELECT email, nickname, mode, score, created_at,
              ROW_NUMBER() OVER (PARTITION BY email ORDER BY score DESC, created_at DESC) AS rn
@@ -59,11 +55,7 @@ export async function GET(event) {
       (async () => {
         /** @type {Array<{ score: number; createdAt: Date | string }>} */
         const rows = await getPrisma().$queryRaw`
-          SELECT score,
-                 to_char(
-                   ((created_at AT TIME ZONE 'Asia/Seoul') AT TIME ZONE 'UTC'),
-                   'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'
-                 ) AS "createdAt"
+          SELECT score, created_at AS "createdAt"
           FROM game_score_billiards
           WHERE email = ${email}
             AND (mode = ${mode}

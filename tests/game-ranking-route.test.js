@@ -199,7 +199,7 @@ describe('game ranking routes', () => {
     });
   });
 
-  it('loads sudoku all-time per-user best times with KST score timestamps', async () => {
+  it('loads sudoku all-time per-user best times with UTC score timestamps', async () => {
     const queryRaw = vi.fn().mockResolvedValue([
       {
         email: 'sudoku@example.com',
@@ -237,11 +237,13 @@ describe('game ranking routes', () => {
     expect(statsSudoku.getTodaySudokuStats).toHaveBeenCalledWith('normal');
     const rankSql = queryRaw.mock.calls[0][0].join(' ');
     const myBestSql = queryRaw.mock.calls[1][0].join(' ');
-    expect(rankSql).toContain("created_at AT TIME ZONE 'Asia/Seoul'");
-    expect(myBestSql).toContain("created_at AT TIME ZONE 'Asia/Seoul'");
+    expect(rankSql).toContain('created_at AS "createdAt"');
+    expect(rankSql).not.toContain('AT TIME ZONE');
+    expect(myBestSql).toContain('created_at AS "createdAt"');
+    expect(myBestSql).not.toContain('AT TIME ZONE');
   });
 
-  it('loads billiards rankings with KST score timestamps', async () => {
+  it('loads billiards rankings with UTC score timestamps', async () => {
     const queryRaw = vi
       .fn()
       .mockResolvedValueOnce([
@@ -286,9 +288,11 @@ describe('game ranking routes', () => {
     expect(statsBilliards.getTodayBilliardsStats).toHaveBeenCalledWith('four-ball');
     const rankSql = queryRaw.mock.calls[0][0].join(' ');
     const myBestSql = queryRaw.mock.calls[1][0].join(' ');
-    expect(rankSql).toContain("created_at AT TIME ZONE 'Asia/Seoul'");
+    expect(rankSql).toContain('created_at AS "createdAt"');
+    expect(rankSql).not.toContain('AT TIME ZONE');
     expect(rankSql).toContain("mode LIKE 'four-ball-%'");
-    expect(myBestSql).toContain("created_at AT TIME ZONE 'Asia/Seoul'");
+    expect(myBestSql).toContain('created_at AS "createdAt"');
+    expect(myBestSql).not.toContain('AT TIME ZONE');
     expect(myBestSql).toContain("mode LIKE 'four-ball-%'");
   });
 

@@ -16,11 +16,7 @@ const MAX_MISTAKES = 999;
 async function getRankTop10(difficulty) {
   /** @type {Array<{ email: string; nickname: string; difficulty: string; seconds: number; mistakes: number; createdAt: Date | string }>} */
   const rows = await getPrisma().$queryRaw`
-    SELECT email, nickname, difficulty, seconds, mistakes,
-           to_char(
-             ((created_at AT TIME ZONE 'Asia/Seoul') AT TIME ZONE 'UTC'),
-             'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'
-           ) AS "createdAt"
+    SELECT email, nickname, difficulty, seconds, mistakes, created_at AS "createdAt"
     FROM (
       SELECT email, nickname, difficulty, seconds, mistakes, created_at,
              ROW_NUMBER() OVER (
@@ -71,11 +67,7 @@ export async function GET(event) {
       (async () => {
         /** @type {Array<{ seconds: number; mistakes: number; createdAt: Date | string }>} */
         const rows = await getPrisma().$queryRaw`
-          SELECT seconds, mistakes,
-                 to_char(
-                   ((created_at AT TIME ZONE 'Asia/Seoul') AT TIME ZONE 'UTC'),
-                   'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'
-                 ) AS "createdAt"
+          SELECT seconds, mistakes, created_at AS "createdAt"
           FROM game_score_sudoku
           WHERE email = ${email} AND difficulty = ${difficulty}
           ORDER BY seconds ASC, mistakes ASC, created_at DESC
