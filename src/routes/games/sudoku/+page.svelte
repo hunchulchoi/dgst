@@ -3,6 +3,7 @@
   import { onMount } from 'svelte';
   import { ko } from 'date-fns/locale';
   import { formatRelativeTime } from '$lib/util/formatRelativeTime.js';
+  import { swalFire } from '$lib/util/swal.js';
   import type { PageData } from './$types';
 
   const SIZE = 9;
@@ -46,6 +47,7 @@
   let myBest = $state<{ seconds: number; mistakes: number; createdAt?: string } | null>(null);
   let todayStats = $state<{ games: number; users: number }>({ games: 0, users: 0 });
   let rankLoading = $state(false);
+  let resetConfirming = $state(false);
   let timer: ReturnType<typeof setInterval> | null = null;
 
   const isLoggedIn = $derived(!!data.session?.user?.email);
@@ -185,17 +187,37 @@
     return true;
   }
 
-  function resetGame(
+  async function resetGame(
     nextDifficulty: Difficulty = difficulty,
     confirmReset = true,
     reason: 'reset' | 'difficulty' = 'reset'
   ) {
     if (confirmReset && browser) {
-      const message =
-        reason === 'difficulty' && hasGameProgress()
-          ? '게임을 중지하고 난이도를 변경하시겠습니까?'
-          : '게임을 새로 시작하시겠습니까?';
-      if (!window.confirm(message)) return;
+      if (resetConfirming) return;
+      resetConfirming = true;
+      try {
+        const changingDifficulty = reason === 'difficulty' && hasGameProgress();
+        const result = await swalFire({
+          title: changingDifficulty
+            ? '게임을 중지하고 난이도를 변경하시겠습니까?'
+            : '게임을 새로 시작하시겠습니까?',
+          text: changingDifficulty
+            ? '현재 진행 중인 게임이 사라지고 선택한 난이도로 시작됩니다.'
+            : '현재 진행 내용이 모두 사라집니다.',
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonColor: '#dc3545',
+          cancelButtonColor: '#6c757d',
+          confirmButtonText: changingDifficulty ? '네, 변경합니다' : '네, 초기화합니다',
+          cancelButtonText: '취소',
+          reverseButtons: true,
+          heightAuto: false,
+          allowOutsideClick: false
+        });
+        if (!result.isConfirmed) return;
+      } finally {
+        resetConfirming = false;
+      }
     }
 
     stopTimer();
@@ -624,6 +646,7 @@
             class="btn btn-outline-primary"
             class:active={difficulty === key}
             onclick={() => changeDifficulty(key)}
+            disabled={resetConfirming}
           >
             {config.label}
           </button>
@@ -631,7 +654,12 @@
       </div>
 
       <div class="sudoku-actions">
-        <button type="button" class="btn btn-outline-danger" onclick={() => resetGame(difficulty)}>
+        <button
+          type="button"
+          class="btn btn-outline-danger"
+          onclick={() => resetGame(difficulty)}
+          disabled={resetConfirming}
+        >
           초기화
         </button>
         <button

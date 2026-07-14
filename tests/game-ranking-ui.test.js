@@ -60,6 +60,18 @@ describe('game ranking UI', () => {
     expect(sudokuPage).not.toContain('if (started && !gameWon) startTimer();');
   });
 
+  it('uses SweetAlert instead of native confirm for sudoku resets', () => {
+    expect(sudokuPage).toContain("import { swalFire } from '$lib/util/swal.js';");
+    expect(sudokuPage).toContain('const result = await swalFire({');
+    expect(sudokuPage).toContain('if (!result.isConfirmed) return;');
+    expect(sudokuPage).not.toContain('window.confirm(');
+  });
+
+  it('removes the remaining native game confirmation', () => {
+    expect(tetrisPage).toContain("import { swalFire } from '$lib/util/swal.js';");
+    expect(tetrisPage).not.toContain("confirm('저장된 게임이 있습니다.");
+  });
+
   it('shows when slot scores were last updated', () => {
     expect(slotPage).toContain('balanceUpdatedAt');
     expect(slotPage).toContain('formatSlotUpdatedAt(balanceUpdatedAt)');

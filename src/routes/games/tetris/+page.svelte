@@ -4,6 +4,7 @@
   import { onMount, tick } from 'svelte';
   import { ko } from 'date-fns/locale';
   import { formatRelativeTime } from '$lib/util/formatRelativeTime.js';
+  import { swalFire } from '$lib/util/swal.js';
   import type { PageData } from './$types';
   import {
     calculateHardDropScore,
@@ -92,6 +93,7 @@
   let todayStats = $state<{ games: number; users: number }>({ games: 0, users: 0 });
   let rankLoading = $state(false);
   let canResume = $state(false);
+  let newGameConfirming = $state(false);
   let resumeSummary = $state<{ stage: number; score: number; label: string } | null>(null);
 
   const STORAGE_KEY = 'dgst_tetris_state';
@@ -1052,8 +1054,29 @@
   }
 
   /** 새 게임 (저장 있으면 확인) */
-  function startNewGame() {
-    if (canResume && !confirm('저장된 게임이 있습니다. 새로 시작하시겠습니까?')) return;
+  async function startNewGame() {
+    if (newGameConfirming) return;
+    if (canResume) {
+      newGameConfirming = true;
+      try {
+        const result = await swalFire({
+          title: '새 게임을 시작하시겠습니까?',
+          text: '저장된 게임 진행 내용이 사라집니다.',
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonColor: '#0d6efd',
+          cancelButtonColor: '#6c757d',
+          confirmButtonText: '네, 새로 시작합니다',
+          cancelButtonText: '취소',
+          reverseButtons: true,
+          heightAuto: false,
+          allowOutsideClick: false
+        });
+        if (!result.isConfirmed) return;
+      } finally {
+        newGameConfirming = false;
+      }
+    }
     startGame();
   }
 
@@ -1178,6 +1201,7 @@
                     type="button"
                     class="btn btn-lg btn-outline-primary px-5"
                     onclick={startNewGame}
+                    disabled={newGameConfirming}
                   >
                     새 게임
                   </button>
