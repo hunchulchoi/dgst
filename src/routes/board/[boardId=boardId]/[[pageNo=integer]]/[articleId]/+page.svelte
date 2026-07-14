@@ -1642,7 +1642,9 @@
         </Col>
         <Col md="6" xs="8" class="px-0 article-meta text-secondary">
           <span class="article-author">{article.nickname}</span>
-          <span class="article-date text-muted">{formatIso9075Safe(article.createdAt)}</span>
+          <span class="article-date text-muted"
+            >{formatIso9075Safe(article.createdAt, { timeZone: $page.data.timeZone })}</span
+          >
         </Col>
         <Col class="text-end text-muted article-stats" md="6" xs="4">
           <span class="article-stat"><Icon class="pe-1" name="eye" />{article.read}</span>

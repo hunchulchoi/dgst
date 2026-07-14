@@ -3,6 +3,11 @@ import { getUnreadAlarmCount } from '$lib/server/alarm/alarmService.js';
 import { isBoardHtmlPath } from '$lib/util/boardPaths.js';
 import logger from '$lib/util/logger.js';
 import { traceFromUnknown } from '$lib/util/formatErrorTrace.js';
+import {
+  DISPLAY_TIME_ZONE,
+  isValidTimeZone,
+  TIME_ZONE_COOKIE_NAME
+} from '$lib/util/formatRelativeTime.js';
 
 /** @param {string | null | undefined} host */
 function normalizeHost(host) {
@@ -11,6 +16,9 @@ function normalizeHost(host) {
 
 export const load = async (event) => {
   const boardRoute = isBoardHtmlPath(event.url.pathname);
+  const cookieTimeZone = event.cookies?.get(TIME_ZONE_COOKIE_NAME);
+  const hasTimeZoneCookie = isValidTimeZone(cookieTimeZone);
+  const timeZone = hasTimeZoneCookie ? cookieTimeZone : DISPLAY_TIME_ZONE;
 
   try {
     event.setHeaders(
@@ -70,6 +78,8 @@ export const load = async (event) => {
     session,
     unreadAlarmCount,
     kakaoEnabled,
-    isBlueDgstHost
+    isBlueDgstHost,
+    timeZone,
+    hasTimeZoneCookie
   };
 };

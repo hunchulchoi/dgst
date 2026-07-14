@@ -34,6 +34,8 @@ declare global {
       session: Session | null;
       kakaoEnabled?: boolean;
       isBlueDgstHost?: boolean;
+      timeZone: string;
+      hasTimeZoneCookie: boolean;
     }
     // interface Platform {}
   }

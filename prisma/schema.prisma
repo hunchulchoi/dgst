@@ -7,21 +7,22 @@ datasource db {
 }
 
 model User {
-  id              String    @id @default(cuid())
-  email           String?   @unique
-  emailVerified   DateTime? @map("email_verified")
-  name            String?
-  image           String?
-  nickname        String    @unique
-  introduction    String
-  photo           String?
-  state           String
-  grade           String    @default("user")
-  createdAt       DateTime? @map("created_at")
-  latestLoginAt   DateTime? @map("latest_login_at")
-  lastModified    DateTime? @map("last_modified")
-  accounts        Account[]
-  sessions        Session[]
+  id            String    @id @default(cuid())
+  email         String?   @unique
+  emailVerified DateTime? @map("email_verified") @db.Timestamptz(3)
+  name          String?
+  image         String?
+  nickname      String    @unique
+  introduction  String
+  photo         String?
+  state         String
+  grade         String    @default("user")
+  createdAt     DateTime? @map("created_at") @db.Timestamptz(3)
+  latestLoginAt DateTime? @map("latest_login_at") @db.Timestamptz(3)
+  lastModified  DateTime? @map("last_modified") @db.Timestamptz(3)
+  accounts      Account[]
+  sessions      Session[]
+
   @@map("users")
 }
 
@@ -32,6 +33,7 @@ model Account {
   provider          String
   providerAccountId String @map("provider_account_id")
   user              User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@unique([provider, providerAccountId])
   @@map("accounts")
 }
@@ -40,41 +42,44 @@ model Session {
   id           String   @id @default(cuid())
   sessionToken String   @unique @map("session_token")
   userId       String   @map("user_id")
-  expires      DateTime
+  expires      DateTime @db.Timestamptz(3)
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@map("sessions")
 }
 
 model VerificationToken {
   identifier String
   token      String
-  expires    DateTime
+  expires    DateTime @db.Timestamptz(3)
+
   @@unique([identifier, token])
   @@map("verification_tokens")
 }
 
 model Article {
-  id            String    @id
-  email         String
-  nickname      String
-  boardId       String    @map("board_id")
-  title         String
-  content       String
-  hasImage      Boolean   @default(false) @map("has_image")
-  hasVideo      Boolean   @default(false) @map("has_video")
-  hasAudio      Boolean   @default(false) @map("has_audio")
-  hasYoutube    Boolean   @default(false) @map("has_youtube")
-  hasInstagram  Boolean   @default(false) @map("has_instagram")
-  state         String    @default("write")
-  reads         String[]  @default([])
-  likes         String[]  @default([])
-  unlikes       String[]  @default([])
-  modifiedEmail String?   @map("modified_email")
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
-  comments      Comment[]
-  readReceipts  ArticleRead[]
+  id              String           @id
+  email           String
+  nickname        String
+  boardId         String           @map("board_id")
+  title           String
+  content         String
+  hasImage        Boolean          @default(false) @map("has_image")
+  hasVideo        Boolean          @default(false) @map("has_video")
+  hasAudio        Boolean          @default(false) @map("has_audio")
+  hasYoutube      Boolean          @default(false) @map("has_youtube")
+  hasInstagram    Boolean          @default(false) @map("has_instagram")
+  state           String           @default("write")
+  reads           String[]         @default([])
+  likes           String[]         @default([])
+  unlikes         String[]         @default([])
+  modifiedEmail   String?          @map("modified_email")
+  createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
+  comments        Comment[]
+  readReceipts    ArticleRead[]
   billiardsReplay BilliardsReplay?
+
   @@index([email, createdAt(sort: Desc)])
   @@index([email, boardId, state, createdAt(sort: Desc)])
   @@index([boardId, state, createdAt(sort: Desc)])
@@ -86,8 +91,9 @@ model BilliardsReplay {
   articleId String   @unique @map("article_id")
   email     String
   data      Json
-  createdAt DateTime @default(now()) @map("created_at")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   article   Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+
   @@index([email, createdAt(sort: Desc)])
   @@map("billiards_replays")
 }
@@ -95,8 +101,9 @@ model BilliardsReplay {
 model ArticleRead {
   articleId String   @map("article_id")
   viewerId  String   @map("viewer_id")
-  readAt    DateTime @default(now()) @map("read_at")
+  readAt    DateTime @default(now()) @map("read_at") @db.Timestamptz(3)
   article   Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+
   @@id([articleId, viewerId])
   @@index([viewerId, readAt(sort: Desc)])
   @@map("article_reads")
@@ -118,9 +125,10 @@ model Comment {
   likes                 String[] @default([])
   unlikes               String[] @default([])
   modifiedEmail         String?  @map("modified_email")
-  createdAt             DateTime @default(now()) @map("created_at")
-  updatedAt             DateTime @updatedAt @map("updated_at")
+  createdAt             DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt             DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
   article               Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+
   @@index([email])
   @@index([articleId, createdAt(sort: Desc)])
   @@index([email, boardId, articleId, parentCommentId, state, createdAt(sort: Desc)])
@@ -137,9 +145,10 @@ model Alarm {
   parentCommentId String?   @map("parent_comment_id")
   commentContent  String?   @map("comment_content")
   commentIds      String[]  @default([]) @map("comment_ids")
-  readAt          DateTime? @map("read_at")
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
+  readAt          DateTime? @map("read_at") @db.Timestamptz(3)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
   @@index([email, updatedAt(sort: Desc)])
   @@index([email, readAt, updatedAt(sort: Desc)])
   @@index([articleId])
@@ -156,8 +165,9 @@ model GameScore {
   delta     BigInt
   balance   BigInt
   reels     String[]
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
   @@index([game, createdAt(sort: Desc)])
   @@index([game, bet, createdAt(sort: Desc)])
   @@index([email, createdAt(sort: Desc)])
@@ -169,8 +179,9 @@ model GameScore2048 {
   email     String
   nickname  String
   score     Int
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
   @@index([createdAt(sort: Desc)])
   @@index([email, score(sort: Desc)])
   @@map("game_score_2048")
@@ -182,8 +193,9 @@ model GameScoreMinesweeper {
   nickname  String
   mode      String
   time      Int
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
   @@index([createdAt(sort: Desc)])
   @@index([email, mode, time])
   @@map("game_score_minesweeper")
@@ -194,8 +206,9 @@ model GameScoreWatermelon {
   email     String
   nickname  String
   score     Int
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
   @@index([createdAt(sort: Desc)])
   @@index([email, score(sort: Desc)])
   @@map("game_score_watermelon")
@@ -207,8 +220,8 @@ model GameScoreBilliards {
   nickname  String
   mode      String
   score     Int
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   @@index([createdAt(sort: Desc)])
   @@index([mode, score(sort: Desc), createdAt(sort: Desc)])
@@ -223,8 +236,8 @@ model GameScoreSudoku {
   difficulty String
   seconds    Int
   mistakes   Int      @default(0)
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   @@index([createdAt(sort: Desc)])
   @@index([difficulty, seconds, mistakes, createdAt(sort: Desc)])
@@ -238,8 +251,9 @@ model SlotUserBalance {
   nickname  String
   balance   Int      @default(0)
   totalSpin Int      @default(0) @map("total_spin")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
   @@index([balance(sort: Desc)])
   @@map("slot_user_balance")
 }
@@ -250,8 +264,9 @@ model GameLog {
   action    String
   email     String?
   meta      Json?
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
   @@index([game])
   @@index([email])
   @@index([createdAt(sort: Desc)])
@@ -264,20 +279,22 @@ model Memo {
   toEmail      String    @unique @map("to_email")
   content      String
   deny         Boolean   @default(false)
-  createdAt    DateTime? @map("created_at")
-  lastModified DateTime? @map("last_modified")
+  createdAt    DateTime? @map("created_at") @db.Timestamptz(3)
+  lastModified DateTime? @map("last_modified") @db.Timestamptz(3)
+
   @@map("memos")
 }
 
 model LoginLog {
   id        String   @id @default(cuid())
-  at        DateTime @default(now())
+  at        DateTime @default(now()) @db.Timestamptz(3)
   userId    String?  @map("user_id")
   ip        String
   deviceId  String?  @map("device_id")
   userAgent String?  @map("user_agent")
   provider  String?
   path      String?
+
   @@index([at(sort: Desc)])
   @@index([userId])
   @@map("login_logs")

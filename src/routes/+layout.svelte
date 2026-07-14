@@ -6,7 +6,7 @@
   import { blur } from 'svelte/transition';
   import { page } from '$app/stores';
   import { updated } from '$app/state';
-  import { afterNavigate, beforeNavigate } from '$app/navigation';
+  import { afterNavigate, beforeNavigate, invalidateAll } from '$app/navigation';
   import { browser } from '$app/environment';
   import { onMount } from 'svelte';
   import { reportSlowInitialLoad, reportSlowLoad } from '$lib/util/logSlowLoad.js';
@@ -14,6 +14,7 @@
   import { isInterruptedFetchError } from '$lib/util/fetchErrors.js';
   import { isFreeBoardLegacyPath } from '$lib/util/boardPaths.js';
   import { alarmCount, boardListReloadKey, boardListReloading } from '$lib/util/store.js';
+  import { isValidTimeZone, serializeTimeZoneCookie } from '$lib/util/formatRelativeTime.js';
   import '../app.css';
 
   let { data, children } = $props();
@@ -146,6 +147,21 @@
     setTimeout(scheduleMobileLayoutWidthNormalization, 360);
   }
 
+  async function syncTimeZoneCookie() {
+    let detectedTimeZone = '';
+    try {
+      detectedTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone ?? '';
+    } catch {
+      return;
+    }
+    if (!isValidTimeZone(detectedTimeZone)) return;
+    if (data.hasTimeZoneCookie && data.timeZone === detectedTimeZone) return;
+
+    document.cookie = serializeTimeZoneCookie(detectedTimeZone, location.protocol === 'https:');
+
+    if (data.timeZone !== detectedTimeZone) await invalidateAll();
+  }
+
   async function refreshUnreadAlarmCount() {
     if (!browser || !data.session?.user?.email) {
       alarmCount.set(0);
@@ -197,6 +213,7 @@
 
   onMount(() => {
     if (!browser) return;
+    void syncTimeZoneCookie();
 
     /** @param {ErrorEvent} event */
     const handleWindowError = (event) => {

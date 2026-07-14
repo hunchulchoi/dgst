@@ -79,4 +79,34 @@ describe('+layout.server load', () => {
 
     expect(result.isBlueDgstHost).toBe(true);
   });
+
+  it('uses a valid timezone cookie for SSR', async () => {
+    const { load } = await import('../src/routes/+layout.server.js');
+    const event = /** @type {any} */ ({
+      url: new URL('https://www.dgst.me/'),
+      setHeaders: vi.fn(),
+      cookies: { get: vi.fn().mockReturnValue('America/New_York') },
+      locals: { auth: vi.fn().mockResolvedValue(null) }
+    });
+
+    const result = await load(event);
+
+    expect(result.timeZone).toBe('America/New_York');
+    expect(result.hasTimeZoneCookie).toBe(true);
+  });
+
+  it('falls back to Seoul when the timezone cookie is invalid', async () => {
+    const { load } = await import('../src/routes/+layout.server.js');
+    const event = /** @type {any} */ ({
+      url: new URL('https://www.dgst.me/'),
+      setHeaders: vi.fn(),
+      cookies: { get: vi.fn().mockReturnValue('not/a-timezone') },
+      locals: { auth: vi.fn().mockResolvedValue(null) }
+    });
+
+    const result = await load(event);
+
+    expect(result.timeZone).toBe('Asia/Seoul');
+    expect(result.hasTimeZoneCookie).toBe(false);
+  });
 });
