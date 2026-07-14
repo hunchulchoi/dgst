@@ -64,7 +64,7 @@ describe('database time contract', () => {
     expect(dateTimeFields.every((line) => line.includes('@db.Timestamptz(3)'))).toBe(true);
   });
 
-  it('interprets every legacy timestamp as UTC during type conversion', () => {
+  it('documents the legacy UTC conversion that required a KST repair', () => {
     const migration = readFileSync(
       new URL(
         '../prisma/migrations/20260714093000_use_utc_timestamptz/migration.sql',
@@ -78,5 +78,23 @@ describe('database time contract', () => {
 
     expect(conversions.length).toBeGreaterThan(0);
     expect(conversions.every((line) => line.includes("AT TIME ZONE 'UTC'"))).toBe(true);
+  });
+
+  it('repairs only impossible future board timestamps shifted by the legacy KST conversion', () => {
+    const migration = readFileSync(
+      new URL(
+        '../prisma/migrations/20260714150000_repair_future_board_timestamps/migration.sql',
+        import.meta.url
+      ),
+      'utf8'
+    );
+
+    expect(migration).toContain('UPDATE "articles"');
+    expect(migration).toContain('UPDATE "article_reads"');
+    expect(migration).toContain('UPDATE "comments"');
+    expect(migration.match(/- INTERVAL '9 hours'/g)).toHaveLength(5);
+    expect(migration.match(/> CURRENT_TIMESTAMP/g)).toHaveLength(5);
+    expect(migration).not.toContain('UPDATE "sessions"');
+    expect(migration).not.toContain('UPDATE "verification_tokens"');
   });
 });
