@@ -147,6 +147,7 @@
   let power = $state(55);
   let rankList = $state<RankEntry[]>([]);
   let myBestScore = $state<number | null>(null);
+  let todayStats = $state<{ games: number; users: number }>({ games: 0, users: 0 });
   let rankLoading = $state(false);
   let submittedGameOver = false;
   let contacts: ShotContact[] = [];
@@ -426,6 +427,7 @@
     currentMode = mode;
     rankList = [];
     myBestScore = null;
+    todayStats = { games: 0, users: 0 };
     newGame();
     void loadRank();
   }
@@ -435,6 +437,7 @@
     targetScore = nextTarget;
     rankList = [];
     myBestScore = null;
+    todayStats = { games: 0, users: 0 };
     newGame();
     void loadRank();
   }
@@ -1452,8 +1455,10 @@
       const body = await res.json();
       rankList = Array.isArray(body.rank) ? body.rank : [];
       myBestScore = typeof body.myBest?.score === 'number' ? body.myBest.score : null;
+      todayStats = body.todayStats ?? { games: 0, users: 0 };
     } catch (error) {
       console.error('[billiards rank load failed]', error);
+      todayStats = { games: 0, users: 0 };
     } finally {
       rankLoading = false;
     }
@@ -1861,6 +1866,10 @@
       <h2>랭킹</h2>
       {#if rankLoading}<span>불러오는 중</span>{/if}
     </div>
+    <p class="rank-today">
+      오늘 참여 <strong>{todayStats.users}</strong>명 · 완료
+      <strong>{todayStats.games}</strong>판
+    </p>
     {#if rankList.length}
       <ol>
         {#each rankList as item (item._id ?? `${item.nickname}:${item.score}:${item.createdAt ?? ''}`)}

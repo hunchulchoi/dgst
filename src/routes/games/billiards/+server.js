@@ -1,6 +1,7 @@
 import { error, json } from '@sveltejs/kit';
 import { getPrisma } from '$lib/database/prisma.js';
 import { getGameSession, isLocalGameSmokeSession } from '$lib/server/localGameSmokeSession.js';
+import { getTodayBilliardsStats } from '$lib/server/gameBilliardsStats.js';
 import { normalizeToIsoString } from '$lib/util/formatRelativeTime.js';
 import {
   BILLIARDS_MODES,
@@ -71,7 +72,7 @@ export async function GET(event) {
   const rankingMode = getRankingMode(mode, target);
 
   if (url.searchParams.get('rank')) {
-    const [rank, myBest] = await Promise.all([
+    const [rank, myBest, todayStats] = await Promise.all([
       getRankTop10(rankingMode),
       (async () => {
         /** @type {Array<{ score: number; createdAt: Date | string }>} */
@@ -91,10 +92,11 @@ export async function GET(event) {
         return myDoc
           ? { score: Number(myDoc.score), createdAt: normalizeToIsoString(myDoc.createdAt) }
           : null;
-      })()
+      })(),
+      getTodayBilliardsStats(rankingMode)
     ]);
 
-    return json({ rank, myBest, mode, target });
+    return json({ rank, myBest, todayStats, mode, target });
   }
 
   return json({ success: true, mode });

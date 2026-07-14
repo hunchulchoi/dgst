@@ -2,6 +2,7 @@ import { randomUUID } from 'crypto';
 import { error, json } from '@sveltejs/kit';
 import { getPrisma } from '$lib/database/prisma.js';
 import { getGameSession, isLocalGameSmokeSession } from '$lib/server/localGameSmokeSession.js';
+import { getTodaySudokuStats } from '$lib/server/gameSudokuStats.js';
 import { normalizeToIsoString } from '$lib/util/formatRelativeTime.js';
 
 const DIFFICULTIES = new Set(['easy', 'normal', 'hard']);
@@ -65,7 +66,7 @@ export async function GET(event) {
   const difficulty = normalizeDifficulty(url.searchParams.get('difficulty') ?? 'normal');
 
   if (url.searchParams.get('rank')) {
-    const [rank, myBest] = await Promise.all([
+    const [rank, myBest, todayStats] = await Promise.all([
       getRankTop10(difficulty),
       (async () => {
         /** @type {Array<{ seconds: number; mistakes: number; createdAt: Date | string }>} */
@@ -88,11 +89,12 @@ export async function GET(event) {
               createdAt: normalizeToIsoString(row.createdAt)
             }
           : null;
-      })()
+      })(),
+      getTodaySudokuStats(difficulty)
     ]);
 
     return json(
-      { rank, myBest, difficulty },
+      { rank, myBest, todayStats, difficulty },
       { headers: { 'Cache-Control': 'no-store, max-age=0' } }
     );
   }

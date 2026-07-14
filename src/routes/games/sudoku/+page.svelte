@@ -44,6 +44,7 @@
   let submittedWin = $state(false);
   let rankList = $state<SudokuRank[]>([]);
   let myBest = $state<{ seconds: number; mistakes: number; createdAt?: string } | null>(null);
+  let todayStats = $state<{ games: number; users: number }>({ games: 0, users: 0 });
   let rankLoading = $state(false);
   let timer: ReturnType<typeof setInterval> | null = null;
 
@@ -420,9 +421,11 @@
       const body = await res.json();
       rankList = body.rank ?? [];
       myBest = body.myBest ?? null;
+      todayStats = body.todayStats ?? { games: 0, users: 0 };
     } catch {
       rankList = [];
       myBest = null;
+      todayStats = { games: 0, users: 0 };
     } finally {
       rankLoading = false;
     }
@@ -581,6 +584,10 @@
         {:else if rankLoading}
           <p class="text-body-secondary small mb-0">불러오는 중...</p>
         {:else}
+          <p class="text-body-secondary small mb-2">
+            오늘 참여 <strong>{todayStats.users}</strong>명 · 완료
+            <strong>{todayStats.games}</strong>판
+          </p>
           {#if myBest}
             <p class="sudoku-my-best mb-2">
               내 최고 <strong>{formatRecord(myBest.seconds, myBest.mistakes)}</strong>
@@ -680,6 +687,10 @@
         {:else if rankLoading}
           <p class="text-body-secondary small mb-0">불러오는 중...</p>
         {:else}
+          <p class="text-body-secondary small mb-2">
+            오늘 참여 <strong>{todayStats.users}</strong>명 · 완료
+            <strong>{todayStats.games}</strong>판
+          </p>
           {#if myBest}
             <p class="sudoku-my-best mb-2">
               내 최고 <strong>{formatRecord(myBest.seconds, myBest.mistakes)}</strong>

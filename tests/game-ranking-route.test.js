@@ -25,6 +25,14 @@ const statsBreakout = vi.hoisted(() => ({
   getTodayBreakoutStats: vi.fn()
 }));
 
+const statsSudoku = vi.hoisted(() => ({
+  getTodaySudokuStats: vi.fn()
+}));
+
+const statsBilliards = vi.hoisted(() => ({
+  getTodayBilliardsStats: vi.fn()
+}));
+
 const slotStats = vi.hoisted(() => ({
   getTodaySlotStats: vi.fn()
 }));
@@ -35,6 +43,8 @@ vi.mock('$lib/server/gameWatermelonStats.js', () => statsWatermelon);
 vi.mock('$lib/server/gameMinesweeperStats.js', () => statsMinesweeper);
 vi.mock('$lib/server/gameTetrisStats.js', () => statsTetris);
 vi.mock('$lib/server/gameBreakoutStats.js', () => statsBreakout);
+vi.mock('$lib/server/gameSudokuStats.js', () => statsSudoku);
+vi.mock('$lib/server/gameBilliardsStats.js', () => statsBilliards);
 vi.mock('$lib/server/slotStats.js', () => slotStats);
 
 describe('game ranking routes', () => {
@@ -46,6 +56,8 @@ describe('game ranking routes', () => {
     statsMinesweeper.getTodayMinesweeperStats.mockResolvedValue({ games: 0, users: 0 });
     statsTetris.getTodayTetrisStats.mockResolvedValue({ games: 0, users: 0 });
     statsBreakout.getTodayBreakoutStats.mockResolvedValue({ games: 0, users: 0 });
+    statsSudoku.getTodaySudokuStats.mockResolvedValue({ games: 0, users: 0 });
+    statsBilliards.getTodayBilliardsStats.mockResolvedValue({ games: 0, users: 0 });
     slotStats.getTodaySlotStats.mockResolvedValue({ spins: 0, users: 0 });
   });
 
@@ -199,6 +211,7 @@ describe('game ranking routes', () => {
       }
     ]);
     prismaModule.getPrisma.mockReturnValue({ $queryRaw: queryRaw });
+    statsSudoku.getTodaySudokuStats.mockResolvedValue({ games: 7, users: 3 });
 
     const { GET } = await import('../src/routes/games/sudoku/+server.js');
     const response = await GET({
@@ -220,6 +233,8 @@ describe('game ranking routes', () => {
       mistakes: 1,
       createdAt: '2026-07-06T05:50:09.791Z'
     });
+    expect(body.todayStats).toEqual({ games: 7, users: 3 });
+    expect(statsSudoku.getTodaySudokuStats).toHaveBeenCalledWith('normal');
     const rankSql = queryRaw.mock.calls[0][0].join(' ');
     const myBestSql = queryRaw.mock.calls[1][0].join(' ');
     expect(rankSql).toContain("created_at AT TIME ZONE 'Asia/Seoul'");
@@ -245,6 +260,7 @@ describe('game ranking routes', () => {
         }
       ]);
     prismaModule.getPrisma.mockReturnValue({ $queryRaw: queryRaw });
+    statsBilliards.getTodayBilliardsStats.mockResolvedValue({ games: 9, users: 4 });
 
     const { GET } = await import('../src/routes/games/billiards/+server.js');
     const response = await GET({
@@ -266,6 +282,8 @@ describe('game ranking routes', () => {
       score: 7,
       createdAt: '2026-07-06T05:50:09.791Z'
     });
+    expect(body.todayStats).toEqual({ games: 9, users: 4 });
+    expect(statsBilliards.getTodayBilliardsStats).toHaveBeenCalledWith('four-ball-100');
     const rankSql = queryRaw.mock.calls[0][0].join(' ');
     const myBestSql = queryRaw.mock.calls[1][0].join(' ');
     expect(rankSql).toContain("created_at AT TIME ZONE 'Asia/Seoul'");
