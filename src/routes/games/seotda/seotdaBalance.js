@@ -9,6 +9,23 @@ export const SEOTDA_OOPS_DELAY_MS = 5 * 60 * 1000;
 const KST_OFFSET_MINUTES = 9 * 60;
 
 /**
+ * @param {Date | string} createdAt
+ * @param {number} [now]
+ */
+export function getSeotdaOopsTiming(createdAt, now = Date.now()) {
+  const createdAtDate = new Date(createdAt);
+  const remainingMs = Math.max(
+    0,
+    SEOTDA_OOPS_DELAY_MS - (now - createdAtDate.getTime())
+  );
+  return {
+    createdAt: createdAtDate.toISOString(),
+    remainingMs,
+    ready: remainingMs === 0
+  };
+}
+
+/**
  * @param {Date} [baseDate]
  * @returns {Date}
  */
@@ -98,16 +115,19 @@ export async function ensureSeotdaBalance(email, nickname) {
  * 오링 5분 후 700 보충
  * @param {string} email
  * @param {string} nickname
- * @returns {Promise<number>} topped balance or 0
+ * @returns {Promise<{
+ *   balance: number;
+ *   oopsInfo: { createdAt: string; remainingMs: number; waiting: true } | null;
+ * }>}
  */
-export async function maybeTopupAfterOops(email, nickname) {
+export async function resolveSeotdaOops(email, nickname) {
   try {
     const prisma = getPrisma();
     const lastOops = await prisma.gameScore.findFirst({
       where: { email, game: SEOTDA_GAME, bet: { gt: 0 }, balance: 0 },
       orderBy: { createdAt: 'desc' }
     });
-    if (!lastOops) return 0;
+    if (!lastOops) return { balance: 0, oopsInfo: null };
 
     const after = await prisma.gameScore.findFirst({
       where: {
@@ -118,10 +138,19 @@ export async function maybeTopupAfterOops(email, nickname) {
       },
       orderBy: { createdAt: 'desc' }
     });
-    if (after) return Number(after.balance);
+    if (after) return { balance: Number(after.balance), oopsInfo: null };
 
-    const elapsed = Date.now() - new Date(lastOops.createdAt).getTime();
-    if (elapsed < SEOTDA_OOPS_DELAY_MS) return 0;
+    const timing = getSeotdaOopsTiming(lastOops.createdAt);
+    if (!timing.ready) {
+      return {
+        balance: 0,
+        oopsInfo: {
+          createdAt: timing.createdAt,
+          remainingMs: timing.remainingMs,
+          waiting: true
+        }
+      };
+    }
 
     await writeSeotdaScore(email, nickname, SEOTDA_OOPS_TOPUP, {
       bet: 0,
@@ -129,10 +158,10 @@ export async function maybeTopupAfterOops(email, nickname) {
       delta: SEOTDA_OOPS_TOPUP,
       reels: ['oops', String(SEOTDA_OOPS_TOPUP), '-']
     });
-    return SEOTDA_OOPS_TOPUP;
+    return { balance: SEOTDA_OOPS_TOPUP, oopsInfo: null };
   } catch (err) {
-    console.error('[seotda maybeTopupAfterOops]', err);
-    return 0;
+    console.error('[seotda resolveSeotdaOops]', err);
+    return { balance: 0, oopsInfo: null };
   }
 }
 

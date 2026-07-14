@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onDestroy } from 'svelte';
+  import { onDestroy, onMount } from 'svelte';
   import { ko } from 'date-fns/locale';
   import type { PageData } from './$types';
   import { formatRelativeTime } from '$lib/util/formatRelativeTime.js';
@@ -58,7 +58,11 @@
   let round = $state<SeotdaRound | null>((data.round as SeotdaRound | null) ?? null);
   let busy = $state(false);
   let message = $state('');
-  let oopsInfo = $state<{ waiting?: boolean } | null>(null);
+  let oopsInfo = $state<{
+    waiting?: boolean;
+    createdAt?: string;
+    remainingMs?: number;
+  } | null>(data.oopsInfo ?? null);
 
   /** 쇼다운 연출: 아직 안 깐 NPC id 집합 */
   let hiddenNpcIds = $state<Set<string>>(new Set());
@@ -104,6 +108,8 @@
 
   /** @type {ReturnType<typeof setTimeout>[]} */
   let timers: ReturnType<typeof setTimeout>[] = [];
+  let topupRefreshTimer: ReturnType<typeof setTimeout> | null = null;
+  let topupRefreshRunning = false;
 
   const formatNumber = (value: number | null | undefined): string => {
     if (value == null || Number.isNaN(value)) return '0';
@@ -158,7 +164,24 @@
     timers = [];
   }
 
-  onDestroy(() => clearTimers());
+  function clearTopupRefreshTimer() {
+    if (topupRefreshTimer) clearTimeout(topupRefreshTimer);
+    topupRefreshTimer = null;
+  }
+
+  function scheduleTopupRefresh(delayMs: number) {
+    clearTopupRefreshTimer();
+    topupRefreshTimer = setTimeout(() => void refreshGameState(), Math.max(250, delayMs));
+  }
+
+  onMount(() => {
+    if (balance === 0) void refreshGameState();
+  });
+
+  onDestroy(() => {
+    clearTimers();
+    clearTopupRefreshTimer();
+  });
 
   function cardText(card: SeotdaCard): string {
     if (card.hidden || card.month === 0) return '?';
@@ -300,6 +323,31 @@
     }
   }
 
+  async function refreshGameState() {
+    if (topupRefreshRunning) return;
+    topupRefreshRunning = true;
+    try {
+      const res = await fetch(`/games/seotda?_=${Date.now()}`, { cache: 'no-store' });
+      if (!res.ok) throw new Error(`섯다 상태 조회 실패 (${res.status})`);
+      const next = await res.json();
+      balance = Number(next.balance ?? balance);
+      rankList = next.rank ?? rankList;
+      todayStats = next.todayStats ?? todayStats;
+      oopsInfo = next.oopsInfo ?? null;
+
+      if (oopsInfo?.waiting) {
+        scheduleTopupRefresh(Number(oopsInfo.remainingMs ?? 5_000) + 250);
+      } else {
+        clearTopupRefreshTimer();
+      }
+    } catch (err) {
+      console.error('[seotda refresh]', err);
+      if (balance === 0) scheduleTopupRefresh(5_000);
+    } finally {
+      topupRefreshRunning = false;
+    }
+  }
+
   async function post(body: Record<string, unknown>) {
     busy = true;
     message = '';
@@ -320,17 +368,7 @@
       applyRound(next, body.action === 'act' && hitShowdown);
       if (body.action === 'ack' || body.action === 'start' || hitShowdown) {
         // 랭킹·오늘 통계 갱신
-        try {
-          const r = await fetch(`/games/seotda?_=${Date.now()}`, { cache: 'no-store' });
-          if (r.ok) {
-            const jj = await r.json();
-            rankList = jj.rank ?? rankList;
-            todayStats = jj.todayStats ?? todayStats;
-            oopsInfo = jj.oopsInfo ?? null;
-          }
-        } catch {
-          /* ignore */
-        }
+        await refreshGameState();
       }
     } catch (err) {
       console.error('[seotda post]', err);
@@ -425,7 +463,7 @@
               <p class="mb-3">아귀 · 고니 · 정마담 이 기다림.</p>
               <button
                 class="btn btn-primary btn-lg rounded-pill px-4"
-                disabled={busy || balance < roundAnte}
+                disabled={busy}
                 onclick={startRound}
               >
                 판 시작 (판돈 {formatNumber(roundAnte)})
@@ -659,7 +697,7 @@
                   {:else if userWon}이겼다!
                   {:else}졌다…{/if}
                 </p>
-                <button class="btn btn-primary" disabled={busy || balance < 10} onclick={nextRound}>
+                <button class="btn btn-primary" disabled={busy} onclick={nextRound}>
                   다음 판
                 </button>
               </div>

@@ -8,7 +8,7 @@ import {
   getSeotdaCurrentLeader,
   getSeotdaRank,
   getTodaySeotdaStats,
-  maybeTopupAfterOops,
+  resolveSeotdaOops,
   writeSeotdaScore
 } from './seotdaBalance.js';
 import {
@@ -74,9 +74,11 @@ export async function GET(event) {
     }
 
     let { balance } = await ensureSeotdaBalance(user.email, user.nickname);
+    let oopsInfo = null;
     if (balance === 0) {
-      const topped = await maybeTopupAfterOops(user.email, user.nickname);
-      if (topped > 0) balance = topped;
+      const resolved = await resolveSeotdaOops(user.email, user.nickname);
+      balance = resolved.balance;
+      oopsInfo = resolved.oopsInfo;
     }
     const [rank, todayStats] = await Promise.all([getSeotdaRank(10), getTodaySeotdaStats()]);
     const round = getRound(user.email);
@@ -84,7 +86,7 @@ export async function GET(event) {
       balance,
       rank,
       round: round ? publicOf(round) : null,
-      oopsInfo: balance === 0 ? { waiting: true } : null,
+      oopsInfo,
       todayStats
     });
   } catch (err) {
@@ -200,8 +202,7 @@ export async function POST(event) {
 async function beginRound(email, nickname) {
   let { balance } = await ensureSeotdaBalance(email, nickname);
   if (balance === 0) {
-    const topped = await maybeTopupAfterOops(email, nickname);
-    if (topped > 0) balance = topped;
+    balance = (await resolveSeotdaOops(email, nickname)).balance;
   }
   if (balance < 10) {
     throw error(400, { message: '보유 점수가 부족합니다. 오링 후 잠시 기다려 주세요.' });
