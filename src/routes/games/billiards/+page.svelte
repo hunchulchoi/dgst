@@ -61,6 +61,12 @@
     type ArtScoreBreakdown,
     type ArtShotResult
   } from './artStages';
+  import {
+    BILLIARDS_SAVE_KEY,
+    BILLIARDS_SAVE_VERSION,
+    parseBilliardsSave,
+    type BilliardsSave
+  } from './billiardsSave';
   import type { PageData } from './$types';
 
   interface Props {
@@ -218,6 +224,9 @@
   let scoreEffect = $state<ScoreEffect | null>(null);
   let scoreEffectId = 0;
   let scoreEffectTimer: ReturnType<typeof setTimeout> | null = null;
+  let autoSaveMessage = $state('자동저장 켜짐');
+  let autoSaveTimer: ReturnType<typeof setInterval> | null = null;
+  let autoSaveMessageTimer: ReturnType<typeof setTimeout> | null = null;
 
   const isLoggedIn = $derived(!!data.session?.user?.email);
   const isPocketBall = $derived(!artMode && currentMode === BILLIARDS_MODES.POCKET_BALL);
@@ -467,6 +476,172 @@
     remainingObjectCount = redBalls.length;
   }
 
+  function getSavedBalls() {
+    if (!engine) return [];
+    return Composite.allBodies(engine.world)
+      .filter((body): body is BallBody => Boolean((body as BallBody).billiardsId))
+      .map((ball) => ({
+        id: ball.billiardsId ?? ball.label,
+        x: ball.position.x,
+        y: ball.position.y,
+        vx: ball.velocity.x,
+        vy: ball.velocity.y,
+        angle: ball.angle,
+        angularVelocity: ball.angularVelocity
+      }));
+  }
+
+  function buildGameSave(): BilliardsSave {
+    return {
+      version: BILLIARDS_SAVE_VERSION,
+      savedAt: Date.now(),
+      currentMode,
+      artMode,
+      artStageNumber,
+      score,
+      npcScore,
+      targetScore,
+      playerCombo,
+      npcCombo,
+      lastShotMultiplier,
+      lastFoulPenalty,
+      currentTurn,
+      chances,
+      status,
+      aimAngle,
+      displayAimAngle,
+      spin,
+      verticalSpin,
+      spinTipX,
+      spinTipY,
+      activeSpin,
+      activeVerticalSpin,
+      power,
+      submittedGameOver,
+      contacts,
+      pocketedThisShot,
+      cuePocketedThisShot,
+      opponentCueHitThisShot,
+      npcShotWasDefensive,
+      artCueContacts,
+      artCushionHits,
+      artBlackHit,
+      artWaypointsVisited: [...artWaypointsVisited],
+      artBallCollisions,
+      artShotSideSpin,
+      artShotVerticalSpin,
+      artResult,
+      artResultMessage,
+      artHelpUsed,
+      artScoreBreakdown,
+      balls: getSavedBalls()
+    };
+  }
+
+  function saveGame() {
+    if (!engine) return;
+    try {
+      localStorage.setItem(BILLIARDS_SAVE_KEY, JSON.stringify(buildGameSave()));
+    } catch (error) {
+      console.error('[billiards autosave failed]', error);
+    }
+  }
+
+  function showRestoredMessage() {
+    autoSaveMessage = '게임 복원됨';
+    if (autoSaveMessageTimer) clearTimeout(autoSaveMessageTimer);
+    autoSaveMessageTimer = setTimeout(() => {
+      autoSaveMessage = '자동저장 켜짐';
+      autoSaveMessageTimer = null;
+    }, 3500);
+  }
+
+  function restoreSavedGame() {
+    if (!engine) return false;
+    let saved: BilliardsSave | null = null;
+    try {
+      const raw = localStorage.getItem(BILLIARDS_SAVE_KEY);
+      saved = parseBilliardsSave(raw);
+      if (raw && !saved) localStorage.removeItem(BILLIARDS_SAVE_KEY);
+    } catch (error) {
+      console.error('[billiards autosave restore failed]', error);
+      return false;
+    }
+    if (!saved) return false;
+
+    currentMode = saved.currentMode;
+    artMode = saved.artMode;
+    artStageNumber = saved.artStageNumber;
+    rankingMode = saved.artMode ? BILLIARDS_MODES.ART_PUZZLE : saved.currentMode;
+    score = saved.score;
+    npcScore = saved.npcScore;
+    targetScore = saved.targetScore;
+    playerCombo = saved.playerCombo;
+    npcCombo = saved.npcCombo;
+    lastShotMultiplier = saved.lastShotMultiplier;
+    lastFoulPenalty = saved.lastFoulPenalty;
+    currentTurn = saved.currentTurn;
+    chances = saved.chances;
+    status = saved.status === 'charging' ? 'aiming' : saved.status;
+    aimAngle = saved.aimAngle;
+    displayAimAngle = saved.displayAimAngle;
+    spin = saved.spin;
+    verticalSpin = saved.verticalSpin;
+    spinTipX = saved.spinTipX;
+    spinTipY = saved.spinTipY;
+    activeSpin = saved.activeSpin;
+    activeVerticalSpin = saved.activeVerticalSpin;
+    power = saved.power;
+    submittedGameOver = saved.submittedGameOver;
+    contacts = saved.contacts;
+    pocketedThisShot = saved.pocketedThisShot;
+    cuePocketedThisShot = saved.cuePocketedThisShot;
+    opponentCueHitThisShot = saved.opponentCueHitThisShot;
+    npcShotWasDefensive = saved.npcShotWasDefensive;
+    artCueContacts = saved.artCueContacts;
+    artCushionHits = saved.artCushionHits;
+    artBlackHit = saved.artBlackHit;
+    artWaypointsVisited = new Set(saved.artWaypointsVisited);
+    artBallCollisions = saved.artBallCollisions;
+    artShotSideSpin = saved.artShotSideSpin;
+    artShotVerticalSpin = saved.artShotVerticalSpin;
+    artResult = saved.artResult;
+    artResultMessage = saved.artResultMessage;
+    artHelpUsed = saved.artHelpUsed;
+    artScoreBreakdown = saved.artScoreBreakdown;
+    npcThinking = false;
+    npcMessage = '';
+    replayCapture = null;
+    replaying = false;
+    helpPlan = null;
+    spinOverlayOpen = false;
+
+    resetBodies();
+    const savedById = new Map(saved.balls.map((ball) => [ball.id, ball]));
+    const createdBalls = [
+      ...(cueBall ? [cueBall] : []),
+      ...(npcCueBall ? [npcCueBall] : []),
+      ...redBalls,
+      ...artObstacleBalls
+    ];
+    for (const ball of createdBalls) {
+      const savedBall = savedById.get(ball.billiardsId ?? ball.label);
+      if (!savedBall) {
+        Composite.remove(engine.world, ball);
+        continue;
+      }
+      Body.setPosition(ball, { x: savedBall.x, y: savedBall.y });
+      Body.setVelocity(ball, { x: savedBall.vx, y: savedBall.vy });
+      Body.setAngle(ball, savedBall.angle);
+      Body.setAngularVelocity(ball, savedBall.angularVelocity);
+    }
+    redBalls = redBalls.filter((ball) => savedById.has(ball.billiardsId ?? ball.label));
+    remainingObjectCount = redBalls.length;
+    rollingStartedAt = status === 'rolling' ? performance.now() : 0;
+    showRestoredMessage();
+    return true;
+  }
+
   function newGame() {
     if (npcTimer) clearTimeout(npcTimer);
     npcTimer = null;
@@ -528,6 +703,7 @@
     artHelpUsed = false;
     artScoreBreakdown = null;
     resetBodies();
+    saveGame();
   }
 
   function switchMode(mode: ActiveBilliardsMode) {
@@ -1727,7 +1903,7 @@
     canvasEl.width = TABLE_WIDTH;
     canvasEl.height = TABLE_HEIGHT;
     engine = Engine.create({ gravity: { x: 0, y: 0 } });
-    resetBodies();
+    if (!restoreSavedGame()) resetBodies();
 
     const handleCollisionStart = (event: Matter.IEventCollision<Matter.Engine>) => {
       for (const pair of event.pairs) {
@@ -1738,10 +1914,22 @@
 
     Events.on(engine, 'collisionStart', handleCollisionStart);
 
+    if (!artMode && currentMode === BILLIARDS_MODES.FOUR_BALL && currentTurn === 'npc' && status !== 'rolling' && status !== 'game-over') {
+      scheduleNpcShot(700);
+    }
+
     void loadRank();
+    autoSaveTimer = setInterval(saveGame, 750);
+    window.addEventListener('pagehide', saveGame);
     frameId = requestAnimationFrame(tick);
 
     return () => {
+      saveGame();
+      window.removeEventListener('pagehide', saveGame);
+      if (autoSaveTimer) clearInterval(autoSaveTimer);
+      autoSaveTimer = null;
+      if (autoSaveMessageTimer) clearTimeout(autoSaveMessageTimer);
+      autoSaveMessageTimer = null;
       if (frameId) cancelAnimationFrame(frameId);
       if (npcTimer) clearTimeout(npcTimer);
       npcTimer = null;
@@ -1790,6 +1978,7 @@
         {/if}
       {/if}
     </div>
+    <span class="auto-save-status" aria-live="polite">{autoSaveMessage}</span>
     <button type="button" class="new-game-button" onclick={newGame}>리셋</button>
   </section>
 
@@ -2292,6 +2481,13 @@
   .hud-stats strong {
     color: #f8f5e8;
     font-size: 0.9rem;
+  }
+
+  .auto-save-status {
+    color: #9ec5a7;
+    font-size: 0.66rem;
+    font-weight: 800;
+    white-space: nowrap;
   }
 
   .new-game-button,

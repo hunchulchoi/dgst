@@ -33,4 +33,12 @@ describe('billiards controls UI', () => {
     expect(billiardsPage).toContain('시네루');
     expect(billiardsPage).toContain('당점');
   });
+
+  it('restores and periodically saves the current game', () => {
+    expect(billiardsPage).toContain('BILLIARDS_SAVE_KEY');
+    expect(billiardsPage).toContain('restoreSavedGame()');
+    expect(billiardsPage).toContain("addEventListener('pagehide', saveGame)");
+    expect(billiardsPage).toContain('aria-live="polite"');
+    expect(billiardsPage).not.toMatch(/(?:window\.)?(?:alert|confirm)\s*\(/);
+  });
 });
