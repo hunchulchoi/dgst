@@ -4,7 +4,7 @@
   import type { PageData } from './$types';
   import { formatRelativeTime } from '$lib/util/formatRelativeTime.js';
   import { ANTE, dynamicAnte, minRaisePay } from './seotdaEngine.js';
-  import { MAX_BET_ANTE_MULTIPLIER, MAX_POT, MAX_TOTAL_BET } from './seotdaRound.js';
+  import { contributionCapacity } from './seotdaRound.js';
   import HwatuCardFace from './HwatuCardFace.svelte';
   import { HWATU_CARD_URLS } from './hwatuCardAssets';
 
@@ -140,16 +140,7 @@
   const toCall = $derived(userSeat ? Math.max(0, (round?.currentBet ?? 0) - userSeat.contrib) : 0);
   const roundAnte = $derived(round?.antePaid ?? dynamicAnte(balance));
   const minRaise = $derived(minRaisePay(toCall, roundAnte));
-  const maxRaise = $derived(
-    userSeat
-      ? Math.min(
-          userSeat.chips,
-          Math.max(0, roundAnte * MAX_BET_ANTE_MULTIPLIER - userSeat.contrib),
-          Math.max(0, MAX_TOTAL_BET - (userSeat.totalContrib ?? userSeat.contrib)),
-          Math.max(0, MAX_POT - (round?.pot ?? 0))
-        )
-      : 0
-  );
+  const maxRaise = $derived(round && userSeat ? contributionCapacity(round, userSeat) : 0);
 
   $effect(() => {
     if (!canAct) return;

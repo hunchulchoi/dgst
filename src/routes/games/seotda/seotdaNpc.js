@@ -12,12 +12,20 @@ export const NPC_PROFILES = [
   { id: 'npc_madam', name: '정마담', style: 'gambler', bluff: 0.3 }
 ];
 
-function pressureCallChance(commitRatio, strength, bluffCatcher, profileBluff) {
-  const base =
-    commitRatio <= 0.1 ? 0.45 : commitRatio <= 0.25 ? 0.3 : commitRatio <= 0.4 ? 0.15 : 0.05;
-  const handWeight = 0.85 + strength * 0.3;
-  const roleWeight = bluffCatcher ? 1.1 : 0.8;
-  return Math.min(0.72, base * handWeight * roleWeight + profileBluff * 0.02);
+/**
+ * @param {number} commitRatio
+ * @param {number} strength
+ * @param {number} potOdds
+ * @param {boolean | undefined} bluffCatcher
+ * @param {number} profileBluff
+ */
+function pressureCallChance(commitRatio, strength, potOdds, bluffCatcher, profileBluff) {
+  const requiredStrength = Math.min(0.86, potOdds + 0.18 + commitRatio * 0.15);
+  if (strength < requiredStrength) {
+    return Math.min(0.1, (bluffCatcher ? 0.07 : 0.05) + profileBluff * 0.1);
+  }
+  const edge = (strength - requiredStrength) / Math.max(0.01, 1 - requiredStrength);
+  return Math.min(0.94, 0.55 + edge * 0.45 + (bluffCatcher ? 0.08 : 0));
 }
 
 /**
@@ -42,10 +50,16 @@ export function chooseNpcAction(cards, profile, ctx, rng = Math.random) {
   const potOdds = toCall > 0 ? toCall / Math.max(1, pot + toCall) : 0;
 
   // 큰 레이즈는 부담률에 따라 혼합 콜한다. 지정 캐처 외 NPC는 빈도를 낮춘다.
-  if (raiseSeen && toCall >= ante * 8 && hand.tier < 80) {
-    const catchChance = pressureCallChance(commitRatio, strength, bluffCatcher, profile.bluff);
+  if (raiseSeen && toCall >= ante * 2 && hand.tier < 80) {
+    const catchChance = pressureCallChance(
+      commitRatio,
+      strength,
+      potOdds,
+      bluffCatcher,
+      profile.bluff
+    );
     if (rng() >= catchChance || !canFullCall) return 'die';
-    if (canRaise && strength >= 0.68 && commitRatio <= 0.4 && rng() < 0.25) return 'raise';
+    if (canRaise && strength >= 0.68 && commitRatio <= 0.4 && rng() < 0.35) return 'raise';
     return 'call';
   }
 

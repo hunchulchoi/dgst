@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
-  MAX_BET_ANTE_MULTIPLIER,
   MAX_POT,
   MAX_TOTAL_BET,
   NPC_START_CHIPS,
+  npcStartingChips,
   createNewRound,
   applyPlayerAction,
+  contributionCapacity,
+  maxRoundContribution,
   runNpcTurns,
   seotdaAuditLogEntries,
   seotdaHandLogEntries,
@@ -68,12 +70,56 @@ describe('seotdaRound smoke', () => {
     expect(round.seats.find((s) => s.id === 'npc_madam')?.chips).toBe(40);
   });
 
-  it('starts NPCs at a fixed buy-in independent of player chips', () => {
-    const userChips = 3500;
+  it('re-enters bankrupt NPCs with the current stake-sized stack', () => {
+    const round = createNewRound(1000, () => 0.5, {
+      npc_agwi: 0,
+      npc_goni: 800,
+      npc_madam: 50
+    });
+    const busted = round.seats.find((s) => s.id === 'npc_agwi');
+
+    expect(busted?.chips).toBe(1_990);
+    expect(busted?.folded).toBe(false);
+    expect(busted?.needsAction).toBe(true);
+    expect(round.log).toContain('아귀 재입장 (2000)');
+  });
+
+  it('gives NPCs a finite buy-in sized for the current stakes', () => {
+    const userChips = 1_000_000;
     const round = createNewRound(userChips, () => 0.5, {});
     for (const s of round.seats.filter((x) => x.isNpc)) {
-      expect(s.chips + round.antePaid).toBe(NPC_START_CHIPS);
+      expect(s.chips + round.antePaid).toBe(npcStartingChips(round.antePaid));
+      expect(s.chips + round.antePaid).toBe(56_000);
     }
+  });
+
+  it('keeps the 2,000-chip floor at low stakes', () => {
+    expect(npcStartingChips(10)).toBe(NPC_START_CHIPS);
+  });
+
+  it('keeps million-point stakes playable without a 20,000-point ante', () => {
+    const round = createNewRound(1_000_000, () => 0.5, {});
+
+    expect(round.antePaid).toBe(2_800);
+    expect(npcStartingChips(round.antePaid)).toBe(56_000);
+    expect(maxRoundContribution(1_000_000, round.antePaid)).toBe(10_000);
+  });
+
+  it('caps the user by the largest active NPC stack', () => {
+    expect(maxRoundContribution(1_000_000, 2_800, 7_500)).toBe(7_500);
+  });
+
+  it('enforces the exact min cap in the server action path', () => {
+    const round = createNewRound(1_000_000, () => 0.5, {
+      npc_agwi: 7_500,
+      npc_goni: 5_000,
+      npc_madam: 3_000
+    });
+    const user = round.seats[0];
+
+    expect(contributionCapacity(round, user)).toBe(4_700);
+    applyPlayerAction(round, 'user', 'raise', Number.MAX_SAFE_INTEGER);
+    expect(user.totalContrib).toBe(7_500);
   });
 
   it('charges a bankroll-scaled ante at high balances', () => {
@@ -85,14 +131,15 @@ describe('seotdaRound smoke', () => {
     expect(round.seats[0].chips).toBe(99_900);
   });
 
-  it('caps a players total contribution at 20 times the ante', () => {
+  it('caps a players total contribution at a low share of bankroll', () => {
     const round = createNewRound(100_000, () => 0.5, {});
     const user = round.seats[0];
 
     applyPlayerAction(round, 'user', 'raise', user.chips);
 
-    expect(user.contrib).toBe(round.antePaid * MAX_BET_ANTE_MULTIPLIER);
-    expect(round.currentBet).toBe(round.antePaid * MAX_BET_ANTE_MULTIPLIER);
+    expect(maxRoundContribution(100_000, round.antePaid)).toBe(1_000);
+    expect(user.contrib).toBe(1_000);
+    expect(round.currentBet).toBe(1_000);
   });
 
   it('caps high-bankroll rounds by absolute seat and pot limits', () => {
@@ -164,7 +211,8 @@ describe('seotdaRound smoke', () => {
     expect(round.pot).toBe(potBefore);
     expect(round.currentBet).toBe(0);
     expect(round.winnerIds).toEqual([]);
-    expect(user.needsAction).toBe(true);
+    // 1,000점 유저는 이미 1% 총투입 상한(ante 10)에 도달했다.
+    expect(user.needsAction).toBe(false);
     expect(npc1.needsAction).toBe(true);
     expect(npc2.needsAction).toBe(true);
     expect(folded.folded).toBe(true);
@@ -341,7 +389,7 @@ describe('seotdaNpc bluff', () => {
     expect(action).toBe('die');
   });
 
-  it('lets the designated bluff catcher call an oversized raise', () => {
+  it('lets the designated bluff catcher stay against an oversized raise', () => {
     const profile = NPC_PROFILES.find((p) => p.style === 'bluffer');
     const ordinary = [
       { month: 1, gwang: false },
@@ -361,6 +409,90 @@ describe('seotdaNpc bluff', () => {
       () => 0.3
     );
 
-    expect(action).toBe('call');
+    expect(['call', 'raise']).toContain(action);
+  });
+
+  it('keeps a 5-10% minimum call range for weak hands facing a large raise', () => {
+    const profile = NPC_PROFILES.find((p) => p.style === 'bluffer')!;
+    const weak = [
+      { month: 2, gwang: false },
+      { month: 8, gwang: false }
+    ];
+    let stays = 0;
+    for (let n = 0; n < 1_000; n++) {
+      const action = chooseNpcAction(
+        weak,
+        profile,
+        {
+          toCall: 800,
+          chips: 8_000,
+          pot: 500,
+          raiseSeen: true,
+          bluffCatcher: false,
+          ante: 100
+        },
+        () => n / 1_000
+      );
+      if (action !== 'die') stays++;
+    }
+
+    expect(stays).toBeGreaterThanOrEqual(50);
+    expect(stays).toBeLessThanOrEqual(100);
+  });
+
+  it('calls more often as hand strength and pot odds improve', () => {
+    const profile = NPC_PROFILES.find((p) => p.style === 'calm')!;
+    const medium = [
+      { month: 9, gwang: false },
+      { month: 8, gwang: false }
+    ];
+    const countStays = (pot: number) => {
+      let stays = 0;
+      for (let n = 0; n < 1_000; n++) {
+        const action = chooseNpcAction(
+          medium,
+          profile,
+          {
+            toCall: 800,
+            chips: 8_000,
+            pot,
+            raiseSeen: true,
+            bluffCatcher: false,
+            ante: 100,
+            activeOpponents: 1
+          },
+          () => n / 1_000
+        );
+        if (action !== 'die') stays++;
+      }
+      return stays;
+    };
+
+    expect(countStays(8_000)).toBeGreaterThan(countStays(500));
+  });
+
+  it('conditionally re-raises a strong non-ddang hand', () => {
+    const profile = NPC_PROFILES.find((p) => p.style === 'calm')!;
+    const strong = [
+      { month: 1, gwang: false },
+      { month: 2, gwang: false }
+    ];
+    const rolls = [0.1, 0.1];
+    const action = chooseNpcAction(
+      strong,
+      profile,
+      {
+        toCall: 800,
+        chips: 8_000,
+        pot: 8_000,
+        raiseSeen: true,
+        bluffCatcher: false,
+        ante: 100,
+        activeOpponents: 1
+      },
+      () => rolls.shift() ?? 0.1
+    );
+
+    expect(action).toBe('raise');
   });
 });

@@ -98,4 +98,16 @@ describe('database time contract', () => {
     expect(migration).not.toContain('UPDATE "sessions"');
     expect(migration).not.toContain('UPDATE "verification_tokens"');
   });
+
+  it('keeps PostgreSQL sessions in UTC for Prisma timestamptz reads', () => {
+    const migration = readFileSync(
+      new URL(
+        '../prisma/migrations/20260714165500_set_database_timezone_utc/migration.sql',
+        import.meta.url
+      ),
+      'utf8'
+    );
+
+    expect(migration).toContain('ALTER DATABASE "dgstdb" SET timezone TO \'UTC\'');
+  });
 });

@@ -1796,14 +1796,14 @@
   <div class="mode-tabs" aria-label="당구 모드">
     <button
       type="button"
-      class:active={currentMode === BILLIARDS_MODES.FOUR_BALL}
+      class:active={!artMode && currentMode === BILLIARDS_MODES.FOUR_BALL}
       onclick={() => switchMode(BILLIARDS_MODES.FOUR_BALL)}
     >
       4구
     </button>
     <button
       type="button"
-      class:active={currentMode === BILLIARDS_MODES.POCKET_BALL}
+      class:active={!artMode && currentMode === BILLIARDS_MODES.POCKET_BALL}
       onclick={() => switchMode(BILLIARDS_MODES.POCKET_BALL)}
     >
       포켓볼

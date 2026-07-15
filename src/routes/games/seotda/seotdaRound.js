@@ -13,23 +13,51 @@ import {
 import { NPC_PROFILES, chooseNpcAction, pickPressureNpc, npcRaiseChips } from './seotdaNpc.js';
 
 export const NPC_START_CHIPS = 2000;
+export const NPC_BUY_IN_ANTE_MULTIPLIER = 20;
 /** 한 판 레이즈 횟수 상한 — 무한 콜/레이즈 방지 */
 export const MAX_RAISES = 3;
-/** 한 판에서 한 좌석이 낼 수 있는 총액 */
+/** 고득점 유저 한 판 총투입 기준: 시작 보유점수의 1% */
+export const MAX_BET_BANKROLL_RATIO = 0.01;
 export const MAX_BET_ANTE_MULTIPLIER = 20;
 export const MAX_TOTAL_BET = 100_000;
 export const MAX_POT = MAX_TOTAL_BET * 4;
 
-/** @returns {number} 고정 NPC 바이인 */
-export function npcStartingChips() {
-  return NPC_START_CHIPS;
+/** @param {number} ante @returns {number} 스테이크별 유한 NPC 바이인 */
+export function npcStartingChips(ante = ANTE) {
+  return Math.max(NPC_START_CHIPS, ante * NPC_BUY_IN_ANTE_MULTIPLIER);
 }
 
-function contributionCapacity(round, seat) {
-  const streetLimit = round.antePaid * MAX_BET_ANTE_MULTIPLIER - seat.contrib;
-  const totalLimit = MAX_TOTAL_BET - (seat.totalContrib ?? seat.contrib);
+/**
+ * @param {number} bankroll
+ * @param {number} ante
+ * @param {number} [opponentStack]
+ */
+export function maxRoundContribution(bankroll, ante = ANTE, opponentStack = Infinity) {
+  const percentageLimit = Math.floor(Math.max(0, Number(bankroll) || 0) * MAX_BET_BANKROLL_RATIO);
+  return Math.min(MAX_TOTAL_BET, opponentStack, percentageLimit, ante * MAX_BET_ANTE_MULTIPLIER);
+}
+
+/**
+ * @param {{ antePaid: number; pot: number; seats: Array<{ isNpc: boolean; folded: boolean; chips: number; contrib: number; totalContrib?: number }> }} round
+ * @param {{ isNpc: boolean; chips: number; contrib: number; totalContrib?: number }} seat
+ */
+export function contributionCapacity(round, seat) {
+  const totalContrib = seat.totalContrib ?? seat.contrib;
+  const bankroll = seat.chips + totalContrib;
+  const opponentStack = seat.isNpc
+    ? Infinity
+    : Math.max(
+        0,
+        ...round.seats
+          .filter((candidate) => candidate.isNpc && !candidate.folded)
+          .map((candidate) => candidate.chips + (candidate.totalContrib ?? candidate.contrib))
+      );
+  const contributionLimit = seat.isNpc
+    ? Math.min(MAX_TOTAL_BET, round.antePaid * MAX_BET_ANTE_MULTIPLIER)
+    : maxRoundContribution(bankroll, round.antePaid, opponentStack);
+  const totalLimit = contributionLimit - totalContrib;
   const potLimit = MAX_POT - round.pot;
-  return Math.max(0, Math.min(seat.chips, streetLimit, totalLimit, potLimit));
+  return Math.max(0, Math.min(seat.chips, totalLimit, potLimit));
 }
 
 function createRoundId() {
@@ -64,19 +92,23 @@ export function createNewRound(userChips, rng = Math.random, npcChipMap = {}) {
   deck = deck.slice(2);
 
   const log = /** @type {string[]} */ ([]);
-  const hasSavedStacks = Object.keys(npcChipMap).length > 0;
 
   for (const profile of NPC_PROFILES) {
     let chips;
+    const hasSavedStack = Object.prototype.hasOwnProperty.call(npcChipMap, profile.id);
     if (
-      hasSavedStacks &&
+      hasSavedStack &&
       Number.isFinite(Number(npcChipMap[profile.id])) &&
-      Number(npcChipMap[profile.id]) > 0
+      Number(npcChipMap[profile.id]) >= 0
     ) {
       chips = Number(npcChipMap[profile.id]);
     } else {
-      chips = npcStartingChips();
-      if (hasSavedStacks) log.push(`${profile.name} 칩 리필 (${chips})`);
+      chips = npcStartingChips(ante);
+    }
+    const busted = hasSavedStack && chips <= 0;
+    if (busted) {
+      chips = npcStartingChips(ante);
+      log.push(`${profile.name} 재입장 (${chips})`);
     }
     seats.push({
       id: profile.id,
@@ -123,14 +155,12 @@ export function createNewRound(userChips, rng = Math.random, npcChipMap = {}) {
   };
 }
 
-/**
- * @param {import('./seotdaState.js').SeotdaRound} round
- */
+/** @param {import('./seotdaState.js').SeotdaRound} round */
 export function refillBustNpcs(round) {
-  for (const s of round.seats) {
-    if (s.isNpc && s.chips <= 0) {
-      s.chips = npcStartingChips();
-      round.log.push(`${s.name} 칩 리필 (${s.chips})`);
+  for (const seat of round.seats) {
+    if (seat.isNpc && seat.chips <= 0) {
+      seat.chips = npcStartingChips(round.antePaid);
+      round.log.push(`${seat.name} 재입장 (${seat.chips})`);
     }
   }
 }
@@ -321,13 +351,6 @@ export function runNpcTurns(round, rng = Math.random) {
     round.log.push('베팅 종료 (상한)');
     showdown(round);
   }
-}
-
-/**
- * @param {import('./seotdaState.js').SeotdaRound} round
- */
-function aliveCount(round) {
-  return round.seats.filter((s) => !s.folded).length;
 }
 
 /**

@@ -35,6 +35,16 @@ describe('game ranking UI', () => {
     expect(billiardsPage).not.toContain("params.set('target'");
   });
 
+  it('keeps billiards game-mode tab highlights mutually exclusive in art mode', () => {
+    expect(billiardsPage).toContain(
+      'class:active={!artMode && currentMode === BILLIARDS_MODES.FOUR_BALL}'
+    );
+    expect(billiardsPage).toContain(
+      'class:active={!artMode && currentMode === BILLIARDS_MODES.POCKET_BALL}'
+    );
+    expect(billiardsPage).toContain('class:active={artMode}');
+  });
+
   it('formats watermelon ranking scores with thousands separators', () => {
     expect(watermelonPage).toContain("Intl.NumberFormat('ko-KR')");
     expect(watermelonPage).toContain('formatScore(myBestScore)');
