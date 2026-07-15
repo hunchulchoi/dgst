@@ -22,7 +22,7 @@ export const NPC_PROFILES = [
 function pressureCallChance(commitRatio, strength, potOdds, bluffCatcher, profileBluff) {
   const requiredStrength = Math.min(0.86, potOdds + 0.18 + commitRatio * 0.15);
   if (strength < requiredStrength) {
-    return Math.min(0.1, (bluffCatcher ? 0.07 : 0.05) + profileBluff * 0.1);
+    return Math.min(0.1, (bluffCatcher ? 0.08 : 0.065) + profileBluff * 0.1);
   }
   const edge = (strength - requiredStrength) / Math.max(0.01, 1 - requiredStrength);
   return Math.min(0.94, 0.55 + edge * 0.45 + (bluffCatcher ? 0.08 : 0));
