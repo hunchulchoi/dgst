@@ -27,6 +27,7 @@
     contrib: number;
     totalContrib?: number;
     lastAction: string | null;
+    lastActionAmount?: number;
     needsAction?: boolean;
     cards: SeotdaCard[];
     handName: string | null;
@@ -37,6 +38,7 @@
     pot: number;
     currentBet: number;
     antePaid: number;
+    openingActorId?: string;
     log: string[];
     winnerId: string | null;
     winnerIds?: string[];
@@ -177,6 +179,14 @@
   function cardText(card: SeotdaCard): string {
     if (card.hidden || card.month === 0) return '?';
     return `${card.month}${card.gwang ? '광' : ''}`;
+  }
+
+  function actionEffectText(seat: SeotdaSeat): string {
+    const amount = Number(seat.lastActionAmount ?? 0);
+    if (seat.lastAction === '레이즈') return `레이즈 +${formatNumber(amount)}`;
+    if (seat.lastAction === '콜') return `콜 ${formatNumber(amount)}`;
+    if (seat.lastAction === '올인') return `올인 +${formatNumber(amount)}`;
+    return seat.lastAction ?? '';
   }
 
   function npcCardVisible(npc: SeotdaSeat, card: SeotdaCard): boolean {
@@ -470,7 +480,12 @@
                     class:winner={revealDone && winnerIds.includes(npc.id)}
                     class:revealing={revealingId === npc.id}
                   >
-                    <div class="fw-semibold">{npc.name}</div>
+                    <div class="fw-semibold">
+                      {npc.name}
+                      {#if round.openingActorId === npc.id}<span class="badge text-bg-warning ms-1"
+                          >선</span
+                        >{/if}
+                    </div>
                     <div class="small opacity-75">{formatNumber(npc.chips)}점</div>
                     <div class="cards my-2">
                       {#each npc.cards as card, i (`${npc.id}-${i}`)}
@@ -490,8 +505,14 @@
                     {#if npc.handName && !hiddenNpcIds.has(npc.id) && isShowdown && !npc.folded && round.revealNpcHands !== false && !userSeat?.folded}
                       <div class="badge text-bg-dark hand-pop">{npc.handName}</div>
                     {/if}
-                    {#if npc.lastAction && !isShowdown}
-                      <div class="bubble small">{npc.lastAction}</div>
+                    {#if npc.lastAction}
+                      <div
+                        class="action-effect"
+                        class:raise={npc.lastAction === '레이즈'}
+                        class:fold={npc.lastAction === '다이'}
+                      >
+                        {actionEffectText(npc)}
+                      </div>
                     {/if}
                   </div>
                 {/each}
@@ -511,7 +532,12 @@
                   class:folded={userSeat.folded}
                   class:winner={revealDone && winnerIds.includes('user')}
                 >
-                  <div class="fw-semibold">나</div>
+                  <div class="fw-semibold">
+                    나
+                    {#if round.openingActorId === 'user'}<span class="badge text-bg-warning ms-1"
+                        >선</span
+                      >{/if}
+                  </div>
                   <div class="small opacity-75">{formatNumber(userSeat.chips)}점</div>
                   <div class="cards my-2">
                     {#each userSeat.cards as card, i (`user-${i}`)}
@@ -547,6 +573,36 @@
                   {#if userSeat.handName && (holeRevealed || isShowdown)}
                     <div class="badge text-bg-primary mb-2 hand-pop">{userSeat.handName}</div>
                   {/if}
+                  {#if userSeat.lastAction}
+                    <div
+                      class="action-effect"
+                      class:raise={userSeat.lastAction === '레이즈'}
+                      class:fold={userSeat.lastAction === '다이'}
+                    >
+                      {actionEffectText(userSeat)}
+                    </div>
+                  {/if}
+                </div>
+              {/if}
+
+              {#if canAct}
+                <div class="turn-action-layer" role="group" aria-label="내 행동 선택">
+                  <div class="turn-label">내 차례</div>
+                  <div class="d-flex gap-2 justify-content-center flex-wrap">
+                    <button class="btn btn-light" disabled={busy} onclick={() => act('die')}
+                      >다이</button
+                    >
+                    <button class="btn btn-primary" disabled={busy} onclick={() => act('call')}>
+                      {toCall === 0 ? '체크' : `콜 ${formatNumber(toCall)}`}
+                    </button>
+                    <button
+                      class="btn btn-danger"
+                      disabled={busy || maxRaise < minRaise}
+                      onclick={() => act('raise')}
+                    >
+                      레이즈 +{formatNumber(Math.min(raiseBet, maxRaise))}
+                    </button>
+                  </div>
                 </div>
               {/if}
             </div>
@@ -657,27 +713,6 @@
                     onclick={() => setRaisePreset('all')}>최대</button
                   >
                 </div>
-                <div class="d-flex gap-2 justify-content-center flex-wrap">
-                  <button
-                    class="btn btn-outline-secondary"
-                    disabled={busy}
-                    onclick={() => act('die')}>다이</button
-                  >
-                  <button
-                    class="btn btn-outline-primary"
-                    disabled={busy}
-                    onclick={() => act('call')}
-                  >
-                    {toCall === 0 ? '체크' : `콜 (${formatNumber(toCall)})`}
-                  </button>
-                  <button
-                    class="btn btn-danger"
-                    disabled={busy || maxRaise < minRaise}
-                    onclick={() => act('raise')}
-                  >
-                    레이즈 ({formatNumber(Math.min(raiseBet, maxRaise))})
-                  </button>
-                </div>
               </div>
             {/if}
 
@@ -744,6 +779,7 @@
 
 <style>
   .seotda-table {
+    position: relative;
     background: linear-gradient(160deg, #1a4d3a 0%, #0f3328 100%);
     color: #f3f0e6;
     min-height: 280px;
@@ -930,12 +966,57 @@
     font-size: 0.9rem;
     white-space: nowrap;
   }
-  .bubble {
-    display: inline-block;
+  .action-effect {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     margin-top: 0.25rem;
-    padding: 0.15rem 0.5rem;
+    min-height: 1.75rem;
+    padding: 0.2rem 0.65rem;
     border-radius: 999px;
-    background: rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.92);
+    color: #163a2f;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+    font-size: 0.8rem;
+    font-weight: 800;
+    white-space: nowrap;
+    animation: actionPop 0.28s ease;
+  }
+  .action-effect.raise {
+    background: #dc3545;
+    color: #fff;
+  }
+  .action-effect.fold {
+    background: #495057;
+    color: #fff;
+  }
+  @keyframes actionPop {
+    from {
+      transform: translateY(5px) scale(0.85);
+      opacity: 0;
+    }
+  }
+  .turn-action-layer {
+    position: sticky;
+    bottom: 0.75rem;
+    z-index: 10;
+    width: fit-content;
+    max-width: calc(100% - 1rem);
+    margin: 1rem auto 0;
+    padding: 0.65rem 0.8rem 0.75rem;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 1rem;
+    background: rgba(9, 24, 19, 0.92);
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(8px);
+  }
+  .turn-label {
+    margin-bottom: 0.45rem;
+    color: #f5c542;
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-align: center;
   }
   .guide-panel {
     background: #f8f6f1;

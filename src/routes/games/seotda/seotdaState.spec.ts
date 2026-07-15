@@ -5,7 +5,7 @@ import { evaluateHand } from './seotdaEngine.js';
 describe('toPublicState hide NPC when user folded', () => {
   it('does not reveal NPC cards if user died', () => {
     const round = {
-      phase: /** @type {'showdown'} */ ('showdown'),
+      phase: /** @type {'showdown'} */ 'showdown',
       pot: 0,
       currentBet: 40,
       turnIndex: 0,
@@ -42,6 +42,7 @@ describe('toPublicState hide NPC when user folded', () => {
           folded: false,
           contrib: 40,
           lastAction: '콜',
+          lastActionAmount: 30,
           needsAction: false
         }
       ]
@@ -51,11 +52,12 @@ describe('toPublicState hide NPC when user folded', () => {
     const npc = pub.seats.find((s) => s.id === 'npc_agwi');
     expect(npc?.cards.every((c) => c.hidden || c.month === 0)).toBe(true);
     expect(npc?.handName).toBeNull();
+    expect(npc?.lastActionAmount).toBe(30);
   });
 
   it('reveals NPC cards when user stayed in', () => {
     const round = {
-      phase: /** @type {'showdown'} */ ('showdown'),
+      phase: /** @type {'showdown'} */ 'showdown',
       pot: 0,
       currentBet: 40,
       turnIndex: 0,

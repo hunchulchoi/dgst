@@ -31,7 +31,7 @@ function pressureCallChance(commitRatio, strength, potOdds, bluffCatcher, profil
 /**
  * @param {import('./seotdaEngine.js').SeotdaCard[]} cards
  * @param {NpcProfile} profile
- * @param {{ toCall: number; chips: number; pot: number; raiseSeen: boolean; forcePressure?: boolean; bluffCatcher?: boolean; activeOpponents?: number; ante?: number }} ctx
+ * @param {{ toCall: number; chips: number; pot: number; raiseSeen: boolean; forcePressure?: boolean; bluffCatcher?: boolean; isOpening?: boolean; activeOpponents?: number; ante?: number }} ctx
  * @param {() => number} [rng]
  * @returns {SeotdaAction}
  */
@@ -48,6 +48,22 @@ export function chooseNpcAction(cards, profile, ctx, rng = Math.random) {
   const canRaise = chips > toCall;
   const commitRatio = toCall > 0 ? toCall / Math.max(chips, 1) : 0;
   const potOdds = toCall > 0 ? toCall / Math.max(1, pot + toCall) : 0;
+
+  // 선 NPC의 오프닝: 약패 뻥카는 성향별, 강패는 밸류 레이즈.
+  if (ctx.isOpening && toCall === 0) {
+    if (headsUpStrength < 0.4) {
+      const bluffChance =
+        profile.style === 'bluffer' ? 0.2 : profile.style === 'gambler' ? 0.14 : 0.05;
+      return canRaise && rng() < bluffChance ? 'raise' : 'call';
+    }
+    if (headsUpStrength >= 0.65) {
+      const valueRaiseChance =
+        profile.style === 'calm' ? 0.7 : profile.style === 'gambler' ? 0.8 : 0.75;
+      return canRaise && rng() < valueRaiseChance ? 'raise' : 'call';
+    }
+    if (profile.style === 'gambler' && canRaise && rng() < 0.12) return 'raise';
+    return 'call';
+  }
 
   // 큰 레이즈는 부담률에 따라 혼합 콜한다. 지정 캐처 외 NPC는 빈도를 낮춘다.
   if (raiseSeen && toCall >= ante * 2 && hand.tier < 80) {

@@ -12,6 +12,7 @@
  *   contrib: number;
  *   totalContrib?: number;
  *   lastAction: string | null;
+ *   lastActionAmount?: number;
  *   needsAction?: boolean;
  * }} SeotdaSeat
  * @typedef {{
@@ -21,6 +22,8 @@
  *   currentBet: number;
  *   seats: SeotdaSeat[];
  *   turnIndex: number;
+ *   openingActorId?: string;
+ *   openingActionTaken?: boolean;
  *   pressureNpcId: string | null;
  *   raiseCount?: number;
  *   log: string[];
@@ -118,6 +121,7 @@ export function toPublicState(round, userSeatId = 'user', evalHand) {
     currentBet: round.currentBet,
     antePaid: round.antePaid,
     turnIndex: round.turnIndex,
+    openingActorId: round.openingActorId ?? 'user',
     log: round.log.slice(-12),
     winnerId: round.winnerId,
     winnerIds: round.winnerIds ?? (round.winnerId ? [round.winnerId] : []),
@@ -145,6 +149,7 @@ export function toPublicState(round, userSeatId = 'user', evalHand) {
         contrib: s.contrib,
         totalContrib: s.totalContrib ?? s.contrib,
         lastAction: s.lastAction,
+        lastActionAmount: s.lastActionAmount ?? 0,
         needsAction: !!s.needsAction,
         cards: reveal ? s.cards : s.cards.map(() => ({ month: 0, gwang: false, hidden: true })),
         handName

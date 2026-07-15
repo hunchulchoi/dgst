@@ -122,9 +122,10 @@ export async function POST(event) {
       }
       // 새 테이블: NPC 칩 초기화
       const prev = getRound(user.email);
+      const openingActorId = prev?.winnerId ?? 'user';
       if (prev) saveNpcStacks(user.email, prev);
       clearRound(user.email);
-      return json(await beginRound(user.email, user.nickname));
+      return json(await beginRound(user.email, user.nickname, openingActorId));
     }
 
     if (action === 'act') {
@@ -181,11 +182,12 @@ export async function POST(event) {
     if (action === 'ack') {
       // 쇼다운 확인 후 NPC 칩 유지한 채 다음 판
       const round = getRound(user.email);
+      const openingActorId = round?.winnerId ?? 'user';
       if (round && round.phase === 'showdown') {
         saveNpcStacks(user.email, round);
         clearRound(user.email);
       }
-      return json(await beginRound(user.email, user.nickname));
+      return json(await beginRound(user.email, user.nickname, openingActorId));
     }
 
     throw error(400, { message: 'action: start | act | ack' });
@@ -199,8 +201,9 @@ export async function POST(event) {
 /**
  * @param {string} email
  * @param {string} nickname
+ * @param {string} [openingActorId]
  */
-async function beginRound(email, nickname) {
+async function beginRound(email, nickname, openingActorId = 'user') {
   let { balance } = await ensureSeotdaBalance(email, nickname);
   if (isSeotdaOopsBalance(balance)) {
     balance = (await resolveSeotdaOops(email, nickname, balance)).balance;
@@ -209,7 +212,8 @@ async function beginRound(email, nickname) {
     throw error(400, { message: '보유 점수가 부족합니다. 오링 후 잠시 기다려 주세요.' });
   }
   const npcChips = getNpcStacks(email);
-  const round = createNewRound(balance, Math.random, npcChips);
+  const round = createNewRound(balance, Math.random, npcChips, openingActorId);
+  runNpcTurns(round);
   chipsBeforeMap.set(email, balance);
   setRound(email, round);
   return { success: true, balance: round.seats[0].chips, round: publicOf(round) };
@@ -231,9 +235,11 @@ function handleSmoke(email, action, body) {
   }
   if (action === 'ack') {
     const prev = getRound(email);
+    const openingActorId = prev?.winnerId ?? 'user';
     if (prev) saveNpcStacks(email, prev);
     clearRound(email);
-    const round = createNewRound(SMOKE_BALANCE, Math.random, getNpcStacks(email));
+    const round = createNewRound(SMOKE_BALANCE, Math.random, getNpcStacks(email), openingActorId);
+    runNpcTurns(round);
     chipsBeforeMap.set(email, SMOKE_BALANCE);
     setRound(email, round);
     return json({ success: true, balance: round.seats[0].chips, round: publicOf(round) });

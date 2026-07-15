@@ -8,6 +8,7 @@ import {
   applyPlayerAction,
   contributionCapacity,
   maxRoundContribution,
+  nextSeatNeedingAction,
   runNpcTurns,
   seotdaAuditLogEntries,
   seotdaHandLogEntries,
@@ -45,6 +46,28 @@ describe('seotdaRound smoke', () => {
     expect(round.phase === 'showdown' || round.seats.some((s) => s.lastAction)).toBe(true);
   });
 
+  it('records the actual amount paid with each player action', () => {
+    const checkedRound = createNewRound(1000, () => 0.5);
+    applyPlayerAction(checkedRound, 'user', 'call');
+    expect(checkedRound.seats[0].lastAction).toBe('체크');
+    expect(checkedRound.seats[0].lastActionAmount).toBe(0);
+
+    const raisedRound = createNewRound(100_000, () => 0.5);
+    applyPlayerAction(raisedRound, 'user', 'raise', 200);
+    expect(raisedRound.seats[0].lastAction).toBe('레이즈');
+    expect(raisedRound.seats[0].lastActionAmount).toBe(200);
+
+    const caller = raisedRound.seats[1];
+    caller.needsAction = true;
+    applyPlayerAction(raisedRound, caller.id, 'call');
+    expect(caller.lastAction).toBe('콜');
+    expect(caller.lastActionAmount).toBe(200);
+
+    const foldedRound = createNewRound(1000, () => 0.5);
+    applyPlayerAction(foldedRound, 'user', 'die');
+    expect(foldedRound.seats[0].lastActionAmount).toBe(0);
+  });
+
   it('repeated call after npc raise eventually reaches showdown (no infinite street)', () => {
     // NPCs always raise when they can → used to re-open street forever
     const alwaysRaise = () => 0.01;
@@ -68,6 +91,27 @@ describe('seotdaRound smoke', () => {
     expect(round.seats.find((s) => s.id === 'npc_agwi')?.chips).toBe(1290);
     expect(round.seats.find((s) => s.id === 'npc_goni')?.chips).toBe(790);
     expect(round.seats.find((s) => s.id === 'npc_madam')?.chips).toBe(40);
+  });
+
+  it('starts from the previous winner and rotates back to the user', () => {
+    const round = createNewRound(120_000, () => 0.99, {}, 'npc_goni');
+
+    expect(round.openingActorId).toBe('npc_goni');
+    expect(nextSeatNeedingAction(round)?.id).toBe('npc_goni');
+    runNpcTurns(round, () => 0.99);
+    expect(round.seats.find((seat) => seat.id === 'npc_goni')?.lastAction).toBeTruthy();
+    expect(round.seats.find((seat) => seat.id === 'npc_madam')?.lastAction).toBeTruthy();
+    expect(round.seats.find((seat) => seat.id === 'npc_agwi')?.lastAction).toBeNull();
+    expect(nextSeatNeedingAction(round)?.id).toBe('user');
+  });
+
+  it('safely handles an exhausted street with no valid turn index', () => {
+    const round = createNewRound(1_000, () => 0.5);
+    round.turnIndex = -1;
+    for (const seat of round.seats) seat.needsAction = false;
+
+    expect(nextSeatNeedingAction(round)).toBeUndefined();
+    expect(() => runNpcTurns(round, () => 0.5)).not.toThrow();
   });
 
   it('re-enters bankrupt NPCs with the current stake-sized stack', () => {
@@ -211,8 +255,8 @@ describe('seotdaRound smoke', () => {
     expect(round.pot).toBe(potBefore);
     expect(round.currentBet).toBe(0);
     expect(round.winnerIds).toEqual([]);
-    // 1,000점 유저는 이미 1% 총투입 상한(ante 10)에 도달했다.
-    expect(user.needsAction).toBe(false);
+    // 총투입 상한에 도달해도 유저에게 체크/다이 선택 차례는 준다.
+    expect(user.needsAction).toBe(true);
     expect(npc1.needsAction).toBe(true);
     expect(npc2.needsAction).toBe(true);
     expect(folded.folded).toBe(true);
@@ -303,6 +347,48 @@ describe('seotdaRound smoke', () => {
 });
 
 describe('seotdaNpc bluff', () => {
+  it('lets an opening Agwi bluff-raise a weak hand without always raising', () => {
+    const profile = NPC_PROFILES.find((candidate) => candidate.style === 'bluffer')!;
+    const weak = [
+      { month: 2, gwang: false },
+      { month: 8, gwang: false }
+    ];
+    const context = {
+      toCall: 0,
+      chips: 3_000,
+      pot: 640,
+      raiseSeen: false,
+      isOpening: true,
+      ante: 160
+    };
+
+    expect(chooseNpcAction(weak, profile, context, () => 0.1)).toBe('raise');
+    expect(chooseNpcAction(weak, profile, context, () => 0.9)).toBe('call');
+  });
+
+  it('keeps opening bluffs style-dependent and value-raises strong hands', () => {
+    const calm = NPC_PROFILES.find((candidate) => candidate.style === 'calm')!;
+    const weak = [
+      { month: 2, gwang: false },
+      { month: 8, gwang: false }
+    ];
+    const strong = [
+      { month: 1, gwang: false },
+      { month: 2, gwang: false }
+    ];
+    const context = {
+      toCall: 0,
+      chips: 3_000,
+      pot: 640,
+      raiseSeen: false,
+      isOpening: true,
+      ante: 160
+    };
+
+    expect(chooseNpcAction(weak, calm, context, () => 0.2)).toBe('call');
+    expect(chooseNpcAction(strong, calm, context, () => 0.5)).toBe('raise');
+  });
+
   it('agwi (bluffer) sometimes raises weak hands when forced, not always', () => {
     const profile = NPC_PROFILES.find((p) => p.style === 'bluffer');
     expect(profile?.name).toBe('아귀');

@@ -70,8 +70,14 @@ function createRoundId() {
  * @param {number} userChips
  * @param {() => number} [rng]
  * @param {Record<string, number>} [npcChipMap] 이전 판 NPC 잔고
+ * @param {string} [openingActorId] 직전 판 승자
  */
-export function createNewRound(userChips, rng = Math.random, npcChipMap = {}) {
+export function createNewRound(
+  userChips,
+  rng = Math.random,
+  npcChipMap = {},
+  openingActorId = 'user'
+) {
   const ante = dynamicAnte(userChips);
   let deck = shuffleDeck(createDeck(), rng);
   /** @type {import('./seotdaState.js').SeotdaSeat[]} */
@@ -86,6 +92,7 @@ export function createNewRound(userChips, rng = Math.random, npcChipMap = {}) {
       contrib: 0,
       totalContrib: 0,
       lastAction: null,
+      lastActionAmount: 0,
       needsAction: true
     }
   ];
@@ -121,6 +128,7 @@ export function createNewRound(userChips, rng = Math.random, npcChipMap = {}) {
       contrib: 0,
       totalContrib: 0,
       lastAction: null,
+      lastActionAmount: 0,
       needsAction: true
     });
     deck = deck.slice(2);
@@ -137,6 +145,11 @@ export function createNewRound(userChips, rng = Math.random, npcChipMap = {}) {
   log.push(`판돈 ${ante}씩 (팟 ${pot})`);
 
   const pressureNpcId = pickPressureNpc(NPC_PROFILES, rng);
+  const openingIndex = Math.max(
+    0,
+    seats.findIndex((seat) => seat.id === openingActorId)
+  );
+  log.push(`${seats[openingIndex].name} 선`);
 
   return {
     roundId: createRoundId(),
@@ -144,7 +157,9 @@ export function createNewRound(userChips, rng = Math.random, npcChipMap = {}) {
     pot,
     currentBet: ante,
     seats,
-    turnIndex: 0,
+    turnIndex: openingIndex,
+    openingActorId: seats[openingIndex].id,
+    openingActionTaken: false,
     pressureNpcId,
     raiseCount: 0,
     log,
@@ -170,7 +185,29 @@ export function refillBustNpcs(round) {
  * @param {import('./seotdaState.js').SeotdaRound} round
  */
 export function nextSeatNeedingAction(round) {
-  return round.seats.find((s) => !s.folded && s.needsAction && contributionCapacity(round, s) > 0);
+  const startIndex =
+    Number.isInteger(round.turnIndex) && round.turnIndex >= 0
+      ? round.turnIndex % round.seats.length
+      : 0;
+  for (let offset = 0; offset < round.seats.length; offset++) {
+    const index = (startIndex + offset) % round.seats.length;
+    const seat = round.seats[index];
+    if (
+      !seat.folded &&
+      seat.needsAction &&
+      (!seat.isNpc || contributionCapacity(round, seat) > 0)
+    ) {
+      return seat;
+    }
+  }
+  return undefined;
+}
+
+/** @param {import('./seotdaState.js').SeotdaRound} round @param {string} actorId */
+function advanceTurn(round, actorId) {
+  const actorIndex = round.seats.findIndex((seat) => seat.id === actorId);
+  round.turnIndex = actorIndex >= 0 ? (actorIndex + 1) % round.seats.length : 0;
+  if (actorId === round.openingActorId) round.openingActionTaken = true;
 }
 
 /**
@@ -211,6 +248,7 @@ export function applyPlayerAction(round, seatId, action, raisePay) {
   if (action === 'die') {
     seat.folded = true;
     seat.lastAction = '다이';
+    seat.lastActionAmount = 0;
     seat.needsAction = false;
     round.log.push(`${seat.name}: 다이`);
   } else if (action === 'call') {
@@ -220,6 +258,7 @@ export function applyPlayerAction(round, seatId, action, raisePay) {
     seat.totalContrib = (seat.totalContrib ?? seat.contrib - pay) + pay;
     round.pot += pay;
     seat.lastAction = pay < toCall ? '올인' : toCall === 0 ? '체크' : '콜';
+    seat.lastActionAmount = pay;
     round.log.push(`${seat.name}: ${seat.lastAction} (${pay})`);
     markActed(round, seatId, false);
   } else if (action === 'raise') {
@@ -230,6 +269,7 @@ export function applyPlayerAction(round, seatId, action, raisePay) {
       seat.totalContrib = (seat.totalContrib ?? seat.contrib - pay) + pay;
       round.pot += pay;
       seat.lastAction = toCall === 0 ? '체크' : '콜';
+      seat.lastActionAmount = pay;
       round.log.push(`${seat.name}: ${seat.lastAction} (레이즈 상한)`);
       markActed(round, seatId, false);
     } else {
@@ -244,12 +284,14 @@ export function applyPlayerAction(round, seatId, action, raisePay) {
       wasRaise = newBet > round.currentBet && pay > toCall;
       round.currentBet = newBet;
       seat.lastAction = pay <= toCall ? '올인' : wasRaise ? '레이즈' : '올인';
+      seat.lastActionAmount = pay;
       round.log.push(`${seat.name}: ${seat.lastAction} (${pay})`);
       markActed(round, seatId, wasRaise);
     }
   } else {
     throw new Error('알 수 없는 액션');
   }
+  advanceTurn(round, seatId);
 }
 
 /**
@@ -279,6 +321,7 @@ function applyNpcSeatAction(round, seat, rng = Math.random) {
       pot: round.pot,
       raiseSeen,
       forcePressure,
+      isOpening: seat.id === round.openingActorId && !round.openingActionTaken,
       bluffCatcher: seat.id === round.pressureNpcId && raiseSeen,
       ante: round.antePaid,
       activeOpponents: round.seats.filter((other) => other.id !== seat.id && !other.folded).length
@@ -302,6 +345,7 @@ function applyNpcSeatAction(round, seat, rng = Math.random) {
     const wasRaise = newBet > round.currentBet && pay > toCall;
     round.currentBet = newBet;
     seat.lastAction = pay <= toCall ? '올인' : wasRaise ? '레이즈' : '올인';
+    seat.lastActionAmount = pay;
     round.log.push(`${seat.name}: ${seat.lastAction}! (${pay})`);
     markActed(round, seat.id, wasRaise);
   } else if (action === 'call') {
@@ -311,14 +355,17 @@ function applyNpcSeatAction(round, seat, rng = Math.random) {
     seat.totalContrib = (seat.totalContrib ?? seat.contrib - pay) + pay;
     round.pot += pay;
     seat.lastAction = toCall === 0 ? '체크' : pay < toCall ? '올인' : '콜';
+    seat.lastActionAmount = pay;
     round.log.push(`${seat.name}: ${seat.lastAction} (${pay})`);
     markActed(round, seat.id, false);
   } else {
     seat.folded = true;
     seat.lastAction = '다이';
+    seat.lastActionAmount = 0;
     seat.needsAction = false;
     round.log.push(`${seat.name}: 다이`);
   }
+  advanceTurn(round, seat.id);
 }
 
 /**
@@ -438,12 +485,13 @@ function restartAfterTie(round, rng) {
   for (const seat of round.seats) {
     seat.contrib = 0;
     seat.lastAction = null;
+    seat.lastActionAmount = 0;
     seat.needsAction = false;
   }
   for (const seat of active) {
     seat.cards = [deck[0], deck[1]];
     deck = deck.slice(2);
-    seat.needsAction = contributionCapacity(round, seat) > 0;
+    seat.needsAction = !seat.isNpc || contributionCapacity(round, seat) > 0;
   }
 
   const activeProfiles = NPC_PROFILES.filter((profile) =>
@@ -453,7 +501,15 @@ function restartAfterTie(round, rng) {
   round.currentBet = 0;
   round.raiseCount = 0;
   round.pressureNpcId = activeProfiles.length > 0 ? pickPressureNpc(activeProfiles, rng) : null;
-  round.turnIndex = round.seats.findIndex((seat) => !seat.folded && seat.needsAction);
+  const openingIndex = round.seats.findIndex(
+    (seat) => seat.id === round.openingActorId && !seat.folded && seat.needsAction
+  );
+  round.turnIndex =
+    openingIndex >= 0
+      ? openingIndex
+      : round.seats.findIndex((seat) => !seat.folded && seat.needsAction);
+  round.openingActorId = round.seats[round.turnIndex]?.id ?? 'user';
+  round.openingActionTaken = false;
   round.winnerId = null;
   round.winnerIds = [];
   round.showdown = false;
