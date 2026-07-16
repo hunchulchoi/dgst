@@ -93,7 +93,7 @@ describe('seotda betting UI', () => {
     expect(pageSource).toContain("fetch('/games/seotda/share'");
     expect(pageSource).toContain('게시판 공유');
     expect(pageSource).toContain(
-      '{#if isShowdown && revealDone && !ddaengLayerOpen && !shareOpen}'
+			'{#if isShowdown && revealDone && !ddaengLayerOpen && !shareOpen && !resultLayerDismissed}'
     );
     expect(pageSource).toContain('class="result-action-backdrop"');
     expect(pageSource).toContain('class="result-action-layer"');

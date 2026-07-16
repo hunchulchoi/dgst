@@ -197,6 +197,7 @@ export async function POST(event) {
     const content = data.get('content')?.toString()?.trim();
     const parentCommentId = data.get('parentCommentId')?.toString();
     const rewardGame = data.get('game')?.toString() === 'seotda' ? 'seotda' : 'slot';
+    const automatic = data.get('automatic')?.toString() === '1';
 
     if (!content || content.length === 0) {
       throw error(400, { message: '댓글 내용을 입력해주세요.' });
@@ -306,7 +307,7 @@ export async function POST(event) {
 
     // 댓글 작성 보상: 100점 지급 (하루 10개까지만)
     let rewardGiven = false;
-    if (todayRewardCount < 10) {
+    if (!automatic && todayRewardCount < 10) {
       if (rewardGame === 'seotda') {
         const newBalance = (await getSeotdaBalance(email)) + 100;
         await writeSeotdaScore(email, nickname, newBalance, {

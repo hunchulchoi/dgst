@@ -122,6 +122,9 @@
   let shareTitle = $state('');
   let shareNote = $state('');
   let commentRefreshToken = $state(0);
+  let resultLayerDismissed = $state(false);
+  let bustRoundPending = $state(false);
+  let oopsRemainingMs = $state(Number(data.oopsInfo?.remainingMs ?? 0));
 
   const PEEL_THRESHOLD = 0.55;
   const PEEL_MAX_PX = 220;
@@ -142,6 +145,7 @@
   /** @type {ReturnType<typeof setTimeout>[]} */
   let timers: ReturnType<typeof setTimeout>[] = [];
   let topupRefreshTimer: ReturnType<typeof setTimeout> | null = null;
+  let oopsCountdownTimer: ReturnType<typeof setInterval> | null = null;
   let topupRefreshRunning = false;
 
   const formatNumber = (value: number | null | undefined): string => {
@@ -173,6 +177,7 @@
   const userChipDelta = $derived(Number(round?.userChipDelta ?? 0));
   const userChipsBefore = $derived(Number(round?.userChipsBefore ?? 0));
   const userChipsAfter = $derived(Number(round?.userChipsAfter ?? userSeat?.chips ?? 0));
+  const isBustResult = $derived(isShowdown && userChipsAfter < ANTE);
   const ddaengWinner = $derived(
     round?.seats.find((seat) => seat.id === round?.ddaengWinnerId) ?? null
   );
@@ -218,18 +223,46 @@
     topupRefreshTimer = null;
   }
 
+  function clearOopsCountdown() {
+    if (oopsCountdownTimer) clearInterval(oopsCountdownTimer);
+    oopsCountdownTimer = null;
+  }
+
+  function startOopsCountdown(remainingMs: number) {
+    clearOopsCountdown();
+    const deadline = Date.now() + Math.max(0, remainingMs);
+    const update = () => {
+      oopsRemainingMs = Math.max(0, deadline - Date.now());
+      if (oopsRemainingMs <= 0) {
+        clearOopsCountdown();
+        void refreshGameState();
+      }
+    };
+    update();
+    if (oopsRemainingMs > 0) oopsCountdownTimer = setInterval(update, 250);
+  }
+
+  function formatOopsCountdown(remainingMs: number): string {
+    const totalSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  }
+
   function scheduleTopupRefresh(delayMs: number) {
     clearTopupRefreshTimer();
     topupRefreshTimer = setTimeout(() => void refreshGameState(), Math.max(250, delayMs));
   }
 
   onMount(() => {
+    if (oopsInfo?.waiting) startOopsCountdown(Number(oopsInfo.remainingMs ?? 0));
     if (balance < ANTE) void refreshGameState();
   });
 
   onDestroy(() => {
     clearTimers();
     clearTopupRefreshTimer();
+    clearOopsCountdown();
   });
 
   function cardText(card: SeotdaCard): string {
@@ -406,12 +439,14 @@
       next && next.phase === 'betting' && (!round || wasShowdown || round.phase !== 'betting');
 
     round = next;
+    if (nowShowdown && !wasShowdown) resultLayerDismissed = false;
 
     if (nowShowdown && fromShowdownAct) {
       holeRevealed = true;
       peelOpen = false;
       startShowdownReveal(next);
     } else if (isNewDeal) {
+      bustRoundPending = false;
       startDealFlip();
     } else if (!nowShowdown) {
       hiddenNpcIds = new Set();
@@ -434,9 +469,13 @@
       oopsInfo = next.oopsInfo ?? null;
 
       if (oopsInfo?.waiting) {
-        scheduleTopupRefresh(Number(oopsInfo.remainingMs ?? 5_000) + 250);
+        const remainingMs = Number(oopsInfo.remainingMs ?? 5_000);
+        startOopsCountdown(remainingMs);
+        scheduleTopupRefresh(remainingMs + 250);
       } else {
         clearTopupRefreshTimer();
+        clearOopsCountdown();
+        oopsRemainingMs = 0;
       }
     } catch (err) {
       console.error('[seotda refresh]', err);
@@ -451,6 +490,7 @@
       const form = new FormData();
       form.set('content', content);
       form.set('game', 'seotda');
+      form.set('automatic', '1');
       const response = await fetch('/games/slot/comment', { method: 'POST', body: form });
       if (!response.ok) {
         const result = await response.json().catch(() => ({}));
@@ -459,6 +499,15 @@
       commentRefreshToken += 1;
     } catch (error) {
       console.error('[seotda automatic comment]', error);
+    }
+  }
+
+  function closeResultLayer() {
+    resultLayerDismissed = true;
+    if (isBustResult) {
+      bustRoundPending = true;
+      round = null;
+      resetRaiseBet(null, balance);
     }
   }
 
@@ -681,10 +730,14 @@
               <p class="mb-3">아귀 · 고니 · 정마담 이 기다림.</p>
               <button
                 class="btn btn-primary btn-lg rounded-pill px-4"
-                disabled={busy}
-                onclick={startRound}
+                disabled={busy || !!oopsInfo?.waiting || oopsRemainingMs > 0}
+                onclick={bustRoundPending ? nextRound : startRound}
               >
-                판 시작 (판돈 {formatNumber(roundAnte)})
+                {#if oopsInfo?.waiting || oopsRemainingMs > 0}
+                  판 시작 {formatOopsCountdown(oopsRemainingMs)}
+                {:else}
+                  판 시작 (판돈 {formatNumber(roundAnte)})
+                {/if}
               </button>
             </div>
           {:else}
@@ -975,7 +1028,7 @@
               </div>
             {/if}
 
-            {#if isShowdown && revealDone && !ddaengLayerOpen && !shareOpen}
+            {#if isShowdown && revealDone && !ddaengLayerOpen && !shareOpen && !resultLayerDismissed}
               <div
                 class="result-action-backdrop"
                 role="dialog"
@@ -1009,15 +1062,33 @@
                   <div class="result-action-balance">
                     {formatNumber(userChipsBefore)}점 → {formatNumber(userChipsAfter)}점
                   </div>
+                  {#if isBustResult}
+                    <div
+                      class="alert alert-warning py-2 px-3 mb-3 result-action-oops"
+                      role="status"
+                    >
+                      오링! 5분 뒤 700점이 리필됩니다.
+                    </div>
+                  {/if}
                   <div class="result-action-buttons">
                     <button class="btn btn-outline-light" disabled={busy} onclick={openShare}>
                       <span aria-hidden="true">🎴</span>
                       게시판 공유
                     </button>
-                    <button class="btn btn-warning fw-bold" disabled={busy} onclick={nextRound}>
-                      다음 판
-                      <span aria-hidden="true">→</span>
-                    </button>
+                    {#if isBustResult}
+                      <button
+                        class="btn btn-warning fw-bold"
+                        disabled={busy}
+                        onclick={closeResultLayer}
+                      >
+                        닫기
+                      </button>
+                    {:else}
+                      <button class="btn btn-warning fw-bold" disabled={busy} onclick={nextRound}>
+                        다음 판
+                        <span aria-hidden="true">→</span>
+                      </button>
+                    {/if}
                   </div>
                 </div>
               </div>

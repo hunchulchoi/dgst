@@ -19,6 +19,23 @@ describe('seotda shared game comments', () => {
     expect(seotdaPage).toContain('writeRoundAutomaticComments(next, balance)');
     expect(seotdaPage).toContain('🃏 섯다 땡!');
     expect(seotdaPage).toContain('😢 섯다 오링!');
+    expect(seotdaPage).toContain("form.set('automatic', '1')");
     expect(seotdaPage).toContain("fetch('/games/slot/comment'");
+    expect(commentRoute).toContain('!automatic && todayRewardCount < 10');
+  });
+
+  it('closes the hand-complete layer instead of starting a busted hand', () => {
+    expect(seotdaPage).toContain('const isBustResult = $derived');
+    expect(seotdaPage).toContain('오링! 5분 뒤 700점이 리필됩니다.');
+    expect(seotdaPage).toContain('onclick={closeResultLayer}');
+    expect(seotdaPage).toContain('{#if isBustResult}');
+  });
+
+  it('shows the refill countdown on the disabled start button', () => {
+    expect(seotdaPage).toContain('function startOopsCountdown');
+    expect(seotdaPage).toContain('function formatOopsCountdown');
+    expect(seotdaPage).toContain('판 시작 {formatOopsCountdown(oopsRemainingMs)}');
+    expect(seotdaPage).toContain('onclick={bustRoundPending ? nextRound : startRound}');
+    expect(seotdaPage).toContain('disabled={busy || !!oopsInfo?.waiting || oopsRemainingMs > 0}');
   });
 });
