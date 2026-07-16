@@ -15,9 +15,10 @@
   interface Props {
     loggedIn?: boolean;
     refreshToken?: number;
+    game?: 'slot' | 'seotda';
   }
 
-  let { loggedIn = false, refreshToken = 0 }: Props = $props();
+  let { loggedIn = false, refreshToken = 0, game = 'seotda' }: Props = $props();
   let comments = $state<GameComment[]>([]);
   let content = $state('');
   let replyContent = $state<Record<string, string>>({});
@@ -50,6 +51,7 @@
     loadingMore = true;
     try {
       const query = new URLSearchParams({ page: String(nextPage), limit: '50' });
+      query.set('game', game);
       const response = await fetch(`/games/slot/comment?${query}`, {
         cache: 'no-store',
         headers: { 'Cache-Control': 'no-cache' }
@@ -75,7 +77,7 @@
     try {
       const form = new FormData();
       form.set('content', text);
-      form.set('game', 'seotda');
+      form.set('game', game);
       if (parentId) form.set('parentCommentId', parentId);
       const response = await fetch('/games/slot/comment', { method: 'POST', body: form });
       const result = await response.json().catch(() => ({}));
@@ -133,13 +135,13 @@
 
 <section
   class="shared-comments card shadow-sm rounded-4 border-0 mt-3"
-  aria-label="뺑뺑이·섯다 리플"
+  aria-label={game === 'seotda' ? '섯다 리플' : '뺑뺑이 리플'}
 >
   <div class="card-body">
     <div class="d-flex justify-content-between align-items-center gap-2 mb-3">
       <div>
-        <h5 class="mb-1">뺑뺑이 · 섯다 리플</h5>
-        <div class="small text-muted">리플 보상 100점 · 합산 하루 10개</div>
+        <h5 class="mb-1">{game === 'seotda' ? '섯다' : '뺑뺑이'} 리플</h5>
+        <div class="small text-muted">리플 보상 100점 · 하루 10개</div>
       </div>
       <span class="badge text-bg-secondary">{total}</span>
     </div>

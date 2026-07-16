@@ -13,22 +13,27 @@ import {
   tryAcquireSubmitDedup
 } from '$lib/server/submitDedup.js';
 
-// 게임용 댓글: boardId='slot', articleId='slot' 사용
-const SLOT_BOARD_ID = 'slot';
-const SLOT_ARTICLE_ID = 'slot';
-const SLOT_ARTICLE_TITLE = '뺑뺑이';
+const GAME_ARTICLES = {
+  slot: { boardId: 'slot', articleId: 'slot', title: '뺑뺑이' },
+  seotda: { boardId: 'seotda', articleId: 'seotda', title: '섯다' }
+};
 
-/** @param {ReturnType<typeof getPrisma>} prisma */
-async function ensureSlotArticle(prisma) {
+/** @param {string | null | undefined} game */
+function getGameArticle(game) {
+  return GAME_ARTICLES[game === 'seotda' ? 'seotda' : 'slot'];
+}
+
+/** @param {ReturnType<typeof getPrisma>} prisma @param {{ boardId: string; articleId: string; title: string }} gameArticle */
+async function ensureGameArticle(prisma, gameArticle) {
   await prisma.article.upsert({
-    where: { id: SLOT_ARTICLE_ID },
+    where: { id: gameArticle.articleId },
     update: {},
     create: {
-      id: SLOT_ARTICLE_ID,
+      id: gameArticle.articleId,
       email: 'system@dgst.me',
-      nickname: '뺑뺑이',
-      boardId: SLOT_BOARD_ID,
-      title: SLOT_ARTICLE_TITLE,
+      nickname: gameArticle.title,
+      boardId: gameArticle.boardId,
+      title: gameArticle.title,
       content: '',
       state: 'write'
     }
@@ -44,6 +49,7 @@ export async function GET(event) {
 
   const session = await getGameSession(event);
   const email = typeof session?.user?.email === 'string' ? session.user.email : '';
+  const gameArticle = getGameArticle(url.searchParams.get('game'));
   const perPageParam = Number(url.searchParams.get('limit') ?? '50');
   const pageParam = Number(url.searchParams.get('page') ?? '1');
   const alarmId = url.searchParams.get('alarm') ?? '';
@@ -57,8 +63,8 @@ export async function GET(event) {
 
     const rows = await getPrisma().comment.findMany({
       where: {
-        boardId: SLOT_BOARD_ID,
-        articleId: SLOT_ARTICLE_ID,
+        boardId: gameArticle.boardId,
+        articleId: gameArticle.articleId,
         createdAt: { gte: oneDayAgo }
       },
       orderBy: { createdAt: 'desc' }
@@ -157,9 +163,9 @@ export async function GET(event) {
 
       // 알림 읽음 처리
       const targetAlarmId =
-        alarmId === SLOT_ARTICLE_ID || alarmId.startsWith(`${SLOT_ARTICLE_ID}_`)
+        alarmId === gameArticle.articleId || alarmId.startsWith(`${gameArticle.articleId}_`)
           ? alarmId
-          : SLOT_ARTICLE_ID;
+          : gameArticle.articleId;
       await markAsRead(email, targetAlarmId);
     } else {
       pagedComments.forEach((c) => {
@@ -197,6 +203,7 @@ export async function POST(event) {
     const content = data.get('content')?.toString()?.trim();
     const parentCommentId = data.get('parentCommentId')?.toString();
     const rewardGame = data.get('game')?.toString() === 'seotda' ? 'seotda' : 'slot';
+    const gameArticle = getGameArticle(rewardGame);
     const automatic = data.get('automatic')?.toString() === '1';
 
     if (!content || content.length === 0) {
@@ -229,8 +236,8 @@ export async function POST(event) {
     }
 
     const fingerprint = buildSubmitFingerprint([
-      SLOT_BOARD_ID,
-      SLOT_ARTICLE_ID,
+      gameArticle.boardId,
+      gameArticle.articleId,
       parentCommentId ?? '',
       content
     ]);
@@ -238,8 +245,8 @@ export async function POST(event) {
     if (!acquired) {
       const dup = await findRecentDuplicateComment({
         email,
-        articleId: SLOT_ARTICLE_ID,
-        boardId: SLOT_BOARD_ID,
+        articleId: gameArticle.articleId,
+        boardId: gameArticle.boardId,
         content,
         parentCommentId: parentCommentId ?? ''
       });
@@ -266,7 +273,7 @@ export async function POST(event) {
     const todayEnd = new Date(Date.UTC(kstYear, kstMonth, kstDate, 23, 59, 59, 999) - kstOffset);
 
     const prisma = getPrisma();
-    await ensureSlotArticle(prisma);
+    await ensureGameArticle(prisma, gameArticle);
 
     // 뺑뺑이·섯다 공용 리플 보상은 두 게임 합산 하루 10개까지만 지급한다.
     const todayRewardCount = await prisma.gameScore.count({
@@ -286,8 +293,8 @@ export async function POST(event) {
       parentComment = await findCommentById(parentCommentId);
       if (
         !parentComment ||
-        parentComment.boardId !== SLOT_BOARD_ID ||
-        parentComment.articleId !== SLOT_ARTICLE_ID
+        parentComment.boardId !== gameArticle.boardId ||
+        parentComment.articleId !== gameArticle.articleId
       ) {
         throw error(400, { message: '부모 댓글을 찾을 수 없습니다.' });
       }
@@ -297,8 +304,8 @@ export async function POST(event) {
       email,
       nickname,
       photo,
-      boardId: SLOT_BOARD_ID,
-      articleId: SLOT_ARTICLE_ID,
+      boardId: gameArticle.boardId,
+      articleId: gameArticle.articleId,
       content,
       depth: parentComment ? parentComment.depth + 1 : 1,
       parentCommentId: parentCommentId || undefined,
@@ -340,15 +347,15 @@ export async function POST(event) {
       rewardGiven = true;
     }
 
-    const title = '뺑뺑이';
+    const title = gameArticle.title;
 
     // 대댓글인 경우: 부모 댓글 작성자에게 알림
     if (parentComment && parentComment.email !== email) {
       await upsertAlarm({
         email: parentComment.email,
-        articleId: SLOT_ARTICLE_ID,
+        articleId: gameArticle.articleId,
         title,
-        boardId: SLOT_BOARD_ID,
+        boardId: gameArticle.boardId,
         parentCommentId: parentCommentId,
         parentCommentContent: parentComment.content,
         newCommentId: comment.id

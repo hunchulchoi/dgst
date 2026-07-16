@@ -1194,7 +1194,7 @@
       </div>
     </div>
   </div>
-  <SharedGameComments loggedIn={isLoggedIn} {commentRefreshToken} />
+  <SharedGameComments loggedIn={isLoggedIn} refreshToken={commentRefreshToken} game="seotda" />
 </div>
 
 <style>
