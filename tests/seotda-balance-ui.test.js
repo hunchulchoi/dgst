@@ -17,8 +17,9 @@ describe('seotda betting UI', () => {
     );
   });
 
-  it('asks Codex app-server to decide Spark intervention without a random chance', () => {
-    expect(serverSource).toContain('await decideSparkIntervention');
+  it('asks Codex app-server asynchronously to decide Spark intervention without a random chance', () => {
+    expect(serverSource).toContain('const pending = decideSparkIntervention(context)');
+    expect(serverSource).toContain('refreshSparkDecisionInBackground(email, sparkContext)');
     expect(serverSource).toContain('getSeotdaSparkHistory');
     expect(serverSource).toContain('sparkDecision');
   });
