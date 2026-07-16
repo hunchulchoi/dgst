@@ -18,6 +18,9 @@ export const NPC_BUY_IN_ANTE_MULTIPLIER = 20;
 export const MAX_RAISES = 3;
 /** 고득점 유저 한 판 총투입 기준: 시작 보유점수의 1% */
 export const MAX_BET_BANKROLL_RATIO = 0.01;
+/** 저점 유저는 성장 여지를 위해 최대 10%, 단 100점까지만 허용 */
+export const LOW_BANKROLL_BET_RATIO = 0.1;
+export const LOW_BANKROLL_BET_CAP = 100;
 export const MAX_BET_ANTE_MULTIPLIER = 20;
 export const MAX_TOTAL_BET = 100_000;
 export const MAX_POT = MAX_TOTAL_BET * 4;
@@ -33,8 +36,14 @@ export function npcStartingChips(ante = ANTE) {
  * @param {number} [opponentStack]
  */
 export function maxRoundContribution(bankroll, ante = ANTE, opponentStack = Infinity) {
-  const percentageLimit = Math.floor(Math.max(0, Number(bankroll) || 0) * MAX_BET_BANKROLL_RATIO);
-  return Math.min(MAX_TOTAL_BET, opponentStack, percentageLimit, ante * MAX_BET_ANTE_MULTIPLIER);
+  const safeBankroll = Math.max(0, Number(bankroll) || 0);
+  const bankrollLimit = Math.floor(
+    Math.max(
+      safeBankroll * MAX_BET_BANKROLL_RATIO,
+      Math.min(safeBankroll * LOW_BANKROLL_BET_RATIO, LOW_BANKROLL_BET_CAP)
+    )
+  );
+  return Math.min(MAX_TOTAL_BET, opponentStack, bankrollLimit, ante * MAX_BET_ANTE_MULTIPLIER);
 }
 
 /**

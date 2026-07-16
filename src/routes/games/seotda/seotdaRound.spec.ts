@@ -158,6 +158,24 @@ describe('seotdaRound smoke', () => {
     expect(maxRoundContribution(1_000_000, round.antePaid)).toBe(10_000);
   });
 
+  it('allows low bankrolls up to 10% with a 100-point absolute cap', () => {
+    expect(maxRoundContribution(1_000, 10)).toBe(100);
+    expect(maxRoundContribution(2_000, 10)).toBe(100);
+    expect(maxRoundContribution(5_000, 10)).toBe(100);
+    expect(maxRoundContribution(10_000, 10)).toBe(100);
+    expect(maxRoundContribution(20_000, 10)).toBe(200);
+  });
+
+  it('counts the ante inside the low-bankroll contribution cap', () => {
+    const round = createNewRound(1_000, () => 0.5, {});
+    const user = round.seats[0];
+
+    expect(user.totalContrib).toBe(10);
+    expect(contributionCapacity(round, user)).toBe(90);
+    applyPlayerAction(round, 'user', 'raise', user.chips);
+    expect(user.totalContrib).toBe(100);
+  });
+
   it('caps the user by the largest active NPC stack', () => {
     expect(maxRoundContribution(1_000_000, 2_800, 7_500)).toBe(7_500);
   });
