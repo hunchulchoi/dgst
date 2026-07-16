@@ -10,7 +10,17 @@ import {
   shuffleDeck,
   cardLabel
 } from './seotdaEngine.js';
-import { NPC_PROFILES, chooseNpcAction, pickPressureNpc, npcRaiseChips } from './seotdaNpc.js';
+import {
+  NPC_PROFILES,
+  SPARK_TAUNT_COOLDOWN_ROUNDS,
+  chooseNpcAction,
+  npcRaiseChips,
+  pickLowBalanceSparkIntervention,
+  pickPressureNpc,
+  pickSparkTaunt,
+  publicBluffSuspicionChance,
+  sparkTauntForAction
+} from './seotdaNpc.js';
 
 export const NPC_START_CHIPS = 2000;
 export const NPC_BUY_IN_ANTE_MULTIPLIER = 20;
@@ -80,12 +90,14 @@ function createRoundId() {
  * @param {() => number} [rng]
  * @param {Record<string, number>} [npcChipMap] 이전 판 NPC 잔고
  * @param {string} [openingActorId] 직전 판 승자
+ * @param {number} [sparkTauntCooldown] 도발 노출 남은 판 수
  */
 export function createNewRound(
   userChips,
   rng = Math.random,
   npcChipMap = {},
-  openingActorId = 'user'
+  openingActorId = 'user',
+  sparkTauntCooldown = 0
 ) {
   const ante = dynamicAnte(userChips);
   let deck = shuffleDeck(createDeck(), rng);
@@ -154,6 +166,8 @@ export function createNewRound(
   log.push(`판돈 ${ante}씩 (팟 ${pot})`);
 
   const pressureNpcId = pickPressureNpc(NPC_PROFILES, rng);
+  const sparkIntervention = pickLowBalanceSparkIntervention(userChips, rng);
+  const sparkTaunt = pickSparkTaunt(sparkIntervention, sparkTauntCooldown, rng, pressureNpcId);
   const openingIndex = Math.max(
     0,
     seats.findIndex((seat) => seat.id === openingActorId)
@@ -170,6 +184,15 @@ export function createNewRound(
     openingActorId: seats[openingIndex].id,
     openingActionTaken: false,
     pressureNpcId,
+    sparkIntervention,
+    sparkNpcId: sparkIntervention ? pressureNpcId : null,
+    sparkTaunt,
+    sparkTaunted: false,
+    sparkTauntCooldown: Math.max(0, sparkTauntCooldown),
+    lastAggressorId: null,
+    lastRaisePay: 0,
+    potBeforeRaise: pot,
+    userRaiseCount: 0,
     raiseCount: 0,
     log,
     winnerId: null,
@@ -282,6 +305,7 @@ export function applyPlayerAction(round, seatId, action, raisePay) {
       round.log.push(`${seat.name}: ${seat.lastAction} (레이즈 상한)`);
       markActed(round, seatId, false);
     } else {
+      const potBeforeRaise = round.pot;
       const available = contributionCapacity(round, seat);
       const amount = raiseAmount(toCall, available, raisePay, round.antePaid);
       const pay = Math.min(amount, seat.chips);
@@ -295,6 +319,12 @@ export function applyPlayerAction(round, seatId, action, raisePay) {
       seat.lastAction = pay <= toCall ? '올인' : wasRaise ? '레이즈' : '올인';
       seat.lastActionAmount = pay;
       round.log.push(`${seat.name}: ${seat.lastAction} (${pay})`);
+      if (wasRaise) {
+        round.lastAggressorId = seatId;
+        round.lastRaisePay = pay;
+        round.potBeforeRaise = potBeforeRaise;
+        if (seatId === 'user') round.userRaiseCount = (round.userRaiseCount ?? 0) + 1;
+      }
       markActed(round, seatId, wasRaise);
     }
   } else {
@@ -320,6 +350,15 @@ function applyNpcSeatAction(round, seat, rng = Math.random) {
   const raiseSeen = (round.raiseCount ?? 0) > 0;
   const forcePressure =
     seat.id === round.pressureNpcId && !raiseSeen && (round.raiseCount ?? 0) < MAX_RAISES;
+  const sparkAssigned = round.sparkIntervention && seat.id === round.sparkNpcId;
+  const bluffSuspicion = sparkAssigned
+    ? publicBluffSuspicionChance({
+        lastAggressorId: round.lastAggressorId,
+        lastRaisePay: round.lastRaisePay,
+        potBeforeRaise: round.potBeforeRaise,
+        userRaiseCount: round.userRaiseCount
+      })
+    : 0;
 
   let action = chooseNpcAction(
     seat.cards,
@@ -330,6 +369,8 @@ function applyNpcSeatAction(round, seat, rng = Math.random) {
       pot: round.pot,
       raiseSeen,
       forcePressure,
+      sparkIntervention: sparkAssigned,
+      suspectedUserBluff: bluffSuspicion > 0 && rng() < bluffSuspicion,
       isOpening: seat.id === round.openingActorId && !round.openingActionTaken,
       bluffCatcher: seat.id === round.pressureNpcId && raiseSeen,
       ante: round.antePaid,
@@ -343,6 +384,7 @@ function applyNpcSeatAction(round, seat, rng = Math.random) {
   }
 
   if (action === 'raise') {
+    const potBeforeRaise = round.pot;
     const available = contributionCapacity(round, seat);
     const strongHand = handStrength(evaluateHand(seat.cards)) >= 0.65;
     const pay = npcRaiseChips(toCall, available, rng, round.antePaid, strongHand);
@@ -356,6 +398,11 @@ function applyNpcSeatAction(round, seat, rng = Math.random) {
     seat.lastAction = pay <= toCall ? '올인' : wasRaise ? '레이즈' : '올인';
     seat.lastActionAmount = pay;
     round.log.push(`${seat.name}: ${seat.lastAction}! (${pay})`);
+    if (wasRaise) {
+      round.lastAggressorId = seat.id;
+      round.lastRaisePay = pay;
+      round.potBeforeRaise = potBeforeRaise;
+    }
     markActed(round, seat.id, wasRaise);
   } else if (action === 'call') {
     const pay = Math.min(toCall, contributionCapacity(round, seat));
@@ -374,13 +421,35 @@ function applyNpcSeatAction(round, seat, rng = Math.random) {
     seat.needsAction = false;
     round.log.push(`${seat.name}: 다이`);
   }
+  const taunt = sparkTauntForAction(
+    {
+      active: !!round.sparkIntervention,
+      npcId: round.sparkNpcId ?? null,
+      taunt: round.sparkTaunt ?? null,
+      taunted: !!round.sparkTaunted
+    },
+    seat.id,
+    seat.lastAction ?? ''
+  );
+  if (taunt) {
+    round.sparkTaunted = true;
+    round.log.push(`${seat.name}: “${taunt}”`);
+  }
   advanceTurn(round, seat.id);
   return {
     seatId: seat.id,
     name: seat.name,
     action: seat.lastAction ?? '',
-    amount: seat.lastActionAmount ?? 0
+    amount: seat.lastActionAmount ?? 0,
+    taunt
   };
+}
+
+/** @param {import('./seotdaState.js').SeotdaRound | undefined} round */
+export function sparkTauntCooldownAfterRound(round) {
+  if (!round) return 0;
+  if (round.sparkTaunted) return SPARK_TAUNT_COOLDOWN_ROUNDS;
+  return Math.max(0, Number(round.sparkTauntCooldown ?? 0) - 1);
 }
 
 /**
@@ -389,7 +458,7 @@ function applyNpcSeatAction(round, seat, rng = Math.random) {
  * @param {() => number} [rng]
  */
 export function runNpcTurns(round, rng = Math.random) {
-  /** @type {Array<{ seatId: string; name: string; action: string; amount: number }>} */
+  /** @type {Array<{ seatId: string; name: string; action: string; amount: number; taunt?: string | null }>} */
   const actions = [];
   if (round.phase !== 'betting') return actions;
 

@@ -55,6 +55,7 @@
     name: string;
     action: string;
     amount: number;
+    taunt?: string | null;
   }
 
   let { data }: SeotdaPageProps = $props();
@@ -610,6 +611,9 @@
                       >
                         {npcActionText(preview)}
                       </div>
+                      {#if preview.taunt}
+                        <div class="spark-taunt" role="status">“{preview.taunt}”</div>
+                      {/if}
                     {:else if npc.lastAction}
                       <div
                         class="action-effect"
@@ -1179,6 +1183,22 @@
   .action-effect.thinking {
     opacity: 0.82;
     animation: pulse 0.8s ease-in-out infinite;
+  }
+  .spark-taunt {
+    position: relative;
+    z-index: 2;
+    width: max-content;
+    max-width: min(16rem, 70vw);
+    margin: 0.4rem auto 0;
+    padding: 0.45rem 0.7rem;
+    border: 1px solid rgba(255, 210, 80, 0.8);
+    border-radius: 0.75rem;
+    background: rgba(18, 18, 18, 0.94);
+    color: #ffd75e;
+    font-size: 0.78rem;
+    font-weight: 800;
+    line-height: 1.35;
+    animation: actionPop 0.28s ease;
   }
   @keyframes actionPop {
     from {

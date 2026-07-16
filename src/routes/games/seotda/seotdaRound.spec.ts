@@ -15,7 +15,16 @@ import {
   showdown,
   userChipResult
 } from './seotdaRound.js';
-import { chooseNpcAction, NPC_PROFILES, npcRaiseChips } from './seotdaNpc.js';
+import {
+  chooseNpcAction,
+  NPC_PROFILES,
+  npcRaiseChips,
+  pickLowBalanceSparkIntervention,
+  pickSparkTaunt,
+  publicBluffSuspicionChance,
+  sparkBluffReraiseChance,
+  sparkTauntForAction
+} from './seotdaNpc.js';
 
 describe('seotdaRound smoke', () => {
   it('start → die → showdown or continue', () => {
@@ -374,6 +383,63 @@ describe('seotdaRound smoke', () => {
 });
 
 describe('seotdaNpc bluff', () => {
+  it('lets Spark intervene in 6% of sub-100k rounds only', () => {
+    expect(pickLowBalanceSparkIntervention(99_999, () => 0.059)).toBe(true);
+    expect(pickLowBalanceSparkIntervention(99_999, () => 0.06)).toBe(false);
+    expect(pickLowBalanceSparkIntervention(100_000, () => 0)).toBe(false);
+  });
+
+  it('offers a Spark taunt on 18% of eligible intervention rounds with no cooldown', () => {
+    const firstLineRolls = [0.179, 0];
+    expect(pickSparkTaunt(true, 0, () => firstLineRolls.shift() ?? 0)).toBe('어디서 약을 팔아?');
+    expect(pickSparkTaunt(true, 0, () => 0.18)).toBeNull();
+    expect(pickSparkTaunt(true, 1, () => 0)).toBeNull();
+    expect(pickSparkTaunt(false, 0, () => 0)).toBeNull();
+
+    const rolls = [0.1, 0.1];
+    expect(pickSparkTaunt(true, 0, () => rolls.shift() ?? 0)).toBe('내가 빙다리 핫바지로 보이냐?');
+  });
+
+  it('shows a Spark taunt only for its NPC betting action and at most once', () => {
+    const intervention = {
+      active: true,
+      npcId: 'npc_agwi',
+      taunt: '쫄리면 뒤지시던가.',
+      taunted: false
+    };
+
+    expect(sparkTauntForAction(intervention, 'npc_goni', '레이즈')).toBeNull();
+    expect(sparkTauntForAction(intervention, 'npc_agwi', '다이')).toBeNull();
+    expect(sparkTauntForAction(intervention, 'npc_agwi', '레이즈')).toBe('쫄리면 뒤지시던가.');
+    intervention.taunted = true;
+    expect(sparkTauntForAction(intervention, 'npc_agwi', '콜')).toBeNull();
+  });
+
+  it('suspects bluffs from public raise signals without hidden cards', () => {
+    expect(
+      publicBluffSuspicionChance({
+        lastAggressorId: 'user',
+        lastRaisePay: 100,
+        potBeforeRaise: 400,
+        userRaiseCount: 2
+      })
+    ).toBe(0.55);
+    expect(
+      publicBluffSuspicionChance({
+        lastAggressorId: 'npc_goni',
+        lastRaisePay: 100,
+        potBeforeRaise: 400,
+        userRaiseCount: 2
+      })
+    ).toBe(0);
+  });
+
+  it('re-raises suspected bluffs boldly only when its own hand supports it', () => {
+    expect(sparkBluffReraiseChance(0.39)).toBe(0.05);
+    expect(sparkBluffReraiseChance(0.4)).toBe(0.42);
+    expect(sparkBluffReraiseChance(0.65)).toBe(0.78);
+  });
+
   it('lets an opening Agwi bluff-raise a weak hand without always raising', () => {
     const profile = NPC_PROFILES.find((candidate) => candidate.style === 'bluffer')!;
     const weak = [

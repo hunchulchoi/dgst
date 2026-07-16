@@ -25,6 +25,15 @@
  *   openingActorId?: string;
  *   openingActionTaken?: boolean;
  *   pressureNpcId: string | null;
+ *   sparkIntervention?: boolean;
+ *   sparkNpcId?: string | null;
+ *   sparkTaunt?: string | null;
+ *   sparkTaunted?: boolean;
+ *   sparkTauntCooldown?: number;
+ *   lastAggressorId?: string | null;
+ *   lastRaisePay?: number;
+ *   potBeforeRaise?: number;
+ *   userRaiseCount?: number;
  *   raiseCount?: number;
  *   log: string[];
  *   winnerId: string | null;

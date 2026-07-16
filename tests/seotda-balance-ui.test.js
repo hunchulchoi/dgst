@@ -12,9 +12,15 @@ describe('seotda betting UI', () => {
 
   it('carries the previous winner into the next round as the opening actor', () => {
     expect(serverSource).toContain("const openingActorId = round?.winnerId ?? 'user'");
-    expect(serverSource).toContain(
-      'createNewRound(balance, Math.random, npcChips, openingActorId)'
+    expect(serverSource).toMatch(
+      /createNewRound\(\s*balance,\s*Math\.random,\s*npcChips,\s*openingActorId,\s*sparkTauntCooldown\s*\)/s
     );
+  });
+
+  it('renders sparse Spark taunts returned with NPC betting actions', () => {
+    expect(pageSource).toContain('taunt?: string | null');
+    expect(pageSource).toContain('{#if preview.taunt}');
+    expect(pageSource).toContain('class="spark-taunt"');
   });
 
   it('shows per-seat action effects and floats actions over the table on the user turn', () => {
