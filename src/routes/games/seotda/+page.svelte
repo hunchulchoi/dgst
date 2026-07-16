@@ -514,7 +514,7 @@
   async function writeRoundAutomaticComments(nextRound: SeotdaRound, nextBalance: number) {
     if (!isLoggedIn) return;
     const user = nextRound.seats.find((seat) => seat.id === 'user');
-    if (Number(nextRound.ddaengValuePerLoser ?? 0) > 0) {
+    if (Number(nextRound.ddaengValuePerLoser ?? 0) > 0 && nextRound.ddaengWinnerId === 'user') {
       const winner =
         nextRound.seats.find((seat) => seat.id === nextRound.ddaengWinnerId)?.name ?? '승자';
       await writeAutomaticComment(
