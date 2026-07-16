@@ -1,5 +1,6 @@
 <script>
   import { onDestroy, onMount } from 'svelte';
+  import HwatuCardFace from '../../routes/games/seotda/HwatuCardFace.svelte';
 
   /** @typedef {{ type: string; seatId: string | null; text: string; amount: number; potAfter: number }} ReplayEvent */
   /** @typedef {{ id: string; name: string; chips: number; folded: boolean; winner: boolean; handName: string; cards: Array<{ month: number; gwang: boolean }> }} ReplaySeat */
@@ -34,12 +35,6 @@
   /** @param {unknown} value */
   function formatNumber(value) {
     return Math.max(0, Number(value) || 0).toLocaleString('ko-KR');
-  }
-
-  /** @param {{ month?: number; gwang?: boolean } | null | undefined} card */
-  function cardImagePath(card) {
-    const month = String(Math.max(1, Math.min(10, Number(card?.month) || 1))).padStart(2, '0');
-    return `/images/seotda/hwatu/${month}${card?.gwang ? '-gwang' : ''}.webp`;
   }
 
   /** @param {ReplayEvent | null | undefined} event */
@@ -169,13 +164,7 @@
                 <div class:flipped={showCard} class="card-shell">
                   <span class="card-back">花</span>
                   {#if card}
-                    <img
-                      class="card-face"
-                      src={cardImagePath(card)}
-                      alt={`${card.month}월${card.gwang ? ' 광' : ''}`}
-                      width="54"
-                      height="81"
-                    />
+                    <span class="card-face"><HwatuCardFace {card} /></span>
                   {/if}
                 </div>
               {/each}
@@ -439,6 +428,7 @@
     justify-content: center;
     width: 100%;
     height: 100%;
+    overflow: hidden;
     border: 1px solid rgba(255, 255, 255, 0.5);
     border-radius: 0.35rem;
     backface-visibility: hidden;
@@ -452,7 +442,6 @@
   }
 
   .card-face {
-    object-fit: cover;
     transform: rotateY(180deg);
   }
 

@@ -741,6 +741,55 @@
               {#if canAct}
                 <div class="turn-action-layer" role="group" aria-label="내 행동 선택">
                   <div class="turn-label">내 차례</div>
+                  <div class="turn-bet-controls">
+                    <div class="turn-bet-meta">
+                      <span>콜 {formatNumber(toCall)} · 레이즈 최소 {formatNumber(minRaise)}</span>
+                      <span>보유 {formatNumber(maxRaise)}</span>
+                    </div>
+                    <div class="turn-bet-input-row">
+                      <label for="turn-raise-bet">레이즈</label>
+                      <input
+                        id="turn-raise-bet"
+                        class="form-control form-control-sm turn-bet-input"
+                        type="number"
+                        min={minRaise}
+                        max={maxRaise}
+                        bind:value={raiseBet}
+                        onchange={() => {
+                          let v = Number(raiseBet);
+                          if (!Number.isFinite(v)) v = minRaise;
+                          raiseBet = Math.min(maxRaise, Math.max(minRaise, v));
+                        }}
+                      />
+                      <button
+                        type="button"
+                        class="btn btn-sm btn-outline-light"
+                        onclick={() => setRaisePreset('min')}>최소</button
+                      >
+                      <button
+                        type="button"
+                        class="btn btn-sm btn-outline-light"
+                        onclick={() => setRaisePreset('plus')}
+                        >+{formatNumber(roundAnte * 2)}</button
+                      >
+                      <button
+                        type="button"
+                        class="btn btn-sm btn-outline-light"
+                        onclick={() => setRaisePreset('plus100')}
+                        >+{formatNumber(roundAnte * 10)}</button
+                      >
+                      <button
+                        type="button"
+                        class="btn btn-sm btn-outline-light"
+                        onclick={() => setRaisePreset('half')}>절반</button
+                      >
+                      <button
+                        type="button"
+                        class="btn btn-sm btn-outline-light"
+                        onclick={() => setRaisePreset('all')}>최대</button
+                      >
+                    </div>
+                  </div>
                   <div class="d-flex gap-2 justify-content-center flex-wrap">
                     <button class="btn btn-light" disabled={busy} onclick={() => act('die')}
                       >다이</button
@@ -848,71 +897,34 @@
               </div>
             {/if}
 
-            {#if canAct}
-              <div class="bet-box rounded-3 border p-3 mb-3">
-                <div class="d-flex justify-content-between align-items-center mb-2 small bet-meta">
-                  <span>콜 {formatNumber(toCall)} · 레이즈 최소 {formatNumber(minRaise)}</span>
-                  <span class="bet-meta-sub">보유 {formatNumber(maxRaise)}</span>
-                </div>
-                <div class="d-flex gap-2 align-items-center mb-2 flex-wrap">
-                  <label class="small mb-0" for="raise-bet">레이즈</label>
-                  <input
-                    id="raise-bet"
-                    class="form-control form-control-sm bet-input"
-                    type="number"
-                    min={minRaise}
-                    max={maxRaise}
-                    bind:value={raiseBet}
-                    onchange={() => {
-                      let v = Number(raiseBet);
-                      if (!Number.isFinite(v)) v = minRaise;
-                      raiseBet = Math.min(maxRaise, Math.max(minRaise, v));
-                    }}
-                  />
-                  <button
-                    type="button"
-                    class="btn btn-sm btn-outline-secondary"
-                    onclick={() => setRaisePreset('min')}>최소</button
-                  >
-                  <button
-                    type="button"
-                    class="btn btn-sm btn-outline-secondary"
-                    onclick={() => setRaisePreset('plus')}>+{formatNumber(roundAnte * 2)}</button
-                  >
-                  <button
-                    type="button"
-                    class="btn btn-sm btn-outline-secondary"
-                    onclick={() => setRaisePreset('plus100')}
-                    >+{formatNumber(roundAnte * 10)}</button
-                  >
-                  <button
-                    type="button"
-                    class="btn btn-sm btn-outline-secondary"
-                    onclick={() => setRaisePreset('half')}>절반</button
-                  >
-                  <button
-                    type="button"
-                    class="btn btn-sm btn-outline-secondary"
-                    onclick={() => setRaisePreset('all')}>최대</button
-                  >
-                </div>
-              </div>
-            {/if}
-
-            {#if isShowdown && revealDone}
-              <div class="text-center mb-3 result-banner">
-                <p class="mb-2 fs-5 fw-semibold">
-                  {#if isDraw}무승부! 팟 분배
-                  {:else if userWon}이겼다!
-                  {:else}졌다…{/if}
-                </p>
-                <div class="d-flex gap-2 justify-content-center">
-                  <button class="btn btn-outline-primary" disabled={busy} onclick={openShare}>
-                    게시판 공유
-                  </button>
-                  <button class="btn btn-primary" disabled={busy} onclick={nextRound}>
-                    다음 판
-                  </button>
+            {#if isShowdown && revealDone && !ddaengLayerOpen && !shareOpen}
+              <div
+                class="result-action-backdrop"
+                role="dialog"
+                aria-modal="true"
+                aria-label="섯다 판 결과"
+                tabindex="-1"
+              >
+                <div class="result-action-layer">
+                  <span class="result-action-label">HAND COMPLETE</span>
+                  <strong class:loss={!userWon && !isDraw} class="result-action-title">
+                    {#if isDraw}무승부
+                    {:else if userWon}이겼다!
+                    {:else}졌다…{/if}
+                  </strong>
+                  <div class="result-action-hand">
+                    {userSeat?.handName ?? (isDraw ? '무승부' : userWon ? '승리' : '패배')}
+                  </div>
+                  <div class="result-action-buttons">
+                    <button class="btn btn-outline-light" disabled={busy} onclick={openShare}>
+                      <span aria-hidden="true">🎴</span>
+                      게시판 공유
+                    </button>
+                    <button class="btn btn-warning fw-bold" disabled={busy} onclick={nextRound}>
+                      다음 판
+                      <span aria-hidden="true">→</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             {/if}
@@ -1087,8 +1099,88 @@
       opacity: 1;
     }
   }
-  .result-banner {
-    animation: popIn 0.4s ease;
+  .result-action-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1050;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    background: rgba(2, 9, 7, 0.62);
+    backdrop-filter: blur(3px);
+    animation: resultBackdropIn 0.28s ease-out;
+  }
+  .result-action-layer {
+    display: grid;
+    justify-items: center;
+    width: min(100%, 23rem);
+    padding: 1.4rem;
+    overflow: hidden;
+    border: 2px solid #d8b24c;
+    border-radius: 1.25rem;
+    background:
+      radial-gradient(circle at 50% 0, rgba(255, 215, 94, 0.24), transparent 45%),
+      linear-gradient(150deg, #164b36, #071e17);
+    color: #fff7d6;
+    text-align: center;
+    box-shadow: 0 20px 58px rgba(0, 0, 0, 0.52);
+    animation: resultLayerIn 0.42s cubic-bezier(0.2, 0.82, 0.25, 1.18);
+  }
+  .result-action-label {
+    color: #d9bd6b;
+    font-size: 0.68rem;
+    font-weight: 900;
+    letter-spacing: 0.18em;
+  }
+  .result-action-title {
+    margin-top: 0.2rem;
+    color: #ffd75e;
+    font-size: clamp(2rem, 10vw, 3rem);
+    line-height: 1.15;
+    text-shadow: 0 0 22px rgba(255, 215, 94, 0.42);
+  }
+  .result-action-title.loss {
+    color: #ff9b9b;
+    text-shadow: 0 0 22px rgba(255, 91, 91, 0.34);
+  }
+  .result-action-hand {
+    margin-top: 0.25rem;
+    color: #f6edca;
+    font-size: 0.95rem;
+    font-weight: 800;
+  }
+  .result-action-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.55rem;
+    width: 100%;
+    margin-top: 1.1rem;
+  }
+  .result-action-buttons .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    min-height: 3rem;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+  @keyframes resultBackdropIn {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes resultLayerIn {
+    from {
+      opacity: 0;
+      transform: translateY(18px) scale(0.78);
+    }
+  }
+  @media (max-width: 380px) {
+    .result-action-buttons {
+      grid-template-columns: 1fr;
+    }
   }
   .ddaeng-value-backdrop {
     position: fixed;
@@ -1392,10 +1484,10 @@
     position: sticky;
     bottom: 0.75rem;
     z-index: 10;
-    width: fit-content;
+    width: min(100%, 42rem);
     max-width: calc(100% - 1rem);
     margin: 1rem auto 0;
-    padding: 0.65rem 0.8rem 0.75rem;
+    padding: 0.7rem 0.8rem 0.8rem;
     border: 1px solid rgba(255, 255, 255, 0.3);
     border-radius: 1rem;
     background: rgba(9, 24, 19, 0.92);
@@ -1410,6 +1502,42 @@
     letter-spacing: 0.08em;
     text-align: center;
   }
+  .turn-bet-controls {
+    margin-bottom: 0.65rem;
+    padding-bottom: 0.65rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.16);
+  }
+  .turn-bet-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.7rem;
+    margin-bottom: 0.45rem;
+    color: #d8e1dc;
+    font-size: 0.76rem;
+  }
+  .turn-bet-meta span:last-child {
+    color: #aebcb5;
+    white-space: nowrap;
+  }
+  .turn-bet-input-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+  }
+  .turn-bet-input-row label {
+    margin-right: 0.1rem;
+    color: #f3f0e6;
+    font-size: 0.8rem;
+    font-weight: 800;
+  }
+  .turn-bet-input {
+    width: 6.5rem;
+    background: rgba(255, 255, 255, 0.96);
+    color: #212529;
+  }
   .guide-panel {
     background: #f8f6f1;
     color: #212529;
@@ -1417,38 +1545,11 @@
   .guide-list {
     font-size: 0.9rem;
   }
-  .bet-box {
-    background: #faf8f4;
-    color: #212529;
-  }
-  .bet-meta-sub {
-    color: #5c636a;
-  }
-  .bet-input {
-    width: 6.5rem;
-  }
   .seotda-log {
     background: #f8f9fa;
     color: #212529;
   }
 
-  :global([data-bs-theme='dark']) .bet-box {
-    background: #2b3035;
-    border-color: #495057 !important;
-    color: #e9ecef;
-  }
-  :global([data-bs-theme='dark']) .bet-meta-sub {
-    color: #adb5bd;
-  }
-  :global([data-bs-theme='dark']) .bet-box .form-control {
-    background: #212529;
-    border-color: #495057;
-    color: #f8f9fa;
-  }
-  :global([data-bs-theme='dark']) .bet-box .btn-outline-secondary {
-    color: #dee2e6;
-    border-color: #6c757d;
-  }
   :global([data-bs-theme='dark']) .guide-panel {
     background: #2b3035;
     border-color: #495057 !important;
@@ -1487,6 +1588,21 @@
       overflow: hidden;
       font-size: 0.68rem;
       text-overflow: ellipsis;
+    }
+    .turn-action-layer {
+      bottom: 0.4rem;
+      max-width: 100%;
+      padding: 0.6rem;
+    }
+    .turn-bet-meta {
+      gap: 0.35rem;
+      font-size: 0.68rem;
+    }
+    .turn-bet-input-row {
+      gap: 0.3rem;
+    }
+    .turn-bet-input-row .btn {
+      padding-inline: 0.55rem;
     }
   }
 </style>

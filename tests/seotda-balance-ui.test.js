@@ -19,6 +19,14 @@ describe('seotda betting UI', () => {
     );
   });
 
+  it('keeps raise input and presets inside the my-turn layer', () => {
+    expect(pageSource).toContain('class="turn-action-layer"');
+    expect(pageSource).toContain('class="turn-bet-controls"');
+    expect(pageSource).toContain('id="turn-raise-bet"');
+    expect(pageSource).toContain('class="form-control form-control-sm turn-bet-input"');
+    expect(pageSource).not.toContain('class="bet-box');
+  });
+
   it('carries the previous winner into the next round as the opening actor', () => {
     expect(serverSource).toContain("const openingActorId = round?.winnerId ?? 'user'");
     expect(serverSource).toMatch(
@@ -74,5 +82,11 @@ describe('seotda betting UI', () => {
     expect(pageSource).toContain('function openShare()');
     expect(pageSource).toContain("fetch('/games/seotda/share'");
     expect(pageSource).toContain('게시판 공유');
+    expect(pageSource).toContain(
+      '{#if isShowdown && revealDone && !ddaengLayerOpen && !shareOpen}'
+    );
+    expect(pageSource).toContain('class="result-action-backdrop"');
+    expect(pageSource).toContain('class="result-action-layer"');
+    expect(pageSource).toContain('onclick={nextRound}');
   });
 });

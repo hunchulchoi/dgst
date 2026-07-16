@@ -79,6 +79,11 @@ describe('seotda board share route', () => {
   it('ships an interactive replay player for shared hands', () => {
     expect(articlePageSource).toContain('<SeotdaReplayPlayer replay={data.seotdaReplay} />');
     expect(replayPlayerSource).toContain('class="card-shell"');
+    expect(replayPlayerSource).toContain(
+      "import HwatuCardFace from '../../routes/games/seotda/HwatuCardFace.svelte'"
+    );
+    expect(replayPlayerSource).toContain('<HwatuCardFace {card} />');
+    expect(replayPlayerSource).not.toContain('/images/seotda/hwatu/');
     expect(replayPlayerSource).toContain('function scheduleNext()');
     expect(replayPlayerSource).toContain("currentEvent?.type === 'ddaeng'");
     expect(replayPlayerSource).toContain("currentEvent?.type === 'result'");
