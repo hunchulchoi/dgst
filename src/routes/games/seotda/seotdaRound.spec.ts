@@ -1,7 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import {
-  MAX_POT,
-  MAX_TOTAL_BET,
   NPC_START_CHIPS,
   npcPlayerRelief,
   npcStartingChips,
@@ -330,30 +328,30 @@ describe('seotdaRound smoke', () => {
     expect(npcStartingChips(10)).toBe(NPC_START_CHIPS);
   });
 
-  it('uses a 15k ante and 100k total cap at one million points', () => {
+  it('uses a 15k ante without a fixed total cap at one million points', () => {
     const round = createNewRound(1_000_000, () => 0.5, {});
 
     expect(round.antePaid).toBe(15_000);
     expect(npcStartingChips(round.antePaid)).toBe(300_000);
-    expect(maxRoundContribution(1_000_000, round.antePaid)).toBe(100_000);
+    expect(maxRoundContribution(1_000_000, round.antePaid)).toBe(1_000_000);
   });
 
-  it('allows racing up to 20 antes, bankroll, and the 100k absolute cap', () => {
-    expect(maxRoundContribution(1_000, 10)).toBe(200);
-    expect(maxRoundContribution(2_000, 10)).toBe(200);
-    expect(maxRoundContribution(5_000, 10)).toBe(200);
-    expect(maxRoundContribution(10_000, 10)).toBe(200);
-    expect(maxRoundContribution(20_000, 10)).toBe(200);
+  it('allows betting the bankroll when no opponent cover is supplied', () => {
+    expect(maxRoundContribution(1_000, 10)).toBe(1_000);
+    expect(maxRoundContribution(2_000, 10)).toBe(2_000);
+    expect(maxRoundContribution(5_000, 10)).toBe(5_000);
+    expect(maxRoundContribution(10_000, 10)).toBe(10_000);
+    expect(maxRoundContribution(20_000, 10)).toBe(20_000);
   });
 
-  it('counts the ante inside the low-bankroll contribution cap', () => {
+  it('counts the ante inside the bankroll contribution limit', () => {
     const round = createNewRound(1_000, () => 0.5, {});
     const user = round.seats[0];
 
     expect(user.totalContrib).toBe(10);
-    expect(contributionCapacity(round, user)).toBe(190);
+    expect(contributionCapacity(round, user)).toBe(990);
     applyPlayerAction(round, 'user', 'raise', user.chips);
-    expect(user.totalContrib).toBe(200);
+    expect(user.totalContrib).toBe(1_000);
   });
 
   it('caps the user by the largest active NPC stack', () => {
@@ -390,25 +388,42 @@ describe('seotdaRound smoke', () => {
     expect(round.seats[0].chips).toBe(99_000);
   });
 
-  it('caps a 100k players total contribution at 20 initial antes', () => {
+  it('caps a 100k player only by the richest active NPC stack', () => {
     const round = createNewRound(100_000, () => 0.5, {});
     const user = round.seats[0];
 
     applyPlayerAction(round, 'user', 'raise', user.chips);
 
-    expect(maxRoundContribution(100_000, round.antePaid)).toBe(20_000);
+    expect(maxRoundContribution(100_000, round.antePaid)).toBe(100_000);
     expect(user.contrib).toBe(20_000);
     expect(round.currentBet).toBe(20_000);
   });
 
-  it('caps high-bankroll rounds by absolute seat and pot limits', () => {
+  it('allows high-bankroll rounds beyond the former fixed limits', () => {
     const round = createNewRound(10_000_000_000, () => 0.5, {});
     const user = round.seats[0];
 
     applyPlayerAction(round, 'user', 'raise', user.chips);
 
-    expect(user.totalContrib).toBeLessThanOrEqual(MAX_TOTAL_BET);
-    expect(round.pot).toBeLessThanOrEqual(MAX_POT);
+    expect(user.totalContrib).toBe(600_000);
+    expect(round.pot).toBe(690_000);
+  });
+
+  it('accepts the third raise and turns a fourth raise into a call', () => {
+    const round = createNewRound(100_000, () => 0.5, {});
+    const user = round.seats[0];
+    round.raiseCount = 2;
+
+    applyPlayerAction(round, 'user', 'raise', 2_000);
+    expect(round.raiseCount).toBe(3);
+    expect(user.lastAction).toBe('레이즈');
+
+    user.needsAction = true;
+    round.currentBet = user.contrib + 1_000;
+    applyPlayerAction(round, 'user', 'raise', 2_000);
+
+    expect(round.raiseCount).toBe(3);
+    expect(user.lastAction).toBe('콜');
   });
 
   it('pays main and side pots according to each players contribution', () => {

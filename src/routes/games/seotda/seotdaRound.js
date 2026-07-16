@@ -25,9 +25,6 @@ export const NPC_START_CHIPS = 2000;
 export const NPC_BUY_IN_ANTE_MULTIPLIER = 20;
 /** 한 판 레이즈 횟수 상한 — 무한 콜/레이즈 방지 */
 export const MAX_RAISES = 3;
-export const MAX_BET_ANTE_MULTIPLIER = 20;
-export const MAX_TOTAL_BET = 100_000;
-export const MAX_POT = MAX_TOTAL_BET * 4;
 
 /** 판돈은 유지하고 NPC 의사결정만 완화하는 잔고 구간 계수. */
 export function npcPlayerRelief(userBalance) {
@@ -49,12 +46,7 @@ export function npcStartingChips(ante = ANTE) {
  */
 export function maxRoundContribution(bankroll, ante = ANTE, opponentStack = Infinity) {
   const safeBankroll = Math.max(0, Number(bankroll) || 0);
-  return Math.min(
-    MAX_TOTAL_BET,
-    safeBankroll,
-    Math.max(0, opponentStack),
-    ante * MAX_BET_ANTE_MULTIPLIER
-  );
+  return Math.min(safeBankroll, Math.max(0, opponentStack));
 }
 
 /**
@@ -119,8 +111,7 @@ export function contributionCapacity(round, seat) {
   );
   const contributionLimit = maxRoundContribution(bankroll, round.antePaid, opponentStack);
   const totalLimit = contributionLimit - totalContrib;
-  const potLimit = MAX_POT - round.pot;
-  return Math.max(0, Math.min(seat.chips, totalLimit, potLimit));
+  return Math.max(0, Math.min(seat.chips, totalLimit));
 }
 
 function createRoundId() {
