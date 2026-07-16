@@ -13,6 +13,7 @@ import {
   seotdaAuditLogEntries,
   seotdaHandLogEntries,
   showdown,
+  sparkTauntCooldownAfterRound,
   userChipResult
 } from './seotdaRound.js';
 import {
@@ -383,6 +384,13 @@ describe('seotdaRound smoke', () => {
 });
 
 describe('seotdaNpc bluff', () => {
+  it('uses a two-round cooldown after a Spark taunt', () => {
+    expect(sparkTauntCooldownAfterRound({ sparkTaunted: true })).toBe(2);
+    expect(
+      sparkTauntCooldownAfterRound({ sparkTaunted: false, sparkTauntCooldown: 2 })
+    ).toBe(1);
+  });
+
   it('lets Spark intervene in 6% of sub-100k rounds only', () => {
     expect(pickLowBalanceSparkIntervention(99_999, () => 0.059)).toBe(true);
     expect(pickLowBalanceSparkIntervention(99_999, () => 0.06)).toBe(false);

@@ -14,7 +14,7 @@ export const NPC_PROFILES = [
 
 export const LOW_BALANCE_SPARK_CHANCE = 0.06;
 export const SPARK_TAUNT_CHANCE = 0.18;
-export const SPARK_TAUNT_COOLDOWN_ROUNDS = 7;
+export const SPARK_TAUNT_COOLDOWN_ROUNDS = 2;
 export const SPARK_TAUNTS = [
   '어디서 약을 팔아?',
   '쫄리면 뒤지시던가.',

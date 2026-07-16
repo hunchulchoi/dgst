@@ -445,7 +445,7 @@ function applyNpcSeatAction(round, seat, rng = Math.random) {
   };
 }
 
-/** @param {import('./seotdaState.js').SeotdaRound | undefined} round */
+/** @param {{ sparkTaunted?: boolean; sparkTauntCooldown?: number } | undefined} round */
 export function sparkTauntCooldownAfterRound(round) {
   if (!round) return 0;
   if (round.sparkTaunted) return SPARK_TAUNT_COOLDOWN_ROUNDS;
