@@ -30,6 +30,9 @@
  *   sparkTaunt?: string | null;
  *   sparkTaunted?: boolean;
  *   sparkTauntCooldown?: number;
+ *   sparkDecisionSource?: string;
+ *   sparkDecisionReason?: string;
+ *   userMaxRaiseUsed?: boolean;
  *   lastAggressorId?: string | null;
  *   lastRaisePay?: number;
  *   potBeforeRaise?: number;

@@ -4,7 +4,7 @@ import { checkAndLogSessionDevice } from '$lib/server/auth/checkSessionDevice.js
 import { createArticle } from '$lib/server/board/articleRepo.js';
 import { bustBoardListCache } from '$lib/server/boardListLoad.js';
 import { sanitizeArticleContent } from '$lib/server/sanitizeArticleContent.js';
-import { cardLabel, evaluateHand } from '../seotdaEngine.js';
+import { evaluateHand } from '../seotdaEngine.js';
 import { getRound } from '../seotdaState.js';
 
 const ALLOWED_BOARDS = new Set(['free', 'bug']);
@@ -33,6 +33,21 @@ function escapeHtml(value) {
     .replaceAll("'", '&#39;');
 }
 
+/** @param {import('../seotdaEngine.js').SeotdaCard} card */
+function cardImagePath(card) {
+  const month = String(Math.max(1, Math.min(10, Number(card.month) || 1))).padStart(2, '0');
+  return `/images/seotda/hwatu/${month}${card.gwang ? '-gwang' : ''}.webp`;
+}
+
+/** @param {string} entry */
+function actionIcon(entry) {
+  if (entry.includes('승리')) return '🏆';
+  if (entry.includes('레이즈') || entry.includes('올인')) return '🔥';
+  if (entry.includes('콜')) return '🪙';
+  if (entry.includes('다이')) return '🏳️';
+  return '·';
+}
+
 /** @param {import('../seotdaState.js').SeotdaRound} round @param {string} note */
 function buildShareContent(round, note) {
   const user = round.seats.find((seat) => seat.id === 'user');
@@ -41,23 +56,75 @@ function buildShareContent(round, note) {
     : round.winnerId
       ? [round.winnerId]
       : [];
-  const result =
-    winnerIds.length > 1 ? '무승부' : winnerIds.includes('user') ? '승리' : '패배';
-  const hideNpcHands = !!user?.folded;
-  const noteHtml = note ? `<p>${escapeHtml(note).replaceAll('\n', '<br>')}</p>` : '';
+  const result = winnerIds.length > 1 ? '무승부' : winnerIds.includes('user') ? '승리' : '패배';
+  const resultClass = result === '승리' ? 'is-win' : result === '패배' ? 'is-loss' : 'is-draw';
+  const userFolded = !!user?.folded;
+  const noteHtml = note
+    ? `<div class="seotda-share-note">${escapeHtml(note).replaceAll('\n', '<br>')}</div>`
+    : '';
   const seatsHtml = round.seats
     .map((seat) => {
-      const cards = hideNpcHands && seat.isNpc ? '비공개' : seat.cards.map(cardLabel).join(' · ');
-      const hand = hideNpcHands && seat.isNpc ? '' : ` · ${evaluateHand(seat.cards).name}`;
-      const state = seat.folded ? ' · 다이' : winnerIds.includes(seat.id) ? ' · 승자' : '';
-      return `<li><strong>${escapeHtml(seat.name)}</strong>: ${escapeHtml(cards + hand + state)}</li>`;
+      const winner = winnerIds.includes(seat.id);
+      const revealDdaengWinner = userFolded && seat.isNpc && seat.id === round.ddaengWinnerId;
+      const revealCards = !seat.isNpc || !userFolded || revealDdaengWinner;
+      const seatClasses = [
+        'seotda-share-seat',
+        winner ? 'is-winner' : '',
+        seat.folded ? 'is-folded' : ''
+      ]
+        .filter(Boolean)
+        .join(' ');
+      const cardsHtml = revealCards
+        ? seat.cards
+            .map(
+              (card) =>
+                `<img src="${cardImagePath(card)}" alt="${escapeHtml(
+                  `${card.month}월${card.gwang ? ' 광' : ''}`
+                )}" width="72" height="104">`
+            )
+            .join('')
+        : '<span class="seotda-share-card-back">花</span><span class="seotda-share-card-back">花</span>';
+      const handName = revealCards ? evaluateHand(seat.cards).name : '비공개';
+      const chips = Math.max(0, Number(seat.chips) || 0).toLocaleString('ko-KR');
+      return (
+        `<div class="${seatClasses}">` +
+        `<div class="seotda-share-seat-head"><strong>${escapeHtml(seat.name)}</strong>` +
+        `<span>${chips}점</span></div>` +
+        `<div class="seotda-share-cards">${cardsHtml}</div>` +
+        `<div class="seotda-share-hand">${escapeHtml(handName)}${winner ? ' · 승자' : ''}</div>` +
+        `</div>`
+      );
     })
     .join('');
-  const logHtml = round.log.map((entry) => `<li>${escapeHtml(entry)}</li>`).join('');
+  const actionsHtml = round.log
+    .slice(-5)
+    .map(
+      (entry) =>
+        `<span class="seotda-share-action"><strong>${actionIcon(entry)}</strong>${escapeHtml(entry)}</span>`
+    )
+    .join('');
+  const ddaengValuePerLoser = Math.max(0, Number(round.ddaengValuePerLoser) || 0);
+  const ddaengTotalPaid = Math.max(0, Number(round.ddaengTotalPaid) || 0);
+  const ddaengWinner = round.seats.find((seat) => seat.id === round.ddaengWinnerId);
+  const ddaengLayerHtml = ddaengValuePerLoser
+    ? `<div class="seotda-share-ddaeng-layer">` +
+      `<span class="seotda-share-ddaeng-sparks" aria-hidden="true">✦ 🪙 ✦</span>` +
+      `<span class="seotda-share-ddaeng-label">땡값 정산</span>` +
+      `<strong>${escapeHtml(round.ddaengHandName || '땡')}</strong>` +
+      `<span>${escapeHtml(ddaengWinner?.name || '승자')} 수령</span>` +
+      `<div><b>1인당 ${ddaengValuePerLoser.toLocaleString('ko-KR')}점</b>` +
+      `<b>총 ${ddaengTotalPaid.toLocaleString('ko-KR')}점</b></div>` +
+      `</div>`
+    : '';
 
   return sanitizeArticleContent(
-    `<h3>섯다 결과</h3>${noteHtml}<p><strong>결과:</strong> ${result}</p>` +
-      `<h4>참가자 패</h4><ul>${seatsHtml}</ul><h4>진행 기록</h4><ol>${logHtml}</ol>`
+    `<div class="seotda-share-card ${resultClass}">` +
+      `<div class="seotda-share-banner"><span>SEOTDA SHOWDOWN</span><strong>${result}</strong></div>` +
+      noteHtml +
+      `<div class="seotda-share-table">${seatsHtml}</div>` +
+      ddaengLayerHtml +
+      `<div class="seotda-share-actions">${actionsHtml}</div>` +
+      `</div>`
   );
 }
 

@@ -1,5 +1,11 @@
 // @ts-nocheck
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
+
+const articlePageSource = readFileSync(
+  'src/routes/board/[boardId=boardId]/[[pageNo=integer]]/[articleId]/+page.svelte',
+  'utf8'
+);
 
 const rateLimit = vi.hoisted(() => ({ checkRateLimit: vi.fn() }));
 const sessionDevice = vi.hoisted(() => ({ checkAndLogSessionDevice: vi.fn() }));
@@ -68,6 +74,15 @@ describe('seotda board share route', () => {
     articleRepo.createArticle.mockResolvedValue({ id: 'article-1' });
   });
 
+  it('ships card-flip, winner, and chip animations for shared hands', () => {
+    expect(articlePageSource).toContain('@keyframes seotdaShareFlip');
+    expect(articlePageSource).toContain('@keyframes seotdaShareWinner');
+    expect(articlePageSource).toContain('@keyframes seotdaShareChip');
+    expect(articlePageSource).toContain('@keyframes seotdaShareDdaeng');
+    expect(articlePageSource).toContain('.seotda-share-ddaeng-layer');
+    expect(articlePageSource).toContain('.seotda-share-card');
+  });
+
   it('creates an article from the server-owned completed round', async () => {
     const { POST } = await import('../src/routes/games/seotda/share/+server.js');
     const response = await POST(
@@ -83,9 +98,15 @@ describe('seotda board share route', () => {
         nickname: '타짜',
         boardId: 'free',
         title: '알리로 승리',
-        content: expect.stringMatching(/레이즈 성공![\s\S]*알리[\s\S]*아귀/)
+        content: expect.stringMatching(/seotda-share-card[\s\S]*레이즈 성공![\s\S]*알리[\s\S]*아귀/)
       })
     );
+    const { content } = articleRepo.createArticle.mock.calls[0][0];
+    expect(content).toContain('class="seotda-share-seat is-winner"');
+    expect(content).toContain('src="/images/seotda/hwatu/01.webp"');
+    expect(content).toContain('src="/images/seotda/hwatu/02.webp"');
+    expect(content).toContain('class="seotda-share-action"');
+    expect(content).not.toContain('<h4>진행 기록</h4>');
     expect(boardCache.bustBoardListCache).toHaveBeenCalledWith('free');
   });
 
@@ -108,8 +129,35 @@ describe('seotda board share route', () => {
     await POST(makeEvent({ boardId: 'free' }));
 
     const { content } = articleRepo.createArticle.mock.calls[0][0];
-    expect(content).toContain('<strong>아귀</strong>: 비공개');
-    expect(content).not.toContain('3 · 4');
+    expect(content).toContain('class="seotda-share-card-back"');
+    expect(content).not.toContain('/images/seotda/hwatu/03.webp');
+    expect(content).not.toContain('/images/seotda/hwatu/04.webp');
+  });
+
+  it('reveals only the winning ddaeng art after the user folded', async () => {
+    const round = completedRound();
+    round.seats[0].folded = true;
+    round.seats[1].cards = [
+      { month: 10, gwang: false },
+      { month: 10, gwang: false }
+    ];
+    round.winnerId = 'npc_agwi';
+    round.winnerIds = ['npc_agwi'];
+    round.ddaengWinnerId = 'npc_agwi';
+    round.ddaengHandName = '장땡';
+    round.ddaengValuePerLoser = 200;
+    round.ddaengTotalPaid = 200;
+    state.getRound.mockReturnValue(round);
+    const { POST } = await import('../src/routes/games/seotda/share/+server.js');
+
+    await POST(makeEvent({ boardId: 'free' }));
+
+    const { content } = articleRepo.createArticle.mock.calls[0][0];
+    expect(content.match(/\/images\/seotda\/hwatu\/10\.webp/g)).toHaveLength(2);
+    expect(content).toContain('장땡');
+    expect(content).toContain('class="seotda-share-ddaeng-layer"');
+    expect(content).toContain('1인당 200점');
+    expect(content).toContain('총 200점');
   });
 
   it('requires login', async () => {

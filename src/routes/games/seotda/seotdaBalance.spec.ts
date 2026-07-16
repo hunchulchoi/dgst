@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   didSeotdaTakeLead,
   getSeotdaOopsTiming,
-  isSeotdaOopsBalance
+  isSeotdaOopsBalance,
+  summarizeSeotdaSparkHistory
 } from './seotdaBalance.js';
 
 describe('seotda leader celebration', () => {
@@ -13,6 +14,36 @@ describe('seotda leader celebration', () => {
     expect(didSeotdaTakeLead(leader, 'challenger@example.com', 10_000)).toBe(false);
     expect(didSeotdaTakeLead(leader, 'leader@example.com', 12_000)).toBe(false);
     expect(didSeotdaTakeLead(null, 'first@example.com', 1_000)).toBe(false);
+  });
+});
+
+describe('seotda Spark history', () => {
+  it('summarizes long-term profit and consecutive public behavior signals', () => {
+    const summary = summarizeSeotdaSparkHistory([
+      {
+        bet: 300n,
+        delta: 150n,
+        balance: 1300n,
+        reels: ['win', '150', '레이즈', 'user:max-raise', 'spark:on']
+      },
+      {
+        bet: 200n,
+        delta: 100n,
+        balance: 1150n,
+        reels: ['win', '100', '레이즈', 'user:max-raise']
+      },
+      { bet: 100n, delta: 50n, balance: 1050n, reels: ['win', '50', '다이'] }
+    ]);
+
+    expect(summary).toMatchObject({
+      hands: 3,
+      wins: 3,
+      totalDelta: 300,
+      balanceGrowthPercent: 30,
+      consecutiveFolds: 0,
+      consecutiveMaxRaises: 2,
+      sparkHands: 1
+    });
   });
 });
 

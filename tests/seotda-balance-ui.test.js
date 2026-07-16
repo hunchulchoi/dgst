@@ -13,14 +13,28 @@ describe('seotda betting UI', () => {
   it('carries the previous winner into the next round as the opening actor', () => {
     expect(serverSource).toContain("const openingActorId = round?.winnerId ?? 'user'");
     expect(serverSource).toMatch(
-      /createNewRound\(\s*balance,\s*Math\.random,\s*npcChips,\s*openingActorId,\s*sparkTauntCooldown\s*\)/s
+      /createNewRound\(\s*balance,\s*Math\.random,\s*npcChips,\s*openingActorId,\s*sparkTauntCooldown,\s*sparkDecision\s*\)/s
     );
+  });
+
+  it('asks Codex app-server to decide Spark intervention without a random chance', () => {
+    expect(serverSource).toContain('await decideSparkIntervention');
+    expect(serverSource).toContain('getSeotdaSparkHistory');
+    expect(serverSource).toContain('sparkDecision');
   });
 
   it('renders sparse Spark taunts returned with NPC betting actions', () => {
     expect(pageSource).toContain('taunt?: string | null');
     expect(pageSource).toContain('{#if preview.taunt}');
     expect(pageSource).toContain('class="spark-taunt"');
+  });
+
+  it('shows a ddaeng value layer after showdown card reveals', () => {
+    expect(pageSource).toContain('ddaengLayerOpen');
+    expect(pageSource).toContain('class="ddaeng-value-backdrop"');
+    expect(pageSource).toContain('round.ddaengValuePerLoser');
+    expect(pageSource).toContain('round.ddaengTotalPaid');
+    expect(pageSource).toContain('땡값');
   });
 
   it('shows per-seat action effects and floats actions over the table on the user turn', () => {

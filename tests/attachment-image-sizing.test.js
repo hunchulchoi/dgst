@@ -97,4 +97,13 @@ describe('attachment image sizing', () => {
       })
     ).toBe(false);
   });
+
+  it('does not resize seotda share cards as article attachments', () => {
+    expect(
+      shouldApplyAttachmentImageSizing({
+        classList: { contains: () => false },
+        closest: (selector) => (selector.includes('.seotda-share-card') ? {} : null)
+      })
+    ).toBe(false);
+  });
 });

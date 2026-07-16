@@ -19,10 +19,7 @@ export function isSeotdaOopsBalance(balance) {
  */
 export function getSeotdaOopsTiming(createdAt, now = Date.now()) {
   const createdAtDate = new Date(createdAt);
-  const remainingMs = Math.max(
-    0,
-    SEOTDA_OOPS_DELAY_MS - (now - createdAtDate.getTime())
-  );
+  const remainingMs = Math.max(0, SEOTDA_OOPS_DELAY_MS - (now - createdAtDate.getTime()));
   return {
     createdAt: createdAtDate.toISOString(),
     remainingMs,
@@ -62,7 +59,6 @@ export async function getSeotdaBalance(email) {
 /**
  * @param {string} email
  * @param {string} nickname
- * @param {number} [currentBalance]
  * @param {number} balance
  * @param {{ bet?: number; payout?: number; delta?: number; reels?: string[] }} [meta]
  */
@@ -270,5 +266,56 @@ export async function getTodaySeotdaStats() {
   } catch (err) {
     console.error('[seotda getTodaySeotdaStats]', err);
     return { hands: 0, users: 0 };
+  }
+}
+
+/**
+ * DB 최신순 섯다 기록을 Spark 판단용 집계로 축약한다.
+ * @param {Array<{ bet: bigint | number; delta: bigint | number; balance: bigint | number; reels: string[] }>} rows
+ */
+export function summarizeSeotdaSparkHistory(rows) {
+  const safeRows = Array.isArray(rows) ? rows : [];
+  const totalDelta = safeRows.reduce((sum, row) => sum + Number(row.delta ?? 0), 0);
+  const wins = safeRows.filter((row) => row.reels?.[0] === 'win').length;
+  const sparkHands = safeRows.filter((row) => row.reels?.includes('spark:on')).length;
+  const oldest = safeRows.at(-1);
+  const startingBalance = oldest
+    ? Math.max(1, Number(oldest.balance ?? 0) - Number(oldest.delta ?? 0))
+    : 1;
+  let consecutiveFolds = 0;
+  let consecutiveMaxRaises = 0;
+  for (const row of safeRows) {
+    if (row.reels?.[2] === '다이') consecutiveFolds += 1;
+    else break;
+  }
+  for (const row of safeRows) {
+    if (row.reels?.includes('user:max-raise')) consecutiveMaxRaises += 1;
+    else break;
+  }
+  return {
+    hands: safeRows.length,
+    wins,
+    winRatePercent: safeRows.length ? Math.round((wins / safeRows.length) * 10_000) / 100 : 0,
+    totalDelta,
+    balanceGrowthPercent: Math.round((totalDelta / startingBalance) * 10_000) / 100,
+    consecutiveFolds,
+    consecutiveMaxRaises,
+    sparkHands
+  };
+}
+
+/** @param {string} email @param {number} [limit] */
+export async function getSeotdaSparkHistory(email, limit = 100) {
+  try {
+    const rows = await getPrisma().gameScore.findMany({
+      where: { email, game: SEOTDA_GAME, bet: { gt: 0 } },
+      orderBy: { createdAt: 'desc' },
+      take: Math.max(1, Math.min(100, Number(limit) || 100)),
+      select: { bet: true, delta: true, balance: true, reels: true }
+    });
+    return summarizeSeotdaSparkHistory(rows);
+  } catch (err) {
+    console.error('[seotda getSeotdaSparkHistory]', err);
+    return summarizeSeotdaSparkHistory([]);
   }
 }

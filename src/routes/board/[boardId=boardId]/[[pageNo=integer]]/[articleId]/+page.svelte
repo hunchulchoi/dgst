@@ -1419,6 +1419,333 @@
       max-width: 100%;
     }
 
+    .article-content .seotda-share-card {
+      position: relative;
+      width: min(100%, 760px);
+      margin: 0 auto;
+      overflow: hidden;
+      border: 2px solid #d8b24c;
+      border-radius: 1.25rem;
+      background:
+        radial-gradient(circle at 50% 25%, rgba(62, 167, 112, 0.42), transparent 38%),
+        linear-gradient(145deg, #123f30, #071f19 72%);
+      color: #f8f1d4;
+      box-shadow: 0 18px 45px rgba(0, 0, 0, 0.32);
+    }
+
+    .article-content .seotda-share-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background-image: repeating-linear-gradient(
+        115deg,
+        transparent 0 18px,
+        rgba(255, 255, 255, 0.018) 18px 20px
+      );
+    }
+
+    .article-content .seotda-share-banner {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 0.9rem 1.1rem;
+      border-bottom: 1px solid rgba(235, 201, 98, 0.42);
+      background: rgba(0, 0, 0, 0.24);
+    }
+
+    .article-content .seotda-share-banner span {
+      color: #d9bd6b;
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 0.16em;
+    }
+
+    .article-content .seotda-share-banner strong {
+      color: #ffd75e;
+      font-size: clamp(1.35rem, 5vw, 2rem);
+      text-shadow: 0 0 18px rgba(255, 211, 78, 0.48);
+    }
+
+    .article-content .seotda-share-card.is-loss .seotda-share-banner strong {
+      color: #ff8b8b;
+      text-shadow: 0 0 18px rgba(255, 86, 86, 0.42);
+    }
+
+    .article-content .seotda-share-note {
+      position: relative;
+      margin: 0.8rem 1rem 0;
+      padding: 0.65rem 0.8rem;
+      border-radius: 0.75rem;
+      background: rgba(255, 255, 255, 0.09);
+      color: #fff;
+      text-align: center;
+    }
+
+    .article-content .seotda-share-table {
+      position: relative;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(135px, 1fr));
+      gap: 0.75rem;
+      padding: 1rem;
+    }
+
+    .article-content .seotda-share-seat {
+      min-width: 0;
+      padding: 0.65rem;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 0.9rem;
+      background: rgba(0, 0, 0, 0.2);
+      text-align: center;
+      transition: transform 0.2s ease;
+    }
+
+    .article-content .seotda-share-seat.is-winner {
+      border-color: #ffd75e;
+      background: rgba(116, 82, 8, 0.38);
+      animation: seotdaShareWinner 1.6s ease-in-out 0.8s 2;
+    }
+
+    .article-content .seotda-share-seat.is-folded:not(.is-winner) {
+      opacity: 0.58;
+      filter: grayscale(0.55);
+    }
+
+    .article-content .seotda-share-seat-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 0.35rem;
+      margin-bottom: 0.55rem;
+      font-size: 0.78rem;
+    }
+
+    .article-content .seotda-share-seat-head strong {
+      color: #fff;
+      font-size: 0.95rem;
+    }
+
+    .article-content .seotda-share-seat-head span {
+      color: #c9d8d0;
+      white-space: nowrap;
+    }
+
+    .article-content .seotda-share-cards {
+      display: flex;
+      justify-content: center;
+      gap: 0.35rem;
+      min-height: 84px;
+      perspective: 600px;
+    }
+
+    .article-content .seotda-share-cards img,
+    .article-content .seotda-share-card-back {
+      display: block;
+      width: clamp(48px, 9vw, 66px);
+      height: auto;
+      aspect-ratio: 2 / 3;
+      border: 1px solid rgba(255, 255, 255, 0.5);
+      border-radius: 0.45rem;
+      object-fit: cover;
+      box-shadow: 0 5px 13px rgba(0, 0, 0, 0.36);
+      backface-visibility: hidden;
+      animation: seotdaShareFlip 0.62s cubic-bezier(0.2, 0.75, 0.25, 1) both;
+    }
+
+    .article-content .seotda-share-cards > :nth-child(2) {
+      animation-delay: 0.18s;
+    }
+
+    .article-content .seotda-share-card-back {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: repeating-linear-gradient(45deg, #8a1919 0 7px, #4b0b0b 7px 14px);
+      color: #f4d77a;
+      font-size: 1.35rem;
+      font-weight: 900;
+    }
+
+    .article-content .seotda-share-hand {
+      width: fit-content;
+      max-width: 100%;
+      margin: 0.55rem auto 0;
+      padding: 0.2rem 0.55rem;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.11);
+      color: #fff3bf;
+      font-size: 0.76rem;
+      font-weight: 800;
+    }
+
+    .article-content .seotda-share-ddaeng-layer {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      justify-items: center;
+      width: min(calc(100% - 2rem), 22rem);
+      margin: -0.35rem auto 1rem;
+      padding: 0.85rem 1rem;
+      overflow: hidden;
+      border: 2px solid #ffd75e;
+      border-radius: 1rem;
+      background:
+        radial-gradient(circle at 50% 0, rgba(255, 215, 94, 0.3), transparent 52%),
+        linear-gradient(145deg, rgba(49, 91, 58, 0.98), rgba(7, 30, 23, 0.98));
+      color: #fff7d6;
+      text-align: center;
+      box-shadow: 0 0 30px rgba(255, 201, 55, 0.3);
+      animation: seotdaShareDdaeng 0.56s cubic-bezier(0.2, 0.82, 0.25, 1.18) 0.7s both;
+    }
+
+    .article-content .seotda-share-ddaeng-sparks {
+      color: #ffd75e;
+      font-size: 1rem;
+      letter-spacing: 0.3rem;
+    }
+
+    .article-content .seotda-share-ddaeng-label {
+      color: #d9bd6b;
+      font-size: 0.66rem;
+      font-weight: 900;
+      letter-spacing: 0.16em;
+    }
+
+    .article-content .seotda-share-ddaeng-layer > strong {
+      color: #ffd75e;
+      font-size: clamp(1.7rem, 7vw, 2.45rem);
+      line-height: 1.15;
+      text-shadow: 0 0 18px rgba(255, 215, 94, 0.45);
+    }
+
+    .article-content .seotda-share-ddaeng-layer > div {
+      display: flex;
+      gap: 0.45rem;
+      width: 100%;
+      margin-top: 0.55rem;
+    }
+
+    .article-content .seotda-share-ddaeng-layer b {
+      flex: 1;
+      padding: 0.4rem;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 0.6rem;
+      background: rgba(0, 0, 0, 0.2);
+      color: #ffe58f;
+      font-size: 0.76rem;
+    }
+
+    .article-content .seotda-share-actions {
+      position: relative;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 0.4rem;
+      padding: 0 1rem 1rem;
+    }
+
+    .article-content .seotda-share-action {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      max-width: 100%;
+      padding: 0.3rem 0.55rem;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 999px;
+      background: rgba(0, 0, 0, 0.25);
+      color: #dbe9e2;
+      font-size: 0.72rem;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      animation: seotdaShareChip 0.45s ease-out both;
+    }
+
+    .article-content .seotda-share-action:nth-child(2) {
+      animation-delay: 0.12s;
+    }
+
+    .article-content .seotda-share-action:nth-child(3) {
+      animation-delay: 0.24s;
+    }
+
+    .article-content .seotda-share-action:nth-child(4) {
+      animation-delay: 0.36s;
+    }
+
+    .article-content .seotda-share-action:nth-child(5) {
+      animation-delay: 0.48s;
+    }
+
+    @keyframes seotdaShareFlip {
+      from {
+        opacity: 0;
+        transform: rotateY(90deg) translateY(8px);
+      }
+      to {
+        opacity: 1;
+        transform: rotateY(0) translateY(0);
+      }
+    }
+
+    @keyframes seotdaShareWinner {
+      0%,
+      100% {
+        transform: translateY(0);
+        box-shadow: 0 0 0 rgba(255, 215, 94, 0);
+      }
+      50% {
+        transform: translateY(-5px);
+        box-shadow: 0 0 24px rgba(255, 215, 94, 0.45);
+      }
+    }
+
+    @keyframes seotdaShareChip {
+      from {
+        opacity: 0;
+        transform: translateY(12px) scale(0.85);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    @keyframes seotdaShareDdaeng {
+      from {
+        opacity: 0;
+        transform: translateY(16px) scale(0.75) rotate(-2deg);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1) rotate(0);
+      }
+    }
+
+    @media (max-width: 575.98px) {
+      .article-content .seotda-share-table {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.5rem;
+        padding: 0.75rem;
+      }
+
+      .article-content .seotda-share-seat {
+        padding: 0.5rem;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .article-content .seotda-share-cards img,
+      .article-content .seotda-share-card-back,
+      .article-content .seotda-share-seat.is-winner,
+      .article-content .seotda-share-ddaeng-layer,
+      .article-content .seotda-share-action {
+        animation: none;
+      }
+    }
+
     /* OG 카드: 링크 밑줄 제거 및 색상 상속 */
     .article-content .og-card-blot a,
     .article-content .og-card-blot a:link,

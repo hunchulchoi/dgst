@@ -7,6 +7,7 @@ import {
   didSeotdaTakeLead,
   getSeotdaCurrentLeader,
   getSeotdaRank,
+  getSeotdaSparkHistory,
   getTodaySeotdaStats,
   isSeotdaOopsBalance,
   resolveSeotdaOops,
@@ -23,12 +24,14 @@ import {
 } from './seotdaState.js';
 import {
   applyPlayerAction,
+  contributionCapacity,
   createNewRound,
   runNpcTurns,
   seotdaAuditLogEntries,
   sparkTauntCooldownAfterRound,
   userChipResult
 } from './seotdaRound.js';
+import { decideSparkIntervention } from './seotdaSparkAppServer.js';
 
 const SMOKE_BALANCE = 1000;
 
@@ -140,6 +143,15 @@ export async function POST(event) {
         throw error(400, { message: 'die | call | raise 만 가능' });
       }
       const raisePay = body?.amount != null ? Number(body.amount) : undefined;
+      const userSeat = round.seats.find((seat) => seat.id === 'user');
+      if (
+        move === 'raise' &&
+        userSeat &&
+        Number.isFinite(raisePay) &&
+        Number(raisePay) >= contributionCapacity(round, userSeat)
+      ) {
+        round.userMaxRaiseUsed = true;
+      }
       applyPlayerAction(
         round,
         'user',
@@ -166,6 +178,8 @@ export async function POST(event) {
             String(result.delta),
             round.seats.find((s) => s.id === 'user')?.lastAction ?? '-',
             tookLead ? 'lead' : '-',
+            round.userMaxRaiseUsed ? 'user:max-raise' : 'user:no-max-raise',
+            round.sparkIntervention ? 'spark:on' : 'spark:off',
             ...seotdaAuditLogEntries(round)
           ]
         });
@@ -217,7 +231,22 @@ async function beginRound(email, nickname, openingActorId = 'user', sparkTauntCo
     throw error(400, { message: '보유 점수가 부족합니다. 오링 후 잠시 기다려 주세요.' });
   }
   const npcChips = getNpcStacks(email);
-  const round = createNewRound(balance, Math.random, npcChips, openingActorId, sparkTauntCooldown);
+  const history = await getSeotdaSparkHistory(email);
+  const sparkDecision = await decideSparkIntervention({
+    balance,
+    npcChips,
+    openingActorId,
+    sparkTauntCooldown,
+    history
+  });
+  const round = createNewRound(
+    balance,
+    Math.random,
+    npcChips,
+    openingActorId,
+    sparkTauntCooldown,
+    sparkDecision
+  );
   const npcActions = runNpcTurns(round);
   chipsBeforeMap.set(email, balance);
   setRound(email, round);

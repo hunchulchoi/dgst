@@ -12,8 +12,6 @@ export const NPC_PROFILES = [
   { id: 'npc_madam', name: '정마담', style: 'gambler', bluff: 0.3 }
 ];
 
-export const LOW_BALANCE_SPARK_CHANCE = 0.06;
-export const SPARK_TAUNT_CHANCE = 0.18;
 export const SPARK_TAUNT_COOLDOWN_ROUNDS = 2;
 export const SPARK_TAUNTS = [
   '어디서 약을 팔아?',
@@ -38,49 +36,6 @@ export const SPARK_TAUNTS = [
   '신사답게 행동해.',
   '한 끗 차이로 사람이 죽고 사는 거야.'
 ];
-
-/** @type {Record<string, string[]>} */
-const SPARK_TAUNTS_BY_NPC = {
-  npc_agwi: [
-    '어디서 약을 팔아?',
-    '쫄리면 뒤지시던가.',
-    '내가 빙다리 핫바지로 보이냐?',
-    '늑대 새끼가 어떻게 개 밑으로 들어갑니까?',
-    '너는 나한테 구땡을 줬을 것이여.',
-    '동작 그만, 밑장 빼기냐?',
-    '쫄리면 뒈지시든지.',
-    '예림이, 그 패 봐봐.',
-    '사쿠라네?'
-  ],
-  npc_goni: [
-    '묻고 더블로 가!',
-    '손은 눈보다 빠르니까.',
-    '아수라발발타.',
-    '화란아, 나도 순정이 있다.',
-    '확실하지 않으면 승부를 걸지 마라.',
-    '돈 잃고 돈 먹기.',
-    '한 끗 차이로 사람이 죽고 사는 거야.'
-  ],
-  npc_madam: [
-    '나 이대 나온 여자야.',
-    '화투! 말이 참 예뻐요. 꽃을 가지고 하는 싸움.',
-    '이 바닥엔 영원한 친구도 원수도 없어.',
-    '고니를 아냐고요? 내가 아는 타짜 중에 최고였어요.',
-    '신사답게 행동해.'
-  ]
-};
-
-/** @param {number} balance @param {() => number} [rng] */
-export function pickLowBalanceSparkIntervention(balance, rng = Math.random) {
-  return balance < 100_000 && rng() < LOW_BALANCE_SPARK_CHANCE;
-}
-
-/** @param {boolean} active @param {number} cooldownRounds @param {() => number} [rng] @param {string | null} [npcId] */
-export function pickSparkTaunt(active, cooldownRounds, rng = Math.random, npcId = null) {
-  if (!active || cooldownRounds > 0 || rng() >= SPARK_TAUNT_CHANCE) return null;
-  const lines = npcId ? (SPARK_TAUNTS_BY_NPC[npcId] ?? SPARK_TAUNTS) : SPARK_TAUNTS;
-  return lines[Math.floor(rng() * lines.length)] ?? lines[0];
-}
 
 /**
  * 공개 베팅 신호만 사용한다. 유저 히든카드는 입력 자체가 없다.

@@ -48,6 +48,10 @@
     showdown: boolean;
     userFolded?: boolean;
     revealNpcHands?: boolean;
+    ddaengWinnerId?: string | null;
+    ddaengHandName?: string | null;
+    ddaengValuePerLoser?: number;
+    ddaengTotalPaid?: number;
     seats: SeotdaSeat[];
   }
 
@@ -96,6 +100,9 @@
   let peelStartY = 0;
   /** 연출 끝난 뒤에만 승패/다음판 표시 */
   let revealDone = $state(true);
+  let ddaengLayerOpen = $state(
+    Number((data.round as SeotdaRound | null)?.ddaengValuePerLoser ?? 0) > 0
+  );
   /** 지금 까는 좌석 (하이라이트) */
   let revealingId = $state<string | null>(null);
   /** 족보 안내 접기 */
@@ -157,6 +164,9 @@
   );
   const isDraw = $derived(isShowdown && winnerIds.length > 1);
   const userWon = $derived(winnerIds.includes('user') && !isDraw);
+  const ddaengWinner = $derived(
+    round?.seats.find((seat) => seat.id === round?.ddaengWinnerId) ?? null
+  );
   const toCall = $derived(userSeat ? Math.max(0, (round?.currentBet ?? 0) - userSeat.contrib) : 0);
   const roundAnte = $derived(round?.antePaid ?? dynamicAnte(balance));
   const minRaise = $derived(minRaisePay(toCall, roundAnte));
@@ -244,6 +254,14 @@
     return !card.hidden && card.month > 0;
   }
 
+  function showDdaengLayer(r: SeotdaRound) {
+    if (Number(r.ddaengValuePerLoser ?? 0) > 0) ddaengLayerOpen = true;
+  }
+
+  function closeDdaengLayer() {
+    ddaengLayerOpen = false;
+  }
+
   /**
    * 쇼다운 진입 시 NPC 패를 한 명씩 까기 (유저 다이면 스킵)
    * @param {SeotdaRound} r
@@ -255,12 +273,14 @@
       hiddenNpcIds = new Set(r.seats.filter((s) => s.isNpc && !s.revealDdaeng).map((s) => s.id));
       revealDone = true;
       revealingId = null;
+      showDdaengLayer(r);
       return;
     }
     const aliveNpcs = r.seats.filter((s) => s.isNpc && !s.folded);
     hiddenNpcIds = new Set(aliveNpcs.map((s) => s.id));
     revealDone = aliveNpcs.length === 0;
     revealingId = null;
+    if (revealDone) showDdaengLayer(r);
 
     let delay = 400;
     aliveNpcs.forEach((npc, idx) => {
@@ -273,6 +293,7 @@
           const done = setTimeout(() => {
             revealingId = null;
             revealDone = true;
+            showDdaengLayer(r);
           }, 700);
           timers.push(done);
         }
@@ -290,6 +311,7 @@
     peelOpen = false;
     peelPull = 0;
     revealDone = true;
+    ddaengLayerOpen = false;
     hiddenNpcIds = new Set();
     revealingId = null;
     const t = setTimeout(() => {
@@ -368,6 +390,7 @@
       hiddenNpcIds = new Set();
       revealDone = true;
       revealingId = null;
+      ddaengLayerOpen = false;
     }
   }
 
@@ -775,6 +798,36 @@
               </div>
             {/if}
 
+            {#if ddaengLayerOpen && round.ddaengValuePerLoser}
+              <div
+                class="ddaeng-value-backdrop"
+                role="dialog"
+                aria-modal="true"
+                aria-label="땡값 정산"
+                tabindex="-1"
+                onclick={(event) => {
+                  if (event.target === event.currentTarget) closeDdaengLayer();
+                }}
+                onkeydown={(event) => {
+                  if (event.key === 'Escape') closeDdaengLayer();
+                }}
+              >
+                <div class="ddaeng-value-layer">
+                  <div class="ddaeng-value-sparks" aria-hidden="true">✦ 🪙 ✦</div>
+                  <div class="ddaeng-value-label">땡값 정산</div>
+                  <strong class="ddaeng-value-hand">{round.ddaengHandName ?? '땡'}</strong>
+                  <div class="ddaeng-value-winner">{ddaengWinner?.name ?? '승자'} 수령</div>
+                  <div class="ddaeng-value-amounts">
+                    <span>1인당 <strong>{formatNumber(round.ddaengValuePerLoser)}점</strong></span>
+                    <span>총 <strong>{formatNumber(round.ddaengTotalPaid)}점</strong></span>
+                  </div>
+                  <button class="btn btn-warning fw-bold" type="button" onclick={closeDdaengLayer}>
+                    확인
+                  </button>
+                </div>
+              </div>
+            {/if}
+
             {#if canAct}
               <div class="bet-box rounded-3 border p-3 mb-3">
                 <div class="d-flex justify-content-between align-items-center mb-2 small bet-meta">
@@ -862,11 +915,7 @@
                 >
                   <h5 class="mb-3">섯다 결과 공유</h5>
                   <label class="form-label" for="seotda-share-board">게시판</label>
-                  <select
-                    id="seotda-share-board"
-                    class="form-select mb-3"
-                    bind:value={shareBoard}
-                  >
+                  <select id="seotda-share-board" class="form-select mb-3" bind:value={shareBoard}>
                     <option value="free">자유게시판</option>
                     <option value="bug">버그신고</option>
                   </select>
@@ -993,6 +1042,91 @@
   }
   .result-banner {
     animation: popIn 0.4s ease;
+  }
+  .ddaeng-value-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1070;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    background: rgba(3, 10, 8, 0.78);
+    backdrop-filter: blur(5px);
+  }
+  .ddaeng-value-layer {
+    position: relative;
+    width: min(100%, 24rem);
+    overflow: hidden;
+    padding: 1.35rem;
+    border: 2px solid #ffd75e;
+    border-radius: 1.25rem;
+    background:
+      radial-gradient(circle at 50% 0, rgba(255, 215, 94, 0.3), transparent 42%),
+      linear-gradient(150deg, #164b36, #071e17);
+    color: #fff7d6;
+    text-align: center;
+    box-shadow: 0 0 45px rgba(255, 201, 55, 0.35);
+    animation: ddaengValueEnter 0.48s cubic-bezier(0.2, 0.82, 0.25, 1.18);
+  }
+  .ddaeng-value-sparks {
+    color: #ffd75e;
+    font-size: 1.4rem;
+    letter-spacing: 0.35rem;
+    animation: ddaengValueSpark 1s ease-in-out infinite alternate;
+  }
+  .ddaeng-value-label {
+    margin-top: 0.25rem;
+    color: #d9bd6b;
+    font-size: 0.76rem;
+    font-weight: 900;
+    letter-spacing: 0.18em;
+  }
+  .ddaeng-value-hand {
+    display: block;
+    margin: 0.25rem 0;
+    color: #ffd75e;
+    font-size: clamp(2rem, 10vw, 3.4rem);
+    line-height: 1.1;
+    text-shadow: 0 0 22px rgba(255, 215, 94, 0.5);
+  }
+  .ddaeng-value-winner {
+    margin-bottom: 0.85rem;
+    font-weight: 800;
+  }
+  .ddaeng-value-amounts {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.55rem;
+    margin-bottom: 1rem;
+  }
+  .ddaeng-value-amounts span {
+    padding: 0.65rem 0.4rem;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 0.75rem;
+    background: rgba(0, 0, 0, 0.22);
+    font-size: 0.82rem;
+  }
+  .ddaeng-value-amounts strong {
+    display: block;
+    color: #ffd75e;
+    font-size: 1.05rem;
+  }
+  @keyframes ddaengValueEnter {
+    from {
+      opacity: 0;
+      transform: translateY(18px) scale(0.72) rotate(-2deg);
+    }
+  }
+  @keyframes ddaengValueSpark {
+    from {
+      opacity: 0.55;
+      transform: scale(0.92);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1.08);
+    }
   }
   .share-backdrop {
     position: fixed;

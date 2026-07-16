@@ -15,9 +15,7 @@ import {
   SPARK_TAUNT_COOLDOWN_ROUNDS,
   chooseNpcAction,
   npcRaiseChips,
-  pickLowBalanceSparkIntervention,
   pickPressureNpc,
-  pickSparkTaunt,
   publicBluffSuspicionChance,
   sparkTauntForAction
 } from './seotdaNpc.js';
@@ -94,8 +92,8 @@ export function settleDdaengValue(seats, winnerId, ante) {
 }
 
 /**
- * @param {{ antePaid: number; pot: number; seats: Array<{ isNpc: boolean; folded: boolean; chips: number; contrib: number; totalContrib?: number }> }} round
- * @param {{ isNpc: boolean; chips: number; contrib: number; totalContrib?: number }} seat
+ * @param {{ antePaid: number; pot: number; seats: Array<{ id: string; isNpc: boolean; folded: boolean; chips: number; contrib: number; totalContrib?: number }> }} round
+ * @param {{ id: string; isNpc: boolean; chips: number; contrib: number; totalContrib?: number }} seat
  */
 export function contributionCapacity(round, seat) {
   const totalContrib = seat.totalContrib ?? seat.contrib;
@@ -128,13 +126,15 @@ function createRoundId() {
  * @param {Record<string, number>} [npcChipMap] 이전 판 NPC 잔고
  * @param {string} [openingActorId] 직전 판 승자
  * @param {number} [sparkTauntCooldown] 도발 노출 남은 판 수
+ * @param {{ active?: boolean; npcId?: string | null; taunt?: string | null; reason?: string } | null} [sparkDecision]
  */
 export function createNewRound(
   userChips,
   rng = Math.random,
   npcChipMap = {},
   openingActorId = 'user',
-  sparkTauntCooldown = 0
+  sparkTauntCooldown = 0,
+  sparkDecision = null
 ) {
   const ante = dynamicAnte(userChips);
   let deck = shuffleDeck(createDeck(), rng);
@@ -203,8 +203,13 @@ export function createNewRound(
   log.push(`판돈 ${ante}씩 (팟 ${pot})`);
 
   const pressureNpcId = pickPressureNpc(NPC_PROFILES, rng);
-  const sparkIntervention = pickLowBalanceSparkIntervention(userChips, rng);
-  const sparkTaunt = pickSparkTaunt(sparkIntervention, sparkTauntCooldown, rng, pressureNpcId);
+  const requestedSparkNpcId = String(sparkDecision?.npcId ?? '');
+  const sparkNpcId = NPC_PROFILES.some((profile) => profile.id === requestedSparkNpcId)
+    ? requestedSparkNpcId
+    : null;
+  const sparkIntervention = !!sparkDecision?.active && !!sparkNpcId;
+  const sparkTaunt =
+    sparkIntervention && sparkTauntCooldown <= 0 ? (sparkDecision?.taunt ?? null) : null;
   const openingIndex = Math.max(
     0,
     seats.findIndex((seat) => seat.id === openingActorId)
@@ -222,8 +227,10 @@ export function createNewRound(
     openingActionTaken: false,
     pressureNpcId,
     sparkIntervention,
-    sparkNpcId: sparkIntervention ? pressureNpcId : null,
+    sparkNpcId: sparkIntervention ? sparkNpcId : null,
     sparkTaunt,
+    sparkDecisionSource: sparkDecision ? 'codex-app-server' : 'none',
+    sparkDecisionReason: String(sparkDecision?.reason ?? '').slice(0, 160),
     sparkTaunted: false,
     sparkTauntCooldown: Math.max(0, sparkTauntCooldown),
     lastAggressorId: null,
