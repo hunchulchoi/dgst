@@ -10,6 +10,15 @@ describe('seotda betting UI', () => {
     expect(pageSource).toContain('round && userSeat ? contributionCapacity(round, userSeat) : 0');
   });
 
+  it('resets the next hand raise amount to a legal non-zero default', () => {
+    expect(pageSource).toContain('function resetRaiseBet(nextRound: SeotdaRound | null');
+    expect(pageSource).toContain('raiseBet = minRaisePay(0, ante)');
+    expect(pageSource).toContain('const nextMinimum = minRaisePay(nextToCall, ante)');
+    expect(pageSource).toContain(
+      "else if (body.action === 'ack' || body.action === 'start') resetRaiseBet(next, balance)"
+    );
+  });
+
   it('carries the previous winner into the next round as the opening actor', () => {
     expect(serverSource).toContain("const openingActorId = round?.winnerId ?? 'user'");
     expect(serverSource).toMatch(

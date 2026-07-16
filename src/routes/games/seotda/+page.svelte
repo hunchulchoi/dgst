@@ -177,9 +177,27 @@
     if (!canAct) return;
     const min = minRaise;
     const max = maxRaise;
-    if (raiseBet < min) raiseBet = Math.min(min, max);
-    else if (raiseBet > max) raiseBet = max;
+    if (raiseBet < min) raiseBet = max > 0 ? Math.min(min, max) : min;
+    else if (max > 0 && raiseBet > max) raiseBet = max;
   });
+
+  /** 판 종료·새 판 시작 때 0이 아닌 최소 합법 레이즈로 초기화한다. */
+  function resetRaiseBet(nextRound: SeotdaRound | null, nextBalance = balance) {
+    const ante = Math.max(ANTE, Number(nextRound?.antePaid ?? dynamicAnte(nextBalance)) || ANTE);
+    if (!nextRound) {
+      raiseBet = minRaisePay(0, ante);
+      return;
+    }
+    const nextUser = nextRound.seats.find((seat) => seat.id === 'user');
+    if (!nextUser) {
+      raiseBet = minRaisePay(0, ante);
+      return;
+    }
+    const nextToCall = Math.max(0, Number(nextRound.currentBet) - Number(nextUser.contrib));
+    const nextMinimum = minRaisePay(nextToCall, ante);
+    const nextMaximum = contributionCapacity(nextRound, nextUser);
+    raiseBet = nextMaximum > 0 ? Math.min(nextMinimum, nextMaximum) : nextMinimum;
+  }
 
   function clearTimers() {
     for (const t of timers) clearTimeout(t);
@@ -439,6 +457,8 @@
       const next = (j.round as SeotdaRound | null) ?? null;
       const hitShowdown = !!(next && (next.showdown || next.phase === 'showdown'));
       applyRound(next, body.action === 'act' && hitShowdown);
+      if (hitShowdown) resetRaiseBet(null, balance);
+      else if (body.action === 'ack' || body.action === 'start') resetRaiseBet(next, balance);
       npcActionPreview = {};
       if (body.action === 'ack' || body.action === 'start' || hitShowdown) {
         // 랭킹·오늘 통계 갱신
