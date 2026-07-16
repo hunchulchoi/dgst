@@ -304,7 +304,7 @@ function applyNpcSeatAction(round, seat, rng = Math.random) {
   const profile = NPC_PROFILES.find((p) => p.id === seat.id);
   if (!profile) {
     seat.needsAction = false;
-    return;
+    return null;
   }
 
   const toCall = Math.max(0, round.currentBet - seat.contrib);
@@ -366,6 +366,12 @@ function applyNpcSeatAction(round, seat, rng = Math.random) {
     round.log.push(`${seat.name}: 다이`);
   }
   advanceTurn(round, seat.id);
+  return {
+    seatId: seat.id,
+    name: seat.name,
+    action: seat.lastAction ?? '',
+    amount: seat.lastActionAmount ?? 0
+  };
 }
 
 /**
@@ -374,23 +380,26 @@ function applyNpcSeatAction(round, seat, rng = Math.random) {
  * @param {() => number} [rng]
  */
 export function runNpcTurns(round, rng = Math.random) {
-  if (round.phase !== 'betting') return;
+  /** @type {Array<{ seatId: string; name: string; action: string; amount: number }>} */
+  const actions = [];
+  if (round.phase !== 'betting') return actions;
 
   for (let guard = 0; guard < 40; guard++) {
     finishIfNeeded(round, rng);
-    if (round.phase !== 'betting') return;
+    if (round.phase !== 'betting') return actions;
 
     const next = nextSeatNeedingAction(round);
     if (!next) {
       showdown(round, rng);
       if (round.phase === 'betting') continue;
-      return;
+      return actions;
     }
     if (!next.isNpc) {
       round.turnIndex = round.seats.indexOf(next);
-      return; // 유저 입력 대기
+      return actions; // 유저 입력 대기
     }
-    applyNpcSeatAction(round, next, rng);
+    const action = applyNpcSeatAction(round, next, rng);
+    if (action) actions.push(action);
   }
 
   // 안전장치: 루프 초과 시 강제 쇼다운
@@ -398,6 +407,7 @@ export function runNpcTurns(round, rng = Math.random) {
     round.log.push('베팅 종료 (상한)');
     showdown(round);
   }
+  return actions;
 }
 
 /**

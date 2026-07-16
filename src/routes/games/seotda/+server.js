@@ -144,7 +144,7 @@ export async function POST(event) {
         /** @type {'die'|'call'|'raise'} */ (move),
         Number.isFinite(raisePay) ? raisePay : undefined
       );
-      runNpcTurns(round);
+      const npcActions = runNpcTurns(round);
       setRound(user.email, round);
 
       if (round.phase === 'showdown') {
@@ -169,13 +169,14 @@ export async function POST(event) {
         });
         chipsBeforeMap.delete(user.email);
         saveNpcStacks(user.email, round);
-        return json({ success: true, balance: result.after, round: publicOf(round) });
+        return json({ success: true, balance: result.after, round: publicOf(round), npcActions });
       }
 
       return json({
         success: true,
         balance: round.seats.find((s) => s.id === 'user')?.chips ?? 0,
-        round: publicOf(round)
+        round: publicOf(round),
+        npcActions
       });
     }
 
@@ -213,10 +214,10 @@ async function beginRound(email, nickname, openingActorId = 'user') {
   }
   const npcChips = getNpcStacks(email);
   const round = createNewRound(balance, Math.random, npcChips, openingActorId);
-  runNpcTurns(round);
+  const npcActions = runNpcTurns(round);
   chipsBeforeMap.set(email, balance);
   setRound(email, round);
-  return { success: true, balance: round.seats[0].chips, round: publicOf(round) };
+  return { success: true, balance: round.seats[0].chips, round: publicOf(round), npcActions };
 }
 
 /**
@@ -231,7 +232,12 @@ function handleSmoke(email, action, body) {
     const round = createNewRound(SMOKE_BALANCE, Math.random, {});
     chipsBeforeMap.set(email, SMOKE_BALANCE);
     setRound(email, round);
-    return json({ success: true, balance: round.seats[0].chips, round: publicOf(round) });
+    return json({
+      success: true,
+      balance: round.seats[0].chips,
+      round: publicOf(round),
+      npcActions: []
+    });
   }
   if (action === 'ack') {
     const prev = getRound(email);
@@ -239,10 +245,10 @@ function handleSmoke(email, action, body) {
     if (prev) saveNpcStacks(email, prev);
     clearRound(email);
     const round = createNewRound(SMOKE_BALANCE, Math.random, getNpcStacks(email), openingActorId);
-    runNpcTurns(round);
+    const npcActions = runNpcTurns(round);
     chipsBeforeMap.set(email, SMOKE_BALANCE);
     setRound(email, round);
-    return json({ success: true, balance: round.seats[0].chips, round: publicOf(round) });
+    return json({ success: true, balance: round.seats[0].chips, round: publicOf(round), npcActions });
   }
   if (action === 'act') {
     const round = getRound(email);
@@ -257,10 +263,10 @@ function handleSmoke(email, action, body) {
       /** @type {'die'|'call'|'raise'} */ (move),
       Number.isFinite(raisePay) ? raisePay : undefined
     );
-    runNpcTurns(round);
+    const npcActions = runNpcTurns(round);
     setRound(email, round);
     const userChips = round.seats.find((s) => s.id === 'user')?.chips ?? 0;
-    return json({ success: true, balance: userChips, round: publicOf(round) });
+    return json({ success: true, balance: userChips, round: publicOf(round), npcActions });
   }
   throw error(400, { message: 'action: start | act | ack' });
 }

@@ -48,6 +48,13 @@
     seats: SeotdaSeat[];
   }
 
+  interface NpcAction {
+    seatId: string;
+    name: string;
+    action: string;
+    amount: number;
+  }
+
   let { data }: SeotdaPageProps = $props();
 
   let balance = $state(Number(data.balance ?? 0));
@@ -91,6 +98,8 @@
   let guideOpen = $state(false);
   /** 레이즈에 넣을 칩 */
   let raiseBet = $state(20);
+  let thinkingNpcId = $state<string | null>(null);
+  let npcActionPreview = $state<Record<string, NpcAction>>({});
 
   const PEEL_THRESHOLD = 0.55;
   const PEEL_MAX_PX = 220;
@@ -187,6 +196,34 @@
     if (seat.lastAction === '콜') return `콜 ${formatNumber(amount)}`;
     if (seat.lastAction === '올인') return `올인 +${formatNumber(amount)}`;
     return seat.lastAction ?? '';
+  }
+
+  function npcActionText(action: NpcAction): string {
+    if (action.action === '레이즈') return `레이즈 +${formatNumber(action.amount)}`;
+    if (action.action === '콜') return `콜 ${formatNumber(action.amount)}`;
+    if (action.action === '올인') return `올인 +${formatNumber(action.amount)}`;
+    return action.action;
+  }
+
+  function npcActionDelay(action: string): number {
+    if (action === '콜' || action === '레이즈') return 650 + Math.random() * 700;
+    if (action === '올인') return 800 + Math.random() * 700;
+    return 220 + Math.random() * 260;
+  }
+
+  function wait(delayMs: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, delayMs));
+  }
+
+  async function playNpcActions(actions: NpcAction[]) {
+    npcActionPreview = {};
+    for (const action of actions) {
+      thinkingNpcId = action.seatId;
+      await wait(npcActionDelay(action.action));
+      thinkingNpcId = null;
+      npcActionPreview = { ...npcActionPreview, [action.seatId]: action };
+      await wait(action.action === '콜' || action.action === '레이즈' ? 380 : 180);
+    }
   }
 
   function npcCardVisible(npc: SeotdaSeat, card: SeotdaCard): boolean {
@@ -363,10 +400,13 @@
         message = j?.message ?? '요청 실패';
         return;
       }
+      const npcActions = Array.isArray(j.npcActions) ? (j.npcActions as NpcAction[]) : [];
+      await playNpcActions(npcActions);
       balance = Number(j.balance ?? balance);
       const next = (j.round as SeotdaRound | null) ?? null;
       const hitShowdown = !!(next && (next.showdown || next.phase === 'showdown'));
       applyRound(next, body.action === 'act' && hitShowdown);
+      npcActionPreview = {};
       if (body.action === 'ack' || body.action === 'start' || hitShowdown) {
         // 랭킹·오늘 통계 갱신
         await refreshGameState();
@@ -375,6 +415,7 @@
       console.error('[seotda post]', err);
       message = '네트워크 오류';
     } finally {
+      thinkingNpcId = null;
       busy = false;
     }
   }
@@ -505,7 +546,18 @@
                     {#if npc.handName && !hiddenNpcIds.has(npc.id) && isShowdown && !npc.folded && round.revealNpcHands !== false && !userSeat?.folded}
                       <div class="badge text-bg-dark hand-pop">{npc.handName}</div>
                     {/if}
-                    {#if npc.lastAction}
+                    {#if thinkingNpcId === npc.id}
+                      <div class="action-effect thinking">생각 중…</div>
+                    {:else if npcActionPreview[npc.id]}
+                      {@const preview = npcActionPreview[npc.id]}
+                      <div
+                        class="action-effect"
+                        class:raise={preview.action === '레이즈'}
+                        class:fold={preview.action === '다이'}
+                      >
+                        {npcActionText(preview)}
+                      </div>
+                    {:else if npc.lastAction}
                       <div
                         class="action-effect"
                         class:raise={npc.lastAction === '레이즈'}
@@ -989,6 +1041,10 @@
   .action-effect.fold {
     background: #495057;
     color: #fff;
+  }
+  .action-effect.thinking {
+    opacity: 0.82;
+    animation: pulse 0.8s ease-in-out infinite;
   }
   @keyframes actionPop {
     from {

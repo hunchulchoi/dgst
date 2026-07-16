@@ -105,6 +105,15 @@ describe('seotdaRound smoke', () => {
     expect(nextSeatNeedingAction(round)?.id).toBe('user');
   });
 
+  it('returns NPC actions in table order for client pacing', () => {
+    const round = createNewRound(120_000, () => 0.99, {}, 'npc_goni');
+
+    const actions = runNpcTurns(round, () => 0.99);
+
+    expect(actions.map((action) => action.seatId)).toEqual(['npc_goni', 'npc_madam']);
+    expect(actions.every((action) => action.action === '체크')).toBe(true);
+  });
+
   it('safely handles an exhausted street with no valid turn index', () => {
     const round = createNewRound(1_000, () => 0.5);
     round.turnIndex = -1;

@@ -26,4 +26,10 @@ describe('seotda betting UI', () => {
     expect(pageSource).toContain("onclick={() => act('call')}");
     expect(pageSource).toContain("onclick={() => act('raise')}");
   });
+
+  it('paces NPC calls and raises with a short randomized thinking delay', () => {
+    expect(pageSource).toContain('function npcActionDelay(action: string)');
+    expect(pageSource).toContain("action === '콜' || action === '레이즈'");
+    expect(pageSource).toContain('await playNpcActions(npcActions)');
+  });
 });
