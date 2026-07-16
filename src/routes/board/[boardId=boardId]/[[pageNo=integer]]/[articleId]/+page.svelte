@@ -17,6 +17,7 @@
   import { onDestroy, onMount, tick } from 'svelte';
   import BoardList from '$lib/components/board_list.svelte';
   import BilliardsReplayPlayer from '$lib/components/BilliardsReplayPlayer.svelte';
+  import SeotdaReplayPlayer from '$lib/components/SeotdaReplayPlayer.svelte';
   import OGPreview from '$lib/components/OGPreview.svelte';
   import sanitizeHtml from 'sanitize-html';
   import { isOnlyOneEmoji } from '$lib/util/emoji.js';
@@ -1964,6 +1965,7 @@
             class="article-title mb-0 !text-[1.3rem] max-md:!text-[1.4rem] !leading-[1.45] font-semibold"
           >
             {#if data.billiardsReplay}<span aria-label="당구 리플레이">🎱</span>{/if}
+            {#if data.seotdaReplay}<span aria-label="섯다 리플레이">🎴</span>{/if}
             {article.title}
           </h5>
         </Col>
@@ -1985,8 +1987,12 @@
           {#if data.billiardsReplay}
             <BilliardsReplayPlayer replay={data.billiardsReplay} />
           {/if}
-          <!-- eslint-disable-next-line svelte/no-at-html-tags -- article HTML is sanitized on write and sanitized again before render -->
-          {@html getTrustedArticleBodyHtml(article.content)}
+          {#if data.seotdaReplay}
+            <SeotdaReplayPlayer replay={data.seotdaReplay} />
+          {:else}
+            <!-- eslint-disable-next-line svelte/no-at-html-tags -- article HTML is sanitized on write and sanitized again before render -->
+            {@html getTrustedArticleBodyHtml(article.content)}
+          {/if}
         </div>
       </Row>
       <Row class="mb-3 mx-0">

@@ -8,6 +8,7 @@ import {
 import { findCommentsByArticle, toCommentJson } from '$lib/server/board/commentRepo.js';
 import { getBoardListPayload } from '$lib/server/boardListLoad.js';
 import { findBilliardsReplayByArticleId } from '$lib/server/billiardsReplayRepo.js';
+import { extractSeotdaReplay } from '$lib/server/seotdaReplay.js';
 import convertToTree from '$lib/util/tree.js';
 
 const BOARD_COMMENT_SELECT = {
@@ -126,6 +127,7 @@ export const load = async ({ params, locals, cookies }) => {
             createdAt: billiardsReplay.createdAt.toISOString()
           }
         : null,
+      seotdaReplay: extractSeotdaReplay(articleJson.content),
       ...boardListPayload,
       ogTitle,
       ogDescription,

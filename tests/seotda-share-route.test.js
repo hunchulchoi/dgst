@@ -1,11 +1,13 @@
 // @ts-nocheck
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
+import { extractSeotdaReplay } from '../src/lib/server/seotdaReplay.js';
 
 const articlePageSource = readFileSync(
   'src/routes/board/[boardId=boardId]/[[pageNo=integer]]/[articleId]/+page.svelte',
   'utf8'
 );
+const replayPlayerSource = readFileSync('src/lib/components/SeotdaReplayPlayer.svelte', 'utf8');
 
 const rateLimit = vi.hoisted(() => ({ checkRateLimit: vi.fn() }));
 const sessionDevice = vi.hoisted(() => ({ checkAndLogSessionDevice: vi.fn() }));
@@ -74,13 +76,20 @@ describe('seotda board share route', () => {
     articleRepo.createArticle.mockResolvedValue({ id: 'article-1' });
   });
 
-  it('ships card-flip, winner, and chip animations for shared hands', () => {
-    expect(articlePageSource).toContain('@keyframes seotdaShareFlip');
-    expect(articlePageSource).toContain('@keyframes seotdaShareWinner');
-    expect(articlePageSource).toContain('@keyframes seotdaShareChip');
-    expect(articlePageSource).toContain('@keyframes seotdaShareDdaeng');
-    expect(articlePageSource).toContain('.seotda-share-ddaeng-layer');
-    expect(articlePageSource).toContain('.seotda-share-card');
+  it('ships an interactive replay player for shared hands', () => {
+    expect(articlePageSource).toContain('<SeotdaReplayPlayer replay={data.seotdaReplay} />');
+    expect(replayPlayerSource).toContain('class="card-shell"');
+    expect(replayPlayerSource).toContain('function scheduleNext()');
+    expect(replayPlayerSource).toContain("currentEvent?.type === 'ddaeng'");
+    expect(replayPlayerSource).toContain("currentEvent?.type === 'result'");
+    expect(replayPlayerSource).toContain('class:user-seat');
+    expect(replayPlayerSource).toContain('grid-template-columns: repeat(3, minmax(0, 1fr))');
+    expect(replayPlayerSource).toContain('@keyframes chipToPot');
+    expect(replayPlayerSource).toContain('hasFoldedAtCurrentStep');
+    expect(replayPlayerSource).toContain('actionLabel(currentEvent)');
+    expect(replayPlayerSource).toContain('class="speech-bubble"');
+    expect(replayPlayerSource).toContain('@keyframes speechPop');
+    expect(replayPlayerSource).toContain('Math.min(6000, Math.max(3200');
   });
 
   it('creates an article from the server-owned completed round', async () => {
@@ -98,15 +107,26 @@ describe('seotda board share route', () => {
         nickname: '타짜',
         boardId: 'free',
         title: '알리로 승리',
-        content: expect.stringMatching(/seotda-share-card[\s\S]*레이즈 성공![\s\S]*알리[\s\S]*아귀/)
+        content: expect.stringContaining('class="seotda-replay-data"')
       })
     );
     const { content } = articleRepo.createArticle.mock.calls[0][0];
-    expect(content).toContain('class="seotda-share-seat is-winner"');
-    expect(content).toContain('src="/images/seotda/hwatu/01.webp"');
-    expect(content).toContain('src="/images/seotda/hwatu/02.webp"');
-    expect(content).toContain('class="seotda-share-action"');
-    expect(content).not.toContain('<h4>진행 기록</h4>');
+    const replay = extractSeotdaReplay(content);
+    expect(replay).toMatchObject({ result: '승리', note: '레이즈 성공!' });
+    expect(replay.seats).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 'user', winner: true, handName: '알리' }),
+        expect.objectContaining({ id: 'npc_agwi', name: '아귀' })
+      ])
+    );
+    expect(replay.events.map((event) => event.type)).toEqual([
+      'deal',
+      'ante',
+      'action',
+      'action',
+      'showdown',
+      'result'
+    ]);
     expect(boardCache.bustBoardListCache).toHaveBeenCalledWith('free');
   });
 
@@ -129,9 +149,11 @@ describe('seotda board share route', () => {
     await POST(makeEvent({ boardId: 'free' }));
 
     const { content } = articleRepo.createArticle.mock.calls[0][0];
-    expect(content).toContain('class="seotda-share-card-back"');
-    expect(content).not.toContain('/images/seotda/hwatu/03.webp');
-    expect(content).not.toContain('/images/seotda/hwatu/04.webp');
+    const replay = extractSeotdaReplay(content);
+    expect(replay.seats.find((seat) => seat.id === 'npc_agwi')).toMatchObject({
+      handName: '비공개',
+      cards: []
+    });
   });
 
   it('reveals only the winning ddaeng art after the user folded', async () => {
@@ -153,11 +175,20 @@ describe('seotda board share route', () => {
     await POST(makeEvent({ boardId: 'free' }));
 
     const { content } = articleRepo.createArticle.mock.calls[0][0];
-    expect(content.match(/\/images\/seotda\/hwatu\/10\.webp/g)).toHaveLength(2);
-    expect(content).toContain('장땡');
-    expect(content).toContain('class="seotda-share-ddaeng-layer"');
-    expect(content).toContain('1인당 200점');
-    expect(content).toContain('총 200점');
+    const replay = extractSeotdaReplay(content);
+    expect(replay.seats.find((seat) => seat.id === 'npc_agwi')).toMatchObject({
+      handName: '장땡',
+      cards: [
+        { month: 10, gwang: false },
+        { month: 10, gwang: false }
+      ]
+    });
+    expect(replay.ddaeng).toEqual({
+      winnerId: 'npc_agwi',
+      handName: '장땡',
+      valuePerLoser: 200,
+      totalPaid: 200
+    });
   });
 
   it('requires login', async () => {
