@@ -6,6 +6,7 @@ import convertToTree from '$lib/util/tree.js';
 import { checkAndLogSessionDevice } from '$lib/server/auth/checkSessionDevice.js';
 import { getGameSession, isLocalGameSmokeSession } from '$lib/server/localGameSmokeSession.js';
 import { updateSlotUserBalance } from '$lib/server/slotUserBalance.js';
+import { getSeotdaBalance, writeSeotdaScore } from '../../seotda/seotdaBalance.js';
 import {
   buildSubmitFingerprint,
   findRecentDuplicateComment,
@@ -195,6 +196,7 @@ export async function POST(event) {
     const data = await request.formData();
     const content = data.get('content')?.toString()?.trim();
     const parentCommentId = data.get('parentCommentId')?.toString();
+    const rewardGame = data.get('game')?.toString() === 'seotda' ? 'seotda' : 'slot';
 
     if (!content || content.length === 0) {
       throw error(400, { message: '댓글 내용을 입력해주세요.' });
@@ -265,11 +267,11 @@ export async function POST(event) {
     const prisma = getPrisma();
     await ensureSlotArticle(prisma);
 
-    // 오늘 받은 댓글 보상 개수 체크 (100점 보상은 하루 10개까지만, 한국 시간 기준 당일 0시~23:59:59)
+    // 뺑뺑이·섯다 공용 리플 보상은 두 게임 합산 하루 10개까지만 지급한다.
     const todayRewardCount = await prisma.gameScore.count({
       where: {
         email,
-        game: 'slot',
+        game: { in: ['slot', 'seotda'] },
         bet: 0,
         payout: 100,
         delta: 100,
@@ -305,25 +307,35 @@ export async function POST(event) {
     // 댓글 작성 보상: 100점 지급 (하루 10개까지만)
     let rewardGiven = false;
     if (todayRewardCount < 10) {
-      const lastScore = await prisma.gameScore.findFirst({
-        where: { email },
-        orderBy: { createdAt: 'desc' }
-      });
-      const currentBalance = Number(lastScore?.balance ?? 0);
-      const newBalance = currentBalance + 100;
-      await prisma.gameScore.create({
-        data: {
-          email,
-          nickname,
-          game: 'slot',
+      if (rewardGame === 'seotda') {
+        const newBalance = (await getSeotdaBalance(email)) + 100;
+        await writeSeotdaScore(email, nickname, newBalance, {
           bet: 0,
           payout: 100,
           delta: 100,
-          balance: newBalance,
-          reels: ['-', '-', '-']
-        }
-      });
-      await updateSlotUserBalance(email, nickname, newBalance, { incSpin: false });
+          reels: ['comment', 'seotda', '-']
+        });
+      } else {
+        const lastScore = await prisma.gameScore.findFirst({
+          where: { email },
+          orderBy: { createdAt: 'desc' }
+        });
+        const currentBalance = Number(lastScore?.balance ?? 0);
+        const newBalance = currentBalance + 100;
+        await prisma.gameScore.create({
+          data: {
+            email,
+            nickname,
+            game: 'slot',
+            bet: 0,
+            payout: 100,
+            delta: 100,
+            balance: newBalance,
+            reels: ['-', '-', '-']
+          }
+        });
+        await updateSlotUserBalance(email, nickname, newBalance, { incSpin: false });
+      }
       rewardGiven = true;
     }
 

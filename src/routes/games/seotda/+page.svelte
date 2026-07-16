@@ -7,6 +7,7 @@
   import { formatRelativeTime } from '$lib/util/formatRelativeTime.js';
   import { ANTE, dynamicAnte, minRaisePay } from './seotdaEngine.js';
   import { contributionCapacity } from './seotdaRound.js';
+  import SharedGameComments from '$lib/components/SharedGameComments.svelte';
   import HwatuCardFace from './HwatuCardFace.svelte';
   import { HWATU_CARD_URLS } from './hwatuCardAssets';
 
@@ -120,6 +121,7 @@
   let shareBoard = $state('free');
   let shareTitle = $state('');
   let shareNote = $state('');
+  let commentRefreshToken = $state(0);
 
   const PEEL_THRESHOLD = 0.55;
   const PEEL_MAX_PX = 220;
@@ -444,6 +446,39 @@
     }
   }
 
+  async function writeAutomaticComment(content: string) {
+    try {
+      const form = new FormData();
+      form.set('content', content);
+      form.set('game', 'seotda');
+      const response = await fetch('/games/slot/comment', { method: 'POST', body: form });
+      if (!response.ok) {
+        const result = await response.json().catch(() => ({}));
+        throw new Error(result?.message ?? `HTTP ${response.status}`);
+      }
+      commentRefreshToken += 1;
+    } catch (error) {
+      console.error('[seotda automatic comment]', error);
+    }
+  }
+
+  async function writeRoundAutomaticComments(nextRound: SeotdaRound, nextBalance: number) {
+    if (!isLoggedIn) return;
+    const user = nextRound.seats.find((seat) => seat.id === 'user');
+    if (Number(nextRound.ddaengValuePerLoser ?? 0) > 0) {
+      const winner =
+        nextRound.seats.find((seat) => seat.id === nextRound.ddaengWinnerId)?.name ?? '승자';
+      await writeAutomaticComment(
+        `🃏 섯다 땡! ${nextRound.ddaengHandName ?? '땡'} · ${winner} 승 · 땡값 ${formatNumber(nextRound.ddaengValuePerLoser ?? 0)}점`
+      );
+    }
+    if (nextBalance < ANTE) {
+      await writeAutomaticComment(
+        `😢 섯다 오링! ${user?.handName ? `${user.handName} · ` : ''}${formatNumber(Math.abs(Number(nextRound.userChipDelta ?? 0)))}점 잃음`
+      );
+    }
+  }
+
   async function post(body: Record<string, unknown>) {
     busy = true;
     message = '';
@@ -467,6 +502,9 @@
       if (hitShowdown) resetRaiseBet(null, balance);
       else if (body.action === 'ack' || body.action === 'start') resetRaiseBet(next, balance);
       npcActionPreview = {};
+      if (hitShowdown && next) {
+        await writeRoundAutomaticComments(next, balance);
+      }
       if (body.action === 'ack' || body.action === 'start' || hitShowdown) {
         // 랭킹·오늘 통계 갱신
         await refreshGameState();
@@ -611,29 +649,34 @@
             {/if}
           </div>
 
-  {#if message}
-    <div class="alert alert-warning py-2">{message}</div>
-  {/if}
+          {#if message}
+            <div class="alert alert-warning py-2">{message}</div>
+          {/if}
 
-  {#if dealing}
-    <div class="deal-curtain" role="status" aria-live="polite" aria-label="새 판 패 배분 중">
-      <div class="deal-stage">
-        <div class="deal-deck" aria-hidden="true">
-          {#each Array(8) as _, i}
-            <i style={`--deal-index:${i}`}></i>
-          {/each}
-        </div>
-        <div class="deal-copy">
-          <strong>새 판 준비</strong>
-          <span>화투패를 섞는 중</span>
-          <span>패를 자르는 중</span>
-          <span>한 장씩 돌리는 중</span>
-        </div>
-      </div>
-    </div>
-  {/if}
+          {#if dealing}
+            <div
+              class="deal-curtain"
+              role="status"
+              aria-live="polite"
+              aria-label="새 판 패 배분 중"
+            >
+              <div class="deal-stage">
+                <div class="deal-deck" aria-hidden="true">
+                  {#each Array(8) as _, i}
+                    <i style={`--deal-index:${i}`}></i>
+                  {/each}
+                </div>
+                <div class="deal-copy">
+                  <strong>새 판 준비</strong>
+                  <span>화투패를 섞는 중</span>
+                  <span>패를 자르는 중</span>
+                  <span>한 장씩 돌리는 중</span>
+                </div>
+              </div>
+            </div>
+          {/if}
 
-  {#if !round}
+          {#if !round}
             <div class="text-center py-5">
               <p class="mb-3">아귀 · 고니 · 정마담 이 기다림.</p>
               <button
@@ -1080,6 +1123,7 @@
       </div>
     </div>
   </div>
+  <SharedGameComments loggedIn={isLoggedIn} {commentRefreshToken} />
 </div>
 
 <style>
@@ -1683,8 +1727,7 @@
     aspect-ratio: 2 / 3;
     border: 2px solid #f0cf68;
     border-radius: 0.38rem;
-    background:
-      repeating-linear-gradient(45deg, #a31d22 0 7px, #5b090e 7px 14px);
+    background: repeating-linear-gradient(45deg, #a31d22 0 7px, #5b090e 7px 14px);
     box-shadow: 0 8px 18px rgba(0, 0, 0, 0.42);
     animation: dealCardFlight 4.8s cubic-bezier(0.25, 0.72, 0.3, 1) infinite;
     animation-delay: calc(var(--deal-index) * 0.17s);
@@ -1776,14 +1819,12 @@
     }
     72% {
       opacity: 1;
-      transform: translate(calc(-50% + var(--deal-x)), calc(-50% + var(--deal-y)))
-        rotate(-3deg);
+      transform: translate(calc(-50% + var(--deal-x)), calc(-50% + var(--deal-y))) rotate(-3deg);
     }
     92%,
     100% {
       opacity: 0;
-      transform: translate(calc(-50% + var(--deal-x)), calc(-50% + var(--deal-y)))
-        rotate(-3deg);
+      transform: translate(calc(-50% + var(--deal-x)), calc(-50% + var(--deal-y))) rotate(-3deg);
     }
   }
 
