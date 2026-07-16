@@ -12,6 +12,25 @@ const TAUNTS = new Set(SPARK_TAUNTS);
 const DIFFICULTIES = new Set(['give-room', 'balanced', 'challenge']);
 const NPC_STYLES = new Set(['loose-caller', 'cautious', 'aggressive']);
 
+/**
+ * @typedef {{
+ *   inputTokens?: number;
+ *   cachedInputTokens?: number;
+ *   outputTokens?: number;
+ *   reasoningOutputTokens?: number;
+ *   totalTokens?: number;
+ * }} SparkTokenUsage
+ */
+
+/**
+ * @typedef {{
+ *   model: string;
+ *   elapsedMs: number;
+ *   turnDurationMs: number | null;
+ *   tokenUsage: SparkTokenUsage | null;
+ * }} SparkTelemetry
+ */
+
 const DECISION_OUTPUT_SCHEMA = {
   type: 'object',
   additionalProperties: false,
@@ -39,6 +58,7 @@ const ACTION_OUTPUT_SCHEMA = {
   }
 };
 
+/** @param {string} reason */
 function inactiveDecision(reason) {
   return {
     active: false,
@@ -147,6 +167,7 @@ async function requestCodexJson(prompt, outputSchema, options = {}) {
   const pending = new Map();
   let requestId = 0;
   let finalText = '';
+  /** @type {SparkTokenUsage | null} */
   let tokenUsage = null;
   let turnDurationMs = null;
   let completed = false;
@@ -302,9 +323,7 @@ async function requestSparkDecisionFromBridge(context, options = {}) {
     });
     const body = await response.json().catch(() => ({}));
     if (!response.ok) {
-      throw new Error(
-        `Spark bridge ${response.status}: ${String(body?.error ?? 'request failed')}`
-      );
+      throw bridgeError(body, response.status, model, startedAt);
     }
     return bridgeResult(body, model, startedAt);
   }
@@ -313,7 +332,9 @@ async function requestSparkDecisionFromBridge(context, options = {}) {
     process.env.DGST_SPARK_BRIDGE_SOCKET ?? DEFAULT_BRIDGE_SOCKET,
     token,
     context,
-    timeoutMs + 10_000
+    timeoutMs + 10_000,
+    model,
+    startedAt
   );
   return bridgeResult(body, model, startedAt);
 }
@@ -322,13 +343,32 @@ async function requestSparkDecisionFromBridge(context, options = {}) {
 function bridgeResult(body, model, startedAt) {
   return {
     payload: body.decision,
-    telemetry: {
-      model,
-      elapsedMs: Number(body.durationMs ?? Date.now() - startedAt),
-      turnDurationMs: Number(body.durationMs ?? 0) || null,
-      tokenUsage: null
-    }
+    telemetry: bridgeTelemetry(body, model, startedAt)
   };
+}
+
+/** @param {Record<string, any>} body @param {string} model @param {number} startedAt */
+function bridgeTelemetry(body, model, startedAt) {
+  return {
+    model,
+    elapsedMs: Number(body.durationMs ?? Date.now() - startedAt),
+    turnDurationMs: Number(body.turnDurationMs ?? 0) || null,
+    tokenUsage: body.tokenUsage ?? null
+  };
+}
+
+/**
+ * @param {Record<string, any>} body
+ * @param {number} status
+ * @param {string} model
+ * @param {number} startedAt
+ */
+function bridgeError(body, status, model, startedAt) {
+  const error = /** @type {Error & { telemetry?: SparkTelemetry }} */ (
+    new Error(`Spark bridge ${status}: ${String(body?.error ?? 'request failed')}`)
+  );
+  error.telemetry = bridgeTelemetry(body, model, startedAt);
+  return error;
 }
 
 /**
@@ -336,8 +376,10 @@ function bridgeResult(body, model, startedAt) {
  * @param {string} token
  * @param {Record<string, unknown>} context
  * @param {number} timeoutMs
+ * @param {string} model
+ * @param {number} startedAt
  */
-function requestBridgeSocket(socketPath, token, context, timeoutMs) {
+function requestBridgeSocket(socketPath, token, context, timeoutMs, model, startedAt) {
   const payload = JSON.stringify({ context });
   return new Promise((resolve, reject) => {
     const request = httpRequest({
@@ -351,6 +393,7 @@ function requestBridgeSocket(socketPath, token, context, timeoutMs) {
       },
       timeout: timeoutMs
     });
+    /** @type {Buffer[]} */
     const chunks = [];
     request.on('response', (response) => {
       response.on('data', (chunk) => chunks.push(chunk));
@@ -363,11 +406,7 @@ function requestBridgeSocket(socketPath, token, context, timeoutMs) {
           return;
         }
         if ((response.statusCode ?? 500) >= 400) {
-          reject(
-            new Error(
-              `Spark bridge ${response.statusCode}: ${String(body?.error ?? 'request failed')}`
-            )
-          );
+          reject(bridgeError(body, response.statusCode ?? 500, model, startedAt));
           return;
         }
         resolve(body);
@@ -388,6 +427,20 @@ export function requestSparkNpcActionFromAppServer(context, options = {}) {
 }
 
 /**
+ * @param {unknown} rawResult
+ * @returns {{ payload: unknown; telemetry: SparkTelemetry | null }}
+ */
+function unwrapAppServerResult(rawResult) {
+  if (rawResult && typeof rawResult === 'object' && 'payload' in rawResult) {
+    const wrapped = /** @type {{ payload: unknown; telemetry?: SparkTelemetry | null }} */ (
+      rawResult
+    );
+    return { payload: wrapped.payload, telemetry: wrapped.telemetry ?? null };
+  }
+  return { payload: rawResult, telemetry: null };
+}
+
+/**
  * @param {Record<string, unknown>} context
  * @param {{ requestDecision?: (context: Record<string, unknown>) => Promise<unknown> }} [options]
  */
@@ -396,10 +449,7 @@ export async function decideSparkIntervention(context, options = {}) {
   const startedAt = Date.now();
   try {
     const rawResult = await requestDecision(context);
-    const wrapped =
-      rawResult && typeof rawResult === 'object' && 'payload' in rawResult
-        ? rawResult
-        : { payload: rawResult, telemetry: null };
+    const wrapped = unwrapAppServerResult(rawResult);
     const decision = normalizeSparkDecision(wrapped.payload);
     if (decision.reason === 'invalid-app-server-output') {
       console.error('[seotda spark app-server] decision failed', {
@@ -430,19 +480,23 @@ export async function decideSparkIntervention(context, options = {}) {
     });
     return decision;
   } catch (error) {
+    const telemetry =
+      error && typeof error === 'object' && 'telemetry' in error
+        ? /** @type {{ telemetry?: SparkTelemetry }} */ (error).telemetry
+        : null;
     console.error('[seotda spark app-server] decision failed', {
       name: error instanceof Error ? error.name : 'UnknownError',
       message: error instanceof Error ? error.message : String(error),
       operation: 'intervention',
       status: 'failure',
-      model: process.env.DGST_SPARK_CODEX_MODEL ?? DEFAULT_MODEL,
-      elapsedMs: Date.now() - startedAt,
-      turnDurationMs: null,
-      inputTokens: null,
-      cachedInputTokens: null,
-      outputTokens: null,
-      reasoningOutputTokens: null,
-      totalTokens: null
+      model: telemetry?.model ?? process.env.DGST_SPARK_CODEX_MODEL ?? DEFAULT_MODEL,
+      elapsedMs: telemetry?.elapsedMs ?? Date.now() - startedAt,
+      turnDurationMs: telemetry?.turnDurationMs ?? null,
+      inputTokens: telemetry?.tokenUsage?.inputTokens ?? null,
+      cachedInputTokens: telemetry?.tokenUsage?.cachedInputTokens ?? null,
+      outputTokens: telemetry?.tokenUsage?.outputTokens ?? null,
+      reasoningOutputTokens: telemetry?.tokenUsage?.reasoningOutputTokens ?? null,
+      totalTokens: telemetry?.tokenUsage?.totalTokens ?? null
     });
     return inactiveDecision('app-server-failure');
   }
@@ -457,10 +511,7 @@ export async function decideSparkNpcAction(context, options = {}) {
   const startedAt = Date.now();
   try {
     const rawResult = await requestAction(context);
-    const wrapped =
-      rawResult && typeof rawResult === 'object' && 'payload' in rawResult
-        ? rawResult
-        : { payload: rawResult, telemetry: null };
+    const wrapped = unwrapAppServerResult(rawResult);
     const action = normalizeSparkNpcAction(wrapped.payload);
     if (!action) throw new Error('invalid app-server NPC action payload');
     console.info('[seotda spark app-server] call', {

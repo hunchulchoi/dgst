@@ -25,7 +25,15 @@ describe('seotda Spark Codex app-server decision', () => {
           directPlay: false,
           reason: 'stable'
         },
-        durationMs: 123
+        durationMs: 123,
+        turnDurationMs: 110,
+        tokenUsage: {
+          inputTokens: 240,
+          cachedInputTokens: 120,
+          outputTokens: 30,
+          reasoningOutputTokens: 10,
+          totalTokens: 270
+        }
       })
     });
     vi.stubGlobal('fetch', fetchMock);
@@ -34,7 +42,18 @@ describe('seotda Spark Codex app-server decision', () => {
       const result = await requestSparkDecisionFromAppServer({ balance: 50_000 });
       expect(result).toMatchObject({
         payload: { active: false, directPlay: false, reason: 'stable' },
-        telemetry: { model: 'gpt-5.3-codex-spark', elapsedMs: 123 }
+        telemetry: {
+          model: 'gpt-5.3-codex-spark',
+          elapsedMs: 123,
+          turnDurationMs: 110,
+          tokenUsage: {
+            inputTokens: 240,
+            cachedInputTokens: 120,
+            outputTokens: 30,
+            reasoningOutputTokens: 10,
+            totalTokens: 270
+          }
+        }
       });
       expect(fetchMock).toHaveBeenCalledWith(
         'http://bridge.test/v1/seotda/spark',
@@ -87,9 +106,23 @@ describe('seotda Spark Codex app-server decision', () => {
 
   it('logs app-server failures and safely disables intervention', async () => {
     const errorLog = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const bridgeError = Object.assign(new Error('app-server unavailable'), {
+      telemetry: {
+        model: 'gpt-5.3-codex-spark',
+        elapsedMs: 30_000,
+        turnDurationMs: 29_800,
+        tokenUsage: {
+          inputTokens: 180,
+          cachedInputTokens: 90,
+          outputTokens: 8,
+          reasoningOutputTokens: 3,
+          totalTokens: 188
+        }
+      }
+    });
     const result = await decideSparkIntervention(
       { balance: 50_000, npcChips: {}, sparkTauntCooldown: 0, history: {} },
-      { requestDecision: vi.fn().mockRejectedValue(new Error('app-server unavailable')) }
+      { requestDecision: vi.fn().mockRejectedValue(bridgeError) }
     );
 
     expect(result).toEqual({
@@ -108,8 +141,11 @@ describe('seotda Spark Codex app-server decision', () => {
         message: 'app-server unavailable',
         operation: 'intervention',
         status: 'failure',
-        totalTokens: null,
-        elapsedMs: expect.any(Number)
+        elapsedMs: 30_000,
+        turnDurationMs: 29_800,
+        inputTokens: 180,
+        outputTokens: 8,
+        totalTokens: 188
       })
     );
     errorLog.mockRestore();
