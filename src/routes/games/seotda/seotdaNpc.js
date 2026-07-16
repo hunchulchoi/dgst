@@ -132,6 +132,20 @@ export function chooseNpcAction(cards, profile, ctx, rng = Math.random) {
   const canRaise = chips > toCall;
   const commitRatio = toCall > 0 ? toCall / Math.max(chips, 1) : 0;
   const potOdds = toCall > 0 ? toCall / Math.max(1, pot + toCall) : 0;
+  const lowBankrollFun = playerRelief >= 1.45 && !ctx.sparkIntervention;
+
+  // 10만 이하: 약패로 팟을 키우는 뻥카는 늘리고, 재압박에는 오래 버티지 않는다.
+  if (lowBankrollFun) {
+    if (toCall === 0 && canRaise && headsUpStrength < 0.5 && rng() < 0.5) {
+      return 'raise';
+    }
+    if (raiseSeen && toCall > 0 && hand.tier < 80) {
+      if (strength < 0.45) {
+        return rng() < 0.95 || !canFullCall ? 'die' : 'call';
+      }
+      if (strength < 0.65 && rng() < 0.78) return 'die';
+    }
+  }
 
   // 선 NPC의 오프닝: 약패 뻥카는 성향별, 강패는 밸류 레이즈.
   if (ctx.isOpening && toCall === 0) {

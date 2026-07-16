@@ -30,7 +30,9 @@ export const MAX_RAISES = 3;
 /** 판돈은 유지하고 NPC 의사결정만 완화하는 잔고 구간 계수. */
 export function npcPlayerRelief(userBalance) {
   const balance = Number(userBalance);
-  if (balance < 100_000) return 1.45;
+  if (balance <= 100_000) return 1.5;
+  // 경계 직후 난이도가 급변하지 않도록 21만까지 완만한 완충 구간을 둔다.
+  if (balance <= 210_000) return 1.45;
   if (balance < 1_000_000) return 1.2;
   return 0.07;
 }
@@ -44,10 +46,7 @@ export function npcStartingChips(ante = ANTE, userChips = 0) {
   if (Number(userChips) <= 0) return Math.max(ante, ANTE);
   return Math.max(
     ante,
-    Math.min(
-      NPC_MAX_REFILL,
-      Math.floor(Number(userChips) * NPC_MAX_USER_BALANCE_RATIO)
-    )
+    Math.min(NPC_MAX_REFILL, Math.floor(Number(userChips) * NPC_MAX_USER_BALANCE_RATIO))
   );
 }
 
@@ -142,7 +141,8 @@ export function contributionCapacity(round, seat) {
     ...opponents.map((candidate) => candidate.chips + (candidate.totalContrib ?? candidate.contrib))
   );
   const hasActiveNpc = opponents.some((candidate) => candidate.isNpc);
-  const creditCover = seat.isNpc && userOpponent ? actualOpponentStack : hasActiveNpc ? bankroll : 0;
+  const creditCover =
+    seat.isNpc && userOpponent ? actualOpponentStack : hasActiveNpc ? bankroll : 0;
   const effectiveBankroll = seat.isNpc && userOpponent ? actualOpponentStack : bankroll;
   const opponentStack = Math.max(actualOpponentStack, creditCover);
   const contributionLimit = maxRoundContribution(effectiveBankroll, round.antePaid, opponentStack);
@@ -485,7 +485,8 @@ export function applyNpcSeatAction(round, seat, rng = Math.random, sparkChoice =
   if (action === 'raise') {
     const potBeforeRaise = round.pot;
     const available = contributionCapacity(round, seat);
-    const strongHand = handStrength(evaluateHand(seat.cards)) >= 0.65;
+    const lowBankrollFun = Number(round.npcPlayerRelief ?? 0) >= 1.45 && !sparkAssigned;
+    const strongHand = !lowBankrollFun && handStrength(evaluateHand(seat.cards)) >= 0.65;
     const minPay = minRaisePay(toCall, round.antePaid);
     const forcedTarget =
       sparkChoice?.raiseScale === 'max'

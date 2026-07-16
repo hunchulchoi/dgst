@@ -32,9 +32,11 @@ import {
 
 describe('seotdaRound smoke', () => {
   it('applies stronger NPC relief below 100k while keeping relief above it modest', () => {
-    expect(npcPlayerRelief(42_454)).toBe(1.45);
-    expect(npcPlayerRelief(99_999)).toBe(1.45);
-    expect(npcPlayerRelief(100_000)).toBe(1.2);
+    expect(npcPlayerRelief(42_454)).toBe(1.5);
+    expect(npcPlayerRelief(99_999)).toBe(1.5);
+    expect(npcPlayerRelief(100_000)).toBe(1.5);
+    expect(npcPlayerRelief(150_000)).toBe(1.45);
+    expect(npcPlayerRelief(210_001)).toBe(1.2);
     expect(npcPlayerRelief(999_999)).toBe(1.2);
     expect(npcPlayerRelief(1_000_000)).toBe(0.07);
   });
@@ -383,9 +385,9 @@ describe('seotdaRound smoke', () => {
     const user = round.seats[0];
 
     expect(user.totalContrib).toBe(10);
-		expect(contributionCapacity(round, user)).toBe(990);
+    expect(contributionCapacity(round, user)).toBe(990);
     applyPlayerAction(round, 'user', 'raise', user.chips);
-		expect(user.totalContrib).toBe(1_000);
+    expect(user.totalContrib).toBe(1_000);
   });
 
   it('caps the user by the largest active NPC stack', () => {
@@ -397,7 +399,7 @@ describe('seotdaRound smoke', () => {
     const npc = round.seats.find((seat) => seat.id === 'npc_agwi')!;
 
     expect(round.antePaid).toBe(10);
-		expect(contributionCapacity(round, npc)).toBe(40);
+    expect(contributionCapacity(round, npc)).toBe(40);
   });
 
   it('enforces the exact min cap in the server action path', () => {
@@ -408,9 +410,9 @@ describe('seotdaRound smoke', () => {
     });
     const user = round.seats[0];
 
-		expect(contributionCapacity(round, user)).toBe(985_000);
+    expect(contributionCapacity(round, user)).toBe(985_000);
     applyPlayerAction(round, 'user', 'raise', Number.MAX_SAFE_INTEGER);
-		expect(user.totalContrib).toBe(1_000_000);
+    expect(user.totalContrib).toBe(1_000_000);
   });
 
   it('charges a bankroll-scaled ante at high balances', () => {
@@ -429,8 +431,8 @@ describe('seotdaRound smoke', () => {
     applyPlayerAction(round, 'user', 'raise', user.chips);
 
     expect(maxRoundContribution(100_000, round.antePaid)).toBe(100_000);
-		expect(user.contrib).toBe(100_000);
-		expect(round.currentBet).toBe(100_000);
+    expect(user.contrib).toBe(100_000);
+    expect(round.currentBet).toBe(100_000);
   });
 
   it('allows high-bankroll rounds beyond the former fixed limits', () => {
@@ -439,8 +441,8 @@ describe('seotdaRound smoke', () => {
 
     applyPlayerAction(round, 'user', 'raise', user.chips);
 
-		expect(user.totalContrib).toBe(10_000_000_000);
-		expect(round.pot).toBe(10_000_090_000);
+    expect(user.totalContrib).toBe(10_000_000_000);
+    expect(round.pot).toBe(10_000_090_000);
   });
 
   it('accepts the third raise and turns a fourth raise into a call', () => {
@@ -632,6 +634,31 @@ describe('seotdaRound smoke', () => {
 });
 
 describe('seotdaNpc bluff', () => {
+  it('bluffs weak hands often and releases them to pressure below 100k', () => {
+    const weakCards = [
+      { month: 2, gwang: false },
+      { month: 8, gwang: false }
+    ];
+    const profile = NPC_PROFILES.find((candidate) => candidate.id === 'npc_goni')!;
+    const common = {
+      chips: 10_000,
+      pot: 400,
+      forcePressure: false,
+      bluffCatcher: false,
+      sparkIntervention: false,
+      ante: 100,
+      playerRelief: 1.5,
+      activeOpponents: 3
+    };
+
+    expect(
+      chooseNpcAction(weakCards, profile, { ...common, toCall: 0, raiseSeen: false }, () => 0.49)
+    ).toBe('raise');
+    expect(
+      chooseNpcAction(weakCards, profile, { ...common, toCall: 300, raiseSeen: true }, () => 0.5)
+    ).toBe('die');
+  });
+
   it('uses a two-round cooldown after a Spark taunt', () => {
     expect(sparkTauntCooldownAfterRound({ sparkTaunted: true })).toBe(2);
     expect(sparkTauntCooldownAfterRound({ sparkTaunted: false, sparkTauntCooldown: 2 })).toBe(1);
