@@ -1,10 +1,12 @@
 import { spawn } from 'node:child_process';
+import { request as httpRequest } from 'node:http';
 import { tmpdir } from 'node:os';
 import { createInterface } from 'node:readline';
 import { NPC_PROFILES, SPARK_TAUNTS } from './seotdaNpc.js';
 
 const DEFAULT_MODEL = 'gpt-5.3-codex-spark';
 const DEFAULT_TIMEOUT_MS = 15_000;
+const DEFAULT_BRIDGE_SOCKET = '/run/dgst-spark/seotda-codex-bridge.sock';
 const NPC_IDS = new Set(NPC_PROFILES.map((profile) => profile.id));
 const TAUNTS = new Set(SPARK_TAUNTS);
 const DIFFICULTIES = new Set(['give-room', 'balanced', 'challenge']);
@@ -264,7 +266,117 @@ async function requestCodexJson(prompt, outputSchema, options = {}) {
  * @param {{ spawnImpl?: typeof spawn; timeoutMs?: number; model?: string }} [options]
  */
 export function requestSparkDecisionFromAppServer(context, options = {}) {
+  if (
+    !options.spawnImpl &&
+    (process.env.NODE_ENV === 'production' || process.env.DGST_SPARK_BRIDGE_URL)
+  ) {
+    return requestSparkDecisionFromBridge(context, options);
+  }
   return requestCodexJson(decisionPrompt(context), DECISION_OUTPUT_SCHEMA, options);
+}
+
+/**
+ * 운영 컨테이너에서 Docker 게이트웨이의 호스트 Codex 브리지로 판단을 요청한다.
+ * @param {Record<string, unknown>} context
+ * @param {{ timeoutMs?: number; model?: string }} [options]
+ */
+async function requestSparkDecisionFromBridge(context, options = {}) {
+  const startedAt = Date.now();
+  const timeoutMs = Math.max(
+    1000,
+    Number(options.timeoutMs ?? process.env.DGST_SPARK_CODEX_TIMEOUT_MS) || DEFAULT_TIMEOUT_MS
+  );
+  const model = options.model ?? process.env.DGST_SPARK_CODEX_MODEL ?? DEFAULT_MODEL;
+  const token = process.env.DGST_SPARK_BRIDGE_TOKEN ?? process.env.CRON_SECRET;
+  if (!token) throw new Error('Spark bridge token is unavailable');
+  const bridgeUrl = process.env.DGST_SPARK_BRIDGE_URL;
+  if (bridgeUrl) {
+    const response = await fetch(bridgeUrl, {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${token}`,
+        'content-type': 'application/json'
+      },
+      body: JSON.stringify({ context }),
+      signal: AbortSignal.timeout(timeoutMs + 10_000)
+    });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(
+        `Spark bridge ${response.status}: ${String(body?.error ?? 'request failed')}`
+      );
+    }
+    return bridgeResult(body, model, startedAt);
+  }
+
+  const body = await requestBridgeSocket(
+    process.env.DGST_SPARK_BRIDGE_SOCKET ?? DEFAULT_BRIDGE_SOCKET,
+    token,
+    context,
+    timeoutMs + 10_000
+  );
+  return bridgeResult(body, model, startedAt);
+}
+
+/** @param {Record<string, any>} body @param {string} model @param {number} startedAt */
+function bridgeResult(body, model, startedAt) {
+  return {
+    payload: body.decision,
+    telemetry: {
+      model,
+      elapsedMs: Number(body.durationMs ?? Date.now() - startedAt),
+      turnDurationMs: Number(body.durationMs ?? 0) || null,
+      tokenUsage: null
+    }
+  };
+}
+
+/**
+ * @param {string} socketPath
+ * @param {string} token
+ * @param {Record<string, unknown>} context
+ * @param {number} timeoutMs
+ */
+function requestBridgeSocket(socketPath, token, context, timeoutMs) {
+  const payload = JSON.stringify({ context });
+  return new Promise((resolve, reject) => {
+    const request = httpRequest({
+      socketPath,
+      path: '/v1/seotda/spark',
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${token}`,
+        'content-type': 'application/json',
+        'content-length': Buffer.byteLength(payload)
+      },
+      timeout: timeoutMs
+    });
+    const chunks = [];
+    request.on('response', (response) => {
+      response.on('data', (chunk) => chunks.push(chunk));
+      response.on('end', () => {
+        let body;
+        try {
+          body = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+        } catch {
+          reject(new Error('Spark bridge returned invalid JSON'));
+          return;
+        }
+        if ((response.statusCode ?? 500) >= 400) {
+          reject(
+            new Error(
+              `Spark bridge ${response.statusCode}: ${String(body?.error ?? 'request failed')}`
+            )
+          );
+          return;
+        }
+        resolve(body);
+      });
+    });
+    request.on('timeout', () => request.destroy(new Error('Spark bridge timeout')));
+    request.on('error', reject);
+    request.end(payload);
+  });
 }
 
 /**

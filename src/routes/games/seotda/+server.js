@@ -38,6 +38,57 @@ const SMOKE_BALANCE = 1000;
 
 /** @type {Map<string, number>} */
 const chipsBeforeMap = new Map();
+/** @type {Map<string, { decision: Record<string, unknown> | null; consumed: boolean; refreshAfter: number; pending?: Promise<void>; touchedAt: number }>} */
+const sparkDecisionCache = new Map();
+
+/** @param {string} email */
+function consumeSparkDecision(email) {
+  const cached = sparkDecisionCache.get(email);
+  if (!cached?.decision || cached.consumed) return null;
+  cached.consumed = true;
+  cached.touchedAt = Date.now();
+  return cached.decision;
+}
+
+/** @param {string} email @param {Record<string, unknown>} context */
+function refreshSparkDecisionInBackground(email, context) {
+  const now = Date.now();
+  const cached = sparkDecisionCache.get(email);
+  if (cached?.pending || (cached && now < cached.refreshAfter)) return;
+
+  if (sparkDecisionCache.size > 500) {
+    for (const [key, value] of sparkDecisionCache) {
+      if (now - value.touchedAt > 30 * 60_000) sparkDecisionCache.delete(key);
+    }
+  }
+
+  const pending = decideSparkIntervention(context)
+    .then((decision) => {
+      // 직접 행동 판단은 15초 이상 걸리므로 난이도·성향 정책만 다음 판에 적용한다.
+      decision.directPlay = false;
+      sparkDecisionCache.set(email, {
+        decision: decision.active ? decision : null,
+        consumed: false,
+        refreshAfter: Date.now() + (decision.active ? 60_000 : 3 * 60_000),
+        touchedAt: Date.now()
+      });
+    })
+    .catch(() => {
+      sparkDecisionCache.set(email, {
+        decision: null,
+        consumed: true,
+        refreshAfter: Date.now() + 60_000,
+        touchedAt: Date.now()
+      });
+    });
+  sparkDecisionCache.set(email, {
+    decision: cached?.decision ?? null,
+    consumed: cached?.consumed ?? true,
+    refreshAfter: cached?.refreshAfter ?? 0,
+    pending,
+    touchedAt: now
+  });
+}
 
 /**
  * @param {import('./seotdaState.js').SeotdaRound} round
@@ -235,13 +286,15 @@ async function beginRound(email, nickname, openingActorId = 'user', sparkTauntCo
   }
   const npcChips = getNpcStacks(email);
   const history = await getSeotdaSparkHistory(email);
-  const sparkDecision = await decideSparkIntervention({
+  const sparkContext = {
     balance,
     npcChips,
     openingActorId,
     sparkTauntCooldown,
     history
-  });
+  };
+  const sparkDecision = consumeSparkDecision(email);
+  refreshSparkDecisionInBackground(email, sparkContext);
   const round = createNewRound(
     balance,
     Math.random,

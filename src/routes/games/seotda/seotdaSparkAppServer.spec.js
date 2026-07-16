@@ -2,10 +2,57 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   decideSparkIntervention,
   decideSparkNpcAction,
-  normalizeSparkDecision
+  normalizeSparkDecision,
+  requestSparkDecisionFromAppServer
 } from './seotdaSparkAppServer.js';
 
 describe('seotda Spark Codex app-server decision', () => {
+  it('uses the authenticated host bridge in production', async () => {
+    const previousNodeEnv = process.env.NODE_ENV;
+    const previousToken = process.env.CRON_SECRET;
+    process.env.NODE_ENV = 'production';
+    process.env.CRON_SECRET = 'test-bridge-token';
+    process.env.DGST_SPARK_BRIDGE_URL = 'http://bridge.test/v1/seotda/spark';
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue({
+        decision: {
+          active: false,
+          npcId: null,
+          taunt: null,
+          difficulty: 'balanced',
+          npcStyle: null,
+          directPlay: false,
+          reason: 'stable'
+        },
+        durationMs: 123
+      })
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    try {
+      const result = await requestSparkDecisionFromAppServer({ balance: 50_000 });
+      expect(result).toMatchObject({
+        payload: { active: false, directPlay: false, reason: 'stable' },
+        telemetry: { model: 'gpt-5.3-codex-spark', elapsedMs: 123 }
+      });
+      expect(fetchMock).toHaveBeenCalledWith(
+        'http://bridge.test/v1/seotda/spark',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({ authorization: 'Bearer test-bridge-token' })
+        })
+      );
+    } finally {
+      vi.unstubAllGlobals();
+      if (previousNodeEnv === undefined) delete process.env.NODE_ENV;
+      else process.env.NODE_ENV = previousNodeEnv;
+      if (previousToken === undefined) delete process.env.CRON_SECRET;
+      else process.env.CRON_SECRET = previousToken;
+      delete process.env.DGST_SPARK_BRIDGE_URL;
+    }
+  });
+
   it('accepts a constrained app-server decision', async () => {
     const requestDecision = vi.fn().mockResolvedValue({
       active: true,
