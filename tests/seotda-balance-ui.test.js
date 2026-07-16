@@ -32,4 +32,10 @@ describe('seotda betting UI', () => {
     expect(pageSource).toContain("action === '콜' || action === '레이즈'");
     expect(pageSource).toContain('await playNpcActions(npcActions)');
   });
+
+  it('offers board sharing after showdown', () => {
+    expect(pageSource).toContain('function openShare()');
+    expect(pageSource).toContain("fetch('/games/seotda/share'");
+    expect(pageSource).toContain('게시판 공유');
+  });
 });

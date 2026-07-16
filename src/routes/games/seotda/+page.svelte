@@ -1,5 +1,7 @@
 <script lang="ts">
   import { onDestroy, onMount } from 'svelte';
+  import { goto } from '$app/navigation';
+  import { resolve } from '$app/paths';
   import { ko } from 'date-fns/locale';
   import type { PageData } from './$types';
   import { formatRelativeTime } from '$lib/util/formatRelativeTime.js';
@@ -100,6 +102,11 @@
   let raiseBet = $state(20);
   let thinkingNpcId = $state<string | null>(null);
   let npcActionPreview = $state<Record<string, NpcAction>>({});
+  let shareOpen = $state(false);
+  let shareSending = $state(false);
+  let shareBoard = $state('free');
+  let shareTitle = $state('');
+  let shareNote = $state('');
 
   const PEEL_THRESHOLD = 0.55;
   const PEEL_MAX_PX = 220;
@@ -152,6 +159,7 @@
   const roundAnte = $derived(round?.antePaid ?? dynamicAnte(balance));
   const minRaise = $derived(minRaisePay(toCall, roundAnte));
   const maxRaise = $derived(round && userSeat ? contributionCapacity(round, userSeat) : 0);
+  const isLoggedIn = $derived(!!data.session?.user?.email);
 
   $effect(() => {
     if (!canAct) return;
@@ -443,6 +451,51 @@
 
   function nextRound() {
     return post({ action: 'ack' });
+  }
+
+  function openShare() {
+    if (!round || !isShowdown || !revealDone) return;
+    if (!isLoggedIn) {
+      message = '게시판 공유는 로그인 후 가능합니다.';
+      return;
+    }
+    const result = isDraw ? '무승부' : userWon ? '승리' : '패배';
+    shareTitle = `[섯다] ${userSeat?.handName ?? result} ${result}`;
+    shareBoard = 'free';
+    shareNote = '';
+    message = '';
+    shareOpen = true;
+  }
+
+  function closeShare() {
+    if (!shareSending) shareOpen = false;
+  }
+
+  async function submitShare() {
+    if (shareSending) return;
+    shareSending = true;
+    message = '';
+    try {
+      const response = await fetch('/games/seotda/share', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          boardId: shareBoard,
+          title: shareTitle.trim(),
+          note: shareNote.trim()
+        })
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result.articleId) {
+        throw new Error(result?.message || '게시판 공유 실패');
+      }
+      shareOpen = false;
+      await goto(resolve(`/board/${result.boardId}/${result.articleId}`));
+    } catch (err) {
+      message = err instanceof Error ? err.message : '게시판 공유 실패';
+    } finally {
+      shareSending = false;
+    }
   }
 </script>
 
@@ -775,9 +828,72 @@
                   {:else if userWon}이겼다!
                   {:else}졌다…{/if}
                 </p>
-                <button class="btn btn-primary" disabled={busy} onclick={nextRound}>
-                  다음 판
-                </button>
+                <div class="d-flex gap-2 justify-content-center">
+                  <button class="btn btn-outline-primary" disabled={busy} onclick={openShare}>
+                    게시판 공유
+                  </button>
+                  <button class="btn btn-primary" disabled={busy} onclick={nextRound}>
+                    다음 판
+                  </button>
+                </div>
+              </div>
+            {/if}
+
+            {#if shareOpen}
+              <div
+                class="share-backdrop"
+                role="presentation"
+                onpointerdown={(event) => {
+                  if (event.target === event.currentTarget) closeShare();
+                }}
+              >
+                <form
+                  class="share-panel"
+                  aria-label="섯다 결과 게시판 공유"
+                  onsubmit={(event) => {
+                    event.preventDefault();
+                    void submitShare();
+                  }}
+                >
+                  <h5 class="mb-3">섯다 결과 공유</h5>
+                  <label class="form-label" for="seotda-share-board">게시판</label>
+                  <select
+                    id="seotda-share-board"
+                    class="form-select mb-3"
+                    bind:value={shareBoard}
+                  >
+                    <option value="free">자유게시판</option>
+                    <option value="bug">버그신고</option>
+                  </select>
+                  <label class="form-label" for="seotda-share-title">제목</label>
+                  <input
+                    id="seotda-share-title"
+                    class="form-control mb-3"
+                    bind:value={shareTitle}
+                    maxlength="80"
+                    required
+                  />
+                  <label class="form-label" for="seotda-share-note">내용 (선택)</label>
+                  <textarea
+                    id="seotda-share-note"
+                    class="form-control mb-3"
+                    bind:value={shareNote}
+                    maxlength="500"
+                    rows="4"
+                    placeholder="판 설명을 적어주세요."
+                  ></textarea>
+                  <div class="d-flex gap-2 justify-content-end">
+                    <button
+                      type="button"
+                      class="btn btn-outline-secondary"
+                      disabled={shareSending}
+                      onclick={closeShare}>취소</button
+                    >
+                    <button type="submit" class="btn btn-primary" disabled={shareSending}>
+                      {shareSending ? '올리는 중…' : '게시하기'}
+                    </button>
+                  </div>
+                </form>
               </div>
             {/if}
 
@@ -872,6 +988,24 @@
   }
   .result-banner {
     animation: popIn 0.4s ease;
+  }
+  .share-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1060;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    background: rgba(0, 0, 0, 0.68);
+  }
+  .share-panel {
+    width: min(100%, 30rem);
+    padding: 1.25rem;
+    border-radius: 1rem;
+    background: var(--bs-body-bg);
+    color: var(--bs-body-color);
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4);
   }
 
   .hwatu-flip {
