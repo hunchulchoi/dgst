@@ -411,12 +411,6 @@
     position: relative;
     width: min(44%, 48px);
     aspect-ratio: 2 / 3;
-    transform-style: preserve-3d;
-    transition: transform 0.58s cubic-bezier(0.2, 0.75, 0.25, 1);
-  }
-
-  .card-shell.flipped {
-    transform: rotateY(180deg);
   }
 
   .card-back,
@@ -431,8 +425,10 @@
     overflow: hidden;
     border: 1px solid rgba(255, 255, 255, 0.5);
     border-radius: 0.35rem;
-    backface-visibility: hidden;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.34);
+    transition:
+      opacity 0.18s ease,
+      transform 0.32s cubic-bezier(0.2, 0.75, 0.25, 1);
   }
 
   .card-back {
@@ -442,7 +438,18 @@
   }
 
   .card-face {
-    transform: rotateY(180deg);
+    opacity: 0;
+    transform: scaleX(0.08);
+  }
+
+  .card-shell.flipped .card-back {
+    opacity: 0;
+    transform: scaleX(0.08);
+  }
+
+  .card-shell.flipped .card-face {
+    opacity: 1;
+    transform: scaleX(1);
   }
 
   .hand-name {
