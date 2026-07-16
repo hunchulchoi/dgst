@@ -77,6 +77,7 @@
   );
   let round = $state<SeotdaRound | null>((data.round as SeotdaRound | null) ?? null);
   let busy = $state(false);
+  let dealing = $state(false);
   let message = $state('');
   let oopsInfo = $state<{
     waiting?: boolean;
@@ -479,8 +480,13 @@
     }
   }
 
-  function startRound() {
-    return post({ action: 'start' });
+  async function startRound() {
+    dealing = true;
+    try {
+      await post({ action: 'start' });
+    } finally {
+      dealing = false;
+    }
   }
 
   function act(move: 'die' | 'call' | 'raise') {
@@ -500,8 +506,13 @@
     else raiseBet = max;
   }
 
-  function nextRound() {
-    return post({ action: 'ack' });
+  async function nextRound() {
+    dealing = true;
+    try {
+      await post({ action: 'ack' });
+    } finally {
+      dealing = false;
+    }
   }
 
   function openShare() {
@@ -600,11 +611,29 @@
             {/if}
           </div>
 
-          {#if message}
-            <div class="alert alert-warning py-2">{message}</div>
-          {/if}
+  {#if message}
+    <div class="alert alert-warning py-2">{message}</div>
+  {/if}
 
-          {#if !round}
+  {#if dealing}
+    <div class="deal-curtain" role="status" aria-live="polite" aria-label="새 판 패 배분 중">
+      <div class="deal-stage">
+        <div class="deal-deck" aria-hidden="true">
+          {#each Array(8) as _, i}
+            <i style={`--deal-index:${i}`}></i>
+          {/each}
+        </div>
+        <div class="deal-copy">
+          <strong>새 판 준비</strong>
+          <span>화투패를 섞는 중</span>
+          <span>패를 자르는 중</span>
+          <span>한 장씩 돌리는 중</span>
+        </div>
+      </div>
+    </div>
+  {/if}
+
+  {#if !round}
             <div class="text-center py-5">
               <p class="mb-3">아귀 · 고니 · 정마담 이 기다림.</p>
               <button
@@ -1610,6 +1639,170 @@
     background: #212529;
     border-color: #495057 !important;
     color: #dee2e6;
+  }
+
+  .deal-curtain {
+    position: fixed;
+    z-index: 1090;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    padding: 1rem;
+    overflow: hidden;
+    background:
+      radial-gradient(circle at 50% 46%, rgba(40, 128, 86, 0.42), transparent 38%),
+      rgba(2, 25, 18, 0.94);
+    color: #fff3bd;
+  }
+
+  .deal-stage {
+    position: relative;
+    width: min(92vw, 560px);
+    height: min(72vh, 430px);
+    overflow: hidden;
+    border: 2px solid rgba(238, 194, 75, 0.72);
+    border-radius: 1.4rem;
+    background:
+      repeating-linear-gradient(115deg, transparent 0 30px, rgba(255, 255, 255, 0.018) 30px 34px),
+      #073b2a;
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.55);
+  }
+
+  .deal-deck {
+    position: absolute;
+    inset: 0;
+  }
+
+  .deal-deck i {
+    --deal-x: 0px;
+    --deal-y: -120px;
+    position: absolute;
+    top: 53%;
+    left: 50%;
+    width: 54px;
+    aspect-ratio: 2 / 3;
+    border: 2px solid #f0cf68;
+    border-radius: 0.38rem;
+    background:
+      repeating-linear-gradient(45deg, #a31d22 0 7px, #5b090e 7px 14px);
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.42);
+    animation: dealCardFlight 4.8s cubic-bezier(0.25, 0.72, 0.3, 1) infinite;
+    animation-delay: calc(var(--deal-index) * 0.17s);
+  }
+
+  .deal-deck i:nth-child(1) {
+    --deal-x: -180px;
+    --deal-y: -115px;
+  }
+  .deal-deck i:nth-child(2) {
+    --deal-x: -115px;
+    --deal-y: -115px;
+  }
+  .deal-deck i:nth-child(3) {
+    --deal-x: 65px;
+    --deal-y: -115px;
+  }
+  .deal-deck i:nth-child(4) {
+    --deal-x: 130px;
+    --deal-y: -115px;
+  }
+  .deal-deck i:nth-child(5) {
+    --deal-x: -180px;
+    --deal-y: 88px;
+  }
+  .deal-deck i:nth-child(6) {
+    --deal-x: -115px;
+    --deal-y: 88px;
+  }
+  .deal-deck i:nth-child(7) {
+    --deal-x: 65px;
+    --deal-y: 88px;
+  }
+  .deal-deck i:nth-child(8) {
+    --deal-x: 130px;
+    --deal-y: 88px;
+  }
+
+  .deal-copy {
+    position: absolute;
+    z-index: 2;
+    top: 48%;
+    left: 50%;
+    width: min(82%, 320px);
+    padding: 0.8rem 1rem;
+    border: 1px solid rgba(238, 194, 75, 0.35);
+    border-radius: 999px;
+    background: rgba(1, 25, 17, 0.88);
+    text-align: center;
+    transform: translate(-50%, -50%);
+  }
+
+  .deal-copy strong {
+    display: block;
+    color: #ffd85e;
+    font-size: 1.15rem;
+    letter-spacing: 0.12em;
+  }
+
+  .deal-copy span {
+    position: absolute;
+    top: calc(100% + 0.65rem);
+    left: 0;
+    width: 100%;
+    opacity: 0;
+    font-size: 0.92rem;
+    animation: dealCopyCycle 9s ease-in-out infinite;
+  }
+
+  .deal-copy span:nth-of-type(2) {
+    animation-delay: 3s;
+  }
+
+  .deal-copy span:nth-of-type(3) {
+    animation-delay: 6s;
+  }
+
+  @keyframes dealCardFlight {
+    0%,
+    12% {
+      opacity: 0;
+      transform: translate(-50%, -50%) rotate(-10deg) scale(0.88);
+    }
+    22% {
+      opacity: 1;
+    }
+    42% {
+      transform: translate(calc(-50% + 10px), calc(-50% - 5px)) rotate(12deg) scale(1);
+    }
+    72% {
+      opacity: 1;
+      transform: translate(calc(-50% + var(--deal-x)), calc(-50% + var(--deal-y)))
+        rotate(-3deg);
+    }
+    92%,
+    100% {
+      opacity: 0;
+      transform: translate(calc(-50% + var(--deal-x)), calc(-50% + var(--deal-y)))
+        rotate(-3deg);
+    }
+  }
+
+  @keyframes dealCopyCycle {
+    0%,
+    8% {
+      opacity: 0;
+      transform: translateY(5px);
+    }
+    14%,
+    28% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    34%,
+    100% {
+      opacity: 0;
+      transform: translateY(-5px);
+    }
   }
 
   @media (max-width: 575.98px) {

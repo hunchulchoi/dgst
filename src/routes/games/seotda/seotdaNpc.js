@@ -70,6 +70,22 @@ export function sparkTauntForAction(intervention, seatId, action) {
 }
 
 /**
+ * GPT 호출 없이 실제 NPC 베팅 행동에 대사를 붙인다.
+ * @param {{ taunted?: boolean; cooldown?: number }} state
+ * @param {string} action
+ * @param {() => number} [rng]
+ */
+export function localNpcTauntForAction(state, action, rng = Math.random) {
+  if (state.taunted || Number(state.cooldown ?? 0) > 0) return null;
+  if (!['콜', '레이즈', '올인'].includes(action)) return null;
+  const index = Math.min(
+    SPARK_TAUNTS.length - 1,
+    Math.max(0, Math.floor(rng() * SPARK_TAUNTS.length))
+  );
+  return SPARK_TAUNTS[index] ?? null;
+}
+
+/**
  * @param {number} commitRatio
  * @param {number} strength
  * @param {number} potOdds

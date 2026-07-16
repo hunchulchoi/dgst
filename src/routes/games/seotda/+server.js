@@ -11,6 +11,9 @@ import {
   getTodaySeotdaStats,
   isSeotdaOopsBalance,
   resolveSeotdaOops,
+  shouldRequestSparkDecision,
+  sparkDecisionCooldownMs,
+  sparkInterventionHands,
   writeSeotdaScore
 } from './seotdaBalance.js';
 import {
@@ -38,14 +41,15 @@ const SMOKE_BALANCE = 1000;
 
 /** @type {Map<string, number>} */
 const chipsBeforeMap = new Map();
-/** @type {Map<string, { decision: Record<string, unknown> | null; consumed: boolean; refreshAfter: number; pending?: Promise<void>; touchedAt: number }>} */
+/** @type {Map<string, { decision: Record<string, unknown> | null; consumed: boolean; remainingHands: number; refreshAfter: number; pending?: Promise<void>; touchedAt: number }>} */
 const sparkDecisionCache = new Map();
 
 /** @param {string} email */
 function consumeSparkDecision(email) {
   const cached = sparkDecisionCache.get(email);
-  if (!cached?.decision || cached.consumed) return null;
-  cached.consumed = true;
+  if (!cached?.decision || cached.consumed || cached.remainingHands <= 0) return null;
+  cached.remainingHands -= 1;
+  cached.consumed = cached.remainingHands <= 0;
   cached.touchedAt = Date.now();
   return cached.decision;
 }
@@ -54,7 +58,16 @@ function consumeSparkDecision(email) {
 function refreshSparkDecisionInBackground(email, context) {
   const now = Date.now();
   const cached = sparkDecisionCache.get(email);
-  if (cached?.pending || (cached && now < cached.refreshAfter)) return;
+  if (cached?.pending) return cached.pending;
+  if (cached && now < cached.refreshAfter) return null;
+  if (
+    !shouldRequestSparkDecision(
+      Number(context.balance ?? 0),
+      /** @type {any} */ (context.history)
+    )
+  ) {
+    return null;
+  }
 
   if (sparkDecisionCache.size > 500) {
     for (const [key, value] of sparkDecisionCache) {
@@ -64,12 +77,24 @@ function refreshSparkDecisionInBackground(email, context) {
 
   const pending = decideSparkIntervention(context)
     .then((decision) => {
-      // 직접 행동 판단은 15초 이상 걸리므로 난이도·성향 정책만 다음 판에 적용한다.
+      // 직접 행동 호출은 피하고, 한 번 받은 난이도·성향 정책을 여러 판 재사용한다.
       decision.directPlay = false;
+      const remainingHands = sparkInterventionHands(
+        Number(context.balance ?? 0),
+        /** @type {any} */ (context.history),
+        decision
+      );
       sparkDecisionCache.set(email, {
-        decision: decision.active ? decision : null,
-        consumed: false,
-        refreshAfter: Date.now() + (decision.active ? 60_000 : 3 * 60_000),
+        decision: remainingHands > 0 ? decision : null,
+        consumed: remainingHands <= 0,
+        remainingHands,
+        refreshAfter:
+          Date.now() +
+          sparkDecisionCooldownMs(
+            Number(context.balance ?? 0),
+            /** @type {any} */ (context.history),
+            decision.active
+          ),
         touchedAt: Date.now()
       });
     })
@@ -77,17 +102,26 @@ function refreshSparkDecisionInBackground(email, context) {
       sparkDecisionCache.set(email, {
         decision: null,
         consumed: true,
-        refreshAfter: Date.now() + 60_000,
+        remainingHands: 0,
+        refreshAfter:
+          Date.now() +
+          sparkDecisionCooldownMs(
+            Number(context.balance ?? 0),
+            /** @type {any} */ (context.history),
+            false
+          ),
         touchedAt: Date.now()
       });
     });
   sparkDecisionCache.set(email, {
     decision: cached?.decision ?? null,
     consumed: cached?.consumed ?? true,
+    remainingHands: cached?.remainingHands ?? 0,
     refreshAfter: cached?.refreshAfter ?? 0,
     pending,
     touchedAt: now
   });
+  return pending;
 }
 
 /**
@@ -299,8 +333,12 @@ async function beginRound(email, nickname, openingActorId = 'user', sparkTauntCo
     sparkTauntCooldown,
     history
   };
-  const sparkDecision = consumeSparkDecision(email);
-  refreshSparkDecisionInBackground(email, sparkContext);
+  let sparkDecision = consumeSparkDecision(email);
+  const sparkPending = refreshSparkDecisionInBackground(email, sparkContext);
+  if (!sparkDecision && balance >= 100_000 && sparkPending) {
+    await sparkPending;
+    sparkDecision = consumeSparkDecision(email);
+  }
   const round = createNewRound(
     balance,
     Math.random,

@@ -3,6 +3,9 @@ import {
   didSeotdaTakeLead,
   getSeotdaOopsTiming,
   isSeotdaOopsBalance,
+  shouldRequestSparkDecision,
+  sparkDecisionCooldownMs,
+  sparkInterventionHands,
   summarizeSeotdaSparkHistory
 } from './seotdaBalance.js';
 
@@ -40,11 +43,65 @@ describe('seotda Spark history', () => {
       wins: 3,
       totalDelta: 300,
       balanceGrowthPercent: 30,
+      recent10Delta: 300,
+      recent10GrowthPercent: 30,
       consecutiveFolds: 0,
       consecutiveMaxRaises: 2,
       sparkHands: 2,
       consecutiveSparkHands: 2
     });
+  });
+
+  it('keeps an active policy for two hands above 100k', () => {
+    expect(
+      sparkInterventionHands(
+        163_597,
+        { recent10Delta: 5_000, recent10GrowthPercent: 3 },
+        { active: true, difficulty: 'balanced' }
+      )
+    ).toBe(2);
+  });
+
+  it('keeps challenge for three hands only on high balance or rapid profit', () => {
+    const challenge = { active: true, difficulty: 'challenge' };
+
+    expect(
+      sparkInterventionHands(
+        163_597,
+        { recent10Delta: 18_000, recent10GrowthPercent: 12 },
+        challenge
+      )
+    ).toBe(3);
+    expect(
+      sparkInterventionHands(250_000, { recent10Delta: 0, recent10GrowthPercent: 0 }, challenge)
+    ).toBe(3);
+    expect(
+      sparkInterventionHands(90_000, { recent10Delta: 20_000, recent10GrowthPercent: 20 }, challenge)
+    ).toBe(1);
+  });
+
+  it('requests routine low-balance Spark supervision only every 20 hands', () => {
+    expect(shouldRequestSparkDecision(30_000, { hands: 0 })).toBe(false);
+    expect(shouldRequestSparkDecision(30_000, { hands: 19 })).toBe(false);
+    expect(shouldRequestSparkDecision(30_000, { hands: 20 })).toBe(true);
+    expect(shouldRequestSparkDecision(30_000, { hands: 21 })).toBe(false);
+    expect(shouldRequestSparkDecision(100_000, { hands: 1 })).toBe(true);
+  });
+
+  it('allows early low-balance supervision only for abnormal streaks', () => {
+    expect(shouldRequestSparkDecision(30_000, { hands: 7, consecutiveFolds: 5 })).toBe(true);
+    expect(
+      shouldRequestSparkDecision(30_000, { hands: 7, consecutiveMaxRaises: 3 })
+    ).toBe(true);
+  });
+
+  it('uses a long token-saving cooldown below 100k', () => {
+    expect(sparkDecisionCooldownMs(30_000, {}, true)).toBe(30 * 60_000);
+    expect(sparkDecisionCooldownMs(30_000, { consecutiveFolds: 5 }, false)).toBe(
+      10 * 60_000
+    );
+    expect(sparkDecisionCooldownMs(100_000, {}, true)).toBe(30_000);
+    expect(sparkDecisionCooldownMs(100_000, {}, false)).toBe(3 * 60_000);
   });
 });
 

@@ -15,10 +15,10 @@ import {
   NPC_PROFILES,
   SPARK_TAUNT_COOLDOWN_ROUNDS,
   chooseNpcAction,
+  localNpcTauntForAction,
   npcRaiseChips,
   pickPressureNpc,
-  publicBluffSuspicionChance,
-  sparkTauntForAction
+  publicBluffSuspicionChance
 } from './seotdaNpc.js';
 
 export const NPC_START_CHIPS = 2000;
@@ -505,15 +505,13 @@ export function applyNpcSeatAction(round, seat, rng = Math.random, sparkChoice =
     seat.needsAction = false;
     round.log.push(`${seat.name}: 다이`);
   }
-  const taunt = sparkTauntForAction(
+  const taunt = localNpcTauntForAction(
     {
-      active: !!round.sparkIntervention,
-      npcId: round.sparkNpcId ?? null,
-      taunt: sparkChoice?.taunt ?? round.sparkTaunt ?? null,
-      taunted: !!round.sparkTaunted
+      taunted: !!round.sparkTaunted,
+      cooldown: Number(round.sparkTauntCooldown ?? 0)
     },
-    seat.id,
-    seat.lastAction ?? ''
+    seat.lastAction ?? '',
+    rng
   );
   if (taunt) {
     round.sparkTaunted = true;

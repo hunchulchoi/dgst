@@ -37,8 +37,18 @@ describe('seotda betting UI', () => {
   it('asks Codex app-server asynchronously to decide Spark intervention without a random chance', () => {
     expect(serverSource).toContain('const pending = decideSparkIntervention(context)');
     expect(serverSource).toContain('refreshSparkDecisionInBackground(email, sparkContext)');
+    expect(serverSource).toContain('await sparkPending');
+    expect(serverSource).toContain('sparkInterventionHands');
     expect(serverSource).toContain('getSeotdaSparkHistory');
     expect(serverSource).toContain('sparkDecision');
+  });
+
+  it('covers current-hand Spark inference with a deal animation', () => {
+    expect(pageSource).toContain('let dealing = $state(false)');
+    expect(pageSource).toContain('class="deal-curtain"');
+    expect(pageSource).toContain('화투패를 섞는 중');
+    expect(pageSource).toContain('한 장씩 돌리는 중');
+    expect(pageSource).toContain('@keyframes dealCardFlight');
   });
 
   it('renders sparse Spark taunts returned with NPC betting actions', () => {

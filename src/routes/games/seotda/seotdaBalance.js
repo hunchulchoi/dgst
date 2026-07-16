@@ -276,11 +276,17 @@ export async function getTodaySeotdaStats() {
 export function summarizeSeotdaSparkHistory(rows) {
   const safeRows = Array.isArray(rows) ? rows : [];
   const totalDelta = safeRows.reduce((sum, row) => sum + Number(row.delta ?? 0), 0);
+  const recentRows = safeRows.slice(0, 10);
+  const recent10Delta = recentRows.reduce((sum, row) => sum + Number(row.delta ?? 0), 0);
   const wins = safeRows.filter((row) => row.reels?.[0] === 'win').length;
   const sparkHands = safeRows.filter((row) => row.reels?.includes('spark:on')).length;
   const oldest = safeRows.at(-1);
+  const recentOldest = recentRows.at(-1);
   const startingBalance = oldest
     ? Math.max(1, Number(oldest.balance ?? 0) - Number(oldest.delta ?? 0))
+    : 1;
+  const recentStartingBalance = recentOldest
+    ? Math.max(1, Number(recentOldest.balance ?? 0) - Number(recentOldest.delta ?? 0))
     : 1;
   let consecutiveFolds = 0;
   let consecutiveMaxRaises = 0;
@@ -303,11 +309,61 @@ export function summarizeSeotdaSparkHistory(rows) {
     winRatePercent: safeRows.length ? Math.round((wins / safeRows.length) * 10_000) / 100 : 0,
     totalDelta,
     balanceGrowthPercent: Math.round((totalDelta / startingBalance) * 10_000) / 100,
+    recent10Delta,
+    recent10GrowthPercent: Math.round((recent10Delta / recentStartingBalance) * 10_000) / 100,
     consecutiveFolds,
     consecutiveMaxRaises,
     sparkHands,
     consecutiveSparkHands
   };
+}
+
+/**
+ * Spark가 선택한 정책을 재호출 없이 유지할 판 수.
+ * @param {number} balance
+ * @param {{ recent10Delta?: number; recent10GrowthPercent?: number } | null | undefined} history
+ * @param {{ active?: boolean; difficulty?: string } | null | undefined} decision
+ */
+export function sparkInterventionHands(balance, history, decision) {
+  if (!decision?.active) return 0;
+  const bankroll = Math.max(0, Number(balance) || 0);
+  if (bankroll < 100_000) return 1;
+
+  const rapidProfit =
+    Number(history?.recent10GrowthPercent ?? 0) >= 10 ||
+    Number(history?.recent10Delta ?? 0) >= Math.max(10_000, bankroll * 0.08);
+  if (decision.difficulty === 'challenge' && (bankroll >= 200_000 || rapidProfit)) return 3;
+  return 2;
+}
+
+/**
+ * 저잔고는 정기 감독을 20판마다만 요청하고, 명확한 이상 흐름만 조기 감독한다.
+ * @param {number} balance
+ * @param {{ hands?: number; consecutiveFolds?: number; consecutiveMaxRaises?: number } | null | undefined} history
+ */
+export function shouldRequestSparkDecision(balance, history) {
+  if (Number(balance) >= 100_000) return true;
+  if (
+    Number(history?.consecutiveFolds ?? 0) >= 5 ||
+    Number(history?.consecutiveMaxRaises ?? 0) >= 3
+  ) {
+    return true;
+  }
+  const hands = Math.max(0, Number(history?.hands ?? 0) || 0);
+  return hands > 0 && hands % 20 === 0;
+}
+
+/**
+ * @param {number} balance
+ * @param {{ consecutiveFolds?: number; consecutiveMaxRaises?: number } | null | undefined} history
+ * @param {boolean} active
+ */
+export function sparkDecisionCooldownMs(balance, history, active) {
+  if (Number(balance) >= 100_000) return active ? 30_000 : 3 * 60_000;
+  const abnormal =
+    Number(history?.consecutiveFolds ?? 0) >= 5 ||
+    Number(history?.consecutiveMaxRaises ?? 0) >= 3;
+  return abnormal ? 10 * 60_000 : 30 * 60_000;
 }
 
 /** @param {string} email @param {number} [limit] */

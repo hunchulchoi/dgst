@@ -23,6 +23,7 @@ import {
 } from './seotdaRound.js';
 import {
   chooseNpcAction,
+  localNpcTauntForAction,
   NPC_PROFILES,
   npcRaiseChips,
   publicBluffSuspicionChance,
@@ -627,6 +628,15 @@ describe('seotdaNpc bluff', () => {
     expect(sparkTauntForAction(intervention, 'npc_agwi', '레이즈')).toBe('쫄리면 뒤지시던가.');
     intervention.taunted = true;
     expect(sparkTauntForAction(intervention, 'npc_agwi', '콜')).toBeNull();
+  });
+
+  it('chooses NPC dialogue locally without a Spark decision', () => {
+    expect(localNpcTauntForAction({ taunted: false, cooldown: 0 }, '레이즈', () => 0)).toBe(
+      '어디서 약을 팔아?'
+    );
+    expect(localNpcTauntForAction({ taunted: true, cooldown: 0 }, '레이즈', () => 0)).toBeNull();
+    expect(localNpcTauntForAction({ taunted: false, cooldown: 1 }, '콜', () => 0)).toBeNull();
+    expect(localNpcTauntForAction({ taunted: false, cooldown: 0 }, '다이', () => 0)).toBeNull();
   });
 
   it('suspects bluffs from public raise signals without hidden cards', () => {
