@@ -10,7 +10,7 @@
     Spinner,
     Tooltip
   } from '$lib/components/ui/index.js';
-  import { goto, invalidate } from '$app/navigation';
+  import { beforeNavigate, goto, invalidate } from '$app/navigation';
   import { resolve } from '$app/paths';
   import { boardListPath } from '$lib/util/boardPaths.js';
   /**
@@ -64,6 +64,9 @@
 
   const { boardId, articleId } = $page.params;
 
+  const BOARD_DRAFT_STORAGE_PREFIX = 'dgst:board-write-draft:v1';
+  const DRAFT_SAVE_DELAY = 500;
+
   const uploadPlus = () => {
     uploading++;
   };
@@ -103,7 +106,116 @@
     setTimeout(keepWriteTitleVisible, 800);
   }
 
+  function getDraftStorageKey() {
+    if (!boardId || articleId || typeof localStorage === 'undefined') return null;
+
+    const email = $page.data.session?.user?.email || 'anonymous';
+    return `${BOARD_DRAFT_STORAGE_PREFIX}:${encodeURIComponent(boardId)}:${encodeURIComponent(email)}`;
+  }
+
+  function clearDraft() {
+    const key = getDraftStorageKey();
+    if (!key) return;
+    try {
+      localStorage.removeItem(key);
+    } catch (error) {
+      console.warn('임시저장 삭제 실패:', error);
+    }
+  }
+
+  function saveDraft() {
+    const key = getDraftStorageKey();
+    if (!key) return;
+
+    const draftTitle = title || '';
+    const draftContent = lexicalEditorRef?.getEditorHtml?.() ?? content ?? '';
+    if (!draftTitle.trim() && !draftContent.trim()) {
+      clearDraft();
+      return;
+    }
+
+    try {
+      localStorage.setItem(
+        key,
+        JSON.stringify({ title: draftTitle, content: draftContent, savedAt: Date.now() })
+      );
+    } catch (error) {
+      // 저장 공간 부족 등으로 임시저장이 실패해도 글쓰기 자체는 계속한다.
+      console.warn('게시글 임시저장 실패:', error);
+    }
+  }
+
+  async function restoreDraftIfAvailable() {
+    const key = getDraftStorageKey();
+    if (!key) return;
+
+    let draft;
+    try {
+      const raw = localStorage.getItem(key);
+      if (!raw) return;
+      draft = JSON.parse(raw);
+    } catch (error) {
+      console.warn('게시글 임시저장 읽기 실패:', error);
+      clearDraft();
+      return;
+    }
+
+    if (!draft || typeof draft !== 'object' || (!draft.title && !draft.content)) {
+      clearDraft();
+      return;
+    }
+
+    const savedAt = Number(draft.savedAt);
+    const savedAtText = Number.isFinite(savedAt)
+      ? new Date(savedAt).toLocaleString('ko-KR', { dateStyle: 'short', timeStyle: 'short' })
+      : '';
+    const result = await swalFire({
+      title: '임시저장된 글이 있습니다.',
+      text: savedAtText
+        ? `${savedAtText}에 저장된 글을 불러오시겠어요?`
+        : '작성하던 글을 불러오시겠어요?',
+      icon: 'info',
+      showCancelButton: true,
+      confirmButtonText: '불러오기',
+      cancelButtonText: '새로 작성',
+      confirmButtonColor: '#3085d6'
+    });
+
+    if (result.isConfirmed) {
+      title = typeof draft.title === 'string' ? draft.title : '';
+      content = typeof draft.content === 'string' ? draft.content : '';
+      prevTitleLength = title.length;
+    } else {
+      clearDraft();
+    }
+  }
+
+  let draftReady = $state(false);
+  /** @type {ReturnType<typeof setTimeout> | undefined} */
+  let draftSaveTimer;
+
+  $effect(() => {
+    title;
+    content;
+    if (!draftReady || articleId) return;
+
+    clearTimeout(draftSaveTimer);
+    draftSaveTimer = setTimeout(saveDraft, DRAFT_SAVE_DELAY);
+    return () => clearTimeout(draftSaveTimer);
+  });
+
+  onMount(() => {
+    const saveBeforeLeaving = () => saveDraft();
+    window.addEventListener('beforeunload', saveBeforeLeaving);
+    return () => window.removeEventListener('beforeunload', saveBeforeLeaving);
+  });
+
   onMount(async () => {
+    if (!articleId) {
+      await restoreDraftIfAvailable();
+    }
+    draftReady = true;
+
     try {
       LexicalEditor = (await import('$lib/components/LexicalEditor.svelte')).default;
     } catch (error) {
@@ -146,6 +258,7 @@
 
       if (!result.isConfirmed) return false;
     }
+    clearDraft();
     goto(resolve(/** @type {any} */ (boardListPath(boardId ?? 'free'))));
   }
 
@@ -175,6 +288,10 @@
 
   /** @type {{ focusEditor: () => void; getEditorHtml?: () => string } | null} */
   let lexicalEditorRef = $state(null);
+
+  beforeNavigate(() => {
+    if (!formSubmitting) saveDraft();
+  });
 
   /**
    * 제목 입력에서 Tab → 에디터 본문으로 포커스 (툴바 건너뜀)
@@ -408,6 +525,7 @@
 
               title = '';
               content = '';
+              clearDraft();
 
               await invalidate('board-list');
 
