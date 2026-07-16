@@ -3,6 +3,7 @@ import {
   MAX_POT,
   MAX_TOTAL_BET,
   NPC_START_CHIPS,
+  npcPlayerRelief,
   npcStartingChips,
   createNewRound,
   ddaengValue,
@@ -12,6 +13,7 @@ import {
   maxRoundContribution,
   nextSeatNeedingAction,
   runNpcTurns,
+  runNpcTurnsWithSpark,
   seotdaAuditLogEntries,
   seotdaHandLogEntries,
   showdown,
@@ -29,6 +31,14 @@ import {
 } from './seotdaNpc.js';
 
 describe('seotdaRound smoke', () => {
+  it('applies stronger NPC relief below 100k while keeping relief above it modest', () => {
+    expect(npcPlayerRelief(42_454)).toBe(1.45);
+    expect(npcPlayerRelief(99_999)).toBe(1.45);
+    expect(npcPlayerRelief(100_000)).toBe(1.2);
+    expect(npcPlayerRelief(999_999)).toBe(1.2);
+    expect(npcPlayerRelief(1_000_000)).toBe(0.07);
+  });
+
   it('calculates ddaeng value from the initial ante only', () => {
     expect(
       ddaengValue(
@@ -561,13 +571,47 @@ describe('seotdaNpc bluff', () => {
       active: true,
       npcId: 'npc_agwi',
       taunt: '내가 빙다리 핫바지로 보이냐?',
+      difficulty: 'challenge',
+      npcStyle: 'aggressive',
       reason: '연속 최대 레이즈'
     });
 
     expect(round.sparkIntervention).toBe(true);
     expect(round.sparkNpcId).toBe('npc_agwi');
     expect(round.sparkTaunt).toBe('내가 빙다리 핫바지로 보이냐?');
+    expect(round.sparkDifficulty).toBe('challenge');
+    expect(round.sparkNpcStyle).toBe('aggressive');
     expect(round.sparkDecisionSource).toBe('codex-app-server');
+  });
+
+  it('lets Spark directly play only its assigned NPC without exposing user cards', async () => {
+    const round = createNewRound(50_000, () => 0.5, {}, 'npc_agwi', 0, {
+      active: true,
+      npcId: 'npc_agwi',
+      taunt: null,
+      difficulty: 'give-room',
+      npcStyle: 'loose-caller',
+      directPlay: true,
+      reason: '재미 조절'
+    });
+    const contexts: Record<string, unknown>[] = [];
+
+    await runNpcTurnsWithSpark(round, async (context) => {
+      contexts.push(context);
+      return { action: 'call', raiseScale: null, taunt: null };
+    });
+
+    expect(contexts).toHaveLength(1);
+    expect(contexts[0].npcId).toBe('npc_agwi');
+    expect(contexts[0].cards).toEqual(
+      round.seats
+        .find((seat) => seat.id === 'npc_agwi')
+        ?.cards.map((card) => ({
+          month: card.month,
+          gwang: card.gwang
+        }))
+    );
+    expect(contexts[0]).not.toHaveProperty('userCards');
   });
 
   it('shows a Spark taunt only for its NPC betting action and at most once', () => {

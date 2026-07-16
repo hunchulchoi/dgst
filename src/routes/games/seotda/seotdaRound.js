@@ -5,6 +5,7 @@ import {
   dynamicAnte,
   evaluateHand,
   handStrength,
+  minRaisePay,
   raiseAmount,
   settlePot,
   shuffleDeck,
@@ -27,6 +28,14 @@ export const MAX_RAISES = 3;
 export const MAX_BET_ANTE_MULTIPLIER = 20;
 export const MAX_TOTAL_BET = 100_000;
 export const MAX_POT = MAX_TOTAL_BET * 4;
+
+/** 판돈은 유지하고 NPC 의사결정만 완화하는 잔고 구간 계수. */
+export function npcPlayerRelief(userBalance) {
+  const balance = Number(userBalance);
+  if (balance < 100_000) return 1.45;
+  if (balance < 1_000_000) return 1.2;
+  return 0.07;
+}
 
 /** @param {number} ante @returns {number} 스테이크별 유한 NPC 바이인 */
 export function npcStartingChips(ante = ANTE) {
@@ -126,7 +135,7 @@ function createRoundId() {
  * @param {Record<string, number>} [npcChipMap] 이전 판 NPC 잔고
  * @param {string} [openingActorId] 직전 판 승자
  * @param {number} [sparkTauntCooldown] 도발 노출 남은 판 수
- * @param {{ active?: boolean; npcId?: string | null; taunt?: string | null; reason?: string } | null} [sparkDecision]
+ * @param {{ active?: boolean; npcId?: string | null; taunt?: string | null; difficulty?: string; npcStyle?: string | null; directPlay?: boolean; reason?: string } | null} [sparkDecision]
  */
 export function createNewRound(
   userChips,
@@ -210,6 +219,11 @@ export function createNewRound(
   const sparkIntervention = !!sparkDecision?.active && !!sparkNpcId;
   const sparkTaunt =
     sparkIntervention && sparkTauntCooldown <= 0 ? (sparkDecision?.taunt ?? null) : null;
+  const sparkDifficulty = sparkIntervention
+    ? String(sparkDecision?.difficulty ?? 'balanced')
+    : 'balanced';
+  const difficultyRelief =
+    sparkDifficulty === 'give-room' ? 0.25 : sparkDifficulty === 'challenge' ? -0.2 : 0;
   const openingIndex = Math.max(
     0,
     seats.findIndex((seat) => seat.id === openingActorId)
@@ -231,6 +245,10 @@ export function createNewRound(
     sparkTaunt,
     sparkDecisionSource: sparkDecision ? 'codex-app-server' : 'none',
     sparkDecisionReason: String(sparkDecision?.reason ?? '').slice(0, 160),
+    sparkDifficulty,
+    sparkNpcStyle: sparkIntervention ? (sparkDecision?.npcStyle ?? null) : null,
+    sparkDirectPlay: sparkIntervention && !!sparkDecision?.directPlay,
+    npcPlayerRelief: Math.max(0, npcPlayerRelief(userChips) + difficultyRelief),
     sparkTaunted: false,
     sparkTauntCooldown: Math.max(0, sparkTauntCooldown),
     lastAggressorId: null,
@@ -386,8 +404,9 @@ export function applyPlayerAction(round, seatId, action, raisePay) {
  * @param {import('./seotdaState.js').SeotdaRound} round
  * @param {import('./seotdaState.js').SeotdaSeat} seat
  * @param {() => number} [rng]
+ * @param {{ action: 'die' | 'call' | 'raise'; raiseScale?: 'min' | 'half' | 'max' | null; taunt?: string | null } | null} [sparkChoice]
  */
-function applyNpcSeatAction(round, seat, rng = Math.random) {
+export function applyNpcSeatAction(round, seat, rng = Math.random, sparkChoice = null) {
   const profile = NPC_PROFILES.find((p) => p.id === seat.id);
   if (!profile) {
     seat.needsAction = false;
@@ -408,34 +427,51 @@ function applyNpcSeatAction(round, seat, rng = Math.random) {
       })
     : 0;
 
-  let action = chooseNpcAction(
-    seat.cards,
-    profile,
-    {
-      toCall,
-      chips: seat.chips,
-      pot: round.pot,
-      raiseSeen,
-      forcePressure,
-      sparkIntervention: sparkAssigned,
-      suspectedUserBluff: bluffSuspicion > 0 && rng() < bluffSuspicion,
-      isOpening: seat.id === round.openingActorId && !round.openingActionTaken,
-      bluffCatcher: seat.id === round.pressureNpcId && raiseSeen,
-      ante: round.antePaid,
-      activeOpponents: round.seats.filter((other) => other.id !== seat.id && !other.folded).length
-    },
-    rng
-  );
+  let action =
+    sparkChoice?.action ??
+    chooseNpcAction(
+      seat.cards,
+      profile,
+      {
+        toCall,
+        chips: seat.chips,
+        pot: round.pot,
+        raiseSeen,
+        forcePressure,
+        sparkIntervention: sparkAssigned,
+        playerRelief: Number(round.npcPlayerRelief ?? 0),
+        sparkStyle: sparkAssigned ? (round.sparkNpcStyle ?? null) : null,
+        suspectedUserBluff: bluffSuspicion > 0 && rng() < bluffSuspicion,
+        isOpening: seat.id === round.openingActorId && !round.openingActionTaken,
+        bluffCatcher: seat.id === round.pressureNpcId && raiseSeen,
+        ante: round.antePaid,
+        activeOpponents: round.seats.filter((other) => other.id !== seat.id && !other.folded).length
+      },
+      rng
+    );
 
   if (action === 'raise' && (round.raiseCount ?? 0) >= MAX_RAISES) {
     action = toCall > 0 ? 'call' : 'call';
   }
+  if (action === 'raise' && contributionCapacity(round, seat) <= toCall) action = 'call';
 
   if (action === 'raise') {
     const potBeforeRaise = round.pot;
     const available = contributionCapacity(round, seat);
     const strongHand = handStrength(evaluateHand(seat.cards)) >= 0.65;
-    const pay = npcRaiseChips(toCall, available, rng, round.antePaid, strongHand);
+    const minPay = minRaisePay(toCall, round.antePaid);
+    const forcedTarget =
+      sparkChoice?.raiseScale === 'max'
+        ? available
+        : sparkChoice?.raiseScale === 'half'
+          ? Math.max(minPay, Math.floor(available / 2))
+          : sparkChoice?.raiseScale === 'min'
+            ? minPay
+            : null;
+    const pay =
+      forcedTarget == null
+        ? npcRaiseChips(toCall, available, rng, round.antePaid, strongHand)
+        : Math.min(available, forcedTarget);
     seat.chips -= pay;
     seat.contrib += pay;
     seat.totalContrib = (seat.totalContrib ?? seat.contrib - pay) + pay;
@@ -473,7 +509,7 @@ function applyNpcSeatAction(round, seat, rng = Math.random) {
     {
       active: !!round.sparkIntervention,
       npcId: round.sparkNpcId ?? null,
-      taunt: round.sparkTaunt ?? null,
+      taunt: sparkChoice?.taunt ?? round.sparkTaunt ?? null,
       taunted: !!round.sparkTaunted
     },
     seat.id,
@@ -529,6 +565,75 @@ export function runNpcTurns(round, rng = Math.random) {
   }
 
   // 안전장치: 루프 초과 시 강제 쇼다운
+  if (round.phase === 'betting') {
+    round.log.push('베팅 종료 (상한)');
+    showdown(round);
+  }
+  return actions;
+}
+
+/**
+ * Spark가 직접 플레이하기로 한 판만 지정 NPC 행동을 app-server 판단으로 진행한다.
+ * @param {import('./seotdaState.js').SeotdaRound} round
+ * @param {(context: Record<string, unknown>) => Promise<{ action: string; raiseScale?: string | null; taunt?: string | null } | null>} decideAction
+ * @param {() => number} [rng]
+ */
+export async function runNpcTurnsWithSpark(round, decideAction, rng = Math.random) {
+  if (!round.sparkDirectPlay || !round.sparkNpcId) return runNpcTurns(round, rng);
+  /** @type {Array<{ seatId: string; name: string; action: string; amount: number; taunt?: string | null }>} */
+  const actions = [];
+  if (round.phase !== 'betting') return actions;
+
+  for (let guard = 0; guard < 40; guard++) {
+    finishIfNeeded(round, rng);
+    if (round.phase !== 'betting') return actions;
+    const next = nextSeatNeedingAction(round);
+    if (!next) {
+      showdown(round, rng);
+      if (round.phase === 'betting') continue;
+      return actions;
+    }
+    if (!next.isNpc) {
+      round.turnIndex = round.seats.indexOf(next);
+      return actions;
+    }
+
+    let sparkChoice = null;
+    if (next.id === round.sparkNpcId) {
+      const hand = evaluateHand(next.cards);
+      sparkChoice = await decideAction({
+        npcId: next.id,
+        npcName: next.name,
+        npcStyle: round.sparkNpcStyle ?? next.style ?? null,
+        cards: next.cards.map((card) => ({ month: card.month, gwang: card.gwang })),
+        handName: hand.name,
+        handStrength: handStrength(hand),
+        chips: next.chips,
+        toCall: Math.max(0, round.currentBet - next.contrib),
+        pot: round.pot,
+        currentBet: round.currentBet,
+        ante: round.antePaid,
+        raiseCount: round.raiseCount ?? 0,
+        lastAggressorId: round.lastAggressorId ?? null,
+        lastRaisePay: round.lastRaisePay ?? 0,
+        userRaiseCount: round.userRaiseCount ?? 0,
+        activeOpponents: round.seats.filter((seat) => seat.id !== next.id && !seat.folded).length,
+        difficulty: round.sparkDifficulty ?? 'balanced',
+        history: round.sparkHistory ?? null,
+        tauntAllowed: !round.sparkTaunted && Number(round.sparkTauntCooldown ?? 0) <= 0
+      });
+    }
+    const action = applyNpcSeatAction(
+      round,
+      next,
+      rng,
+      /** @type {{ action: 'die' | 'call' | 'raise'; raiseScale?: 'min' | 'half' | 'max' | null; taunt?: string | null } | null} */ (
+        sparkChoice
+      )
+    );
+    if (action) actions.push(action);
+  }
+
   if (round.phase === 'betting') {
     round.log.push('베팅 종료 (상한)');
     showdown(round);

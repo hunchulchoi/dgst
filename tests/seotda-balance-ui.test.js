@@ -53,6 +53,13 @@ describe('seotda betting UI', () => {
     expect(pageSource).toContain('await playNpcActions(npcActions)');
   });
 
+  it('keeps all three NPC card pairs horizontal on narrow mobile tables', () => {
+    expect(pageSource).toContain('grid-template-columns: repeat(3, minmax(0, 1fr))');
+    expect(pageSource).toContain('.npc-row .cards');
+    expect(pageSource).toContain('flex-wrap: nowrap');
+    expect(pageSource).toContain('.npc-row .hwatu-flip');
+  });
+
   it('offers board sharing after showdown', () => {
     expect(pageSource).toContain('function openShare()');
     expect(pageSource).toContain("fetch('/games/seotda/share'");

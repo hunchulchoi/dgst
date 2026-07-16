@@ -284,12 +284,17 @@ export function summarizeSeotdaSparkHistory(rows) {
     : 1;
   let consecutiveFolds = 0;
   let consecutiveMaxRaises = 0;
+  let consecutiveSparkHands = 0;
   for (const row of safeRows) {
     if (row.reels?.[2] === '다이') consecutiveFolds += 1;
     else break;
   }
   for (const row of safeRows) {
     if (row.reels?.includes('user:max-raise')) consecutiveMaxRaises += 1;
+    else break;
+  }
+  for (const row of safeRows) {
+    if (row.reels?.includes('spark:on')) consecutiveSparkHands += 1;
     else break;
   }
   return {
@@ -300,7 +305,8 @@ export function summarizeSeotdaSparkHistory(rows) {
     balanceGrowthPercent: Math.round((totalDelta / startingBalance) * 10_000) / 100,
     consecutiveFolds,
     consecutiveMaxRaises,
-    sparkHands
+    sparkHands,
+    consecutiveSparkHands
   };
 }
 

@@ -32,7 +32,12 @@
  *   sparkTauntCooldown?: number;
  *   sparkDecisionSource?: string;
  *   sparkDecisionReason?: string;
+ *   sparkDifficulty?: string;
+ *   sparkNpcStyle?: string | null;
+ *   sparkDirectPlay?: boolean;
  *   userMaxRaiseUsed?: boolean;
+ *   npcPlayerRelief?: number;
+ *   sparkHistory?: Record<string, unknown> | null;
  *   lastAggressorId?: string | null;
  *   lastRaisePay?: number;
  *   potBeforeRaise?: number;

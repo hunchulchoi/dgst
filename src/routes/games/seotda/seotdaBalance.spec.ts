@@ -30,7 +30,7 @@ describe('seotda Spark history', () => {
         bet: 200n,
         delta: 100n,
         balance: 1150n,
-        reels: ['win', '100', '레이즈', 'user:max-raise']
+        reels: ['win', '100', '레이즈', 'user:max-raise', 'spark:on']
       },
       { bet: 100n, delta: 50n, balance: 1050n, reels: ['win', '50', '다이'] }
     ]);
@@ -42,7 +42,8 @@ describe('seotda Spark history', () => {
       balanceGrowthPercent: 30,
       consecutiveFolds: 0,
       consecutiveMaxRaises: 2,
-      sparkHands: 1
+      sparkHands: 2,
+      consecutiveSparkHands: 2
     });
   });
 });

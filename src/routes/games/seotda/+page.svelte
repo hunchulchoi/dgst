@@ -591,7 +591,7 @@
             </div>
           {:else}
             <div class="seotda-table rounded-4 p-3 mb-3">
-              <div class="npc-row d-flex justify-content-around mb-4">
+              <div class="npc-row mb-4">
                 {#each npcs as npc (npc.id)}
                   <div
                     class="seat text-center"
@@ -1007,6 +1007,33 @@
     min-height: 280px;
     perspective: 800px;
   }
+  .npc-row {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: start;
+    gap: clamp(0.25rem, 1.5vw, 0.75rem);
+  }
+  .npc-row .seat {
+    min-width: 0;
+  }
+  .npc-row .seat > .fw-semibold {
+    min-height: 1.5rem;
+    white-space: nowrap;
+  }
+  .npc-row .cards {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: nowrap;
+    gap: 0.25rem;
+  }
+  .npc-row .hwatu-flip {
+    flex: 0 1 3.5rem;
+    width: min(3.5rem, calc((100% - 0.25rem) / 2));
+    min-width: 0;
+    margin-inline: 0;
+  }
   .seat.folded {
     opacity: 0.45;
   }
@@ -1419,5 +1446,27 @@
     background: #212529;
     border-color: #495057 !important;
     color: #dee2e6;
+  }
+
+  @media (max-width: 575.98px) {
+    .seotda-table {
+      padding: 0.75rem !important;
+    }
+    .npc-row {
+      gap: 0.2rem;
+    }
+    .npc-row .seat > .fw-semibold {
+      font-size: 0.9rem;
+    }
+    .npc-row .seat > .small {
+      font-size: 0.75rem;
+    }
+    .npc-row .action-effect {
+      max-width: 100%;
+      padding-inline: 0.35rem;
+      overflow: hidden;
+      font-size: 0.68rem;
+      text-overflow: ellipsis;
+    }
   }
 </style>

@@ -88,7 +88,7 @@ function pressureCallChance(commitRatio, strength, potOdds, bluffCatcher, profil
 /**
  * @param {import('./seotdaEngine.js').SeotdaCard[]} cards
  * @param {NpcProfile} profile
- * @param {{ toCall: number; chips: number; pot: number; raiseSeen: boolean; forcePressure?: boolean; bluffCatcher?: boolean; sparkIntervention?: boolean; suspectedUserBluff?: boolean; isOpening?: boolean; activeOpponents?: number; ante?: number }} ctx
+ * @param {{ toCall: number; chips: number; pot: number; raiseSeen: boolean; forcePressure?: boolean; bluffCatcher?: boolean; sparkIntervention?: boolean; suspectedUserBluff?: boolean; isOpening?: boolean; activeOpponents?: number; ante?: number; playerRelief?: number; sparkStyle?: string | null }} ctx
  * @param {() => number} [rng]
  * @returns {SeotdaAction}
  */
@@ -97,6 +97,17 @@ export function chooseNpcAction(cards, profile, ctx, rng = Math.random) {
   const headsUpStrength = handStrength(hand);
   const { toCall, chips, pot, raiseSeen, forcePressure, bluffCatcher } = ctx;
   const ante = Math.max(ANTE, Number(ctx.ante ?? ANTE));
+  const playerRelief = Math.max(0, Math.min(1.5, Number(ctx.playerRelief ?? 0)));
+  const sparkStyle = String(ctx.sparkStyle ?? '');
+  const sparkAggression =
+    sparkStyle === 'aggressive'
+      ? 1.35
+      : sparkStyle === 'cautious'
+        ? 0.55
+        : sparkStyle === 'loose-caller'
+          ? 0.7
+          : 1;
+  const regularRaiseRelief = 1;
   const activeOpponents = Math.max(1, Number(ctx.activeOpponents ?? 1));
   const strength = Math.pow(headsUpStrength, activeOpponents);
   if (chips <= 0) return 'die';
@@ -112,40 +123,59 @@ export function chooseNpcAction(cards, profile, ctx, rng = Math.random) {
       let bluffChance =
         profile.style === 'bluffer' ? 0.2 : profile.style === 'gambler' ? 0.14 : 0.05;
       if (ctx.sparkIntervention) bluffChance *= 1.05;
+      bluffChance *= (1 - playerRelief * 0.65) * sparkAggression;
       return canRaise && rng() < bluffChance ? 'raise' : 'call';
     }
     if (headsUpStrength >= 0.65) {
       let valueRaiseChance =
         profile.style === 'calm' ? 0.7 : profile.style === 'gambler' ? 0.8 : 0.75;
       if (ctx.sparkIntervention) valueRaiseChance = Math.min(0.98, valueRaiseChance * 1.45);
+      valueRaiseChance *= (1 - playerRelief * 0.45) * sparkAggression;
       return canRaise && rng() < valueRaiseChance ? 'raise' : 'call';
     }
-    if (profile.style === 'gambler' && canRaise && rng() < 0.12) return 'raise';
+    if (profile.style === 'gambler' && canRaise && rng() < 0.12 * (1 - playerRelief * 0.65)) {
+      return 'raise';
+    }
     return 'call';
   }
 
   // Spark 뻥카 캐치: 유저 공개 레이즈 신호 + NPC 자기 패만 보고 확률적 재레이즈.
   if (ctx.sparkIntervention && ctx.suspectedUserBluff && raiseSeen && toCall > 0 && canRaise) {
-    if (rng() < sparkBluffReraiseChance(strength)) return 'raise';
+    if (rng() < Math.min(0.95, sparkBluffReraiseChance(strength) * sparkAggression)) {
+      return 'raise';
+    }
   }
 
   // 큰 레이즈는 부담률에 따라 혼합 콜한다. 지정 캐처 외 NPC는 빈도를 낮춘다.
   if (raiseSeen && toCall >= ante * 2 && hand.tier < 80) {
-    const catchChance = pressureCallChance(
+    let catchChance = pressureCallChance(
       commitRatio,
       strength,
       potOdds,
       bluffCatcher,
       profile.bluff
     );
+    if (toCall <= ante * 4) {
+      catchChance = Math.min(0.94, catchChance + playerRelief * (strength < 0.45 ? 0.28 : 0.16));
+    }
+    if (sparkStyle === 'loose-caller') catchChance = Math.min(0.96, catchChance + 0.18);
+    else if (sparkStyle === 'cautious') catchChance = Math.max(0.03, catchChance - 0.12);
     if (rng() >= catchChance || !canFullCall) return 'die';
-    if (canRaise && strength >= 0.68 && commitRatio <= 0.4 && rng() < 0.35) return 'raise';
+    if (
+      canRaise &&
+      strength >= 0.68 &&
+      commitRatio <= 0.4 &&
+      rng() < 0.35 * (1 - playerRelief * 0.75)
+    ) {
+      return 'raise';
+    }
     return 'call';
   }
 
   // 콜 가격보다 승산이 크게 낮으면 대부분 포기한다. 성향에 따라 가끔만 따라간다.
   if (toCall > 0 && raiseSeen && strength + 0.08 < potOdds) {
-    const stubbornChance = 0.03 + profile.bluff * 0.08;
+    const stubbornChance =
+      0.03 + profile.bluff * 0.08 + (toCall <= ante * 4 ? playerRelief * 0.08 : 0);
     return rng() < stubbornChance && canFullCall ? 'call' : 'die';
   }
 
@@ -166,7 +196,9 @@ export function chooseNpcAction(cards, profile, ctx, rng = Math.random) {
     if (strength >= 0.5) stayChance += 0.2;
     stayChance = Math.min(0.9, stayChance);
     if (rng() < stayChance) {
-      if (canRaise && strength >= 0.55 && rng() < 0.3) return 'raise';
+      if (canRaise && strength >= 0.55 && rng() < 0.3 * (1 - playerRelief * 0.7)) {
+        return 'raise';
+      }
       return 'call';
     }
     // 약한 패만 다이 쪽으로
@@ -175,14 +207,20 @@ export function chooseNpcAction(cards, profile, ctx, rng = Math.random) {
   }
 
   // 전원 공통: 가끔 랜덤 뻥카 레이즈 (약한 패에서도)
-  if (canRaise && strength < 0.4 && rng() < 0.05 + profile.bluff * 0.08) {
+  if (
+    canRaise &&
+    strength < 0.4 &&
+    rng() < (0.05 + profile.bluff * 0.08) * (1 - playerRelief * 0.65)
+  ) {
     return 'raise';
   }
 
   // 압박 담당 — 랜덤
   if (forcePressure && canRaise && toCall < chips) {
     const roll = rng();
-    if (roll < 0.18 * (ctx.sparkIntervention ? 1.2 : 1)) return 'raise';
+    if (roll < 0.18 * (ctx.sparkIntervention ? 1.2 : 1) * (1 - playerRelief * 0.65)) {
+      return 'raise';
+    }
     if (roll < 0.55 && canFullCall) return 'call';
   }
 
@@ -191,42 +229,54 @@ export function chooseNpcAction(cards, profile, ctx, rng = Math.random) {
     const bluffChance = profile.bluff * (0.5 + mood * 0.9);
 
     if (strength < 0.35) {
-      if (canRaise && rng() < bluffChance * 0.7) return 'raise';
+      if (canRaise && rng() < bluffChance * 0.7 * regularRaiseRelief * sparkAggression) {
+        return 'raise';
+      }
       if (raiseSeen && canFullCall && rng() < 0.4 + mood * 0.25) return 'call';
       if (rng() < 0.35) return 'die';
       return canFullCall ? 'call' : 'die';
     }
     if (strength < 0.55) {
-      if (canRaise && rng() < 0.32 + bluffChance * 0.3) return 'raise';
+      if (canRaise && rng() < (0.32 + bluffChance * 0.3) * regularRaiseRelief * sparkAggression) {
+        return 'raise';
+      }
       return canFullCall ? (rng() < 0.1 ? 'die' : 'call') : 'die';
     }
-    if (canRaise && rng() < 0.5 + mood * 0.25) return 'raise';
+    if (canRaise && rng() < (0.5 + mood * 0.25) * regularRaiseRelief * sparkAggression) {
+      return 'raise';
+    }
     return canFullCall ? 'call' : 'die';
   }
 
   if (profile.style === 'calm') {
     if (strength < 0.4) {
-      if (toCall === 0) return rng() < 0.12 && canRaise ? 'raise' : 'call';
+      if (toCall === 0) {
+        return rng() < 0.12 * regularRaiseRelief * sparkAggression && canRaise ? 'raise' : 'call';
+      }
       if (raiseSeen) return rng() < 0.4 ? 'call' : 'die';
-      if (canRaise && rng() < 0.12) return 'raise';
+      if (canRaise && rng() < 0.12 * regularRaiseRelief * sparkAggression) return 'raise';
       return canFullCall && rng() < 0.4 ? 'call' : 'die';
     }
     if (strength < 0.7) {
-      if (canRaise && rng() < 0.28) return 'raise';
+      if (canRaise && rng() < 0.28 * regularRaiseRelief * sparkAggression) return 'raise';
       return canFullCall ? 'call' : 'die';
     }
-    if (canRaise && rng() < 0.55) return 'raise';
+    if (canRaise && rng() < 0.55 * regularRaiseRelief * sparkAggression) return 'raise';
     return canFullCall ? 'call' : 'die';
   }
 
   // 정마담
   if (strength < 0.45) {
     const r = rng();
-    if (canRaise && r < profile.bluff * 0.28) return 'raise';
+    if (canRaise && r < profile.bluff * 0.28 * regularRaiseRelief * sparkAggression) {
+      return 'raise';
+    }
     if (r < 0.45) return 'die';
     return canFullCall ? 'call' : 'die';
   }
-  if (canRaise && rng() < 0.5 + rng() * 0.35) return 'raise';
+  if (canRaise && rng() < (0.5 + rng() * 0.35) * regularRaiseRelief * sparkAggression) {
+    return 'raise';
+  }
   return canFullCall ? 'call' : 'die';
 }
 

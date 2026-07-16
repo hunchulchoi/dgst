@@ -27,11 +27,12 @@ import {
   contributionCapacity,
   createNewRound,
   runNpcTurns,
+  runNpcTurnsWithSpark,
   seotdaAuditLogEntries,
   sparkTauntCooldownAfterRound,
   userChipResult
 } from './seotdaRound.js';
-import { decideSparkIntervention } from './seotdaSparkAppServer.js';
+import { decideSparkIntervention, decideSparkNpcAction } from './seotdaSparkAppServer.js';
 
 const SMOKE_BALANCE = 1000;
 
@@ -158,7 +159,7 @@ export async function POST(event) {
         /** @type {'die'|'call'|'raise'} */ (move),
         Number.isFinite(raisePay) ? raisePay : undefined
       );
-      const npcActions = runNpcTurns(round);
+      const npcActions = await runNpcTurnsWithSpark(round, decideSparkNpcAction);
       setRound(user.email, round);
 
       if (round.phase === 'showdown') {
@@ -180,6 +181,8 @@ export async function POST(event) {
             tookLead ? 'lead' : '-',
             round.userMaxRaiseUsed ? 'user:max-raise' : 'user:no-max-raise',
             round.sparkIntervention ? 'spark:on' : 'spark:off',
+            `spark:difficulty:${round.sparkDifficulty ?? 'balanced'}`,
+            round.sparkDirectPlay ? 'spark:direct-play' : 'spark:policy-only',
             ...seotdaAuditLogEntries(round)
           ]
         });
@@ -247,7 +250,8 @@ async function beginRound(email, nickname, openingActorId = 'user', sparkTauntCo
     sparkTauntCooldown,
     sparkDecision
   );
-  const npcActions = runNpcTurns(round);
+  round.sparkHistory = history;
+  const npcActions = await runNpcTurnsWithSpark(round, decideSparkNpcAction);
   chipsBeforeMap.set(email, balance);
   setRound(email, round);
   return { success: true, balance: round.seats[0].chips, round: publicOf(round), npcActions };
