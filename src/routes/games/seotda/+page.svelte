@@ -52,6 +52,9 @@
     ddaengHandName?: string | null;
     ddaengValuePerLoser?: number;
     ddaengTotalPaid?: number;
+    userChipsBefore?: number | null;
+    userChipsAfter?: number | null;
+    userChipDelta?: number | null;
     seats: SeotdaSeat[];
   }
 
@@ -164,6 +167,9 @@
   );
   const isDraw = $derived(isShowdown && winnerIds.length > 1);
   const userWon = $derived(winnerIds.includes('user') && !isDraw);
+  const userChipDelta = $derived(Number(round?.userChipDelta ?? 0));
+  const userChipsBefore = $derived(Number(round?.userChipsBefore ?? 0));
+  const userChipsAfter = $derived(Number(round?.userChipsAfter ?? userSeat?.chips ?? 0));
   const ddaengWinner = $derived(
     round?.seats.find((seat) => seat.id === round?.ddaengWinnerId) ?? null
   );
@@ -915,6 +921,22 @@
                   <div class="result-action-hand">
                     {userSeat?.handName ?? (isDraw ? '무승부' : userWon ? '승리' : '패배')}
                   </div>
+                  <div
+                    class:win={userChipDelta > 0}
+                    class:loss={userChipDelta < 0}
+                    class="result-action-delta"
+                  >
+                    {#if userChipDelta > 0}
+                      +{formatNumber(userChipDelta)}점 땄다
+                    {:else if userChipDelta < 0}
+                      -{formatNumber(Math.abs(userChipDelta))}점 잃었다
+                    {:else}
+                      본전
+                    {/if}
+                  </div>
+                  <div class="result-action-balance">
+                    {formatNumber(userChipsBefore)}점 → {formatNumber(userChipsAfter)}점
+                  </div>
                   <div class="result-action-buttons">
                     <button class="btn btn-outline-light" disabled={busy} onclick={openShare}>
                       <span aria-hidden="true">🎴</span>
@@ -1149,6 +1171,27 @@
     color: #f6edca;
     font-size: 0.95rem;
     font-weight: 800;
+  }
+  .result-action-delta {
+    margin-top: 0.75rem;
+    color: #e9e3ce;
+    font-size: clamp(1.35rem, 7vw, 1.8rem);
+    font-weight: 900;
+    line-height: 1.15;
+  }
+  .result-action-delta.win {
+    color: #75e3a8;
+    text-shadow: 0 0 18px rgba(62, 221, 136, 0.3);
+  }
+  .result-action-delta.loss {
+    color: #ff9b9b;
+    text-shadow: 0 0 18px rgba(255, 91, 91, 0.28);
+  }
+  .result-action-balance {
+    margin-top: 0.25rem;
+    color: #aebfb6;
+    font-size: 0.78rem;
+    font-weight: 700;
   }
   .result-action-buttons {
     display: grid;

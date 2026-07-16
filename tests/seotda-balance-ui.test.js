@@ -87,6 +87,16 @@ describe('seotda betting UI', () => {
     );
     expect(pageSource).toContain('class="result-action-backdrop"');
     expect(pageSource).toContain('class="result-action-layer"');
+    expect(pageSource).toContain('class="result-action-delta"');
+    expect(pageSource).toContain('+{formatNumber(userChipDelta)}점 땄다');
+    expect(pageSource).toContain('-{formatNumber(Math.abs(userChipDelta))}점 잃었다');
+    expect(pageSource).toContain(
+      '{formatNumber(userChipsBefore)}점 → {formatNumber(userChipsAfter)}점'
+    );
     expect(pageSource).toContain('onclick={nextRound}');
+    expect(serverSource).toContain(
+      "throw error(400, { message: '끝난 판에서 다음 판을 눌러야 새 패를 돌릴 수 있습니다.' })"
+    );
+    expect(serverSource).toContain('round.userChipDelta = result.delta');
   });
 });

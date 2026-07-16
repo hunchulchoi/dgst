@@ -173,8 +173,8 @@ export async function POST(event) {
     }
 
     if (action === 'start') {
-      if (getRound(user.email)?.phase === 'betting') {
-        throw error(400, { message: '이미 진행 중인 판이 있습니다.' });
+      if (getRound(user.email)) {
+        throw error(400, { message: '진행 중이거나 확인하지 않은 판이 있습니다.' });
       }
       // 새 테이블: NPC 칩 초기화
       const prev = getRound(user.email);
@@ -216,6 +216,9 @@ export async function POST(event) {
       if (round.phase === 'showdown') {
         const before = chipsBeforeMap.get(user.email) ?? round.seats[0].chips;
         const result = userChipResult(before, round);
+        round.userChipsBefore = before;
+        round.userChipsAfter = result.after;
+        round.userChipDelta = result.delta;
         const leaderBefore = await getSeotdaCurrentLeader();
         // 다른 사용자가 보유하던 1위를 이번 판으로 추월한 경우만 축하한다.
         const tookLead = didSeotdaTakeLead(leaderBefore, user.email, result.after);
@@ -253,6 +256,9 @@ export async function POST(event) {
     if (action === 'ack') {
       // 쇼다운 확인 후 NPC 칩 유지한 채 다음 판
       const round = getRound(user.email);
+      if (!round || round.phase !== 'showdown') {
+        throw error(400, { message: '끝난 판에서 다음 판을 눌러야 새 패를 돌릴 수 있습니다.' });
+      }
       const openingActorId = round?.winnerId ?? 'user';
       const sparkTauntCooldown = sparkTauntCooldownAfterRound(round);
       if (round && round.phase === 'showdown') {
@@ -317,6 +323,9 @@ async function beginRound(email, nickname, openingActorId = 'user', sparkTauntCo
  */
 function handleSmoke(email, action, body) {
   if (action === 'start') {
+    if (getRound(email)) {
+      throw error(400, { message: '진행 중이거나 확인하지 않은 판이 있습니다.' });
+    }
     clearRound(email);
     resetNpcStacks(email);
     const round = createNewRound(SMOKE_BALANCE, Math.random, {});
@@ -331,6 +340,9 @@ function handleSmoke(email, action, body) {
   }
   if (action === 'ack') {
     const prev = getRound(email);
+    if (!prev || prev.phase !== 'showdown') {
+      throw error(400, { message: '끝난 판에서 다음 판을 눌러야 새 패를 돌릴 수 있습니다.' });
+    }
     const openingActorId = prev?.winnerId ?? 'user';
     const sparkTauntCooldown = sparkTauntCooldownAfterRound(prev);
     if (prev) saveNpcStacks(email, prev);
@@ -368,6 +380,13 @@ function handleSmoke(email, action, body) {
     const npcActions = runNpcTurns(round);
     setRound(email, round);
     const userChips = round.seats.find((s) => s.id === 'user')?.chips ?? 0;
+    if (round.phase === 'showdown') {
+      const before = chipsBeforeMap.get(email) ?? SMOKE_BALANCE;
+      const result = userChipResult(before, round);
+      round.userChipsBefore = before;
+      round.userChipsAfter = result.after;
+      round.userChipDelta = result.delta;
+    }
     return json({ success: true, balance: userChips, round: publicOf(round), npcActions });
   }
   throw error(400, { message: 'action: start | act | ack' });

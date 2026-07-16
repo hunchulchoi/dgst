@@ -14,6 +14,9 @@ describe('toPublicState hide NPC when user folded', () => {
       winnerId: 'npc_agwi',
       winnerIds: ['npc_agwi'],
       showdown: true,
+      userChipsBefore: 1000,
+      userChipsAfter: 900,
+      userChipDelta: -100,
       antePaid: 10,
       seats: [
         {
@@ -53,6 +56,9 @@ describe('toPublicState hide NPC when user folded', () => {
     expect(npc?.cards.every((c) => c.hidden || c.month === 0)).toBe(true);
     expect(npc?.handName).toBeNull();
     expect(npc?.lastActionAmount).toBe(30);
+    expect(pub.userChipsBefore).toBe(1000);
+    expect(pub.userChipsAfter).toBe(900);
+    expect(pub.userChipDelta).toBe(-100);
   });
 
   it('reveals NPC cards when user stayed in', () => {

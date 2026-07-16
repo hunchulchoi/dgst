@@ -46,6 +46,9 @@
  *   ddaengHandName?: string | null;
  *   ddaengValuePerLoser?: number;
  *   ddaengTotalPaid?: number;
+ *   userChipsBefore?: number;
+ *   userChipsAfter?: number;
+ *   userChipDelta?: number;
  *   raiseCount?: number;
  *   log: string[];
  *   winnerId: string | null;
@@ -153,6 +156,9 @@ export function toPublicState(round, userSeatId = 'user', evalHand) {
     ddaengHandName: round.ddaengHandName ?? null,
     ddaengValuePerLoser: round.ddaengValuePerLoser ?? 0,
     ddaengTotalPaid: round.ddaengTotalPaid ?? 0,
+    userChipsBefore: round.userChipsBefore ?? null,
+    userChipsAfter: round.userChipsAfter ?? null,
+    userChipDelta: round.userChipDelta ?? null,
     seats: round.seats.map((s) => {
       const isUser = s.id === userSeatId;
       const revealDdaeng = isShowdown && userFolded && s.isNpc && s.id === round.ddaengWinnerId;
