@@ -1,15 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import {
-  NPC_START_CHIPS,
   npcPlayerRelief,
   npcStartingChips,
   createNewRound,
   ddaengValue,
+  applyNpcSeatAction,
   applyPlayerAction,
   contributionCapacity,
   finishIfNeeded,
   maxRoundContribution,
   nextSeatNeedingAction,
+  npcStackForNextRound,
   runNpcTurns,
   runNpcTurnsWithSpark,
   seotdaAuditLogEntries,
@@ -266,7 +267,7 @@ describe('seotdaRound smoke', () => {
   it('carries NPC chips into next round via npcChipMap', () => {
     const round = createNewRound(1000, () => 0.5, { npc_agwi: 1300, npc_goni: 800, npc_madam: 50 });
     // ante 10 deducted
-    expect(round.seats.find((s) => s.id === 'npc_agwi')?.chips).toBe(1290);
+    expect(round.seats.find((s) => s.id === 'npc_agwi')?.chips).toBe(890);
     expect(round.seats.find((s) => s.id === 'npc_goni')?.chips).toBe(790);
     expect(round.seats.find((s) => s.id === 'npc_madam')?.chips).toBe(40);
   });
@@ -302,37 +303,70 @@ describe('seotdaRound smoke', () => {
   });
 
   it('re-enters bankrupt NPCs with the current stake-sized stack', () => {
-    const round = createNewRound(1000, () => 0.5, {
+    const round = createNewRound(100_000, () => 0.5, {
       npc_agwi: 0,
-      npc_goni: 800,
-      npc_madam: 50
+      npc_goni: 80_000,
+      npc_madam: 50_000
     });
     const busted = round.seats.find((s) => s.id === 'npc_agwi');
 
-    expect(busted?.chips).toBe(1_990);
+    expect(busted?.chips).toBe(89_000);
     expect(busted?.folded).toBe(false);
     expect(busted?.needsAction).toBe(true);
-    expect(round.log).toContain('아귀 재입장 (2000)');
+    expect(round.log).toContain('아귀 재입장 (90000)');
   });
 
   it('gives NPCs a finite buy-in sized for the current stakes', () => {
     const userChips = 1_000_000;
     const round = createNewRound(userChips, () => 0.5, {});
     for (const s of round.seats.filter((x) => x.isNpc)) {
-      expect(s.chips + round.antePaid).toBe(npcStartingChips(round.antePaid));
-      expect(s.chips + round.antePaid).toBe(300_000);
+      expect(s.chips + round.antePaid).toBe(npcStartingChips(round.antePaid, userChips));
+      expect(s.chips + round.antePaid).toBe(900_000);
     }
   });
 
-  it('keeps the 2,000-chip floor at low stakes', () => {
-    expect(npcStartingChips(10)).toBe(NPC_START_CHIPS);
+  it('refills tomato-sized users NPCs to the 10m maximum next hand', () => {
+    expect(npcStackForNextRound(0, 14_300_000_000, 30_000)).toEqual({
+      chips: 10_000_000,
+      reason: 'refill'
+    });
+    expect(npcStartingChips(30_000, 20_000_000_000)).toBe(10_000_000);
+    expect(npcStartingChips(30_000, 50_000_000_000)).toBe(10_000_000);
+    expect(npcStartingChips(10, 1_000)).toBe(900);
+  });
+
+  it('keeps earned NPC chips and trims oversized stacks at the next-hand cap', () => {
+    expect(npcStackForNextRound(2_000_000, 14_300_000_000, 30_000)).toEqual({
+      chips: 2_000_000,
+      reason: 'keep'
+    });
+    expect(npcStackForNextRound(500_000_000, 14_300_000_000, 30_000)).toEqual({
+      chips: 10_000_000,
+      reason: 'trim'
+    });
+  });
+
+  it('does not refill busted NPCs during hand settlement', () => {
+    const round = createNewRound(100_000, () => 0.5, {});
+    for (const npc of round.seats.filter((seat) => seat.isNpc)) {
+      npc.folded = true;
+      npc.chips = 0;
+    }
+
+    finishIfNeeded(round);
+
+    expect(round.seats.filter((seat) => seat.isNpc).every((seat) => seat.chips === 0)).toBe(true);
+  });
+
+  it('falls back to the ante when no user bankroll is supplied', () => {
+    expect(npcStartingChips(10)).toBe(10);
   });
 
   it('uses a 15k ante without a fixed total cap at one million points', () => {
     const round = createNewRound(1_000_000, () => 0.5, {});
 
     expect(round.antePaid).toBe(15_000);
-    expect(npcStartingChips(round.antePaid)).toBe(300_000);
+    expect(npcStartingChips(round.antePaid, 1_000_000)).toBe(900_000);
     expect(maxRoundContribution(1_000_000, round.antePaid)).toBe(1_000_000);
   });
 
@@ -349,9 +383,9 @@ describe('seotdaRound smoke', () => {
     const user = round.seats[0];
 
     expect(user.totalContrib).toBe(10);
-    expect(contributionCapacity(round, user)).toBe(990);
+		expect(contributionCapacity(round, user)).toBe(990);
     applyPlayerAction(round, 'user', 'raise', user.chips);
-    expect(user.totalContrib).toBe(1_000);
+		expect(user.totalContrib).toBe(1_000);
   });
 
   it('caps the user by the largest active NPC stack', () => {
@@ -363,20 +397,20 @@ describe('seotdaRound smoke', () => {
     const npc = round.seats.find((seat) => seat.id === 'npc_agwi')!;
 
     expect(round.antePaid).toBe(10);
-    expect(contributionCapacity(round, npc)).toBe(40);
+		expect(contributionCapacity(round, npc)).toBe(40);
   });
 
   it('enforces the exact min cap in the server action path', () => {
     const round = createNewRound(1_000_000, () => 0.5, {
       npc_agwi: 75_000,
-      npc_goni: 50_000,
-      npc_madam: 30_000
+      npc_goni: 70_000,
+      npc_madam: 65_000
     });
     const user = round.seats[0];
 
-    expect(contributionCapacity(round, user)).toBe(60_000);
+		expect(contributionCapacity(round, user)).toBe(985_000);
     applyPlayerAction(round, 'user', 'raise', Number.MAX_SAFE_INTEGER);
-    expect(user.totalContrib).toBe(75_000);
+		expect(user.totalContrib).toBe(1_000_000);
   });
 
   it('charges a bankroll-scaled ante at high balances', () => {
@@ -395,8 +429,8 @@ describe('seotdaRound smoke', () => {
     applyPlayerAction(round, 'user', 'raise', user.chips);
 
     expect(maxRoundContribution(100_000, round.antePaid)).toBe(100_000);
-    expect(user.contrib).toBe(20_000);
-    expect(round.currentBet).toBe(20_000);
+		expect(user.contrib).toBe(100_000);
+		expect(round.currentBet).toBe(100_000);
   });
 
   it('allows high-bankroll rounds beyond the former fixed limits', () => {
@@ -405,8 +439,8 @@ describe('seotdaRound smoke', () => {
 
     applyPlayerAction(round, 'user', 'raise', user.chips);
 
-    expect(user.totalContrib).toBe(600_000);
-    expect(round.pot).toBe(690_000);
+		expect(user.totalContrib).toBe(10_000_000_000);
+		expect(round.pot).toBe(10_000_090_000);
   });
 
   it('accepts the third raise and turns a fourth raise into a call', () => {
@@ -424,6 +458,27 @@ describe('seotdaRound smoke', () => {
 
     expect(round.raiseCount).toBe(3);
     expect(user.lastAction).toBe('콜');
+  });
+
+  it('lets an NPC borrow the uncovered call without charging the user twice', () => {
+    const round = createNewRound(100_000, () => 0.5, {});
+    const user = round.seats[0];
+    const npc = round.seats.find((seat) => seat.id === 'npc_agwi')!;
+
+    applyPlayerAction(round, 'user', 'raise', user.chips);
+    const userAfterRaise = user.chips;
+    const action = applyNpcSeatAction(round, npc, () => 0.5, {
+      action: 'call',
+      raiseScale: null,
+      taunt: null
+    });
+
+    expect(userAfterRaise).toBe(0);
+    expect(user.chips).toBe(0);
+    expect(npc.borrowedChips).toBe(10_000);
+    expect(npc.contrib).toBe(100_000);
+    expect(action?.taunt).toBe('빌려 간다. 갚는단 말은 안 했다.');
+    expect(round.log).toContain('아귀: 외상 10000 (상환 없음)');
   });
 
   it('pays main and side pots according to each players contribution', () => {
