@@ -34,6 +34,10 @@
  *   lastRaisePay?: number;
  *   potBeforeRaise?: number;
  *   userRaiseCount?: number;
+ *   ddaengWinnerId?: string | null;
+ *   ddaengHandName?: string | null;
+ *   ddaengValuePerLoser?: number;
+ *   ddaengTotalPaid?: number;
  *   raiseCount?: number;
  *   log: string[];
  *   winnerId: string | null;
@@ -122,7 +126,7 @@ export function toPublicState(round, userSeatId = 'user', evalHand) {
   const isShowdown = round.showdown || round.phase === 'showdown';
   const user = round.seats.find((s) => s.id === userSeatId);
   const userFolded = !!user?.folded;
-  /** 유저가 살아 있을 때만 NPC 패 공개 */
+  /** 유저가 살아 있으면 전부, 다이했으면 최종 승자 땡만 공개 */
   const revealNpcHands = isShowdown && !userFolded;
   return {
     phase: round.phase,
@@ -137,9 +141,14 @@ export function toPublicState(round, userSeatId = 'user', evalHand) {
     showdown: isShowdown,
     userFolded,
     revealNpcHands,
+    ddaengWinnerId: round.ddaengWinnerId ?? null,
+    ddaengHandName: round.ddaengHandName ?? null,
+    ddaengValuePerLoser: round.ddaengValuePerLoser ?? 0,
+    ddaengTotalPaid: round.ddaengTotalPaid ?? 0,
     seats: round.seats.map((s) => {
       const isUser = s.id === userSeatId;
-      const reveal = isUser || (s.isNpc && revealNpcHands);
+      const revealDdaeng = isShowdown && userFolded && s.isNpc && s.id === round.ddaengWinnerId;
+      const reveal = isUser || (s.isNpc && revealNpcHands) || revealDdaeng;
       /** @type {string | null} */
       let handName = null;
       if (reveal && evalHand && s.cards.length === 2) {
@@ -160,6 +169,7 @@ export function toPublicState(round, userSeatId = 'user', evalHand) {
         lastAction: s.lastAction,
         lastActionAmount: s.lastActionAmount ?? 0,
         needsAction: !!s.needsAction,
+        revealDdaeng,
         cards: reveal ? s.cards : s.cards.map(() => ({ month: 0, gwang: false, hidden: true })),
         handName
       };

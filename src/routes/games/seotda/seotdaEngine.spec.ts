@@ -106,12 +106,14 @@ describe('seotdaEngine pot', () => {
     expect(ANTE).toBe(10);
   });
 
-  it('scales ante progressively but caps high-bankroll games', () => {
+  it('uses the 0.5% / 1% / 1.5% ante tiers with a 30k cap', () => {
     expect(dynamicAnte(1000)).toBe(10);
-    expect(dynamicAnte(10_000)).toBe(10);
-    expect(dynamicAnte(100_000)).toBe(100);
-    expect(dynamicAnte(500_000)).toBe(1_300);
-    expect(dynamicAnte(1_000_000)).toBe(2_800);
+    expect(dynamicAnte(10_000)).toBe(50);
+    expect(dynamicAnte(99_999)).toBe(499);
+    expect(dynamicAnte(100_000)).toBe(1_000);
+    expect(dynamicAnte(500_000)).toBe(5_000);
+    expect(dynamicAnte(1_000_000)).toBe(15_000);
+    expect(dynamicAnte(2_000_000)).toBe(MAX_ANTE);
     expect(dynamicAnte(10_000_000)).toBe(MAX_ANTE);
     expect(dynamicAnte(6_451_000_000)).toBe(MAX_ANTE);
   });

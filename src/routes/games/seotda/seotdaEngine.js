@@ -1,19 +1,17 @@
 /** 섯다 라이트 엔진 — 덱·족보·팟 */
 
 export const ANTE = 10;
-export const MAX_ANTE = 10_000;
+export const MAX_ANTE = 30_000;
 export const SEOTDA_GAME = 'seotda';
 
 /**
- * 누진 참가비: 10만까지 0.1%, 100만까지 초과분 0.3%, 이후 초과분 0.5%
+ * 시작 판돈: 10만 미만 0.5%, 10만~100만 1%, 100만 이상 1.5%.
  * @param {number} chips
  */
 export function dynamicAnte(chips) {
   const balance = Math.max(0, Math.floor(Number(chips) || 0));
-  const firstTier = Math.min(balance, 100_000) * 0.001;
-  const secondTier = Math.min(Math.max(balance - 100_000, 0), 900_000) * 0.003;
-  const topTier = Math.max(balance - 1_000_000, 0) * 0.005;
-  return Math.min(MAX_ANTE, Math.max(ANTE, Math.floor(firstTier + secondTier + topTier)));
+  const ratio = balance < 100_000 ? 0.005 : balance < 1_000_000 ? 0.01 : 0.015;
+  return Math.min(MAX_ANTE, Math.max(ANTE, Math.floor(balance * ratio)));
 }
 
 /**

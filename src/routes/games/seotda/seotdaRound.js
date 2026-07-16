@@ -26,11 +26,6 @@ export const NPC_START_CHIPS = 2000;
 export const NPC_BUY_IN_ANTE_MULTIPLIER = 20;
 /** 한 판 레이즈 횟수 상한 — 무한 콜/레이즈 방지 */
 export const MAX_RAISES = 3;
-/** 고득점 유저 한 판 총투입 기준: 시작 보유점수의 1% */
-export const MAX_BET_BANKROLL_RATIO = 0.01;
-/** 저점 유저는 성장 여지를 위해 최대 10%, 단 100점까지만 허용 */
-export const LOW_BANKROLL_BET_RATIO = 0.1;
-export const LOW_BANKROLL_BET_CAP = 100;
 export const MAX_BET_ANTE_MULTIPLIER = 20;
 export const MAX_TOTAL_BET = 100_000;
 export const MAX_POT = MAX_TOTAL_BET * 4;
@@ -47,13 +42,55 @@ export function npcStartingChips(ante = ANTE) {
  */
 export function maxRoundContribution(bankroll, ante = ANTE, opponentStack = Infinity) {
   const safeBankroll = Math.max(0, Number(bankroll) || 0);
-  const bankrollLimit = Math.floor(
-    Math.max(
-      safeBankroll * MAX_BET_BANKROLL_RATIO,
-      Math.min(safeBankroll * LOW_BANKROLL_BET_RATIO, LOW_BANKROLL_BET_CAP)
-    )
+  return Math.min(
+    MAX_TOTAL_BET,
+    safeBankroll,
+    Math.max(0, opponentStack),
+    ante * MAX_BET_ANTE_MULTIPLIER
   );
-  return Math.min(MAX_TOTAL_BET, opponentStack, bankrollLimit, ante * MAX_BET_ANTE_MULTIPLIER);
+}
+
+/**
+ * @param {import('./seotdaEngine.js').SeotdaCard[]} cards
+ * @param {number} ante
+ */
+export function ddaengValue(cards, ante) {
+  const hand = evaluateHand(cards);
+  if (hand.tier >= 90) return ante * 3;
+  if (hand.tier === 80 && hand.sub === 10) return ante * 2;
+  if (hand.tier === 80) return ante;
+  return 0;
+}
+
+/**
+ * 최종 승자만 수령. 다른 땡 보유자는 지급 면제.
+ * @template {{ id: string; cards: import('./seotdaEngine.js').SeotdaCard[]; chips: number; contrib?: number; totalContrib?: number }} T
+ * @param {T[]} seats
+ * @param {string} winnerId
+ * @param {number} ante
+ */
+export function settleDdaengValue(seats, winnerId, ante) {
+  const next = seats.map((seat) => ({ ...seat }));
+  const winner = next.find((seat) => seat.id === winnerId);
+  const valuePerLoser = winner ? ddaengValue(winner.cards, ante) : 0;
+  /** @type {string[]} */
+  const payerIds = [];
+  let totalPaid = 0;
+
+  if (winner && valuePerLoser > 0) {
+    for (const loser of next) {
+      if (loser.id === winnerId || ddaengValue(loser.cards, ante) > 0) continue;
+      const paid = Math.min(valuePerLoser, Math.max(0, loser.chips));
+      if (paid <= 0) continue;
+      loser.chips -= paid;
+      loser.totalContrib = (loser.totalContrib ?? loser.contrib ?? 0) + paid;
+      totalPaid += paid;
+      payerIds.push(loser.id);
+    }
+    winner.chips += totalPaid;
+  }
+
+  return { seats: next, valuePerLoser, totalPaid, payerIds };
 }
 
 /**
@@ -63,17 +100,17 @@ export function maxRoundContribution(bankroll, ante = ANTE, opponentStack = Infi
 export function contributionCapacity(round, seat) {
   const totalContrib = seat.totalContrib ?? seat.contrib;
   const bankroll = seat.chips + totalContrib;
-  const opponentStack = seat.isNpc
-    ? Infinity
-    : Math.max(
-        0,
-        ...round.seats
-          .filter((candidate) => candidate.isNpc && !candidate.folded)
-          .map((candidate) => candidate.chips + (candidate.totalContrib ?? candidate.contrib))
-      );
-  const contributionLimit = seat.isNpc
-    ? Math.min(MAX_TOTAL_BET, round.antePaid * MAX_BET_ANTE_MULTIPLIER)
-    : maxRoundContribution(bankroll, round.antePaid, opponentStack);
+  const userOpponent = round.seats.find(
+    (candidate) => seat.isNpc && candidate.id === 'user' && !candidate.folded
+  );
+  const opponents = userOpponent
+    ? [userOpponent]
+    : round.seats.filter((candidate) => candidate.id !== seat.id && !candidate.folded);
+  const opponentStack = Math.max(
+    0,
+    ...opponents.map((candidate) => candidate.chips + (candidate.totalContrib ?? candidate.contrib))
+  );
+  const contributionLimit = maxRoundContribution(bankroll, round.antePaid, opponentStack);
   const totalLimit = contributionLimit - totalContrib;
   const potLimit = MAX_POT - round.pot;
   return Math.max(0, Math.min(seat.chips, totalLimit, potLimit));
@@ -193,6 +230,10 @@ export function createNewRound(
     lastRaisePay: 0,
     potBeforeRaise: pot,
     userRaiseCount: 0,
+    ddaengWinnerId: null,
+    ddaengHandName: null,
+    ddaengValuePerLoser: 0,
+    ddaengTotalPaid: 0,
     raiseCount: 0,
     log,
     winnerId: null,
@@ -504,6 +545,7 @@ export function finishIfNeeded(round, rng = Math.random) {
     round.phase = 'showdown';
     round.showdown = true;
     round.log.push(`${winner.name} 승리 (나머지 다이)`);
+    applyDdaengValueToRound(round, winner.id);
     refillBustNpcs(round);
     return;
   }
@@ -558,7 +600,27 @@ export function showdown(round, rng = Math.random) {
   round.log.push(
     userFolded ? `${winners[0].seat.name} 승리` : `${winners[0].seat.name} 승리! ${bestHand.name}`
   );
+  applyDdaengValueToRound(round, winnerIds[0]);
   refillBustNpcs(round);
+}
+
+/**
+ * @param {import('./seotdaState.js').SeotdaRound} round
+ * @param {string} winnerId
+ */
+function applyDdaengValueToRound(round, winnerId) {
+  const winner = round.seats.find((seat) => seat.id === winnerId);
+  if (!winner) return;
+  const hand = evaluateHand(winner.cards);
+  const result = settleDdaengValue(round.seats, winnerId, round.antePaid);
+  if (result.valuePerLoser <= 0) return;
+
+  round.seats = /** @type {typeof round.seats} */ (result.seats);
+  round.ddaengWinnerId = winnerId;
+  round.ddaengHandName = hand.name;
+  round.ddaengValuePerLoser = result.valuePerLoser;
+  round.ddaengTotalPaid = result.totalPaid;
+  round.log.push(`땡값 ${hand.name}: ${result.valuePerLoser}씩 · 총 ${result.totalPaid}`);
 }
 
 /**
@@ -600,6 +662,10 @@ function restartAfterTie(round, rng) {
   round.openingActionTaken = false;
   round.winnerId = null;
   round.winnerIds = [];
+  round.ddaengWinnerId = null;
+  round.ddaengHandName = null;
+  round.ddaengValuePerLoser = 0;
+  round.ddaengTotalPaid = 0;
   round.showdown = false;
   round.log.push(`무승부! 생존자 ${active.length}명 팟 유지 (${round.pot}) — 재경기`);
 }

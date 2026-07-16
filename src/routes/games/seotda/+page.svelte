@@ -33,6 +33,7 @@
     needsAction?: boolean;
     cards: SeotdaCard[];
     handName: string | null;
+    revealDdaeng?: boolean;
   }
 
   interface SeotdaRound {
@@ -238,7 +239,7 @@
   function npcCardVisible(npc: SeotdaSeat, card: SeotdaCard): boolean {
     if (npc.folded) return false;
     if (!isShowdown) return false;
-    if (round?.revealNpcHands === false || userSeat?.folded) return false;
+    if ((round?.revealNpcHands === false || userSeat?.folded) && !npc.revealDdaeng) return false;
     if (hiddenNpcIds.has(npc.id)) return false;
     return !card.hidden && card.month > 0;
   }
@@ -251,7 +252,7 @@
     clearTimers();
     const userDead = !!r.seats.find((s) => s.id === 'user')?.folded || r.revealNpcHands === false;
     if (userDead) {
-      hiddenNpcIds = new Set(r.seats.filter((s) => s.isNpc).map((s) => s.id));
+      hiddenNpcIds = new Set(r.seats.filter((s) => s.isNpc && !s.revealDdaeng).map((s) => s.id));
       revealDone = true;
       revealingId = null;
       return;
@@ -597,7 +598,7 @@
                         </span>
                       {/each}
                     </div>
-                    {#if npc.handName && !hiddenNpcIds.has(npc.id) && isShowdown && !npc.folded && round.revealNpcHands !== false && !userSeat?.folded}
+                    {#if npc.handName && !hiddenNpcIds.has(npc.id) && isShowdown && !npc.folded && ((round.revealNpcHands !== false && !userSeat?.folded) || npc.revealDdaeng)}
                       <div class="badge text-bg-dark hand-pop">{npc.handName}</div>
                     {/if}
                     {#if thinkingNpcId === npc.id}

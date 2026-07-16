@@ -5,14 +5,17 @@ import {
   NPC_START_CHIPS,
   npcStartingChips,
   createNewRound,
+  ddaengValue,
   applyPlayerAction,
   contributionCapacity,
+  finishIfNeeded,
   maxRoundContribution,
   nextSeatNeedingAction,
   runNpcTurns,
   seotdaAuditLogEntries,
   seotdaHandLogEntries,
   showdown,
+  settleDdaengValue,
   sparkTauntCooldownAfterRound,
   userChipResult
 } from './seotdaRound.js';
@@ -28,6 +31,164 @@ import {
 } from './seotdaNpc.js';
 
 describe('seotdaRound smoke', () => {
+  it('calculates ddaeng value from the initial ante only', () => {
+    expect(
+      ddaengValue(
+        [
+          { month: 9, gwang: false },
+          { month: 9, gwang: false }
+        ],
+        100
+      )
+    ).toBe(100);
+    expect(
+      ddaengValue(
+        [
+          { month: 10, gwang: false },
+          { month: 10, gwang: false }
+        ],
+        100
+      )
+    ).toBe(200);
+    expect(
+      ddaengValue(
+        [
+          { month: 3, gwang: true },
+          { month: 8, gwang: true }
+        ],
+        100
+      )
+    ).toBe(300);
+    expect(
+      ddaengValue(
+        [
+          { month: 1, gwang: false },
+          { month: 2, gwang: false }
+        ],
+        100
+      )
+    ).toBe(0);
+  });
+
+  it('collects ddaeng value from every loser up to each current stack', () => {
+    const seats = [
+      {
+        id: 'user',
+        cards: [
+          { month: 10, gwang: false },
+          { month: 10, gwang: false }
+        ],
+        chips: 100,
+        totalContrib: 100
+      },
+      { id: 'npc1', cards: [], chips: 250, totalContrib: 100 },
+      { id: 'npc2', cards: [], chips: 50, totalContrib: 100 },
+      { id: 'npc3', cards: [], chips: 200, totalContrib: 100 }
+    ];
+
+    const result = settleDdaengValue(seats, 'user', 100);
+
+    expect(result.valuePerLoser).toBe(200);
+    expect(result.totalPaid).toBe(450);
+    expect(result.seats.map((seat) => seat.chips)).toEqual([550, 50, 0, 0]);
+    expect(result.seats.slice(1).map((seat) => seat.totalContrib)).toEqual([300, 150, 300]);
+  });
+
+  it('charges only non-ddaeng losers and pays only the final winner', () => {
+    const seats = [
+      {
+        id: 'winner',
+        cards: [
+          { month: 10, gwang: false },
+          { month: 10, gwang: false }
+        ],
+        chips: 100,
+        totalContrib: 100
+      },
+      {
+        id: 'other-ddaeng',
+        cards: [
+          { month: 9, gwang: false },
+          { month: 9, gwang: false }
+        ],
+        chips: 500,
+        totalContrib: 100
+      },
+      {
+        id: 'ordinary',
+        cards: [
+          { month: 1, gwang: false },
+          { month: 2, gwang: false }
+        ],
+        chips: 500,
+        totalContrib: 100
+      }
+    ];
+
+    const result = settleDdaengValue(seats, 'winner', 100);
+
+    expect(result.totalPaid).toBe(200);
+    expect(result.seats.map((seat) => seat.chips)).toEqual([300, 500, 300]);
+    expect(result.payerIds).toEqual(['ordinary']);
+  });
+
+  it('applies jang-ddaeng value after the normal showdown pot settlement', () => {
+    const round = createNewRound(20_000, () => 0.5);
+    const [user, ...npcs] = round.seats;
+    user.cards = [
+      { month: 10, gwang: false },
+      { month: 10, gwang: false }
+    ];
+    const losingCards = [
+      [
+        { month: 1, gwang: false },
+        { month: 2, gwang: false }
+      ],
+      [
+        { month: 2, gwang: false },
+        { month: 5, gwang: false }
+      ],
+      [
+        { month: 3, gwang: false },
+        { month: 4, gwang: false }
+      ]
+    ];
+    npcs.forEach((npc, index) => {
+      npc.cards = losingCards[index];
+    });
+    const userBefore = user.chips;
+
+    showdown(round);
+
+    expect(round.antePaid).toBe(100);
+    expect(round.seats[0].chips).toBe(userBefore + 400 + 600);
+    expect(round.log).toContain('땡값 장땡: 200씩 · 총 600');
+  });
+
+  it('collects and records winning ddaeng value after the user folds', () => {
+    const round = createNewRound(20_000, () => 0.5);
+    const [user, winner, ...others] = round.seats;
+    user.folded = true;
+    user.needsAction = false;
+    winner.cards = [
+      { month: 10, gwang: false },
+      { month: 10, gwang: false }
+    ];
+    for (const seat of others) {
+      seat.folded = true;
+      seat.needsAction = false;
+    }
+    const userBefore = user.chips;
+
+    finishIfNeeded(round);
+
+    expect(round.winnerId).toBe(winner.id);
+    expect(round.ddaengWinnerId).toBe(winner.id);
+    expect(round.ddaengHandName).toBe('장땡');
+    expect(round.ddaengValuePerLoser).toBe(200);
+    expect(round.seats[0].chips).toBe(userBefore - 200);
+  });
+
   it('start → die → showdown or continue', () => {
     let i = 0;
     const rng = () => {
@@ -62,7 +223,7 @@ describe('seotdaRound smoke', () => {
     expect(checkedRound.seats[0].lastAction).toBe('체크');
     expect(checkedRound.seats[0].lastActionAmount).toBe(0);
 
-    const raisedRound = createNewRound(100_000, () => 0.5);
+    const raisedRound = createNewRound(20_000, () => 0.5);
     applyPlayerAction(raisedRound, 'user', 'raise', 200);
     expect(raisedRound.seats[0].lastAction).toBe('레이즈');
     expect(raisedRound.seats[0].lastActionAmount).toBe(200);
@@ -152,7 +313,7 @@ describe('seotdaRound smoke', () => {
     const round = createNewRound(userChips, () => 0.5, {});
     for (const s of round.seats.filter((x) => x.isNpc)) {
       expect(s.chips + round.antePaid).toBe(npcStartingChips(round.antePaid));
-      expect(s.chips + round.antePaid).toBe(56_000);
+      expect(s.chips + round.antePaid).toBe(300_000);
     }
   });
 
@@ -160,19 +321,19 @@ describe('seotdaRound smoke', () => {
     expect(npcStartingChips(10)).toBe(NPC_START_CHIPS);
   });
 
-  it('keeps million-point stakes playable without a 20,000-point ante', () => {
+  it('uses a 15k ante and 100k total cap at one million points', () => {
     const round = createNewRound(1_000_000, () => 0.5, {});
 
-    expect(round.antePaid).toBe(2_800);
-    expect(npcStartingChips(round.antePaid)).toBe(56_000);
-    expect(maxRoundContribution(1_000_000, round.antePaid)).toBe(10_000);
+    expect(round.antePaid).toBe(15_000);
+    expect(npcStartingChips(round.antePaid)).toBe(300_000);
+    expect(maxRoundContribution(1_000_000, round.antePaid)).toBe(100_000);
   });
 
-  it('allows low bankrolls up to 10% with a 100-point absolute cap', () => {
-    expect(maxRoundContribution(1_000, 10)).toBe(100);
-    expect(maxRoundContribution(2_000, 10)).toBe(100);
-    expect(maxRoundContribution(5_000, 10)).toBe(100);
-    expect(maxRoundContribution(10_000, 10)).toBe(100);
+  it('allows racing up to 20 antes, bankroll, and the 100k absolute cap', () => {
+    expect(maxRoundContribution(1_000, 10)).toBe(200);
+    expect(maxRoundContribution(2_000, 10)).toBe(200);
+    expect(maxRoundContribution(5_000, 10)).toBe(200);
+    expect(maxRoundContribution(10_000, 10)).toBe(200);
     expect(maxRoundContribution(20_000, 10)).toBe(200);
   });
 
@@ -181,46 +342,54 @@ describe('seotdaRound smoke', () => {
     const user = round.seats[0];
 
     expect(user.totalContrib).toBe(10);
-    expect(contributionCapacity(round, user)).toBe(90);
+    expect(contributionCapacity(round, user)).toBe(190);
     applyPlayerAction(round, 'user', 'raise', user.chips);
-    expect(user.totalContrib).toBe(100);
+    expect(user.totalContrib).toBe(200);
   });
 
   it('caps the user by the largest active NPC stack', () => {
     expect(maxRoundContribution(1_000_000, 2_800, 7_500)).toBe(7_500);
   });
 
+  it('also caps NPC contribution by the richest active opponent stack', () => {
+    const round = createNewRound(50, () => 0.5, {});
+    const npc = round.seats.find((seat) => seat.id === 'npc_agwi')!;
+
+    expect(round.antePaid).toBe(10);
+    expect(contributionCapacity(round, npc)).toBe(40);
+  });
+
   it('enforces the exact min cap in the server action path', () => {
     const round = createNewRound(1_000_000, () => 0.5, {
-      npc_agwi: 7_500,
-      npc_goni: 5_000,
-      npc_madam: 3_000
+      npc_agwi: 75_000,
+      npc_goni: 50_000,
+      npc_madam: 30_000
     });
     const user = round.seats[0];
 
-    expect(contributionCapacity(round, user)).toBe(4_700);
+    expect(contributionCapacity(round, user)).toBe(60_000);
     applyPlayerAction(round, 'user', 'raise', Number.MAX_SAFE_INTEGER);
-    expect(user.totalContrib).toBe(7_500);
+    expect(user.totalContrib).toBe(75_000);
   });
 
   it('charges a bankroll-scaled ante at high balances', () => {
     const round = createNewRound(100_000, () => 0.5, {});
 
-    expect(round.antePaid).toBe(100);
-    expect(round.currentBet).toBe(100);
-    expect(round.pot).toBe(400);
-    expect(round.seats[0].chips).toBe(99_900);
+    expect(round.antePaid).toBe(1_000);
+    expect(round.currentBet).toBe(1_000);
+    expect(round.pot).toBe(4_000);
+    expect(round.seats[0].chips).toBe(99_000);
   });
 
-  it('caps a players total contribution at a low share of bankroll', () => {
+  it('caps a 100k players total contribution at 20 initial antes', () => {
     const round = createNewRound(100_000, () => 0.5, {});
     const user = round.seats[0];
 
     applyPlayerAction(round, 'user', 'raise', user.chips);
 
-    expect(maxRoundContribution(100_000, round.antePaid)).toBe(1_000);
-    expect(user.contrib).toBe(1_000);
-    expect(round.currentBet).toBe(1_000);
+    expect(maxRoundContribution(100_000, round.antePaid)).toBe(20_000);
+    expect(user.contrib).toBe(20_000);
+    expect(round.currentBet).toBe(20_000);
   });
 
   it('caps high-bankroll rounds by absolute seat and pot limits', () => {
@@ -264,8 +433,8 @@ describe('seotdaRound smoke', () => {
 
     showdown(round);
 
-    expect(round.seats.find((seat) => seat.id === user.id)?.chips).toBe(400);
-    expect(round.seats.find((seat) => seat.id === sidePotWinner.id)?.chips).toBe(600);
+    expect(round.seats.find((seat) => seat.id === user.id)?.chips).toBe(430);
+    expect(round.seats.find((seat) => seat.id === sidePotWinner.id)?.chips).toBe(570);
   });
 
   it('keeps the pot and redeals to active players on a tie', () => {
@@ -328,7 +497,7 @@ describe('seotdaRound smoke', () => {
     expect(round.phase).toBe('showdown');
     expect(round.pot).toBe(0);
     expect(round.seats.find((seat) => seat.id === user.id)?.chips).toBe(
-      chipsBeforeReplayBet - 10 + potBefore + 30
+      chipsBeforeReplayBet - 10 + potBefore + 30 + 90
     );
     expect(round.handHistory).toHaveLength(2);
     expect(seotdaHandLogEntries(round)).toContain('hand:2:user:3광·8광:38광땡:alive');
@@ -386,9 +555,7 @@ describe('seotdaRound smoke', () => {
 describe('seotdaNpc bluff', () => {
   it('uses a two-round cooldown after a Spark taunt', () => {
     expect(sparkTauntCooldownAfterRound({ sparkTaunted: true })).toBe(2);
-    expect(
-      sparkTauntCooldownAfterRound({ sparkTaunted: false, sparkTauntCooldown: 2 })
-    ).toBe(1);
+    expect(sparkTauntCooldownAfterRound({ sparkTaunted: false, sparkTauntCooldown: 2 })).toBe(1);
   });
 
   it('lets Spark intervene in 6% of sub-100k rounds only', () => {
