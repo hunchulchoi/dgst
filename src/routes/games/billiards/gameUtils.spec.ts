@@ -17,6 +17,7 @@ import {
   FOUR_BALL_FOUL_PENALTY,
   FOUR_BALL_TARGET_SCORE,
   FOUR_BALL_TARGET_OPTIONS,
+  LOW_SPEED_TAIL_START,
   MAX_SHOT_SPEED,
   POCKET_BALL_CHANCES,
   POCKET_CAPTURE_RADIUS,
@@ -29,6 +30,8 @@ import {
   RAIL_SURFACE_FRICTION,
   RAIL_TANGENT_DAMPING,
   RAIL_THICKNESS,
+  ROLLING_DECELERATION_PER_FRAME,
+  STOP_SPEED,
   STOP_SNAP_SPEED,
   TABLE_HEIGHT,
   TABLE_WIDTH,
@@ -120,6 +123,9 @@ describe('billiards game helpers', () => {
   it('snaps tiny rolling speeds to prevent endless drift', () => {
     expect(shouldSnapStoppedSpeed(STOP_SNAP_SPEED)).toBe(true);
     expect(shouldSnapStoppedSpeed(STOP_SNAP_SPEED + 0.01)).toBe(false);
+    expect(shouldSnapStoppedSpeed(0.14)).toBe(false);
+    expect(STOP_SNAP_SPEED).toBe(STOP_SPEED);
+    expect(STOP_SNAP_SPEED).toBeLessThanOrEqual(0.01);
   });
 
   it('keeps fast balls inside the billiards table bounds with cushion damping', () => {
@@ -201,6 +207,31 @@ describe('billiards game helpers', () => {
     expect(slowLoss).toBeCloseTo(fastLoss, 8);
     expect(longFrameLoss).toBeCloseTo(fastLoss * (32 / 16.66), 8);
     expect(afterTwoHalfFrames).toBeCloseTo(24 * fastScale, 8);
+  });
+
+  it('eases only the final low-speed roll without an exponential tail', () => {
+    const aboveTailSpeed = LOW_SPEED_TAIL_START + 1;
+    const aboveTailNext = aboveTailSpeed * computeDynamicVelocityScale(aboveTailSpeed, 16.66);
+    const tailSpeed = LOW_SPEED_TAIL_START / 2;
+    const tailNext = tailSpeed * computeDynamicVelocityScale(tailSpeed, 16.66);
+
+    expect(ROLLING_DECELERATION_PER_FRAME).toBeGreaterThanOrEqual(0.04);
+    expect(ROLLING_DECELERATION_PER_FRAME).toBeLessThanOrEqual(0.07);
+    expect(aboveTailSpeed - aboveTailNext).toBeCloseTo(ROLLING_DECELERATION_PER_FRAME, 8);
+    expect(tailSpeed - tailNext).toBeGreaterThan(0);
+    expect(tailSpeed - tailNext).toBeLessThan(ROLLING_DECELERATION_PER_FRAME);
+  });
+
+  it('integrates rolling deceleration identically across split frame steps', () => {
+    const advanceSpeed = (speed: number, deltaMs: number) =>
+      speed * computeDynamicVelocityScale(speed, deltaMs);
+
+    for (const speed of [8, LOW_SPEED_TAIL_START, LOW_SPEED_TAIL_START / 2, 0.92]) {
+      const fullStep = advanceSpeed(speed, 16.66);
+      const halfStep = advanceSpeed(speed, 8.33);
+      const splitStep = advanceSpeed(halfStep, 8.33);
+      expect(splitStep).toBeCloseTo(fullStep, 10);
+    }
   });
 
   it('loses more rail energy on fast cushion hits', () => {

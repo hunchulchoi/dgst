@@ -1875,7 +1875,6 @@
 
   function handlePocketedBalls() {
     if (!isPocketBall || !engine) return;
-    let pocketedObject = false;
     for (const ball of [...getTrackedBalls()]) {
       if (!isBallInPocket(ball.position)) continue;
       Body.setVelocity(ball, { x: 0, y: 0 });
@@ -1892,13 +1891,6 @@
       redBalls = redBalls.filter((candidate) => candidate !== ball);
       remainingObjectCount = redBalls.length;
       pocketedThisShot += 1;
-      pocketedObject = true;
-    }
-
-    if (pocketedObject && redBalls.length === 0 && status === 'rolling') {
-      activeSpin = 0;
-      rollingPhysicsElapsedMs = 0;
-      settleShot();
     }
   }
 

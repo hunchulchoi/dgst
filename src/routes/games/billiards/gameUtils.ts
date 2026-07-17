@@ -67,8 +67,8 @@ export const PHYSICS_MAX_TRAVEL_PER_STEP = BALL_RADIUS * 0.2;
 export const PHYSICS_MAX_SUBSTEPS = 48;
 export const PHYSICS_MAX_CATCH_UP_MS = PHYSICS_BASE_STEP_MS * 4;
 export const PHYSICS_SLICE_TOLERANCE_MS = 0.01;
-export const STOP_SPEED = 0.06;
-export const STOP_SNAP_SPEED = 0.14;
+export const STOP_SPEED = 0.008;
+export const STOP_SNAP_SPEED = STOP_SPEED;
 export const MAX_ROLL_DURATION_MS = 12000;
 export const FOUR_BALL_CHANCES = 10;
 export const FOUR_BALL_BASE_SCORE = 10;
@@ -107,7 +107,8 @@ export const CUE_VERTICAL_SPIN_RESPONSE_MS = 140;
 export const CUE_VERTICAL_SPIN_CONTACT_RETENTION = 0.35;
 export const ANGULAR_FRICTION_DECAY = 0.94;
 export const ANGULAR_STOP_SPEED = 0.018;
-export const ROLLING_DECELERATION_PER_FRAME = 0.1;
+export const ROLLING_DECELERATION_PER_FRAME = 0.055;
+export const LOW_SPEED_TAIL_START = 0.9;
 export const POWER_SWEEP_MIN = 10;
 export const POWER_SWEEP_MAX = 100;
 export const POWER_SWEEP_PERIOD_MS = 1600;
@@ -594,8 +595,27 @@ export function computePhysicsFrameSlices(elapsedMs: number): number[] {
 
 export function computeDynamicVelocityScale(speed: number, deltaMs: number): number {
   if (!Number.isFinite(speed) || speed <= 0) return 0;
-  const frameScale = Math.max(0, deltaMs / PHYSICS_BASE_STEP_MS);
-  const nextSpeed = Math.max(0, speed - ROLLING_DECELERATION_PER_FRAME * frameScale);
+  let remainingFrames = Math.max(0, deltaMs / PHYSICS_BASE_STEP_MS);
+  let nextSpeed = speed;
+
+  // Rolling resistance stays constant at normal speed. Only the last slow roll
+  // tapers analytically so it eases to rest in finite time without an exponential tail.
+  if (nextSpeed > LOW_SPEED_TAIL_START) {
+    const framesToTail = (nextSpeed - LOW_SPEED_TAIL_START) / ROLLING_DECELERATION_PER_FRAME;
+    const linearFrames = Math.min(remainingFrames, framesToTail);
+    nextSpeed -= ROLLING_DECELERATION_PER_FRAME * linearFrames;
+    remainingFrames -= linearFrames;
+  }
+
+  if (remainingFrames > 0) {
+    const nextRootSpeed = Math.max(
+      0,
+      Math.sqrt(nextSpeed) -
+        (ROLLING_DECELERATION_PER_FRAME * remainingFrames) / (2 * Math.sqrt(LOW_SPEED_TAIL_START))
+    );
+    nextSpeed = nextRootSpeed ** 2;
+  }
+
   return nextSpeed / speed;
 }
 

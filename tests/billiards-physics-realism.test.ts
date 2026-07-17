@@ -2,6 +2,8 @@ import Matter from 'matter-js';
 import { describe, expect, it } from 'vitest';
 import {
   BALL_RADIUS,
+  MAX_ROLL_DURATION_MS,
+  MAX_SHOT_SPEED,
   PHYSICS_BASE_STEP_MS,
   PHYSICS_MAX_SUBSTEPS,
   RAIL_THICKNESS,
@@ -52,15 +54,15 @@ function kineticEnergy(bodies: Matter.Body[]) {
   );
 }
 
-function simulateRollingStop(frameRate: number) {
+function simulateRollingStop(frameRate: number, initialSpeed = 8) {
   const engine = Matter.Engine.create({ gravity: { x: 0, y: 0 } });
   const ball = makeBall(0, 0);
   Matter.Composite.add(engine.world, ball);
-  Matter.Body.setVelocity(ball, { x: 8, y: 0 });
+  Matter.Body.setVelocity(ball, { x: initialSpeed, y: 0 });
   const frameDelta = 1000 / frameRate;
   let simulatedMs = 0;
 
-  for (let frame = 0; frame < frameRate * 5 && ball.speed > 0; frame += 1) {
+  for (let frame = 0; frame < frameRate * 12 && ball.speed > 0; frame += 1) {
     for (const slice of computePhysicsFrameSlices(frameDelta)) {
       let remainingDelta = slice;
       for (
@@ -95,16 +97,29 @@ function simulateRollingStop(frameRate: number) {
 
 describe('billiards real-world collision invariants', () => {
   it('keeps the adaptive rolling loop nearly frame-independent at 30, 60 and 120Hz', () => {
-    const runs = [30, 60, 120].map(simulateRollingStop);
+    const runs = [30, 60, 120].map((frameRate) => simulateRollingStop(frameRate));
     const stopTimes = runs.map((run) => run.stopMs);
     const distances = runs.map((run) => run.distance);
 
-    expect(Math.max(...stopTimes) - Math.min(...stopTimes)).toBeLessThanOrEqual(
-      PHYSICS_BASE_STEP_MS
-    );
+    expect(
+      Math.max(...stopTimes) - Math.min(...stopTimes),
+      JSON.stringify(runs)
+    ).toBeLessThanOrEqual(PHYSICS_BASE_STEP_MS);
     expect(Math.max(...distances) - Math.min(...distances)).toBeLessThan(1);
-    expect(runs[1].stopMs).toBeGreaterThan(1_200);
-    expect(runs[1].stopMs).toBeLessThan(1_400);
+    expect(runs[1].stopMs).toBeGreaterThan(2_500);
+    expect(runs[1].stopMs).toBeLessThan(2_900);
+  });
+
+  it('gives ordinary shots a natural roll while still ending before the safety cap', () => {
+    const halfPower = simulateRollingStop(60, 9.55);
+    const maximumPower = simulateRollingStop(60, MAX_SHOT_SPEED);
+
+    expect(halfPower.stopMs).toBeGreaterThan(3_000);
+    expect(halfPower.stopMs).toBeLessThan(3_500);
+    expect(halfPower.distance).toBeGreaterThan(750);
+    expect(halfPower.distance).toBeLessThan(1_000);
+    expect(maximumPower.stopMs).toBeLessThan(10_000);
+    expect(maximumPower.stopMs).toBeLessThan(MAX_ROLL_DURATION_MS);
   });
 
   it('enforces the configured cushion restitution after Matter resolves the pair', () => {

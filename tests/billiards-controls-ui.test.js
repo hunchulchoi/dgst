@@ -53,4 +53,13 @@ describe('billiards controls UI', () => {
       collisionHandler.indexOf('if (artMode)')
     );
   });
+
+  it('lets the remaining balls finish rolling after the last object ball is pocketed', () => {
+    const pocketHandler = billiardsPage.slice(
+      billiardsPage.indexOf('function handlePocketedBalls'),
+      billiardsPage.indexOf('function applyDynamicRollingDrag')
+    );
+
+    expect(pocketHandler).not.toContain('settleShot()');
+  });
 });
