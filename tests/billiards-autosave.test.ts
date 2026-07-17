@@ -67,10 +67,10 @@ function validSave(): BilliardsSave {
 }
 
 describe('billiards autosave validation', () => {
-  it('uses the v2 storage key and rejects v1 geometry saves', () => {
-    expect(BILLIARDS_SAVE_KEY).toBe('dgst:billiards:autosave:v2');
-    expect(BILLIARDS_SAVE_VERSION).toBe(2);
-    expect(parseBilliardsSave(JSON.stringify({ ...validSave(), version: 1 }), now)).toBeNull();
+  it('uses the v3 storage key and rejects pre-resize geometry saves', () => {
+    expect(BILLIARDS_SAVE_KEY).toBe('dgst:billiards:autosave:v3');
+    expect(BILLIARDS_SAVE_VERSION).toBe(3);
+    expect(parseBilliardsSave(JSON.stringify({ ...validSave(), version: 2 }), now)).toBeNull();
   });
 
   it('keeps rolling-shot physics and gameplay state', () => {
@@ -84,7 +84,7 @@ describe('billiards autosave validation', () => {
     });
   });
 
-  it('keeps older v2 saves valid with no in-flight cue-spin response', () => {
+  it('keeps saves valid with no in-flight cue-spin response', () => {
     const save = { ...validSave(), activeCueSpinResponses: undefined };
     expect(parseBilliardsSave(JSON.stringify(save), now)?.activeCueSpinResponses).toEqual([]);
   });
@@ -94,7 +94,7 @@ describe('billiards autosave validation', () => {
     stale.savedAt = now - BILLIARDS_SAVE_MAX_AGE_MS - 1;
     expect(parseBilliardsSave(JSON.stringify(stale), now)).toBeNull();
     expect(parseBilliardsSave('{broken', now)).toBeNull();
-    expect(parseBilliardsSave(JSON.stringify({ ...validSave(), version: 3 }), now)).toBeNull();
+    expect(parseBilliardsSave(JSON.stringify({ ...validSave(), version: 2 }), now)).toBeNull();
     expect(
       parseBilliardsSave(
         JSON.stringify({ ...validSave(), balls: [{ ...validSave().balls[0], vx: null }] }),

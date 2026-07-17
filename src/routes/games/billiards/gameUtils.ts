@@ -54,10 +54,10 @@ export type CueSpinResponse = {
 
 export const TABLE_WIDTH = 360;
 export const TABLE_HEIGHT = 684;
-export const BALL_RADIUS = 7.2;
+export const BALL_RADIUS = 9;
 export const RAIL_THICKNESS = 18;
 export const POCKET_CAPTURE_RADIUS = BALL_RADIUS * 1.55;
-export const POCKET_DRAW_RADIUS = 12;
+export const POCKET_DRAW_RADIUS = 15;
 export const CORNER_POCKET_MOUTH = BALL_RADIUS * 4;
 export const SIDE_POCKET_MOUTH = BALL_RADIUS * 4.4;
 export const POCKET_MOUTH_CAPTURE_TOLERANCE = 0.35;

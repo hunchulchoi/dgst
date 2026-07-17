@@ -203,6 +203,7 @@ describe('pocket-aware table containment', () => {
   const maxX = TABLE_WIDTH - RAIL_THICKNESS - BALL_RADIUS;
   const maxY = TABLE_HEIGHT - RAIL_THICKNESS - BALL_RADIUS;
   const diagonalSpeed = MAX_SHOT_SPEED / Math.SQRT2;
+  const sideMouthOffset = SIDE_POCKET_MOUTH / 2 - BALL_RADIUS + 0.01;
 
   it('does not create an invisible rectangular rebound in any pocket mouth', () => {
     const samples = [
@@ -215,11 +216,11 @@ describe('pocket-aware table containment', () => {
         velocity: { x: diagonalSpeed, y: -diagonalSpeed }
       },
       {
-        position: { x: min - 0.05, y: TABLE_HEIGHT / 2 + 8.65 },
+        position: { x: min - 0.05, y: TABLE_HEIGHT / 2 + sideMouthOffset },
         velocity: { x: -MAX_SHOT_SPEED, y: 0 }
       },
       {
-        position: { x: maxX + 0.05, y: TABLE_HEIGHT / 2 - 8.65 },
+        position: { x: maxX + 0.05, y: TABLE_HEIGHT / 2 - sideMouthOffset },
         velocity: { x: MAX_SHOT_SPEED, y: 0 }
       },
       {

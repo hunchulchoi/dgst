@@ -8,8 +8,8 @@ import {
 } from './gameUtils';
 import type { ArtScoreBreakdown } from './artStages';
 
-export const BILLIARDS_SAVE_KEY = 'dgst:billiards:autosave:v2';
-export const BILLIARDS_SAVE_VERSION = 2;
+export const BILLIARDS_SAVE_KEY = 'dgst:billiards:autosave:v3';
+export const BILLIARDS_SAVE_VERSION = 3;
 export const BILLIARDS_SAVE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 
 export type BilliardsSaveStatus =

@@ -458,14 +458,15 @@ describe('billiards game helpers', () => {
     ).toBe(false);
   });
 
-  it('uses a regulation-scale 1:2 playfield with tight jaw geometry', () => {
+  it('uses a 1:2 playfield with mobile-readable balls and matching pocket geometry', () => {
     const playableWidth = TABLE_WIDTH - RAIL_THICKNESS * 2;
     const playableHeight = TABLE_HEIGHT - RAIL_THICKNESS * 2;
     const geometry = getPocketRailGeometry();
 
     expect(playableHeight / playableWidth).toBe(2);
-    expect((BALL_RADIUS * 2) / playableWidth).toBeGreaterThan(0.043);
-    expect((BALL_RADIUS * 2) / playableWidth).toBeLessThan(0.046);
+    expect(BALL_RADIUS).toBe(9);
+    expect((BALL_RADIUS * 2) / playableWidth).toBeGreaterThan(0.055);
+    expect((BALL_RADIUS * 2) / playableWidth).toBeLessThan(0.056);
     expect(CORNER_POCKET_MOUTH / (BALL_RADIUS * 2)).toBe(2);
     expect(SIDE_POCKET_MOUTH / (BALL_RADIUS * 2)).toBeCloseTo(2.2);
     expect(geometry.rails).toHaveLength(6);
