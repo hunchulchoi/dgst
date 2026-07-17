@@ -123,13 +123,19 @@
     }
   }
 
+  /** @param {string} draftTitle @param {string} draftContent */
+  function hasDraftContent(draftTitle, draftContent) {
+    if (String(draftTitle ?? '').trim()) return true;
+    return validateArticleContent(String(draftContent ?? ''), { minTextLength: 1 }).ok;
+  }
+
   function saveDraft() {
     const key = getDraftStorageKey();
     if (!key) return;
 
     const draftTitle = title || '';
     const draftContent = lexicalEditorRef?.getEditorHtml?.() ?? content ?? '';
-    if (!draftTitle.trim() && !draftContent.trim()) {
+    if (!hasDraftContent(draftTitle, draftContent)) {
       clearDraft();
       return;
     }
@@ -160,7 +166,14 @@
       return;
     }
 
-    if (!draft || typeof draft !== 'object' || (!draft.title && !draft.content)) {
+    if (
+      !draft ||
+      typeof draft !== 'object' ||
+      !hasDraftContent(
+        typeof draft.title === 'string' ? draft.title : '',
+        typeof draft.content === 'string' ? draft.content : ''
+      )
+    ) {
       clearDraft();
       return;
     }
