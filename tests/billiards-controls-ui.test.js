@@ -19,6 +19,73 @@ describe('billiards controls UI', () => {
     expect(billiardsPage).toContain("{helpPlan ? '도움 닫기' : '도움'}");
   });
 
+  it('applies exact aim, power, and spin from shot help while keeping the guide visible', () => {
+    expect(billiardsPage).toContain('type ShotHelpPlan');
+    expect(billiardsPage).toContain('function applyShotHelpControls');
+    const applyHelp = billiardsPage.slice(
+      billiardsPage.indexOf('function applyShotHelpControls'),
+      billiardsPage.indexOf('function showShotHelp')
+    );
+    for (const assignment of [
+      'aimAngle = plan.angle',
+      'displayAimAngle = plan.angle',
+      'power = plan.power',
+      'spin = plan.sideSpin',
+      'verticalSpin = plan.verticalSpin',
+      'spinTipX = Math.round(plan.sideSpin / 2)',
+      'spinTipY = Math.round(plan.verticalSpin / 2)'
+    ]) {
+      expect(applyHelp).toContain(assignment);
+    }
+
+    const showHelp = billiardsPage.slice(
+      billiardsPage.indexOf('function showShotHelp'),
+      billiardsPage.indexOf('function performNpcShot')
+    );
+    expect(showHelp).toContain('applyShotHelpControls(plan)');
+    expect(showHelp).toContain('applyShotHelpControls(shotHelpPlan)');
+
+    const controlUpdates = billiardsPage.slice(
+      billiardsPage.indexOf('function updateAimFromPointer'),
+      billiardsPage.indexOf('function handlePointerDown')
+    );
+    expect(controlUpdates).not.toContain('helpPlan = null');
+    expect(billiardsPage).toContain('추천값 다시 적용');
+  });
+
+  it('shows exact authored art-help values instead of an unverified range', () => {
+    const artHelp = billiardsPage.slice(
+      billiardsPage.indexOf('{#if artMode}'),
+      billiardsPage.indexOf('{:else if !isPocketBall}')
+    );
+    expect(artHelp).toContain('{helpPlan.power}');
+    expect(artHelp).toContain('{helpPlan.sideSpin}');
+    expect(artHelp).toContain('{helpPlan.verticalSpin}');
+    expect(artHelp).not.toContain('solution.power - 5');
+    expect(artHelp).not.toContain('solution.power + 5');
+  });
+
+  it('shows exact four-ball values and scans every targeted help candidate', () => {
+    const fourBallHelp = billiardsPage.slice(
+      billiardsPage.indexOf('{:else if !isPocketBall}'),
+      billiardsPage.indexOf('<section class="game-shell"')
+    );
+    expect(fourBallHelp).toContain('{helpPlan.power}');
+    expect(fourBallHelp).toContain('{helpPlan.sideSpin}');
+    expect(fourBallHelp).toContain('{helpPlan.verticalSpin}');
+    expect(fourBallHelp).not.toContain('helpPlan.power - 8');
+    expect(billiardsPage).toContain(
+      "chooseFourBallShot('player', FOUR_BALL_HELP_FAST_CANDIDATE_BUDGET)"
+    );
+    expect(billiardsPage).toContain(
+      "chooseFourBallShot('player', FOUR_BALL_HELP_FALLBACK_CANDIDATE_BUDGET)"
+    );
+    expect(billiardsPage).toContain('if (plan.defensive)');
+    expect(billiardsPage).toContain(
+      'const FOUR_BALL_HELP_FALLBACK_CANDIDATE_BUDGET = Number.POSITIVE_INFINITY'
+    );
+  });
+
   it('shows art puzzle retry and next-stage actions in a table overlay', () => {
     expect(billiardsPage).toContain('class="art-result-layer"');
     expect(billiardsPage).toContain('aria-label="예술구 결과"');

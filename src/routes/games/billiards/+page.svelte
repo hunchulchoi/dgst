@@ -33,7 +33,9 @@
     advanceCueSpinResponse,
     computeAngularVelocityScale,
     computeFourBallComboMultiplier,
+    computeFourBallCutAngles,
     computeFourBallFoulPenalty,
+    computeFourBallHelpRating,
     computeFourBallShotScore,
     computeMaxCollisionSpeed,
     computeDynamicSpinDecay,
@@ -99,6 +101,11 @@
     rating: number;
     trajectory?: Array<{ x: number; y: number }>;
   };
+  type ShotHelpPlan = NpcShotPlan & {
+    trajectory: Array<{ x: number; y: number }>;
+    sideSpin: number;
+    verticalSpin: number;
+  };
   type ReplayBall = {
     id: string;
     role: BallRole;
@@ -154,6 +161,9 @@
     ball: BallBody;
     response: CueSpinResponse;
   };
+  const FOUR_BALL_HELP_FAST_CANDIDATE_BUDGET = 52;
+  const FOUR_BALL_HELP_FALLBACK_CANDIDATE_BUDGET = Number.POSITIVE_INFINITY;
+  const FOUR_BALL_HELP_AIM_OFFSETS = [-0.008, -0.004, 0.004, 0.008] as const;
 
   let { data }: Props = $props();
 
@@ -244,8 +254,9 @@
   let shareNote = $state('');
   let shareBoard = $state<'free' | 'bug'>('free');
   let shareSending = $state(false);
-  let helpPlan = $state<NpcShotPlan | null>(null);
+  let helpPlan = $state<ShotHelpPlan | null>(null);
   let helpThinking = $state(false);
+  let helpRequestId = 0;
   let scoreEffect = $state<ScoreEffect | null>(null);
   let scoreEffectId = 0;
   let scoreEffectTimer: ReturnType<typeof setTimeout> | null = null;
@@ -266,6 +277,13 @@
   );
   const displayedVerticalSpin = $derived(
     replaying && lastPlayerReplay ? lastPlayerReplay.verticalSpin : verticalSpin
+  );
+  const shotHelpApplied = $derived(
+    !!helpPlan &&
+      Math.abs(aimAngle - helpPlan.angle) < 0.000001 &&
+      power === helpPlan.power &&
+      spin === helpPlan.sideSpin &&
+      verticalSpin === helpPlan.verticalSpin
   );
   const displayedSpinTipX = $derived(
     replaying && lastPlayerReplay ? Math.round(lastPlayerReplay.sideSpin / 2) : spinTipX
@@ -663,6 +681,7 @@
     reportMessage = '';
     helpPlan = null;
     helpThinking = false;
+    helpRequestId += 1;
     scoreEffect = null;
     if (scoreEffectTimer) clearTimeout(scoreEffectTimer);
     scoreEffectTimer = null;
@@ -1358,15 +1377,10 @@
     }
 
     const candidates: Array<{ angle: number; power: number }> = [];
-    const offsets = [-0.42, -0.3, -0.2, -0.12, -0.06, 0, 0.06, 0.12, 0.2, 0.3, 0.42];
     for (const red of redBalls) {
-      const baseAngle = Math.atan2(
-        red.position.y - shooterBall.position.y,
-        red.position.x - shooterBall.position.x
-      );
-      for (const offset of offsets) {
-        for (const candidatePower of [48, 64, 80]) {
-          candidates.push({ angle: baseAngle + offset, power: candidatePower });
+      for (const angle of computeFourBallCutAngles(shooterBall.position, red.position)) {
+        for (const candidatePower of [40, 48, 56, 64, 72, 80]) {
+          candidates.push({ angle, power: candidatePower });
         }
       }
     }
@@ -1390,14 +1404,36 @@
       defensive: true,
       rating: Number.NEGATIVE_INFINITY
     };
+    const scoringHelpCandidates: Array<{
+      candidate: { angle: number; power: number };
+      baseRating: number;
+    }> = [];
     for (const candidate of selectedCandidates) {
       const result = simulateFourBallShot(shooterTurn, candidate.angle, candidate.power);
+      if (shooterTurn === 'player' && result.scored) {
+        scoringHelpCandidates.push({ candidate, baseRating: result.rating });
+      }
       if (result.rating <= best.rating) continue;
       best = {
         ...candidate,
         defensive: !result.scored,
         rating: result.rating
       };
+    }
+    if (scoringHelpCandidates.length > 0) {
+      let robustBest: NpcShotPlan | null = null;
+      for (const { candidate, baseRating } of scoringHelpCandidates) {
+        let robustness = 1;
+        for (const offset of FOUR_BALL_HELP_AIM_OFFSETS) {
+          if (simulateFourBallShot('player', candidate.angle + offset, candidate.power).scored) {
+            robustness += 1;
+          }
+        }
+        const rating = computeFourBallHelpRating(robustness, candidate.power, baseRating);
+        if (robustBest && rating <= robustBest.rating) continue;
+        robustBest = { ...candidate, defensive: false, rating };
+      }
+      if (robustBest) return robustBest;
     }
     return best;
   }
@@ -1406,36 +1442,79 @@
     return chooseFourBallShot('npc', getFourBallNpcDifficulty(targetScore).candidateBudget);
   }
 
+  function applyShotHelpControls(plan: ShotHelpPlan) {
+    aimAngle = plan.angle;
+    displayAimAngle = plan.angle;
+    power = plan.power;
+    spin = plan.sideSpin;
+    verticalSpin = plan.verticalSpin;
+    spinTipX = Math.round(plan.sideSpin / 2);
+    spinTipY = Math.round(plan.verticalSpin / 2);
+    aimPoint = null;
+    resetAimDrag();
+  }
+
+  function reapplyShotHelp() {
+    if (!helpPlan || !canPrepareShot()) return;
+    applyShotHelpControls(helpPlan);
+  }
+
   function showShotHelp() {
     if (isPocketBall || currentTurn !== 'player' || !canPrepareShot()) return;
     if (helpPlan) {
       helpPlan = null;
+      helpRequestId += 1;
       return;
     }
 
     if (artMode) {
       const solution = currentArtStage.solution;
       artHelpUsed = true;
-      helpPlan = {
+      const plan: ShotHelpPlan = {
         angle: solution.angle,
         power: solution.power,
         defensive: false,
         rating: 1,
-        trajectory: solution.trajectory
+        trajectory: solution.trajectory,
+        sideSpin: solution.sideSpin,
+        verticalSpin: solution.verticalSpin
       };
+      helpPlan = plan;
+      applyShotHelpControls(plan);
       return;
     }
 
+    const requestId = ++helpRequestId;
     helpThinking = true;
     setTimeout(() => {
-      if (isPocketBall || currentTurn !== 'player' || status === 'rolling') {
-        helpThinking = false;
-        return;
+      try {
+        if (
+          requestId !== helpRequestId ||
+          artMode ||
+          isPocketBall ||
+          currentTurn !== 'player' ||
+          npcThinking ||
+          replaying ||
+          !['aiming', 'scored', 'miss'].includes(status)
+        ) {
+          return;
+        }
+        let plan = chooseFourBallShot('player', FOUR_BALL_HELP_FAST_CANDIDATE_BUDGET);
+        if (plan.defensive) {
+          plan = chooseFourBallShot('player', FOUR_BALL_HELP_FALLBACK_CANDIDATE_BUDGET);
+        }
+        const preview = simulateFourBallShot('player', plan.angle, plan.power, true);
+        const shotHelpPlan: ShotHelpPlan = {
+          ...plan,
+          trajectory: preview.trajectory,
+          sideSpin: 0,
+          verticalSpin: 0
+        };
+        helpPlan = shotHelpPlan;
+        applyShotHelpControls(shotHelpPlan);
+      } finally {
+        if (requestId === helpRequestId) helpThinking = false;
       }
-      const plan = chooseFourBallShot('player', 52);
-      const preview = simulateFourBallShot('player', plan.angle, plan.power, true);
-      helpPlan = { ...plan, trajectory: preview.trajectory };
-      helpThinking = false;
     }, 0);
   }
 
@@ -1534,7 +1613,6 @@
     const dy = point.y - cueBall.position.y;
     if (Math.hypot(dx, dy) < BALL_RADIUS * 1.4) return;
     event.preventDefault();
-    helpPlan = null;
     aimAngle = Math.atan2(dy, dx);
     displayAimAngle = aimAngle;
     aimPoint = point;
@@ -1546,7 +1624,6 @@
     const rect = target.getBoundingClientRect();
     const x = Math.max(0, Math.min(rect.width, event.clientX - rect.left));
     const y = Math.max(0, Math.min(rect.height, event.clientY - rect.top));
-    helpPlan = null;
     spin = computeSpinFromTrack(x, rect.width);
     verticalSpin = computeVerticalSpinFromTrack(y, rect.height);
     spinTipX = Math.round(spin / 2);
@@ -1565,7 +1642,6 @@
     const target = event.currentTarget as HTMLElement;
     const rect = target.getBoundingClientRect();
     const x = Math.max(0, Math.min(rect.width, event.clientX - rect.left));
-    helpPlan = null;
     power = Math.round(10 + (x / rect.width) * 90);
     event.preventDefault();
   }
@@ -1580,19 +1656,15 @@
     if (!canCharge()) return;
     const step = event.shiftKey ? 10 : 5;
     if (event.key === 'ArrowLeft' || event.key === 'ArrowDown') {
-      helpPlan = null;
       power = Math.max(10, power - step);
       event.preventDefault();
     } else if (event.key === 'ArrowRight' || event.key === 'ArrowUp') {
-      helpPlan = null;
       power = Math.min(100, power + step);
       event.preventDefault();
     } else if (event.key === 'Home') {
-      helpPlan = null;
       power = 10;
       event.preventDefault();
     } else if (event.key === 'End') {
-      helpPlan = null;
       power = 100;
       event.preventDefault();
     } else if (event.key === 'Enter' || event.key === ' ') {
@@ -2185,7 +2257,7 @@
           class="help-trigger"
           class:active={!!helpPlan}
           onclick={showShotHelp}
-          disabled={status === 'rolling' || replaying}
+          disabled={!canPrepareShot()}
         >
           {helpPlan ? '도움 닫기' : '도움'}
         </button>
@@ -2213,13 +2285,11 @@
       {#if helpPlan}
         <div class="shot-help" aria-label="예술구 도움">
           <span>
-            당점 {currentArtStage.solution.tipLabel} · 파워 약
-            {Math.max(10, currentArtStage.solution.power - 5)}~{Math.min(
-              100,
-              currentArtStage.solution.power + 5
-            )}
-            · 점선은 대략적인 예상 궤적
+            {shotHelpApplied ? '추천값 적용됨' : '추천값에서 조정 중'} · 당점
+            {currentArtStage.solution.tipLabel} · 파워 {helpPlan.power} · 좌우
+            {helpPlan.sideSpin} · 상하 {helpPlan.verticalSpin} · SHOT을 누르세요
           </span>
+          <button type="button" onclick={reapplyShotHelp}>추천값 다시 적용</button>
         </div>
       {/if}
     </section>
@@ -2230,7 +2300,7 @@
         class="help-trigger"
         class:active={!!helpPlan}
         onclick={showShotHelp}
-        disabled={status === 'rolling' || npcThinking || replaying || helpThinking}
+        disabled={!canPrepareShot()}
       >
         {helpThinking ? '계산…' : helpPlan ? '닫기' : '도움'}
       </button>
@@ -2248,9 +2318,13 @@
     {#if helpPlan}
       <div class="shot-help" aria-label="샷 도움">
         <span>
-          중앙 당점 · 파워 약 {Math.max(10, helpPlan.power - 8)}~{Math.min(100, helpPlan.power + 8)}
-          · {helpPlan.defensive ? '첫 적구를 노리는 길' : '득점 예상 길'}
+          {shotHelpApplied ? '추천값 적용됨' : '추천값에서 조정 중'} · 파워 {helpPlan.power} · 좌우
+          {helpPlan.sideSpin} · 상하 {helpPlan.verticalSpin} ·
+          {helpPlan.defensive
+            ? '득점 보장 없음 · 첫 적구를 노리는 길'
+            : '득점 예상 길 · SHOT을 누르세요'}
         </span>
+        <button type="button" onclick={reapplyShotHelp}>추천값 다시 적용</button>
       </div>
     {/if}
   {/if}
@@ -2832,9 +2906,18 @@
   }
 
   .shot-help {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 5px 8px;
     width: min(430px, calc(100% - 8px));
     min-height: 22px;
     margin: -3px auto 7px;
+    border: 1px solid rgba(111, 225, 255, 0.24);
+    border-radius: 7px;
+    background: rgba(6, 21, 16, 0.84);
+    padding: 5px 7px;
     text-align: center;
   }
 
@@ -2844,6 +2927,17 @@
     font-size: 0.72rem;
     font-weight: 800;
     line-height: 1.25;
+  }
+
+  .shot-help button {
+    min-height: 24px;
+    border: 1px solid rgba(111, 225, 255, 0.46);
+    border-radius: 6px;
+    background: rgba(111, 225, 255, 0.14);
+    padding: 2px 7px;
+    color: #d9f8ff;
+    font-size: 0.68rem;
+    font-weight: 900;
   }
 
   .game-shell {

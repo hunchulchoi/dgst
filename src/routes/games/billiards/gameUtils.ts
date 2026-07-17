@@ -117,6 +117,9 @@ export const AIM_BREATH_PERIOD_MS = 1800;
 export const AIM_BREATH_BASE_SWAY = 0.006;
 export const AIM_BREATH_EXTRA_SWAY = 0.028;
 export const SPIN_TOUCH_RANGE = 70;
+export const FOUR_BALL_CUT_FACTORS = [
+  -0.9, -0.7, -0.5, -0.35, -0.2, 0, 0.2, 0.35, 0.5, 0.7, 0.9
+] as const;
 
 export function isActiveBilliardsMode(value: unknown): value is ActiveBilliardsMode {
   return value === BILLIARDS_MODES.FOUR_BALL || value === BILLIARDS_MODES.POCKET_BALL;
@@ -548,6 +551,34 @@ export function computeShotVelocity(angle: number, powerPercent: number): { x: n
     x: Math.cos(angle) * speed,
     y: Math.sin(angle) * speed
   };
+}
+
+export function computeFourBallCutAngles(
+  shooter: { x: number; y: number },
+  target: { x: number; y: number }
+): number[] {
+  const dx = target.x - shooter.x;
+  const dy = target.y - shooter.y;
+  const baseAngle = Math.atan2(dy, dx);
+  const distance = Math.hypot(dx, dy);
+  const contactHalfAngle = Math.asin(
+    Math.min(1, (BALL_RADIUS * 2) / Math.max(distance, BALL_RADIUS * 2))
+  );
+
+  return FOUR_BALL_CUT_FACTORS.map((factor) => baseAngle + contactHalfAngle * factor);
+}
+
+export function computeFourBallHelpRating(
+  robustnessCount: number,
+  powerPercent: number,
+  baseRating: number
+): number {
+  const robustness = Number.isFinite(robustnessCount)
+    ? Math.max(0, Math.floor(robustnessCount))
+    : 0;
+  const power = Number.isFinite(powerPercent) ? Math.min(100, Math.max(0, powerPercent)) : 100;
+  const fallbackRating = Number.isFinite(baseRating) ? baseRating : 0;
+  return robustness * 1_000_000 - power * 1_000 + fallbackRating;
 }
 
 export function computeSpeedRatio(speed: number): number {

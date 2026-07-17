@@ -38,6 +38,8 @@ import {
   computeBallCollisionEnergyScale,
   computeBreathingAimAngle,
   computeFourBallComboMultiplier,
+  computeFourBallCutAngles,
+  computeFourBallHelpRating,
   computeFourBallFoulPenalty,
   computeFourBallShotScore,
   getFourBallNpcDifficulty,
@@ -113,6 +115,33 @@ describe('billiards game helpers', () => {
 
     expect(longMatch.candidateBudget).toBeGreaterThan(shortMatch.candidateBudget);
     expect(longMatch.aimError).toBeLessThan(shortMatch.aimError);
+  });
+
+  it('samples four-ball cut angles inside the actual target contact cone', () => {
+    const shooter = { x: TABLE_WIDTH * 0.42, y: TABLE_HEIGHT * 0.72 };
+    const target = { x: TABLE_WIDTH * 0.42, y: TABLE_HEIGHT * 0.28 };
+    const angles = computeFourBallCutAngles(shooter, target);
+    const baseAngle = -Math.PI / 2;
+    const contactHalfAngle = Math.asin(
+      (BALL_RADIUS * 2) / Math.hypot(target.x - shooter.x, target.y - shooter.y)
+    );
+
+    expect(angles).toHaveLength(11);
+    expect(angles).toContain(baseAngle);
+    expect(Math.max(...angles) - baseAngle).toBeLessThan(contactHalfAngle);
+    expect(baseAngle - Math.min(...angles)).toBeLessThan(contactHalfAngle);
+    expect(angles.some((angle) => Math.abs(angle - baseAngle) < 0.02 && angle !== baseAngle)).toBe(
+      true
+    );
+  });
+
+  it('ranks forgiving help shots ahead of fragile or unnecessarily hard shots', () => {
+    const fragileMaximumPower = computeFourBallHelpRating(1, 80, 109_000);
+    const robustPower64 = computeFourBallHelpRating(4, 64, 108_000);
+    const robustPower72 = computeFourBallHelpRating(4, 72, 109_000);
+
+    expect(robustPower64).toBeGreaterThan(fragileMaximumPower);
+    expect(robustPower64).toBeGreaterThan(robustPower72);
   });
 
   it('treats balls as stopped only when every speed is under the threshold', () => {

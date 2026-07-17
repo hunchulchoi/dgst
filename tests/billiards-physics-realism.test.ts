@@ -12,11 +12,13 @@ import {
   TABLE_HEIGHT,
   TABLE_WIDTH,
   containBallInTable,
+  computeFourBallCutAngles,
   computeDynamicVelocityScale,
   computeMaxCollisionSpeed,
   computePhysicsFrameSlices,
   computePhysicsSubstepCount,
   computeRailReboundVelocity,
+  computeShotVelocity,
   shouldSnapStoppedSpeed
 } from '../src/routes/games/billiards/gameUtils';
 import { createBilliardsBallBody } from '../src/routes/games/billiards/billiardsPhysics';
@@ -52,6 +54,34 @@ function kineticEnergy(bodies: Matter.Body[]) {
     (sum, body) => sum + 0.5 * body.mass * (body.velocity.x ** 2 + body.velocity.y ** 2),
     0
   );
+}
+
+function simulateInitialFourBallHelpCandidate(angle: number, power: number) {
+  const engine = Matter.Engine.create({ gravity: { x: 0, y: 0 } });
+  const cue = makeBall(TABLE_WIDTH * 0.42, TABLE_HEIGHT * 0.72);
+  const opponent = makeBall(TABLE_WIDTH * 0.58, TABLE_HEIGHT * 0.72);
+  const reds = [
+    makeBall(TABLE_WIDTH * 0.42, TABLE_HEIGHT * 0.28),
+    makeBall(TABLE_WIDTH * 0.58, TABLE_HEIGHT * 0.28)
+  ];
+  const moving = [cue, opponent, ...reds];
+  const hitReds = new Set<Matter.Body>();
+  let hitOpponent = false;
+  Matter.Events.on(engine, 'collisionStart', (event) => {
+    for (const pair of event.pairs) {
+      const other = pair.bodyA === cue ? pair.bodyB : pair.bodyB === cue ? pair.bodyA : null;
+      if (other === opponent) hitOpponent = true;
+      if (other && reds.includes(other)) hitReds.add(other);
+    }
+  });
+  Matter.Composite.add(engine.world, moving);
+  Matter.Body.setVelocity(cue, computeShotVelocity(angle, power));
+
+  for (let frame = 0; frame < 120 && hitReds.size < 2 && !hitOpponent; frame += 1) {
+    advance(engine, moving);
+  }
+
+  return hitReds.size >= 2 && !hitOpponent;
 }
 
 function simulateRollingStop(frameRate: number, initialSpeed = 8) {
@@ -120,6 +150,19 @@ describe('billiards real-world collision invariants', () => {
     expect(halfPower.distance).toBeLessThan(1_000);
     expect(maximumPower.stopMs).toBeLessThan(10_000);
     expect(maximumPower.stopMs).toBeLessThan(MAX_ROLL_DURATION_MS);
+  });
+
+  it('offers a scoring four-ball help candidate from the standard opening layout', () => {
+    const shooter = { x: TABLE_WIDTH * 0.42, y: TABLE_HEIGHT * 0.72 };
+    const firstRed = { x: TABLE_WIDTH * 0.42, y: TABLE_HEIGHT * 0.28 };
+    const angles = computeFourBallCutAngles(shooter, firstRed);
+    const powers = [40, 48, 56, 64, 72, 80];
+
+    expect(
+      angles.some((angle) =>
+        powers.some((power) => simulateInitialFourBallHelpCandidate(angle, power))
+      )
+    ).toBe(true);
   });
 
   it('enforces the configured cushion restitution after Matter resolves the pair', () => {
