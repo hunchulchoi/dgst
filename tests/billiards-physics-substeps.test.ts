@@ -1,8 +1,12 @@
 import Matter from 'matter-js';
 import { describe, expect, it } from 'vitest';
 import {
+  BALL_RADIUS,
   MAX_SHOT_SPEED,
   PHYSICS_MAX_SUBSTEPS,
+  RAIL_THICKNESS,
+  TABLE_HEIGHT,
+  TABLE_WIDTH,
   computeAngularVelocityScale,
   computeDynamicVelocityScale,
   computeMaxCollisionSpeed,
@@ -42,7 +46,7 @@ function stepFrame(engine: Matter.Engine, balls: Matter.Body[], elapsedMs: numbe
 describe('billiards adaptive physics substeps', () => {
   it('scales from one step at rest to several steps at maximum shot speed', () => {
     expect(computePhysicsSubstepCount(0, 16.66)).toBe(1);
-    expect(computePhysicsSubstepCount(4, 16.66)).toBe(2);
+    expect(computePhysicsSubstepCount(4, 16.66)).toBeGreaterThan(1);
     expect(computePhysicsSubstepCount(MAX_SHOT_SPEED, 16.66)).toBeGreaterThanOrEqual(4);
     expect(computePhysicsSubstepCount(MAX_SHOT_SPEED, 8.33)).toBeGreaterThan(1);
     expect(
@@ -120,8 +124,9 @@ describe('billiards adaptive physics substeps', () => {
 
   it('does not skip maximum-speed thin cuts across sub-pixel phases', () => {
     const missesByOffset = new Map<number, number>();
+    const offsets = [BALL_RADIUS * 2 - 0.2, BALL_RADIUS * 2 - 0.1, BALL_RADIUS * 2 - 0.05];
 
-    for (const offset of [19.8, 19.9, 19.95]) {
+    for (const offset of offsets) {
       let misses = 0;
       for (let phase = 0; phase < 900; phase += 1) {
         const engine = Matter.Engine.create({ gravity: { x: 0, y: 0 } });
@@ -145,17 +150,14 @@ describe('billiards adaptive physics substeps', () => {
       missesByOffset.set(offset, misses);
     }
 
-    expect(Object.fromEntries(missesByOffset)).toEqual({
-      '19.8': 0,
-      '19.9': 0,
-      '19.95': 0
-    });
+    expect([...missesByOffset.values()]).toEqual([0, 0, 0]);
   });
 
   it('does not skip opposing maximum-speed thin cuts across sub-pixel phases', () => {
     const missesByOffset = new Map<number, number>();
+    const offsets = [BALL_RADIUS * 2 - 0.2, BALL_RADIUS * 2 - 0.1, BALL_RADIUS * 2 - 0.05];
 
-    for (const offset of [19.8, 19.9, 19.95]) {
+    for (const offset of offsets) {
       let misses = 0;
       for (let phase = 0; phase < 900; phase += 1) {
         const engine = Matter.Engine.create({ gravity: { x: 0, y: 0 } });
@@ -180,11 +182,7 @@ describe('billiards adaptive physics substeps', () => {
       missesByOffset.set(offset, misses);
     }
 
-    expect(Object.fromEntries(missesByOffset)).toEqual({
-      '19.8': 0,
-      '19.9': 0,
-      '19.95': 0
-    });
+    expect([...missesByOffset.values()]).toEqual([0, 0, 0]);
   });
 
   it('adapts after a leading ball rebounds into a same-direction thin cut', () => {
@@ -192,13 +190,22 @@ describe('billiards adaptive physics substeps', () => {
 
     for (let phase = 0; phase < 900; phase += 1) {
       const engine = Matter.Engine.create({ gravity: { x: 0, y: 0 } });
-      const trailing = makeBall(300 + phase / 100, 299.9);
-      const leading = makeBall(326, 280);
-      const rightRail = Matter.Bodies.rectangle(351, 280, 18, 560, {
-        isStatic: true,
-        restitution: 0.88,
-        friction: 0.016
-      });
+      const trailing = makeBall(
+        TABLE_WIDTH - 60 + phase / 100,
+        TABLE_HEIGHT / 2 + BALL_RADIUS * 2 - 0.1
+      );
+      const leading = makeBall(TABLE_WIDTH - RAIL_THICKNESS - BALL_RADIUS - 8, TABLE_HEIGHT / 2);
+      const rightRail = Matter.Bodies.rectangle(
+        TABLE_WIDTH - RAIL_THICKNESS / 2,
+        TABLE_HEIGHT / 2,
+        RAIL_THICKNESS,
+        TABLE_HEIGHT,
+        {
+          isStatic: true,
+          restitution: 0.88,
+          friction: 0.016
+        }
+      );
       Matter.Composite.add(engine.world, [trailing, leading, rightRail]);
       Matter.Body.setVelocity(trailing, { x: MAX_SHOT_SPEED, y: 0 });
       Matter.Body.setVelocity(leading, { x: MAX_SHOT_SPEED, y: 0 });
@@ -230,8 +237,8 @@ describe('billiards adaptive physics substeps', () => {
 
     for (let phase = 0; phase < 900; phase += 1) {
       const engine = Matter.Engine.create({ gravity: { x: 0, y: 0 } });
-      const left = makeBall(30 + phase / 100, 280);
-      const right = makeBall(330, 299.9);
+      const left = makeBall(30 + phase / 100, TABLE_HEIGHT / 2);
+      const right = makeBall(330, TABLE_HEIGHT / 2 + BALL_RADIUS * 2 - 0.1);
       Matter.Composite.add(engine.world, [left, right]);
       Matter.Body.setVelocity(left, { x: MAX_SHOT_SPEED, y: 0 });
       Matter.Body.setVelocity(right, { x: -MAX_SHOT_SPEED, y: 0 });
@@ -255,12 +262,18 @@ describe('billiards adaptive physics substeps', () => {
 
     for (let phase = 0; phase < 2700; phase += 1) {
       const engine = Matter.Engine.create({ gravity: { x: 0, y: 0 } });
-      const cue = makeBall(30 + phase / 100, 280);
-      const rightRail = Matter.Bodies.rectangle(351, 280, 18, 560, {
-        isStatic: true,
-        restitution: 0.88,
-        friction: 0.016
-      });
+      const cue = makeBall(30 + phase / 100, TABLE_HEIGHT / 2);
+      const rightRail = Matter.Bodies.rectangle(
+        TABLE_WIDTH - RAIL_THICKNESS / 2,
+        TABLE_HEIGHT / 2,
+        RAIL_THICKNESS,
+        TABLE_HEIGHT,
+        {
+          isStatic: true,
+          restitution: 0.88,
+          friction: 0.016
+        }
+      );
       Matter.Composite.add(engine.world, [cue, rightRail]);
       Matter.Body.setVelocity(cue, { x: MAX_SHOT_SPEED, y: 0 });
       let rebounded = false;

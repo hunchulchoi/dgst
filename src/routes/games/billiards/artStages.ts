@@ -1,3 +1,11 @@
+import {
+  BALL_RADIUS,
+  RAIL_THICKNESS,
+  TABLE_HEIGHT,
+  TABLE_WIDTH,
+  type BilliardsRailSide
+} from './gameUtils';
+
 export type ArtPoint = { x: number; y: number };
 export type ArtBallSetup = ArtPoint & {
   id: string;
@@ -14,6 +22,7 @@ export type ArtGoal = {
   avoidBlack?: boolean;
   waypointCount?: number;
   allRails?: boolean;
+  requiredCushionSequence?: BilliardsRailSide[];
 };
 
 export type ArtSolution = {
@@ -72,7 +81,7 @@ const black = (id: string, x: number, y: number): ArtBallSetup => ({
   static: true
 });
 
-export const ART_STAGES: ArtStage[] = [
+const LEGACY_ART_STAGES: ArtStage[] = [
   {
     id: 'art-1',
     stage: 1,
@@ -104,10 +113,10 @@ export const ART_STAGES: ArtStage[] = [
     targets: [red('target-1', 205, 185)],
     obstacles: [],
     waypoints: [],
-    goal: { minUniqueTargets: 1, minCushions: 1 },
+    goal: { minUniqueTargets: 1, minCushions: 1, requiredCushionSequence: ['left'] },
     solution: {
-      angle: -2.422,
-      power: 64,
+      angle: -2.314,
+      power: 50,
       sideSpin: 0,
       verticalSpin: 0,
       tipLabel: '중앙',
@@ -127,17 +136,21 @@ export const ART_STAGES: ArtStage[] = [
     targets: [red('target-1', 92, 220)],
     obstacles: [],
     waypoints: [],
-    goal: { minUniqueTargets: 1, minCushions: 2 },
+    goal: {
+      minUniqueTargets: 1,
+      minCushions: 2,
+      requiredCushionSequence: ['right', 'top']
+    },
     solution: {
-      angle: -0.963,
-      power: 86,
+      angle: -1.074,
+      power: 70,
       sideSpin: 0,
       verticalSpin: 0,
       tipLabel: '중앙',
       trajectory: [
         { x: 155, y: 450 },
-        { x: 333, y: 194 },
-        { x: 225, y: 28 },
+        { x: 332.2, y: 185.2 },
+        { x: 235.6, y: 27.6 },
         { x: 92, y: 220 }
       ]
     }
@@ -148,45 +161,57 @@ export const ART_STAGES: ArtStage[] = [
     title: '3쿠션 완주',
     description: '세 면의 쿠션을 돌고 적구를 맞히세요.',
     cue: { x: 105, y: 445 },
-    targets: [red('target-1', 175, 285)],
+    targets: [red('target-1', 175, 318)],
     obstacles: [],
     waypoints: [],
-    goal: { minUniqueTargets: 1, minCushions: 3 },
+    goal: {
+      minUniqueTargets: 1,
+      minCushions: 3,
+      requiredCushionSequence: ['right', 'top', 'left']
+    },
     solution: {
-      angle: -0.757,
-      power: 88,
+      angle: -0.887,
+      power: 80,
       sideSpin: 10,
       verticalSpin: 0,
       tipLabel: '중앙보다 약간 오른쪽',
       trajectory: [
         { x: 105, y: 445 },
-        { x: 332, y: 230 },
-        { x: 134, y: 28 },
-        { x: 28, y: 129 },
-        { x: 175, y: 285 }
+        { x: 332.2, y: 219.1 },
+        { x: 157.8, y: 27.7 },
+        { x: 27.8, y: 157.4 },
+        { x: 175, y: 318 }
       ]
     }
   },
   {
     id: 'art-5',
     stage: 5,
-    title: '오른쪽 회전 통과',
-    description: '오른쪽 당점으로 좁은 문을 통과해 적구를 맞히세요.',
+    title: '오른쪽 회전 쿠션',
+    description: '오른쪽 당점으로 쿠션 반사각을 벌려 좁은 문 뒤 적구를 맞히세요.',
     cue: { x: 165, y: 450 },
     targets: [red('target-1', 235, 180)],
     obstacles: [black('black-1', 145, 315), black('black-2', 215, 315)],
     waypoints: [{ x: 180, y: 315 }],
-    goal: { minUniqueTargets: 1, sideSpin: 'right', waypointCount: 1, avoidBlack: true },
+    goal: {
+      minUniqueTargets: 1,
+      minCushions: 1,
+      requiredCushionSequence: ['top'],
+      sideSpin: 'right',
+      waypointCount: 1,
+      avoidBlack: true
+    },
     solution: {
       angle: -1.48,
       power: 62,
       sideSpin: 45,
       verticalSpin: 0,
-      tipLabel: '오른쪽 중단',
+      tipLabel: '오른쪽 당점 · 쿠션 회전',
       trajectory: [
         { x: 165, y: 450 },
-        { x: 180, y: 315 },
-        { x: 235, y: 180 }
+        { x: 180.6, y: 311.6 },
+        { x: 212.4, y: 27.9 },
+        { x: 236.7, y: 168.8 }
       ]
     }
   },
@@ -199,43 +224,48 @@ export const ART_STAGES: ArtStage[] = [
     targets: [red('target-1', 185, 175)],
     obstacles: [black('black-1', 180, 305)],
     waypoints: [{ x: 122, y: 300 }],
-    goal: { minUniqueTargets: 1, sideSpin: 'left', waypointCount: 1, avoidBlack: true },
+    goal: {
+      minUniqueTargets: 1,
+      sideSpin: 'left',
+      waypointCount: 1,
+      avoidBlack: true,
+      requiredCushionSequence: ['right', 'left']
+    },
     solution: {
-      angle: -0.256,
-      power: 92,
+      angle: -0.43,
+      power: 65,
       sideSpin: -58,
       verticalSpin: 35,
       tipLabel: '왼쪽 위',
       trajectory: [
         { x: 180, y: 450 },
-        { x: 332, y: 409 },
-        { x: 28, y: 322 },
-        { x: 120, y: 293 },
-        { x: 332, y: 227 },
-        { x: 185, y: 175 }
+        { x: 332.8, y: 393.2 },
+        { x: 128.1, y: 297.6 },
+        { x: 27.7, y: 250.5 },
+        { x: 173.3, y: 180 }
       ]
     }
   },
   {
     id: 'art-7',
     stage: 7,
-    title: '밀어치기 연속 충돌',
-    description: '윗당점으로 첫 공을 밀고 두 번째 공까지 맞히세요.',
+    title: '밀어치기 전진',
+    description: '윗당점으로 적구를 민 뒤 수구를 앞 목표 지점까지 전진시키세요.',
     cue: { x: 180, y: 450 },
-    targets: [red('target-1', 180, 310), red('target-2', 180, 205, '#f0c05a')],
+    targets: [red('target-1', 180, 310)],
     obstacles: [],
-    waypoints: [],
-    goal: { minUniqueTargets: 2, verticalSpin: 'follow' },
+    waypoints: [{ x: 180, y: 300 }],
+    goal: { minUniqueTargets: 1, verticalSpin: 'follow', waypointCount: 1 },
     solution: {
-      angle: -1.523,
-      power: 95,
+      angle: -Math.PI / 2,
+      power: 70,
       sideSpin: 0,
       verticalSpin: 55,
       tipLabel: '위쪽 당점',
       trajectory: [
         { x: 180, y: 450 },
-        { x: 187, y: 310 },
-        { x: 180, y: 205 }
+        { x: 180, y: 310 },
+        { x: 180, y: 300 }
       ]
     }
   },
@@ -247,8 +277,8 @@ export const ART_STAGES: ArtStage[] = [
     cue: { x: 180, y: 380 },
     targets: [red('target-1', 180, 235)],
     obstacles: [],
-    waypoints: [],
-    goal: { minUniqueTargets: 1, verticalSpin: 'draw' },
+    waypoints: [{ x: 180, y: 430 }],
+    goal: { minUniqueTargets: 1, verticalSpin: 'draw', waypointCount: 1 },
     solution: {
       angle: -Math.PI / 2,
       power: 72,
@@ -257,7 +287,8 @@ export const ART_STAGES: ArtStage[] = [
       tipLabel: '아래쪽 당점',
       trajectory: [
         { x: 180, y: 380 },
-        { x: 180, y: 235 }
+        { x: 180, y: 235 },
+        { x: 180, y: 430 }
       ]
     }
   },
@@ -293,7 +324,12 @@ export const ART_STAGES: ArtStage[] = [
     targets: [],
     obstacles: [],
     waypoints: [],
-    goal: { minUniqueTargets: 0, minCushions: 4, allRails: true },
+    goal: {
+      minUniqueTargets: 0,
+      minCushions: 4,
+      allRails: true,
+      requiredCushionSequence: ['left', 'top', 'right', 'bottom']
+    },
     solution: {
       angle: -2.247,
       power: 95,
@@ -302,14 +338,62 @@ export const ART_STAGES: ArtStage[] = [
       tipLabel: '오른쪽 위',
       trajectory: [
         { x: 180, y: 300 },
-        { x: 28, y: 112 },
-        { x: 96, y: 28 },
-        { x: 332, y: 319 },
-        { x: 159, y: 532 }
+        { x: 27.7, y: 146.3 },
+        { x: 132.6, y: 27.6 },
+        { x: 332.6, y: 230.2 },
+        { x: 60.9, y: 532.3 }
       ]
     }
   }
 ];
+
+const LEGACY_MIN_BALL_CENTER = 28;
+const LEGACY_MAX_BALL_CENTER_X = 332;
+const LEGACY_MAX_BALL_CENTER_Y = 532;
+const CURRENT_MIN_BALL_CENTER = RAIL_THICKNESS + BALL_RADIUS;
+const CURRENT_MAX_BALL_CENTER_X = TABLE_WIDTH - RAIL_THICKNESS - BALL_RADIUS;
+const CURRENT_MAX_BALL_CENTER_Y = TABLE_HEIGHT - RAIL_THICKNESS - BALL_RADIUS;
+
+function scaleArtPoint(point: ArtPoint): ArtPoint {
+  return {
+    x:
+      CURRENT_MIN_BALL_CENTER +
+      ((point.x - LEGACY_MIN_BALL_CENTER) / (LEGACY_MAX_BALL_CENTER_X - LEGACY_MIN_BALL_CENTER)) *
+        (CURRENT_MAX_BALL_CENTER_X - CURRENT_MIN_BALL_CENTER),
+    y:
+      CURRENT_MIN_BALL_CENTER +
+      ((point.y - LEGACY_MIN_BALL_CENTER) / (LEGACY_MAX_BALL_CENTER_Y - LEGACY_MIN_BALL_CENTER)) *
+        (CURRENT_MAX_BALL_CENTER_Y - CURRENT_MIN_BALL_CENTER)
+  };
+}
+
+export const ART_STAGES: ArtStage[] = LEGACY_ART_STAGES.map((stage) => ({
+  ...stage,
+  cue: scaleArtPoint(stage.cue),
+  targets: stage.targets.map((target) => ({ ...target, ...scaleArtPoint(target) })),
+  obstacles: stage.obstacles.map((obstacle) => ({
+    ...obstacle,
+    ...scaleArtPoint(obstacle),
+    moving: obstacle.moving
+      ? {
+          ...obstacle.moving,
+          range:
+            obstacle.moving.axis === 'x'
+              ? obstacle.moving.range *
+                ((CURRENT_MAX_BALL_CENTER_X - CURRENT_MIN_BALL_CENTER) /
+                  (LEGACY_MAX_BALL_CENTER_X - LEGACY_MIN_BALL_CENTER))
+              : obstacle.moving.range *
+                ((CURRENT_MAX_BALL_CENTER_Y - CURRENT_MIN_BALL_CENTER) /
+                  (LEGACY_MAX_BALL_CENTER_Y - LEGACY_MIN_BALL_CENTER))
+        }
+      : undefined
+  })),
+  waypoints: stage.waypoints.map(scaleArtPoint),
+  solution: {
+    ...stage.solution,
+    trajectory: stage.solution.trajectory.map(scaleArtPoint)
+  }
+}));
 
 export function getArtStage(stage: number): ArtStage {
   return ART_STAGES.find((item) => item.stage === stage) ?? ART_STAGES[0];
@@ -361,6 +445,13 @@ export function evaluateArtShot(
     return { success: false, message: '아랫당점 끌어치기가 필요합니다' };
   if (goal.minCushions && cushionCount < goal.minCushions)
     return { success: false, message: `쿠션이 ${goal.minCushions - cushionCount}회 부족합니다` };
+  if (
+    goal.requiredCushionSequence?.some(
+      (requiredSide, index) => shot.cushionHits[index] !== requiredSide
+    )
+  ) {
+    return { success: false, message: '지정된 쿠션 순서대로 맞혀야 합니다' };
+  }
   if (goal.allRails && new Set(shot.cushionHits).size < 4)
     return { success: false, message: '쿠션 네 면을 모두 맞혀야 합니다' };
   if (goal.waypointCount && shot.waypointCount < goal.waypointCount)

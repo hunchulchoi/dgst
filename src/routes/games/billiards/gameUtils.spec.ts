@@ -11,6 +11,7 @@ import {
   CUE_SPIN_DECAY,
   CUE_SPIN_MIN_SPEED_RATIO,
   CUE_SPIN_STOP_VALUE,
+  CORNER_POCKET_MOUTH,
   FOUR_BALL_CHANCES,
   FOUR_BALL_BASE_SCORE,
   FOUR_BALL_FOUL_PENALTY,
@@ -18,7 +19,8 @@ import {
   FOUR_BALL_TARGET_OPTIONS,
   MAX_SHOT_SPEED,
   POCKET_BALL_CHANCES,
-  POCKET_RADIUS,
+  POCKET_CAPTURE_RADIUS,
+  SIDE_POCKET_MOUTH,
   BALL_RADIUS,
   RAIL_BOUNDARY_DAMPING,
   RAIL_CONTACT_SPIN_DAMPING,
@@ -39,15 +41,16 @@ import {
   computeDynamicSpinCurveScale,
   computeDynamicSpinDecay,
   computeSpinAdjustedVelocity,
-  computeBackspinContactPullScale,
+  createCueSpinResponse,
+  advanceCueSpinResponse,
   computeMasseCurveMultiplier,
   computeVerticalSpinFromTrack,
-  computeVerticalSpinVelocityScale,
   computeDynamicVelocityScale,
   computePocketClearBonus,
   computePocketShotScore,
   computeRailContactVelocityScale,
   computeRailEnergyScale,
+  computeRailReboundVelocity,
   containBallInTable,
   computeShotVelocity,
   computeSpinFromTrack,
@@ -56,6 +59,7 @@ import {
   evaluateFourBallShot,
   getNextShotSetupStep,
   getPocketCenters,
+  getPocketRailGeometry,
   isActiveBilliardsMode,
   isBallInPocket,
   isValidScore,
@@ -125,27 +129,33 @@ describe('billiards game helpers', () => {
     });
 
     expect(leftWall.corrected).toBe(true);
-    expect(leftWall.position).toEqual({ x: 28, y: 120 });
+    expect(leftWall.position).toEqual({ x: RAIL_THICKNESS + BALL_RADIUS, y: 120 });
     expect(leftWall.velocity.x).toBeCloseTo(18 * RAIL_BOUNDARY_DAMPING);
     expect(leftWall.velocity.y).toBeCloseTo(2 * RAIL_TANGENT_DAMPING);
 
     const corner = containBallInTable({
-      position: { x: 370, y: 570 },
+      position: { x: TABLE_WIDTH + 10, y: TABLE_HEIGHT + 10 },
       velocity: { x: 16, y: 14 }
     });
 
     expect(corner.corrected).toBe(true);
-    expect(corner.position).toEqual({ x: 332, y: 532 });
+    expect(corner.position).toEqual({
+      x: TABLE_WIDTH - RAIL_THICKNESS - BALL_RADIUS,
+      y: TABLE_HEIGHT - RAIL_THICKNESS - BALL_RADIUS
+    });
     expect(corner.velocity.x).toBeCloseTo(-16 * RAIL_BOUNDARY_DAMPING * RAIL_TANGENT_DAMPING);
     expect(corner.velocity.y).toBeCloseTo(-14 * RAIL_TANGENT_DAMPING * RAIL_BOUNDARY_DAMPING);
 
     const alreadyRebounded = containBallInTable({
-      position: { x: 332.05, y: 120 },
+      position: { x: TABLE_WIDTH - RAIL_THICKNESS - BALL_RADIUS + 0.05, y: 120 },
       velocity: { x: -8.8, y: 2 }
     });
 
     expect(alreadyRebounded.corrected).toBe(true);
-    expect(alreadyRebounded.position).toEqual({ x: 332, y: 120 });
+    expect(alreadyRebounded.position).toEqual({
+      x: TABLE_WIDTH - RAIL_THICKNESS - BALL_RADIUS,
+      y: 120
+    });
     expect(alreadyRebounded.velocity).toEqual({ x: -8.8, y: 2 });
   });
 
@@ -167,7 +177,7 @@ describe('billiards game helpers', () => {
     expect(BALL_STATIC_FRICTION).toBeGreaterThan(0);
     expect(RAIL_SURFACE_FRICTION).toBeGreaterThan(0);
     expect(RAIL_CONTACT_SPIN_DAMPING).toBeLessThan(0.7);
-    expect(BALL_FRICTION_AIR).toBeGreaterThanOrEqual(0.015);
+    expect(BALL_FRICTION_AIR).toBe(0);
     expect(ANGULAR_FRICTION_DECAY).toBeLessThan(1);
     expect(ANGULAR_STOP_SPEED).toBeGreaterThan(0);
     expect(CUE_SPIN_CURVE_SCALE).toBeLessThan(0.0018);
@@ -177,14 +187,20 @@ describe('billiards game helpers', () => {
     expect(CUE_SPIN_STOP_VALUE).toBeGreaterThan(0);
   });
 
-  it('adapts rolling drag to shot speed and frame time', () => {
+  it('uses frame-independent near-constant rolling deceleration', () => {
     const slowScale = computeDynamicVelocityScale(4, 16.66);
     const fastScale = computeDynamicVelocityScale(24, 16.66);
     const longFrameScale = computeDynamicVelocityScale(24, 32);
+    const slowLoss = 4 * (1 - slowScale);
+    const fastLoss = 24 * (1 - fastScale);
+    const longFrameLoss = 24 * (1 - longFrameScale);
+    const halfFrameScale = computeDynamicVelocityScale(24, 8.33);
+    const afterHalfFrame = 24 * halfFrameScale;
+    const afterTwoHalfFrames = afterHalfFrame * computeDynamicVelocityScale(afterHalfFrame, 8.33);
 
-    expect(slowScale).toBeGreaterThan(fastScale);
-    expect(longFrameScale).toBeLessThan(fastScale);
-    expect(fastScale).toBeGreaterThan(0.9);
+    expect(slowLoss).toBeCloseTo(fastLoss, 8);
+    expect(longFrameLoss).toBeCloseTo(fastLoss * (32 / 16.66), 8);
+    expect(afterTwoHalfFrames).toBeCloseTo(24 * fastScale, 8);
   });
 
   it('loses more rail energy on fast cushion hits', () => {
@@ -223,35 +239,81 @@ describe('billiards game helpers', () => {
     expect(twoHalfFrames).toBeCloseTo(oneFrame, 6);
   });
 
-  it('applies a subtle symmetric spin curve without changing speed', () => {
+  it('keeps ordinary side spin straight on the cloth', () => {
     const straight = { x: 20, y: 0 };
     const right = computeSpinAdjustedVelocity(straight, 100, 0, 16.66);
     const left = computeSpinAdjustedVelocity(straight, -100, 0, 16.66);
 
-    expect(Math.hypot(right.x, right.y)).toBeCloseTo(20, 6);
-    expect(right.y).toBeGreaterThan(0);
-    expect(left.y).toBeCloseTo(-right.y, 6);
-    expect(Math.abs(Math.atan2(right.y, right.x))).toBeLessThan(0.005);
+    expect(right).toEqual(straight);
+    expect(left).toEqual(straight);
     expect(computeSpinAdjustedVelocity(straight, 0, 100, 16.66)).toEqual(straight);
   });
 
-  it('boosts curve only for high side spin with vertical spin', () => {
-    expect(computeMasseCurveMultiplier(90, 90)).toBeGreaterThan(1);
-    expect(computeMasseCurveMultiplier(90, 90)).toBeLessThan(1.6);
-    expect(computeMasseCurveMultiplier(90, -90)).toBeGreaterThan(1);
-    expect(computeMasseCurveMultiplier(90, 0)).toBe(1);
-    expect(computeMasseCurveMultiplier(20, 90)).toBe(1);
+  it('curves only for a high side-and-vertical-spin masse shot', () => {
+    expect(computeMasseCurveMultiplier(90, 90)).toBeGreaterThan(0);
+    expect(computeMasseCurveMultiplier(90, 90)).toBeLessThan(1);
+    expect(computeMasseCurveMultiplier(90, -90)).toBeGreaterThan(0);
+    expect(computeMasseCurveMultiplier(90, 0)).toBe(0);
+    expect(computeMasseCurveMultiplier(20, 90)).toBe(0);
+
+    const right = computeSpinAdjustedVelocity({ x: 20, y: 0 }, 90, 90, 16.66);
+    const left = computeSpinAdjustedVelocity({ x: 20, y: 0 }, -90, 90, 16.66);
+    expect(right.y).toBeGreaterThan(0);
+    expect(left.y).toBeCloseTo(-right.y, 6);
+    expect(Math.hypot(right.x, right.y)).toBeCloseTo(20, 6);
   });
 
-  it('uses top spin to roll longer and back spin to brake harder', () => {
-    const base = computeDynamicVelocityScale(16, 16.66);
-    expect(computeVerticalSpinVelocityScale(16, 16.66, 100)).toBeGreaterThan(base);
-    expect(computeVerticalSpinVelocityScale(16, 16.66, -100)).toBeLessThan(base);
-    expect(computeVerticalSpinVelocityScale(16, 16.66, 0)).toBeCloseTo(base);
-    expect(computeBackspinContactPullScale(-100)).toBeGreaterThan(
-      computeBackspinContactPullScale(-40)
+  it('turns top spin into follow and back spin into draw after contact', () => {
+    const incomingCue = { x: 18, y: 0 };
+    const stoppedTarget = { x: 0, y: 0 };
+    const follow = createCueSpinResponse(incomingCue, stoppedTarget, { x: 1, y: 0 }, 100);
+    const draw = createCueSpinResponse(incomingCue, stoppedTarget, { x: 1, y: 0 }, -100);
+
+    expect(createCueSpinResponse(incomingCue, stoppedTarget, { x: 1, y: 0 }, 0)).toBeNull();
+    expect(follow).not.toBeNull();
+    expect(draw).not.toBeNull();
+    const followed = advanceCueSpinResponse({ x: 0.5, y: 0 }, follow!, 140);
+    const drawn = advanceCueSpinResponse({ x: 0.5, y: 0 }, draw!, 140);
+    expect(followed.velocity.x).toBeGreaterThan(0.5);
+    expect(drawn.velocity.x).toBeLessThan(0);
+
+    let splitVelocity = { x: 0.5, y: 0 };
+    let splitResponse = follow;
+    for (let index = 0; index < 14 && splitResponse; index += 1) {
+      const next = advanceCueSpinResponse(splitVelocity, splitResponse, 10);
+      splitVelocity = next.velocity;
+      splitResponse = next.response;
+    }
+    expect(splitVelocity.x).toBeCloseTo(followed.velocity.x, 8);
+  });
+
+  it('transfers side spin into the cushion angle symmetrically', () => {
+    const base = computeRailReboundVelocity({ x: -9.4, y: 0 }, 'right');
+    const rightEnglish = computeRailReboundVelocity({ x: -9.4, y: 0 }, 'right', undefined, 100);
+    const leftEnglish = computeRailReboundVelocity({ x: -9.4, y: 0 }, 'right', undefined, -100);
+    const flippedNormal = computeRailReboundVelocity(
+      { x: -9.4, y: 0 },
+      'right',
+      { x: 1, y: 0 },
+      100
     );
-    expect(computeBackspinContactPullScale(100)).toBe(0);
+
+    expect(base.y).toBe(0);
+    expect(rightEnglish.y).toBeGreaterThan(0);
+    expect(leftEnglish.y).toBeCloseTo(-rightEnglish.y, 8);
+    expect(flippedNormal).toEqual(rightEnglish);
+  });
+
+  it('kicks right English in the physical direction on all four cushions', () => {
+    const top = computeRailReboundVelocity({ x: 0, y: 9.4 }, 'top', undefined, 100);
+    const right = computeRailReboundVelocity({ x: -9.4, y: 0 }, 'right', undefined, 100);
+    const bottom = computeRailReboundVelocity({ x: 0, y: -9.4 }, 'bottom', undefined, 100);
+    const left = computeRailReboundVelocity({ x: 9.4, y: 0 }, 'left', undefined, 100);
+
+    expect(top.x).toBeGreaterThan(0);
+    expect(right.y).toBeGreaterThan(0);
+    expect(bottom.x).toBeLessThan(0);
+    expect(left.y).toBeLessThan(0);
   });
 
   it('sweeps power smoothly between the low and high ends', () => {
@@ -327,10 +389,27 @@ describe('billiards game helpers', () => {
       isBallInPocket({ x: RAIL_THICKNESS + BALL_RADIUS, y: RAIL_THICKNESS + BALL_RADIUS })
     ).toBe(true);
     expect(isBallInPocket({ x: RAIL_THICKNESS + BALL_RADIUS, y: TABLE_HEIGHT / 2 })).toBe(true);
-    expect(isBallInPocket({ x: 180, y: 280 })).toBe(false);
+    expect(isBallInPocket({ x: TABLE_WIDTH / 2, y: TABLE_HEIGHT / 2 })).toBe(false);
     expect(
-      isBallInPocket({ x: getPocketCenters()[0].x + POCKET_RADIUS + 1, y: RAIL_THICKNESS })
+      isBallInPocket({
+        x: getPocketCenters()[0].x + POCKET_CAPTURE_RADIUS + 1,
+        y: RAIL_THICKNESS
+      })
     ).toBe(false);
+  });
+
+  it('uses a regulation-scale 1:2 playfield with tight jaw geometry', () => {
+    const playableWidth = TABLE_WIDTH - RAIL_THICKNESS * 2;
+    const playableHeight = TABLE_HEIGHT - RAIL_THICKNESS * 2;
+    const geometry = getPocketRailGeometry();
+
+    expect(playableHeight / playableWidth).toBe(2);
+    expect((BALL_RADIUS * 2) / playableWidth).toBeGreaterThan(0.043);
+    expect((BALL_RADIUS * 2) / playableWidth).toBeLessThan(0.046);
+    expect(CORNER_POCKET_MOUTH / (BALL_RADIUS * 2)).toBe(2);
+    expect(SIDE_POCKET_MOUTH / (BALL_RADIUS * 2)).toBeCloseTo(2.2);
+    expect(geometry.rails).toHaveLength(6);
+    expect(geometry.jaws).toHaveLength(12);
   });
 
   it('scores pocket-ball shots with object, combo, clear bonus, and scratch penalty', () => {

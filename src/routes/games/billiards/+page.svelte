@@ -10,23 +10,27 @@
     BILLIARDS_MODES,
     ANGULAR_STOP_SPEED,
     POCKET_BALL_CHANCES,
-    POCKET_RADIUS,
+    POCKET_DRAW_RADIUS,
     CUE_SPIN_ANGULAR_SCALE,
     CUE_SPIN_STOP_VALUE,
+    CUE_VERTICAL_SPIN_CONTACT_RETENTION,
     FOUR_BALL_TARGET_SCORE,
     FOUR_BALL_TARGET_OPTIONS,
     FOUR_BALL_CHANCES,
     PHYSICS_BASE_STEP_MS,
     PHYSICS_MAX_SUBSTEPS,
     RAIL_RESTITUTION,
+    RAIL_CONTACT_SPIN_DAMPING,
     RAIL_THICKNESS,
     RAIL_SURFACE_FRICTION,
     MAX_ROLL_DURATION_MS,
     STOP_SPEED,
     TABLE_HEIGHT,
     TABLE_WIDTH,
+    containBallInPocketTable,
     containBallInTable,
     computeBreathingAimAngle,
+    advanceCueSpinResponse,
     computeAngularVelocityScale,
     computeFourBallComboMultiplier,
     computeFourBallFoulPenalty,
@@ -35,8 +39,8 @@
     computeDynamicSpinDecay,
     computeSpinAdjustedVelocity,
     computeVerticalSpinFromTrack,
-    computeVerticalSpinVelocityScale,
     computeDynamicVelocityScale,
+    createCueSpinResponse,
     computePocketClearBonus,
     computePocketShotScore,
     computePhysicsFrameSlices,
@@ -46,6 +50,7 @@
     computeSpinFromTrack,
     evaluateFourBallShot,
     getPocketCenters,
+    getPocketRailGeometry,
     getFourBallNpcDifficulty,
     isBallInPocket,
     shouldSnapStoppedSpeed,
@@ -54,10 +59,11 @@
     type BallRole,
     type BilliardsRailSide,
     type BilliardsRankingMode,
+    type CueSpinResponse,
     type FourBallTargetScore,
     type ShotContact
   } from './gameUtils';
-  import { createBilliardsBallBody } from './billiardsPhysics';
+  import { createBilliardsBallBody, createBilliardsPocketRailBodies } from './billiardsPhysics';
   import {
     computeArtScore,
     evaluateArtShot,
@@ -114,6 +120,9 @@
     startedAt: string;
     scoreBefore: number;
     outcome: string;
+    tableWidth: number;
+    tableHeight: number;
+    ballRadius: number;
     frames: ReplayFrame[];
   };
   type ScoreEffect = {
@@ -140,6 +149,10 @@
     ball: BallBody;
     side: BilliardsRailSide;
     normal: { x: number; y: number };
+  };
+  type CueSpinResponseState = {
+    ball: BallBody;
+    response: CueSpinResponse;
   };
 
   let { data }: Props = $props();
@@ -203,6 +216,8 @@
   let cuePocketedThisShot = false;
   let engine: Matter.Engine | null = null;
   let pendingRailContacts: PendingRailContact[] = [];
+  let pendingCueSpinResponses: CueSpinResponseState[] = [];
+  let activeCueSpinResponses: CueSpinResponseState[] = [];
   let cueBall: BallBody | null = null;
   let npcCueBall: BallBody | null = null;
   let redBalls: BallBody[] = [];
@@ -356,51 +371,7 @@
   }
 
   function makePocketRails() {
-    const pocketGapHalf = POCKET_RADIUS + BALL_RADIUS * 0.7;
-    const minX = RAIL_THICKNESS;
-    const maxX = TABLE_WIDTH - RAIL_THICKNESS;
-    const minY = RAIL_THICKNESS;
-    const midY = TABLE_HEIGHT / 2;
-    const maxY = TABLE_HEIGHT - RAIL_THICKNESS;
-    const rails: RailBody[] = [];
-
-    const addHorizontalSegments = (y: number, side: BilliardsRailSide) => {
-      let start = 0;
-      for (const center of [minX, maxX]) {
-        const end = Math.max(start, center - pocketGapHalf);
-        if (end - start > 4) {
-          rails.push(makeRail((start + end) / 2, y, end - start, RAIL_THICKNESS, side));
-        }
-        start = Math.min(TABLE_WIDTH, center + pocketGapHalf);
-      }
-      if (TABLE_WIDTH - start > 4) {
-        rails.push(
-          makeRail((start + TABLE_WIDTH) / 2, y, TABLE_WIDTH - start, RAIL_THICKNESS, side)
-        );
-      }
-    };
-
-    const addVerticalSegments = (x: number, side: BilliardsRailSide) => {
-      let start = 0;
-      for (const center of [minY, midY, maxY]) {
-        const end = Math.max(start, center - pocketGapHalf);
-        if (end - start > 4) {
-          rails.push(makeRail(x, (start + end) / 2, RAIL_THICKNESS, end - start, side));
-        }
-        start = Math.min(TABLE_HEIGHT, center + pocketGapHalf);
-      }
-      if (TABLE_HEIGHT - start > 4) {
-        rails.push(
-          makeRail(x, (start + TABLE_HEIGHT) / 2, RAIL_THICKNESS, TABLE_HEIGHT - start, side)
-        );
-      }
-    };
-
-    addHorizontalSegments(RAIL_THICKNESS / 2, 'top');
-    addHorizontalSegments(TABLE_HEIGHT - RAIL_THICKNESS / 2, 'bottom');
-    addVerticalSegments(RAIL_THICKNESS / 2, 'left');
-    addVerticalSegments(TABLE_WIDTH - RAIL_THICKNESS / 2, 'right');
-    return rails;
+    return createBilliardsPocketRailBodies() as RailBody[];
   }
 
   function resetBodies() {
@@ -408,6 +379,8 @@
     lastFrame = performance.now();
     Composite.clear(engine.world, false);
     pendingRailContacts = [];
+    pendingCueSpinResponses = [];
+    activeCueSpinResponses = [];
 
     if (artMode) {
       const stage = currentArtStage;
@@ -542,6 +515,10 @@
       artResultMessage,
       artHelpUsed,
       artScoreBreakdown,
+      activeCueSpinResponses: activeCueSpinResponses.flatMap(({ ball, response }) => {
+        const ballId = ball.billiardsId ?? ball.label;
+        return ballId ? [{ ballId, response }] : [];
+      }),
       balls: getSavedBalls()
     };
   }
@@ -644,6 +621,15 @@
       Body.setAngularVelocity(ball, savedBall.angularVelocity);
     }
     redBalls = redBalls.filter((ball) => savedById.has(ball.billiardsId ?? ball.label));
+    const restoredBallsById = new Map(
+      createdBalls
+        .filter((ball) => savedById.has(ball.billiardsId ?? ball.label))
+        .map((ball) => [ball.billiardsId ?? ball.label, ball])
+    );
+    activeCueSpinResponses = saved.activeCueSpinResponses.flatMap(({ ballId, response }) => {
+      const ball = restoredBallsById.get(ballId);
+      return ball ? [{ ball, response }] : [];
+    });
     remainingObjectCount = redBalls.length;
     rollingPhysicsElapsedMs = 0;
     showRestoredMessage();
@@ -801,6 +787,9 @@
       startedAt: new Date().toISOString(),
       scoreBefore: score,
       outcome: '',
+      tableWidth: TABLE_WIDTH,
+      tableHeight: TABLE_HEIGHT,
+      ballRadius: BALL_RADIUS,
       frames: [makeReplayFrame(0)]
     };
     lastReplaySampleAt = startedAt;
@@ -975,6 +964,8 @@
 
   function settleShot() {
     rollingPhysicsElapsedMs = 0;
+    pendingCueSpinResponses = [];
+    activeCueSpinResponses = [];
     const balls = getTrackedBalls();
     for (const ball of balls) {
       Body.setVelocity(ball, { x: 0, y: 0 });
@@ -1105,6 +1096,8 @@
 
   function resetCueBall() {
     if (!cueBall || !engine) return;
+    pendingCueSpinResponses = [];
+    activeCueSpinResponses = [];
     Body.setPosition(cueBall, { x: TABLE_WIDTH * 0.5, y: TABLE_HEIGHT * 0.72 });
     Body.setVelocity(cueBall, { x: 0, y: 0 });
     Body.setAngularVelocity(cueBall, 0);
@@ -1130,12 +1123,66 @@
 
   function applyPendingRailResponses() {
     for (const contact of pendingRailContacts) {
+      const railSpin = contact.ball === cueBall ? activeSpin : 0;
       Body.setVelocity(
         contact.ball,
-        computeRailReboundVelocity(contact.ball.velocity, contact.side, contact.normal)
+        computeRailReboundVelocity(contact.ball.velocity, contact.side, contact.normal, railSpin)
       );
+      if (contact.ball === cueBall && activeSpin !== 0) {
+        activeSpin *= RAIL_CONTACT_SPIN_DAMPING;
+        if (Math.abs(activeSpin) < CUE_SPIN_STOP_VALUE) activeSpin = 0;
+        Body.setAngularVelocity(cueBall, -activeSpin / CUE_SPIN_ANGULAR_SCALE);
+      }
     }
     pendingRailContacts = [];
+  }
+
+  function queueCueSpinResponse(cue: BallBody, target: BallBody) {
+    if (activeVerticalSpin === 0 || !target.billiardsId) return;
+    const response = createCueSpinResponse(
+      Body.getVelocity(cue),
+      Body.getVelocity(target),
+      {
+        x: target.position.x - cue.position.x,
+        y: target.position.y - cue.position.y
+      },
+      activeVerticalSpin
+    );
+    if (response) pendingCueSpinResponses.push({ ball: cue, response });
+  }
+
+  function activatePendingCueSpinResponses() {
+    if (pendingCueSpinResponses.length === 0) return;
+    activeCueSpinResponses.push(...pendingCueSpinResponses);
+    for (const pending of pendingCueSpinResponses) {
+      if (pending.ball === cueBall) {
+        activeVerticalSpin *= CUE_VERTICAL_SPIN_CONTACT_RETENTION;
+      }
+    }
+    pendingCueSpinResponses = [];
+    if (Math.abs(activeVerticalSpin) < CUE_SPIN_STOP_VALUE) activeVerticalSpin = 0;
+  }
+
+  function advanceCueSpinResponses(delta: number) {
+    const nextResponses: CueSpinResponseState[] = [];
+    for (const active of activeCueSpinResponses) {
+      const next = advanceCueSpinResponse(Body.getVelocity(active.ball), active.response, delta);
+      Body.setVelocity(active.ball, next.velocity);
+      if (next.response) nextResponses.push({ ball: active.ball, response: next.response });
+    }
+    activeCueSpinResponses = nextResponses;
+  }
+
+  function ballHasSpinResponse(ball: BallBody) {
+    return activeCueSpinResponses.some((active) => active.ball === ball);
+  }
+
+  function queueActiveCueSpinContact(bodyA: BallBody, bodyB: BallBody) {
+    const activeCue = isPocketBall || currentTurn === 'player' ? cueBall : npcCueBall;
+    const cue = bodyA === activeCue ? bodyA : bodyB === activeCue ? bodyB : null;
+    if (!cue) return;
+    const target = cue === bodyA ? bodyB : bodyA;
+    if (target.billiardsId) queueCueSpinResponse(cue, target);
   }
 
   function recordCueContact(bodyA: BallBody, bodyB: BallBody) {
@@ -1406,6 +1453,8 @@
     opponentCueHitThisShot = false;
     activeSpin = 0;
     activeVerticalSpin = 0;
+    pendingCueSpinResponses = [];
+    activeCueSpinResponses = [];
     Body.setVelocity(npcCueBall, computeShotVelocity(actualAngle, plan.power));
     Body.setAngularVelocity(npcCueBall, 0);
     status = 'rolling';
@@ -1594,8 +1643,10 @@
     artShotVerticalSpin = verticalSpin;
     lastFoulPenalty = 0;
     opponentCueHitThisShot = false;
+    pendingCueSpinResponses = [];
+    activeCueSpinResponses = [];
     Body.setVelocity(cueBall, velocity);
-    Body.setAngularVelocity(cueBall, spin / CUE_SPIN_ANGULAR_SCALE);
+    Body.setAngularVelocity(cueBall, -spin / CUE_SPIN_ANGULAR_SCALE);
     activeSpin = spin;
     activeVerticalSpin = verticalSpin;
     resetSpinTip();
@@ -1620,17 +1671,23 @@
     ctx.stroke();
     if (role === 'cue') {
       ctx.beginPath();
-      ctx.arc(ball.position.x - 3, ball.position.y - 3, 2.3, 0, Math.PI * 2);
+      ctx.arc(
+        ball.position.x - BALL_RADIUS * 0.3,
+        ball.position.y - BALL_RADIUS * 0.3,
+        BALL_RADIUS * 0.23,
+        0,
+        Math.PI * 2
+      );
       ctx.fillStyle = 'rgba(255, 255, 255, 0.78)';
       ctx.fill();
     } else if (role === 'opponent') {
       ctx.beginPath();
-      ctx.arc(ball.position.x, ball.position.y, 2.8, 0, Math.PI * 2);
+      ctx.arc(ball.position.x, ball.position.y, BALL_RADIUS * 0.28, 0, Math.PI * 2);
       ctx.fillStyle = '#315b91';
       ctx.fill();
     } else if (isPocketBall) {
       ctx.fillStyle = 'rgba(255, 255, 255, 0.86)';
-      ctx.font = 'bold 8px system-ui, sans-serif';
+      ctx.font = `bold ${BALL_RADIUS * 0.8}px system-ui, sans-serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText((ball.billiardsId ?? '').replace('pool-', ''), ball.position.x, ball.position.y);
@@ -1641,13 +1698,44 @@
     if (!isPocketBall) return;
     for (const pocket of getPocketCenters()) {
       ctx.beginPath();
-      ctx.arc(pocket.x, pocket.y, POCKET_RADIUS, 0, Math.PI * 2);
+      ctx.arc(pocket.x, pocket.y, POCKET_DRAW_RADIUS, 0, Math.PI * 2);
       ctx.fillStyle = '#050807';
       ctx.fill();
-      ctx.lineWidth = 2;
-      ctx.strokeStyle = 'rgba(240, 192, 90, 0.58)';
-      ctx.stroke();
     }
+  }
+
+  function drawPocketCushions(ctx: CanvasRenderingContext2D) {
+    if (!isPocketBall) return;
+    const geometry = getPocketRailGeometry();
+    ctx.fillStyle = '#31533b';
+    for (const jaw of geometry.jaws) {
+      ctx.beginPath();
+      ctx.moveTo(jaw.vertices[0].x, jaw.vertices[0].y);
+      ctx.lineTo(jaw.vertices[1].x, jaw.vertices[1].y);
+      ctx.lineTo(jaw.vertices[2].x, jaw.vertices[2].y);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    ctx.strokeStyle = 'rgba(240, 192, 90, 0.72)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    for (const rail of geometry.rails) {
+      if (rail.side === 'top' || rail.side === 'bottom') {
+        const y = rail.side === 'top' ? RAIL_THICKNESS : TABLE_HEIGHT - RAIL_THICKNESS;
+        ctx.moveTo(rail.x - rail.width / 2, y);
+        ctx.lineTo(rail.x + rail.width / 2, y);
+      } else {
+        const x = rail.side === 'left' ? RAIL_THICKNESS : TABLE_WIDTH - RAIL_THICKNESS;
+        ctx.moveTo(x, rail.y - rail.height / 2);
+        ctx.lineTo(x, rail.y + rail.height / 2);
+      }
+    }
+    for (const jaw of geometry.jaws) {
+      ctx.moveTo(jaw.face[0].x, jaw.face[0].y);
+      ctx.lineTo(jaw.face[1].x, jaw.face[1].y);
+    }
+    ctx.stroke();
   }
 
   function drawArtGuides(ctx: CanvasRenderingContext2D) {
@@ -1742,14 +1830,18 @@
       TABLE_HEIGHT - RAIL_THICKNESS * 2
     );
     drawPockets(ctx);
-    ctx.strokeStyle = '#d6b36a';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(
-      RAIL_THICKNESS + 6,
-      RAIL_THICKNESS + 6,
-      TABLE_WIDTH - RAIL_THICKNESS * 2 - 12,
-      TABLE_HEIGHT - RAIL_THICKNESS * 2 - 12
-    );
+    if (isPocketBall) {
+      drawPocketCushions(ctx);
+    } else {
+      ctx.strokeStyle = '#d6b36a';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(
+        RAIL_THICKNESS + 6,
+        RAIL_THICKNESS + 6,
+        TABLE_WIDTH - RAIL_THICKNESS * 2 - 12,
+        TABLE_HEIGHT - RAIL_THICKNESS * 2 - 12
+      );
+    }
     drawArtGuides(ctx);
 
     const replayFrame = replaying ? lastPlayerReplay?.frames[replayFrameIndex] : null;
@@ -1771,7 +1863,7 @@
 
   function keepBallsInsideTable() {
     for (const ball of getTrackedBalls()) {
-      const next = containBallInTable({
+      const next = (isPocketBall ? containBallInPocketTable : containBallInTable)({
         position: ball.position,
         velocity: ball.velocity
       });
@@ -1793,6 +1885,8 @@
         cuePocketedThisShot = true;
         activeSpin = 0;
         activeVerticalSpin = 0;
+        pendingCueSpinResponses = [];
+        activeCueSpinResponses = [];
         continue;
       }
       redBalls = redBalls.filter((candidate) => candidate !== ball);
@@ -1816,16 +1910,13 @@
       } else {
         Body.setAngularVelocity(ball, ball.angularVelocity * computeAngularVelocityScale(delta));
       }
-      if (shouldSnapStoppedSpeed(speed)) {
+      if (shouldSnapStoppedSpeed(speed) && !ballHasSpinResponse(ball)) {
         Body.setVelocity(ball, { x: 0, y: 0 });
         Body.setAngularVelocity(ball, 0);
         if (ball === cueBall) activeVerticalSpin = 0;
         continue;
       }
-      const velocityScale =
-        ball === cueBall && activeVerticalSpin !== 0
-          ? computeVerticalSpinVelocityScale(speed, delta, activeVerticalSpin)
-          : computeDynamicVelocityScale(speed, delta);
+      const velocityScale = computeDynamicVelocityScale(speed, delta);
       Body.setVelocity(ball, {
         x: ball.velocity.x * velocityScale,
         y: ball.velocity.y * velocityScale
@@ -1856,6 +1947,8 @@
         substep === PHYSICS_MAX_SUBSTEPS - 1 ? remainingDelta : remainingDelta / remainingSubsteps;
       Engine.update(engine, substepDelta);
       applyPendingRailResponses();
+      activatePendingCueSpinResponses();
+      advanceCueSpinResponses(substepDelta);
       handlePocketedBalls();
       keepBallsInsideTable();
       if (status === 'rolling') applyDynamicRollingDrag(substepDelta);
@@ -1883,14 +1976,13 @@
         (adjustedVelocity.x !== cueBall.velocity.x || adjustedVelocity.y !== cueBall.velocity.y)
       ) {
         Body.setVelocity(cueBall, adjustedVelocity);
-        activeSpin *= computeDynamicSpinDecay(speed, delta);
-        if (Math.abs(activeSpin) < CUE_SPIN_STOP_VALUE) {
-          activeSpin = 0;
-          Body.setAngularVelocity(cueBall, 0);
-        }
-      } else {
+      }
+      activeSpin *= computeDynamicSpinDecay(speed, delta);
+      if (Math.abs(activeSpin) < CUE_SPIN_STOP_VALUE || speed <= STOP_SPEED) {
         activeSpin = 0;
         Body.setAngularVelocity(cueBall, 0);
+      } else {
+        Body.setAngularVelocity(cueBall, -activeSpin / CUE_SPIN_ANGULAR_SCALE);
       }
     }
   }
@@ -1933,7 +2025,8 @@
 
     if (
       status === 'rolling' &&
-      (rollingPhysicsElapsedMs > MAX_ROLL_DURATION_MS || stopped(getTrackedBalls(), STOP_SPEED))
+      (rollingPhysicsElapsedMs > MAX_ROLL_DURATION_MS ||
+        (activeCueSpinResponses.length === 0 && stopped(getTrackedBalls(), STOP_SPEED)))
     ) {
       activeSpin = 0;
       rollingPhysicsElapsedMs = 0;
@@ -1992,6 +2085,7 @@
       for (const pair of event.pairs) {
         const railContact = getRailContact(pair.bodyA, pair.bodyB, pair.collision.normal);
         if (railContact) pendingRailContacts.push(railContact);
+        queueActiveCueSpinContact(pair.bodyA as BallBody, pair.bodyB as BallBody);
         if (artMode) recordArtCollision(pair.bodyA, pair.bodyB);
         else recordCueContact(pair.bodyA as BallBody, pair.bodyB as BallBody);
       }
@@ -2922,9 +3016,9 @@
 
   .table-wrap {
     position: relative;
-    width: min(100%, calc((100svh - 166px) * 0.643));
+    width: min(100%, calc((100svh - 166px) * 0.526316));
     max-width: 430px;
-    aspect-ratio: 360 / 560;
+    aspect-ratio: 360 / 684;
     border: 4px solid #5d3b22;
     border-radius: 8px;
     background: #163f2b;
@@ -3412,7 +3506,7 @@
     }
 
     .table-wrap {
-      width: min(100%, calc((100svh - 188px) * 0.643));
+      width: min(100%, calc((100svh - 188px) * 0.526316));
     }
 
     .power-rail {

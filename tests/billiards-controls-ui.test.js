@@ -41,4 +41,16 @@ describe('billiards controls UI', () => {
     expect(billiardsPage).toContain('aria-live="polite"');
     expect(billiardsPage).not.toMatch(/(?:window\.)?(?:alert|confirm)\s*\(/);
   });
+
+  it('queues follow and draw physics before branching into art scoring', () => {
+    const collisionHandler = billiardsPage.slice(
+      billiardsPage.indexOf('const handleCollisionStart'),
+      billiardsPage.indexOf("Events.on(engine, 'collisionStart'")
+    );
+
+    expect(collisionHandler).toContain('queueActiveCueSpinContact');
+    expect(collisionHandler.indexOf('queueActiveCueSpinContact')).toBeLessThan(
+      collisionHandler.indexOf('if (artMode)')
+    );
+  });
 });

@@ -9,6 +9,30 @@ const boardArticle = readFileSync(
 );
 
 describe('billiards board replay player UI', () => {
+  it('uses recorded table geometry with legacy replay fallbacks', () => {
+    expect(replayPlayer).toContain('Number.isFinite(shot?.tableWidth)');
+    expect(replayPlayer).toContain('Number.isFinite(shot?.tableHeight)');
+    expect(replayPlayer).toContain('Number.isFinite(shot?.ballRadius)');
+    expect(replayPlayer).toContain(': 360');
+    expect(replayPlayer).toContain(': 560');
+    expect(replayPlayer).toContain(': 11.5');
+    expect(replayPlayer).toContain('Number.isFinite(shot?.tableWidth) &&');
+    expect(replayPlayer).toContain('(ballRadius / CURRENT_BALL_RADIUS) * 18');
+    expect(replayPlayer).toContain('(ballRadius / CURRENT_BALL_RADIUS) * 12');
+    expect(replayPlayer).toContain('width={tableWidth}');
+    expect(replayPlayer).toContain('height={tableHeight}');
+    expect(replayPlayer).toContain('context.arc(ball.x, ball.y, ballRadius');
+  });
+
+  it('redraws changed replay props and reproduces physical pocket jaws', () => {
+    expect(replayPlayer).toContain('$effect(() =>');
+    expect(replayPlayer).toContain('const firstFrame = frames[0]');
+    expect(replayPlayer).toContain('getPocketRailGeometry()');
+    expect(replayPlayer).toContain('for (const jaw of geometry.jaws)');
+    expect(replayPlayer).toContain('for (const rail of geometry.rails)');
+    expect(replayPlayer).toContain('onDestroy(stop)');
+  });
+
   it('visualizes recorded spin and power', () => {
     expect(replayPlayer).toContain('class="replay-spin-ball"');
     expect(replayPlayer).toContain('clip-path: circle(50% at 50% 50%)');

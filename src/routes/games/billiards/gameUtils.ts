@@ -32,15 +32,39 @@ export interface BallMotionSample {
   velocity: { x: number; y: number };
 }
 
+export type PocketRailRectangle = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  side: BilliardsRailSide;
+};
+
+export type PocketJawGeometry = {
+  vertices: [{ x: number; y: number }, { x: number; y: number }, { x: number; y: number }];
+  face: [{ x: number; y: number }, { x: number; y: number }];
+  side: BilliardsRailSide;
+};
+
+export type CueSpinResponse = {
+  direction: { x: number; y: number };
+  remainingDeltaSpeed: number;
+  remainingMs: number;
+};
+
 export const TABLE_WIDTH = 360;
-export const TABLE_HEIGHT = 560;
-export const BALL_RADIUS = 10;
+export const TABLE_HEIGHT = 684;
+export const BALL_RADIUS = 7.2;
 export const RAIL_THICKNESS = 18;
-export const POCKET_RADIUS = 18;
+export const POCKET_CAPTURE_RADIUS = BALL_RADIUS * 1.55;
+export const POCKET_DRAW_RADIUS = 12;
+export const CORNER_POCKET_MOUTH = BALL_RADIUS * 4;
+export const SIDE_POCKET_MOUTH = BALL_RADIUS * 4.4;
+export const POCKET_MOUTH_CAPTURE_TOLERANCE = 0.35;
 export const MAX_SHOT_SPEED = 27;
 export const PHYSICS_BASE_STEP_MS = 16.66;
 export const PHYSICS_MAX_TRAVEL_PER_STEP = BALL_RADIUS * 0.2;
-export const PHYSICS_MAX_SUBSTEPS = 32;
+export const PHYSICS_MAX_SUBSTEPS = 48;
 export const PHYSICS_MAX_CATCH_UP_MS = PHYSICS_BASE_STEP_MS * 4;
 export const PHYSICS_SLICE_TOLERANCE_MS = 0.01;
 export const STOP_SPEED = 0.06;
@@ -61,28 +85,29 @@ export const POCKET_CUE_SCRATCH_PENALTY = 75;
 export const BALL_RESTITUTION = 0.94;
 export const BALL_SURFACE_FRICTION = 0.018;
 export const BALL_STATIC_FRICTION = 0.006;
-export const BALL_FRICTION_AIR = 0.015;
+export const BALL_FRICTION_AIR = 0;
 export const RAIL_RESTITUTION = 0.88;
 export const RAIL_SURFACE_FRICTION = 0.016;
 export const RAIL_BOUNDARY_DAMPING = 0.86;
 export const RAIL_TANGENT_DAMPING = 0.96;
 export const RAIL_CONTACT_STOP_SPEED = 0.35;
 export const RAIL_CONTACT_SPIN_DAMPING = 0.62;
+export const CUE_SIDE_SPIN_RAIL_COUPLING = 0.14;
 export const CUE_SPIN_ANGULAR_SCALE = 380;
 export const CUE_SPIN_CURVE_SCALE = 0.00016;
 export const CUE_SPIN_DECAY = 0.992;
 export const CUE_SPIN_MIN_SPEED_RATIO = 0.14;
 export const CUE_SPIN_STOP_VALUE = 2;
-export const CUE_VERTICAL_SPIN_DRAG_REDUCTION = 0.55;
-export const CUE_VERTICAL_SPIN_BRAKE_BOOST = 1.25;
 export const CUE_MASSE_MIN_SIDE_SPIN = 55;
 export const CUE_MASSE_MIN_VERTICAL_SPIN = 35;
 export const CUE_MASSE_CURVE_BOOST = 0.55;
+export const CUE_FOLLOW_CONTACT_PUSH = 0.22;
 export const CUE_BACKSPIN_CONTACT_PULL = 0.32;
+export const CUE_VERTICAL_SPIN_RESPONSE_MS = 140;
+export const CUE_VERTICAL_SPIN_CONTACT_RETENTION = 0.35;
 export const ANGULAR_FRICTION_DECAY = 0.94;
 export const ANGULAR_STOP_SPEED = 0.018;
-export const DYNAMIC_DRAG_BASE = 0.0018;
-export const DYNAMIC_DRAG_SPEED_SCALE = 0.0048;
+export const ROLLING_DECELERATION_PER_FRAME = 0.1;
 export const POWER_SWEEP_MIN = 10;
 export const POWER_SWEEP_MAX = 100;
 export const POWER_SWEEP_PERIOD_MS = 1600;
@@ -178,11 +203,330 @@ export function getPocketCenters(): Array<{ x: number; y: number }> {
 
 export function isBallInPocket(
   position: { x: number; y: number },
-  pocketRadius = POCKET_RADIUS
+  pocketRadius = POCKET_CAPTURE_RADIUS
 ): boolean {
-  return getPocketCenters().some(
-    (pocket) => Math.hypot(position.x - pocket.x, position.y - pocket.y) <= pocketRadius
-  );
+  const centers = getPocketCenters();
+  return centers.some((pocket, index) => {
+    const dx = position.x - pocket.x;
+    const dy = position.y - pocket.y;
+    if (Math.hypot(dx, dy) > pocketRadius) return false;
+
+    const isSidePocket = index === 2 || index === 3;
+    if (isSidePocket) {
+      const centerClearance = SIDE_POCKET_MOUTH / 2 - BALL_RADIUS + POCKET_MOUTH_CAPTURE_TOLERANCE;
+      return Math.abs(dy) <= centerClearance;
+    }
+
+    const inwardX = dx * (index === 0 || index === 2 || index === 4 ? 1 : -1);
+    const inwardY = dy * (index <= 1 ? 1 : -1);
+    const tangentOffset = Math.abs((inwardX - inwardY) / Math.SQRT2);
+    const centerClearance =
+      (CORNER_POCKET_MOUTH - BALL_RADIUS * 2) / 2 + POCKET_MOUTH_CAPTURE_TOLERANCE;
+    return tangentOffset <= centerClearance;
+  });
+}
+
+function isPositionInPocketMouth(
+  position: { x: number; y: number },
+  side: BilliardsRailSide
+): boolean {
+  const pocketIndexes =
+    side === 'top' ? [0, 1] : side === 'right' ? [1, 3, 5] : side === 'bottom' ? [4, 5] : [0, 2, 4];
+  const centers = getPocketCenters();
+
+  return pocketIndexes.some((index) => {
+    const pocket = centers[index];
+    const dx = position.x - pocket.x;
+    const dy = position.y - pocket.y;
+    const inwardX = dx * (index === 0 || index === 2 || index === 4 ? 1 : -1);
+    const inwardY = dy * (index <= 1 ? 1 : -1);
+
+    if (index === 2 || index === 3) {
+      // The fallback boundary is already one ball radius inside the jaw noses.
+      // Keep the whole physical mouth open here and let the jaw bodies narrow it.
+      const containmentHalfMouth = SIDE_POCKET_MOUTH / 2 + POCKET_MOUTH_CAPTURE_TOLERANCE;
+      return inwardX >= -POCKET_CAPTURE_RADIUS && Math.abs(dy) <= containmentHalfMouth;
+    }
+
+    if (inwardX < -POCKET_CAPTURE_RADIUS || inwardY < -POCKET_CAPTURE_RADIUS) return false;
+
+    const tangentOffset = Math.abs((inwardX - inwardY) / Math.SQRT2);
+    const centerClearance =
+      (CORNER_POCKET_MOUTH - BALL_RADIUS * 2) / 2 + POCKET_MOUTH_CAPTURE_TOLERANCE;
+    return tangentOffset <= centerClearance;
+  });
+}
+
+export function containBallInPocketTable(sample: BallBoundarySample): {
+  corrected: boolean;
+  position: { x: number; y: number };
+  velocity: { x: number; y: number };
+} {
+  const minX = RAIL_THICKNESS + BALL_RADIUS;
+  const maxX = TABLE_WIDTH - RAIL_THICKNESS - BALL_RADIUS;
+  const minY = RAIL_THICKNESS + BALL_RADIUS;
+  const maxY = TABLE_HEIGHT - RAIL_THICKNESS - BALL_RADIUS;
+  const position = { ...sample.position };
+  const velocity = { ...sample.velocity };
+  const openLeft = position.x < minX && isPositionInPocketMouth(position, 'left');
+  const openRight = position.x > maxX && isPositionInPocketMouth(position, 'right');
+  const openTop = position.y < minY && isPositionInPocketMouth(position, 'top');
+  const openBottom = position.y > maxY && isPositionInPocketMouth(position, 'bottom');
+  let corrected = false;
+
+  if (position.x < minX && !openLeft) {
+    position.x = minX;
+    if (velocity.x < 0) {
+      velocity.x = Math.abs(velocity.x) * RAIL_BOUNDARY_DAMPING;
+      velocity.y *= RAIL_TANGENT_DAMPING;
+    }
+    corrected = true;
+  } else if (position.x > maxX && !openRight) {
+    position.x = maxX;
+    if (velocity.x > 0) {
+      velocity.x = -Math.abs(velocity.x) * RAIL_BOUNDARY_DAMPING;
+      velocity.y *= RAIL_TANGENT_DAMPING;
+    }
+    corrected = true;
+  }
+
+  if (position.y < minY && !openTop) {
+    position.y = minY;
+    if (velocity.y < 0) {
+      velocity.y = Math.abs(velocity.y) * RAIL_BOUNDARY_DAMPING;
+      velocity.x *= RAIL_TANGENT_DAMPING;
+    }
+    corrected = true;
+  } else if (position.y > maxY && !openBottom) {
+    position.y = maxY;
+    if (velocity.y > 0) {
+      velocity.y = -Math.abs(velocity.y) * RAIL_BOUNDARY_DAMPING;
+      velocity.x *= RAIL_TANGENT_DAMPING;
+    }
+    corrected = true;
+  }
+
+  return { corrected, position, velocity };
+}
+
+let cachedPocketRailGeometry: {
+  rails: PocketRailRectangle[];
+  jaws: PocketJawGeometry[];
+} | null = null;
+
+export function getPocketRailGeometry(): {
+  rails: PocketRailRectangle[];
+  jaws: PocketJawGeometry[];
+} {
+  if (cachedPocketRailGeometry) return cachedPocketRailGeometry;
+  const min = RAIL_THICKNESS;
+  const maxX = TABLE_WIDTH - RAIL_THICKNESS;
+  const maxY = TABLE_HEIGHT - RAIL_THICKNESS;
+  const midY = TABLE_HEIGHT / 2;
+  const cornerOffset = CORNER_POCKET_MOUTH / Math.SQRT2;
+  const sideHalf = SIDE_POCKET_MOUTH / 2;
+  const cornerNoseLeft = min + cornerOffset;
+  const cornerNoseRight = maxX - cornerOffset;
+  const cornerNoseTop = min + cornerOffset;
+  const cornerNoseBottom = maxY - cornerOffset;
+  const sideNoseTop = midY - sideHalf;
+  const sideNoseBottom = midY + sideHalf;
+  const triangleOuterSpan = 4;
+
+  const rails: PocketRailRectangle[] = [
+    {
+      x: (cornerNoseLeft + cornerNoseRight) / 2,
+      y: min / 2,
+      width: cornerNoseRight - cornerNoseLeft,
+      height: min,
+      side: 'top'
+    },
+    {
+      x: (cornerNoseLeft + cornerNoseRight) / 2,
+      y: TABLE_HEIGHT - min / 2,
+      width: cornerNoseRight - cornerNoseLeft,
+      height: min,
+      side: 'bottom'
+    },
+    {
+      x: min / 2,
+      y: (cornerNoseTop + sideNoseTop) / 2,
+      width: min,
+      height: sideNoseTop - cornerNoseTop,
+      side: 'left'
+    },
+    {
+      x: min / 2,
+      y: (sideNoseBottom + cornerNoseBottom) / 2,
+      width: min,
+      height: cornerNoseBottom - sideNoseBottom,
+      side: 'left'
+    },
+    {
+      x: TABLE_WIDTH - min / 2,
+      y: (cornerNoseTop + sideNoseTop) / 2,
+      width: min,
+      height: sideNoseTop - cornerNoseTop,
+      side: 'right'
+    },
+    {
+      x: TABLE_WIDTH - min / 2,
+      y: (sideNoseBottom + cornerNoseBottom) / 2,
+      width: min,
+      height: cornerNoseBottom - sideNoseBottom,
+      side: 'right'
+    }
+  ];
+
+  const jaws: PocketJawGeometry[] = [
+    {
+      vertices: [
+        { x: cornerOffset, y: 0 },
+        { x: cornerNoseLeft + triangleOuterSpan, y: 0 },
+        { x: cornerNoseLeft, y: min }
+      ],
+      face: [
+        { x: cornerOffset, y: 0 },
+        { x: cornerNoseLeft, y: min }
+      ],
+      side: 'top'
+    },
+    {
+      vertices: [
+        { x: 0, y: cornerOffset },
+        { x: 0, y: cornerNoseTop + triangleOuterSpan },
+        { x: min, y: cornerNoseTop }
+      ],
+      face: [
+        { x: 0, y: cornerOffset },
+        { x: min, y: cornerNoseTop }
+      ],
+      side: 'left'
+    },
+    {
+      vertices: [
+        { x: cornerNoseRight - triangleOuterSpan, y: 0 },
+        { x: TABLE_WIDTH - cornerOffset, y: 0 },
+        { x: cornerNoseRight, y: min }
+      ],
+      face: [
+        { x: TABLE_WIDTH - cornerOffset, y: 0 },
+        { x: cornerNoseRight, y: min }
+      ],
+      side: 'top'
+    },
+    {
+      vertices: [
+        { x: TABLE_WIDTH, y: cornerOffset },
+        { x: TABLE_WIDTH, y: cornerNoseTop + triangleOuterSpan },
+        { x: maxX, y: cornerNoseTop }
+      ],
+      face: [
+        { x: TABLE_WIDTH, y: cornerOffset },
+        { x: maxX, y: cornerNoseTop }
+      ],
+      side: 'right'
+    },
+    {
+      vertices: [
+        { x: 0, y: sideNoseTop - triangleOuterSpan },
+        { x: 0, y: sideNoseTop + min },
+        { x: min, y: sideNoseTop }
+      ],
+      face: [
+        { x: 0, y: sideNoseTop + min },
+        { x: min, y: sideNoseTop }
+      ],
+      side: 'left'
+    },
+    {
+      vertices: [
+        { x: 0, y: sideNoseBottom - min },
+        { x: 0, y: sideNoseBottom + triangleOuterSpan },
+        { x: min, y: sideNoseBottom }
+      ],
+      face: [
+        { x: 0, y: sideNoseBottom - min },
+        { x: min, y: sideNoseBottom }
+      ],
+      side: 'left'
+    },
+    {
+      vertices: [
+        { x: TABLE_WIDTH, y: sideNoseTop - triangleOuterSpan },
+        { x: TABLE_WIDTH, y: sideNoseTop + min },
+        { x: maxX, y: sideNoseTop }
+      ],
+      face: [
+        { x: TABLE_WIDTH, y: sideNoseTop + min },
+        { x: maxX, y: sideNoseTop }
+      ],
+      side: 'right'
+    },
+    {
+      vertices: [
+        { x: TABLE_WIDTH, y: sideNoseBottom - min },
+        { x: TABLE_WIDTH, y: sideNoseBottom + triangleOuterSpan },
+        { x: maxX, y: sideNoseBottom }
+      ],
+      face: [
+        { x: TABLE_WIDTH, y: sideNoseBottom - min },
+        { x: maxX, y: sideNoseBottom }
+      ],
+      side: 'right'
+    },
+    {
+      vertices: [
+        { x: 0, y: cornerNoseBottom - triangleOuterSpan },
+        { x: 0, y: TABLE_HEIGHT - cornerOffset },
+        { x: min, y: cornerNoseBottom }
+      ],
+      face: [
+        { x: 0, y: TABLE_HEIGHT - cornerOffset },
+        { x: min, y: cornerNoseBottom }
+      ],
+      side: 'left'
+    },
+    {
+      vertices: [
+        { x: cornerOffset, y: TABLE_HEIGHT },
+        { x: cornerNoseLeft + triangleOuterSpan, y: TABLE_HEIGHT },
+        { x: cornerNoseLeft, y: maxY }
+      ],
+      face: [
+        { x: cornerOffset, y: TABLE_HEIGHT },
+        { x: cornerNoseLeft, y: maxY }
+      ],
+      side: 'bottom'
+    },
+    {
+      vertices: [
+        { x: TABLE_WIDTH, y: cornerNoseBottom - triangleOuterSpan },
+        { x: TABLE_WIDTH, y: TABLE_HEIGHT - cornerOffset },
+        { x: maxX, y: cornerNoseBottom }
+      ],
+      face: [
+        { x: TABLE_WIDTH, y: TABLE_HEIGHT - cornerOffset },
+        { x: maxX, y: cornerNoseBottom }
+      ],
+      side: 'right'
+    },
+    {
+      vertices: [
+        { x: cornerNoseRight - triangleOuterSpan, y: TABLE_HEIGHT },
+        { x: TABLE_WIDTH - cornerOffset, y: TABLE_HEIGHT },
+        { x: cornerNoseRight, y: maxY }
+      ],
+      face: [
+        { x: TABLE_WIDTH - cornerOffset, y: TABLE_HEIGHT },
+        { x: cornerNoseRight, y: maxY }
+      ],
+      side: 'bottom'
+    }
+  ];
+
+  cachedPocketRailGeometry = { rails, jaws };
+  return cachedPocketRailGeometry;
 }
 
 export function computePocketShotScore(pocketedObjects: number, cueScratched: boolean): number {
@@ -249,10 +593,10 @@ export function computePhysicsFrameSlices(elapsedMs: number): number[] {
 }
 
 export function computeDynamicVelocityScale(speed: number, deltaMs: number): number {
-  const frameScale = Math.max(0, deltaMs / 16.66);
-  const loss =
-    (DYNAMIC_DRAG_BASE + DYNAMIC_DRAG_SPEED_SCALE * computeSpeedRatio(speed)) * frameScale;
-  return Math.max(0.9, 1 - loss);
+  if (!Number.isFinite(speed) || speed <= 0) return 0;
+  const frameScale = Math.max(0, deltaMs / PHYSICS_BASE_STEP_MS);
+  const nextSpeed = Math.max(0, speed - ROLLING_DECELERATION_PER_FRAME * frameScale);
+  return nextSpeed / speed;
 }
 
 export function computeAngularVelocityScale(deltaMs: number): number {
@@ -272,25 +616,99 @@ export function computeRailContactVelocityScale(speed: number): number {
 export function computeRailReboundVelocity(
   velocity: { x: number; y: number },
   side: BilliardsRailSide,
-  collisionNormal?: { x: number; y: number }
+  collisionNormal?: { x: number; y: number },
+  sideSpin = 0
 ): { x: number; y: number } {
   const normalScale = RAIL_RESTITUTION / BALL_RESTITUTION;
-  const fallbackNormal = side === 'left' || side === 'right' ? { x: 1, y: 0 } : { x: 0, y: 1 };
+  const inwardNormal =
+    side === 'left'
+      ? { x: 1, y: 0 }
+      : side === 'right'
+        ? { x: -1, y: 0 }
+        : side === 'top'
+          ? { x: 0, y: 1 }
+          : { x: 0, y: -1 };
+  const fallbackNormal = inwardNormal;
   const rawNormal = collisionNormal ?? fallbackNormal;
   const normalLength = Math.hypot(rawNormal.x, rawNormal.y);
-  const normal =
+  let normal =
     normalLength > 0
       ? { x: rawNormal.x / normalLength, y: rawNormal.y / normalLength }
       : fallbackNormal;
+  if (normal.x * inwardNormal.x + normal.y * inwardNormal.y < 0) {
+    normal = { x: -normal.x, y: -normal.y };
+  }
+  const tangent = { x: -normal.y, y: normal.x };
   const normalVelocity = velocity.x * normal.x + velocity.y * normal.y;
-  const tangentVelocity = {
-    x: velocity.x - normalVelocity * normal.x,
-    y: velocity.y - normalVelocity * normal.y
-  };
+  const tangentVelocity = velocity.x * tangent.x + velocity.y * tangent.y;
+  const englishKick =
+    -Math.max(-1, Math.min(1, sideSpin / 100)) *
+    Math.abs(normalVelocity) *
+    CUE_SIDE_SPIN_RAIL_COUPLING;
 
   return {
-    x: normal.x * normalVelocity * normalScale + tangentVelocity.x * RAIL_TANGENT_DAMPING,
-    y: normal.y * normalVelocity * normalScale + tangentVelocity.y * RAIL_TANGENT_DAMPING
+    x:
+      normal.x * normalVelocity * normalScale +
+      tangent.x * (tangentVelocity * RAIL_TANGENT_DAMPING + englishKick),
+    y:
+      normal.y * normalVelocity * normalScale +
+      tangent.y * (tangentVelocity * RAIL_TANGENT_DAMPING + englishKick)
+  };
+}
+
+export function createCueSpinResponse(
+  incomingCueVelocity: { x: number; y: number },
+  incomingTargetVelocity: { x: number; y: number },
+  contactNormal: { x: number; y: number },
+  verticalSpin: number
+): CueSpinResponse | null {
+  const incomingSpeed = Math.hypot(incomingCueVelocity.x, incomingCueVelocity.y);
+  const normalLength = Math.hypot(contactNormal.x, contactNormal.y);
+  const spinRatio = Math.max(-1, Math.min(1, verticalSpin / 100));
+  if (incomingSpeed <= STOP_SPEED || normalLength === 0 || spinRatio === 0) return null;
+
+  const normal = { x: contactNormal.x / normalLength, y: contactNormal.y / normalLength };
+  const relativeVelocity = {
+    x: incomingCueVelocity.x - incomingTargetVelocity.x,
+    y: incomingCueVelocity.y - incomingTargetVelocity.y
+  };
+  const closingSpeed = Math.max(0, relativeVelocity.x * normal.x + relativeVelocity.y * normal.y);
+  if (closingSpeed === 0) return null;
+  const contactScale = spinRatio > 0 ? CUE_FOLLOW_CONTACT_PUSH : CUE_BACKSPIN_CONTACT_PULL;
+
+  return {
+    direction: {
+      x: incomingCueVelocity.x / incomingSpeed,
+      y: incomingCueVelocity.y / incomingSpeed
+    },
+    remainingDeltaSpeed: closingSpeed * Math.abs(spinRatio) * contactScale * Math.sign(spinRatio),
+    remainingMs: CUE_VERTICAL_SPIN_RESPONSE_MS
+  };
+}
+
+export function advanceCueSpinResponse(
+  velocity: { x: number; y: number },
+  response: CueSpinResponse,
+  deltaMs: number
+): { velocity: { x: number; y: number }; response: CueSpinResponse | null } {
+  if (response.remainingMs <= 0 || response.remainingDeltaSpeed === 0 || deltaMs <= 0) {
+    return { velocity: { ...velocity }, response: null };
+  }
+  const appliedMs = Math.min(response.remainingMs, deltaMs);
+  const appliedRatio = appliedMs / response.remainingMs;
+  const appliedDeltaSpeed = response.remainingDeltaSpeed * appliedRatio;
+  const remainingMs = response.remainingMs - appliedMs;
+  const remainingDeltaSpeed = response.remainingDeltaSpeed - appliedDeltaSpeed;
+
+  return {
+    velocity: {
+      x: velocity.x + response.direction.x * appliedDeltaSpeed,
+      y: velocity.y + response.direction.y * appliedDeltaSpeed
+    },
+    response:
+      remainingMs > 0.0001 && Math.abs(remainingDeltaSpeed) > 0.0001
+        ? { ...response, remainingDeltaSpeed, remainingMs }
+        : null
   };
 }
 
@@ -321,9 +739,9 @@ export function computeMasseCurveMultiplier(sideSpin: number, verticalSpin: numb
     Math.abs(sideSpin) < CUE_MASSE_MIN_SIDE_SPIN ||
     Math.abs(verticalSpin) < CUE_MASSE_MIN_VERTICAL_SPIN
   ) {
-    return 1;
+    return 0;
   }
-  return 1 + CUE_MASSE_CURVE_BOOST * sideRatio * verticalRatio;
+  return CUE_MASSE_CURVE_BOOST * sideRatio * verticalRatio;
 }
 
 export function computeDynamicSpinDecay(speed: number, deltaMs = 16.66): number {
@@ -357,25 +775,6 @@ export function computeSpinAdjustedVelocity(
   if (curvedSpeed === 0) return { ...velocity };
   const preserveSpeed = speed / curvedSpeed;
   return { x: curved.x * preserveSpeed, y: curved.y * preserveSpeed };
-}
-
-export function computeVerticalSpinVelocityScale(
-  speed: number,
-  deltaMs: number,
-  verticalSpin: number
-): number {
-  const baseScale = computeDynamicVelocityScale(speed, deltaMs);
-  const baseLoss = 1 - baseScale;
-  const normalizedSpin = Math.max(-1, Math.min(1, verticalSpin / 100));
-  const lossScale =
-    normalizedSpin >= 0
-      ? 1 - CUE_VERTICAL_SPIN_DRAG_REDUCTION * normalizedSpin
-      : 1 + CUE_VERTICAL_SPIN_BRAKE_BOOST * Math.abs(normalizedSpin);
-  return Math.max(0.9, 1 - baseLoss * lossScale);
-}
-
-export function computeBackspinContactPullScale(verticalSpin: number): number {
-  return CUE_BACKSPIN_CONTACT_PULL * Math.max(0, Math.min(1, -verticalSpin / 100));
 }
 
 export function computeSweepingPower(timeMs: number): number {

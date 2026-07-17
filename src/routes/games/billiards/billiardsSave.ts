@@ -2,13 +2,14 @@ import {
   BILLIARDS_MODES,
   FOUR_BALL_TARGET_OPTIONS,
   type ActiveBilliardsMode,
+  type CueSpinResponse,
   type FourBallTargetScore,
   type ShotContact
 } from './gameUtils';
 import type { ArtScoreBreakdown } from './artStages';
 
-export const BILLIARDS_SAVE_KEY = 'dgst:billiards:autosave:v1';
-export const BILLIARDS_SAVE_VERSION = 1;
+export const BILLIARDS_SAVE_KEY = 'dgst:billiards:autosave:v2';
+export const BILLIARDS_SAVE_VERSION = 2;
 export const BILLIARDS_SAVE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 
 export type BilliardsSaveStatus =
@@ -27,6 +28,11 @@ export type SavedBilliardsBall = {
   vy: number;
   angle: number;
   angularVelocity: number;
+};
+
+export type SavedCueSpinResponse = {
+  ballId: string;
+  response: CueSpinResponse;
 };
 
 export type BilliardsSave = {
@@ -71,6 +77,7 @@ export type BilliardsSave = {
   artResultMessage: string;
   artHelpUsed: boolean;
   artScoreBreakdown: ArtScoreBreakdown | null;
+  activeCueSpinResponses: SavedCueSpinResponse[];
   balls: SavedBilliardsBall[];
 };
 
@@ -111,10 +118,30 @@ function isSavedBall(value: unknown): value is SavedBilliardsBall {
   );
 }
 
+function isSavedCueSpinResponse(value: unknown): value is SavedCueSpinResponse {
+  if (!value || typeof value !== 'object') return false;
+  const saved = value as Record<string, unknown>;
+  if (typeof saved.ballId !== 'string' || !saved.response || typeof saved.response !== 'object') {
+    return false;
+  }
+  const response = saved.response as Record<string, unknown>;
+  const direction = response.direction as Record<string, unknown> | undefined;
+  return (
+    saved.ballId.length > 0 &&
+    Boolean(direction) &&
+    isFiniteNumber(direction?.x) &&
+    isFiniteNumber(direction?.y) &&
+    isFiniteNumber(response.remainingDeltaSpeed) &&
+    isFiniteNumber(response.remainingMs) &&
+    response.remainingMs >= 0
+  );
+}
+
 export function parseBilliardsSave(raw: string | null, now = Date.now()): BilliardsSave | null {
   if (!raw) return null;
   try {
     const value = JSON.parse(raw) as Record<string, unknown>;
+    const savedCueSpinResponses = value.activeCueSpinResponses ?? [];
     if (
       value.version !== BILLIARDS_SAVE_VERSION ||
       !isFiniteNumber(value.savedAt) ||
@@ -170,13 +197,16 @@ export function parseBilliardsSave(raw: string | null, now = Date.now()): Billia
       typeof value.artResultMessage !== 'string' ||
       typeof value.artHelpUsed !== 'boolean' ||
       (value.artScoreBreakdown !== null && typeof value.artScoreBreakdown !== 'object') ||
+      !Array.isArray(savedCueSpinResponses) ||
+      savedCueSpinResponses.length > 10 ||
+      !savedCueSpinResponses.every(isSavedCueSpinResponse) ||
       !Array.isArray(value.balls) ||
       value.balls.length === 0 ||
       !value.balls.every(isSavedBall)
     ) {
       return null;
     }
-    return value as BilliardsSave;
+    return { ...value, activeCueSpinResponses: savedCueSpinResponses } as BilliardsSave;
   } catch {
     return null;
   }

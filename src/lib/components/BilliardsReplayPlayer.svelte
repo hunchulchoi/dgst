@@ -1,5 +1,12 @@
 <script>
-  import { onMount } from 'svelte';
+  import { onDestroy } from 'svelte';
+  import {
+    BALL_RADIUS as CURRENT_BALL_RADIUS,
+    TABLE_HEIGHT as CURRENT_TABLE_HEIGHT,
+    TABLE_WIDTH as CURRENT_TABLE_WIDTH,
+    getPocketCenters,
+    getPocketRailGeometry
+  } from '../../routes/games/billiards/gameUtils';
 
   let { replay } = $props();
   /** @type {HTMLCanvasElement | null} */
@@ -11,59 +18,150 @@
 
   const shot = $derived(replay?.data ?? replay ?? null);
   const frames = $derived(Array.isArray(shot?.frames) ? shot.frames : []);
+  const hasRecordedGeometry = $derived(
+    Number.isFinite(shot?.tableWidth) &&
+      Number.isFinite(shot?.tableHeight) &&
+      Number.isFinite(shot?.ballRadius)
+  );
+  const tableWidth = $derived(
+    Number.isFinite(shot?.tableWidth) ? Math.max(240, Math.min(1000, Number(shot.tableWidth))) : 360
+  );
+  const tableHeight = $derived(
+    Number.isFinite(shot?.tableHeight)
+      ? Math.max(320, Math.min(2000, Number(shot.tableHeight)))
+      : 560
+  );
+  const ballRadius = $derived(
+    Number.isFinite(shot?.ballRadius) ? Math.max(3, Math.min(30, Number(shot.ballRadius))) : 11.5
+  );
+  const railThickness = $derived(
+    hasRecordedGeometry ? (ballRadius / CURRENT_BALL_RADIUS) * 18 : 12
+  );
+  const pocketDrawRadius = $derived(
+    hasRecordedGeometry ? (ballRadius / CURRENT_BALL_RADIUS) * 12 : 15
+  );
   const powerPercent = $derived(Math.max(0, Math.min(100, Number(shot?.power ?? 0))));
   const sideSpin = $derived(Math.max(-100, Math.min(100, Number(shot?.sideSpin ?? 0))));
-  const verticalSpin = $derived(
-    Math.max(-100, Math.min(100, Number(shot?.verticalSpin ?? 0)))
-  );
+  const verticalSpin = $derived(Math.max(-100, Math.min(100, Number(shot?.verticalSpin ?? 0))));
   const spinLeft = $derived(50 + sideSpin / 2);
   const spinTop = $derived(50 - verticalSpin / 2);
+
+  /** @param {{ x: number, y: number }} point */
+  function scaleRecordedPoint(point) {
+    return {
+      x: point.x * (tableWidth / CURRENT_TABLE_WIDTH),
+      y: point.y * (tableHeight / CURRENT_TABLE_HEIGHT)
+    };
+  }
+
+  /** @param {CanvasRenderingContext2D} context */
+  function drawPocketTable(context) {
+    const centers = hasRecordedGeometry
+      ? getPocketCenters().map(scaleRecordedPoint)
+      : [
+          { x: railThickness, y: railThickness },
+          { x: tableWidth - railThickness, y: railThickness },
+          { x: railThickness, y: tableHeight / 2 },
+          { x: tableWidth - railThickness, y: tableHeight / 2 },
+          { x: railThickness, y: tableHeight - railThickness },
+          { x: tableWidth - railThickness, y: tableHeight - railThickness }
+        ];
+
+    context.fillStyle = '#07110c';
+    for (const pocket of centers) {
+      context.beginPath();
+      context.arc(pocket.x, pocket.y, pocketDrawRadius, 0, Math.PI * 2);
+      context.fill();
+    }
+
+    if (!hasRecordedGeometry) return;
+    const geometry = getPocketRailGeometry();
+    context.fillStyle = '#31533b';
+    for (const jaw of geometry.jaws) {
+      const vertices = jaw.vertices.map(scaleRecordedPoint);
+      context.beginPath();
+      context.moveTo(vertices[0].x, vertices[0].y);
+      context.lineTo(vertices[1].x, vertices[1].y);
+      context.lineTo(vertices[2].x, vertices[2].y);
+      context.closePath();
+      context.fill();
+    }
+
+    context.strokeStyle = 'rgba(240, 192, 90, 0.72)';
+    context.lineWidth = Math.max(1, ballRadius * 0.28);
+    context.beginPath();
+    for (const rail of geometry.rails) {
+      if (rail.side === 'top' || rail.side === 'bottom') {
+        const start = scaleRecordedPoint({ x: rail.x - rail.width / 2, y: 0 });
+        const end = scaleRecordedPoint({ x: rail.x + rail.width / 2, y: 0 });
+        const y = rail.side === 'top' ? railThickness : tableHeight - railThickness;
+        context.moveTo(start.x, y);
+        context.lineTo(end.x, y);
+      } else {
+        const start = scaleRecordedPoint({ x: 0, y: rail.y - rail.height / 2 });
+        const end = scaleRecordedPoint({ x: 0, y: rail.y + rail.height / 2 });
+        const x = rail.side === 'left' ? railThickness : tableWidth - railThickness;
+        context.moveTo(x, start.y);
+        context.lineTo(x, end.y);
+      }
+    }
+    for (const jaw of geometry.jaws) {
+      const face = jaw.face.map(scaleRecordedPoint);
+      context.moveTo(face[0].x, face[0].y);
+      context.lineTo(face[1].x, face[1].y);
+    }
+    context.stroke();
+  }
 
   /** @param {{ balls?: Array<{ id?: string, role?: string, color?: string, x: number, y: number }> }} frame */
   function draw(frame) {
     const context = canvas?.getContext('2d');
     if (!context || !frame) return;
-    context.clearRect(0, 0, 360, 560);
+    context.clearRect(0, 0, tableWidth, tableHeight);
     context.fillStyle = '#5b2d17';
-    context.fillRect(0, 0, 360, 560);
+    context.fillRect(0, 0, tableWidth, tableHeight);
     context.fillStyle = '#167347';
-    context.fillRect(12, 12, 336, 536);
-    context.strokeStyle = 'rgba(255,255,255,.16)';
-    context.lineWidth = 2;
-    context.strokeRect(12, 12, 336, 536);
-
+    context.fillRect(
+      railThickness,
+      railThickness,
+      tableWidth - railThickness * 2,
+      tableHeight - railThickness * 2
+    );
     if (shot?.mode === 'pocket-ball') {
-      context.fillStyle = '#07110c';
-      for (const [x, y] of [
-        [12, 12],
-        [348, 12],
-        [12, 280],
-        [348, 280],
-        [12, 548],
-        [348, 548]
-      ]) {
-        context.beginPath();
-        context.arc(x, y, 15, 0, Math.PI * 2);
-        context.fill();
-      }
+      drawPocketTable(context);
+    } else {
+      context.strokeStyle = 'rgba(255,255,255,.16)';
+      context.lineWidth = 2;
+      context.strokeRect(
+        railThickness,
+        railThickness,
+        tableWidth - railThickness * 2,
+        tableHeight - railThickness * 2
+      );
     }
 
     for (const ball of frame.balls ?? []) {
       context.save();
       context.shadowColor = 'rgba(0,0,0,.45)';
-      context.shadowBlur = 5;
-      context.shadowOffsetY = 2;
+      context.shadowBlur = ballRadius * 0.43;
+      context.shadowOffsetY = ballRadius * 0.17;
       context.fillStyle = ball.color || '#d7352a';
       context.beginPath();
-      context.arc(ball.x, ball.y, 11.5, 0, Math.PI * 2);
+      context.arc(ball.x, ball.y, ballRadius, 0, Math.PI * 2);
       context.fill();
       context.shadowColor = 'transparent';
       context.strokeStyle = 'rgba(0,0,0,.32)';
-      context.lineWidth = 1.5;
+      context.lineWidth = Math.max(1, ballRadius * 0.13);
       context.stroke();
       context.fillStyle = 'rgba(255,255,255,.55)';
       context.beginPath();
-      context.arc(ball.x - 3.5, ball.y - 4, 2.6, 0, Math.PI * 2);
+      context.arc(
+        ball.x - ballRadius * 0.3,
+        ball.y - ballRadius * 0.35,
+        ballRadius * 0.23,
+        0,
+        Math.PI * 2
+      );
       context.fill();
       context.restore();
     }
@@ -99,10 +197,15 @@
     animationFrame = requestAnimationFrame(tick);
   }
 
-  onMount(() => {
-    draw(frames[0]);
-    return stop;
+  $effect(() => {
+    const firstFrame = frames[0];
+    if (!canvas || !firstFrame) return;
+    stop();
+    frameIndex = 0;
+    draw(firstFrame);
   });
+
+  onDestroy(stop);
 </script>
 
 {#if shot && frames.length > 1}
@@ -111,7 +214,8 @@
       <strong><span aria-hidden="true">🎱</span> 당구 리플레이</strong>
       <span>{shot.mode === 'four-ball' ? '4구' : '포켓볼'} · {shot.outcome}</span>
     </div>
-    <canvas bind:this={canvas} width="360" height="560" aria-label="당구 샷 궤적"></canvas>
+    <canvas bind:this={canvas} width={tableWidth} height={tableHeight} aria-label="당구 샷 궤적"
+    ></canvas>
     <div class="replay-shot-visuals">
       <div class="replay-spin-visual" aria-label="리플레이 당점">
         <div class="visual-heading">
@@ -225,7 +329,9 @@
     border-radius: 50%;
     clip-path: circle(50% at 50% 50%);
     background: radial-gradient(circle at 35% 28%, #fff 0 12%, #eee8da 45%, #bdb7aa 100%);
-    box-shadow: inset -5px -7px 10px rgba(37, 32, 22, 0.22), 0 4px 10px rgba(0, 0, 0, 0.3);
+    box-shadow:
+      inset -5px -7px 10px rgba(37, 32, 22, 0.22),
+      0 4px 10px rgba(0, 0, 0, 0.3);
   }
 
   .spin-cross {

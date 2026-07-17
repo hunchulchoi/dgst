@@ -2,14 +2,20 @@ import Matter from 'matter-js';
 import { describe, expect, it } from 'vitest';
 import {
   BALL_RADIUS,
+  PHYSICS_BASE_STEP_MS,
   PHYSICS_MAX_SUBSTEPS,
+  RAIL_THICKNESS,
   RAIL_RESTITUTION,
   RAIL_SURFACE_FRICTION,
+  TABLE_HEIGHT,
+  TABLE_WIDTH,
   containBallInTable,
   computeDynamicVelocityScale,
   computeMaxCollisionSpeed,
+  computePhysicsFrameSlices,
   computePhysicsSubstepCount,
-  computeRailReboundVelocity
+  computeRailReboundVelocity,
+  shouldSnapStoppedSpeed
 } from '../src/routes/games/billiards/gameUtils';
 import { createBilliardsBallBody } from '../src/routes/games/billiards/billiardsPhysics';
 
@@ -46,7 +52,61 @@ function kineticEnergy(bodies: Matter.Body[]) {
   );
 }
 
+function simulateRollingStop(frameRate: number) {
+  const engine = Matter.Engine.create({ gravity: { x: 0, y: 0 } });
+  const ball = makeBall(0, 0);
+  Matter.Composite.add(engine.world, ball);
+  Matter.Body.setVelocity(ball, { x: 8, y: 0 });
+  const frameDelta = 1000 / frameRate;
+  let simulatedMs = 0;
+
+  for (let frame = 0; frame < frameRate * 5 && ball.speed > 0; frame += 1) {
+    for (const slice of computePhysicsFrameSlices(frameDelta)) {
+      let remainingDelta = slice;
+      for (
+        let substep = 0;
+        remainingDelta > 0.0001 && substep < PHYSICS_MAX_SUBSTEPS;
+        substep += 1
+      ) {
+        const count = computePhysicsSubstepCount(ball.speed, remainingDelta);
+        const delta =
+          substep === PHYSICS_MAX_SUBSTEPS - 1 ? remainingDelta : remainingDelta / count;
+        Matter.Engine.update(engine, delta);
+        const speed = ball.speed;
+        if (shouldSnapStoppedSpeed(speed)) {
+          Matter.Body.setVelocity(ball, { x: 0, y: 0 });
+        } else {
+          const scale = computeDynamicVelocityScale(speed, delta);
+          Matter.Body.setVelocity(ball, {
+            x: ball.velocity.x * scale,
+            y: ball.velocity.y * scale
+          });
+        }
+        simulatedMs += delta;
+        remainingDelta = Math.max(0, remainingDelta - delta);
+        if (ball.speed === 0) break;
+      }
+      if (ball.speed === 0) break;
+    }
+  }
+
+  return { stopMs: simulatedMs, distance: ball.position.x };
+}
+
 describe('billiards real-world collision invariants', () => {
+  it('keeps the adaptive rolling loop nearly frame-independent at 30, 60 and 120Hz', () => {
+    const runs = [30, 60, 120].map(simulateRollingStop);
+    const stopTimes = runs.map((run) => run.stopMs);
+    const distances = runs.map((run) => run.distance);
+
+    expect(Math.max(...stopTimes) - Math.min(...stopTimes)).toBeLessThanOrEqual(
+      PHYSICS_BASE_STEP_MS
+    );
+    expect(Math.max(...distances) - Math.min(...distances)).toBeLessThan(1);
+    expect(runs[1].stopMs).toBeGreaterThan(1_200);
+    expect(runs[1].stopMs).toBeLessThan(1_400);
+  });
+
   it('enforces the configured cushion restitution after Matter resolves the pair', () => {
     const rebound = computeRailReboundVelocity({ x: -9.4, y: 4 }, 'right');
     expect(rebound.x).toBeCloseTo(-8.8, 6);
@@ -70,12 +130,18 @@ describe('billiards real-world collision invariants', () => {
 
   it('produces the configured normal-speed loss in an actual rail collision', () => {
     const engine = Matter.Engine.create({ gravity: { x: 0, y: 0 } });
-    const cue = makeBall(310, 280);
-    const rightRail = Matter.Bodies.rectangle(351, 280, 18, 560, {
-      isStatic: true,
-      restitution: RAIL_RESTITUTION,
-      friction: RAIL_SURFACE_FRICTION
-    });
+    const cue = makeBall(TABLE_WIDTH - 50, TABLE_HEIGHT / 2);
+    const rightRail = Matter.Bodies.rectangle(
+      TABLE_WIDTH - RAIL_THICKNESS / 2,
+      TABLE_HEIGHT / 2,
+      RAIL_THICKNESS,
+      TABLE_HEIGHT,
+      {
+        isStatic: true,
+        restitution: RAIL_RESTITUTION,
+        friction: RAIL_SURFACE_FRICTION
+      }
+    );
     Matter.Composite.add(engine.world, [cue, rightRail]);
     Matter.Body.setVelocity(cue, { x: 10, y: 0 });
     let pending = false;
@@ -150,12 +216,18 @@ describe('billiards real-world collision invariants', () => {
 
   it('reflects from a cushion while losing normal and tangential speed', () => {
     const engine = Matter.Engine.create({ gravity: { x: 0, y: 0 } });
-    const cue = makeBall(100, 280);
-    const rightRail = Matter.Bodies.rectangle(351, 280, 18, 560, {
-      isStatic: true,
-      restitution: RAIL_RESTITUTION,
-      friction: RAIL_SURFACE_FRICTION
-    });
+    const cue = makeBall(100, TABLE_HEIGHT / 2);
+    const rightRail = Matter.Bodies.rectangle(
+      TABLE_WIDTH - RAIL_THICKNESS / 2,
+      TABLE_HEIGHT / 2,
+      RAIL_THICKNESS,
+      TABLE_HEIGHT,
+      {
+        isStatic: true,
+        restitution: RAIL_RESTITUTION,
+        friction: RAIL_SURFACE_FRICTION
+      }
+    );
     Matter.Composite.add(engine.world, [cue, rightRail]);
     Matter.Body.setVelocity(cue, { x: 12, y: 5 });
     let incoming = { ...cue.velocity };
@@ -174,7 +246,8 @@ describe('billiards real-world collision invariants', () => {
 
   it('keeps cut-shot object-ball angles close to circular contact geometry', () => {
     const angleErrors: number[] = [];
-    for (const offset of [2, 4, 6, 8, 10, 12, 14, 16, 18]) {
+    for (const offsetRatio of [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]) {
+      const offset = BALL_RADIUS * 2 * offsetRatio;
       const engine = Matter.Engine.create({ gravity: { x: 0, y: 0 } });
       const cue = makeBall(80, 280);
       const object = makeBall(200, 280 + offset);

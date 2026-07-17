@@ -14,6 +14,13 @@ function cleanNumber(value, min, max) {
   return Number.isFinite(value) ? Math.max(min, Math.min(max, Number(value))) : null;
 }
 
+/** @param {unknown} value @param {number} min @param {number} max */
+function cleanOptionalNumber(value, min, max) {
+  if (value === undefined || value === null) return undefined;
+  const cleaned = cleanNumber(value, min, max);
+  return cleaned === null ? undefined : Math.round(cleaned * 100) / 100;
+}
+
 /** @param {unknown} value @param {string} role */
 function cleanColor(value, role) {
   if (typeof value === 'string' && /^#[0-9a-f]{3,8}$/i.test(value)) return value;
@@ -33,6 +40,23 @@ export function sanitizeBilliardsReplay(value, { maxFrames = 80 } = {}) {
   const mode = replay.mode;
   if (!isActiveBilliardsMode(mode)) return null;
 
+  const tableWidth = cleanOptionalNumber(replay.tableWidth, 240, 1_000);
+  const tableHeight = cleanOptionalNumber(replay.tableHeight, 320, 2_000);
+  const ballRadius = cleanOptionalNumber(replay.ballRadius, 3, 30);
+  const providedGeometryCount = [replay.tableWidth, replay.tableHeight, replay.ballRadius].filter(
+    (part) => part !== undefined && part !== null
+  ).length;
+  const hasRecordedGeometry = providedGeometryCount === 3;
+  if (
+    (providedGeometryCount !== 0 && !hasRecordedGeometry) ||
+    (hasRecordedGeometry &&
+      (tableWidth === undefined || tableHeight === undefined || ballRadius === undefined))
+  ) {
+    return null;
+  }
+  const replayTableWidth = hasRecordedGeometry && tableWidth !== undefined ? tableWidth : 360;
+  const replayTableHeight = hasRecordedGeometry && tableHeight !== undefined ? tableHeight : 560;
+
   const rawFrames = Array.isArray(replay.frames) ? replay.frames : [];
   if (rawFrames.length < 2 || rawFrames.length > maxFrames) return null;
 
@@ -47,8 +71,8 @@ export function sanitizeBilliardsReplay(value, { maxFrames = 80 } = {}) {
       if (!rawBall || typeof rawBall !== 'object') return null;
       const ball = /** @type {Record<string, unknown>} */ (rawBall);
       const role = String(ball.role);
-      const x = cleanNumber(ball.x, -50, 410);
-      const y = cleanNumber(ball.y, -50, 610);
+      const x = cleanNumber(ball.x, -50, replayTableWidth + 50);
+      const y = cleanNumber(ball.y, -50, replayTableHeight + 50);
       if (!['cue', 'opponent', 'red'].includes(role) || x === null || y === null) return null;
       return {
         id: cleanReplayText(ball.id, 32),
@@ -89,6 +113,7 @@ export function sanitizeBilliardsReplay(value, { maxFrames = 80 } = {}) {
     startedAt: cleanReplayText(replay.startedAt, 32),
     scoreBefore,
     outcome: cleanReplayText(replay.outcome, 80),
+    ...(hasRecordedGeometry ? { tableWidth, tableHeight, ballRadius } : {}),
     frames
   };
 }

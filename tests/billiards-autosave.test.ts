@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  BILLIARDS_SAVE_KEY,
   BILLIARDS_SAVE_MAX_AGE_MS,
   BILLIARDS_SAVE_VERSION,
   parseBilliardsSave,
@@ -51,18 +52,41 @@ function validSave(): BilliardsSave {
     artResultMessage: '',
     artHelpUsed: false,
     artScoreBreakdown: null,
-    balls: [
-      { id: 'cue', x: 180, y: 300, vx: 2.4, vy: -8.1, angle: 0.2, angularVelocity: 1.4 }
-    ]
+    activeCueSpinResponses: [
+      {
+        ballId: 'cue',
+        response: {
+          direction: { x: 1, y: 0 },
+          remainingDeltaSpeed: -2.2,
+          remainingMs: 75
+        }
+      }
+    ],
+    balls: [{ id: 'cue', x: 180, y: 300, vx: 2.4, vy: -8.1, angle: 0.2, angularVelocity: 1.4 }]
   };
 }
 
 describe('billiards autosave validation', () => {
+  it('uses the v2 storage key and rejects v1 geometry saves', () => {
+    expect(BILLIARDS_SAVE_KEY).toBe('dgst:billiards:autosave:v2');
+    expect(BILLIARDS_SAVE_VERSION).toBe(2);
+    expect(parseBilliardsSave(JSON.stringify({ ...validSave(), version: 1 }), now)).toBeNull();
+  });
+
   it('keeps rolling-shot physics and gameplay state', () => {
     const parsed = parseBilliardsSave(JSON.stringify(validSave()), now);
     expect(parsed?.status).toBe('rolling');
     expect(parsed?.balls[0]).toMatchObject({ vx: 2.4, vy: -8.1, angularVelocity: 1.4 });
     expect(parsed?.contacts).toEqual([{ cueRole: 'cue', targetId: 'red-1' }]);
+    expect(parsed?.activeCueSpinResponses[0]).toMatchObject({
+      ballId: 'cue',
+      response: { remainingDeltaSpeed: -2.2, remainingMs: 75 }
+    });
+  });
+
+  it('keeps older v2 saves valid with no in-flight cue-spin response', () => {
+    const save = { ...validSave(), activeCueSpinResponses: undefined };
+    expect(parseBilliardsSave(JSON.stringify(save), now)?.activeCueSpinResponses).toEqual([]);
   });
 
   it('rejects stale, malformed, and incompatible saves', () => {
@@ -70,7 +94,7 @@ describe('billiards autosave validation', () => {
     stale.savedAt = now - BILLIARDS_SAVE_MAX_AGE_MS - 1;
     expect(parseBilliardsSave(JSON.stringify(stale), now)).toBeNull();
     expect(parseBilliardsSave('{broken', now)).toBeNull();
-    expect(parseBilliardsSave(JSON.stringify({ ...validSave(), version: 2 }), now)).toBeNull();
+    expect(parseBilliardsSave(JSON.stringify({ ...validSave(), version: 3 }), now)).toBeNull();
     expect(
       parseBilliardsSave(
         JSON.stringify({ ...validSave(), balls: [{ ...validSave().balls[0], vx: null }] }),

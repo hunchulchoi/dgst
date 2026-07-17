@@ -3,11 +3,13 @@ import { describe, it } from 'vitest';
 import { ART_STAGES, evaluateArtShot } from '../src/routes/games/billiards/artStages';
 import {
   ANGULAR_STOP_SPEED,
+  CUE_VERTICAL_SPIN_CONTACT_RETENTION,
   CUE_SPIN_ANGULAR_SCALE,
   CUE_SPIN_STOP_VALUE,
   PHYSICS_BASE_STEP_MS,
   PHYSICS_MAX_SUBSTEPS,
   RAIL_RESTITUTION,
+  RAIL_CONTACT_SPIN_DAMPING,
   RAIL_SURFACE_FRICTION,
   RAIL_THICKNESS,
   STOP_SPEED,
@@ -15,17 +17,19 @@ import {
   TABLE_WIDTH,
   computeDynamicSpinDecay,
   computeDynamicVelocityScale,
+  createCueSpinResponse,
+  advanceCueSpinResponse,
   computeAngularVelocityScale,
   computeMaxCollisionSpeed,
   computePhysicsSubstepCount,
   computeRailReboundVelocity,
   computeShotVelocity,
   computeSpinAdjustedVelocity,
-  computeVerticalSpinVelocityScale,
   containBallInTable,
   shouldSnapStoppedSpeed,
   stopped,
-  type BilliardsRailSide
+  type BilliardsRailSide,
+  type CueSpinResponse
 } from '../src/routes/games/billiards/gameUtils';
 import { createBilliardsBallBody } from '../src/routes/games/billiards/billiardsPhysics';
 
@@ -63,11 +67,16 @@ function simulate(stage: (typeof ART_STAGES)[number], angle: number, power: numb
   Matter.Composite.add(engine.world, [cue, ...targets, ...obstacles, ...rails]);
   const cueContacts: string[] = [];
   const cushionHits: string[] = [];
+  const eventOrder: string[] = [];
   let pendingRailContacts: Array<{
     ball: Ball;
     side: BilliardsRailSide;
     normal: { x: number; y: number };
   }> = [];
+  let pendingCueResponses: CueSpinResponse[] = [];
+  let activeCueResponses: CueSpinResponse[] = [];
+  let sideSpin = stage.solution.sideSpin;
+  let verticalSpin = stage.solution.verticalSpin;
   let blackHit = false;
   Matter.Events.on(engine, 'collisionStart', (event) => {
     for (const pair of event.pairs) {
@@ -83,17 +92,26 @@ function simulate(stage: (typeof ART_STAGES)[number], angle: number, power: numb
           normal: { x: pair.collision.normal.x, y: pair.collision.normal.y }
         });
       }
-      if (other?.railSide) cushionHits.push(other.railSide);
+      if (other?.railSide) {
+        cushionHits.push(other.railSide);
+        eventOrder.push(other.railSide);
+      }
       if (other?.billiardsId) {
+        const response = createCueSpinResponse(
+          Matter.Body.getVelocity(cue),
+          Matter.Body.getVelocity(other),
+          { x: other.position.x - cue.position.x, y: other.position.y - cue.position.y },
+          verticalSpin
+        );
+        if (response) pendingCueResponses.push(response);
         cueContacts.push(other.billiardsId);
+        eventOrder.push(other.billiardsId);
         if (other.billiardsId.startsWith('black-')) blackHit = true;
       }
     }
   });
   Matter.Body.setVelocity(cue, computeShotVelocity(angle, power));
-  Matter.Body.setAngularVelocity(cue, stage.solution.sideSpin / CUE_SPIN_ANGULAR_SCALE);
-  let sideSpin = stage.solution.sideSpin;
-  let verticalSpin = stage.solution.verticalSpin;
+  Matter.Body.setAngularVelocity(cue, -stage.solution.sideSpin / CUE_SPIN_ANGULAR_SCALE);
   const moving = [cue, ...targets, ...obstacles];
   const visited = new Set<number>();
   for (let step = 0; step < 720; step += 1) {
@@ -107,14 +125,32 @@ function simulate(stage: (typeof ART_STAGES)[number], angle: number, power: numb
       for (const contact of pendingRailContacts) {
         Matter.Body.setVelocity(
           contact.ball,
-          computeRailReboundVelocity(contact.ball.velocity, contact.side, contact.normal)
+          computeRailReboundVelocity(
+            contact.ball.velocity,
+            contact.side,
+            contact.normal,
+            contact.ball === cue ? sideSpin : 0
+          )
         );
+        if (contact.ball === cue) {
+          sideSpin *= RAIL_CONTACT_SPIN_DAMPING;
+          if (Math.abs(sideSpin) < CUE_SPIN_STOP_VALUE) sideSpin = 0;
+          Matter.Body.setAngularVelocity(cue, -sideSpin / CUE_SPIN_ANGULAR_SCALE);
+        }
       }
       pendingRailContacts = [];
-      for (const [index, point] of stage.waypoints.entries()) {
-        if (Math.hypot(cue.position.x - point.x, cue.position.y - point.y) <= 16)
-          visited.add(index);
+      if (pendingCueResponses.length > 0) {
+        activeCueResponses.push(...pendingCueResponses);
+        verticalSpin *= CUE_VERTICAL_SPIN_CONTACT_RETENTION ** pendingCueResponses.length;
+        pendingCueResponses = [];
       }
+      const nextCueResponses: CueSpinResponse[] = [];
+      for (const response of activeCueResponses) {
+        const next = advanceCueSpinResponse(Matter.Body.getVelocity(cue), response, substepDelta);
+        Matter.Body.setVelocity(cue, next.velocity);
+        if (next.response) nextCueResponses.push(next.response);
+      }
+      activeCueResponses = nextCueResponses;
       for (const body of moving) {
         const next = containBallInTable({ position: body.position, velocity: body.velocity });
         if (next.corrected) {
@@ -129,12 +165,10 @@ function simulate(stage: (typeof ART_STAGES)[number], angle: number, power: numb
             body,
             body.angularVelocity * computeAngularVelocityScale(substepDelta)
           );
-        if (shouldSnapStoppedSpeed(speed)) Matter.Body.setVelocity(body, { x: 0, y: 0 });
+        if (shouldSnapStoppedSpeed(speed) && !(body === cue && activeCueResponses.length > 0))
+          Matter.Body.setVelocity(body, { x: 0, y: 0 });
         else {
-          const scale =
-            body === cue && verticalSpin !== 0
-              ? computeVerticalSpinVelocityScale(speed, substepDelta, verticalSpin)
-              : computeDynamicVelocityScale(speed, substepDelta);
+          const scale = computeDynamicVelocityScale(speed, substepDelta);
           Matter.Body.setVelocity(body, { x: body.velocity.x * scale, y: body.velocity.y * scale });
         }
         if (body === cue && verticalSpin !== 0) {
@@ -144,24 +178,32 @@ function simulate(stage: (typeof ART_STAGES)[number], angle: number, power: numb
       }
       remainingDelta = Math.max(0, remainingDelta - substepDelta);
     }
+    for (const [index, point] of stage.waypoints.entries()) {
+      const distance = Math.hypot(cue.position.x - point.x, cue.position.y - point.y);
+      if (distance <= 16) visited.add(index);
+    }
     if (sideSpin !== 0) {
       const speed = Math.hypot(cue.velocity.x, cue.velocity.y);
       const adjusted = computeSpinAdjustedVelocity(cue.velocity, sideSpin, verticalSpin, 16.66);
       Matter.Body.setVelocity(cue, adjusted);
       sideSpin *= computeDynamicSpinDecay(speed, 16.66);
       if (Math.abs(sideSpin) < CUE_SPIN_STOP_VALUE) sideSpin = 0;
+      Matter.Body.setAngularVelocity(cue, -sideSpin / CUE_SPIN_ANGULAR_SCALE);
     }
-    if (step > 20 && stopped(moving, STOP_SPEED)) break;
+    if (step > 20 && activeCueResponses.length === 0 && stopped(moving, STOP_SPEED)) break;
   }
-  return evaluateArtShot(stage, {
-    cueContacts,
-    cushionHits,
-    blackHit,
-    waypointCount: visited.size,
-    ballCollisions: 0,
-    sideSpin: stage.solution.sideSpin,
-    verticalSpin: stage.solution.verticalSpin
-  });
+  return {
+    ...evaluateArtShot(stage, {
+      cueContacts,
+      cushionHits,
+      blackHit,
+      waypointCount: visited.size,
+      ballCollisions: 0,
+      sideSpin: stage.solution.sideSpin,
+      verticalSpin: stage.solution.verticalSpin
+    }),
+    eventOrder
+  };
 }
 
 describe('billiards art stage physics', () => {
@@ -170,6 +212,21 @@ describe('billiards art stage physics', () => {
     for (const stage of ART_STAGES) {
       const result = simulate(stage, stage.solution.angle, stage.solution.power);
       if (!result.success) failures.push(`stage ${stage.stage}: ${result.message}`);
+      const expectedCushionSequence: Record<number, string[]> = {
+        2: ['left'],
+        3: ['right', 'top'],
+        4: ['right', 'top', 'left'],
+        5: ['top'],
+        6: ['right', 'left'],
+        10: ['left', 'top', 'right', 'bottom']
+      };
+      const sequence = expectedCushionSequence[stage.stage];
+      if (
+        sequence &&
+        result.eventOrder.slice(0, sequence.length).join(',') !== sequence.join(',')
+      ) {
+        failures.push(`stage ${stage.stage}: authored cushion order drifted`);
+      }
     }
     if (failures.length > 0) throw new Error(failures.join('\n'));
   }, 120_000);

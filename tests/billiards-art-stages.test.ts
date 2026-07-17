@@ -50,6 +50,18 @@ describe('billiards art stages', () => {
         verticalSpin: 0
       })
     ).toEqual({ success: true, message: '한 번에 클리어!' });
+
+    expect(
+      evaluateArtShot(stage, {
+        cueContacts: ['target-1'],
+        cushionHits: ['right'],
+        blackHit: false,
+        waypointCount: 0,
+        ballCollisions: 1,
+        sideSpin: 0,
+        verticalSpin: 0
+      })
+    ).toEqual({ success: false, message: '지정된 쿠션 순서대로 맞혀야 합니다' });
   });
 
   it('scores difficulty, no-help play, spin, control and unique cushions', () => {
