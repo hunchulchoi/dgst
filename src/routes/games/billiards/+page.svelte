@@ -7,12 +7,7 @@
   import { formatRelativeTime } from '$lib/util/formatRelativeTime.js';
   import {
     BALL_RADIUS,
-    BALL_FRICTION_AIR,
-    BALL_RESTITUTION,
-    BALL_STATIC_FRICTION,
-    BALL_SURFACE_FRICTION,
     BILLIARDS_MODES,
-    ANGULAR_FRICTION_DECAY,
     ANGULAR_STOP_SPEED,
     POCKET_BALL_CHANCES,
     POCKET_RADIUS,
@@ -21,6 +16,8 @@
     FOUR_BALL_TARGET_SCORE,
     FOUR_BALL_TARGET_OPTIONS,
     FOUR_BALL_CHANCES,
+    PHYSICS_BASE_STEP_MS,
+    PHYSICS_MAX_SUBSTEPS,
     RAIL_RESTITUTION,
     RAIL_THICKNESS,
     RAIL_SURFACE_FRICTION,
@@ -30,9 +27,11 @@
     TABLE_WIDTH,
     containBallInTable,
     computeBreathingAimAngle,
+    computeAngularVelocityScale,
     computeFourBallComboMultiplier,
     computeFourBallFoulPenalty,
     computeFourBallShotScore,
+    computeMaxCollisionSpeed,
     computeDynamicSpinDecay,
     computeSpinAdjustedVelocity,
     computeVerticalSpinFromTrack,
@@ -40,6 +39,9 @@
     computeDynamicVelocityScale,
     computePocketClearBonus,
     computePocketShotScore,
+    computePhysicsFrameSlices,
+    computePhysicsSubstepCount,
+    computeRailReboundVelocity,
     computeShotVelocity,
     computeSpinFromTrack,
     evaluateFourBallShot,
@@ -50,10 +52,12 @@
     stopped,
     type ActiveBilliardsMode,
     type BallRole,
+    type BilliardsRailSide,
     type BilliardsRankingMode,
     type FourBallTargetScore,
     type ShotContact
   } from './gameUtils';
+  import { createBilliardsBallBody } from './billiardsPhysics';
   import {
     computeArtScore,
     evaluateArtShot,
@@ -130,7 +134,12 @@
   };
   type RailBody = Matter.Body & {
     billiardsRail?: true;
-    billiardsRailSide?: 'top' | 'right' | 'bottom' | 'left';
+    billiardsRailSide?: BilliardsRailSide;
+  };
+  type PendingRailContact = {
+    ball: BallBody;
+    side: BilliardsRailSide;
+    normal: { x: number; y: number };
   };
 
   let { data }: Props = $props();
@@ -193,13 +202,14 @@
   let pocketedThisShot = 0;
   let cuePocketedThisShot = false;
   let engine: Matter.Engine | null = null;
+  let pendingRailContacts: PendingRailContact[] = [];
   let cueBall: BallBody | null = null;
   let npcCueBall: BallBody | null = null;
   let redBalls: BallBody[] = [];
   let remainingObjectCount = $state(0);
   let frameId = 0;
   let lastFrame = 0;
-  let rollingStartedAt = 0;
+  let rollingPhysicsElapsedMs = 0;
   let npcTimer: ReturnType<typeof setTimeout> | null = null;
   let npcShotWasDefensive = false;
   let opponentCueHitThisShot = false;
@@ -265,38 +275,38 @@
           ? artResultMessage
           : currentArtStage.title
       : replaying
-      ? '내 마지막 샷 다시보기'
-      : !isPocketBall && status === 'game-over'
-        ? score >= targetScore
-          ? '승리! 겐세이 형을 이겼습니다'
-          : '겐세이 형 승리'
-        : !isPocketBall && npcThinking
-          ? npcMessage || '겐세이 형이 수를 보는 중'
-          : status === 'aiming'
-            ? isPocketBall
-              ? '공을 포켓에 넣으세요'
-              : currentTurn === 'player'
-                ? '내 차례 · 조준하고 샷'
-                : '겐세이 형 차례'
-            : status === 'charging'
-              ? '게이지를 눌러 샷'
-              : status === 'rolling'
-                ? `${!isPocketBall && currentTurn === 'npc' ? '겐세이 형' : '내'} 샷 진행 중`
-                : status === 'scored'
-                  ? isPocketBall
-                    ? '포켓 성공'
-                    : `${currentTurn === 'player' ? '득점!' : 'NPC 득점'} ×${lastShotMultiplier}`
-                  : status === 'miss'
-                    ? !isPocketBall && lastFoulPenalty > 0
-                      ? `${currentTurn === 'npc' ? 'NPC 차례' : '내 차례'} · 파울 -${lastFoulPenalty}`
-                      : !isPocketBall && npcMessage
-                        ? npcMessage
-                        : cuePocketedThisShot
-                          ? '수구 파울'
-                          : !isPocketBall && currentTurn === 'npc'
-                            ? '실패 · NPC 차례'
-                            : '아쉽습니다. 내 차례'
-                    : '게임 종료'
+        ? '내 마지막 샷 다시보기'
+        : !isPocketBall && status === 'game-over'
+          ? score >= targetScore
+            ? '승리! 겐세이 형을 이겼습니다'
+            : '겐세이 형 승리'
+          : !isPocketBall && npcThinking
+            ? npcMessage || '겐세이 형이 수를 보는 중'
+            : status === 'aiming'
+              ? isPocketBall
+                ? '공을 포켓에 넣으세요'
+                : currentTurn === 'player'
+                  ? '내 차례 · 조준하고 샷'
+                  : '겐세이 형 차례'
+              : status === 'charging'
+                ? '게이지를 눌러 샷'
+                : status === 'rolling'
+                  ? `${!isPocketBall && currentTurn === 'npc' ? '겐세이 형' : '내'} 샷 진행 중`
+                  : status === 'scored'
+                    ? isPocketBall
+                      ? '포켓 성공'
+                      : `${currentTurn === 'player' ? '득점!' : 'NPC 득점'} ×${lastShotMultiplier}`
+                    : status === 'miss'
+                      ? !isPocketBall && lastFoulPenalty > 0
+                        ? `${currentTurn === 'npc' ? 'NPC 차례' : '내 차례'} · 파울 -${lastFoulPenalty}`
+                        : !isPocketBall && npcMessage
+                          ? npcMessage
+                          : cuePocketedThisShot
+                            ? '수구 파울'
+                            : !isPocketBall && currentTurn === 'npc'
+                              ? '실패 · NPC 차례'
+                              : '아쉽습니다. 내 차례'
+                      : '게임 종료'
   );
 
   const Engine = Matter.Engine;
@@ -306,12 +316,8 @@
   const Events = Matter.Events;
 
   function makeBall(x: number, y: number, role: BallRole, id: string, color: string): BallBody {
-    const ball = Bodies.circle(x, y, BALL_RADIUS, {
+    const ball = createBilliardsBallBody(x, y, {
       label: id,
-      restitution: BALL_RESTITUTION,
-      friction: BALL_SURFACE_FRICTION,
-      frictionStatic: BALL_STATIC_FRICTION,
-      frictionAir: BALL_FRICTION_AIR,
       render: { fillStyle: color }
     }) as BallBody;
     ball.billiardsRole = role;
@@ -358,52 +364,56 @@
     const maxY = TABLE_HEIGHT - RAIL_THICKNESS;
     const rails: RailBody[] = [];
 
-    const addHorizontalSegments = (y: number) => {
+    const addHorizontalSegments = (y: number, side: BilliardsRailSide) => {
       let start = 0;
       for (const center of [minX, maxX]) {
         const end = Math.max(start, center - pocketGapHalf);
         if (end - start > 4) {
-          rails.push(makeRail((start + end) / 2, y, end - start, RAIL_THICKNESS));
+          rails.push(makeRail((start + end) / 2, y, end - start, RAIL_THICKNESS, side));
         }
         start = Math.min(TABLE_WIDTH, center + pocketGapHalf);
       }
       if (TABLE_WIDTH - start > 4) {
-        rails.push(makeRail((start + TABLE_WIDTH) / 2, y, TABLE_WIDTH - start, RAIL_THICKNESS));
+        rails.push(
+          makeRail((start + TABLE_WIDTH) / 2, y, TABLE_WIDTH - start, RAIL_THICKNESS, side)
+        );
       }
     };
 
-    const addVerticalSegments = (x: number) => {
+    const addVerticalSegments = (x: number, side: BilliardsRailSide) => {
       let start = 0;
       for (const center of [minY, midY, maxY]) {
         const end = Math.max(start, center - pocketGapHalf);
         if (end - start > 4) {
-          rails.push(makeRail(x, (start + end) / 2, RAIL_THICKNESS, end - start));
+          rails.push(makeRail(x, (start + end) / 2, RAIL_THICKNESS, end - start, side));
         }
         start = Math.min(TABLE_HEIGHT, center + pocketGapHalf);
       }
       if (TABLE_HEIGHT - start > 4) {
-        rails.push(makeRail(x, (start + TABLE_HEIGHT) / 2, RAIL_THICKNESS, TABLE_HEIGHT - start));
+        rails.push(
+          makeRail(x, (start + TABLE_HEIGHT) / 2, RAIL_THICKNESS, TABLE_HEIGHT - start, side)
+        );
       }
     };
 
-    addHorizontalSegments(RAIL_THICKNESS / 2);
-    addHorizontalSegments(TABLE_HEIGHT - RAIL_THICKNESS / 2);
-    addVerticalSegments(RAIL_THICKNESS / 2);
-    addVerticalSegments(TABLE_WIDTH - RAIL_THICKNESS / 2);
+    addHorizontalSegments(RAIL_THICKNESS / 2, 'top');
+    addHorizontalSegments(TABLE_HEIGHT - RAIL_THICKNESS / 2, 'bottom');
+    addVerticalSegments(RAIL_THICKNESS / 2, 'left');
+    addVerticalSegments(TABLE_WIDTH - RAIL_THICKNESS / 2, 'right');
     return rails;
   }
 
   function resetBodies() {
     if (!engine) return;
+    lastFrame = performance.now();
     Composite.clear(engine.world, false);
+    pendingRailContacts = [];
 
     if (artMode) {
       const stage = currentArtStage;
       cueBall = makeBall(stage.cue.x, stage.cue.y, 'cue', 'cue', '#f8f7ef');
       npcCueBall = null;
-      redBalls = stage.targets.map((ball) =>
-        makeBall(ball.x, ball.y, 'red', ball.id, ball.color)
-      );
+      redBalls = stage.targets.map((ball) => makeBall(ball.x, ball.y, 'red', ball.id, ball.color));
       artObstacleBalls = stage.obstacles.map((ball) => {
         const obstacle = makeBall(ball.x, ball.y, 'red', ball.id, ball.color);
         obstacle.collisionFilter.category = 0x0002;
@@ -434,9 +444,7 @@
     artObstacleBalls = [];
     artMovingObstacles = [];
 
-    const walls = isPocketBall
-      ? makePocketRails()
-      : makeStandardRails();
+    const walls = isPocketBall ? makePocketRails() : makeStandardRails();
 
     cueBall = makeBall(
       TABLE_WIDTH * (isPocketBall ? 0.5 : 0.42),
@@ -637,7 +645,7 @@
     }
     redBalls = redBalls.filter((ball) => savedById.has(ball.billiardsId ?? ball.label));
     remainingObjectCount = redBalls.length;
-    rollingStartedAt = status === 'rolling' ? performance.now() : 0;
+    rollingPhysicsElapsedMs = 0;
     showRestoredMessage();
     return true;
   }
@@ -687,7 +695,7 @@
     activeSpin = 0;
     activeVerticalSpin = 0;
     power = 55;
-    rollingStartedAt = 0;
+    rollingPhysicsElapsedMs = 0;
     submittedGameOver = false;
     pocketedThisShot = 0;
     cuePocketedThisShot = false;
@@ -966,6 +974,7 @@
   }
 
   function settleShot() {
+    rollingPhysicsElapsedMs = 0;
     const balls = getTrackedBalls();
     for (const ball of balls) {
       Body.setVelocity(ball, { x: 0, y: 0 });
@@ -1102,6 +1111,33 @@
     Composite.add(engine.world, cueBall);
   }
 
+  function getRailContact(
+    rawBodyA: Matter.Body,
+    rawBodyB: Matter.Body,
+    collisionNormal: Matter.Vector
+  ): PendingRailContact | null {
+    const bodyA = rawBodyA as BallBody & RailBody;
+    const bodyB = rawBodyB as BallBody & RailBody;
+    const rail = bodyA.billiardsRail ? bodyA : bodyB.billiardsRail ? bodyB : null;
+    const ball = rail === bodyA ? bodyB : rail === bodyB ? bodyA : null;
+    if (!rail?.billiardsRailSide || !ball?.billiardsId) return null;
+    return {
+      ball,
+      side: rail.billiardsRailSide,
+      normal: { x: collisionNormal.x, y: collisionNormal.y }
+    };
+  }
+
+  function applyPendingRailResponses() {
+    for (const contact of pendingRailContacts) {
+      Body.setVelocity(
+        contact.ball,
+        computeRailReboundVelocity(contact.ball.velocity, contact.side, contact.normal)
+      );
+    }
+    pendingRailContacts = [];
+  }
+
   function recordCueContact(bodyA: BallBody, bodyB: BallBody) {
     const activeCue = isPocketBall || currentTurn === 'player' ? cueBall : npcCueBall;
     const cue = bodyA === activeCue ? bodyA : bodyB === activeCue ? bodyB : null;
@@ -1122,7 +1158,8 @@
     const cue = bodyA === cueBall ? bodyA : bodyB === cueBall ? bodyB : null;
     const other = cue === bodyA ? bodyB : cue === bodyB ? bodyA : null;
 
-    if (cue && rail?.billiardsRailSide) artCushionHits = [...artCushionHits, rail.billiardsRailSide];
+    if (cue && rail?.billiardsRailSide)
+      artCushionHits = [...artCushionHits, rail.billiardsRailSide];
     if (cue && other?.billiardsId) {
       artCueContacts = [...artCueContacts, other.billiardsId];
       if (other.billiardsId.startsWith('black-')) artBlackHit = true;
@@ -1162,10 +1199,10 @@
     const simOpponent = shooterTurn === 'player' ? simNpc : simPlayer;
     const rail = RAIL_THICKNESS;
     const walls = [
-      makeRail(TABLE_WIDTH / 2, rail / 2, TABLE_WIDTH, rail),
-      makeRail(TABLE_WIDTH / 2, TABLE_HEIGHT - rail / 2, TABLE_WIDTH, rail),
-      makeRail(rail / 2, TABLE_HEIGHT / 2, rail, TABLE_HEIGHT),
-      makeRail(TABLE_WIDTH - rail / 2, TABLE_HEIGHT / 2, rail, TABLE_HEIGHT)
+      makeRail(TABLE_WIDTH / 2, rail / 2, TABLE_WIDTH, rail, 'top'),
+      makeRail(TABLE_WIDTH / 2, TABLE_HEIGHT - rail / 2, TABLE_WIDTH, rail, 'bottom'),
+      makeRail(rail / 2, TABLE_HEIGHT / 2, rail, TABLE_HEIGHT, 'left'),
+      makeRail(TABLE_WIDTH - rail / 2, TABLE_HEIGHT / 2, rail, TABLE_HEIGHT, 'right')
     ];
     const movingBalls = [simPlayer, simNpc, ...simReds];
     const trajectory = captureTrajectory
@@ -1173,8 +1210,11 @@
       : [];
     const hitIds = new Set<string>();
     let hitOpponentCue = false;
+    let pendingSimulationRailContacts: PendingRailContact[] = [];
     const collisionHandler = (event: Matter.IEventCollision<Matter.Engine>) => {
       for (const pair of event.pairs) {
+        const railContact = getRailContact(pair.bodyA, pair.bodyB, pair.collision.normal);
+        if (railContact) pendingSimulationRailContacts.push(railContact);
         const other =
           pair.bodyA === simShooter ? pair.bodyB : pair.bodyB === simShooter ? pair.bodyA : null;
         if (other === simOpponent) hitOpponentCue = true;
@@ -1188,23 +1228,47 @@
     Body.setVelocity(simShooter, computeShotVelocity(angle, selectedPower));
 
     for (let step = 0; step < 210; step += 1) {
-      Engine.update(simulation, 16.66);
-      for (const ball of movingBalls) {
-        const contained = containBallInTable({ position: ball.position, velocity: ball.velocity });
-        if (contained.corrected) {
-          Body.setPosition(ball, contained.position);
-          Body.setVelocity(ball, contained.velocity);
+      let remainingDelta = PHYSICS_BASE_STEP_MS;
+      for (
+        let substep = 0;
+        remainingDelta > 0.0001 && substep < PHYSICS_MAX_SUBSTEPS;
+        substep += 1
+      ) {
+        const collisionSpeed = computeMaxCollisionSpeed(movingBalls);
+        const remainingSubsteps = computePhysicsSubstepCount(collisionSpeed, remainingDelta);
+        const substepDelta =
+          substep === PHYSICS_MAX_SUBSTEPS - 1
+            ? remainingDelta
+            : remainingDelta / remainingSubsteps;
+        Engine.update(simulation, substepDelta);
+        for (const contact of pendingSimulationRailContacts) {
+          Body.setVelocity(
+            contact.ball,
+            computeRailReboundVelocity(contact.ball.velocity, contact.side, contact.normal)
+          );
         }
-        const speed = Math.hypot(ball.velocity.x, ball.velocity.y);
-        if (shouldSnapStoppedSpeed(speed)) {
-          Body.setVelocity(ball, { x: 0, y: 0 });
-        } else {
-          const scale = computeDynamicVelocityScale(speed, 16.66);
-          Body.setVelocity(ball, {
-            x: ball.velocity.x * scale,
-            y: ball.velocity.y * scale
+        pendingSimulationRailContacts = [];
+        for (const ball of movingBalls) {
+          const contained = containBallInTable({
+            position: ball.position,
+            velocity: ball.velocity
           });
+          if (contained.corrected) {
+            Body.setPosition(ball, contained.position);
+            Body.setVelocity(ball, contained.velocity);
+          }
+          const speed = Math.hypot(ball.velocity.x, ball.velocity.y);
+          if (shouldSnapStoppedSpeed(speed)) {
+            Body.setVelocity(ball, { x: 0, y: 0 });
+          } else {
+            const scale = computeDynamicVelocityScale(speed, substepDelta);
+            Body.setVelocity(ball, {
+              x: ball.velocity.x * scale,
+              y: ball.velocity.y * scale
+            });
+          }
         }
+        remainingDelta = Math.max(0, remainingDelta - substepDelta);
       }
       if (captureTrajectory && step % 3 === 0) {
         trajectory.push({ x: simShooter.position.x, y: simShooter.position.y });
@@ -1345,7 +1409,8 @@
     Body.setVelocity(npcCueBall, computeShotVelocity(actualAngle, plan.power));
     Body.setAngularVelocity(npcCueBall, 0);
     status = 'rolling';
-    rollingStartedAt = performance.now();
+    rollingPhysicsElapsedMs = 0;
+    lastFrame = performance.now();
   }
 
   function scheduleNpcShot(delayMs: number) {
@@ -1516,7 +1581,8 @@
     const velocity = computeShotVelocity(aimAngle, selectedPower);
     if (Math.hypot(velocity.x, velocity.y) < 0.1) return;
     helpPlan = null;
-    rollingStartedAt = performance.now();
+    rollingPhysicsElapsedMs = 0;
+    lastFrame = performance.now();
     beginPlayerReplay(selectedPower);
     contacts = [];
     artCueContacts = [];
@@ -1737,7 +1803,7 @@
 
     if (pocketedObject && redBalls.length === 0 && status === 'rolling') {
       activeSpin = 0;
-      rollingStartedAt = 0;
+      rollingPhysicsElapsedMs = 0;
       settleShot();
     }
   }
@@ -1748,7 +1814,7 @@
       if (Math.abs(ball.angularVelocity) <= ANGULAR_STOP_SPEED) {
         Body.setAngularVelocity(ball, 0);
       } else {
-        Body.setAngularVelocity(ball, ball.angularVelocity * ANGULAR_FRICTION_DECAY);
+        Body.setAngularVelocity(ball, ball.angularVelocity * computeAngularVelocityScale(delta));
       }
       if (shouldSnapStoppedSpeed(speed)) {
         Body.setVelocity(ball, { x: 0, y: 0 });
@@ -1772,21 +1838,29 @@
     }
   }
 
-  function tick(now: number) {
+  function advancePhysicsSlice(delta: number, physicsNow: number) {
     if (!engine) return;
-    const delta = lastFrame ? Math.min(now - lastFrame, 16.66) : 16.66;
-    lastFrame = now;
     for (const obstacle of artMovingObstacles) {
-      const offset = Math.sin(now * obstacle.speed) * obstacle.range;
+      const offset = Math.sin(physicsNow * obstacle.speed) * obstacle.range;
       Body.setPosition(obstacle.body, {
         x: obstacle.origin.x + (obstacle.axis === 'x' ? offset : 0),
         y: obstacle.origin.y + (obstacle.axis === 'y' ? offset : 0)
       });
     }
-    Engine.update(engine, delta);
-    handlePocketedBalls();
-    keepBallsInsideTable();
-    if (status === 'rolling') applyDynamicRollingDrag(delta);
+    if (status === 'rolling') rollingPhysicsElapsedMs += delta;
+    let remainingDelta = delta;
+    for (let substep = 0; remainingDelta > 0.0001 && substep < PHYSICS_MAX_SUBSTEPS; substep += 1) {
+      const collisionSpeed = computeMaxCollisionSpeed(getTrackedBalls());
+      const remainingSubsteps = computePhysicsSubstepCount(collisionSpeed, remainingDelta);
+      const substepDelta =
+        substep === PHYSICS_MAX_SUBSTEPS - 1 ? remainingDelta : remainingDelta / remainingSubsteps;
+      Engine.update(engine, substepDelta);
+      applyPendingRailResponses();
+      handlePocketedBalls();
+      keepBallsInsideTable();
+      if (status === 'rolling') applyDynamicRollingDrag(substepDelta);
+      remainingDelta = Math.max(0, remainingDelta - substepDelta);
+    }
 
     if (artMode && status === 'rolling' && cueBall) {
       for (const [index, point] of currentArtStage.waypoints.entries()) {
@@ -1794,14 +1868,6 @@
           artWaypointsVisited.add(index);
         }
       }
-    }
-
-    if (isHoldingAim && canAim()) {
-      displayAimAngle = computeBreathingAimAngle(
-        aimAngle,
-        now - aimingStartedAt,
-        now - aimingStartedAt
-      );
     }
 
     if (status === 'rolling' && cueBall && activeSpin !== 0) {
@@ -1827,6 +1893,27 @@
         Body.setAngularVelocity(cueBall, 0);
       }
     }
+  }
+
+  function tick(now: number) {
+    if (!engine) return;
+    const elapsed = lastFrame ? now - lastFrame : PHYSICS_BASE_STEP_MS;
+    lastFrame = now;
+    const physicsSlices = computePhysicsFrameSlices(elapsed);
+    const simulatedElapsed = physicsSlices.reduce((sum, slice) => sum + slice, 0);
+    let physicsNow = now - simulatedElapsed;
+    for (const delta of physicsSlices) {
+      physicsNow += delta;
+      advancePhysicsSlice(delta, physicsNow);
+    }
+
+    if (isHoldingAim && canAim()) {
+      displayAimAngle = computeBreathingAimAngle(
+        aimAngle,
+        now - aimingStartedAt,
+        now - aimingStartedAt
+      );
+    }
 
     if (status === 'rolling' && replayCapture) capturePlayerReplayFrame(now);
 
@@ -1846,11 +1933,10 @@
 
     if (
       status === 'rolling' &&
-      ((rollingStartedAt && now - rollingStartedAt > MAX_ROLL_DURATION_MS) ||
-        stopped(getTrackedBalls(), STOP_SPEED))
+      (rollingPhysicsElapsedMs > MAX_ROLL_DURATION_MS || stopped(getTrackedBalls(), STOP_SPEED))
     ) {
       activeSpin = 0;
-      rollingStartedAt = 0;
+      rollingPhysicsElapsedMs = 0;
       settleShot();
     }
 
@@ -1877,10 +1963,7 @@
     }
   }
 
-  async function submitScore(
-    mode: BilliardsRankingMode = currentMode,
-    submittedScore = score
-  ) {
+  async function submitScore(mode: BilliardsRankingMode = currentMode, submittedScore = score) {
     if (!isLoggedIn || submittedGameOver) return;
     submittedGameOver = true;
     try {
@@ -1907,6 +1990,8 @@
 
     const handleCollisionStart = (event: Matter.IEventCollision<Matter.Engine>) => {
       for (const pair of event.pairs) {
+        const railContact = getRailContact(pair.bodyA, pair.bodyB, pair.collision.normal);
+        if (railContact) pendingRailContacts.push(railContact);
         if (artMode) recordArtCollision(pair.bodyA, pair.bodyB);
         else recordCueContact(pair.bodyA as BallBody, pair.bodyB as BallBody);
       }
@@ -1914,7 +1999,13 @@
 
     Events.on(engine, 'collisionStart', handleCollisionStart);
 
-    if (!artMode && currentMode === BILLIARDS_MODES.FOUR_BALL && currentTurn === 'npc' && status !== 'rolling' && status !== 'game-over') {
+    if (
+      !artMode &&
+      currentMode === BILLIARDS_MODES.FOUR_BALL &&
+      currentTurn === 'npc' &&
+      status !== 'rolling' &&
+      status !== 'game-over'
+    ) {
       scheduleNpcShot(700);
     }
 
@@ -2025,7 +2116,11 @@
           {/each}
         </div>
       </div>
-      <div class="art-mission" class:success={artResult === 'success'} class:failed={artResult === 'failed'}>
+      <div
+        class="art-mission"
+        class:success={artResult === 'success'}
+        class:failed={artResult === 'failed'}
+      >
         <strong>{currentArtStage.title}</strong>
         <span>{artResult === 'idle' ? currentArtStage.description : artResultMessage}</span>
       </div>
@@ -2033,7 +2128,10 @@
         <div class="shot-help" aria-label="예술구 도움">
           <span>
             당점 {currentArtStage.solution.tipLabel} · 파워 약
-            {Math.max(10, currentArtStage.solution.power - 5)}~{Math.min(100, currentArtStage.solution.power + 5)}
+            {Math.max(10, currentArtStage.solution.power - 5)}~{Math.min(
+              100,
+              currentArtStage.solution.power + 5
+            )}
             · 점선은 대략적인 예상 궤적
           </span>
         </div>
@@ -2084,11 +2182,7 @@
       ></canvas>
       {#if scoreEffect}
         {#key scoreEffect.id}
-          <div
-            class="score-effect {scoreEffect.tone}"
-            role="status"
-            aria-live="assertive"
-          >
+          <div class="score-effect {scoreEffect.tone}" role="status" aria-live="assertive">
             {scoreEffect.text}
           </div>
         {/key}
@@ -2108,7 +2202,9 @@
               <strong class="art-score-total">{artScoreBreakdown.total}점</strong>
               <div class="art-score-breakdown" aria-label="예술구 점수 내역">
                 <span>기본 {artScoreBreakdown.base}</span>
-                <span>{artScoreBreakdown.noHelp ? '무도움' : '도움 사용'} +{artScoreBreakdown.noHelp}</span>
+                <span
+                  >{artScoreBreakdown.noHelp ? '무도움' : '도움 사용'} +{artScoreBreakdown.noHelp}</span
+                >
                 <span>시네루 +{artScoreBreakdown.spin}</span>
                 <span>당점 +{artScoreBreakdown.control}</span>
                 <span>쿠션 +{artScoreBreakdown.cushion}</span>
@@ -2363,9 +2459,7 @@
 
   {#if status === 'game-over' && !artMode}
     <div class="game-over-actions">
-      <button type="button" class="play-again-button" onclick={newGame}>
-        다시 치기
-      </button>
+      <button type="button" class="play-again-button" onclick={newGame}> 다시 치기 </button>
     </div>
   {/if}
 
@@ -2945,12 +3039,16 @@
 
   .score-effect.score {
     color: #ffe169;
-    text-shadow: 0 3px 0 #a46000, 0 8px 22px rgba(255, 214, 73, 0.62);
+    text-shadow:
+      0 3px 0 #a46000,
+      0 8px 22px rgba(255, 214, 73, 0.62);
   }
 
   .score-effect.foul {
     color: #ff765f;
-    text-shadow: 0 3px 0 #781e16, 0 8px 22px rgba(255, 73, 52, 0.66);
+    text-shadow:
+      0 3px 0 #781e16,
+      0 8px 22px rgba(255, 73, 52, 0.66);
   }
 
   @keyframes score-pop {
@@ -2982,7 +3080,8 @@
   }
 
   @keyframes score-fade {
-    0%, 80% {
+    0%,
+    80% {
       opacity: 1;
     }
     100% {

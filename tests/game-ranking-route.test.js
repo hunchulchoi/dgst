@@ -351,6 +351,35 @@ describe('game ranking routes', () => {
     });
   });
 
+  it('returns empty billiards rankings without Prisma for a local smoke session', async () => {
+    const queryRaw = vi.fn();
+    prismaModule.getPrisma.mockReturnValue({ $queryRaw: queryRaw });
+    const { GET } = await import('../src/routes/games/billiards/+server.js');
+
+    const response = await GET({
+      locals: {
+        auth: vi.fn().mockResolvedValue({
+          user: {
+            email: 'local-game-smoke@dgst.local',
+            nickname: '로컬스모크'
+          }
+        })
+      },
+      url: new URL('http://127.0.0.1/games/billiards?rank=1&mode=four-ball')
+    });
+    const body = await response.json();
+
+    expect(body).toEqual({
+      rank: [],
+      myBest: null,
+      todayStats: { games: 0, users: 0 },
+      mode: 'four-ball',
+      smoke: true
+    });
+    expect(queryRaw).not.toHaveBeenCalled();
+    expect(statsBilliards.getTodayBilliardsStats).not.toHaveBeenCalled();
+  });
+
   it('loads slot balances with last updated timestamps', async () => {
     const findFirst = vi.fn().mockResolvedValue({
       balance: 1200,

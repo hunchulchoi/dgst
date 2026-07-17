@@ -9,11 +9,10 @@ export type BilliardsMode = (typeof BILLIARDS_MODES)[keyof typeof BILLIARDS_MODE
 export type ActiveBilliardsMode =
   | typeof BILLIARDS_MODES.FOUR_BALL
   | typeof BILLIARDS_MODES.POCKET_BALL;
-export type BilliardsRankingMode =
-  | ActiveBilliardsMode
-  | typeof BILLIARDS_MODES.ART_PUZZLE;
+export type BilliardsRankingMode = ActiveBilliardsMode | typeof BILLIARDS_MODES.ART_PUZZLE;
 export type BallRole = 'cue' | 'red' | 'opponent';
 export type ShotSetupStep = 'angle' | 'spin' | 'power';
+export type BilliardsRailSide = 'top' | 'right' | 'bottom' | 'left';
 
 export interface ShotContact {
   cueRole: BallRole;
@@ -29,12 +28,21 @@ export interface BallBoundarySample {
   velocity: { x: number; y: number };
 }
 
+export interface BallMotionSample {
+  velocity: { x: number; y: number };
+}
+
 export const TABLE_WIDTH = 360;
 export const TABLE_HEIGHT = 560;
 export const BALL_RADIUS = 10;
 export const RAIL_THICKNESS = 18;
 export const POCKET_RADIUS = 18;
 export const MAX_SHOT_SPEED = 27;
+export const PHYSICS_BASE_STEP_MS = 16.66;
+export const PHYSICS_MAX_TRAVEL_PER_STEP = BALL_RADIUS * 0.2;
+export const PHYSICS_MAX_SUBSTEPS = 32;
+export const PHYSICS_MAX_CATCH_UP_MS = PHYSICS_BASE_STEP_MS * 4;
+export const PHYSICS_SLICE_TOLERANCE_MS = 0.01;
 export const STOP_SPEED = 0.06;
 export const STOP_SNAP_SPEED = 0.14;
 export const MAX_ROLL_DURATION_MS = 12000;
@@ -119,25 +127,33 @@ export function containBallInTable(sample: BallBoundarySample): {
 
   if (position.x < minX) {
     position.x = minX;
-    velocity.x = Math.abs(velocity.x) * RAIL_BOUNDARY_DAMPING;
-    velocity.y *= RAIL_TANGENT_DAMPING;
+    if (velocity.x < 0) {
+      velocity.x = Math.abs(velocity.x) * RAIL_BOUNDARY_DAMPING;
+      velocity.y *= RAIL_TANGENT_DAMPING;
+    }
     corrected = true;
   } else if (position.x > maxX) {
     position.x = maxX;
-    velocity.x = -Math.abs(velocity.x) * RAIL_BOUNDARY_DAMPING;
-    velocity.y *= RAIL_TANGENT_DAMPING;
+    if (velocity.x > 0) {
+      velocity.x = -Math.abs(velocity.x) * RAIL_BOUNDARY_DAMPING;
+      velocity.y *= RAIL_TANGENT_DAMPING;
+    }
     corrected = true;
   }
 
   if (position.y < minY) {
     position.y = minY;
-    velocity.y = Math.abs(velocity.y) * RAIL_BOUNDARY_DAMPING;
-    velocity.x *= RAIL_TANGENT_DAMPING;
+    if (velocity.y < 0) {
+      velocity.y = Math.abs(velocity.y) * RAIL_BOUNDARY_DAMPING;
+      velocity.x *= RAIL_TANGENT_DAMPING;
+    }
     corrected = true;
   } else if (position.y > maxY) {
     position.y = maxY;
-    velocity.y = -Math.abs(velocity.y) * RAIL_BOUNDARY_DAMPING;
-    velocity.x *= RAIL_TANGENT_DAMPING;
+    if (velocity.y > 0) {
+      velocity.y = -Math.abs(velocity.y) * RAIL_BOUNDARY_DAMPING;
+      velocity.x *= RAIL_TANGENT_DAMPING;
+    }
     corrected = true;
   }
 
@@ -193,11 +209,55 @@ export function computeSpeedRatio(speed: number): number {
   return Math.max(0, Math.min(1, speed / MAX_SHOT_SPEED));
 }
 
+export function computeMaxCollisionSpeed(samples: BallMotionSample[]): number {
+  let maxSpeed = 0;
+  for (let index = 0; index < samples.length; index += 1) {
+    const velocity = samples[index].velocity;
+    maxSpeed = Math.max(maxSpeed, Math.hypot(velocity.x, velocity.y));
+    for (let otherIndex = index + 1; otherIndex < samples.length; otherIndex += 1) {
+      const otherVelocity = samples[otherIndex].velocity;
+      maxSpeed = Math.max(
+        maxSpeed,
+        Math.hypot(velocity.x - otherVelocity.x, velocity.y - otherVelocity.y)
+      );
+    }
+  }
+  return maxSpeed;
+}
+
+export function computePhysicsSubstepCount(maxSpeed: number, deltaMs: number): number {
+  const safeSpeed = Number.isFinite(maxSpeed) ? Math.max(0, maxSpeed) : 0;
+  const safeDelta = Number.isFinite(deltaMs) ? Math.max(0, deltaMs) : 0;
+  const travel = safeSpeed * (safeDelta / PHYSICS_BASE_STEP_MS);
+  return Math.max(
+    1,
+    Math.min(PHYSICS_MAX_SUBSTEPS, Math.ceil(travel / PHYSICS_MAX_TRAVEL_PER_STEP))
+  );
+}
+
+export function computePhysicsFrameSlices(elapsedMs: number): number[] {
+  const safeElapsed = Number.isFinite(elapsedMs) ? Math.max(0, elapsedMs) : 0;
+  let remaining = Math.min(safeElapsed, PHYSICS_MAX_CATCH_UP_MS);
+  const slices: number[] = [];
+
+  while (remaining > PHYSICS_BASE_STEP_MS + PHYSICS_SLICE_TOLERANCE_MS) {
+    slices.push(PHYSICS_BASE_STEP_MS);
+    remaining -= PHYSICS_BASE_STEP_MS;
+  }
+  if (remaining > 0) slices.push(Math.min(remaining, PHYSICS_BASE_STEP_MS));
+  return slices;
+}
+
 export function computeDynamicVelocityScale(speed: number, deltaMs: number): number {
   const frameScale = Math.max(0, deltaMs / 16.66);
   const loss =
     (DYNAMIC_DRAG_BASE + DYNAMIC_DRAG_SPEED_SCALE * computeSpeedRatio(speed)) * frameScale;
   return Math.max(0.9, 1 - loss);
+}
+
+export function computeAngularVelocityScale(deltaMs: number): number {
+  const frameScale = Math.max(0, deltaMs / PHYSICS_BASE_STEP_MS);
+  return ANGULAR_FRICTION_DECAY ** frameScale;
 }
 
 export function computeRailEnergyScale(speed: number): number {
@@ -207,6 +267,31 @@ export function computeRailEnergyScale(speed: number): number {
 export function computeRailContactVelocityScale(speed: number): number {
   if (speed <= RAIL_CONTACT_STOP_SPEED) return 0;
   return 0.98 - 0.08 * computeSpeedRatio(speed);
+}
+
+export function computeRailReboundVelocity(
+  velocity: { x: number; y: number },
+  side: BilliardsRailSide,
+  collisionNormal?: { x: number; y: number }
+): { x: number; y: number } {
+  const normalScale = RAIL_RESTITUTION / BALL_RESTITUTION;
+  const fallbackNormal = side === 'left' || side === 'right' ? { x: 1, y: 0 } : { x: 0, y: 1 };
+  const rawNormal = collisionNormal ?? fallbackNormal;
+  const normalLength = Math.hypot(rawNormal.x, rawNormal.y);
+  const normal =
+    normalLength > 0
+      ? { x: rawNormal.x / normalLength, y: rawNormal.y / normalLength }
+      : fallbackNormal;
+  const normalVelocity = velocity.x * normal.x + velocity.y * normal.y;
+  const tangentVelocity = {
+    x: velocity.x - normalVelocity * normal.x,
+    y: velocity.y - normalVelocity * normal.y
+  };
+
+  return {
+    x: normal.x * normalVelocity * normalScale + tangentVelocity.x * RAIL_TANGENT_DAMPING,
+    y: normal.y * normalVelocity * normalScale + tangentVelocity.y * RAIL_TANGENT_DAMPING
+  };
 }
 
 export function computeBallCollisionEnergyScale(
@@ -345,9 +430,7 @@ export function evaluateFourBallShot(contacts: ShotContact[]): {
   scored: boolean;
   hitRedIds: string[];
 } {
-  const hitRedIds = Array.from(
-    new Set(contacts.map((contact) => contact.targetId))
-  );
+  const hitRedIds = Array.from(new Set(contacts.map((contact) => contact.targetId)));
 
   return {
     scored: hitRedIds.length >= 2,
@@ -357,22 +440,17 @@ export function evaluateFourBallShot(contacts: ShotContact[]): {
 
 export function computeFourBallComboMultiplier(streak: number): number {
   const normalizedStreak = Math.max(1, Math.floor(streak));
-  return Math.min(
-    FOUR_BALL_MAX_COMBO_MULTIPLIER,
-    1 + (normalizedStreak - 1) * 0.5
-  );
+  return Math.min(FOUR_BALL_MAX_COMBO_MULTIPLIER, 1 + (normalizedStreak - 1) * 0.5);
 }
 
 export function computeFourBallShotScore(streak: number): number {
   return FOUR_BALL_BASE_SCORE * computeFourBallComboMultiplier(streak);
 }
 
-export function computeFourBallFoulPenalty(
-  hitRedCount: number,
-  hitOpponentCue: boolean
-): number {
-  return (hitRedCount <= 0 ? FOUR_BALL_FOUL_PENALTY : 0) +
-    (hitOpponentCue ? FOUR_BALL_FOUL_PENALTY : 0);
+export function computeFourBallFoulPenalty(hitRedCount: number, hitOpponentCue: boolean): number {
+  return (
+    (hitRedCount <= 0 ? FOUR_BALL_FOUL_PENALTY : 0) + (hitOpponentCue ? FOUR_BALL_FOUL_PENALTY : 0)
+  );
 }
 
 export function getFourBallNpcDifficulty(targetScore: FourBallTargetScore): {

@@ -2,15 +2,11 @@ import Matter from 'matter-js';
 import { describe, it } from 'vitest';
 import { ART_STAGES, evaluateArtShot } from '../src/routes/games/billiards/artStages';
 import {
-  ANGULAR_FRICTION_DECAY,
   ANGULAR_STOP_SPEED,
-  BALL_FRICTION_AIR,
-  BALL_RADIUS,
-  BALL_RESTITUTION,
-  BALL_STATIC_FRICTION,
-  BALL_SURFACE_FRICTION,
   CUE_SPIN_ANGULAR_SCALE,
   CUE_SPIN_STOP_VALUE,
+  PHYSICS_BASE_STEP_MS,
+  PHYSICS_MAX_SUBSTEPS,
   RAIL_RESTITUTION,
   RAIL_SURFACE_FRICTION,
   RAIL_THICKNESS,
@@ -19,25 +15,26 @@ import {
   TABLE_WIDTH,
   computeDynamicSpinDecay,
   computeDynamicVelocityScale,
+  computeAngularVelocityScale,
+  computeMaxCollisionSpeed,
+  computePhysicsSubstepCount,
+  computeRailReboundVelocity,
   computeShotVelocity,
   computeSpinAdjustedVelocity,
   computeVerticalSpinVelocityScale,
   containBallInTable,
   shouldSnapStoppedSpeed,
-  stopped
+  stopped,
+  type BilliardsRailSide
 } from '../src/routes/games/billiards/gameUtils';
+import { createBilliardsBallBody } from '../src/routes/games/billiards/billiardsPhysics';
 
-type Ball = Matter.Body & { billiardsId?: string; railSide?: string };
+type Ball = Matter.Body & { billiardsId?: string; railSide?: BilliardsRailSide };
 
 function simulate(stage: (typeof ART_STAGES)[number], angle: number, power: number) {
   const engine = Matter.Engine.create({ gravity: { x: 0, y: 0 } });
   const ball = (x: number, y: number, id: string) => {
-    const body = Matter.Bodies.circle(x, y, BALL_RADIUS, {
-      restitution: BALL_RESTITUTION,
-      friction: BALL_SURFACE_FRICTION,
-      frictionStatic: BALL_STATIC_FRICTION,
-      frictionAir: BALL_FRICTION_AIR
-    }) as Ball;
+    const body = createBilliardsBallBody(x, y) as Ball;
     body.billiardsId = id;
     return body;
   };
@@ -48,7 +45,7 @@ function simulate(stage: (typeof ART_STAGES)[number], angle: number, power: numb
     if (item.static) Matter.Body.setStatic(body, true);
     return body;
   });
-  const rail = (x: number, y: number, width: number, height: number, side: string) => {
+  const rail = (x: number, y: number, width: number, height: number, side: BilliardsRailSide) => {
     const body = Matter.Bodies.rectangle(x, y, width, height, {
       isStatic: true,
       restitution: RAIL_RESTITUTION,
@@ -66,12 +63,26 @@ function simulate(stage: (typeof ART_STAGES)[number], angle: number, power: numb
   Matter.Composite.add(engine.world, [cue, ...targets, ...obstacles, ...rails]);
   const cueContacts: string[] = [];
   const cushionHits: string[] = [];
+  let pendingRailContacts: Array<{
+    ball: Ball;
+    side: BilliardsRailSide;
+    normal: { x: number; y: number };
+  }> = [];
   let blackHit = false;
   Matter.Events.on(engine, 'collisionStart', (event) => {
     for (const pair of event.pairs) {
       const a = pair.bodyA as Ball;
       const b = pair.bodyB as Ball;
       const other = a === cue ? b : b === cue ? a : null;
+      const railBody = a.railSide ? a : b.railSide ? b : null;
+      const movingBody = railBody === a ? b : railBody === b ? a : null;
+      if (railBody?.railSide && movingBody?.billiardsId) {
+        pendingRailContacts.push({
+          ball: movingBody,
+          side: railBody.railSide,
+          normal: { x: pair.collision.normal.x, y: pair.collision.normal.y }
+        });
+      }
       if (other?.railSide) cushionHits.push(other.railSide);
       if (other?.billiardsId) {
         cueContacts.push(other.billiardsId);
@@ -86,31 +97,52 @@ function simulate(stage: (typeof ART_STAGES)[number], angle: number, power: numb
   const moving = [cue, ...targets, ...obstacles];
   const visited = new Set<number>();
   for (let step = 0; step < 720; step += 1) {
-    Matter.Engine.update(engine, 16.66);
-    for (const [index, point] of stage.waypoints.entries()) {
-      if (Math.hypot(cue.position.x - point.x, cue.position.y - point.y) <= 16) visited.add(index);
-    }
-    for (const body of moving) {
-      const next = containBallInTable({ position: body.position, velocity: body.velocity });
-      if (next.corrected) {
-        Matter.Body.setPosition(body, next.position);
-        Matter.Body.setVelocity(body, next.velocity);
+    let remainingDelta = PHYSICS_BASE_STEP_MS;
+    for (let substep = 0; remainingDelta > 0.0001 && substep < PHYSICS_MAX_SUBSTEPS; substep += 1) {
+      const collisionSpeed = computeMaxCollisionSpeed(moving);
+      const remainingSubsteps = computePhysicsSubstepCount(collisionSpeed, remainingDelta);
+      const substepDelta =
+        substep === PHYSICS_MAX_SUBSTEPS - 1 ? remainingDelta : remainingDelta / remainingSubsteps;
+      Matter.Engine.update(engine, substepDelta);
+      for (const contact of pendingRailContacts) {
+        Matter.Body.setVelocity(
+          contact.ball,
+          computeRailReboundVelocity(contact.ball.velocity, contact.side, contact.normal)
+        );
       }
-      const speed = Math.hypot(body.velocity.x, body.velocity.y);
-      if (Math.abs(body.angularVelocity) <= ANGULAR_STOP_SPEED) Matter.Body.setAngularVelocity(body, 0);
-      else Matter.Body.setAngularVelocity(body, body.angularVelocity * ANGULAR_FRICTION_DECAY);
-      if (shouldSnapStoppedSpeed(speed)) Matter.Body.setVelocity(body, { x: 0, y: 0 });
-      else {
-        const scale =
-          body === cue && verticalSpin !== 0
-            ? computeVerticalSpinVelocityScale(speed, 16.66, verticalSpin)
-            : computeDynamicVelocityScale(speed, 16.66);
-        Matter.Body.setVelocity(body, { x: body.velocity.x * scale, y: body.velocity.y * scale });
+      pendingRailContacts = [];
+      for (const [index, point] of stage.waypoints.entries()) {
+        if (Math.hypot(cue.position.x - point.x, cue.position.y - point.y) <= 16)
+          visited.add(index);
       }
-      if (body === cue && verticalSpin !== 0) {
-        verticalSpin *= computeDynamicSpinDecay(speed, 16.66);
-        if (Math.abs(verticalSpin) < CUE_SPIN_STOP_VALUE) verticalSpin = 0;
+      for (const body of moving) {
+        const next = containBallInTable({ position: body.position, velocity: body.velocity });
+        if (next.corrected) {
+          Matter.Body.setPosition(body, next.position);
+          Matter.Body.setVelocity(body, next.velocity);
+        }
+        const speed = Math.hypot(body.velocity.x, body.velocity.y);
+        if (Math.abs(body.angularVelocity) <= ANGULAR_STOP_SPEED)
+          Matter.Body.setAngularVelocity(body, 0);
+        else
+          Matter.Body.setAngularVelocity(
+            body,
+            body.angularVelocity * computeAngularVelocityScale(substepDelta)
+          );
+        if (shouldSnapStoppedSpeed(speed)) Matter.Body.setVelocity(body, { x: 0, y: 0 });
+        else {
+          const scale =
+            body === cue && verticalSpin !== 0
+              ? computeVerticalSpinVelocityScale(speed, substepDelta, verticalSpin)
+              : computeDynamicVelocityScale(speed, substepDelta);
+          Matter.Body.setVelocity(body, { x: body.velocity.x * scale, y: body.velocity.y * scale });
+        }
+        if (body === cue && verticalSpin !== 0) {
+          verticalSpin *= computeDynamicSpinDecay(speed, substepDelta);
+          if (Math.abs(verticalSpin) < CUE_SPIN_STOP_VALUE) verticalSpin = 0;
+        }
       }
+      remainingDelta = Math.max(0, remainingDelta - substepDelta);
     }
     if (sideSpin !== 0) {
       const speed = Math.hypot(cue.velocity.x, cue.velocity.y);
@@ -134,9 +166,11 @@ function simulate(stage: (typeof ART_STAGES)[number], angle: number, power: numb
 
 describe('billiards art stage physics', () => {
   it('completes every stage with its authored help shot', () => {
+    const failures: string[] = [];
     for (const stage of ART_STAGES) {
       const result = simulate(stage, stage.solution.angle, stage.solution.power);
-      if (!result.success) throw new Error(`stage ${stage.stage}: ${result.message}`);
+      if (!result.success) failures.push(`stage ${stage.stage}: ${result.message}`);
     }
+    if (failures.length > 0) throw new Error(failures.join('\n'));
   }, 120_000);
 });

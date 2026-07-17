@@ -106,14 +106,14 @@ export const ART_STAGES: ArtStage[] = [
     waypoints: [],
     goal: { minUniqueTargets: 1, minCushions: 1 },
     solution: {
-      angle: -2.097,
+      angle: -2.422,
       power: 64,
       sideSpin: 0,
       verticalSpin: 0,
       tipLabel: '중앙',
       trajectory: [
         { x: 125, y: 440 },
-        { x: 28, y: 292 },
+        { x: 28, y: 355 },
         { x: 205, y: 185 }
       ]
     }
@@ -129,15 +129,15 @@ export const ART_STAGES: ArtStage[] = [
     waypoints: [],
     goal: { minUniqueTargets: 1, minCushions: 2 },
     solution: {
-      angle: -0.785,
+      angle: -0.963,
       power: 86,
       sideSpin: 0,
       verticalSpin: 0,
       tipLabel: '중앙',
       trajectory: [
         { x: 155, y: 450 },
-        { x: 332, y: 307 },
-        { x: 185, y: 28 },
+        { x: 333, y: 194 },
+        { x: 225, y: 28 },
         { x: 92, y: 220 }
       ]
     }
@@ -153,16 +153,16 @@ export const ART_STAGES: ArtStage[] = [
     waypoints: [],
     goal: { minUniqueTargets: 1, minCushions: 3 },
     solution: {
-      angle: -0.392,
+      angle: -0.757,
       power: 88,
       sideSpin: 10,
       verticalSpin: 0,
       tipLabel: '중앙보다 약간 오른쪽',
       trajectory: [
         { x: 105, y: 445 },
-        { x: 332, y: 365 },
-        { x: 205, y: 28 },
-        { x: 28, y: 205 },
+        { x: 332, y: 230 },
+        { x: 134, y: 28 },
+        { x: 28, y: 129 },
         { x: 175, y: 285 }
       ]
     }
@@ -201,15 +201,17 @@ export const ART_STAGES: ArtStage[] = [
     waypoints: [{ x: 122, y: 300 }],
     goal: { minUniqueTargets: 1, sideSpin: 'left', waypointCount: 1, avoidBlack: true },
     solution: {
-      angle: -0.314,
-      power: 75,
+      angle: -0.256,
+      power: 92,
       sideSpin: -58,
       verticalSpin: 35,
       tipLabel: '왼쪽 위',
       trajectory: [
         { x: 180, y: 450 },
-        { x: 332, y: 400 },
-        { x: 250, y: 250 },
+        { x: 332, y: 409 },
+        { x: 28, y: 322 },
+        { x: 120, y: 293 },
+        { x: 332, y: 227 },
         { x: 185, y: 175 }
       ]
     }
@@ -225,13 +227,14 @@ export const ART_STAGES: ArtStage[] = [
     waypoints: [],
     goal: { minUniqueTargets: 2, verticalSpin: 'follow' },
     solution: {
-      angle: -Math.PI / 2,
+      angle: -1.523,
       power: 95,
       sideSpin: 0,
       verticalSpin: 55,
       tipLabel: '위쪽 당점',
       trajectory: [
         { x: 180, y: 450 },
+        { x: 187, y: 310 },
         { x: 180, y: 205 }
       ]
     }
@@ -292,7 +295,7 @@ export const ART_STAGES: ArtStage[] = [
     waypoints: [],
     goal: { minUniqueTargets: 0, minCushions: 4, allRails: true },
     solution: {
-      angle: -2.251,
+      angle: -2.247,
       power: 95,
       sideSpin: 25,
       verticalSpin: 35,
@@ -335,7 +338,10 @@ export function computeArtScore(
   };
 }
 
-export function evaluateArtShot(stage: ArtStage, shot: ArtShotResult): {
+export function evaluateArtShot(
+  stage: ArtStage,
+  shot: ArtShotResult
+): {
   success: boolean;
   message: string;
 } {
@@ -343,7 +349,8 @@ export function evaluateArtShot(stage: ArtStage, shot: ArtShotResult): {
   const cushionCount = shot.cushionHits.length;
   const goal = stage.goal;
 
-  if (goal.avoidBlack && shot.blackHit) return { success: false, message: '검은 공을 건드렸습니다' };
+  if (goal.avoidBlack && shot.blackHit)
+    return { success: false, message: '검은 공을 건드렸습니다' };
   if (goal.sideSpin === 'right' && shot.sideSpin < 20)
     return { success: false, message: '오른쪽 회전이 필요합니다' };
   if (goal.sideSpin === 'left' && shot.sideSpin > -20)

@@ -3,11 +3,7 @@ import { getPrisma } from '$lib/database/prisma.js';
 import { getGameSession, isLocalGameSmokeSession } from '$lib/server/localGameSmokeSession.js';
 import { getTodayBilliardsStats } from '$lib/server/gameBilliardsStats.js';
 import { normalizeToIsoString } from '$lib/util/formatRelativeTime.js';
-import {
-  BILLIARDS_MODES,
-  isBilliardsRankingMode,
-  isValidScore
-} from './gameUtils';
+import { BILLIARDS_MODES, isBilliardsRankingMode, isValidScore } from './gameUtils';
 
 /**
  * @param {string} mode
@@ -50,6 +46,15 @@ export async function GET(event) {
     throw error(400, { message: '지원하지 않는 당구 모드입니다.' });
 
   if (url.searchParams.get('rank')) {
+    if (isLocalGameSmokeSession(session)) {
+      return json({
+        rank: [],
+        myBest: null,
+        todayStats: { games: 0, users: 0 },
+        mode,
+        smoke: true
+      });
+    }
     const [rank, myBest, todayStats] = await Promise.all([
       getRankTop10(mode),
       (async () => {

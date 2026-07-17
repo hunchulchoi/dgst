@@ -138,6 +138,15 @@ describe('billiards game helpers', () => {
     expect(corner.position).toEqual({ x: 332, y: 532 });
     expect(corner.velocity.x).toBeCloseTo(-16 * RAIL_BOUNDARY_DAMPING * RAIL_TANGENT_DAMPING);
     expect(corner.velocity.y).toBeCloseTo(-14 * RAIL_TANGENT_DAMPING * RAIL_BOUNDARY_DAMPING);
+
+    const alreadyRebounded = containBallInTable({
+      position: { x: 332.05, y: 120 },
+      velocity: { x: -8.8, y: 2 }
+    });
+
+    expect(alreadyRebounded.corrected).toBe(true);
+    expect(alreadyRebounded.position).toEqual({ x: 332, y: 120 });
+    expect(alreadyRebounded.velocity).toEqual({ x: -8.8, y: 2 });
   });
 
   it('computes shot velocity from independent angle and power controls', () => {
@@ -314,10 +323,14 @@ describe('billiards game helpers', () => {
       { x: TABLE_WIDTH - RAIL_THICKNESS, y: TABLE_HEIGHT - RAIL_THICKNESS }
     ]);
     expect(isBallInPocket(getPocketCenters()[0])).toBe(true);
-    expect(isBallInPocket({ x: RAIL_THICKNESS + BALL_RADIUS, y: RAIL_THICKNESS + BALL_RADIUS })).toBe(true);
+    expect(
+      isBallInPocket({ x: RAIL_THICKNESS + BALL_RADIUS, y: RAIL_THICKNESS + BALL_RADIUS })
+    ).toBe(true);
     expect(isBallInPocket({ x: RAIL_THICKNESS + BALL_RADIUS, y: TABLE_HEIGHT / 2 })).toBe(true);
     expect(isBallInPocket({ x: 180, y: 280 })).toBe(false);
-    expect(isBallInPocket({ x: getPocketCenters()[0].x + POCKET_RADIUS + 1, y: RAIL_THICKNESS })).toBe(false);
+    expect(
+      isBallInPocket({ x: getPocketCenters()[0].x + POCKET_RADIUS + 1, y: RAIL_THICKNESS })
+    ).toBe(false);
   });
 
   it('scores pocket-ball shots with object, combo, clear bonus, and scratch penalty', () => {
