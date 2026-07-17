@@ -12,6 +12,7 @@ export function shouldForceSparkForRaise(action, amount) {
 export const SEOTDA_INITIAL = 1000;
 export const SEOTDA_OOPS_TOPUP = 700;
 export const SEOTDA_OOPS_DELAY_MS = 5 * 60 * 1000;
+export const SEOTDA_LEADER_EVENT_GAME = 'seotda-leader';
 
 const KST_OFFSET_MINUTES = 9 * 60;
 
@@ -177,16 +178,17 @@ export async function resolveSeotdaOops(email, nickname, currentBalance = 0) {
 
 /**
  * 현재 섯다 1등. 동점이면 가장 최근에 해당 잔고를 기록한 사용자를 우선한다.
- * @returns {Promise<{ email: string; balance: number } | null>}
+ * @returns {Promise<{ email: string; nickname: string; balance: number } | null>}
  */
 export async function getSeotdaCurrentLeader() {
   try {
-    /** @type {Array<{ email: string; balance: number; createdAt: Date }>} */
+    /** @type {Array<{ email: string; nickname: string; balance: number; createdAt: Date }>} */
     const rows = await getPrisma().$queryRaw`
-      SELECT email, balance, "createdAt"
+      SELECT email, nickname, balance, "createdAt"
       FROM (
         SELECT
           email,
+          nickname,
           balance,
           created_at AS "createdAt",
           ROW_NUMBER() OVER (PARTITION BY email ORDER BY created_at DESC) AS rn
@@ -197,7 +199,9 @@ export async function getSeotdaCurrentLeader() {
       ORDER BY balance DESC, "createdAt" DESC
       LIMIT 1
     `;
-    return rows[0] ? { email: rows[0].email, balance: Number(rows[0].balance) } : null;
+    return rows[0]
+      ? { email: rows[0].email, nickname: rows[0].nickname, balance: Number(rows[0].balance) }
+      : null;
   } catch (err) {
     console.error('[seotda getSeotdaCurrentLeader]', err);
     return null;
@@ -211,6 +215,40 @@ export async function getSeotdaCurrentLeader() {
  */
 export function didSeotdaTakeLead(leaderBefore, userEmail, balanceAfter) {
   return !!leaderBefore && leaderBefore.email !== userEmail && balanceAfter > leaderBefore.balance;
+}
+
+/**
+ * 정산한 기존 1등이 내려가면서 다른 사용자가 자동 승격했는지 판별한다.
+ * @param {{ email: string } | null} leaderBefore
+ * @param {{ email: string } | null} leaderAfter
+ * @param {string} settledUserEmail
+ */
+export function didSeotdaPromoteLeader(leaderBefore, leaderAfter, settledUserEmail) {
+  return !!(
+    leaderBefore &&
+    leaderAfter &&
+    leaderBefore.email === settledUserEmail &&
+    leaderAfter.email !== leaderBefore.email
+  );
+}
+
+/**
+ * 랭킹·Spark 게임 이력을 오염시키지 않는 전용 1등 승격 축하 이벤트.
+ * @param {{ email: string; nickname: string; balance: number }} leader
+ */
+export async function writeSeotdaLeaderPromotion(leader) {
+  return getPrisma().gameScore.create({
+    data: {
+      email: leader.email,
+      nickname: leader.nickname,
+      game: SEOTDA_LEADER_EVENT_GAME,
+      bet: 0,
+      payout: 0,
+      delta: 0,
+      balance: leader.balance,
+      reels: ['lead', 'promotion', '-']
+    }
+  });
 }
 
 /**

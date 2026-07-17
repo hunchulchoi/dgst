@@ -1,4 +1,5 @@
 // @ts-nocheck
+import { readFileSync } from 'node:fs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const prismaModule = vi.hoisted(() => ({
@@ -8,6 +9,10 @@ const prismaModule = vi.hoisted(() => ({
 vi.mock('$lib/database/prisma.js', () => prismaModule);
 
 describe('board celebrations', () => {
+  it('includes dedicated seotda runner-up promotion events in rank-one fireworks', () => {
+    const source = readFileSync('src/lib/server/boardCelebrations.js', 'utf8');
+    expect(source).toContain("WHERE game IN ('seotda', 'seotda-leader')");
+  });
   afterEach(() => {
     vi.useRealTimers();
     vi.resetAllMocks();

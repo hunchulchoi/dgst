@@ -298,7 +298,7 @@ async function rank1Seotda() {
       created_at AS "createdAt",
       email
     FROM game_scores
-    WHERE game = 'seotda'
+    WHERE game IN ('seotda', 'seotda-leader')
       AND 'lead' = ANY(reels)
     ORDER BY created_at DESC
     LIMIT 1
@@ -361,8 +361,7 @@ export async function getBoardCelebrations() {
       out.push(.../** @type {BoardCelebration[]} */ (r.value));
     } else if (r.status === 'fulfilled' && r.value) {
       out.push(/** @type {BoardCelebration} */ (r.value));
-    }
-    else if (r.status === 'rejected') {
+    } else if (r.status === 'rejected') {
       console.error('[celebration rank1]', r.reason);
     }
   }

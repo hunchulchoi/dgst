@@ -5,6 +5,7 @@ import { evaluateHand } from './seotdaEngine.js';
 import {
   ensureSeotdaBalance,
   didSeotdaTakeLead,
+  didSeotdaPromoteLeader,
   getSeotdaCurrentLeader,
   getSeotdaRank,
   getSeotdaSparkHistory,
@@ -15,6 +16,7 @@ import {
   shouldForceSparkForRaise,
   sparkDecisionCooldownMs,
   sparkInterventionHands,
+  writeSeotdaLeaderPromotion,
   writeSeotdaScore
 } from './seotdaBalance.js';
 import {
@@ -296,6 +298,10 @@ export async function POST(event) {
             ...seotdaAuditLogEntries(round)
           ]
         });
+        const leaderAfter = await getSeotdaCurrentLeader();
+        if (didSeotdaPromoteLeader(leaderBefore, leaderAfter, user.email) && leaderAfter) {
+          await writeSeotdaLeaderPromotion(leaderAfter);
+        }
         chipsBeforeMap.delete(user.email);
         saveNpcStacks(user.email, round);
         return json({ success: true, balance: result.after, round: publicOf(round), npcActions });

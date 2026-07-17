@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   didSeotdaTakeLead,
+  didSeotdaPromoteLeader,
   getSeotdaOopsTiming,
   isSeotdaOopsBalance,
   shouldForceSparkForRaise,
@@ -18,6 +19,16 @@ describe('seotda leader celebration', () => {
     expect(didSeotdaTakeLead(leader, 'challenger@example.com', 10_000)).toBe(false);
     expect(didSeotdaTakeLead(leader, 'leader@example.com', 12_000)).toBe(false);
     expect(didSeotdaTakeLead(null, 'first@example.com', 1_000)).toBe(false);
+  });
+
+  it('celebrates when a settled first-place user drops below the runner-up', () => {
+    const before = { email: 'old-leader@example.com' };
+    const promoted = { email: 'runner-up@example.com' };
+
+    expect(didSeotdaPromoteLeader(before, promoted, 'old-leader@example.com')).toBe(true);
+    expect(didSeotdaPromoteLeader(before, before, 'old-leader@example.com')).toBe(false);
+    expect(didSeotdaPromoteLeader(before, promoted, 'someone-else@example.com')).toBe(false);
+    expect(didSeotdaPromoteLeader(before, null, 'old-leader@example.com')).toBe(false);
   });
 });
 
