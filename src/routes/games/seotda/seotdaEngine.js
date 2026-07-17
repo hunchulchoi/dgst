@@ -1,7 +1,7 @@
 /** 섯다 라이트 엔진 — 덱·족보·팟 */
 
 export const ANTE = 10;
-export const MAX_ANTE = 30_000;
+export const MAX_ANTE = 200_000_000;
 export const SEOTDA_GAME = 'seotda';
 
 /**

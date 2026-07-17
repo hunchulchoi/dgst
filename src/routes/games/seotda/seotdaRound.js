@@ -21,7 +21,7 @@ import {
   publicBluffSuspicionChance
 } from './seotdaNpc.js';
 
-export const NPC_MAX_REFILL = 10_000_000;
+export const NPC_MAX_REFILL = 5_000_000_000;
 export const NPC_MAX_USER_BALANCE_RATIO = 0.9;
 export const NPC_REFILL_THRESHOLD_ANTE_MULTIPLIER = 4;
 /** 한 판 레이즈 횟수 상한 — 무한 콜/레이즈 방지 */
@@ -45,7 +45,7 @@ export function npcPlayerRelief(userBalance) {
 export function npcStartingChips(ante = ANTE, userChips = 0) {
   if (Number(userChips) <= 0) return Math.max(ante, ANTE);
   return Math.max(
-    ante,
+    Math.min(ante, NPC_MAX_REFILL),
     Math.min(NPC_MAX_REFILL, Math.floor(Number(userChips) * NPC_MAX_USER_BALANCE_RATIO))
   );
 }
@@ -239,6 +239,12 @@ export function createNewRound(
 
   let pot = 0;
   for (const s of seats) {
+    const anteCredit = s.isNpc ? Math.max(0, ante - s.chips) : 0;
+    if (anteCredit > 0) {
+      s.chips += anteCredit;
+      s.borrowedChips = Number(s.borrowedChips ?? 0) + anteCredit;
+      log.push(`${s.name}: 판돈 외상 ${anteCredit} (상환 없음)`);
+    }
     const pay = Math.min(ante, s.chips);
     s.chips -= pay;
     s.contrib += pay;

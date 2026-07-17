@@ -113,9 +113,10 @@ describe('seotdaEngine pot', () => {
     expect(dynamicAnte(100_000)).toBe(1_000);
     expect(dynamicAnte(500_000)).toBe(5_000);
     expect(dynamicAnte(1_000_000)).toBe(15_000);
-    expect(dynamicAnte(2_000_000)).toBe(MAX_ANTE);
-    expect(dynamicAnte(10_000_000)).toBe(MAX_ANTE);
-    expect(dynamicAnte(6_451_000_000)).toBe(MAX_ANTE);
+    expect(dynamicAnte(2_000_000)).toBe(30_000);
+    expect(dynamicAnte(10_000_000)).toBe(150_000);
+    expect(dynamicAnte(6_451_000_000)).toBe(96_765_000);
+    expect(dynamicAnte(14_300_000_000)).toBe(MAX_ANTE);
   });
 
   it('raiseAmount respects requested size with min clamp', () => {
