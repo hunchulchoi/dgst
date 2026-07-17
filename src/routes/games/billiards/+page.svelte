@@ -278,13 +278,6 @@
   const displayedVerticalSpin = $derived(
     replaying && lastPlayerReplay ? lastPlayerReplay.verticalSpin : verticalSpin
   );
-  const shotHelpApplied = $derived(
-    !!helpPlan &&
-      Math.abs(aimAngle - helpPlan.angle) < 0.000001 &&
-      power === helpPlan.power &&
-      spin === helpPlan.sideSpin &&
-      verticalSpin === helpPlan.verticalSpin
-  );
   const displayedSpinTipX = $derived(
     replaying && lastPlayerReplay ? Math.round(lastPlayerReplay.sideSpin / 2) : spinTipX
   );
@@ -1442,23 +1435,6 @@
     return chooseFourBallShot('npc', getFourBallNpcDifficulty(targetScore).candidateBudget);
   }
 
-  function applyShotHelpControls(plan: ShotHelpPlan) {
-    aimAngle = plan.angle;
-    displayAimAngle = plan.angle;
-    power = plan.power;
-    spin = plan.sideSpin;
-    verticalSpin = plan.verticalSpin;
-    spinTipX = Math.round(plan.sideSpin / 2);
-    spinTipY = Math.round(plan.verticalSpin / 2);
-    aimPoint = null;
-    resetAimDrag();
-  }
-
-  function reapplyShotHelp() {
-    if (!helpPlan || !canPrepareShot()) return;
-    applyShotHelpControls(helpPlan);
-  }
-
   function showShotHelp() {
     if (isPocketBall || currentTurn !== 'player' || !canPrepareShot()) return;
     if (helpPlan) {
@@ -1480,7 +1456,6 @@
         verticalSpin: solution.verticalSpin
       };
       helpPlan = plan;
-      applyShotHelpControls(plan);
       return;
     }
 
@@ -1511,7 +1486,6 @@
           verticalSpin: 0
         };
         helpPlan = shotHelpPlan;
-        applyShotHelpControls(shotHelpPlan);
       } finally {
         if (requestId === helpRequestId) helpThinking = false;
       }
@@ -2285,11 +2259,10 @@
       {#if helpPlan}
         <div class="shot-help" aria-label="예술구 도움">
           <span>
-            {shotHelpApplied ? '추천값 적용됨' : '추천값에서 조정 중'} · 당점
-            {currentArtStage.solution.tipLabel} · 파워 {helpPlan.power} · 좌우
-            {helpPlan.sideSpin} · 상하 {helpPlan.verticalSpin} · SHOT을 누르세요
+            당점 {currentArtStage.solution.tipLabel} · 파워 약
+            {Math.max(10, helpPlan.power - 6)}~{Math.min(100, helpPlan.power + 6)} · 파란 점선 참고 ·
+            직접 조준·파워·당점을 맞춰보세요
           </span>
-          <button type="button" onclick={reapplyShotHelp}>추천값 다시 적용</button>
         </div>
       {/if}
     </section>
@@ -2318,13 +2291,12 @@
     {#if helpPlan}
       <div class="shot-help" aria-label="샷 도움">
         <span>
-          {shotHelpApplied ? '추천값 적용됨' : '추천값에서 조정 중'} · 파워 {helpPlan.power} · 좌우
-          {helpPlan.sideSpin} · 상하 {helpPlan.verticalSpin} ·
-          {helpPlan.defensive
-            ? '득점 보장 없음 · 첫 적구를 노리는 길'
-            : '득점 예상 길 · SHOT을 누르세요'}
+          중앙 부근 당점 · 파워 약 {Math.max(10, helpPlan.power - 8)}~{Math.min(
+            100,
+            helpPlan.power + 8
+          )} · {helpPlan.defensive ? '첫 적구를 노리는 길' : '득점 가능성이 높은 길'} · 파란 점선 참고
+          · 직접 조준·파워·당점을 맞춰보세요
         </span>
-        <button type="button" onclick={reapplyShotHelp}>추천값 다시 적용</button>
       </div>
     {/if}
   {/if}
@@ -2927,17 +2899,6 @@
     font-size: 0.72rem;
     font-weight: 800;
     line-height: 1.25;
-  }
-
-  .shot-help button {
-    min-height: 24px;
-    border: 1px solid rgba(111, 225, 255, 0.46);
-    border-radius: 6px;
-    background: rgba(111, 225, 255, 0.14);
-    padding: 2px 7px;
-    color: #d9f8ff;
-    font-size: 0.68rem;
-    font-weight: 900;
   }
 
   .game-shell {

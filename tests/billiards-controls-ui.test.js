@@ -19,61 +19,55 @@ describe('billiards controls UI', () => {
     expect(billiardsPage).toContain("{helpPlan ? '도움 닫기' : '도움'}");
   });
 
-  it('applies exact aim, power, and spin from shot help while keeping the guide visible', () => {
+  it('keeps shot controls untouched while the approximate guide stays visible', () => {
     expect(billiardsPage).toContain('type ShotHelpPlan');
-    expect(billiardsPage).toContain('function applyShotHelpControls');
-    const applyHelp = billiardsPage.slice(
-      billiardsPage.indexOf('function applyShotHelpControls'),
-      billiardsPage.indexOf('function showShotHelp')
+    expect(billiardsPage).not.toContain('function applyShotHelpControls');
+    expect(billiardsPage).not.toContain('추천값 다시 적용');
+
+    const showHelp = billiardsPage.slice(
+      billiardsPage.indexOf('function showShotHelp'),
+      billiardsPage.indexOf('function performNpcShot')
     );
     for (const assignment of [
       'aimAngle = plan.angle',
       'displayAimAngle = plan.angle',
       'power = plan.power',
       'spin = plan.sideSpin',
-      'verticalSpin = plan.verticalSpin',
-      'spinTipX = Math.round(plan.sideSpin / 2)',
-      'spinTipY = Math.round(plan.verticalSpin / 2)'
+      'verticalSpin = plan.verticalSpin'
     ]) {
-      expect(applyHelp).toContain(assignment);
+      expect(showHelp).not.toContain(assignment);
     }
-
-    const showHelp = billiardsPage.slice(
-      billiardsPage.indexOf('function showShotHelp'),
-      billiardsPage.indexOf('function performNpcShot')
-    );
-    expect(showHelp).toContain('applyShotHelpControls(plan)');
-    expect(showHelp).toContain('applyShotHelpControls(shotHelpPlan)');
 
     const controlUpdates = billiardsPage.slice(
       billiardsPage.indexOf('function updateAimFromPointer'),
       billiardsPage.indexOf('function handlePointerDown')
     );
     expect(controlUpdates).not.toContain('helpPlan = null');
-    expect(billiardsPage).toContain('추천값 다시 적용');
+    expect(billiardsPage).toContain('직접 조준·파워·당점을 맞춰보세요');
   });
 
-  it('shows exact authored art-help values instead of an unverified range', () => {
+  it('shows authored art help as a broad hint instead of exact control values', () => {
     const artHelp = billiardsPage.slice(
       billiardsPage.indexOf('{#if artMode}'),
       billiardsPage.indexOf('{:else if !isPocketBall}')
     );
-    expect(artHelp).toContain('{helpPlan.power}');
-    expect(artHelp).toContain('{helpPlan.sideSpin}');
-    expect(artHelp).toContain('{helpPlan.verticalSpin}');
-    expect(artHelp).not.toContain('solution.power - 5');
-    expect(artHelp).not.toContain('solution.power + 5');
+    expect(artHelp).toContain('{currentArtStage.solution.tipLabel}');
+    expect(artHelp).toContain('helpPlan.power - 6');
+    expect(artHelp).toContain('helpPlan.power + 6');
+    expect(artHelp).not.toContain('{helpPlan.sideSpin}');
+    expect(artHelp).not.toContain('{helpPlan.verticalSpin}');
   });
 
-  it('shows exact four-ball values and scans every targeted help candidate', () => {
+  it('shows approximate four-ball hints and scans targeted help candidates', () => {
     const fourBallHelp = billiardsPage.slice(
       billiardsPage.indexOf('{:else if !isPocketBall}'),
       billiardsPage.indexOf('<section class="game-shell"')
     );
-    expect(fourBallHelp).toContain('{helpPlan.power}');
-    expect(fourBallHelp).toContain('{helpPlan.sideSpin}');
-    expect(fourBallHelp).toContain('{helpPlan.verticalSpin}');
-    expect(fourBallHelp).not.toContain('helpPlan.power - 8');
+    expect(fourBallHelp).toContain('중앙 부근 당점');
+    expect(fourBallHelp).toContain('helpPlan.power - 8');
+    expect(fourBallHelp).toContain('helpPlan.power + 8');
+    expect(fourBallHelp).not.toContain('{helpPlan.sideSpin}');
+    expect(fourBallHelp).not.toContain('{helpPlan.verticalSpin}');
     expect(billiardsPage).toContain(
       "chooseFourBallShot('player', FOUR_BALL_HELP_FAST_CANDIDATE_BUDGET)"
     );
