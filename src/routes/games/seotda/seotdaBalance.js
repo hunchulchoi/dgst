@@ -2,6 +2,13 @@ import { getPrisma } from '$lib/database/prisma.js';
 import { normalizeToIsoString } from '$lib/util/formatRelativeTime.js';
 import { ANTE, SEOTDA_GAME } from './seotdaEngine.js';
 
+export const SPARK_HIGH_RAISE_TRIGGER = 1_000_000_000;
+
+/** @param {string} action @param {number} amount */
+export function shouldForceSparkForRaise(action, amount) {
+  return action === 'raise' && Number(amount) >= SPARK_HIGH_RAISE_TRIGGER;
+}
+
 export const SEOTDA_INITIAL = 1000;
 export const SEOTDA_OOPS_TOPUP = 700;
 export const SEOTDA_OOPS_DELAY_MS = 5 * 60 * 1000;
@@ -361,8 +368,7 @@ export function shouldRequestSparkDecision(balance, history) {
 export function sparkDecisionCooldownMs(balance, history, active) {
   if (Number(balance) >= 100_000) return active ? 30_000 : 3 * 60_000;
   const abnormal =
-    Number(history?.consecutiveFolds ?? 0) >= 5 ||
-    Number(history?.consecutiveMaxRaises ?? 0) >= 3;
+    Number(history?.consecutiveFolds ?? 0) >= 5 || Number(history?.consecutiveMaxRaises ?? 0) >= 3;
   return abnormal ? 10 * 60_000 : 30 * 60_000;
 }
 

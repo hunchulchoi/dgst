@@ -43,6 +43,13 @@ describe('seotda betting UI', () => {
     expect(serverSource).toContain('sparkDecision');
   });
 
+  it('forces an asynchronous Spark request after a one-billion-point raise', () => {
+    expect(serverSource).toContain('shouldForceSparkForRaise(move, appliedRaisePay)');
+    expect(serverSource).toContain("trigger: 'user-high-raise'");
+    expect(serverSource).toContain('highRaisePay: appliedRaisePay');
+    expect(serverSource).toContain('Spark: 10억 이상 레이스 판단 요청');
+  });
+
   it('covers current-hand Spark inference with a deal animation', () => {
     expect(pageSource).toContain('let dealing = $state(false)');
     expect(pageSource).toContain('class="deal-curtain"');
@@ -93,7 +100,7 @@ describe('seotda betting UI', () => {
     expect(pageSource).toContain("fetch('/games/seotda/share'");
     expect(pageSource).toContain('게시판 공유');
     expect(pageSource).toContain(
-			'{#if isShowdown && revealDone && !ddaengLayerOpen && !shareOpen && !resultLayerDismissed}'
+      '{#if isShowdown && revealDone && !ddaengLayerOpen && !shareOpen && !resultLayerDismissed}'
     );
     expect(pageSource).toContain('class="result-action-backdrop"');
     expect(pageSource).toContain('class="result-action-layer"');

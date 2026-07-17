@@ -3,6 +3,7 @@ import {
   didSeotdaTakeLead,
   getSeotdaOopsTiming,
   isSeotdaOopsBalance,
+  shouldForceSparkForRaise,
   shouldRequestSparkDecision,
   sparkDecisionCooldownMs,
   sparkInterventionHands,
@@ -21,6 +22,13 @@ describe('seotda leader celebration', () => {
 });
 
 describe('seotda Spark history', () => {
+  it('forces a Spark request for an applied raise of at least one billion', () => {
+    expect(shouldForceSparkForRaise('raise', 999_999_999)).toBe(false);
+    expect(shouldForceSparkForRaise('call', 1_000_000_000)).toBe(false);
+    expect(shouldForceSparkForRaise('raise', 1_000_000_000)).toBe(true);
+    expect(shouldForceSparkForRaise('raise', 5_000_000_000)).toBe(true);
+  });
+
   it('summarizes long-term profit and consecutive public behavior signals', () => {
     const summary = summarizeSeotdaSparkHistory([
       {
@@ -76,7 +84,11 @@ describe('seotda Spark history', () => {
       sparkInterventionHands(250_000, { recent10Delta: 0, recent10GrowthPercent: 0 }, challenge)
     ).toBe(3);
     expect(
-      sparkInterventionHands(90_000, { recent10Delta: 20_000, recent10GrowthPercent: 20 }, challenge)
+      sparkInterventionHands(
+        90_000,
+        { recent10Delta: 20_000, recent10GrowthPercent: 20 },
+        challenge
+      )
     ).toBe(1);
   });
 
@@ -90,16 +102,12 @@ describe('seotda Spark history', () => {
 
   it('allows early low-balance supervision only for abnormal streaks', () => {
     expect(shouldRequestSparkDecision(30_000, { hands: 7, consecutiveFolds: 5 })).toBe(true);
-    expect(
-      shouldRequestSparkDecision(30_000, { hands: 7, consecutiveMaxRaises: 3 })
-    ).toBe(true);
+    expect(shouldRequestSparkDecision(30_000, { hands: 7, consecutiveMaxRaises: 3 })).toBe(true);
   });
 
   it('uses a long token-saving cooldown below 100k', () => {
     expect(sparkDecisionCooldownMs(30_000, {}, true)).toBe(30 * 60_000);
-    expect(sparkDecisionCooldownMs(30_000, { consecutiveFolds: 5 }, false)).toBe(
-      10 * 60_000
-    );
+    expect(sparkDecisionCooldownMs(30_000, { consecutiveFolds: 5 }, false)).toBe(10 * 60_000);
     expect(sparkDecisionCooldownMs(100_000, {}, true)).toBe(30_000);
     expect(sparkDecisionCooldownMs(100_000, {}, false)).toBe(3 * 60_000);
   });

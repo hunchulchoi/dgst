@@ -12,6 +12,7 @@ import {
   isSeotdaOopsBalance,
   resolveSeotdaOops,
   shouldRequestSparkDecision,
+  shouldForceSparkForRaise,
   sparkDecisionCooldownMs,
   sparkInterventionHands,
   writeSeotdaScore
@@ -55,16 +56,14 @@ function consumeSparkDecision(email) {
 }
 
 /** @param {string} email @param {Record<string, unknown>} context */
-function refreshSparkDecisionInBackground(email, context) {
+function refreshSparkDecisionInBackground(email, context, force = false) {
   const now = Date.now();
   const cached = sparkDecisionCache.get(email);
   if (cached?.pending) return cached.pending;
-  if (cached && now < cached.refreshAfter) return null;
+  if (!force && cached && now < cached.refreshAfter) return null;
   if (
-    !shouldRequestSparkDecision(
-      Number(context.balance ?? 0),
-      /** @type {any} */ (context.history)
-    )
+    !force &&
+    !shouldRequestSparkDecision(Number(context.balance ?? 0), /** @type {any} */ (context.history))
   ) {
     return null;
   }
@@ -244,6 +243,29 @@ export async function POST(event) {
         /** @type {'die'|'call'|'raise'} */ (move),
         Number.isFinite(raisePay) ? raisePay : undefined
       );
+      const appliedRaisePay = Number(userSeat?.lastActionAmount ?? 0);
+      if (shouldForceSparkForRaise(move, appliedRaisePay)) {
+        round.log.push(`Spark: 10억 이상 레이스 판단 요청 (${appliedRaisePay})`);
+        void refreshSparkDecisionInBackground(
+          user.email,
+          {
+            balance: Number(userSeat?.chips ?? 0) + Number(userSeat?.totalContrib ?? 0),
+            npcChips: Object.fromEntries(
+              round.seats.filter((seat) => seat.isNpc).map((seat) => [seat.id, seat.chips])
+            ),
+            openingActorId: round.openingActorId ?? 'user',
+            sparkTauntCooldown: Number(round.sparkTauntCooldown ?? 0),
+            history: round.sparkHistory ?? {},
+            trigger: 'user-high-raise',
+            highRaisePay: appliedRaisePay,
+            pot: round.pot,
+            currentBet: round.currentBet,
+            raiseCount: round.raiseCount ?? 0,
+            userRaiseCount: round.userRaiseCount ?? 0
+          },
+          true
+        );
+      }
       const npcActions = await runNpcTurnsWithSpark(round, decideSparkNpcAction);
       setRound(user.email, round);
 
