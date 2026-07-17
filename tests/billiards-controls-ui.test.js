@@ -87,6 +87,17 @@ describe('billiards controls UI', () => {
     expect(billiardsPage).toContain("{#if status === 'game-over' && !artMode}");
   });
 
+  it('plays an authored demonstration before each art-stage attempt', () => {
+    expect(billiardsPage).toContain("type ArtDemoState = 'idle' | 'waiting' | 'playing'");
+    expect(billiardsPage).toContain('function scheduleArtDemo()');
+    expect(billiardsPage).toContain('function startArtDemo()');
+    expect(billiardsPage).toContain('function finishArtDemo()');
+    expect(billiardsPage).toContain('function skipArtDemo()');
+    expect(billiardsPage).toContain('shoot(solution.power, true)');
+    expect(billiardsPage).toContain('aria-label="예술구 시범"');
+    expect(billiardsPage).toContain('시범 건너뛰기');
+  });
+
   it('shows art technique score bonuses and remembers help use', () => {
     expect(billiardsPage).toContain('computeArtScore');
     expect(billiardsPage).toContain('artHelpUsed = true');

@@ -35,7 +35,12 @@ import { createBilliardsBallBody } from '../src/routes/games/billiards/billiards
 
 type Ball = Matter.Body & { billiardsId?: string; railSide?: BilliardsRailSide };
 
-function simulate(stage: (typeof ART_STAGES)[number], angle: number, power: number) {
+function simulate(
+  stage: (typeof ART_STAGES)[number],
+  angle: number,
+  power: number,
+  movingPhaseMs = 0
+) {
   const engine = Matter.Engine.create({ gravity: { x: 0, y: 0 } });
   const ball = (x: number, y: number, id: string) => {
     const body = createBilliardsBallBody(x, y) as Ball;
@@ -78,6 +83,7 @@ function simulate(stage: (typeof ART_STAGES)[number], angle: number, power: numb
   let sideSpin = stage.solution.sideSpin;
   let verticalSpin = stage.solution.verticalSpin;
   let blackHit = false;
+  let ballCollisions = 0;
   Matter.Events.on(engine, 'collisionStart', (event) => {
     for (const pair of event.pairs) {
       const a = pair.bodyA as Ball;
@@ -108,6 +114,7 @@ function simulate(stage: (typeof ART_STAGES)[number], angle: number, power: numb
         eventOrder.push(other.billiardsId);
         if (other.billiardsId.startsWith('black-')) blackHit = true;
       }
+      if (!a.railSide && !b.railSide && a !== cue && b !== cue) ballCollisions += 1;
     }
   });
   Matter.Body.setVelocity(cue, computeShotVelocity(angle, power));
@@ -115,6 +122,16 @@ function simulate(stage: (typeof ART_STAGES)[number], angle: number, power: numb
   const moving = [cue, ...targets, ...obstacles];
   const visited = new Set<number>();
   for (let step = 0; step < 720; step += 1) {
+    for (const [index, setup] of stage.obstacles.entries()) {
+      if (!setup.moving) continue;
+      const offset =
+        Math.sin((movingPhaseMs + step * PHYSICS_BASE_STEP_MS) * setup.moving.speed) *
+        setup.moving.range;
+      Matter.Body.setPosition(obstacles[index], {
+        x: setup.x + (setup.moving.axis === 'x' ? offset : 0),
+        y: setup.y + (setup.moving.axis === 'y' ? offset : 0)
+      });
+    }
     let remainingDelta = PHYSICS_BASE_STEP_MS;
     for (let substep = 0; remainingDelta > 0.0001 && substep < PHYSICS_MAX_SUBSTEPS; substep += 1) {
       const collisionSpeed = computeMaxCollisionSpeed(moving);
@@ -198,7 +215,7 @@ function simulate(stage: (typeof ART_STAGES)[number], angle: number, power: numb
       cushionHits,
       blackHit,
       waypointCount: visited.size,
-      ballCollisions: 0,
+      ballCollisions,
       sideSpin: stage.solution.sideSpin,
       verticalSpin: stage.solution.verticalSpin
     }),
@@ -214,10 +231,9 @@ describe('billiards art stage physics', () => {
       if (!result.success) failures.push(`stage ${stage.stage}: ${result.message}`);
       const expectedCushionSequence: Record<number, string[]> = {
         2: ['left'],
-        3: ['right', 'top'],
-        4: ['right', 'top', 'left'],
-        5: ['top'],
-        6: ['right', 'left'],
+        5: ['right', 'top'],
+        8: ['top'],
+        9: ['right', 'left'],
         10: ['left', 'top', 'right', 'bottom']
       };
       const sequence = expectedCushionSequence[stage.stage];
@@ -230,4 +246,21 @@ describe('billiards art stage physics', () => {
     }
     if (failures.length > 0) throw new Error(failures.join('\n'));
   }, 120_000);
+
+  it('keeps the moving-gate solution playable at every motion phase', () => {
+    const stage = ART_STAGES[8];
+    const speed = stage.obstacles[0].moving?.speed ?? 1;
+    const quarterPeriodMs = Math.PI / 2 / speed;
+    const failures = [0, 1, 2, 3].flatMap((quarter) => {
+      const result = simulate(
+        stage,
+        stage.solution.angle,
+        stage.solution.power,
+        quarter * quarterPeriodMs
+      );
+      return result.success ? [] : [`phase ${quarter}: ${result.message}`];
+    });
+
+    if (failures.length > 0) throw new Error(failures.join('\n'));
+  });
 });

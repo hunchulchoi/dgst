@@ -86,6 +86,7 @@
   }
 
   type Status = 'aiming' | 'charging' | 'rolling' | 'scored' | 'miss' | 'game-over';
+  type ArtDemoState = 'idle' | 'waiting' | 'playing';
   type RankEntry = {
     nickname: string;
     mode: string;
@@ -164,6 +165,7 @@
   const FOUR_BALL_HELP_FAST_CANDIDATE_BUDGET = 52;
   const FOUR_BALL_HELP_FALLBACK_CANDIDATE_BUDGET = Number.POSITIVE_INFINITY;
   const FOUR_BALL_HELP_AIM_OFFSETS = [-0.008, -0.004, 0.004, 0.008] as const;
+  const ART_DEMO_DELAY_MS = 650;
 
   let { data }: Props = $props();
 
@@ -190,6 +192,8 @@
   let artResultMessage = $state('');
   let artHelpUsed = false;
   let artScoreBreakdown = $state<ArtScoreBreakdown | null>(null);
+  let artDemoState = $state<ArtDemoState>('idle');
+  let artDemoTimer: ReturnType<typeof setTimeout> | null = null;
   let score = $state(0);
   let npcScore = $state(0);
   let targetScore = $state<FourBallTargetScore>(FOUR_BALL_TARGET_SCORE);
@@ -295,11 +299,15 @@
   }
   const statusText = $derived(
     artMode
-      ? artResult === 'success'
-        ? '한 번에 클리어!'
-        : artResult === 'failed'
-          ? artResultMessage
-          : currentArtStage.title
+      ? artDemoState === 'waiting'
+        ? '시범 준비 중…'
+        : artDemoState === 'playing'
+          ? '정답 샷 시범 중'
+          : artResult === 'success'
+            ? '한 번에 클리어!'
+            : artResult === 'failed'
+              ? artResultMessage
+              : currentArtStage.title
       : replaying
         ? '내 마지막 샷 다시보기'
         : !isPocketBall && status === 'game-over'
@@ -535,7 +543,7 @@
   }
 
   function saveGame() {
-    if (!engine) return;
+    if (!engine || artDemoState !== 'idle') return;
     try {
       localStorage.setItem(BILLIARDS_SAVE_KEY, JSON.stringify(buildGameSave()));
     } catch (error) {
@@ -648,6 +656,9 @@
   }
 
   function newGame() {
+    if (artDemoTimer) clearTimeout(artDemoTimer);
+    artDemoTimer = null;
+    artDemoState = 'idle';
     if (npcTimer) clearTimeout(npcTimer);
     npcTimer = null;
     score = 0;
@@ -710,6 +721,7 @@
     artScoreBreakdown = null;
     resetBodies();
     saveGame();
+    if (artMode) scheduleArtDemo();
   }
 
   function switchMode(mode: ActiveBilliardsMode) {
@@ -745,6 +757,66 @@
   function nextArtStage() {
     if (artStageNumber < 10) artStageNumber += 1;
     newGame();
+  }
+
+  function scheduleArtDemo() {
+    if (!artMode) return;
+    if (artDemoTimer) clearTimeout(artDemoTimer);
+    artDemoState = 'waiting';
+    artDemoTimer = setTimeout(() => {
+      artDemoTimer = null;
+      startArtDemo();
+    }, ART_DEMO_DELAY_MS);
+  }
+
+  function startArtDemo() {
+    if (!artMode || artDemoState !== 'waiting' || !cueBall) return;
+    const solution = currentArtStage.solution;
+    artDemoState = 'playing';
+    aimAngle = solution.angle;
+    displayAimAngle = solution.angle;
+    power = solution.power;
+    spin = solution.sideSpin;
+    verticalSpin = solution.verticalSpin;
+    spinTipX = Math.round(solution.sideSpin / 2);
+    spinTipY = Math.round(solution.verticalSpin / 2);
+    shoot(solution.power, true);
+  }
+
+  function finishArtDemo() {
+    if (artDemoTimer) clearTimeout(artDemoTimer);
+    artDemoTimer = null;
+    artDemoState = 'idle';
+    replayCapture = null;
+    replayCaptureStartedAt = 0;
+    lastPlayerReplay = null;
+    replaying = false;
+    status = 'aiming';
+    aimAngle = -Math.PI / 2;
+    displayAimAngle = -Math.PI / 2;
+    aimPoint = null;
+    power = 55;
+    spin = 0;
+    verticalSpin = 0;
+    spinTipX = 0;
+    spinTipY = 0;
+    activeSpin = 0;
+    activeVerticalSpin = 0;
+    rollingPhysicsElapsedMs = 0;
+    artCueContacts = [];
+    artCushionHits = [];
+    artBlackHit = false;
+    artWaypointsVisited = new Set<number>();
+    artBallCollisions = 0;
+    artShotSideSpin = 0;
+    artShotVerticalSpin = 0;
+    resetBodies();
+    saveGame();
+  }
+
+  function skipArtDemo() {
+    if (artDemoState === 'idle') return;
+    finishArtDemo();
   }
 
   function switchTargetScore(nextTarget: FourBallTargetScore) {
@@ -987,6 +1059,10 @@
 
     if (artMode) {
       contacts = [];
+      if (artDemoState === 'playing') {
+        finishArtDemo();
+        return;
+      }
       settleArtShot();
       return;
     }
@@ -1536,6 +1612,7 @@
 
   function canPrepareShot() {
     return (
+      artDemoState === 'idle' &&
       !replaying &&
       !helpThinking &&
       (isPocketBall || (currentTurn === 'player' && !npcThinking)) &&
@@ -1668,8 +1745,8 @@
     resetAimDrag();
   }
 
-  function shoot(selectedPower = power) {
-    if (!cueBall || !canCharge()) return;
+  function shoot(selectedPower = power, isArtDemo = false) {
+    if (!cueBall || (isArtDemo ? !artMode || artDemoState !== 'playing' : !canCharge())) return;
     isHoldingAim = false;
     closeSpinOverlay();
     power = selectedPower;
@@ -1678,7 +1755,7 @@
     helpPlan = null;
     rollingPhysicsElapsedMs = 0;
     lastFrame = performance.now();
-    beginPlayerReplay(selectedPower);
+    if (!isArtDemo) beginPlayerReplay(selectedPower);
     contacts = [];
     artCueContacts = [];
     artCushionHits = [];
@@ -2118,6 +2195,7 @@
     canvasEl.height = TABLE_HEIGHT;
     engine = Engine.create({ gravity: { x: 0, y: 0 } });
     if (!restoreSavedGame()) resetBodies();
+    if (artMode && status !== 'rolling' && status !== 'game-over') scheduleArtDemo();
 
     const handleCollisionStart = (event: Matter.IEventCollision<Matter.Engine>) => {
       for (const pair of event.pairs) {
@@ -2156,6 +2234,8 @@
       if (frameId) cancelAnimationFrame(frameId);
       if (npcTimer) clearTimeout(npcTimer);
       npcTimer = null;
+      if (artDemoTimer) clearTimeout(artDemoTimer);
+      artDemoTimer = null;
       if (scoreEffectTimer) clearTimeout(scoreEffectTimer);
       scoreEffectTimer = null;
       if (engine) {
@@ -2254,7 +2334,15 @@
         class:failed={artResult === 'failed'}
       >
         <strong>{currentArtStage.title}</strong>
-        <span>{artResult === 'idle' ? currentArtStage.description : artResultMessage}</span>
+        <span>
+          {artDemoState === 'waiting'
+            ? '잠시 후 정답 샷을 먼저 보여드립니다'
+            : artDemoState === 'playing'
+              ? '공의 경로와 쿠션 순서를 눈여겨보세요'
+              : artResult === 'idle'
+                ? currentArtStage.description
+                : artResultMessage}
+        </span>
       </div>
       {#if helpPlan}
         <div class="shot-help" aria-label="예술구 도움">
@@ -2312,6 +2400,15 @@
         onpointerup={handlePointerUp}
         onpointercancel={handlePointerUp}
       ></canvas>
+      {#if artMode && artDemoState !== 'idle'}
+        <div class="art-demo-banner" role="status" aria-label="예술구 시범">
+          <span>
+            <strong>{artDemoState === 'waiting' ? '시범 준비' : '정답 샷 시범'}</strong>
+            {artDemoState === 'waiting' ? '곧 자동으로 시작합니다' : '공의 움직임을 기억하세요'}
+          </span>
+          <button type="button" onclick={skipArtDemo}>시범 건너뛰기</button>
+        </div>
+      {/if}
       {#if scoreEffect}
         {#key scoreEffect.id}
           <div class="score-effect {scoreEffect.tone}" role="status" aria-live="assertive">
@@ -3079,6 +3176,50 @@
     height: 100%;
     touch-action: none;
     user-select: none;
+  }
+
+  .art-demo-banner {
+    position: absolute;
+    z-index: 6;
+    top: 12px;
+    left: 50%;
+    display: flex;
+    width: min(92%, 330px);
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    transform: translateX(-50%);
+    border: 1px solid rgba(111, 225, 255, 0.62);
+    border-radius: 9px;
+    background: rgba(4, 24, 17, 0.9);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.34);
+    padding: 8px 9px;
+    color: #d9f8ff;
+    backdrop-filter: blur(4px);
+  }
+
+  .art-demo-banner span {
+    display: grid;
+    gap: 1px;
+    font-size: 0.68rem;
+    line-height: 1.25;
+  }
+
+  .art-demo-banner strong {
+    color: #ffe084;
+    font-size: 0.78rem;
+  }
+
+  .art-demo-banner button {
+    flex: 0 0 auto;
+    min-height: 29px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 7px;
+    background: rgba(255, 255, 255, 0.12);
+    padding: 0 8px;
+    color: #f8f5e8;
+    font-size: 0.68rem;
+    font-weight: 900;
   }
 
   .score-effect {
