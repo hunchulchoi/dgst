@@ -249,6 +249,15 @@
           </NavItem>
           <NavItem>
             <NavLink
+              href="/games/ssamchi"
+              active={pathname?.startsWith('/games/ssamchi')}
+              class="px-3 text-center"
+            >
+              <span>🪙</span><span class="d-none d-sm-inline ms-1">짤짤이</span>
+            </NavLink>
+          </NavItem>
+          <NavItem>
+            <NavLink
               href="/games/watermelon"
               active={pathname?.startsWith('/games/watermelon')}
               class="px-3 text-center"
