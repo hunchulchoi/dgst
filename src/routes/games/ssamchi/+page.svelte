@@ -406,7 +406,11 @@
   <section class="ranking-card rounded-4 p-3 p-md-4 mb-3">
     <div class="ranking-head">
       <h2>🏆 구슬 부자 Top 10</h2>
-      <small>내 구슬 {formatNumber(balance)}개</small>
+      <div class="daily-stats">
+        <span>오늘 참여 <b>{formatNumber(todayStats.users)}명</b></span>
+        <span>오늘 <b>{formatNumber(todayStats.hands)}판</b></span>
+        <span>내 구슬 <b>{formatNumber(balance)}개</b></span>
+      </div>
     </div>
     {#if rank.length}<div class="ranking ranking-horizontal">
         {#each rank as row, index (row.email)}<div
@@ -608,7 +612,11 @@
                   <div class="waiting-action compact">
                     <span>🟢</span><strong
                       >{result?.mode === 'odd-even' ? '둘씩 센다!' : '셋씩 센다!'}</strong
-                    ><small>{revealedMarbles} / {result?.marbles ?? 0}개</small>
+                    ><small
+                      >{revealedMarbles > 0
+                        ? `${revealedMarbles}개 공개`
+                        : '개수는 아직 비밀'}</small
+                    >
                   </div>
                 {:else}
                   <div class="waiting-action compact">
@@ -788,9 +796,22 @@
     font-size: 1.05rem;
     font-weight: 950;
   }
-  .ranking-head small {
+  .daily-stats {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.35rem;
+  }
+  .daily-stats span {
+    padding: 0.3rem 0.55rem;
+    border-radius: 2rem;
+    background: var(--bs-tertiary-bg);
     color: var(--bs-secondary-color);
+    font-size: 0.72rem;
     font-weight: 850;
+  }
+  .daily-stats b {
+    color: #a14a1f;
   }
   .game-tabs {
     display: grid;
@@ -1111,17 +1132,11 @@
     margin-top: 0.7rem;
   }
   .ranking-horizontal {
-    display: flex;
-    gap: 0.45rem;
-    overflow-x: auto;
-    padding-bottom: 0.25rem;
-    scroll-snap-type: x proximity;
+    display: grid;
+    grid-template-columns: 1fr;
   }
   .ranking-horizontal > div {
-    flex: 0 0 205px;
-    border: 1px solid var(--bs-border-color);
-    border-radius: 0.65rem;
-    scroll-snap-align: start;
+    width: 100%;
   }
   .ranking > div {
     display: grid;
@@ -1610,6 +1625,13 @@
   @media (max-width: 767px) {
     .game-page {
       padding-top: 0.45rem !important;
+    }
+    .ranking-head {
+      align-items: flex-start;
+      flex-direction: column;
+    }
+    .daily-stats {
+      justify-content: flex-start;
     }
     .hero {
       display: grid;
