@@ -1,7 +1,9 @@
 <script lang="ts">
   import { onMount, untrack } from 'svelte';
   import { Confetti } from 'svelte-confetti';
+  import { ko } from 'date-fns/locale';
   import { swalFire } from '$lib/util/swal.js';
+  import { formatRelativeTime } from '$lib/util/formatRelativeTime.js';
   import { MIN_BET } from './ssamchiEngine.js';
 
   type Mode = 'odd-even' | 'ssamchi';
@@ -13,6 +15,7 @@
     email: string;
     nickname: string;
     balance: number;
+    updatedAt?: string | null;
   }
   interface RoundResult {
     mode: Mode;
@@ -87,13 +90,9 @@
   function formatNumber(value: number) {
     return new Intl.NumberFormat('ko-KR').format(value);
   }
-  function formatCommentTime(value: string) {
-    return new Intl.DateTimeFormat('ko-KR', {
-      month: 'numeric',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    }).format(new Date(value));
+  function formatSocialTime(value: string | null | undefined) {
+    if (!value) return '';
+    return formatRelativeTime(value, { locale: ko, addSuffix: true });
   }
   function selectMode(next: Mode) {
     mode = next;
@@ -446,8 +445,11 @@
         {#each rank as row, index (row.email)}<div
             class:me={row.email === data.session?.user?.email}
           >
-            <span>{index + 1}</span><b>{row.nickname}</b><strong>{formatNumber(row.balance)}</strong
-            >
+            <span>{index + 1}</span><b>{row.nickname}</b>
+            <div class="rank-score">
+              <strong>{formatNumber(row.balance)}</strong>
+              {#if row.updatedAt}<small>{formatSocialTime(row.updatedAt)}</small>{/if}
+            </div>
           </div>{/each}
       </div>{:else}<p class="empty">첫 순위의 주인공이 되어 보세요.</p>{/if}
   </section>
@@ -735,7 +737,7 @@
         {#each comments as comment (comment.id ?? comment._id ?? `${comment.nickname}-${comment.createdAt}`)}
           <article style="--indent:{(Math.min(comment.depth ?? 1, 3) - 1) * 1}rem">
             <header>
-              <b>{comment.nickname}</b><time>{formatCommentTime(comment.createdAt)}</time>
+              <b>{comment.nickname}</b><time>{formatSocialTime(comment.createdAt)}</time>
             </header>
             <p>{comment.content}</p>
           </article>
@@ -1195,6 +1197,7 @@
   }
   .ranking > div {
     display: grid;
+    align-items: center;
     grid-template-columns: 28px 1fr auto;
     padding: 0.55rem 0.35rem;
     border-bottom: 1px solid var(--bs-border-color);
@@ -1211,6 +1214,14 @@
   }
   .ranking strong {
     color: #a14a1f;
+  }
+  .rank-score {
+    display: grid;
+    text-align: right;
+  }
+  .rank-score small {
+    color: var(--bs-secondary-color);
+    font-size: 0.66rem;
   }
   .empty {
     margin: 0.8rem 0 0;
