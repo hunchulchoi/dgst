@@ -7,6 +7,7 @@ import { checkAndLogSessionDevice } from '$lib/server/auth/checkSessionDevice.js
 import { getGameSession, isLocalGameSmokeSession } from '$lib/server/localGameSmokeSession.js';
 import { updateSlotUserBalance } from '$lib/server/slotUserBalance.js';
 import { getSeotdaBalance, writeSeotdaScore } from '../../seotda/seotdaBalance.js';
+import { ensureSsamchiBalance, writeSsamchiScore } from '../../ssamchi/ssamchiBalance.js';
 import {
   buildSubmitFingerprint,
   findRecentDuplicateComment,
@@ -15,12 +16,15 @@ import {
 
 const GAME_ARTICLES = {
   slot: { boardId: 'slot', articleId: 'slot', title: '뺑뺑이' },
-  seotda: { boardId: 'seotda', articleId: 'seotda', title: '섯다' }
+  seotda: { boardId: 'seotda', articleId: 'seotda', title: '섯다' },
+  ssamchi: { boardId: 'ssamchi', articleId: 'ssamchi', title: '홀짝·쌈치기' }
 };
 
 /** @param {string | null | undefined} game */
 function getGameArticle(game) {
-  return GAME_ARTICLES[game === 'seotda' ? 'seotda' : 'slot'];
+  if (game === 'seotda') return GAME_ARTICLES.seotda;
+  if (game === 'ssamchi') return GAME_ARTICLES.ssamchi;
+  return GAME_ARTICLES.slot;
 }
 
 /** @param {ReturnType<typeof getPrisma>} prisma @param {{ boardId: string; articleId: string; title: string }} gameArticle */
@@ -49,6 +53,9 @@ export async function GET(event) {
 
   const session = await getGameSession(event);
   const email = typeof session?.user?.email === 'string' ? session.user.email : '';
+  if (isLocalGameSmokeSession(session)) {
+    return json({ comments: [], page: 1, perPage: 50, total: 0, totalPages: 0, hasMore: false });
+  }
   const gameArticle = getGameArticle(url.searchParams.get('game'));
   const perPageParam = Number(url.searchParams.get('limit') ?? '50');
   const pageParam = Number(url.searchParams.get('page') ?? '1');
@@ -202,7 +209,9 @@ export async function POST(event) {
     const data = await request.formData();
     const content = data.get('content')?.toString()?.trim();
     const parentCommentId = data.get('parentCommentId')?.toString();
-    const rewardGame = data.get('game')?.toString() === 'seotda' ? 'seotda' : 'slot';
+    const requestedGame = data.get('game')?.toString();
+    const rewardGame =
+      requestedGame === 'seotda' || requestedGame === 'ssamchi' ? requestedGame : 'slot';
     const gameArticle = getGameArticle(rewardGame);
     const automatic = data.get('automatic')?.toString() === '1';
 
@@ -275,11 +284,11 @@ export async function POST(event) {
     const prisma = getPrisma();
     await ensureGameArticle(prisma, gameArticle);
 
-    // 뺑뺑이·섯다 공용 리플 보상은 두 게임 합산 하루 10개까지만 지급한다.
+    // 게임 리플 보상은 뺑뺑이·섯다·쌈치기 합산 하루 10개까지만 지급한다.
     const todayRewardCount = await prisma.gameScore.count({
       where: {
         email,
-        game: { in: ['slot', 'seotda'] },
+        game: { in: ['slot', 'seotda', 'ssamchi'] },
         bet: 0,
         payout: 100,
         delta: 100,
@@ -322,6 +331,14 @@ export async function POST(event) {
           payout: 100,
           delta: 100,
           reels: ['comment', 'seotda', '-']
+        });
+      } else if (rewardGame === 'ssamchi') {
+        const current = await ensureSsamchiBalance(email, nickname);
+        const newBalance = current.balance + 100;
+        await writeSsamchiScore(email, nickname, newBalance, {
+          payout: 100,
+          delta: 100,
+          reels: ['comment', 'ssamchi', '-']
         });
       } else {
         const lastScore = await prisma.gameScore.findFirst({

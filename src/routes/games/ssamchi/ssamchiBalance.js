@@ -2,7 +2,7 @@ import { getPrisma } from '$lib/database/prisma.js';
 import { normalizeToIsoString } from '$lib/util/formatRelativeTime.js';
 import { INITIAL_BALANCE, MIN_BET, SSAMCHI_GAME } from './ssamchiEngine.js';
 
-export const OOPS_TOPUP = 500;
+export const OOPS_TOPUP = 700;
 export const OOPS_DELAY_MS = 5 * 60_000;
 
 /** @param {Date} [baseDate] */

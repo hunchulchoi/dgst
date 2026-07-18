@@ -1,12 +1,12 @@
 <script lang="ts">
-  import { untrack } from 'svelte';
+  import { onMount, untrack } from 'svelte';
   import { swalFire } from '$lib/util/swal.js';
   import { MIN_BET } from './ssamchiEngine.js';
 
   type Mode = 'odd-even' | 'ssamchi';
   type Outcome = 'win' | 'lose' | 'draw';
   type Remainder = 0 | 1 | 2;
-  type Step = 'pick' | 'bet' | 'call' | 'ready' | 'playing' | 'result';
+  type Step = 'pick' | 'npc-pick' | 'bet' | 'call' | 'playing' | 'revealing' | 'result';
 
   interface RankRow {
     email: string;
@@ -34,16 +34,18 @@
     oopsInfo: { remainingMs: number; readyAt: string } | null;
     host: 'user' | 'npc';
   }
+  interface GameComment {
+    id?: string;
+    _id?: string;
+    nickname: string;
+    content: string;
+    createdAt: string;
+    depth?: number;
+    children?: GameComment[];
+  }
 
   const SSAMCHI_LABEL: Record<Remainder, string> = { 1: '으찌', 2: '니', 0: '쌈' };
-  const CALLS: Array<{ take: Remainder; give: Remainder }> = [
-    { take: 1, give: 2 },
-    { take: 1, give: 0 },
-    { take: 2, give: 1 },
-    { take: 2, give: 0 },
-    { take: 0, give: 1 },
-    { take: 0, give: 2 }
-  ];
+  const REMAINDERS: Remainder[] = [1, 2, 0];
 
   let { data }: { data: PageData } = $props();
   let balance = $state(untrack(() => Number(data.balance ?? 0)));
@@ -52,20 +54,25 @@
   let mode = $state<Mode>('odd-even');
   let host = $state<'user' | 'npc'>(untrack(() => data.host ?? 'npc'));
   let selectedMarbles = $state(7);
-  let randomCatch = $state(false);
   let oddEvenChoice = $state<'odd' | 'even'>('odd');
-  let take = $state<Remainder>(1);
-  let give = $state<Remainder>(0);
+  let take = $state<Remainder | null>(null);
+  let give = $state<Remainder | null>(null);
   let bet = $state(10);
   let playing = $state(false);
   let reveal = $state(false);
+  let revealedMarbles = $state(0);
   let result = $state<RoundResult | null>(null);
-  let step = $state<Step>(untrack(() => (data.host === 'user' ? 'pick' : 'call')));
+  let step = $state<Step>(untrack(() => (data.host === 'user' ? 'pick' : 'npc-pick')));
   let effect = $state<{
     kind: 'pick' | 'call' | 'bet' | 'win' | 'lose' | 'draw';
     text: string;
   } | null>(null);
   let effectTimer: ReturnType<typeof setTimeout> | null = null;
+  let roundTimer: ReturnType<typeof setTimeout> | null = null;
+  let comments = $state<GameComment[]>([]);
+  let commentContent = $state('');
+  let commentsLoading = $state(false);
+  let commentSubmitting = $state(false);
 
   const loggedIn = $derived(Boolean(data.session?.user?.email));
   const betOptions = $derived(
@@ -75,16 +82,43 @@
   function formatNumber(value: number) {
     return new Intl.NumberFormat('ko-KR').format(value);
   }
+  function formatCommentTime(value: string) {
+    return new Intl.DateTimeFormat('ko-KR', {
+      month: 'numeric',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    }).format(new Date(value));
+  }
   function selectMode(next: Mode) {
     mode = next;
     result = null;
     reveal = false;
-    randomCatch = false;
+    revealedMarbles = 0;
+    take = null;
+    give = null;
     step = host === 'user' ? 'pick' : 'call';
   }
-  function selectCall(call: { take: Remainder; give: Remainder }) {
-    take = call.take;
-    give = call.give;
+  function selectRemainder(value: Remainder) {
+    if (give === value) {
+      give = null;
+      return;
+    }
+    if (take === value) {
+      take = null;
+      give = null;
+      return;
+    }
+    if (take === null) {
+      take = value;
+      return;
+    }
+    if (give === null) {
+      give = value;
+      return;
+    }
+    take = value;
+    give = null;
   }
   function callLabel(call: { take: Remainder; give: Remainder }) {
     return `${SSAMCHI_LABEL[call.take]} 먹고, ${SSAMCHI_LABEL[call.give]} 떠`;
@@ -106,15 +140,8 @@
 
   function randomMarbles() {
     selectedMarbles = Math.floor(Math.random() * 15) + 1;
-    randomCatch = true;
     showEffect('pick', '랜덤으로 잡았다!');
-    step = 'ready';
-  }
-
-  function lockMarbles() {
-    randomCatch = false;
-    showEffect('pick', `${selectedMarbles}개 잡았다!`);
-    step = 'ready';
+    void play();
   }
 
   function selectedChoiceLabel() {
@@ -122,7 +149,11 @@
       ? oddEvenChoice === 'odd'
         ? '홀'
         : '짝'
-      : callLabel({ take, give });
+      : take !== null && give !== null
+        ? callLabel({ take, give })
+        : take !== null
+          ? `${SSAMCHI_LABEL[take]} 먹고…`
+          : '외침 선택';
   }
 
   function resultChoiceLabel(round: RoundResult) {
@@ -132,6 +163,7 @@
   }
 
   function lockCall() {
+    if (mode === 'ssamchi' && (take === null || give === null)) return;
     showEffect('call', `${selectedChoiceLabel()} 선택!`);
     step = 'bet';
   }
@@ -145,8 +177,68 @@
   function nextRound() {
     result = null;
     reveal = false;
-    randomCatch = false;
-    step = host === 'user' ? 'pick' : 'call';
+    revealedMarbles = 0;
+    take = null;
+    give = null;
+    if (host === 'user') {
+      step = 'pick';
+    } else {
+      startNpcCatch();
+    }
+  }
+
+  function startNpcCatch() {
+    if (roundTimer) clearTimeout(roundTimer);
+    step = 'npc-pick';
+    roundTimer = setTimeout(() => {
+      showEffect('pick', '철수가 구슬을 잡았다!');
+      step = 'call';
+    }, 900);
+  }
+
+  function wait(ms: number) {
+    return new Promise<void>((resolve) => setTimeout(resolve, ms));
+  }
+
+  function marbleGroups(count: number) {
+    const groups: number[] = [];
+    for (let remaining = count; remaining > 0; remaining -= 3) groups.push(Math.min(3, remaining));
+    return groups;
+  }
+
+  function winText(round: RoundResult) {
+    if (round.outcome === 'draw') return '무승부! 판돈은 그대로';
+    return round.outcome === 'win'
+      ? `내가 ${formatNumber(Math.abs(round.delta))}개 땄다!`
+      : `철수가 ${formatNumber(Math.abs(round.delta))}개 땄다!`;
+  }
+
+  async function revealRound(
+    round: RoundResult,
+    settledBalance: number,
+    settledHost: 'user' | 'npc'
+  ) {
+    result = round;
+    if (round.userIsHost) {
+      showEffect('call', `철수: ${resultChoiceLabel(round)}!`);
+      await wait(1200);
+    } else {
+      await wait(550);
+    }
+    step = 'revealing';
+    reveal = true;
+    revealedMarbles = 0;
+    await wait(350);
+    while (revealedMarbles < round.marbles) {
+      revealedMarbles = Math.min(round.marbles, revealedMarbles + 3);
+      await wait(520);
+    }
+    balance = settledBalance;
+    host = settledHost;
+    await wait(350);
+    step = 'result';
+    showEffect(round.outcome, winText(round));
+    if (settledBalance < MIN_BET && round.outcome === 'lose') void writeOopsComment(round);
   }
 
   async function play() {
@@ -154,7 +246,7 @@
       !loggedIn ||
       playing ||
       (host !== 'user' && bet > balance) ||
-      !['bet', 'ready'].includes(step)
+      !['pick', 'bet'].includes(step)
     )
       return;
     const retryStep = step;
@@ -176,26 +268,11 @@
       });
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(body?.message || '게임 요청에 실패했습니다.');
-      result = body.result as RoundResult;
+      const round = body.result as RoundResult;
       const settledBalance = Number(body.balance);
       const settledHost = body.host ?? host;
-      const revealDelay = result.userIsHost ? 1150 : 550;
-      if (result.userIsHost) showEffect('bet', `철수가 ${formatNumber(result.bet)}개 걸었다!`);
-      setTimeout(() => {
-        balance = settledBalance;
-        host = settledHost;
-        reveal = true;
-        step = 'result';
-        const delta = result?.delta ?? 0;
-        showEffect(
-          result?.outcome ?? 'draw',
-          result?.outcome === 'win'
-            ? `+${formatNumber(delta)}개 이겼다!`
-            : result?.outcome === 'lose'
-              ? `${formatNumber(Math.abs(delta))}개 졌다!`
-              : '무승부!'
-        );
-      }, revealDelay);
+      if (round.userIsHost) showEffect('bet', `철수가 ${formatNumber(round.bet)}개 걸었다!`);
+      await revealRound(round, settledBalance, settledHost);
       void refreshRank();
     } catch (error) {
       step = retryStep;
@@ -215,12 +292,89 @@
       const response = await fetch(`/games/ssamchi?_=${Date.now()}`, { cache: 'no-store' });
       if (!response.ok) return;
       const body = await response.json();
+      if (Number.isFinite(Number(body.balance))) balance = Number(body.balance);
       rank = body.rank ?? rank;
       todayStats = body.todayStats ?? todayStats;
     } catch {
       /* 다음 판에 갱신 */
     }
   }
+
+  function flattenComments(rows: GameComment[], depth = 1): GameComment[] {
+    return rows.flatMap((row) => [
+      { ...row, depth },
+      ...flattenComments(row.children ?? [], depth + 1)
+    ]);
+  }
+
+  async function loadComments() {
+    commentsLoading = true;
+    try {
+      const response = await fetch('/games/ssamchi/comment?game=ssamchi', { cache: 'no-store' });
+      if (!response.ok) return;
+      const body = await response.json();
+      comments = flattenComments(Array.isArray(body.comments) ? body.comments : []);
+    } finally {
+      commentsLoading = false;
+    }
+  }
+
+  async function submitComment() {
+    const content = commentContent.trim();
+    if (!loggedIn || content.length < 2 || commentSubmitting) return;
+    commentSubmitting = true;
+    try {
+      const form = new FormData();
+      form.set('game', 'ssamchi');
+      form.set('content', content);
+      const response = await fetch('/games/ssamchi/comment', { method: 'POST', body: form });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body?.message || '리플을 등록하지 못했습니다.');
+      commentContent = '';
+      await Promise.all([loadComments(), refreshRank()]);
+      if (body.rewardGiven) {
+        await swalFire({
+          icon: 'success',
+          title: '💬 리플 보상 +100개',
+          toast: true,
+          position: 'center',
+          showConfirmButton: false,
+          timer: 2200
+        });
+      }
+    } catch (error) {
+      await swalFire({
+        icon: 'error',
+        title: '리플 등록 실패',
+        text: error instanceof Error ? error.message : '잠시 후 다시 해 주세요.',
+        confirmButtonText: '확인'
+      });
+    } finally {
+      commentSubmitting = false;
+    }
+  }
+
+  async function writeOopsComment(round: RoundResult) {
+    try {
+      const form = new FormData();
+      form.set('game', 'ssamchi');
+      form.set('content', `😢 오링! 철수에게 ${formatNumber(Math.abs(round.delta))}개 털렸다…`);
+      const response = await fetch('/games/ssamchi/comment', { method: 'POST', body: form });
+      if (!response.ok) return;
+      await Promise.all([loadComments(), refreshRank()]);
+    } catch {
+      /* 자동 리플 실패는 게임 진행을 막지 않는다. */
+    }
+  }
+
+  onMount(() => {
+    if (host === 'npc') startNpcCatch();
+    void loadComments();
+    return () => {
+      if (roundTimer) clearTimeout(roundTimer);
+      if (effectTimer) clearTimeout(effectTimer);
+    };
+  });
 </script>
 
 <svelte:head>
@@ -242,8 +396,23 @@
     </div>
   </header>
 
+  <section class="ranking-card rounded-4 p-3 p-md-4 mb-3">
+    <div class="ranking-head">
+      <h2>🏆 구슬 부자 Top 10</h2>
+      <small>내 구슬 {formatNumber(balance)}개</small>
+    </div>
+    {#if rank.length}<div class="ranking ranking-horizontal">
+        {#each rank as row, index (row.email)}<div
+            class:me={row.email === data.session?.user?.email}
+          >
+            <span>{index + 1}</span><b>{row.nickname}</b><strong>{formatNumber(row.balance)}</strong
+            >
+          </div>{/each}
+      </div>{:else}<p class="empty">첫 순위의 주인공이 되어 보세요.</p>{/if}
+  </section>
+
   <div class="row g-3">
-    <section class="col-lg-8">
+    <section class="col-12">
       <div class="table-card rounded-4 p-3 p-md-4">
         <div class="game-tabs" role="tablist" aria-label="게임 선택">
           <button
@@ -264,277 +433,287 @@
           >
         </div>
 
-        <div
-          class="fist-stage"
-          class:shaking={playing}
-          class:catching={effect?.kind === 'pick'}
-          class:open={reveal}
-        >
-          <div class="host-name">
-            선 <b
-              >{result ? (result.userIsHost ? '나' : '철수') : host === 'user' ? '나' : '철수'}</b
-            >
-          </div>
+        <div class="game-screen">
           <div
-            class="fist"
-            aria-label={reveal ? `구슬 ${result?.marbles ?? 0}개` : '구슬을 접은 손'}
+            class="fist-stage"
+            class:shaking={playing || step === 'npc-pick' || step === 'pick'}
+            class:catching={effect?.kind === 'pick'}
+            class:open={reveal}
           >
-            {#if reveal && result}
-              <div class="marbles">
-                {#each Array.from({ length: result.marbles }) as _, index (index)}<i
-                    style="--i:{index}"
-                  ></i>{/each}
-              </div>
-            {:else}<span>✊</span>{/if}
-          </div>
-          <div class="sound">
-            {playing
-              ? '짤그랑···'
-              : reveal && result
-                ? `${result.marbles}개 ${resultName(result.answer)}!`
-                : '“가~!”'}
-          </div>
-        </div>
-
-        {#if effect}
-          <div class="effect-layer {effect.kind}" aria-live="assertive">
-            {#if effect.kind === 'pick'}
-              <div class="catch-particles" aria-hidden="true">
-                {#each Array.from({ length: 7 }) as _, index (index)}<i
-                    style="--i:{index}; --x:{8 + index * 14}%; --dx:{(3 - index) * 9}px"
-                  ></i>{/each}
+            <div class="host-name">
+              선 <b
+                >{result ? (result.userIsHost ? '나' : '철수') : host === 'user' ? '나' : '철수'}</b
+              >
+            </div>
+            {#if result}
+              <div class="round-call">
+                <small>{result.userIsHost ? '철수의 외침' : '내 외침'}</small>
+                <strong>{resultChoiceLabel(result)}</strong>
               </div>
             {/if}
-            <span
-              >{effect.kind === 'pick'
-                ? '✊'
-                : effect.kind === 'call'
-                  ? '🗣️'
-                  : effect.kind === 'bet'
-                    ? '🟢'
-                    : effect.kind === 'win'
-                      ? '🎉'
-                      : effect.kind === 'lose'
-                        ? '💥'
-                        : '🤝'}</span
+            <div
+              class="fist"
+              aria-label={reveal ? `구슬 ${revealedMarbles}개 공개` : '구슬을 접은 손'}
             >
-            <strong>{effect.text}</strong>
-          </div>
-        {/if}
-
-        {#key step}
-          <section class="action-layer" aria-live="polite">
-            <div class="action-head">
-              <span class="step-badge"
-                >{step === 'pick'
-                  ? '1'
-                  : step === 'bet'
-                    ? host === 'user'
-                      ? '2'
-                      : '2'
-                    : step === 'call' || step === 'ready'
-                      ? host === 'user'
-                        ? '2'
-                        : '1'
-                      : '✓'}</span
-              >
-              <div>
-                <small>지금 할 일</small>
-                <h2>
-                  {step === 'pick'
-                    ? '구슬 잡기'
-                    : step === 'bet'
-                      ? '판돈 걸기'
-                      : step === 'call'
-                        ? mode === 'odd-even'
-                          ? '홀·짝 외치기'
-                          : '쌈치기 주문 외치기'
-                        : step === 'ready'
-                          ? '손 내밀기'
-                          : step === 'playing'
-                            ? '손을 펼치는 중'
-                            : '결과 확인'}
-                </h2>
-              </div>
-            </div>
-
-            {#if step === 'pick'}
-              <p>내가 선입니다. 접을 구슬 수를 고르거나 랜덤으로 잡으세요.</p>
-              <div class="pick-toolbar">
-                <strong>{selectedMarbles}개</strong><button class="random" onclick={randomMarbles}
-                  >🎲 랜덤 잡기</button
-                >
-              </div>
-              <div class="marble-counts">
-                {#each Array.from({ length: 15 }, (_, index) => index + 1) as count (count)}
-                  <button
-                    class:active={selectedMarbles === count}
-                    onclick={() => {
-                      selectedMarbles = count;
-                      randomCatch = false;
-                    }}>{count}</button
-                  >
-                {/each}
-              </div>
-              <button class="go full" onclick={lockMarbles}>{selectedMarbles}개 이대로 잡기</button>
-            {:else if step === 'bet'}
-              <p>
-                <b>{selectedChoiceLabel()}</b>을 골랐습니다. 이제 이번 판에 걸 구슬을 고르세요.
-                아도는 보유 구슬을 전부 겁니다.
-              </p>
-              <div class="bets large">
-                {#each betOptions as amount (amount)}<button
-                    class:active={bet === amount}
-                    onclick={() => (bet = amount)}>{formatNumber(amount)}개</button
-                  >{/each}
-                <button
-                  class:active={bet === balance && balance > 0}
-                  class="all-in"
-                  onclick={() => (bet = balance)}
-                  disabled={balance < MIN_BET}>아도 {formatNumber(balance)}개</button
-                >
-              </div>
-              <button
-                class="go full"
-                onclick={lockBet}
-                disabled={!loggedIn || bet < MIN_BET || bet > balance}
-                >{formatNumber(bet)}개 걸기</button
-              >
-            {:else if step === 'call'}
-              <p>철수가 구슬을 접었습니다. 먼저 결과를 맞힐 외침을 고르세요.</p>
-              {#if mode === 'odd-even'}
-                <div class="odd-even-options">
-                  <button
-                    class:active={oddEvenChoice === 'odd'}
-                    onclick={() => (oddEvenChoice = 'odd')}
-                    ><strong>홀</strong><small>1 · 3 · 5 …</small></button
-                  >
-                  <button
-                    class:active={oddEvenChoice === 'even'}
-                    onclick={() => (oddEvenChoice = 'even')}
-                    ><strong>짝</strong><small>2 · 4 · 6 …</small></button
-                  >
-                </div>
-              {:else}
-                <div class="call-options">
-                  {#each CALLS as call (`${call.take}-${call.give}`)}
-                    <button
-                      class:active={take === call.take && give === call.give}
-                      onclick={() => selectCall(call)}
-                      ><b>{SSAMCHI_LABEL[call.take]} 먹고</b><span
-                        >{SSAMCHI_LABEL[call.give]} 떠</span
-                      ></button
-                    >
+              {#if reveal && result}
+                <div class="marbles grouped">
+                  {#each marbleGroups(revealedMarbles) as group, groupIndex (`${groupIndex}-${group}`)}
+                    <div class="marble-group">
+                      {#each Array.from({ length: group }) as _, index (index)}<i
+                          style="--i:{groupIndex * 3 + index}"
+                        ></i>{/each}
+                    </div>
                   {/each}
                 </div>
-                <div class="remainders">
-                  <span><b>으찌</b> 3배수+1</span><span><b>니</b> 3배수+2</span><span
-                    ><b>쌈</b> 3의 배수</span
-                  >
+              {:else}<span>✊</span>{/if}
+            </div>
+            <div class="sound">
+              {step === 'npc-pick' || step === 'pick' || step === 'playing'
+                ? '짤그랑···'
+                : reveal && result
+                  ? revealedMarbles === result.marbles
+                    ? `${result.marbles}개 ${resultName(result.answer)}!`
+                    : `${revealedMarbles}개 공개 중…`
+                  : '철수가 잡았습니다'}
+            </div>
+          </div>
+
+          {#if effect}
+            <div class="effect-layer {effect.kind}" aria-live="assertive">
+              {#if effect.kind === 'pick'}
+                <div class="catch-particles" aria-hidden="true">
+                  {#each Array.from({ length: 7 }) as _, index (index)}<i
+                      style="--i:{index}; --x:{8 + index * 14}%; --dx:{(3 - index) * 9}px"
+                    ></i>{/each}
                 </div>
               {/if}
-              <button class="go full" onclick={lockCall}
-                >{mode === 'odd-even'
-                  ? `${oddEvenChoice === 'odd' ? '홀' : '짝'}!`
-                  : `${callLabel({ take, give })}!`}</button
+              <span
+                >{effect.kind === 'pick'
+                  ? '✊'
+                  : effect.kind === 'call'
+                    ? '🗣️'
+                    : effect.kind === 'bet'
+                      ? '🟢'
+                      : effect.kind === 'win'
+                        ? '🎉'
+                        : effect.kind === 'lose'
+                          ? '💥'
+                          : '🤝'}</span
               >
-            {:else if step === 'ready'}
-              <p>
-                {#if randomCatch}<b>몇 개인지 모르게</b> 랜덤으로 잡았습니다.{:else}<b
-                    >{selectedMarbles}개</b
-                  >를 잡았습니다.{/if} 손을 내밀면 철수가 판돈을 걸고
-                {mode === 'odd-even' ? '홀·짝을' : '쌈치기 주문을'} 외칩니다.
-              </p>
-              <div class="ready-summary">
-                <span>✊ {randomCatch ? '비밀로 잡음' : `${selectedMarbles}개 잡음`}</span><span
-                  >🟢 철수가 판돈 걸 차례</span
-                >
+              <strong>{effect.text}</strong>
+            </div>
+          {/if}
+
+          {#if step !== 'result'}
+            {#key step}
+              <section class="action-layer" aria-live="polite">
+                <div class="action-head">
+                  <span class="step-badge"
+                    >{['pick', 'npc-pick', 'call'].includes(step) ? '1' : '2'}</span
+                  >
+                  <div>
+                    <small>지금 할 일</small>
+                    <h2>
+                      {step === 'pick'
+                        ? '구슬 잡기'
+                        : step === 'npc-pick'
+                          ? '철수가 구슬을 잡는 중'
+                          : step === 'call'
+                            ? mode === 'odd-even'
+                              ? '홀·짝 외치기'
+                              : '먹고 · 떠 선택하기'
+                            : step === 'bet'
+                              ? '판돈 걸기'
+                              : step === 'revealing'
+                                ? '구슬을 세는 중'
+                                : '승부 준비 중'}
+                    </h2>
+                  </div>
+                </div>
+
+                {#if step === 'pick'}
+                  <p>내가 선입니다. 개수는 결과가 나올 때까지 아무도 모릅니다.</p>
+                  <button class="go full catch-go" onclick={randomMarbles}>✊ 잡기</button>
+                {:else if step === 'npc-pick'}
+                  <div class="waiting-action compact">
+                    <span>✊</span><strong>철수가 잡는 중···</strong>
+                  </div>
+                {:else if step === 'call'}
+                  <p>
+                    첫 번째는 내가 먹을 패, 두 번째는 철수에게 줄 패입니다. 다시 누르면 취소됩니다.
+                  </p>
+                  {#if mode === 'odd-even'}
+                    <div class="odd-even-options">
+                      <button
+                        class:active={oddEvenChoice === 'odd'}
+                        onclick={() => (oddEvenChoice = 'odd')}
+                        ><strong>홀</strong><small>1 · 3 · 5 …</small></button
+                      >
+                      <button
+                        class:active={oddEvenChoice === 'even'}
+                        onclick={() => (oddEvenChoice = 'even')}
+                        ><strong>짝</strong><small>2 · 4 · 6 …</small></button
+                      >
+                    </div>
+                  {:else}
+                    <div class="remainder-call-options">
+                      {#each REMAINDERS as value (value)}
+                        <button
+                          class:take={take === value}
+                          class:give={give === value}
+                          onclick={() => selectRemainder(value)}
+                        >
+                          <strong>{SSAMCHI_LABEL[value]}</strong>
+                          <small>{take === value ? '먹고' : give === value ? '떠' : '선택'}</small>
+                        </button>
+                      {/each}
+                    </div>
+                    <div class="call-preview">🗣️ {selectedChoiceLabel()}</div>
+                  {/if}
+                  <button
+                    class="go full"
+                    onclick={lockCall}
+                    disabled={mode === 'ssamchi' && (take === null || give === null)}
+                    >{mode === 'odd-even'
+                      ? `${selectedChoiceLabel()} 선택`
+                      : '이대로 외치기'}</button
+                  >
+                {:else if step === 'bet'}
+                  <p><b>{selectedChoiceLabel()}</b> · 얼마를 걸지 고르세요.</p>
+                  <div class="bets large">
+                    {#each betOptions as amount (amount)}<button
+                        class:active={bet === amount}
+                        onclick={() => (bet = amount)}>{formatNumber(amount)}개</button
+                      >{/each}
+                    <button
+                      class:active={bet === balance && balance > 0}
+                      class="all-in"
+                      onclick={() => (bet = balance)}
+                      disabled={balance < MIN_BET}>아도 {formatNumber(balance)}개</button
+                    >
+                  </div>
+                  <button
+                    class="go full"
+                    onclick={lockBet}
+                    disabled={!loggedIn || bet < MIN_BET || bet > balance}
+                    >{formatNumber(bet)}개 걸고 “가~!”</button
+                  >
+                {:else if step === 'revealing'}
+                  <div class="waiting-action compact">
+                    <span>🟢</span><strong>셋씩 센다!</strong><small
+                      >{revealedMarbles} / {result?.marbles ?? 0}개</small
+                    >
+                  </div>
+                {:else}
+                  <div class="waiting-action compact">
+                    <span>✊</span><strong>{host === 'user' ? '철수가 외치는 중' : '가~!'}</strong>
+                  </div>
+                {/if}
+              </section>
+            {/key}
+          {/if}
+
+          {#if result && reveal && step === 'result'}
+            <div
+              class="result"
+              class:win={result.outcome === 'win'}
+              class:lose={result.outcome === 'lose'}
+            >
+              <div class="result-facts">
+                <div>
+                  <span>{result.userIsHost ? '철수의 외침' : '내 외침'}</span>
+                  <strong>{resultChoiceLabel(result)}</strong>
+                </div>
+                <div>
+                  <span>공개 결과</span>
+                  <strong>{result.marbles}개 {resultName(result.answer)}!</strong>
+                </div>
+                <div>
+                  <span>{result.userIsHost ? '철수 판돈' : '내 판돈'}</span>
+                  <strong>{formatNumber(result.bet)}개</strong>
+                </div>
               </div>
-              <button class="go full" onclick={play}>“가~!” 손 내밀기</button>
-            {:else if step === 'playing'}
-              <div class="waiting-action">
-                <span>✊</span><strong>짤그랑···</strong><small>잠시만 기다려 주세요</small>
-              </div>
-            {:else}
-              <p>승부가 났습니다. 결과를 확인하고 다음 선으로 이어가세요.</p>
+              <h3>
+                {result.outcome === 'win'
+                  ? '내가 먹었다!'
+                  : result.outcome === 'lose'
+                    ? '철수가 먹었다!'
+                    : '무승부, 한 판 더!'}
+              </h3>
+              <b>{result.delta > 0 ? '+' : ''}{formatNumber(result.delta)}개</b>
+              <small class="next-host">다음 선: {host === 'user' ? '나' : '철수'}</small>
               <button class="go full" onclick={nextRound}
                 >다음 판 · 선 {host === 'user' ? '나' : '철수'}</button
               >
-            {/if}
-          </section>
-        {/key}
+            </div>
+          {/if}
+        </div>
 
         {#if !loggedIn}<div class="notice">
             로그인하면 첫 구슬 1,000개를 받습니다.
           </div>{:else if data.oopsInfo && balance < MIN_BET}<div class="notice danger">
-            오링! 5분 후 구슬 500개가 자동 충전됩니다.
+            오링! 5분 후 구슬 700개가 자동 충전됩니다.
           </div>{/if}
-
-        {#if result && reveal}
-          <div
-            class="result"
-            class:win={result.outcome === 'win'}
-            class:lose={result.outcome === 'lose'}
-          >
-            <div class="result-facts">
-              <div>
-                <span>{result.userIsHost ? '철수의 외침' : '내 외침'}</span>
-                <strong>{resultChoiceLabel(result)}</strong>
-              </div>
-              <div>
-                <span>공개 결과</span>
-                <strong>{result.marbles}개 {resultName(result.answer)}!</strong>
-              </div>
-              <div>
-                <span>{result.userIsHost ? '철수 판돈' : '내 판돈'}</span>
-                <strong>{formatNumber(result.bet)}개</strong>
-              </div>
-            </div>
-            <h3>
-              {result.outcome === 'win'
-                ? '내가 먹었다!'
-                : result.outcome === 'lose'
-                  ? '철수가 먹었다!'
-                  : '무승부, 한 판 더!'}
-            </h3>
-            <b>{result.delta > 0 ? '+' : ''}{formatNumber(result.delta)}개</b>
-            <small class="next-host">다음 선: {host === 'user' ? '나' : '철수'}</small>
-          </div>
-        {/if}
       </div>
     </section>
+  </div>
 
-    <aside class="col-lg-4">
-      <div class="side-card rounded-4 p-3 mb-3">
-        <h2>규칙</h2>
-        {#if mode === 'odd-even'}<ol>
-            <li>상대가 구슬 일부를 손에 접어요.</li>
-            <li>내 구슬을 걸고 홀 또는 짝을 외쳐요.</li>
-            <li>맞히면 건 만큼 따고, 틀리면 잃어요.</li>
-          </ol>{:else}<ol>
-            <li>구슬 수를 3으로 나눈 결과를 맞혀요.</li>
-            <li>으찌=1, 니=2, 쌈=0이에요.</li>
-            <li>첫 호칭은 내 승리, 둘째는 상대 승리, 나머지는 무승부예요.</li>
-          </ol>{/if}<a
-          href="https://brunch.co.kr/@a8c41ad0e16649d/29"
-          target="_blank"
-          rel="noreferrer">홀짝과 쌈치기 이야기 ↗</a
+  <section class="comments-card rounded-4 mt-3 p-3 p-md-4">
+    <div class="comments-head">
+      <h2>💬 리플 ({formatNumber(comments.length)})</h2>
+      <button onclick={loadComments} disabled={commentsLoading} aria-label="리플 새로고침">↻</button
+      >
+    </div>
+    {#if loggedIn}
+      <div class="comment-form">
+        <textarea
+          rows="2"
+          maxlength="1000"
+          placeholder="리플 작성 시 구슬 100개 (하루 10개까지 보상)"
+          bind:value={commentContent}
+          disabled={commentSubmitting}
+        ></textarea>
+        <button
+          onclick={submitComment}
+          disabled={commentSubmitting || commentContent.trim().length < 2}
+          >{commentSubmitting ? '등록 중…' : '등록'}</button
         >
       </div>
-      <div class="side-card rounded-4 p-3">
-        <h2>구슬 부자 Top 10</h2>
-        {#if rank.length}<div class="ranking">
-            {#each rank as row, index (row.email)}<div
-                class:me={row.email === data.session?.user?.email}
-              >
-                <span>{index + 1}</span><b>{row.nickname}</b><strong
-                  >{formatNumber(row.balance)}</strong
-                >
-              </div>{/each}
-          </div>{:else}<p class="empty">첫 순위의 주인공이 되어 보세요.</p>{/if}
+    {:else}
+      <p class="comment-login">로그인하면 리플을 남길 수 있습니다.</p>
+    {/if}
+    {#if commentsLoading && comments.length === 0}
+      <p class="comment-empty">리플을 불러오는 중…</p>
+    {:else if comments.length === 0}
+      <p class="comment-empty">첫 리플을 남겨 보세요.</p>
+    {:else}
+      <div class="comment-list">
+        {#each comments as comment (comment.id ?? comment._id ?? `${comment.nickname}-${comment.createdAt}`)}
+          <article style="--indent:{(Math.min(comment.depth ?? 1, 3) - 1) * 1}rem">
+            <header>
+              <b>{comment.nickname}</b><time>{formatCommentTime(comment.createdAt)}</time>
+            </header>
+            <p>{comment.content}</p>
+          </article>
+        {/each}
       </div>
-    </aside>
-  </div>
+    {/if}
+  </section>
+
+  <section class="side-card rules-card rounded-4 p-3 p-md-4 mt-3">
+    <h2>규칙</h2>
+    {#if mode === 'odd-even'}<ol>
+        <li>상대가 구슬 일부를 손에 접어요.</li>
+        <li>내 구슬을 걸고 홀 또는 짝을 외쳐요.</li>
+        <li>맞히면 건 만큼 따고, 틀리면 잃어요.</li>
+      </ol>{:else}<ol>
+        <li>구슬 수를 3으로 나눈 결과를 맞혀요.</li>
+        <li>으찌=1, 니=2, 쌈=0이에요.</li>
+        <li>첫 호칭은 내 승리, 둘째는 상대 승리, 나머지는 무승부예요.</li>
+      </ol>{/if}<a href="https://brunch.co.kr/@a8c41ad0e16649d/29" target="_blank" rel="noreferrer"
+      >홀짝과 쌈치기 이야기 ↗</a
+    >
+  </section>
 </main>
 
 <style>
@@ -586,10 +765,26 @@
     font-size: 1.45rem;
   }
   .table-card,
-  .side-card {
+  .side-card,
+  .ranking-card {
     border: 1px solid var(--bs-border-color);
     background: var(--bs-body-bg);
     box-shadow: 0 8px 24px #3213060c;
+  }
+  .ranking-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+  .ranking-head h2 {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 950;
+  }
+  .ranking-head small {
+    color: var(--bs-secondary-color);
+    font-weight: 850;
   }
   .game-tabs {
     display: grid;
@@ -631,12 +826,20 @@
   .fist-stage {
     display: grid;
     place-items: center;
-    min-height: 230px;
-    margin: 1rem 0;
+    position: absolute;
+    inset: 0;
+    min-height: 460px;
     border-radius: 1rem;
     background: radial-gradient(circle at center, #285f46, #15402e 65%, #0d2c20);
     color: #fff;
+    overflow: hidden;
+  }
+  .game-screen {
     position: relative;
+    height: 620px;
+    min-height: 460px;
+    margin-top: 0.75rem;
+    border-radius: 1rem;
     overflow: hidden;
   }
   .host-name {
@@ -649,8 +852,9 @@
   .fist {
     display: grid;
     place-items: center;
-    width: 145px;
-    height: 145px;
+    width: 280px;
+    height: 260px;
+    transform: translateY(-70px);
   }
   .fist > span {
     font-size: 7rem;
@@ -668,6 +872,24 @@
     width: 140px;
     min-height: 120px;
   }
+  .marbles.grouped {
+    display: grid;
+    align-content: center;
+    justify-items: center;
+    gap: 0.45rem;
+    width: 230px;
+    min-height: 200px;
+  }
+  .marble-group {
+    display: flex;
+    justify-content: center;
+    gap: 0.45rem;
+    min-width: 110px;
+    padding: 0.35rem 0.7rem;
+    border-radius: 2rem;
+    background: #ffffff16;
+    box-shadow: inset 0 0 0 1px #ffffff19;
+  }
   .marbles i {
     display: block;
     width: 24px;
@@ -681,9 +903,35 @@
   }
   .sound {
     position: absolute;
-    bottom: 0.8rem;
+    left: 50%;
+    top: 56%;
     color: #d4ede0;
     font-weight: 800;
+    transform: translateX(-50%);
+    white-space: nowrap;
+  }
+  .round-call {
+    position: absolute;
+    left: 50%;
+    top: 3.3rem;
+    z-index: 2;
+    display: grid;
+    min-width: min(80%, 320px);
+    padding: 0.55rem 1rem;
+    border: 1px solid #ffe39a80;
+    border-radius: 2rem;
+    background: #071d15a8;
+    text-align: center;
+    transform: translateX(-50%);
+    animation: layerIn 0.3s ease-out both;
+  }
+  .round-call small {
+    color: #bde0cb;
+    font-size: 0.66rem;
+  }
+  .round-call strong {
+    color: #ffe59a;
+    font-size: 1rem;
   }
   .side-card h2 {
     margin: 0;
@@ -709,48 +957,11 @@
   .odd-even-options small {
     color: var(--bs-secondary-color);
   }
-  .odd-even-options button.active,
-  .call-options button.active {
+  .odd-even-options button.active {
     border-color: #df9c25;
     background: #fff0bd;
     color: #532b0d;
     box-shadow: 0 0 0 3px #edbd4e30;
-  }
-  .call-options {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 0.5rem;
-  }
-  .call-options button {
-    display: grid;
-    padding: 0.75rem;
-    border: 1px solid var(--bs-border-color);
-    border-radius: 0.8rem;
-    color: inherit;
-    background: var(--bs-tertiary-bg);
-  }
-  .call-options b {
-    font-size: 0.92rem;
-  }
-  .call-options span {
-    font-size: 0.76rem;
-    color: var(--bs-secondary-color);
-  }
-  .call-options button.active span {
-    color: #875622;
-  }
-  .remainders {
-    display: flex;
-    justify-content: center;
-    gap: 0.5rem;
-    margin-top: 0.65rem;
-  }
-  .remainders span {
-    padding: 0.3rem 0.5rem;
-    border-radius: 2rem;
-    background: var(--bs-tertiary-bg);
-    color: var(--bs-secondary-color);
-    font-size: 0.7rem;
   }
   .bets {
     display: flex;
@@ -806,15 +1017,21 @@
     color: #842029;
   }
   .result {
+    position: absolute;
+    right: 1rem;
+    bottom: 1rem;
+    left: 1rem;
+    z-index: 12;
     display: flex;
     align-items: center;
     flex-wrap: wrap;
     gap: 1rem;
-    margin-top: 1rem;
+    margin: 0;
     padding: 1rem;
     border: 1px solid var(--bs-border-color);
     border-radius: 0.85rem;
     background: var(--bs-tertiary-bg);
+    box-shadow: 0 16px 38px #0007;
   }
   .result-facts {
     display: grid;
@@ -864,6 +1081,19 @@
   }
   .ranking {
     margin-top: 0.7rem;
+  }
+  .ranking-horizontal {
+    display: flex;
+    gap: 0.45rem;
+    overflow-x: auto;
+    padding-bottom: 0.25rem;
+    scroll-snap-type: x proximity;
+  }
+  .ranking-horizontal > div {
+    flex: 0 0 205px;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 0.65rem;
+    scroll-snap-align: start;
   }
   .ranking > div {
     display: grid;
@@ -947,42 +1177,22 @@
       animation: none;
     }
   }
-  .waiting {
-    text-align: center;
-  }
-  .marble-counts {
-    display: grid;
-    grid-template-columns: repeat(8, 1fr);
-    gap: 0.4rem;
-  }
-  .marble-counts button {
-    aspect-ratio: 1;
-    border: 1px solid var(--bs-border-color);
-    border-radius: 50%;
-    color: inherit;
-    background: var(--bs-tertiary-bg);
-    font-weight: 850;
-  }
-  .marble-counts button.active {
-    border-color: #df9c25;
-    background: #fff0bd;
-    color: #532b0d;
-    box-shadow: 0 0 0 3px #edbd4e30;
-  }
   .next-host {
     font-size: 0.72rem;
     font-weight: 800;
-  }
-  @media (max-width: 540px) {
-    .marble-counts {
-      grid-template-columns: repeat(5, 1fr);
-    }
   }
   .table-card {
     position: relative;
   }
   .action-layer {
-    min-height: 210px;
+    position: absolute;
+    right: 1rem;
+    bottom: 1rem;
+    left: 1rem;
+    z-index: 10;
+    min-height: 0;
+    max-height: 48%;
+    overflow-y: auto;
     padding: 1rem;
     border: 2px solid #d79931;
     border-radius: 1rem;
@@ -990,6 +1200,46 @@
     color: #3e2a19;
     box-shadow: 0 8px 24px #9c641426;
     animation: layerIn 0.28s ease-out both;
+  }
+  .remainder-call-options {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.55rem;
+  }
+  .remainder-call-options button {
+    display: grid;
+    gap: 0.1rem;
+    padding: 0.75rem 0.35rem;
+    border: 2px solid #d7aa63;
+    border-radius: 0.8rem;
+    background: #fffdf5;
+    color: #513416;
+  }
+  .remainder-call-options strong {
+    font-size: 1.25rem;
+  }
+  .remainder-call-options small {
+    color: #8a704e;
+    font-weight: 850;
+  }
+  .remainder-call-options button.take {
+    border-color: #2f9c5d;
+    background: #dff5e7;
+    color: #145b31;
+  }
+  .remainder-call-options button.give {
+    border-color: #d57343;
+    background: #ffe6d8;
+    color: #7b3219;
+  }
+  .call-preview {
+    margin-top: 0.5rem;
+    text-align: center;
+    font-weight: 950;
+  }
+  .catch-go {
+    min-height: 68px;
+    font-size: 1.25rem;
   }
   :global([data-bs-theme='dark']) .action-layer {
     border-color: #b9792f;
@@ -1243,12 +1493,180 @@
       transform: translateX(5px);
     }
   }
+  .comments-card {
+    border: 1px solid var(--bs-border-color);
+    background: var(--bs-body-bg);
+    box-shadow: 0 8px 24px #3213060c;
+  }
+  .comments-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.8rem;
+  }
+  .comments-head h2 {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 950;
+  }
+  .comments-head button {
+    width: 34px;
+    height: 34px;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 50%;
+    background: var(--bs-tertiary-bg);
+    color: inherit;
+  }
+  .comment-form {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 0.55rem;
+    margin-bottom: 1rem;
+  }
+  .comment-form textarea {
+    min-height: 64px;
+    padding: 0.7rem;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 0.7rem;
+    background: var(--bs-body-bg);
+    color: inherit;
+    resize: vertical;
+  }
+  .comment-form button {
+    min-width: 74px;
+    border: 0;
+    border-radius: 0.7rem;
+    background: #a84624;
+    color: #fff;
+    font-weight: 900;
+  }
+  .comment-list article {
+    margin-left: var(--indent);
+    padding: 0.75rem 0.25rem;
+    border-top: 1px solid var(--bs-border-color);
+  }
+  .comment-list header {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    font-size: 0.78rem;
+  }
+  .comment-list time,
+  .comment-empty,
+  .comment-login {
+    color: var(--bs-secondary-color);
+    font-size: 0.75rem;
+  }
+  .comment-list p {
+    margin: 0.3rem 0 0;
+    white-space: pre-wrap;
+  }
   @media (max-width: 540px) {
     .bets.large {
       grid-template-columns: repeat(2, 1fr);
     }
     .ready-summary {
       grid-template-columns: 1fr;
+    }
+  }
+  @media (max-width: 767px) {
+    .game-page {
+      padding-top: 0.45rem !important;
+    }
+    .hero {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      padding: 0.6rem 0.75rem !important;
+      margin-bottom: 0.45rem !important;
+    }
+    .hero .eyebrow,
+    .hero p,
+    .score small {
+      display: none;
+    }
+    .hero h1 {
+      margin: 0;
+      font-size: 1.05rem;
+    }
+    .score {
+      display: flex;
+      align-items: baseline;
+      gap: 0.35rem;
+      padding: 0;
+      border: 0;
+      background: transparent;
+    }
+    .score strong {
+      font-size: 1rem;
+    }
+    .table-card {
+      padding: 0.45rem !important;
+    }
+    .game-tabs {
+      gap: 0.35rem;
+    }
+    .game-tabs button {
+      grid-template-columns: 24px 1fr;
+      padding: 0.45rem 0.6rem;
+    }
+    .game-tabs span {
+      font-size: 1rem;
+    }
+    .game-tabs small {
+      display: none;
+    }
+    .game-screen {
+      height: calc(100dvh - 155px);
+      min-height: 560px;
+      margin-top: 0.4rem;
+    }
+    .action-layer,
+    .result {
+      right: 0.55rem;
+      bottom: 0.55rem;
+      left: 0.55rem;
+      padding: 0.75rem;
+    }
+    .action-layer {
+      max-height: 49%;
+    }
+    .action-head {
+      margin-bottom: 0.45rem;
+    }
+    .action-layer > p {
+      margin-bottom: 0.5rem;
+      font-size: 0.76rem;
+    }
+    .go.full {
+      min-height: 44px;
+      margin-top: 0.5rem;
+    }
+    .result {
+      display: flex;
+      flex-direction: row;
+      gap: 0.55rem;
+    }
+    .result-facts {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 0.3rem;
+    }
+    .result-facts > div {
+      padding: 0.4rem;
+    }
+    .result-facts strong {
+      font-size: 0.75rem;
+    }
+    .result .go {
+      width: 100%;
+    }
+    .fist {
+      transform: translateY(-65px);
+    }
+    .sound {
+      top: 52%;
+    }
+    .side-card {
+      margin-top: 0.5rem;
     }
   }
 </style>

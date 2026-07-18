@@ -66,7 +66,7 @@ export async function POST(event) {
       : await ensureSsamchiBalance(user.email, user.nickname).then((state) =>
           resolveSsamchiOops(user.email, user.nickname, state.balance)
         );
-    if (current.oopsInfo) throw error(400, { message: '오링! 5분 후 500점이 충전됩니다.' });
+    if (current.oopsInfo) throw error(400, { message: '오링! 5분 후 700개가 충전됩니다.' });
     const host = user.smoke
       ? (smokeHosts.get(user.email) ?? 'npc')
       : await getSsamchiHost(user.email);
