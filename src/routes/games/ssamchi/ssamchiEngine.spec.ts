@@ -42,13 +42,18 @@ describe('odd-even and ssamchi engine', () => {
     expect(playSsamchi({ take: 1, give: 0, bet: 10 }, () => 2 / 15)).toMatchObject({
       marbles: 3,
       answer: 0,
-      outcome: 'lose'
+      outcome: 'draw'
     });
   });
 
-  it('returns the bet on the uncalled third result', () => {
-    const result = playSsamchi({ take: 1, give: 0, bet: 100 }, () => 1 / 15); // 2개 = 니
+  it('returns the bet on the second call marked tteo', () => {
+    const result = playSsamchi({ take: 1, give: 2, bet: 100 }, () => 7 / 15); // 8개 = 니
     expect(result).toMatchObject({ answer: 2, outcome: 'draw', payout: 100, delta: 0 });
+  });
+
+  it('loses on the uncalled third result', () => {
+    const result = playSsamchi({ take: 1, give: 0, bet: 100 }, () => 1 / 15); // 2개 = 니
+    expect(result).toMatchObject({ answer: 2, outcome: 'lose', payout: 0, delta: -100 });
   });
 
   it('keeps the host win from an NPC miss', () => {

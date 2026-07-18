@@ -201,9 +201,14 @@
     return new Promise<void>((resolve) => setTimeout(resolve, ms));
   }
 
-  function marbleGroups(count: number) {
+  function revealGroupSize(round: RoundResult) {
+    return round.mode === 'odd-even' ? 2 : 3;
+  }
+
+  function marbleGroups(count: number, groupSize: number) {
     const groups: number[] = [];
-    for (let remaining = count; remaining > 0; remaining -= 3) groups.push(Math.min(3, remaining));
+    for (let remaining = count; remaining > 0; remaining -= groupSize)
+      groups.push(Math.min(groupSize, remaining));
     return groups;
   }
 
@@ -229,9 +234,10 @@
     step = 'revealing';
     reveal = true;
     revealedMarbles = 0;
+    const groupSize = revealGroupSize(round);
     await wait(700);
     while (revealedMarbles < round.marbles) {
-      revealedMarbles = Math.min(round.marbles, revealedMarbles + 3);
+      revealedMarbles = Math.min(round.marbles, revealedMarbles + groupSize);
       await wait(1040);
     }
     balance = settledBalance;
@@ -446,6 +452,9 @@
                 >{result ? (result.userIsHost ? '나' : '철수') : host === 'user' ? '나' : '철수'}</b
               >
             </div>
+            <div class="screen-balance">
+              <small>내 구슬</small><strong>{formatNumber(balance)}개</strong>
+            </div>
             {#if result}
               <div class="round-call">
                 <small>{result.userIsHost ? '철수의 외침' : '내 외침'}</small>
@@ -458,10 +467,10 @@
             >
               {#if reveal && result}
                 <div class="marbles grouped">
-                  {#each marbleGroups(revealedMarbles) as group, groupIndex (`${groupIndex}-${group}`)}
+                  {#each marbleGroups(revealedMarbles, revealGroupSize(result)) as group, groupIndex (`${groupIndex}-${group}`)}
                     <div class="marble-group">
                       {#each Array.from({ length: group }) as _, index (index)}<i
-                          style="--i:{groupIndex * 3 + index}"
+                          style="--i:{groupIndex * revealGroupSize(result) + index}"
                         ></i>{/each}
                     </div>
                   {/each}
@@ -541,7 +550,7 @@
                   </div>
                 {:else if step === 'call'}
                   <p>
-                    첫 번째는 내가 먹을 패, 두 번째는 철수에게 줄 패입니다. 다시 누르면 취소됩니다.
+                    첫 번째는 내가 먹을 패, 두 번째는 무승부로 뜰 패입니다. 다시 누르면 취소됩니다.
                   </p>
                   {#if mode === 'odd-even'}
                     <div class="odd-even-options">
@@ -597,9 +606,9 @@
                   </div>
                 {:else if step === 'revealing'}
                   <div class="waiting-action compact">
-                    <span>🟢</span><strong>셋씩 센다!</strong><small
-                      >{revealedMarbles} / {result?.marbles ?? 0}개</small
-                    >
+                    <span>🟢</span><strong
+                      >{result?.mode === 'odd-even' ? '둘씩 센다!' : '셋씩 센다!'}</strong
+                    ><small>{revealedMarbles} / {result?.marbles ?? 0}개</small>
                   </div>
                 {:else}
                   <div class="waiting-action compact">
@@ -706,7 +715,7 @@
       </ol>{:else}<ol>
         <li>구슬 수를 3으로 나눈 결과를 맞혀요.</li>
         <li>으찌=1, 니=2, 쌈=0이에요.</li>
-        <li>첫 호칭은 내 승리, 둘째는 상대 승리, 나머지는 무승부예요.</li>
+        <li>첫 호칭은 내 승리, 둘째는 무승부, 나머지는 상대 승리예요.</li>
       </ol>{/if}<a href="https://brunch.co.kr/@a8c41ad0e16649d/29" target="_blank" rel="noreferrer"
       >홀짝과 쌈치기 이야기 ↗</a
     >
@@ -845,6 +854,26 @@
     top: 0.8rem;
     color: #bde0cb;
     font-size: 0.78rem;
+  }
+  .screen-balance {
+    position: absolute;
+    top: 0.7rem;
+    right: 0.85rem;
+    z-index: 3;
+    display: grid;
+    padding: 0.35rem 0.65rem;
+    border: 1px solid #d8f3e338;
+    border-radius: 0.65rem;
+    background: #071d1570;
+    text-align: right;
+  }
+  .screen-balance small {
+    color: #bde0cb;
+    font-size: 0.62rem;
+  }
+  .screen-balance strong {
+    color: #ffe59a;
+    font-size: 0.9rem;
   }
   .fist {
     display: grid;

@@ -72,8 +72,8 @@ export function playOddEven(input, random = Math.random) {
 }
 
 /**
- * 쌈치기: take는 내가 먹는 결과, give는 상대가 먹는 결과.
- * 나머지 한 결과는 무승부로 판돈을 돌려준다.
+ * 쌈치기: take는 부른 사람이 먹는 결과, give는 무승부로 뜨는 결과.
+ * 나머지 한 결과는 상대가 먹는다.
  * @param {{ take?: 0|1|2; give?: 0|1|2; marbles?: number; userIsHost?: boolean; bet: number }} input
  * @param {() => number} [random]
  */
@@ -96,7 +96,7 @@ export function playSsamchi(input, random = Math.random) {
   const take = call[0];
   const give = call[1];
   const answer = /** @type {0|1|2} */ (marbles % 3);
-  const bettorOutcome = answer === take ? 'win' : answer === give ? 'lose' : 'draw';
+  const bettorOutcome = answer === take ? 'win' : answer === give ? 'draw' : 'lose';
   const outcome =
     input.userIsHost && bettorOutcome !== 'draw'
       ? bettorOutcome === 'win'
