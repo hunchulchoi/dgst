@@ -168,9 +168,10 @@
     step = 'bet';
   }
 
-  function lockBet() {
-    if (bet < MIN_BET || bet > balance) return;
-    showEffect('bet', `${formatNumber(bet)}개 걸었다!`);
+  function lockBet(amount: number) {
+    if (!loggedIn || amount < MIN_BET || amount > balance) return;
+    bet = amount;
+    showEffect('bet', `${formatNumber(amount)}개 걸었다!`);
     void play();
   }
 
@@ -228,14 +229,14 @@
     step = 'revealing';
     reveal = true;
     revealedMarbles = 0;
-    await wait(350);
+    await wait(700);
     while (revealedMarbles < round.marbles) {
       revealedMarbles = Math.min(round.marbles, revealedMarbles + 3);
-      await wait(520);
+      await wait(1040);
     }
     balance = settledBalance;
     host = settledHost;
-    await wait(350);
+    await wait(700);
     step = 'result';
     showEffect(round.outcome, winText(round));
     if (settledBalance < MIN_BET && round.outcome === 'lose') void writeOopsComment(round);
@@ -436,7 +437,7 @@
         <div class="game-screen">
           <div
             class="fist-stage"
-            class:shaking={playing || step === 'npc-pick' || step === 'pick'}
+            class:shaking={step === 'npc-pick' || step === 'pick' || step === 'playing'}
             class:catching={effect?.kind === 'pick'}
             class:open={reveal}
           >
@@ -583,21 +584,17 @@
                   <div class="bets large">
                     {#each betOptions as amount (amount)}<button
                         class:active={bet === amount}
-                        onclick={() => (bet = amount)}>{formatNumber(amount)}개</button
+                        onclick={() => lockBet(amount)}
+                        disabled={!loggedIn || amount > balance}>{formatNumber(amount)}개</button
                       >{/each}
                     <button
                       class:active={bet === balance && balance > 0}
                       class="all-in"
-                      onclick={() => (bet = balance)}
-                      disabled={balance < MIN_BET}>아도 {formatNumber(balance)}개</button
+                      onclick={() => lockBet(balance)}
+                      disabled={!loggedIn || balance < MIN_BET}
+                      >아도 {formatNumber(balance)}개</button
                     >
                   </div>
-                  <button
-                    class="go full"
-                    onclick={lockBet}
-                    disabled={!loggedIn || bet < MIN_BET || bet > balance}
-                    >{formatNumber(bet)}개 걸고 “가~!”</button
-                  >
                 {:else if step === 'revealing'}
                   <div class="waiting-action compact">
                     <span>🟢</span><strong>셋씩 센다!</strong><small
@@ -861,7 +858,7 @@
     filter: drop-shadow(0 12px 12px #0005);
   }
   .shaking .fist {
-    animation: shake 0.16s linear infinite;
+    animation: shake 0.32s linear infinite;
   }
   .marbles {
     display: flex;
@@ -899,7 +896,7 @@
     box-shadow:
       inset -3px -4px 5px #06202d80,
       0 3px 4px #0005;
-    animation: pop 0.35s calc(var(--i) * 0.035s) both;
+    animation: pop 0.7s calc(var(--i) * 0.07s) both;
   }
   .sound {
     position: absolute;
@@ -916,14 +913,15 @@
     top: 3.3rem;
     z-index: 2;
     display: grid;
-    min-width: min(80%, 320px);
+    width: min(calc(100% - 2rem), 360px);
+    box-sizing: border-box;
     padding: 0.55rem 1rem;
     border: 1px solid #ffe39a80;
     border-radius: 2rem;
     background: #071d15a8;
     text-align: center;
     transform: translateX(-50%);
-    animation: layerIn 0.3s ease-out both;
+    animation: roundCallIn 0.3s ease-out both;
   }
   .round-call small {
     color: #bde0cb;
@@ -932,6 +930,7 @@
   .round-call strong {
     color: #ffe59a;
     font-size: 1rem;
+    overflow-wrap: anywhere;
   }
   .side-card h2 {
     margin: 0;
@@ -1337,7 +1336,7 @@
   }
   .waiting-action span {
     font-size: 2.5rem;
-    animation: shake 0.16s linear infinite;
+    animation: shake 0.32s linear infinite;
   }
   .waiting-action strong {
     color: #9b571e;
@@ -1436,6 +1435,16 @@
     to {
       opacity: 1;
       transform: translateY(0) scale(1);
+    }
+  }
+  @keyframes roundCallIn {
+    from {
+      opacity: 0;
+      transform: translateX(-50%) translateY(10px) scale(0.96);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0) scale(1);
     }
   }
   @keyframes marbleCatchBurst {
