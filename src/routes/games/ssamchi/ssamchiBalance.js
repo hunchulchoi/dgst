@@ -29,6 +29,18 @@ export async function ensureSsamchiBalance(email, nickname) {
   return { balance: INITIAL_BALANCE, oopsInfo: null };
 }
 
+/** 직전 승자가 다음 판의 선. 첫 판은 NPC가 선이다. @param {string} email */
+export async function getSsamchiHost(email) {
+  const last = await getPrisma().gameScore.findFirst({
+    where: { email, game: SSAMCHI_GAME, bet: { gt: 0 } },
+    orderBy: { createdAt: 'desc' },
+    select: { reels: true }
+  });
+  return last?.reels.find((entry) => entry.startsWith('next-host:')) === 'next-host:user'
+    ? 'user'
+    : 'npc';
+}
+
 /** @param {string} email @param {string} nickname @param {number} balance */
 export async function resolveSsamchiOops(email, nickname, balance) {
   if (balance >= MIN_BET) return { balance, oopsInfo: null };

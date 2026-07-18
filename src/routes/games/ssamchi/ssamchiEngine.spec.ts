@@ -1,26 +1,56 @@
 import { describe, expect, it } from 'vitest';
-import { drawHiddenCoins, HIT_MULTIPLIER, MAX_COINS, playSsamchi } from './ssamchiEngine.js';
+import { drawMarbles, MAX_MARBLES, playOddEven, playSsamchi } from './ssamchiEngine.js';
 
-describe('ssamchi engine', () => {
-  it('draws 0 through 3 coins', () => {
-    expect(drawHiddenCoins(() => 0)).toBe(0);
-    expect(drawHiddenCoins(() => 0.999)).toBe(MAX_COINS);
+describe('odd-even and ssamchi engine', () => {
+  it('draws 1 through 15 marbles', () => {
+    expect(drawMarbles(() => 0)).toBe(1);
+    expect(drawMarbles(() => 0.999)).toBe(MAX_MARBLES);
   });
 
-  it('pays four times the bet for an exact total', () => {
-    const values = [0.3, 0.55, 0.9]; // 1, 2, 3
-    const result = playSsamchi({ hiddenCoins: 2, guess: 8, bet: 50 }, () => values.shift() ?? 0);
-    expect(result).toMatchObject({ npcCoins: [1, 2, 3], total: 8, hit: true });
-    expect(result.payout).toBe(50 * HIT_MULTIPLIER);
-    expect(result.delta).toBe(150);
+  it('wins an odd-even bet when the parity matches', () => {
+    const result = playOddEven({ choice: 'odd', bet: 50 }, () => 0); // 1개
+    expect(result).toMatchObject({
+      marbles: 1,
+      answer: 'odd',
+      outcome: 'win',
+      payout: 100,
+      delta: 50
+    });
   });
 
-  it('loses the bet when the guess misses', () => {
-    const result = playSsamchi({ hiddenCoins: 0, guess: 0, bet: 10 }, () => 0.99);
-    expect(result).toMatchObject({ total: 9, hit: false, payout: 0, delta: -10 });
+  it('loses an odd-even bet when the parity misses', () => {
+    const result = playOddEven({ choice: 'even', bet: 50 }, () => 0); // 1개
+    expect(result).toMatchObject({ outcome: 'lose', payout: 0, delta: -50 });
   });
 
-  it('rejects totals impossible with the chosen hand', () => {
-    expect(() => playSsamchi({ hiddenCoins: 3, guess: 2, bet: 10 })).toThrow('가능한 합계');
+  it('uses eujji=1, ni=2 and ssam=0', () => {
+    expect(playSsamchi({ take: 1, give: 0, bet: 10 }, () => 0)).toMatchObject({
+      answer: 1,
+      outcome: 'win'
+    });
+    expect(playSsamchi({ take: 1, give: 0, bet: 10 }, () => 2 / 15)).toMatchObject({
+      marbles: 3,
+      answer: 0,
+      outcome: 'lose'
+    });
+  });
+
+  it('returns the bet on the uncalled third result', () => {
+    const result = playSsamchi({ take: 1, give: 0, bet: 100 }, () => 1 / 15); // 2개 = 니
+    expect(result).toMatchObject({ answer: 2, outcome: 'draw', payout: 100, delta: 0 });
+  });
+
+  it('keeps the host win from an NPC miss', () => {
+    const result = playOddEven({ userIsHost: true, marbles: 2, bet: 50 }, () => 0); // NPC는 홀
+    expect(result).toMatchObject({ choice: 'odd', answer: 'even', outcome: 'win', delta: 50 });
+  });
+
+  it('hands the win to an NPC that calls the host result', () => {
+    const result = playSsamchi({ userIsHost: true, marbles: 1, bet: 10 }, () => 0); // 으찌 먹고, 니 떠
+    expect(result).toMatchObject({ take: 1, give: 2, answer: 1, outcome: 'lose' });
+  });
+
+  it('rejects duplicate ssamchi calls', () => {
+    expect(() => playSsamchi({ take: 1, give: 1, bet: 10 })).toThrow('서로 다른');
   });
 });

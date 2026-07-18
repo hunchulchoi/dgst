@@ -253,7 +253,7 @@
               active={pathname?.startsWith('/games/ssamchi')}
               class="px-3 text-center"
             >
-              <span>🪙</span><span class="d-none d-sm-inline ms-1">짤짤이</span>
+              <span>🟢</span><span class="d-none d-sm-inline ms-1">홀짝·쌈</span>
             </NavLink>
           </NavItem>
           <NavItem>
