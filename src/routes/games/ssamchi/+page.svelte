@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, untrack } from 'svelte';
+  import { Confetti } from 'svelte-confetti';
   import { swalFire } from '$lib/util/swal.js';
   import { MIN_BET } from './ssamchiEngine.js';
 
@@ -73,6 +74,10 @@
   let commentContent = $state('');
   let commentsLoading = $state(false);
   let commentSubmitting = $state(false);
+  let leaderEmail = $state<string | null>(untrack(() => data.rank?.[0]?.email ?? null));
+  let leaderCelebration = $state<{ nickname: string } | null>(null);
+  let leaderTimer: ReturnType<typeof setTimeout> | null = null;
+  let rankPollTimer: ReturnType<typeof setInterval> | null = null;
 
   const loggedIn = $derived(Boolean(data.session?.user?.email));
   const betOptions = $derived(
@@ -300,7 +305,15 @@
       if (!response.ok) return;
       const body = await response.json();
       if (Number.isFinite(Number(body.balance))) balance = Number(body.balance);
-      rank = body.rank ?? rank;
+      const nextRank = (body.rank ?? rank) as RankRow[];
+      const nextLeader = nextRank[0] ?? null;
+      if (leaderEmail && nextLeader && nextLeader.email !== leaderEmail) {
+        leaderCelebration = { nickname: nextLeader.nickname };
+        if (leaderTimer) clearTimeout(leaderTimer);
+        leaderTimer = setTimeout(() => (leaderCelebration = null), 4500);
+      }
+      leaderEmail = nextLeader?.email ?? leaderEmail;
+      rank = nextRank;
       todayStats = body.todayStats ?? todayStats;
     } catch {
       /* 다음 판에 갱신 */
@@ -377,9 +390,12 @@
   onMount(() => {
     if (host === 'npc') startNpcCatch();
     void loadComments();
+    rankPollTimer = setInterval(() => void refreshRank(), 10_000);
     return () => {
       if (roundTimer) clearTimeout(roundTimer);
       if (effectTimer) clearTimeout(effectTimer);
+      if (leaderTimer) clearTimeout(leaderTimer);
+      if (rankPollTimer) clearInterval(rankPollTimer);
     };
   });
 </script>
@@ -390,6 +406,20 @@
 </svelte:head>
 
 <main class="container py-3 py-md-4 game-page">
+  {#if leaderCelebration}
+    <div class="leader-fireworks" aria-live="assertive">
+      <Confetti
+        x={[-5, 5]}
+        y={[0, 0.1]}
+        delay={[100, 900]}
+        infinite
+        duration={4500}
+        amount={180}
+        fallDistance="100vh"
+      />
+      <strong>🏆 {leaderCelebration.nickname}님, 짤짤이 새 1등!</strong>
+    </div>
+  {/if}
   <header class="hero rounded-4 p-3 p-md-4 mb-3">
     <div>
       <div class="eyebrow">짤그랑 골목길 구슬 한 판</div>
@@ -733,6 +763,31 @@
 <style>
   .game-page {
     max-width: 1100px;
+  }
+  .leader-fireworks {
+    position: fixed;
+    inset: 0;
+    z-index: 2200;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    overflow: hidden;
+    padding-top: 15vh;
+    pointer-events: none;
+  }
+  .leader-fireworks strong {
+    z-index: 1;
+    padding: 0.9rem 1.25rem;
+    border: 2px solid #fff0a8;
+    border-radius: 2rem;
+    background: #7a280ee8;
+    color: #fff2a9;
+    box-shadow:
+      0 12px 36px #0008,
+      0 0 34px #ffca3a99;
+    font-size: clamp(1rem, 4vw, 1.45rem);
+    text-align: center;
+    animation: leaderPop 0.45s cubic-bezier(0.2, 0.8, 0.3, 1.3) both;
   }
   .hero {
     display: flex;
@@ -1475,6 +1530,16 @@
     from {
       opacity: 0;
       transform: translateY(12px) scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+  @keyframes leaderPop {
+    from {
+      opacity: 0;
+      transform: translateY(-20px) scale(0.7);
     }
     to {
       opacity: 1;
