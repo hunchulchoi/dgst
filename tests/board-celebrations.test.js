@@ -13,6 +13,28 @@ describe('board celebrations', () => {
     const source = readFileSync('src/lib/server/boardCelebrations.js', 'utf8');
     expect(source).toContain("WHERE game IN ('seotda', 'seotda-leader')");
   });
+
+  it('temporarily celebrates the current ssamchi leader', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-07-18T14:00:00.000Z'));
+    prismaModule.getPrisma.mockReturnValue({
+      $queryRaw: vi.fn().mockResolvedValue([
+        { email: 'leader@example.com', nickname: '구슬왕', balance: 4321 }
+      ])
+    });
+
+    const { rank1SsamchiBootstrap } = await import('../src/lib/server/boardCelebrations.js');
+    const celebration = await rank1SsamchiBootstrap();
+
+    expect(celebration).toMatchObject({
+      id: 'rank1:ssamchi:bootstrap-20260718:leader@example.com',
+      game: 'ssamchi',
+      label: '짤짤이 1등',
+      nickname: '구슬왕',
+      detail: '4,321개',
+      until: '2026-07-19T01:40:00.000Z'
+    });
+  });
   afterEach(() => {
     vi.useRealTimers();
     vi.resetAllMocks();

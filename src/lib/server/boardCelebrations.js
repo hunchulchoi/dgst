@@ -9,6 +9,9 @@ const FORCED_CELEBRATION_IDS = {
   'sudoku:hard': '2026-07-13-hard-rank1-replay'
 };
 
+/** 현재 짤짤이 1등 임시 축하. 12시간 뒤 자동 종료. */
+const SSAMCHI_RANK1_BOOTSTRAP_AT = new Date('2026-07-18T13:40:00.000Z');
+
 /**
  * @typedef {{
  *   id: string;
@@ -316,6 +319,41 @@ async function rank1Seotda() {
   return null;
 }
 
+/**
+ * 짤짤이 현재 1등 임시 폭죽.
+ * @returns {Promise<BoardCelebration | null>}
+ */
+export async function rank1SsamchiBootstrap() {
+  if (!withinWindow(SSAMCHI_RANK1_BOOTSTRAP_AT)) return null;
+  /** @type {Array<{ email: string; nickname: string; balance: number }>} */
+  const rows = await getPrisma().$queryRaw`
+    SELECT email, nickname, balance
+    FROM (
+      SELECT email, nickname, balance,
+        ROW_NUMBER() OVER (PARTITION BY email ORDER BY created_at DESC) AS rn,
+        created_at
+      FROM game_scores
+      WHERE game = 'ssamchi'
+    ) latest
+    WHERE rn = 1
+    ORDER BY balance DESC, created_at DESC
+    LIMIT 1
+  `;
+  const leader = rows[0];
+  if (!leader) return null;
+  const at = SSAMCHI_RANK1_BOOTSTRAP_AT.toISOString();
+  return {
+    id: `rank1:ssamchi:bootstrap-20260718:${leader.email}`,
+    kind: 'rank1',
+    game: 'ssamchi',
+    label: '짤짤이 1등',
+    nickname: leader.nickname || 'anonymous',
+    detail: `${Number(leader.balance).toLocaleString()}개`,
+    at,
+    until: untilIso(SSAMCHI_RANK1_BOOTSTRAP_AT)
+  };
+}
+
 /** 슬롯은 updatedAt이 매 스핀마다 갱신되어 제외 */
 
 /**
@@ -352,7 +390,8 @@ export async function getBoardCelebrations() {
     rank1Minesweeper(),
     rank1Billiards(),
     rank1Sudoku(),
-    rank1Seotda()
+    rank1Seotda(),
+    rank1SsamchiBootstrap()
   ];
 
   const results = await Promise.allSettled(tasks);
