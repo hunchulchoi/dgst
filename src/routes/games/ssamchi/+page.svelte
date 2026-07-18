@@ -125,6 +125,12 @@
       : callLabel({ take, give });
   }
 
+  function resultChoiceLabel(round: RoundResult) {
+    return round.mode === 'odd-even'
+      ? resultName(round.choice ?? 'odd')
+      : callLabel({ take: round.take ?? 1, give: round.give ?? 0 });
+  }
+
   function lockCall() {
     showEffect('call', `${selectedChoiceLabel()} 선택!`);
     step = 'bet';
@@ -282,7 +288,11 @@
             {:else}<span>✊</span>{/if}
           </div>
           <div class="sound">
-            {playing ? '짤그랑···' : reveal ? `${result?.marbles}개!` : '“가~!”'}
+            {playing
+              ? '짤그랑···'
+              : reveal && result
+                ? `${result.marbles}개 ${resultName(result.answer)}!`
+                : '“가~!”'}
           </div>
         </div>
 
@@ -466,14 +476,19 @@
             class:win={result.outcome === 'win'}
             class:lose={result.outcome === 'lose'}
           >
-            <div>
-              <span>{result.userIsHost ? '철수의 외침' : '결과'}</span><strong
-                >{result.userIsHost
-                  ? result.mode === 'odd-even'
-                    ? resultName(result.choice ?? 'odd')
-                    : callLabel({ take: result.take ?? 1, give: result.give ?? 0 })
-                  : `${result.marbles}개 · ${resultName(result.answer)}`}</strong
-              >
+            <div class="result-facts">
+              <div>
+                <span>{result.userIsHost ? '철수의 외침' : '내 외침'}</span>
+                <strong>{resultChoiceLabel(result)}</strong>
+              </div>
+              <div>
+                <span>공개 결과</span>
+                <strong>{result.marbles}개 {resultName(result.answer)}!</strong>
+              </div>
+              <div>
+                <span>{result.userIsHost ? '철수 판돈' : '내 판돈'}</span>
+                <strong>{formatNumber(result.bet)}개</strong>
+              </div>
             </div>
             <h3>
               {result.outcome === 'win'
@@ -793,6 +808,7 @@
   .result {
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
     gap: 1rem;
     margin-top: 1rem;
     padding: 1rem;
@@ -800,8 +816,17 @@
     border-radius: 0.85rem;
     background: var(--bs-tertiary-bg);
   }
-  .result > div {
+  .result-facts {
     display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: 100%;
+    gap: 0.55rem;
+  }
+  .result-facts > div {
+    display: grid;
+    padding: 0.55rem 0.7rem;
+    border-radius: 0.65rem;
+    background: #ffffff80;
   }
   .result span {
     color: var(--bs-secondary-color);
@@ -908,6 +933,9 @@
     .result {
       align-items: flex-start;
       flex-direction: column;
+    }
+    .result-facts {
+      grid-template-columns: 1fr;
     }
     .result h3 {
       margin: 0;
