@@ -108,13 +108,13 @@
 
   function lockMarbles() {
     showEffect('pick', `${selectedMarbles}개 잡았다!`);
-    step = 'bet';
+    step = 'ready';
   }
 
   function lockBet() {
     if (bet < MIN_BET || bet > balance) return;
     showEffect('bet', `${formatNumber(bet)}개 걸었다!`);
-    step = host === 'user' ? 'ready' : 'call';
+    step = 'call';
   }
 
   function nextRound() {
@@ -124,7 +124,13 @@
   }
 
   async function play() {
-    if (!loggedIn || playing || bet > balance || !['call', 'ready'].includes(step)) return;
+    if (
+      !loggedIn ||
+      playing ||
+      (host !== 'user' && bet > balance) ||
+      !['call', 'ready'].includes(step)
+    )
+      return;
     const retryStep = step;
     playing = true;
     step = 'playing';
@@ -133,7 +139,7 @@
     try {
       const payload =
         host === 'user'
-          ? { mode, marbles: selectedMarbles, bet }
+          ? { mode, marbles: selectedMarbles }
           : mode === 'odd-even'
             ? { mode, choice: oddEvenChoice, bet }
             : { mode, take, give, bet };
@@ -145,9 +151,13 @@
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(body?.message || '게임 요청에 실패했습니다.');
       result = body.result as RoundResult;
-      balance = Number(body.balance);
-      host = body.host ?? host;
+      const settledBalance = Number(body.balance);
+      const settledHost = body.host ?? host;
+      const revealDelay = result.userIsHost ? 1150 : 550;
+      if (result.userIsHost) showEffect('bet', `철수가 ${formatNumber(result.bet)}개 걸었다!`);
       setTimeout(() => {
+        balance = settledBalance;
+        host = settledHost;
         reveal = true;
         step = 'result';
         const delta = result?.delta ?? 0;
@@ -159,7 +169,7 @@
               ? `${formatNumber(Math.abs(delta))}개 졌다!`
               : '무승부!'
         );
-      }, 550);
+      }, revealDelay);
       void refreshRank();
     } catch (error) {
       step = retryStep;
@@ -284,7 +294,7 @@
                     : '1'
                   : step === 'call' || step === 'ready'
                     ? host === 'user'
-                      ? '3'
+                      ? '2'
                       : '2'
                     : '✓'}</span
             >
@@ -383,11 +393,11 @@
             >
           {:else if step === 'ready'}
             <p>
-              <b>{selectedMarbles}개</b>를 잡고 <b>{formatNumber(bet)}개</b>를 걸었습니다. 이제 손을
-              내밀어 승부하세요.
+              <b>{selectedMarbles}개</b>를 잡았습니다. 손을 내밀면 철수가 판돈을 걸고
+              {mode === 'odd-even' ? '홀·짝을' : '쌈치기 주문을'} 외칩니다.
             </p>
             <div class="ready-summary">
-              <span>✊ {selectedMarbles}개 잡음</span><span>🟢 {formatNumber(bet)}개 걸음</span>
+              <span>✊ {selectedMarbles}개 잡음</span><span>🟢 철수가 판돈 걸 차례</span>
             </div>
             <button class="go full" onclick={play}>“가~!” 손 내밀기</button>
           {:else if step === 'playing'}

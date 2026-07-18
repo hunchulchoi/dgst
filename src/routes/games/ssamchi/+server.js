@@ -9,7 +9,7 @@ import {
   resolveSsamchiOops,
   writeSsamchiScore
 } from './ssamchiBalance.js';
-import { MIN_BET, playOddEven, playSsamchi, SSAMCHI_NAMES } from './ssamchiEngine.js';
+import { chooseNpcBet, MIN_BET, playOddEven, playSsamchi, SSAMCHI_NAMES } from './ssamchiEngine.js';
 
 const SMOKE_BALANCE = 1000;
 /** @type {Set<string>} */
@@ -60,9 +60,6 @@ export async function POST(event) {
   try {
     const body = await event.request.json().catch(() => ({}));
     const mode = String(body?.mode ?? 'odd-even');
-    const bet = Number(body?.bet);
-    if (!Number.isSafeInteger(bet) || bet < MIN_BET)
-      throw error(400, { message: '판돈은 10점 이상입니다.' });
 
     const current = user.smoke
       ? { balance: SMOKE_BALANCE, oopsInfo: null }
@@ -70,11 +67,14 @@ export async function POST(event) {
           resolveSsamchiOops(user.email, user.nickname, state.balance)
         );
     if (current.oopsInfo) throw error(400, { message: '오링! 5분 후 500점이 충전됩니다.' });
-    if (bet > current.balance) throw error(400, { message: '보유 점수가 부족합니다.' });
     const host = user.smoke
       ? (smokeHosts.get(user.email) ?? 'npc')
       : await getSsamchiHost(user.email);
     const userIsHost = host === 'user';
+    const bet = userIsHost ? chooseNpcBet(current.balance) : Number(body?.bet);
+    if (!Number.isSafeInteger(bet) || bet < MIN_BET)
+      throw error(400, { message: '판돈은 10점 이상입니다.' });
+    if (bet > current.balance) throw error(400, { message: '보유 점수가 부족합니다.' });
 
     let result;
     let callLog = '-';

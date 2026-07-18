@@ -1,10 +1,21 @@
 import { describe, expect, it } from 'vitest';
-import { drawMarbles, MAX_MARBLES, playOddEven, playSsamchi } from './ssamchiEngine.js';
+import {
+  chooseNpcBet,
+  drawMarbles,
+  MAX_MARBLES,
+  playOddEven,
+  playSsamchi
+} from './ssamchiEngine.js';
 
 describe('odd-even and ssamchi engine', () => {
   it('draws 1 through 15 marbles', () => {
     expect(drawMarbles(() => 0)).toBe(1);
     expect(drawMarbles(() => 0.999)).toBe(MAX_MARBLES);
+  });
+
+  it('lets the NPC choose a wager the host can cover', () => {
+    expect(chooseNpcBet(35, () => 0.99)).toBe(10);
+    expect(chooseNpcBet(600, () => 0.99)).toBe(500);
   });
 
   it('wins an odd-even bet when the parity matches', () => {

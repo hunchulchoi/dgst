@@ -16,6 +16,13 @@ export const SSAMCHI_CALLS = [
   [0, 2]
 ];
 
+/** 선이 아닌 NPC가 보유 잔고 안에서 판돈을 건다. @param {number} balance @param {() => number} [random] */
+export function chooseNpcBet(balance, random = Math.random) {
+  const options = [10, 50, 100, 500, 1000].filter((amount) => amount <= balance);
+  if (!options.length) throw new Error('판돈을 걸 구슬이 부족합니다.');
+  return options[Math.floor(random() * options.length)];
+}
+
 /** @param {() => number} [random] */
 export function drawMarbles(random = Math.random) {
   return MIN_MARBLES + Math.floor(random() * (MAX_MARBLES - MIN_MARBLES + 1));
