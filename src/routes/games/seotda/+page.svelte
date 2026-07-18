@@ -655,8 +655,19 @@
 </svelte:head>
 
 <div class="container py-3 py-md-4 seotda-page">
+  <section class="mb-3">
+    <div class="card shadow-sm rounded-4 border-0">
+      <div class="card-body py-3">
+        <div class="d-flex justify-content-between small">
+          <span>오늘 참여자 <strong>{formatNumber(todayStats.users)}</strong></span>
+          <span>오늘 판수 <strong>{formatNumber(todayStats.hands)}</strong></span>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <div class="row g-3">
-    <div class="col-lg-8">
+    <div class="col-lg-8 order-2 order-lg-1">
       <div class="card shadow rounded-4 border-0">
         <div class="card-body">
           <div class="d-flex justify-content-between align-items-center mb-3">
@@ -1161,15 +1172,7 @@
       </div>
     </div>
 
-    <div class="col-lg-4">
-      <div class="card shadow rounded-4 border-0 mb-3">
-        <div class="card-body py-3">
-          <div class="d-flex justify-content-between small">
-            <span>오늘 참여자 <strong>{formatNumber(todayStats.users)}</strong></span>
-            <span>오늘 판수 <strong>{formatNumber(todayStats.hands)}</strong></span>
-          </div>
-        </div>
-      </div>
+    <div class="col-lg-4 order-1 order-lg-2">
       <div class="card shadow rounded-4 border-0">
         <div class="card-body">
           <h5 class="mb-3">섯다 Top10</h5>
