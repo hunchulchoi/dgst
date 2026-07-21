@@ -8,9 +8,9 @@ const commentRoute = readFileSync('src/routes/games/slot/comment/+server.js', 'u
 describe('seotda shared game comments', () => {
   it('renders the shared reply feed and posts rewards to the seotda balance', () => {
     expect(seotdaPage).toContain('<SharedGameComments');
-    expect(sharedComments).toContain("form.set('game', 'seotda')");
+    expect(sharedComments).toContain("form.set('game', game)");
     expect(commentRoute).toContain("rewardGame === 'seotda'");
-    expect(commentRoute).toContain("game: { in: ['slot', 'seotda'] }");
+    expect(commentRoute).toContain("game: { in: ['slot', 'seotda', 'ssamchi'] }");
     expect(commentRoute).toContain('todayRewardCount < 10');
     expect(commentRoute).toContain('writeSeotdaScore(email, nickname, newBalance');
   });
@@ -18,6 +18,10 @@ describe('seotda shared game comments', () => {
   it('writes automatic shared replies for ddaeng and bust results', () => {
     expect(seotdaPage).toContain('writeRoundAutomaticComments(next, balance)');
     expect(seotdaPage).toContain('🃏 섯다 땡!');
+    expect(seotdaPage).toContain('nextRound.ddaengValuePerLoser');
+    expect(seotdaPage).toContain('nextRound.ddaengTotalPaid');
+    expect(seotdaPage).toContain('nextRound.userChipDelta');
+    expect(seotdaPage).toContain('실제 수익');
     expect(seotdaPage).toContain('😢 섯다 오링!');
     expect(seotdaPage).toContain("form.set('automatic', '1')");
     expect(seotdaPage).toContain("fetch('/games/slot/comment'");

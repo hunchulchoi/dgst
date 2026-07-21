@@ -517,8 +517,11 @@
     if (Number(nextRound.ddaengValuePerLoser ?? 0) > 0 && nextRound.ddaengWinnerId === 'user') {
       const winner =
         nextRound.seats.find((seat) => seat.id === nextRound.ddaengWinnerId)?.name ?? '승자';
+      const actualProfit = Number(nextRound.userChipDelta ?? 0);
+      const actualProfitText =
+        actualProfit > 0 ? `+${formatNumber(actualProfit)}` : formatNumber(actualProfit);
       await writeAutomaticComment(
-        `🃏 섯다 땡! ${nextRound.ddaengHandName ?? '땡'} · ${winner} 승 · 땡값 ${formatNumber(nextRound.ddaengValuePerLoser ?? 0)}점`
+        `🃏 섯다 땡! ${nextRound.ddaengHandName ?? '땡'} · ${winner} 승 · 땡값 ${formatNumber(nextRound.ddaengValuePerLoser ?? 0)}점씩 (총 ${formatNumber(nextRound.ddaengTotalPaid ?? 0)}점) · 실제 수익 ${actualProfitText}점`
       );
     }
     if (nextBalance < ANTE) {
