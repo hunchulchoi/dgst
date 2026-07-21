@@ -573,9 +573,20 @@
       const brickHit = handleBrickCollision(cue, bricks, stage);
       cue = brickHit.ball;
       bricks = brickHit.bricks;
+      if (brickHit.hit) {
+        if (brickHit.hitIron) {
+          cue = noteIronHit(cue, now);
+          if (shouldEscapeIronTrap(cue, now)) {
+            cue = escapeIronTrap(cue, config.ballSpeed);
+            showEffectToast('철 탈출!');
+          }
+        } else {
+          cue = clearIronStreak(cue);
+        }
+      }
       const paddleHit = handlePaddleCollision(cue, paddle);
       if (paddleHit.hit) {
-        cue = paddleHit.ball;
+        cue = clearIronStreak(paddleHit.ball);
       } else if (isBallLost(cue)) {
         showEffectToast('공 놓침!');
         handleBonusMiss();
@@ -613,9 +624,20 @@
     const brickHit = handleBrickCollision(cue, bricks, stage);
     cue = brickHit.ball;
     bricks = brickHit.bricks;
+    if (brickHit.hit) {
+      if (brickHit.hitIron) {
+        cue = noteIronHit(cue, now);
+        if (shouldEscapeIronTrap(cue, now)) {
+          cue = escapeIronTrap(cue, config.ballSpeed);
+          showEffectToast('철 탈출!');
+        }
+      } else {
+        cue = clearIronStreak(cue);
+      }
+    }
     const paddleHit = handlePaddleCollision(cue, paddle);
     if (paddleHit.hit) {
-      cue = paddleHit.ball;
+      cue = clearIronStreak(paddleHit.ball);
     } else if (isBallLost(cue)) {
       showEffectToast('공 놓침!');
       handleBonusMiss();
