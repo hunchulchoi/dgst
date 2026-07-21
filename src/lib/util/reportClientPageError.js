@@ -53,6 +53,31 @@ const MAX_LEN = {
 };
 
 /**
+ * 앱은 Web Serial을 사용하지 않는다. 이 오류는 Windows Chrome 확장 프로그램이나
+ * 주입 스크립트가 직렬 포트를 열지 못했을 때 페이지의 전역 rejection으로 전달된다.
+ * @param {unknown} error
+ */
+export function isExternalSerialPortError(error) {
+  const candidate =
+    error && typeof error === 'object'
+      ? /** @type {{ name?: unknown; message?: unknown }} */ (error)
+      : null;
+  const name = typeof candidate?.name === 'string' ? candidate.name : '';
+  const message =
+    typeof candidate?.message === 'string'
+      ? candidate.message
+      : typeof error === 'string'
+        ? error
+        : '';
+
+  return (
+    name === 'NetworkError' &&
+    message.includes("Failed to execute 'open' on 'SerialPort'") &&
+    message.includes('Failed to open serial port')
+  );
+}
+
+/**
  * @param {string | undefined} value
  * @param {number} max
  */

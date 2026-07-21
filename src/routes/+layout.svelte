@@ -10,7 +10,10 @@
   import { browser } from '$app/environment';
   import { onMount } from 'svelte';
   import { reportSlowInitialLoad, reportSlowLoad } from '$lib/util/logSlowLoad.js';
-  import { reportClientError } from '$lib/util/reportClientPageError.js';
+  import {
+    isExternalSerialPortError,
+    reportClientError
+  } from '$lib/util/reportClientPageError.js';
   import { isInterruptedFetchError } from '$lib/util/fetchErrors.js';
   import { isFreeBoardLegacyPath } from '$lib/util/boardPaths.js';
   import { alarmCount, boardListReloadKey, boardListReloading } from '$lib/util/store.js';
@@ -237,6 +240,8 @@
 
     /** @param {PromiseRejectionEvent} event */
     const handleUnhandledRejection = (event) => {
+      if (isExternalSerialPortError(event.reason)) return;
+
       reportClientError(event.reason, {
         type: 'unhandled-rejection',
         message: 'Unhandled promise rejection',

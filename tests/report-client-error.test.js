@@ -1,6 +1,26 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { reportClientError } from '../src/lib/util/reportClientPageError.js';
+import {
+  isExternalSerialPortError,
+  reportClientError
+} from '../src/lib/util/reportClientPageError.js';
+
+describe('isExternalSerialPortError', () => {
+  it('matches the injected Web Serial open failure', () => {
+    expect(
+      isExternalSerialPortError({
+        name: 'NetworkError',
+        message: "Failed to execute 'open' on 'SerialPort': Failed to open serial port."
+      })
+    ).toBe(true);
+  });
+
+  it('does not hide unrelated network errors', () => {
+    expect(isExternalSerialPortError(new DOMException('Failed to fetch', 'NetworkError'))).toBe(
+      false
+    );
+  });
+});
 
 describe('reportClientError', () => {
   it('does not create an unhandled rejection when the log POST fails', async () => {
