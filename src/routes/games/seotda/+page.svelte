@@ -753,7 +753,7 @@
             >
               <div class="deal-stage">
                 <div class="deal-deck" aria-hidden="true">
-                  {#each Array(8) as _, i}
+                  {#each Array(8) as _, i (i)}
                     <i style={`--deal-index:${i}`}></i>
                   {/each}
                 </div>
@@ -768,19 +768,21 @@
           {/if}
 
           {#if !round}
-            <div class="text-center py-5">
-              <p class="mb-3">아귀 · 고니 · 정마담 이 기다림.</p>
-              <button
-                class="btn btn-primary btn-lg rounded-pill px-4"
-                disabled={busy || !!oopsInfo?.waiting || oopsRemainingMs > 0}
-                onclick={bustRoundPending ? nextRound : startRound}
-              >
-                {#if oopsInfo?.waiting || oopsRemainingMs > 0}
-                  판 시작 {formatOopsCountdown(oopsRemainingMs)}
-                {:else}
-                  판 시작 (판돈 {formatNumber(roundAnte)})
-                {/if}
-              </button>
+            <div class="seotda-table seotda-table-idle rounded-4 p-3 mb-3">
+              <div class="seotda-idle-content text-center">
+                <p class="mb-3">아귀 · 고니 · 정마담 이 기다림.</p>
+                <button
+                  class="btn btn-primary btn-lg rounded-pill px-4"
+                  disabled={busy || !!oopsInfo?.waiting || oopsRemainingMs > 0}
+                  onclick={bustRoundPending ? nextRound : startRound}
+                >
+                  {#if oopsInfo?.waiting || oopsRemainingMs > 0}
+                    판 시작 {formatOopsCountdown(oopsRemainingMs)}
+                  {:else}
+                    판 시작 (판돈 {formatNumber(roundAnte)})
+                  {/if}
+                </button>
+              </div>
             </div>
           {:else}
             <div class="seotda-table rounded-4 p-3 mb-3">
@@ -1232,16 +1234,39 @@
       </div>
     </div>
   </div>
-  <SharedGameComments loggedIn={isLoggedIn} refreshToken={commentRefreshToken} game="seotda" />
+  <div class="row g-3">
+    <div class="col-lg-8">
+      <SharedGameComments loggedIn={isLoggedIn} refreshToken={commentRefreshToken} game="seotda" />
+    </div>
+  </div>
 </div>
 
 <style>
   .seotda-table {
     position: relative;
-    background: linear-gradient(160deg, #1a4d3a 0%, #0f3328 100%);
+    overflow: hidden;
+    border: 1px solid rgba(224, 201, 118, 0.24);
+    background:
+      radial-gradient(circle at 50% 45%, rgba(42, 125, 84, 0.55), transparent 58%),
+      repeating-linear-gradient(115deg, transparent 0 34px, rgba(255, 255, 255, 0.018) 34px 36px),
+      linear-gradient(160deg, #1a573e 0%, #0b3023 100%);
     color: #f3f0e6;
     min-height: 280px;
     perspective: 800px;
+    box-shadow:
+      inset 0 0 65px rgba(0, 0, 0, 0.32),
+      0 12px 28px rgba(0, 0, 0, 0.14);
+  }
+  .seotda-table-idle {
+    display: grid;
+    min-height: clamp(320px, 48vh, 470px);
+    place-items: center;
+  }
+  .seotda-idle-content {
+    position: relative;
+    z-index: 1;
+    padding: 2rem 1rem;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
   }
   .npc-row {
     display: grid;

@@ -435,34 +435,8 @@
     </div>
   </header>
 
-  <section class="ranking-card rounded-4 p-3 p-md-4 mb-3">
-    <div class="ranking-head">
-      <h2>🏆 구슬 부자 Top 10</h2>
-      <div class="daily-stats">
-        <span>오늘 참여 <b>{formatNumber(todayStats.users)}명</b></span>
-        <span>오늘 <b>{formatNumber(todayStats.hands)}판</b></span>
-        <span>내 구슬 <b>{formatNumber(balance)}개</b></span>
-      </div>
-    </div>
-    {#if rank.length}<div class="ranking ranking-horizontal">
-        {#each rank as row, index (row.email)}<div
-            class:me={row.email === data.session?.user?.email}
-          >
-            <span>{index + 1}</span>
-            <b class="rank-name">
-              <GameProfilePhoto src={row.photo} name={row.nickname} />
-              <span>{row.nickname}</span>
-            </b>
-            <div class="rank-score">
-              <strong>{formatNumber(row.balance)}</strong>
-              {#if row.updatedAt}<small>{formatSocialTime(row.updatedAt)}</small>{/if}
-            </div>
-          </div>{/each}
-      </div>{:else}<p class="empty">첫 순위의 주인공이 되어 보세요.</p>{/if}
-  </section>
-
   <div class="row g-3">
-    <section class="col-12">
+    <section class="col-lg-8 order-2 order-lg-1">
       <div class="table-card rounded-4 p-3 p-md-4">
         <div class="game-tabs" role="tablist" aria-label="게임 선택">
           <button
@@ -709,6 +683,34 @@
           </div>{/if}
       </div>
     </section>
+
+    <aside class="col-lg-4 order-1 order-lg-2">
+      <section class="ranking-card rounded-4 p-3 p-md-4">
+        <div class="ranking-head">
+          <h2>🏆 구슬 부자 Top 10</h2>
+          <div class="daily-stats">
+            <span>오늘 참여 <b>{formatNumber(todayStats.users)}명</b></span>
+            <span>오늘 <b>{formatNumber(todayStats.hands)}판</b></span>
+            <span>내 구슬 <b>{formatNumber(balance)}개</b></span>
+          </div>
+        </div>
+        {#if rank.length}<div class="ranking ranking-horizontal">
+            {#each rank as row, index (row.email)}<div
+                class:me={row.email === data.session?.user?.email}
+              >
+                <span>{index + 1}</span>
+                <b class="rank-name">
+                  <GameProfilePhoto src={row.photo} name={row.nickname} />
+                  <span>{row.nickname}</span>
+                </b>
+                <div class="rank-score">
+                  <strong>{formatNumber(row.balance)}</strong>
+                  {#if row.updatedAt}<small>{formatSocialTime(row.updatedAt)}</small>{/if}
+                </div>
+              </div>{/each}
+          </div>{:else}<p class="empty">첫 순위의 주인공이 되어 보세요.</p>{/if}
+      </section>
+    </aside>
   </div>
 
   <section class="comments-card rounded-4 mt-3 p-3 p-md-4">
@@ -1717,6 +1719,11 @@
   .comment-list p {
     margin: 0.3rem 0 0;
     white-space: pre-wrap;
+  }
+  @media (min-width: 992px) {
+    .comments-card {
+      width: calc(100% * 2 / 3);
+    }
   }
   @media (max-width: 540px) {
     .bets.large {

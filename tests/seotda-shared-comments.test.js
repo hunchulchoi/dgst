@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 const seotdaPage = readFileSync('src/routes/games/seotda/+page.svelte', 'utf8');
 const sharedComments = readFileSync('src/lib/components/SharedGameComments.svelte', 'utf8');
+const ssamchiPage = readFileSync('src/routes/games/ssamchi/+page.svelte', 'utf8');
 const commentRoute = readFileSync('src/routes/games/slot/comment/+server.js', 'utf8');
 
 describe('seotda shared game comments', () => {
@@ -41,5 +42,22 @@ describe('seotda shared game comments', () => {
     expect(seotdaPage).toContain('판 시작 {formatOopsCountdown(oopsRemainingMs)}');
     expect(seotdaPage).toContain('onclick={bustRoundPending ? nextRound : startRound}');
     expect(seotdaPage).toContain('disabled={busy || !!oopsInfo?.waiting || oopsRemainingMs > 0}');
+  });
+
+  it('keeps the idle state inside the green game table', () => {
+    expect(seotdaPage).toContain(
+      'class="seotda-table seotda-table-idle rounded-4 p-3 mb-3"'
+    );
+    expect(seotdaPage).toContain('linear-gradient(160deg, #1a573e 0%, #0b3023 100%)');
+    expect(seotdaPage).toContain('min-height: clamp(320px, 48vh, 470px)');
+  });
+
+  it('limits the comment form and reply list width on seotda and ssamchi', () => {
+    expect(seotdaPage).toContain('<div class="col-lg-8">');
+    expect(seotdaPage).toContain('<SharedGameComments');
+    expect(ssamchiPage).toContain('<section class="col-lg-8 order-2 order-lg-1">');
+    expect(ssamchiPage).toContain('<aside class="col-lg-4 order-1 order-lg-2">');
+    expect(ssamchiPage).toContain('width: calc(100% * 2 / 3)');
+    expect(ssamchiPage).toContain('@media (min-width: 992px)');
   });
 });
