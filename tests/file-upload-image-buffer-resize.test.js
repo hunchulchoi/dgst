@@ -113,6 +113,53 @@ describe('fileUpload image resizing', () => {
     vi.useRealTimers();
   });
 
+  it('decodes HEIC with libheif before converting it to WebP', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-07-22T00:00:00.000Z'));
+
+    const { write } = await import('../src/lib/util/fileUpload.js');
+    const sourceBytes = Buffer.alloc(512 * 1024, 7);
+    const image = new File([sourceBytes], 'sample.HEIC', { type: 'image/heic' });
+
+    const url = await write(image, 'person@example.com', 'jjal');
+
+    expect(url).toBe('/images/jjal/2026/7/22/persone_sample_1784678400000.HEIC.webp');
+    expect(mocks.execFile).toHaveBeenCalledWith(
+      'heif-convert',
+      [expect.stringMatching(/\.heic-[\w-]+\.HEIC$/), expect.stringMatching(/\.heic-[\w-]+\.jpg$/)],
+      expect.objectContaining({ timeout: 120000 }),
+      expect.any(Function)
+    );
+    expect(mocks.sharp).toHaveBeenCalledWith(expect.stringMatching(/\.heic-[\w-]+\.jpg$/), {
+      animated: true
+    });
+    expect(mocks.fs.writeFileSync).toHaveBeenCalledWith(
+      '/tmp/dgst-upload-test/jjal/2026/7/22/persone_sample_1784678400000.HEIC.webp',
+      mocks.finalBuffer
+    );
+    expect(mocks.fs.unlinkSync).toHaveBeenCalledTimes(2);
+
+    vi.useRealTimers();
+  });
+
+  it('rejects HEIC instead of preserving an incompatible original when decoding fails', async () => {
+    mocks.execFile.mockImplementationOnce((command, args, options, callback) => {
+      callback(new Error('Support for this compression format has not been built in'));
+    });
+
+    const { write } = await import('../src/lib/util/fileUpload.js');
+    const image = new File([Buffer.alloc(512 * 1024, 7)], 'sample.heic', { type: 'image/heic' });
+
+    await expect(write(image, 'person@example.com', 'jjal')).rejects.toMatchObject({
+      status: 415,
+      body: expect.objectContaining({ message: expect.stringContaining('JPEG 또는 PNG') })
+    });
+    expect(mocks.fs.writeFileSync).not.toHaveBeenCalledWith(
+      expect.stringMatching(/persone_sample_\d+\.heic$/),
+      expect.any(Buffer)
+    );
+  });
+
   it('compresses videos on the server when client compression failed', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-06-16T00:00:00.000Z'));

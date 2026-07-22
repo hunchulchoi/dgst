@@ -9,6 +9,7 @@ import path from 'path';
 import sharp from 'sharp';
 import logger from './logger';
 import { execFile } from 'child_process';
+import { randomUUID } from 'crypto';
 
 /**
  * @param {string} _name
@@ -49,6 +50,33 @@ function runFfmpeg(args) {
       else resolve();
     });
   });
+}
+
+/**
+ * Decode a HEIC/HEIF image with the system libheif installation.
+ * @param {string} inputPath
+ * @param {string} outputPath
+ * @returns {Promise<void>}
+ */
+function runHeifConvert(inputPath, outputPath) {
+  return new Promise((resolve, reject) => {
+    execFile('heif-convert', [inputPath, outputPath], { timeout: 120000 }, (err) => {
+      if (err) reject(err);
+      else resolve();
+    });
+  });
+}
+
+/** @param {File} file */
+function isHeicImage(file) {
+  const type = file.type.toLowerCase();
+  const name = file.name.toLowerCase();
+  return (
+    type === 'image/heic' ||
+    type === 'image/heif' ||
+    name.endsWith('.heic') ||
+    name.endsWith('.heif')
+  );
 }
 
 /**
@@ -120,7 +148,8 @@ export async function write(file, email, preservePath = 'jjal', options = {}) {
 
       const isCommentImage = false;
       const isWebP = file.type === 'image/webp' || file.name.endsWith('.webp');
-      const shouldResize = isCommentImage || file.size > 1024 * 1024;
+      const isHeic = isHeicImage(file);
+      const shouldResize = isCommentImage || isHeic || file.size > 1024 * 1024;
 
       logger.info({
         type: file.type,
@@ -128,6 +157,7 @@ export async function write(file, email, preservePath = 'jjal', options = {}) {
         sizeMB: (file.size / (1024 * 1024)).toFixed(2),
         preservePath,
         isCommentImage,
+        isHeic,
         isWebP,
         shouldResize,
         message: 'fileUpload.write - resize check'
@@ -144,6 +174,8 @@ export async function write(file, email, preservePath = 'jjal', options = {}) {
             : 'Large image - processing WebP conversion'
         });
 
+        /** @type {string[]} */
+        const temporaryPaths = [];
         try {
           const convertStart = Date.now();
           // 이미 .webp 확장자가 있으면 그대로 사용, 없으면 추가
@@ -160,15 +192,36 @@ export async function write(file, email, preservePath = 'jjal', options = {}) {
           // 모든 이미지는 1400px로 리사이즈
           const maxWidth = 1400;
 
-          // Sharp를 사용한 안전한 WebP 변환
+          /** @type {Buffer | string} */
+          let sharpInput = fileBuffer;
+          if (isHeic) {
+            const temporaryToken = randomUUID();
+            const heicInputPath = path.join(
+              `${UPLOAD_PATH}${dir}`,
+              `.heic-${temporaryToken}${path.extname(file.name) || '.heic'}`
+            );
+            const jpegOutputPath = path.join(
+              `${UPLOAD_PATH}${dir}`,
+              `.heic-${temporaryToken}.jpg`
+            );
+            temporaryPaths.push(heicInputPath, jpegOutputPath);
+            fs.writeFileSync(heicInputPath, fileBuffer);
+            await runHeifConvert(heicInputPath, jpegOutputPath);
+            if (!fs.existsSync(jpegOutputPath)) {
+              throw new Error('heif-convert did not create a JPEG output');
+            }
+            sharpInput = jpegOutputPath;
+          }
+
           // 이미 WebP인 경우에도 리사이즈 및 재압축을 위해 다시 처리
-          const webpBuffer = await sharp(fileBuffer, { animated: true })
+          const webpBuffer = await sharp(sharpInput, { animated: true })
             .resize({ width: maxWidth, withoutEnlargement: true })
             .rotate()
             .webp({ quality: 85, effort: 4 })
             .toBuffer();
 
           fs.writeFileSync(webpPath, webpBuffer);
+
           fileWritten = true;
           fullPath = webpPath;
           fileName = finalFileName;
@@ -187,8 +240,25 @@ export async function write(file, email, preservePath = 'jjal', options = {}) {
           });
         } catch (err) {
           logger.error({ message: 'Image to WebP conversion failed', error: err });
-          // 변환 실패 시 기존 동작처럼 원본 파일 유지
+          if (isHeic) {
+            throw error(415, {
+              message: 'HEIC 이미지를 변환하지 못했습니다. JPEG 또는 PNG로 변경한 뒤 다시 업로드해 주세요.'
+            });
+          }
+          // 일반 이미지 변환 실패 시 기존 동작처럼 원본 파일 유지
           if (!fileWritten) writeOriginalFile();
+        } finally {
+          for (const temporaryPath of temporaryPaths) {
+            try {
+              if (fs.existsSync(temporaryPath)) fs.unlinkSync(temporaryPath);
+            } catch (cleanupErr) {
+              logger.warn({
+                message: 'Failed to remove temporary HEIC conversion file',
+                temporaryPath,
+                error: cleanupErr
+              });
+            }
+          }
         }
       }
     } else if (file.type.startsWith('video') && options.compressVideo) {

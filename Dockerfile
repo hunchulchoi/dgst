@@ -1,4 +1,4 @@
-FROM node:22 AS build
+FROM node:22-trixie AS build
 LABEL authors="hunchulchoi"
 
 # 앱디렉토리를 만듬
@@ -17,7 +17,7 @@ COPY . .
 ENV SKIP_DB_CONNECT=true
 RUN npm run db:generate && npm run build
 
-FROM node:22 AS production
+FROM node:22-trixie AS production
 
 WORKDIR /app
 ENV BODY_SIZE_LIMIT=100M
@@ -25,8 +25,9 @@ ENV BODY_SIZE_LIMIT=100M
 # RUN groupadd -g 999 www-data
 # RUN useradd -r -u 999 -g www-data www-data
 
-RUN apt-get update \
-  && apt-get install -y --no-install-recommends ffmpeg \
+RUN sed -i 's|http://deb.debian.org|https://deb.debian.org|g' /etc/apt/sources.list.d/debian.sources \
+  && apt-get update \
+  && apt-get install -y --no-install-recommends ffmpeg libheif-examples \
   && rm -rf /var/lib/apt/lists/*
 
 COPY --from=build /app/build .
