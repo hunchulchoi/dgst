@@ -4,7 +4,7 @@
 
 ## 1. 개요
 
-게시판과 슬롯 댓글에서 발생하는 알림을 PostgreSQL `alarms` 테이블에 저장합니다. Redis 알림 저장소는 PostgreSQL 전환 과정에서 제거되었고, cutover 시 Redis에 남아 있던 3일 TTL 알림만 `scripts/migrate-mongo-to-pg.js`로 이전합니다.
+게시판과 슬롯 댓글에서 발생하는 알림을 PostgreSQL `alarms` 테이블에 저장합니다. Redis 알림 저장소는 PostgreSQL 전환 과정에서 제거되었습니다.
 
 ## 2. 데이터 구조
 

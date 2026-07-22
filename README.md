@@ -42,7 +42,6 @@ UPLOAD_PATH=""
 Notes:
 
 - `DATABASE_URL` is required for app runtime.
-- `MONGODB_CONNECTION_STRING`, `DB_NAME`, `REDIS_URL`, and `REDIS_PREFIX` are legacy inputs used only by migration and verification scripts.
 - Google/Kakao OAuth and reCAPTCHA are required for the full auth flow.
 
 ### 3. Generate Prisma client and apply schema
@@ -95,30 +94,6 @@ npm run db:migrate
 npm run db:push
 npm run db:studio
 ```
-
-## MongoDB / Redis to PostgreSQL Migration
-
-Runtime no longer depends on MongoDB or Redis, but the migration tooling still reads from them.
-
-Required env for migration scripts:
-
-```env
-DATABASE_URL="postgresql://..."
-MONGODB_CONNECTION_STRING="mongodb://..."
-DB_NAME="dgstdb"
-REDIS_URL="redis://..."
-REDIS_PREFIX="dgst"
-```
-
-Run in this order:
-
-```bash
-npx prisma migrate deploy
-npm run db:migrate-data
-npm run db:verify-migration
-```
-
-Detailed cutover steps live in [docs/postgres-cutover-runbook.md](/Users/hunchulchoi/projects/workspace/dgst/docs/postgres-cutover-runbook.md).
 
 ## Verification
 

@@ -17,19 +17,19 @@ describe('mobile layout width renormalization events', () => {
     expect(layout).toContain("window.removeEventListener('dgst:normalize-mobile-layout-width'");
     expect(layout).toContain('function scheduleMobileLayoutWidthNormalization()');
     expect(layout).toContain('function resetHorizontalScrollPositions()');
-    expect(layout).toContain('document.documentElement.scrollLeft = 0');
-    expect(layout).toContain('document.querySelectorAll');
+    expect(layout).toContain('document.documentElement,');
+    expect(layout).toContain('element.scrollLeft = 0');
+    expect(layout).not.toContain("document.querySelectorAll('*')");
+    expect(layout).toContain('top: window.scrollY');
     expect(layout).toContain("window.dispatchEvent(new Event('resize'))");
-    expect(layout).toContain('setTimeout(scheduleMobileLayoutWidthNormalization, 120)');
-    expect(layout).toContain('setTimeout(scheduleMobileLayoutWidthNormalization, 360)');
+    expect(layout).toContain('requestAnimationFrame(() =>');
+    expect(layout).toContain('clearTimeout(mobileLayoutNormalizationTimer)');
+    expect(layout).toContain('}, 180)');
   });
 
-  it('requests width normalization after a successful article write', () => {
-    expect(writePage).toContain("window.dispatchEvent(new CustomEvent('dgst:normalize-mobile-layout-width'))");
+  it('relies on the global afterNavigate normalization after a successful article write', () => {
     expect(writePage).toContain('await goto(resolve(`/board/${boardId}/${savedArticleId}`));');
-    expect(writePage.lastIndexOf('requestMobileLayoutWidthNormalization();')).toBeGreaterThan(
-      writePage.indexOf('await goto(resolve(`/board/${boardId}/${savedArticleId}`));')
-    );
+    expect(writePage).not.toContain('requestMobileLayoutWidthNormalization');
   });
 
   it('requests width normalization after comment data is refreshed', () => {

@@ -75,11 +75,6 @@
     uploading--;
   };
 
-  function requestMobileLayoutWidthNormalization() {
-    if (typeof window === 'undefined') return;
-    window.dispatchEvent(new CustomEvent('dgst:normalize-mobile-layout-width'));
-  }
-
   function keepWriteTitleVisible() {
     if (typeof window === 'undefined') return;
     const titleInput = document.getElementById('title');
@@ -545,7 +540,6 @@
               const savedArticleId = actionData.articleId || articleId;
               if (savedArticleId) {
                 await goto(resolve(`/board/${boardId}/${savedArticleId}`));
-                requestMobileLayoutWidthNormalization();
               } else {
                 await list();
               }

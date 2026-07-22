@@ -32,6 +32,12 @@
   /** @type {string | undefined} */
   let navigationToPath;
 
+  /** @type {number | undefined} */
+  let mobileLayoutNormalizationFrame;
+
+  /** @type {number | undefined} */
+  let mobileLayoutNormalizationTimer;
+
   /** 게시판 목록 → 글 상세 이동 시 blur (beforeNavigate에서 미리 켬 — 첫 클릭부터 적용) */
   let boardListToDetailBlur = $state(false);
 
@@ -126,29 +132,37 @@
 
   function resetHorizontalScrollPositions() {
     if (!browser) return;
-    document.documentElement.scrollLeft = 0;
-    document.body.scrollLeft = 0;
-    for (const element of document.querySelectorAll('*')) {
+    const scrollContainers = [
+      document.documentElement,
+      document.body,
+      document.querySelector('.app-shell'),
+      document.querySelector('.page-transition')
+    ];
+    for (const element of scrollContainers) {
       if (!(element instanceof HTMLElement)) continue;
       if (element.scrollLeft !== 0) element.scrollLeft = 0;
     }
   }
 
   function scheduleMobileLayoutWidthNormalization() {
-    if (!browser) return;
-    resetHorizontalScrollPositions();
-    window.scrollTo(0, 0);
-    requestAnimationFrame(() => {
+    if (!browser || window.innerWidth > 768 || mobileLayoutNormalizationFrame !== undefined) return;
+
+    mobileLayoutNormalizationFrame = requestAnimationFrame(() => {
+      mobileLayoutNormalizationFrame = undefined;
       resetHorizontalScrollPositions();
+      window.scrollTo({ left: 0, top: window.scrollY, behavior: 'auto' });
       window.dispatchEvent(new Event('resize'));
-      window.scrollTo(0, 0);
     });
   }
 
   function normalizeMobileLayoutWidth() {
     scheduleMobileLayoutWidthNormalization();
-    setTimeout(scheduleMobileLayoutWidthNormalization, 120);
-    setTimeout(scheduleMobileLayoutWidthNormalization, 360);
+    clearTimeout(mobileLayoutNormalizationTimer);
+    mobileLayoutNormalizationTimer = window.setTimeout(() => {
+      mobileLayoutNormalizationTimer = undefined;
+      resetHorizontalScrollPositions();
+      window.scrollTo({ left: 0, top: window.scrollY, behavior: 'auto' });
+    }, 180);
   }
 
   async function syncTimeZoneCookie() {
@@ -282,6 +296,10 @@
       window.removeEventListener('unhandledrejection', handleUnhandledRejection);
       window.removeEventListener('dgst:normalize-mobile-layout-width', normalizeMobileLayoutWidth);
       window.removeEventListener('load', measureInitialLoad);
+      if (mobileLayoutNormalizationFrame !== undefined) {
+        cancelAnimationFrame(mobileLayoutNormalizationFrame);
+      }
+      clearTimeout(mobileLayoutNormalizationTimer);
     };
   });
 </script>

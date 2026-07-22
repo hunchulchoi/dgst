@@ -9,7 +9,7 @@ alwaysApply: true
 This is svelte & svelte-kit based commnity
 
 - Frontend: svelete5 + TypeScript
-- Backend: sveltekit2 + Prisma + mongodb
+- Backend: SvelteKit 2 + Prisma + PostgreSQL
 - Styling: Tailwind CSS + shadcn/ui
 
 ## Essential Elements
