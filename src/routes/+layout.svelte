@@ -16,6 +16,7 @@
   } from '$lib/util/reportClientPageError.js';
   import { isInterruptedFetchError } from '$lib/util/fetchErrors.js';
   import { isFreeBoardLegacyPath } from '$lib/util/boardPaths.js';
+  import { promptKakaoExternalBrowser } from '$lib/util/kakaoExternalBrowser.js';
   import { alarmCount, boardListReloadKey, boardListReloading } from '$lib/util/store.js';
   import { isValidTimeZone, serializeTimeZoneCookie } from '$lib/util/formatRelativeTime.js';
   import '../app.css';
@@ -216,6 +217,7 @@
 
   onMount(() => {
     if (!browser) return;
+    void promptKakaoExternalBrowser();
     void syncTimeZoneCookie();
 
     /** @param {ErrorEvent} event */
