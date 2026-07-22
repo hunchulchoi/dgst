@@ -71,12 +71,9 @@ function runHeifConvert(inputPath, outputPath) {
 function isHeicImage(file) {
   const type = file.type.toLowerCase();
   const name = file.name.toLowerCase();
-  return (
-    type === 'image/heic' ||
-    type === 'image/heif' ||
-    name.endsWith('.heic') ||
-    name.endsWith('.heif')
-  );
+  if (type === 'image/heic' || type === 'image/heif') return true;
+  if (type.startsWith('image/')) return false;
+  return name.endsWith('.heic') || name.endsWith('.heif');
 }
 
 /**

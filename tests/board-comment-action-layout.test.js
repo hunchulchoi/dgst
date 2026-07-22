@@ -45,6 +45,15 @@ describe('board comment action layout', () => {
     );
   });
 
+  it('accepts and renders comment videos through the shared media component', () => {
+    expect(articlePage.match(/accept="image\/\*,video\/\*,audio\/\*"/g)).toHaveLength(3);
+    expect(articlePage).toContain("import AttachmentMedia from '$lib/components/AttachmentMedia.svelte'");
+    expect(articlePage).toContain('<AttachmentMedia');
+    expect(articlePage).toContain('ariaLabel="리플 동영상"');
+    expect(articlePage).toContain('ariaLabel="댓글 동영상 미리보기"');
+    expect(articlePage).toContain('ariaLabel="리플 동영상 미리보기"');
+  });
+
   it('uses mobile-specific compact comment and article controls', () => {
     expect(articlePage).toContain('class="article-action-label"');
     expect(articlePage).toMatch(
@@ -73,7 +82,9 @@ describe('board comment action layout', () => {
   });
 
   it('keeps reply comment action buttons outside the reply indentation on mobile', () => {
-    expect(articlePage).toContain("class=\"mt-2 comment-actions-row {comment.parentCommentId ? 'comment-actions-row-reply' : ''}\"");
+    expect(articlePage).toMatch(
+      /class="mt-2 comment-actions-row \{comment\.parentCommentId\s*\? 'comment-actions-row-reply'\s*: ''\}"/
+    );
     expect(articlePage).toContain(':global(.comment-actions-row-reply)');
     expect(articlePage).toContain('margin-left: calc(-1 * var(--reply-comment-indent));');
     expect(articlePage).toContain('width: calc(100% + var(--reply-comment-indent));');

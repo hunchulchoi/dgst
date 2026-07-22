@@ -113,6 +113,33 @@ describe('fileUpload image resizing', () => {
     vi.useRealTimers();
   });
 
+  it('trusts an explicit WebP MIME over a stale HEIC filename', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-07-22T00:00:00.000Z'));
+
+    const { write } = await import('../src/lib/util/fileUpload.js');
+    const browserCompressed = new File(
+      [Buffer.alloc(1024 * 1024 + 1, 7)],
+      'browser-compressed.HEIC',
+      { type: 'image/webp' }
+    );
+
+    const url = await write(browserCompressed, 'person@example.com', 'jjal');
+
+    expect(url).toBe(
+      '/images/jjal/2026/7/22/persone_browser_co_1784678400000.HEIC.webp'
+    );
+    expect(mocks.execFile).not.toHaveBeenCalledWith(
+      'heif-convert',
+      expect.anything(),
+      expect.anything(),
+      expect.anything()
+    );
+    expect(mocks.sharp).toHaveBeenCalledWith(expect.any(Buffer), { animated: true });
+
+    vi.useRealTimers();
+  });
+
   it('decodes HEIC with libheif before converting it to WebP', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-07-22T00:00:00.000Z'));

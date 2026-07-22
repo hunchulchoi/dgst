@@ -11,6 +11,7 @@ import {
   updateComment
 } from '$lib/server/board/commentRepo.js';
 import { write } from '$lib/util/fileUpload.js';
+import { isVideoAttachment } from '$lib/util/attachmentMedia.js';
 import { upsertAlarm, markAsRead, removeCommentFromAlarm } from '$lib/server/alarm/alarmService.js';
 import convertToTree from '$lib/util/tree.js';
 import { checkAndLogSessionDevice } from '$lib/server/auth/checkSessionDevice.js';
@@ -167,7 +168,9 @@ export async function POST(event) {
     const image = data.get('image');
 
     if (image && image instanceof File && image.size > 0) {
-      storeFileName = await write(image, userEmail, 'jjal');
+      storeFileName = await write(image, userEmail, 'jjal', {
+        compressVideo: isVideoAttachment(image)
+      });
     }
 
     let parentComment = null;
@@ -276,7 +279,9 @@ export async function PUT({ request, params, locals }) {
     const image = data.get('image');
 
     if (image && image instanceof File && image.size > 0) {
-      storeFileName = await write(image, userEmail, 'jjal');
+      storeFileName = await write(image, userEmail, 'jjal', {
+        compressVideo: isVideoAttachment(image)
+      });
     }
 
     const existing = await findOwnedActiveComment({

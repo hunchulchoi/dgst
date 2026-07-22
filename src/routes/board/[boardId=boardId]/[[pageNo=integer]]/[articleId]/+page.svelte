@@ -18,11 +18,13 @@
   import BoardList from '$lib/components/board_list.svelte';
   import BilliardsReplayPlayer from '$lib/components/BilliardsReplayPlayer.svelte';
   import SeotdaReplayPlayer from '$lib/components/SeotdaReplayPlayer.svelte';
+  import AttachmentMedia from '$lib/components/AttachmentMedia.svelte';
   import OGPreview from '$lib/components/OGPreview.svelte';
   import sanitizeHtml from 'sanitize-html';
   import { isOnlyOneEmoji } from '$lib/util/emoji.js';
   import { linkifyPlainUrls } from '$lib/util/linkifyPlainUrls.js';
   import { repairOgCardHtmlEntities } from '$lib/util/ogCardHtmlRepair.js';
+  import { createWebpUploadFile, isVideoAttachment } from '$lib/util/attachmentMedia.js';
   import {
     applyAttachmentImageSizing,
     shouldApplyAttachmentImageSizing
@@ -271,6 +273,12 @@
       .replaceAll('"', '&quot;');
   }
 
+  /** @param {string} currentUrl @param {File | null} file */
+  function replaceAttachmentObjectUrl(currentUrl, file) {
+    if (currentUrl.startsWith('blob:')) window.URL.revokeObjectURL(currentUrl);
+    return file ? window.URL.createObjectURL(file) : '';
+  }
+
   /** @param {'reply' | 'comment'} target */
   function getCommentImageTarget(target) {
     return target === 'reply' ? reCommentImage : commentImage;
@@ -342,7 +350,11 @@
         console.log('event.clipboardData.files[0]', event.clipboardData.files[0])
         console.log('event.clipboardData.files[0].type', event.clipboardData.files[0].type)*/
 
-      if (clipboardData.files?.length && clipboardData.files[0].type.startsWith('image')) {
+      if (
+        clipboardData.files?.length &&
+        (clipboardData.files[0].type.startsWith('image') ||
+          clipboardData.files[0].type.startsWith('video'))
+      ) {
         setCommentImageTarget(target, clipboardData.files[0]);
 
         event.preventDefault();
@@ -361,6 +373,25 @@
     }
 
     const selectedImage = getCommentImageTarget(target);
+    if (selectedImage && isVideoAttachment(selectedImage)) {
+      if (target === 'reply') {
+        reCommentVideoPreviewUrl = replaceAttachmentObjectUrl(
+          reCommentVideoPreviewUrl,
+          selectedImage
+        );
+      } else {
+        commentVideoPreviewUrl = replaceAttachmentObjectUrl(commentVideoPreviewUrl, selectedImage);
+      }
+      el.src = '';
+      el.classList.add('d-none');
+      return;
+    }
+
+    if (target === 'reply') {
+      reCommentVideoPreviewUrl = replaceAttachmentObjectUrl(reCommentVideoPreviewUrl, null);
+    } else {
+      commentVideoPreviewUrl = replaceAttachmentObjectUrl(commentVideoPreviewUrl, null);
+    }
     if (selectedImage) {
       el.src = window.URL.createObjectURL(selectedImage);
     }
@@ -390,9 +421,7 @@
             });
             setCommentImageTarget(
               target,
-              webp instanceof File
-                ? webp
-                : new File([webp], currentImage.name, { type: 'image/webp' })
+              createWebpUploadFile(webp, currentImage.name)
             );
           } catch (error) {
             console.error('[browser-image-compression] 댓글 이미지 변환 실패:', error);
@@ -439,6 +468,7 @@
   let reCommentDiv = $state(/** @type {HTMLDivElement | null} */ (null));
   let reCommentContent = $state('');
   let reCommentImage = $state(/** @type {File | null} */ (null));
+  let reCommentVideoPreviewUrl = $state('');
   /** @type {HTMLImageElement | null} */
   let rePreviewEl = $state(null);
   /** @type {HTMLInputElement | null} */
@@ -450,6 +480,7 @@
   let commentDiv = $state(/** @type {HTMLDivElement | HTMLSpanElement | null} */ (null));
   let commentContent = $state('');
   let commentImage = $state(/** @type {File | null} */ (null));
+  let commentVideoPreviewUrl = $state('');
   /** @type {HTMLImageElement | null} */
   let previewEl = $state(null);
   /** @type {HTMLInputElement | null} */
@@ -471,6 +502,8 @@
   let editingCommentId = $state('');
   let editCommentContent = $state('');
   let editCommentImage = $state(/** @type {File | null} */ (null));
+  let editCommentVideoPreviewUrl = $state('');
+  let editExistingAttachment = $state('');
   let editCommentRemoveImage = $state(false);
   /** @type {HTMLImageElement | null} */
   let editPreviewEl = $state(null);
@@ -535,6 +568,7 @@
 
       commentContent = '';
       commentImage = null;
+      commentVideoPreviewUrl = replaceAttachmentObjectUrl(commentVideoPreviewUrl, null);
       if (commentImageEl) commentImageEl.value = '';
       if (previewEl) {
         previewEl.src = '';
@@ -545,6 +579,7 @@
       reCommentContent = '';
       if (parentCommentId) {
         reCommentImage = null;
+        reCommentVideoPreviewUrl = replaceAttachmentObjectUrl(reCommentVideoPreviewUrl, null);
         if (reCommentImageEl) reCommentImageEl.value = '';
         if (rePreviewEl) {
           rePreviewEl.src = '';
@@ -616,11 +651,13 @@
     editCommentContent = comment.content;
     editCommentImage = null;
     editCommentRemoveImage = false;
+    editExistingAttachment = comment.image ?? '';
+    editCommentVideoPreviewUrl = isVideoAttachment(comment.image) ? (comment.image ?? '') : '';
 
     // DOM이 업데이트된 후 미리보기 설정
     setTimeout(() => {
       if (editPreviewEl) {
-        if (comment.image) {
+        if (comment.image && !isVideoAttachment(comment.image)) {
           editPreviewEl.src = comment.image;
           editPreviewEl.classList.remove('d-none');
         } else {
@@ -637,6 +674,8 @@
     editCommentContent = '';
     editCommentImage = null;
     editCommentRemoveImage = false;
+    editExistingAttachment = '';
+    editCommentVideoPreviewUrl = replaceAttachmentObjectUrl(editCommentVideoPreviewUrl, null);
     if (editCommentImageEl) editCommentImageEl.value = '';
     if (editPreviewEl) {
       editPreviewEl.src = '';
@@ -787,6 +826,8 @@
   function removeEditCommentImage() {
     editCommentImage = null;
     editCommentRemoveImage = true;
+    editExistingAttachment = '';
+    editCommentVideoPreviewUrl = replaceAttachmentObjectUrl(editCommentVideoPreviewUrl, null);
     if (editCommentImageEl) editCommentImageEl.value = '';
     if (editPreviewEl) {
       editPreviewEl.src = '';
@@ -803,7 +844,11 @@
     if (event.type === 'paste') {
       const clipboardData = /** @type {ClipboardEvent} */ (event).clipboardData;
       if (!clipboardData) return;
-      if (clipboardData.files?.length && clipboardData.files[0].type.startsWith('image')) {
+      if (
+        clipboardData.files?.length &&
+        (clipboardData.files[0].type.startsWith('image') ||
+          clipboardData.files[0].type.startsWith('video'))
+      ) {
         editCommentImage = clipboardData.files[0];
         editCommentRemoveImage = false;
         event.preventDefault();
@@ -825,6 +870,18 @@
       }
     }
 
+    if (editCommentImage && isVideoAttachment(editCommentImage)) {
+      editCommentVideoPreviewUrl = replaceAttachmentObjectUrl(
+        editCommentVideoPreviewUrl,
+        editCommentImage
+      );
+      editExistingAttachment = '';
+      el.src = '';
+      el.classList.add('d-none');
+      return;
+    }
+
+    editCommentVideoPreviewUrl = replaceAttachmentObjectUrl(editCommentVideoPreviewUrl, null);
     if (editCommentImage) {
       el.src = window.URL.createObjectURL(editCommentImage);
     }
@@ -850,10 +907,7 @@
                 fileType: 'image/webp',
                 initialQuality: 0.85
               });
-              editCommentImage =
-                webp instanceof File
-                  ? webp
-                  : new File([webp], editCommentImage.name, { type: 'image/webp' });
+              editCommentImage = createWebpUploadFile(webp, editCommentImage.name);
             } catch (error) {
               console.error('[browser-image-compression] 댓글 이미지 변환 실패:', error);
               // 변환 실패 시 원본 사용
@@ -1062,6 +1116,7 @@
     visibleReply = visibleReply === id ? '' : id;
     reCommentContent = '';
     reCommentImage = null;
+    reCommentVideoPreviewUrl = replaceAttachmentObjectUrl(reCommentVideoPreviewUrl, null);
     if (reCommentImageEl) reCommentImageEl.value = '';
     if (rePreviewEl) {
       rePreviewEl.src = '';
@@ -2154,9 +2209,9 @@
                               type="file"
                               bind:this={editCommentImageEl}
                               onchange={handleEditImageChange}
-                              accept="image/*,audio/*"
+                              accept="image/*,video/*,audio/*"
                               class="comment-file-input form-control"
-                              aria-label="댓글 이미지 또는 음성 파일 첨부"
+                              aria-label="댓글 이미지, 동영상 또는 음성 파일 첨부"
                             />
                             <Button
                               color={commentAudioRecordingTarget === 'edit'
@@ -2190,12 +2245,24 @@
                           <!-- 이미지 미리보기 -->
                           <div class="mb-2">
                             <img
-                              src=""
-                              class="d-none comment-upload-preview"
+                              src={isVideoAttachment(editExistingAttachment)
+                                ? ''
+                                : editExistingAttachment}
+                              class:d-none={!editExistingAttachment ||
+                                isVideoAttachment(editExistingAttachment)}
+                              class="comment-upload-preview"
                               bind:this={editPreviewEl}
                               alt="댓글 이미지 미리보기"
                               style="max-width: 100%"
                             />
+                            {#if editCommentVideoPreviewUrl}
+                              <AttachmentMedia
+                                src={editCommentVideoPreviewUrl}
+                                video
+                                ariaLabel="댓글 동영상 미리보기"
+                                videoStyle="max-width: 100%"
+                              />
+                            {/if}
                           </div>
 
                           <!-- 댓글 내용 입력 -->
@@ -2232,11 +2299,11 @@
                         {#if comment.state === 'write' && comment.image}
                           <Row class="pb-3 mx-0">
                             <Col class="p-0 ps-1 m-0">
-                              <img
+                              <AttachmentMedia
                                 src={comment.image}
                                 alt="리플 짤"
-                                style="max-width: 100%;"
-                                onload={handleAttachmentImageLoad}
+                                ariaLabel="리플 동영상"
+                                onimageload={handleAttachmentImageLoad}
                               />
                             </Col>
                           </Row>
@@ -2382,9 +2449,9 @@
                     type="file"
                     bind:this={reCommentImageEl}
                     onchange={handleReplyImageChange}
-                    accept="image/*,audio/*"
+                    accept="image/*,video/*,audio/*"
                     class="comment-file-input form-control"
-                    aria-label="댓글 이미지 또는 음성 파일 첨부"
+                    aria-label="댓글 이미지, 동영상 또는 음성 파일 첨부"
                   />
                   <Button
                     color={commentAudioRecordingTarget === 'reply' ? 'danger' : 'secondary'}
@@ -2408,6 +2475,14 @@
                     alt="리플 이미지 첨부 미리보기"
                     style="max-width: 100%"
                   />
+                  {#if reCommentVideoPreviewUrl}
+                    <AttachmentMedia
+                      src={reCommentVideoPreviewUrl}
+                      video
+                      ariaLabel="리플 동영상 미리보기"
+                      videoStyle="max-width: 100%"
+                    />
+                  {/if}
                 </div>
 
                 <InputGroup class="comment-write-group">
@@ -2481,9 +2556,9 @@
                 type="file"
                 bind:this={commentImageEl}
                 onchange={handleCommentImageChange}
-                accept="image/*,audio/*"
+                accept="image/*,video/*,audio/*"
                 class="comment-file-input form-control"
-                aria-label="댓글 이미지 또는 음성 파일 첨부"
+                aria-label="댓글 이미지, 동영상 또는 음성 파일 첨부"
               />
               <Button
                 color={commentAudioRecordingTarget === 'comment' ? 'danger' : 'secondary'}
@@ -2504,6 +2579,14 @@
                 alt="리플 이미지 첨부 미리보기"
                 style="max-width: 100%"
               />
+              {#if commentVideoPreviewUrl}
+                <AttachmentMedia
+                  src={commentVideoPreviewUrl}
+                  video
+                  ariaLabel="댓글 동영상 미리보기"
+                  videoStyle="max-width: 100%"
+                />
+              {/if}
             </div>
             <InputGroup class="comment-write-group">
               <textarea
