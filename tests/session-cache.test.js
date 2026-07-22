@@ -26,7 +26,8 @@ describe('sessionCache', () => {
       session: {
         sessionToken: 'token-1',
         userId: 'user-1',
-        expires: new Date('2026-06-16T00:30:00.000Z')
+        expires: new Date('2026-06-16T00:30:00.000Z'),
+        createdAt: new Date('2026-03-18T00:30:00.000Z')
       },
       user: {
         id: 'user-1',
@@ -39,7 +40,8 @@ describe('sessionCache', () => {
       'session:token-1',
       expect.objectContaining({
         session: expect.objectContaining({
-          expires: '2026-06-16T00:30:00.000Z'
+          expires: '2026-06-16T00:30:00.000Z',
+          createdAt: '2026-03-18T00:30:00.000Z'
         }),
         user: expect.objectContaining({
           id: 'user-1'

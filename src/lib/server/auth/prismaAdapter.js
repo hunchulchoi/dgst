@@ -5,13 +5,16 @@ import { PrismaAdapter } from '@auth/prisma-adapter';
 import { getPrisma } from '$lib/database/prisma.js';
 import * as userCache from '$lib/server/auth/userCache.js';
 import * as sessionCache from '$lib/server/auth/sessionCache.js';
+import { isDeniedAuthUser } from '$lib/server/auth/authPolicy.js';
+import {
+  capSessionExpiry,
+  getSessionAbsoluteExpiry,
+  isSessionAbsolutelyExpired
+} from '$lib/server/auth/sessionPolicy.js';
 import logger from '$lib/util/logger.js';
 
 /** @type {import('@auth/core/adapters').Adapter | null} */
 let cachedAdapter = null;
-
-/** @param {import('@auth/core/adapters').AdapterUser | null | undefined} user */
-const shouldDenySessionUser = (user) => user?.state === 'blocked' || user?.state === 'banned';
 
 /**
  * @returns {import('@auth/core/adapters').Adapter}
@@ -20,7 +23,7 @@ export function getPrismaAdapter() {
   if (cachedAdapter) return cachedAdapter;
 
   const base =
-    /** @type {import('@auth/core/adapters').Adapter & Required<Pick<import('@auth/core/adapters').Adapter, 'getUser' | 'getUserByEmail' | 'updateUser' | 'getSessionAndUser' | 'deleteSession'>>} */ (
+    /** @type {import('@auth/core/adapters').Adapter & Required<Pick<import('@auth/core/adapters').Adapter, 'getUser' | 'getUserByEmail' | 'updateUser' | 'getSessionAndUser' | 'updateSession' | 'deleteSession'>>} */ (
       PrismaAdapter(getPrisma())
     );
 
@@ -58,15 +61,35 @@ export function getPrismaAdapter() {
       try {
         const cached = await sessionCache.getCachedSessionAndUser(sessionToken);
         if (cached) {
-          if (shouldDenySessionUser(cached.user)) {
+          const absoluteExpiry = getSessionAbsoluteExpiry(
+            /** @type {{ createdAt?: unknown }} */ (cached.session).createdAt
+          );
+          if (!absoluteExpiry) {
+            await sessionCache.invalidateSession(sessionToken);
+          } else if (
+            isDeniedAuthUser(cached.user) ||
+            isSessionAbsolutelyExpired(
+              /** @type {{ createdAt?: unknown }} */ (cached.session)
+            )
+          ) {
             await sessionCache.invalidateSession(sessionToken);
             await base.deleteSession(sessionToken);
             return null;
+          } else {
+            return cached;
           }
-          return cached;
         }
         const result = await base.getSessionAndUser(sessionToken);
-        if (result && shouldDenySessionUser(result.user)) {
+        if (
+          result &&
+          (!getSessionAbsoluteExpiry(
+            /** @type {{ createdAt?: unknown }} */ (result.session).createdAt
+          ) ||
+            isDeniedAuthUser(result.user) ||
+            isSessionAbsolutelyExpired(
+              /** @type {{ createdAt?: unknown }} */ (result.session)
+            ))
+        ) {
           await sessionCache.invalidateSession(sessionToken);
           await base.deleteSession(sessionToken);
           return null;
@@ -80,6 +103,27 @@ export function getPrismaAdapter() {
         });
         return null;
       }
+    },
+    async updateSession(session) {
+      const stored = await getPrisma().session.findUnique({
+        where: { sessionToken: session.sessionToken },
+        select: { createdAt: true }
+      });
+      if (!stored) return null;
+
+      if (isSessionAbsolutelyExpired(stored)) {
+        await sessionCache.invalidateSession(session.sessionToken);
+        await base.deleteSession(session.sessionToken);
+        return null;
+      }
+
+      const expires = capSessionExpiry(session.expires, stored.createdAt);
+      const updated = await base.updateSession({
+        ...session,
+        ...(expires && { expires })
+      });
+      await sessionCache.invalidateSession(session.sessionToken);
+      return updated;
     },
     async deleteSession(sessionToken) {
       await sessionCache.invalidateSession(sessionToken);

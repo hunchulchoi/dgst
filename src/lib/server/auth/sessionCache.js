@@ -11,7 +11,7 @@ const NAMESPACE = 'session';
 const SESSION_PREFIX = 'session:';
 const SESSION_CACHE_TTL = 1800; // 30분
 
-const SESSION_DATE_KEYS = ['expires'];
+const SESSION_DATE_KEYS = ['expires', 'createdAt'];
 
 /**
  * @param {string} sessionToken
@@ -47,6 +47,8 @@ export async function setCachedSessionAndUser(sessionToken, data, ttlSeconds = S
   };
   if (payload.session.expires instanceof Date)
     payload.session.expires = payload.session.expires.toISOString();
+  if (payload.session.createdAt instanceof Date)
+    payload.session.createdAt = payload.session.createdAt.toISOString();
   for (const k of USER_DATE_KEYS) {
     if (payload.user[k] instanceof Date) payload.user[k] = payload.user[k].toISOString();
   }

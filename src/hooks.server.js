@@ -5,6 +5,7 @@ import { getPrisma } from '$lib/database/prisma.js';
 import { getPrismaAdapter } from '$lib/server/auth/prismaAdapter.js';
 import { checkAuthRateLimit } from '$lib/server/auth/rateLimit.js';
 import { shouldRejectCrossOriginRequest } from '$lib/server/auth/requestOrigin.js';
+import { evaluateAuthSignIn, resolveSafeAuthRedirect } from '$lib/server/auth/authPolicy.js';
 import * as pgCache from '$lib/server/cache/pgCache.js';
 import { tryAcquire } from '$lib/server/cache/pgDedup.js';
 import crypto from 'crypto';
@@ -102,38 +103,29 @@ export const {
   },
   callbacks: {
     async signIn(params) {
-      if (!params.profile && params.user) return true;
-      if (params.account?.provider === 'kakao') return true;
+      const decision = evaluateAuthSignIn({
+        provider: params.account?.provider,
+        user: params.user,
+        profile: params.profile
+      });
 
-      const emailVerified = params.profile?.email_verified ?? params.profile?.emailVerified;
-      if (emailVerified) {
-        if (params.user) {
-          if (params.user.state !== 'blocked') {
-            return true;
-          } else {
-            logger.error({
-              message: '로그인 실패: 차단된 사용자',
-              email: params.profile?.email,
-              userId: params.user?.id,
-              provider: params.account?.provider,
-              providerAccountId: params.account?.providerAccountId,
-              accountType: params.account?.type,
-              state: params.user?.state
-            });
-          }
-        } else return true;
-      } else {
+      if (!decision.allowed) {
         logger.error({
-          message: '로그인 실패: 이메일 미인증',
+          message:
+            decision.reason === 'user-denied'
+              ? '로그인 실패: 차단된 사용자'
+              : '로그인 실패: 이메일 미인증',
           email: params.profile?.email,
+          userId: params.user?.id,
           provider: params.account?.provider,
           providerAccountId: params.account?.providerAccountId,
           accountType: params.account?.type,
+          state: params.user?.state,
           emailVerifiedRaw: params.profile?.email_verified ?? params.profile?.emailVerified
         });
       }
 
-      return false;
+      return decision.allowed;
     },
     async session(params) {
       if (params.user) {
@@ -144,7 +136,7 @@ export const {
       return params.session;
     },
     async redirect(params) {
-      return params.url;
+      return resolveSafeAuthRedirect(params.url, params.baseUrl);
     }
   },
   events: {
