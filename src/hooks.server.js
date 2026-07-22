@@ -14,6 +14,7 @@ import { serializeError, traceFromUnknown } from '$lib/util/formatErrorTrace.js'
 import { warmupConnections } from '$lib/server/warmup.js';
 import { isBoardHtmlPath } from '$lib/util/boardPaths.js';
 import { BOARD_UPLOAD_MAX_BYTES } from '$lib/util/uploadLimits.js';
+import { applyHostnameFavicon, faviconRedirectTarget } from '$lib/server/favicon.js';
 
 warmupConnections();
 
@@ -298,9 +299,7 @@ export async function handle({ event, resolve }) {
     '/favicon.ico'
   ];
   if (faviconRedirects.includes(pathname)) {
-    const target =
-      pathname === '/favicon.ico' ? '/favicon/favicon.ico' : '/favicon/apple-icon-180x180.png';
-    return redirect(302, target);
+    return redirect(302, faviconRedirectTarget(pathname, event.url.hostname));
   }
 
   if (pathname.startsWith('/images/')) {
@@ -349,12 +348,17 @@ export async function handle({ event, resolve }) {
 
   // 커스텀 resolve 함수 생성
   /** @type {Parameters<import('@sveltejs/kit').Handle>[0]['resolve']} */
-  const customResolve = async (resolveEvent, opts) => {
+  const customResolve = async (resolveEvent, opts = {}) => {
+    const upstreamTransform = opts.transformPageChunk;
+
     return resolve(resolveEvent, {
-      transformPageChunk: ({ html }) => html,
       filterSerializedResponseHeaders: () => false,
       ...(maxBodySize && { bodySizeLimit: maxBodySize }),
-      ...opts
+      ...opts,
+      transformPageChunk: async (chunk) => {
+        const html = upstreamTransform ? await upstreamTransform(chunk) : chunk.html;
+        return applyHostnameFavicon(html, resolveEvent.url.hostname);
+      }
     });
   };
 
