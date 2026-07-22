@@ -12,6 +12,8 @@ import { captureClientCallTrace, serializeError } from '$lib/util/formatErrorTra
  * @property {string} [routeId]
  * @property {string} [referer]
  * @property {string} [errorId]
+ * @property {unknown} [error]
+ * @property {Record<string, unknown>} [details]
  */
 
 /** @typedef {Object} ClientErrorContext
@@ -111,6 +113,68 @@ function inferChunkUrl(message) {
   if (!message) return undefined;
   const match = message.match(/(?:https?:\/\/|\/)[^\s"'<>)]*_app\/immutable\/[^\s"'<>)]*/);
   return match?.[0];
+}
+
+/**
+ * SvelteKit이 500의 본문을 Internal Error로 숨겨도 당시 브라우저 상태와 전달된
+ * App.Error의 형태는 남긴다. 값 자체 대신 키/유무만 기록해 민감정보 노출을 피한다.
+ * @param {unknown} pageError
+ * @returns {Record<string, unknown>}
+ */
+function collectPageErrorDiagnostics(pageError) {
+  const parsed =
+    pageError && typeof pageError === 'object'
+      ? /** @type {Record<string, unknown>} */ (pageError)
+      : undefined;
+  const nav =
+    typeof performance !== 'undefined' && typeof performance.getEntriesByType === 'function'
+      ? /** @type {{ type?: string } | undefined} */ (performance.getEntriesByType('navigation')[0])
+      : undefined;
+  const connection =
+    typeof navigator !== 'undefined'
+      ? /** @type {{ effectiveType?: string; rtt?: number; downlink?: number; saveData?: boolean } | undefined} */ (
+          /** @type {Navigator & { connection?: unknown }} */ (navigator).connection
+        )
+      : undefined;
+  const browserNavigator =
+    typeof navigator !== 'undefined'
+      ? /** @type {Navigator & { deviceMemory?: number }} */ (navigator)
+      : undefined;
+
+  return {
+    pageErrorType: pageError == null ? String(pageError) : typeof pageError,
+    pageErrorKeys: parsed ? Object.getOwnPropertyNames(parsed).sort().slice(0, 20) : [],
+    pageErrorHasStack: typeof parsed?.stack === 'string' && parsed.stack.length > 0,
+    pageErrorHasCause: parsed?.cause != null,
+    documentReadyState: typeof document !== 'undefined' ? document.readyState : undefined,
+    visibilityState: typeof document !== 'undefined' ? document.visibilityState : undefined,
+    online: browserNavigator?.onLine,
+    navigationType: nav?.type,
+    effectiveType: connection?.effectiveType,
+    connectionRttMs: connection?.rtt,
+    downlinkMbps: connection?.downlink,
+    saveData: connection?.saveData,
+    screen:
+      typeof window !== 'undefined' && window.screen
+        ? `${window.screen.width}x${window.screen.height}`
+        : undefined,
+    pixelRatio: typeof window !== 'undefined' ? window.devicePixelRatio : undefined,
+    historyLength: typeof window !== 'undefined' ? window.history?.length : undefined,
+    hardwareConcurrency: browserNavigator?.hardwareConcurrency,
+    deviceMemoryGb: browserNavigator?.deviceMemory,
+    serviceWorkerControlled:
+      typeof navigator !== 'undefined' && 'serviceWorker' in navigator
+        ? Boolean(navigator.serviceWorker?.controller)
+        : undefined
+  };
+}
+
+/** @param {unknown} value */
+function extractPageErrorId(value) {
+  if (!value || typeof value !== 'object') return undefined;
+  const parsed = /** @type {{ errorId?: unknown; body?: { errorId?: unknown } }} */ (value);
+  if (typeof parsed.errorId === 'string') return clip(parsed.errorId, 64);
+  return typeof parsed.body?.errorId === 'string' ? clip(parsed.body.errorId, 64) : undefined;
 }
 
 /**
@@ -242,18 +306,48 @@ export function reportClientError(error, context = {}) {
  * @param {ClientPageErrorPayload} payload
  */
 export function reportClientPageError(payload) {
-  const { status, pathname, message, stack, name, cause, href, search, routeId, referer, errorId } =
-    payload;
+  const {
+    status,
+    pathname,
+    message,
+    stack,
+    name,
+    cause,
+    href,
+    search,
+    routeId,
+    referer,
+    error,
+    details
+  } = payload;
 
   if (!Number.isFinite(status) || status < 500) return;
 
-  const errorMessage = clip(message, MAX_LEN.message) ?? '알 수 없는 오류';
-  const summary = errorId
-    ? `[client-page-error] errorId=${errorId} ${status} ${pathname}`
-    : `[client-page-error] ${status} ${pathname}`;
+  const parsedError =
+    error && typeof error === 'object'
+      ? /** @type {{ message?: unknown; stack?: unknown; name?: unknown; cause?: unknown }} */ (error)
+      : undefined;
+  const errorId = clip(payload.errorId, 64) ?? extractPageErrorId(error);
+  const resolvedMessage =
+    message ?? (typeof parsedError?.message === 'string' ? parsedError.message : undefined);
+  const errorMessage = clip(resolvedMessage, MAX_LEN.message) ?? '알 수 없는 오류';
+  const pageDiagnostics = collectPageErrorDiagnostics(error);
+  const summaryParts = [
+    `[client-page-error] errorId=${errorId ?? 'missing'} ${status} ${pathname}`,
+    routeId && `route=${routeId}`,
+    pageDiagnostics.documentReadyState && `ready=${pageDiagnostics.documentReadyState}`,
+    pageDiagnostics.navigationType && `nav=${pageDiagnostics.navigationType}`,
+    typeof pageDiagnostics.online === 'boolean' && `online=${pageDiagnostics.online}`
+  ].filter((part) => typeof part === 'string');
+  const summary = summaryParts.join(' | ');
 
   reportClientError(
-    { name, message: errorMessage, stack, cause },
+    error ?? {
+      name: name ?? (typeof parsedError?.name === 'string' ? parsedError.name : undefined),
+      message: errorMessage,
+      stack: stack ?? (typeof parsedError?.stack === 'string' ? parsedError.stack : undefined),
+      cause: cause ?? parsedError?.cause
+    },
     {
       type: 'page-error',
       message: summary,
@@ -265,7 +359,8 @@ export function reportClientPageError(payload) {
       referer,
       routeId,
       errorId,
-      phase: 'page-render'
+      phase: 'page-render',
+      details: { ...pageDiagnostics, ...details }
     }
   );
 }

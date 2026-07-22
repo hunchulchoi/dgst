@@ -2,7 +2,8 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   isExternalSerialPortError,
-  reportClientError
+  reportClientError,
+  reportClientPageError
 } from '../src/lib/util/reportClientPageError.js';
 
 describe('isExternalSerialPortError', () => {
@@ -113,6 +114,100 @@ describe('reportClientError', () => {
       Object.defineProperty(globalThis, 'navigator', {
         configurable: true,
         value: originalNavigator
+      });
+    }
+  });
+});
+
+describe('reportClientPageError', () => {
+  it('adds page-error shape and browser state for diagnosing opaque Internal Error responses', () => {
+    const originalFetch = globalThis.fetch;
+    const originalLocation = globalThis.location;
+    const originalNavigator = globalThis.navigator;
+    const originalDocument = globalThis.document;
+    const originalWindow = globalThis.window;
+    const logPost = { catch: vi.fn() };
+    /** @type {RequestInit | undefined} */
+    let capturedInit;
+    globalThis.fetch = /** @type {typeof fetch} */ (
+      /** @type {unknown} */ (
+        vi.fn((_, init) => {
+          capturedInit = init;
+          return logPost;
+        })
+      )
+    );
+    Object.defineProperty(globalThis, 'location', {
+      configurable: true,
+      value: { href: 'https://www.dgst.me/', pathname: '/', search: '' }
+    });
+    Object.defineProperty(globalThis, 'navigator', {
+      configurable: true,
+      value: {
+        userAgent: 'KAKAOTALK/26.6.1',
+        platform: 'Linux aarch64',
+        language: 'ko-KR',
+        onLine: true,
+        hardwareConcurrency: 8,
+        connection: { effectiveType: '4g', rtt: 80, downlink: 10, saveData: false }
+      }
+    });
+    Object.defineProperty(globalThis, 'document', {
+      configurable: true,
+      value: { referrer: '', readyState: 'complete', visibilityState: 'visible' }
+    });
+    Object.defineProperty(globalThis, 'window', {
+      configurable: true,
+      value: {
+        innerWidth: 384,
+        innerHeight: 748,
+        devicePixelRatio: 2.75,
+        screen: { width: 384, height: 854 },
+        history: { length: 2 }
+      }
+    });
+
+    try {
+      const pageError = { message: 'Internal Error', errorId: 'server-error-id' };
+      reportClientPageError({
+        status: 500,
+        pathname: '/',
+        routeId: '/',
+        error: pageError
+      });
+
+      const body = JSON.parse(String(capturedInit?.body ?? '{}'));
+      expect(body.errorId).toBe('server-error-id');
+      expect(body.message).toContain('errorId=server-error-id');
+      expect(body.details).toMatchObject({
+        pageErrorKeys: ['errorId', 'message'],
+        pageErrorHasStack: false,
+        documentReadyState: 'complete',
+        visibilityState: 'visible',
+        online: true,
+        effectiveType: '4g',
+        connectionRttMs: 80,
+        screen: '384x854',
+        pixelRatio: 2.75,
+        historyLength: 2
+      });
+    } finally {
+      globalThis.fetch = originalFetch;
+      Object.defineProperty(globalThis, 'location', {
+        configurable: true,
+        value: originalLocation
+      });
+      Object.defineProperty(globalThis, 'navigator', {
+        configurable: true,
+        value: originalNavigator
+      });
+      Object.defineProperty(globalThis, 'document', {
+        configurable: true,
+        value: originalDocument
+      });
+      Object.defineProperty(globalThis, 'window', {
+        configurable: true,
+        value: originalWindow
       });
     }
   });

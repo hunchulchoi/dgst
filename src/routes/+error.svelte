@@ -23,6 +23,7 @@
     if ($page.status >= 500) {
       const pageError = /** @type {PageError | undefined} */ ($page.error);
       const reloadKey = `dgst:error-reload:${$page.url.pathname}${$page.url.search}`;
+      const reloadAttempted = sessionStorage.getItem(reloadKey) === '1';
       reportClientPageError({
         status: $page.status,
         pathname: $page.url.pathname,
@@ -34,10 +35,15 @@
         stack: pageError?.stack,
         name: pageError?.name,
         cause: pageError?.cause,
-        errorId: pageError?.errorId
+        errorId: pageError?.errorId,
+        error: pageError,
+        details: {
+          reloadAttempted,
+          pageDataKeys: Object.keys($page.data ?? {}).sort().slice(0, 30)
+        }
       });
 
-      if (!sessionStorage.getItem(reloadKey)) {
+      if (!reloadAttempted) {
         sessionStorage.setItem(reloadKey, '1');
         setTimeout(() => location.reload(), 100);
         return;

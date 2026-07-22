@@ -1745,7 +1745,7 @@
             "uid": "${DS_LOKI}"
           },
           "editorMode": "code",
-          "expr": "{service=~\"$service\", event=\"client.log\"} | json | __error__=\"\" | source=\"browser\" | level=\"error\" | line_format \"{{.pathname}} | {{.errorMessage}} | {{.message}}\"",
+          "expr": "{service=~\"$service\", event=\"client.log\"} | json | __error__=\"\" | source=\"browser\" | level=\"error\" | line_format \"{{.pathname}} | status={{.status}} errorId={{.errorId}} name={{.errorName}} phase={{.phase}} | {{.errorMessage}} | {{.message}} | cause={{.cause}} | trace={{.trace}} | details={{.details}}\"",
           "queryType": "range",
           "refId": "A"
         }
@@ -2065,7 +2065,7 @@
             "uid": "${DS_LOKI}"
           },
           "editorMode": "code",
-          "expr": "{service=~\"$service\"} | json | __error__=\"\" | message =~ \"\\\\[server-page-error\\\\]\" | line_format \"errorId={{.errorId}} {{.status}} {{.pathname}}{{.search}} | {{.message}}\"",
+          "expr": "{service=~\"$service\"} | json | __error__=\"\" | message =~ \"\\\\[server-page-error\\\\]\" | line_format \"errorId={{.errorId}} {{.status}} {{.pathname}}{{.search}} | name={{.name}} method={{.method}} referer={{.referer}} | {{.message}} | trace={{.trace}} | error={{.error}}\"",
           "queryType": "range",
           "refId": "A"
         }
