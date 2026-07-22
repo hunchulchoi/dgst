@@ -160,7 +160,7 @@
             <div class="cards" aria-label={`${seat.name} 패`}>
               {#each [0, 1] as cardIndex}
                 {@const card = seat.cards?.[cardIndex]}
-                {@const showCard = Boolean(card) && (seat.id === 'user' ? step > 0 : cardsRevealed)}
+                {@const showCard = Boolean(card) && cardsRevealed}
                 <div class:flipped={showCard} class="card-shell">
                   <span class="card-back">花</span>
                   {#if card}

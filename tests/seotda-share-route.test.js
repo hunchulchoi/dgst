@@ -88,6 +88,10 @@ describe('seotda board share route', () => {
     expect(replayPlayerSource).toContain("currentEvent?.type === 'ddaeng'");
     expect(replayPlayerSource).toContain("currentEvent?.type === 'result'");
     expect(replayPlayerSource).toContain('class:user-seat');
+    expect(replayPlayerSource).toContain(
+      '{@const showCard = Boolean(card) && cardsRevealed}'
+    );
+    expect(replayPlayerSource).not.toContain("seat.id === 'user' ? step > 0 : cardsRevealed");
     expect(replayPlayerSource).toContain('grid-template-columns: repeat(3, minmax(0, 1fr))');
     expect(replayPlayerSource).toContain('@keyframes chipToPot');
     expect(replayPlayerSource).toContain('hasFoldedAtCurrentStep');
