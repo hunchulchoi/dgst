@@ -2253,6 +2253,7 @@
 </svelte:head>
 
 <div class="billiards-page">
+  <div class="billiards-game-column">
   <section class="billiards-hud" aria-label="게임 상태">
     <div class="hud-title">
       <strong>{modeLabel}</strong>
@@ -2692,7 +2693,9 @@
     </div>
   {/if}
 
-  <section class="rank-panel">
+  </div>
+  <aside class="billiards-ranking-column">
+    <section class="rank-panel">
     <div class="rank-heading">
       <h2>랭킹</h2>
       {#if rankLoading}<span>불러오는 중</span>{/if}
@@ -2729,11 +2732,12 @@
     {:else}
       <p>아직 기록이 없습니다.</p>
     {/if}
-  </section>
+    </section>
 
-  {#if !isLoggedIn}
-    <p class="login-note">로그인하면 점수 랭킹을 저장합니다.</p>
-  {/if}
+    {#if !isLoggedIn}
+      <p class="login-note">로그인하면 점수 랭킹을 저장합니다.</p>
+    {/if}
+  </aside>
 </div>
 
 <style>
@@ -2744,6 +2748,11 @@
     padding: 4px 6px 8px;
     color: #f8f5e8;
     position: relative;
+  }
+
+  .billiards-game-column,
+  .billiards-ranking-column {
+    min-width: 0;
   }
 
   .billiards-hud {
@@ -3675,6 +3684,26 @@
   .login-note {
     margin: 8px 0 0;
     text-align: center;
+  }
+
+  @media (min-width: 768px) {
+    .billiards-page {
+      width: min(100%, 860px);
+      display: grid;
+      grid-template-columns: minmax(0, 520px) minmax(240px, 320px);
+      align-items: start;
+      justify-content: center;
+      gap: 14px;
+    }
+
+    .billiards-ranking-column {
+      position: sticky;
+      top: 8px;
+    }
+
+    .rank-panel {
+      margin-top: 0;
+    }
   }
 
   @media (max-width: 420px) {

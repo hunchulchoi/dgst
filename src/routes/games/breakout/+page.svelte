@@ -1901,8 +1901,8 @@
 </svelte:head>
 
 <div class="breakout-page container py-3 py-md-4">
-  <div class="row justify-content-center g-3">
-    <div class="col-12 col-md-8 col-lg-7 col-xl-6">
+  <div class="row justify-content-center align-items-start g-3">
+    <div class="col-12 col-md-7 col-xl-6">
       <div class="card shadow rounded-4 breakout-card">
         <div class="card-body p-3 p-md-4">
           {#if screen === 'menu'}
@@ -2106,8 +2106,10 @@
         </div>
       </div>
 
+    </div>
+    <div class="col-12 col-md-5 col-xl-4 breakout-ranking-column">
       {#if isLoggedIn}
-        <div class="card shadow rounded-4 mt-3">
+        <div class="card shadow rounded-4 mt-3 mt-md-0">
           <div class="card-body p-3">
             <h5 class="card-title mb-3">🏆 전체 기간 랭킹</h5>
             {#if rankLoading}
@@ -2149,7 +2151,7 @@
           </div>
         </div>
       {:else}
-        <div class="card shadow rounded-4 mt-3">
+        <div class="card shadow rounded-4 mt-3 mt-md-0">
           <div class="card-body p-3 text-center">
             <p class="text-muted small mb-2">랭킹에 기록하려면 로그인이 필요합니다.</p>
             <a href={resolve('/login')} class="btn btn-sm btn-outline-primary">로그인</a>

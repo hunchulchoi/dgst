@@ -361,12 +361,8 @@ async function beginRound(email, nickname, openingActorId = 'user', sparkTauntCo
     sparkTauntCooldown,
     history
   };
-  let sparkDecision = consumeSparkDecision(email);
-  const sparkPending = refreshSparkDecisionInBackground(email, sparkContext);
-  if (!sparkDecision && balance >= 100_000 && sparkPending) {
-    await sparkPending;
-    sparkDecision = consumeSparkDecision(email);
-  }
+  const sparkDecision = consumeSparkDecision(email);
+  void refreshSparkDecisionInBackground(email, sparkContext);
   const round = createNewRound(
     balance,
     Math.random,
