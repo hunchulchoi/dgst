@@ -123,9 +123,9 @@
         />
       {:else}
         <img
-          alt="dgst logo"
-          src="/logo/logo_transparent_100.png"
-          class="p-0"
+          alt="dgst × 리센느 로고"
+          src="/logo/dgst-x-rescene-header.png"
+          class="site-header-logo p-0"
           style="height: 40px; width: auto;"
         />
       {/if}
