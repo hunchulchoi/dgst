@@ -3,6 +3,7 @@
   import { onMount } from 'svelte';
   import { ko } from 'date-fns/locale';
   import { formatRelativeTime } from '$lib/util/formatRelativeTime.js';
+  import GameProfilePhoto from '$lib/components/GameProfilePhoto.svelte';
   import { swalFire } from '$lib/util/swal.js';
   import type { PageData } from './$types';
 
@@ -26,6 +27,7 @@
     seconds: number;
     mistakes: number;
     createdAt?: string;
+    photo?: string | null;
   };
 
   let { data }: { data: PageData } = $props();
@@ -621,7 +623,10 @@
               {#each rankList as row, index}
                 <li>
                   <span class="sudoku-rank-place">{index + 1}</span>
-                  <span class="sudoku-rank-name">{row.nickname}</span>
+                  <span class="sudoku-rank-name">
+                    <GameProfilePhoto src={row.photo} name={row.nickname} />
+                    <span>{row.nickname}</span>
+                  </span>
                   <span class="sudoku-rank-score">{formatRecord(row.seconds, row.mistakes)}</span>
                   {#if row.createdAt}
                     <span class="sudoku-rank-date">
@@ -730,7 +735,10 @@
               {#each rankList as row, index}
                 <li>
                   <span class="sudoku-rank-place">{index + 1}</span>
-                  <span class="sudoku-rank-name">{row.nickname}</span>
+                  <span class="sudoku-rank-name">
+                    <GameProfilePhoto src={row.photo} name={row.nickname} />
+                    <span>{row.nickname}</span>
+                  </span>
                   <span class="sudoku-rank-score">{formatRecord(row.seconds, row.mistakes)}</span>
                   {#if row.createdAt}
                     <span class="sudoku-rank-date">
@@ -1059,6 +1067,13 @@
   }
 
   .sudoku-rank-name {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    overflow: hidden;
+  }
+
+  .sudoku-rank-name > span {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;

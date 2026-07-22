@@ -2,6 +2,7 @@ import { error, json } from '@sveltejs/kit';
 import { z } from 'zod';
 import { getPrisma } from '$lib/database/prisma.js';
 import { getTodayBreakoutStats } from '$lib/server/gameBreakoutStats.js';
+import { attachGameProfilePhotos } from '$lib/server/gameProfilePhotos.js';
 import { getGameSession, isLocalGameSmokeSession } from '$lib/server/localGameSmokeSession.js';
 import { normalizeToIsoString } from '$lib/util/formatRelativeTime.js';
 
@@ -43,13 +44,15 @@ async function getRankTop10() {
     ORDER BY score DESC, created_at DESC
     LIMIT 10
   `;
-  return rows.map((r) => ({
-    _id: r.email,
-    nickname: r.nickname,
-    score: Number(r.score),
-    stage: Number(r.stage),
-    createdAt: normalizeToIsoString(r.createdAt)
-  }));
+  return attachGameProfilePhotos(
+    rows.map((r) => ({
+      _id: r.email,
+      nickname: r.nickname,
+      score: Number(r.score),
+      stage: Number(r.stage),
+      createdAt: normalizeToIsoString(r.createdAt)
+    }))
+  );
 }
 
 /**

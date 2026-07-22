@@ -4,6 +4,7 @@
   import { onMount, tick } from 'svelte';
   import { ko } from 'date-fns/locale';
   import { formatRelativeTime } from '$lib/util/formatRelativeTime.js';
+  import GameProfilePhoto from '$lib/components/GameProfilePhoto.svelte';
   import type { PageData } from './$types';
   import {
     AIM_ANGLE_STEP,
@@ -204,7 +205,14 @@
   let dragMoved = false;
 
   let rankList = $state<
-    Array<{ nickname: string; score: number; stage?: number; createdAt?: string; _id?: string }>
+    Array<{
+      nickname: string;
+      score: number;
+      stage?: number;
+      createdAt?: string;
+      _id?: string;
+      photo?: string | null;
+    }>
   >([]);
   let myBestScore = $state<number | null>(null);
   let myBestStage = $state<number | null>(null);
@@ -537,7 +545,9 @@
 
       const elapsed = FLIES_TIME_LIMIT_MS - getBilliardTimeLeftMs(billiardEndsAt, now);
       const diff = getFliesDifficulty(elapsed);
-      if (shouldSpawnFly(lastFlySpawnAt, now, fallingFlies.length, diff.intervalMs, diff.maxActive)) {
+      if (
+        shouldSpawnFly(lastFlySpawnAt, now, fallingFlies.length, diff.intervalMs, diff.maxActive)
+      ) {
         fallingFlies = [...fallingFlies, createFallingFly(flySeq++, Math.random, diff.fallScale)];
         lastFlySpawnAt = now;
       }
@@ -680,12 +690,7 @@
         vaultTouchId = null;
       } else if (vaultTouchId !== overlapping.id) {
         vaultTouchId = overlapping.id;
-        const result = resolveVaultHit(
-          vaultTargets,
-          vaultSequence,
-          vaultSequenceIndex,
-          cue
-        );
+        const result = resolveVaultHit(vaultTargets, vaultSequence, vaultSequenceIndex, cue);
         vaultTargets = result.targets;
         vaultSequenceIndex = result.sequenceIndex;
         if (result.wrong) {
@@ -697,9 +702,7 @@
         if (result.correct) {
           score += 150 * stage;
           showEffectToast(
-            result.complete
-              ? '금고 개방!'
-              : `다음: ${vaultSequence[result.sequenceIndex]}`
+            result.complete ? '금고 개방!' : `다음: ${vaultSequence[result.sequenceIndex]}`
           );
         }
         if (result.complete) {
@@ -883,7 +886,12 @@
     if (isGameComplete(nextStage)) {
       stopLoop();
       screen = 'gameWin';
-      if (isLoggedIn) void submitGameScore(score, BONUS_ONLY_TEST ? BONUS_STAGE_LIST.length : STAGES.length, true);
+      if (isLoggedIn)
+        void submitGameScore(
+          score,
+          BONUS_ONLY_TEST ? BONUS_STAGE_LIST.length : STAGES.length,
+          true
+        );
       return;
     }
     startStage(nextStage);
@@ -1101,65 +1109,65 @@
     }
 
     if (!isBonusStage) {
-    for (const brick of bricks) {
-      if (!brick.alive) continue;
-      ctx.fillStyle = brick.color;
-      drawRoundRect(ctx, brick.x, brick.y, brick.width, brick.height, 4);
-      ctx.fill();
-      ctx.strokeStyle = 'rgba(255,255,255,0.2)';
-      ctx.lineWidth = 1;
-      ctx.stroke();
-      if (brick.type === 'strong' && brick.hits > 0) {
-        ctx.fillStyle = 'rgba(255,255,255,0.3)';
-        ctx.fillRect(brick.x + 2, brick.y + brick.height / 2 - 1, brick.width - 4, 2);
+      for (const brick of bricks) {
+        if (!brick.alive) continue;
+        ctx.fillStyle = brick.color;
+        drawRoundRect(ctx, brick.x, brick.y, brick.width, brick.height, 4);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        if (brick.type === 'strong' && brick.hits > 0) {
+          ctx.fillStyle = 'rgba(255,255,255,0.3)';
+          ctx.fillRect(brick.x + 2, brick.y + brick.height / 2 - 1, brick.width - 4, 2);
+        }
+        if (brick.type === 'explosive') {
+          ctx.fillStyle = 'rgba(0,0,0,0.35)';
+          ctx.font = 'bold 11px system-ui, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('💥', brick.x + brick.width / 2, brick.y + brick.height / 2 + 4);
+        }
+        if (brick.type === 'iron') {
+          ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+          ctx.beginPath();
+          ctx.moveTo(brick.x + 4, brick.y + 4);
+          ctx.lineTo(brick.x + brick.width - 4, brick.y + brick.height - 4);
+          ctx.moveTo(brick.x + brick.width - 4, brick.y + 4);
+          ctx.lineTo(brick.x + 4, brick.y + brick.height - 4);
+          ctx.stroke();
+        }
+        if (brick.type === 'rainbow') {
+          ctx.fillStyle = 'rgba(255,255,255,0.7)';
+          ctx.font = 'bold 11px system-ui, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('🌈', brick.x + brick.width / 2, brick.y + brick.height / 2 + 4);
+        }
       }
-      if (brick.type === 'explosive') {
-        ctx.fillStyle = 'rgba(0,0,0,0.35)';
-        ctx.font = 'bold 11px system-ui, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('💥', brick.x + brick.width / 2, brick.y + brick.height / 2 + 4);
-      }
-      if (brick.type === 'iron') {
-        ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+
+      for (const laser of lasers) {
+        if (!laser.alive) continue;
+        ctx.strokeStyle = '#ff5252';
+        ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.moveTo(brick.x + 4, brick.y + 4);
-        ctx.lineTo(brick.x + brick.width - 4, brick.y + brick.height - 4);
-        ctx.moveTo(brick.x + brick.width - 4, brick.y + 4);
-        ctx.lineTo(brick.x + 4, brick.y + brick.height - 4);
+        ctx.moveTo(laser.x, laser.y + 10);
+        ctx.lineTo(laser.x, laser.y - 10);
         ctx.stroke();
       }
-      if (brick.type === 'rainbow') {
-        ctx.fillStyle = 'rgba(255,255,255,0.7)';
-        ctx.font = 'bold 11px system-ui, sans-serif';
+
+      for (const item of powerUps) {
+        if (!item.alive) continue;
+        const meta = POWER_UP_META[item.type];
+        ctx.fillStyle = meta.color;
+        drawRoundRect(ctx, item.x, item.y, item.width, item.height, 5);
+        ctx.fill();
+        ctx.strokeStyle = meta.bad ? '#c62828' : '#ffffff';
+        ctx.lineWidth = meta.bad ? 2 : 1;
+        ctx.stroke();
+        ctx.fillStyle = meta.bad ? '#5d0000' : '#1a237e';
+        ctx.font = 'bold 10px system-ui, sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('🌈', brick.x + brick.width / 2, brick.y + brick.height / 2 + 4);
+        ctx.fillText(meta.symbol, item.x + item.width / 2, item.y + item.height / 2 + 3);
       }
-    }
-
-    for (const laser of lasers) {
-      if (!laser.alive) continue;
-      ctx.strokeStyle = '#ff5252';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.moveTo(laser.x, laser.y + 10);
-      ctx.lineTo(laser.x, laser.y - 10);
-      ctx.stroke();
-    }
-
-    for (const item of powerUps) {
-      if (!item.alive) continue;
-      const meta = POWER_UP_META[item.type];
-      ctx.fillStyle = meta.color;
-      drawRoundRect(ctx, item.x, item.y, item.width, item.height, 5);
-      ctx.fill();
-      ctx.strokeStyle = meta.bad ? '#c62828' : '#ffffff';
-      ctx.lineWidth = meta.bad ? 2 : 1;
-      ctx.stroke();
-      ctx.fillStyle = meta.bad ? '#5d0000' : '#1a237e';
-      ctx.font = 'bold 10px system-ui, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText(meta.symbol, item.x + item.width / 2, item.y + item.height / 2 + 3);
-    }
     } else {
       for (const brick of bricks) {
         if (!brick.alive) continue;
@@ -1299,11 +1307,7 @@
       drawRoundRect(ctx, paddle.x, paddle.y, paddle.width, paddle.height, 6);
       ctx.fill();
       ctx.strokeStyle =
-        !isBonusStage && shieldCharges > 0
-          ? '#80cbc4'
-          : isBonusStage
-            ? '#e3f2fd'
-            : '#90caf9';
+        !isBonusStage && shieldCharges > 0 ? '#80cbc4' : isBonusStage ? '#e3f2fd' : '#90caf9';
       ctx.lineWidth = !isBonusStage && shieldCharges > 0 ? 3 : 2;
       ctx.stroke();
     }
@@ -1830,7 +1834,11 @@
       const res = await fetch('/games/breakout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ score: finalScore, stage: finalStage, ...(win ? { win: true } : {}) })
+        body: JSON.stringify({
+          score: finalScore,
+          stage: finalStage,
+          ...(win ? { win: true } : {})
+        })
       });
       if (res.ok) await loadRank();
     } catch (err) {
@@ -1975,21 +1983,33 @@
               {#if bonusChallenge === 'stars'}
                 <p class="text-muted mb-3 small">쿠션을 이용해 떠 있는 별을 모두 먹으세요</p>
                 <ul class="list-unstyled text-start mx-auto bonus-intro-rules mb-4">
-                  <li>상·좌·우 쿠션 · <strong>패들로 공 받기</strong> · 철 1~2개 · {Math.ceil(BILLIARD_TIME_LIMIT_MS / 1000)}초</li>
+                  <li>
+                    상·좌·우 쿠션 · <strong>패들로 공 받기</strong> · 철 1~2개 · {Math.ceil(
+                      BILLIARD_TIME_LIMIT_MS / 1000
+                    )}초
+                  </li>
                   <li>흰공으로 <strong>모든 ⭐</strong> 에 닿으면 클리어</li>
                   <li>드래그바 / ← → 로 발사 각도 조절</li>
                   <li>기회 {BONUS_MAX_ATTEMPTS}회 · 1발 클리어 시 점수 ×2</li>
                 </ul>
               {:else if bonusChallenge === 'spin'}
-                <p class="text-muted mb-3 small">쏟아지는 별을 패들로 먹고, 공은 떨어뜨리지 마세요</p>
+                <p class="text-muted mb-3 small">
+                  쏟아지는 별을 패들로 먹고, 공은 떨어뜨리지 마세요
+                </p>
                 <ul class="list-unstyled text-start mx-auto bonus-intro-rules mb-4">
                   <li><strong>패들</strong>로 ⭐ 받기 · 공으로는 안 먹힘</li>
                   <li>중간 <strong>철 블록</strong> — 공만 튕김 · 별은 통과</li>
-                  <li>공 놓치면 실패 · <strong>{Math.ceil(getBonusTimeLimitMs('spin') / 1000)}초</strong> 버티면 클리어</li>
+                  <li>
+                    공 놓치면 실패 · <strong
+                      >{Math.ceil(getBonusTimeLimitMs('spin') / 1000)}초</strong
+                    > 버티면 클리어
+                  </li>
                   <li><strong>원샷</strong> — 기회 1회 · 1발 클리어 시 점수 ×2</li>
                 </ul>
               {:else if bonusChallenge === 'flies'}
-                <p class="text-muted mb-3 small">떨어지는 파리를 레이저로 잡으세요. 하나라도 놓치면 끝!</p>
+                <p class="text-muted mb-3 small">
+                  떨어지는 파리를 레이저로 잡으세요. 하나라도 놓치면 끝!
+                </p>
                 <ul class="list-unstyled text-start mx-auto bonus-intro-rules mb-4">
                   <li>패들에서 <strong>레이저 자동 발사</strong></li>
                   <li>초반 1마리 → 점점 늘어남 (최대 4) · 바닥 통과 = 실패</li>
@@ -2001,7 +2021,11 @@
                 <ul class="list-unstyled text-start mx-auto bonus-intro-rules mb-4">
                   <li>◎ 흰공 · ● 빨간 2 · ● 노란 1 — <strong>처음부터 이동</strong></li>
                   <li>쿠션 조건 없음 · 목표 공 전부 적중하면 클리어</li>
-                  <li>상·좌·우 쿠션 · <strong>패들로 공 받기</strong> · 철 1~2개 · {Math.ceil(MOVERS_TIME_LIMIT_MS / 1000)}초</li>
+                  <li>
+                    상·좌·우 쿠션 · <strong>패들로 공 받기</strong> · 철 1~2개 · {Math.ceil(
+                      MOVERS_TIME_LIMIT_MS / 1000
+                    )}초
+                  </li>
                   <li>기회 {BONUS_MAX_ATTEMPTS}회 · 1발 클리어 시 점수 ×2</li>
                 </ul>
               {:else if bonusChallenge === 'gems'}
@@ -2009,7 +2033,11 @@
                 <ul class="list-unstyled text-start mx-auto bonus-intro-rules mb-4">
                   <li>배율: 1쿠션×1 · 2×2 · 3×4 · 4×8 · 5+×16</li>
                   <li>쿠션 먼저 쌓고 <strong>💎 보석</strong> 먹기</li>
-                  <li>모든 보석 회수 시 클리어 · 패들로 공 받기 · {Math.ceil(BILLIARD_TIME_LIMIT_MS / 1000)}초</li>
+                  <li>
+                    모든 보석 회수 시 클리어 · 패들로 공 받기 · {Math.ceil(
+                      BILLIARD_TIME_LIMIT_MS / 1000
+                    )}초
+                  </li>
                   <li>기회 {BONUS_MAX_ATTEMPTS}회 · 1발 클리어 시 점수 ×2</li>
                 </ul>
               {:else if bonusChallenge === 'golden'}
@@ -2017,7 +2045,11 @@
                 <ul class="list-unstyled text-start mx-auto bonus-intro-rules mb-4">
                   <li><strong>원샷</strong> — 기회 1회뿐</li>
                   <li>쿠션 쌓을수록 🪙 점수 배율 ↑</li>
-                  <li>모든 코인 회수 시 클리어 · 패들로 공 받기 · {Math.ceil(BILLIARD_TIME_LIMIT_MS / 1000)}초</li>
+                  <li>
+                    모든 코인 회수 시 클리어 · 패들로 공 받기 · {Math.ceil(
+                      BILLIARD_TIME_LIMIT_MS / 1000
+                    )}초
+                  </li>
                   <li>1발 클리어 시 점수 ×2</li>
                 </ul>
               {:else if bonusChallenge === 'vault'}
@@ -2026,14 +2058,24 @@
                   <li>순서: <strong>{vaultSequence.join(' → ')}</strong> (좌→상→우)</li>
                   <li>기회 {BONUS_MAX_ATTEMPTS}회 · <strong>1발 클리어 시 점수 ×2</strong></li>
                   <li>틀린 번호·시간 초과 시 재조준 (2발째는 ×1)</li>
-                  <li>기본 각도 ≈ 왼쪽 위 · 패들로 공 받기 · {Math.ceil(BILLIARD_TIME_LIMIT_MS / 1000)}초</li>
+                  <li>
+                    기본 각도 ≈ 왼쪽 위 · 패들로 공 받기 · {Math.ceil(
+                      BILLIARD_TIME_LIMIT_MS / 1000
+                    )}초
+                  </li>
                 </ul>
               {:else}
                 <p class="text-muted mb-3 small">4구 당구 — 쿠션을 이용해 모든 공을 맞추세요</p>
                 <ul class="list-unstyled text-start mx-auto bonus-intro-rules mb-4">
                   <li>◎ 흰공 · ● 빨간 2 · ● 노란 1</li>
-                  <li>쿠션 <strong>{getRequiredCushions(stage)}회 이상</strong> + 목표 공 전부 적중</li>
-                  <li>상·좌·우 쿠션 · <strong>패들로 공 받기</strong> · 철 1~2개 · {Math.ceil(BILLIARD_TIME_LIMIT_MS / 1000)}초</li>
+                  <li>
+                    쿠션 <strong>{getRequiredCushions(stage)}회 이상</strong> + 목표 공 전부 적중
+                  </li>
+                  <li>
+                    상·좌·우 쿠션 · <strong>패들로 공 받기</strong> · 철 1~2개 · {Math.ceil(
+                      BILLIARD_TIME_LIMIT_MS / 1000
+                    )}초
+                  </li>
                   <li>기회 {BONUS_MAX_ATTEMPTS}회 · 1발 클리어 시 점수 ×2</li>
                 </ul>
               {/if}
@@ -2105,7 +2147,6 @@
           {/if}
         </div>
       </div>
-
     </div>
     <div class="col-12 col-md-5 col-xl-4 breakout-ranking-column">
       {#if isLoggedIn}
@@ -2122,13 +2163,16 @@
                   <li
                     class="list-group-item d-flex justify-content-between align-items-center px-0"
                   >
-                    <span>
-                      <strong>{r.nickname}</strong>
-                      <span class="text-muted small ms-1">
-                        S{r.stage ?? 0}
-                        {#if r.createdAt}
-                          · {formatRelativeTime(r.createdAt, { locale: ko })}
-                        {/if}
+                    <span class="d-flex align-items-center gap-2 min-w-0">
+                      <GameProfilePhoto src={r.photo} name={r.nickname} />
+                      <span>
+                        <strong>{r.nickname}</strong>
+                        <span class="text-muted small ms-1">
+                          S{r.stage ?? 0}
+                          {#if r.createdAt}
+                            · {formatRelativeTime(r.createdAt, { locale: ko })}
+                          {/if}
+                        </span>
                       </span>
                     </span>
                     <span class="badge bg-primary rounded-pill">{formatScore(r.score)}</span>

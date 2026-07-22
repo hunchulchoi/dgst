@@ -1,5 +1,6 @@
 import { getPrisma } from '$lib/database/prisma.js';
 import { normalizeToIsoString } from '$lib/util/formatRelativeTime.js';
+import { attachGameProfilePhotos } from '$lib/server/gameProfilePhotos.js';
 import { INITIAL_BALANCE, MIN_BET, SSAMCHI_GAME } from './ssamchiEngine.js';
 
 export const OOPS_TOPUP = 700;
@@ -101,12 +102,14 @@ export async function getSsamchiRank(limit = 10) {
     ORDER BY balance DESC, "createdAt" DESC
     LIMIT ${limit}
   `;
-  return rows.map((row) => ({
-    email: row.email,
-    nickname: row.nickname,
-    balance: Number(row.balance),
-    updatedAt: normalizeToIsoString(row.createdAt)
-  }));
+  return attachGameProfilePhotos(
+    rows.map((row) => ({
+      email: row.email,
+      nickname: row.nickname,
+      balance: Number(row.balance),
+      updatedAt: normalizeToIsoString(row.createdAt)
+    }))
+  );
 }
 
 export async function getTodaySsamchiStats() {

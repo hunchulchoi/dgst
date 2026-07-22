@@ -5,6 +5,7 @@
   import { browser } from '$app/environment';
   import { ko } from 'date-fns/locale';
   import { formatRelativeTime } from '$lib/util/formatRelativeTime.js';
+  import GameProfilePhoto from '$lib/components/GameProfilePhoto.svelte';
   import { swalFire } from '$lib/util/swal.js';
   let { data } = $props();
 
@@ -36,7 +37,9 @@
 
   const STORAGE_KEY = 'minesweeper_save';
 
-  let rankList = $state(/** @type {Array<{ nickname: string; time: number; createdAt?: string }>} */ ([]));
+  let rankList = $state(
+    /** @type {Array<{ nickname: string; time: number; createdAt?: string; photo?: string | null }>} */ ([])
+  );
   let myBestTime = $state(/** @type {number | null} */ (null));
   let myBestCreatedAt = $state(/** @type {string | null} */ (null));
   let todayStats = $state(/** @type {TodayStats} */ ({ games: 0, users: 0 }));
@@ -647,7 +650,10 @@
                 <ol class="list-group list-group-numbered">
                   {#each rankList as r (`${r.nickname}:${r.time}`)}
                     <li class="list-group-item d-flex justify-content-between align-items-center">
-                      <span>{r.nickname}</span>
+                      <span class="d-inline-flex align-items-center gap-2 min-w-0">
+                        <GameProfilePhoto src={r.photo} name={r.nickname} />
+                        <span>{r.nickname}</span>
+                      </span>
                       <span class="text-end">
                         <span class="fw-bold font-monospace text-danger">{r.time}초</span>
                         {#if r.createdAt}

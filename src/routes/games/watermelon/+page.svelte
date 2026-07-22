@@ -4,6 +4,7 @@
   import { ko } from 'date-fns/locale';
   import Matter from 'matter-js';
   import { formatRelativeTime } from '$lib/util/formatRelativeTime.js';
+  import GameProfilePhoto from '$lib/components/GameProfilePhoto.svelte';
   import { FRUITS, GAME_WIDTH, GAME_HEIGHT, WALL_THICKNESS, type FruitType } from './gameUtils';
 
   import type { PageData } from './$types';
@@ -22,9 +23,15 @@
   let currentFruitIndex = $state(0);
   let nextFruitIndex = $state(0);
   let canvasEl = $state<HTMLCanvasElement | null>(null);
-  let rankList = $state<Array<{ nickname: string; score: number; createdAt?: string; _id?: string }>>(
-    []
-  );
+  let rankList = $state<
+    Array<{
+      nickname: string;
+      score: number;
+      createdAt?: string;
+      _id?: string;
+      photo?: string | null;
+    }>
+  >([]);
   let myBestScore = $state<number | null>(null);
   let myBestCreatedAt = $state<string | null>(null);
   let loading = $state(false);
@@ -729,7 +736,13 @@
             <ol class="list-group list-group-numbered">
               {#each rankList as r (r._id ?? `${r.nickname}:${r.score}`)}
                 <li class="list-group-item d-flex justify-content-between align-items-center">
-                  <span class="text-truncate" style="max-width: 120px;">{r.nickname}</span>
+                  <span
+                    class="d-inline-flex align-items-center gap-2 text-truncate"
+                    style="max-width: 150px;"
+                  >
+                    <GameProfilePhoto src={r.photo} name={r.nickname} />
+                    <span class="text-truncate">{r.nickname}</span>
+                  </span>
                   <span class="text-end">
                     <span class="fw-bold font-monospace">{formatScore(r.score)}</span>
                     {#if r.createdAt}

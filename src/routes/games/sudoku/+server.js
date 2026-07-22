@@ -3,6 +3,7 @@ import { error, json } from '@sveltejs/kit';
 import { getPrisma } from '$lib/database/prisma.js';
 import { getGameSession, isLocalGameSmokeSession } from '$lib/server/localGameSmokeSession.js';
 import { getTodaySudokuStats } from '$lib/server/gameSudokuStats.js';
+import { attachGameProfilePhotos } from '$lib/server/gameProfilePhotos.js';
 import { normalizeToIsoString } from '$lib/util/formatRelativeTime.js';
 
 const DIFFICULTIES = new Set(['easy', 'normal', 'hard']);
@@ -31,14 +32,16 @@ async function getRankTop10(difficulty) {
     LIMIT 10
   `;
 
-  return rows.map((row) => ({
-    _id: row.email,
-    nickname: row.nickname,
-    difficulty: row.difficulty,
-    seconds: Number(row.seconds),
-    mistakes: Number(row.mistakes),
-    createdAt: normalizeToIsoString(row.createdAt)
-  }));
+  return attachGameProfilePhotos(
+    rows.map((row) => ({
+      _id: row.email,
+      nickname: row.nickname,
+      difficulty: row.difficulty,
+      seconds: Number(row.seconds),
+      mistakes: Number(row.mistakes),
+      createdAt: normalizeToIsoString(row.createdAt)
+    }))
+  );
 }
 
 /**

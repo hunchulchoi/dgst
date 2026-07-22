@@ -1,5 +1,6 @@
 import { getPrisma } from '$lib/database/prisma.js';
 import { normalizeToIsoString } from '$lib/util/formatRelativeTime.js';
+import { attachGameProfilePhotos } from '$lib/server/gameProfilePhotos.js';
 import { ANTE, SEOTDA_GAME } from './seotdaEngine.js';
 
 export const SPARK_HIGH_RAISE_TRIGGER = 1_000_000_000;
@@ -273,12 +274,14 @@ export async function getSeotdaRank(limit = 10) {
       ORDER BY balance DESC
       LIMIT ${limit}
     `;
-    return rows.map((r) => ({
-      email: r.email,
-      nickname: r.nickname,
-      balance: Number(r.balance),
-      updatedAt: normalizeToIsoString(r.createdAt)
-    }));
+    return await attachGameProfilePhotos(
+      rows.map((r) => ({
+        email: r.email,
+        nickname: r.nickname,
+        balance: Number(r.balance),
+        updatedAt: normalizeToIsoString(r.createdAt)
+      }))
+    );
   } catch (err) {
     console.error('[seotda getSeotdaRank]', err);
     return [];

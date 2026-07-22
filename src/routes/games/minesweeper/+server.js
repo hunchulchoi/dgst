@@ -1,6 +1,7 @@
 import { error, json } from '@sveltejs/kit';
 import { getPrisma } from '$lib/database/prisma.js';
 import { getTodayMinesweeperStats } from '$lib/server/gameMinesweeperStats.js';
+import { attachGameProfilePhotos } from '$lib/server/gameProfilePhotos.js';
 import { getGameSession, isLocalGameSmokeSession } from '$lib/server/localGameSmokeSession.js';
 import { normalizeToIsoString } from '$lib/util/formatRelativeTime.js';
 
@@ -23,12 +24,14 @@ async function getRankTop10(mode) {
     ORDER BY time ASC, created_at DESC
     LIMIT 10
   `;
-  return rows.map((r) => ({
-    _id: r.email,
-    nickname: r.nickname,
-    time: Number(r.time),
-    createdAt: normalizeToIsoString(r.createdAt)
-  }));
+  return attachGameProfilePhotos(
+    rows.map((r) => ({
+      _id: r.email,
+      nickname: r.nickname,
+      time: Number(r.time),
+      createdAt: normalizeToIsoString(r.createdAt)
+    }))
+  );
 }
 
 export async function GET(event) {

@@ -4,6 +4,7 @@ import { getGameSession, isLocalGameSmokeSession } from '$lib/server/localGameSm
 import { getTodaySlotStats } from '$lib/server/slotStats.js';
 import { updateSlotUserBalance, ensureSlotUserBalanceFilled } from '$lib/server/slotUserBalance.js';
 import { normalizeToIsoString } from '$lib/util/formatRelativeTime.js';
+import { attachGameProfilePhotos } from '$lib/server/gameProfilePhotos.js';
 
 const OOPS_TOPUP_DELAY_MS = 5 * 60 * 1000;
 
@@ -330,13 +331,15 @@ export async function GET(event) {
       take: 10,
       select: { email: true, nickname: true, balance: true, totalSpin: true, updatedAt: true }
     });
-    const rank = balances.map((r) => ({
-      _id: r.email,
-      nickname: r.nickname,
-      balance: r.balance,
-      totalSpin: r.totalSpin ?? 0,
-      updatedAt: normalizeToIsoString(r.updatedAt)
-    }));
+    const rank = await attachGameProfilePhotos(
+      balances.map((r) => ({
+        _id: r.email,
+        nickname: r.nickname,
+        balance: r.balance,
+        totalSpin: r.totalSpin ?? 0,
+        updatedAt: normalizeToIsoString(r.updatedAt)
+      }))
+    );
     return json(
       { balance, balanceUpdatedAt, rank, oopsInfo, todayStats },
       { headers: { 'Cache-Control': 'no-store, max-age=0' } }

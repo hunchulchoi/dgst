@@ -4,6 +4,7 @@
   import { onMount, tick } from 'svelte';
   import { ko } from 'date-fns/locale';
   import { formatRelativeTime } from '$lib/util/formatRelativeTime.js';
+  import GameProfilePhoto from '$lib/components/GameProfilePhoto.svelte';
   import { swalFire } from '$lib/util/swal.js';
   import type { PageData } from './$types';
   import {
@@ -86,7 +87,14 @@
   let reviveTokens = $state(0);
   let pausedFrom = $state<'playing' | 'bonus'>('playing');
   let rankList = $state<
-    Array<{ nickname: string; score: number; stage?: number; createdAt?: string; _id?: string }>
+    Array<{
+      nickname: string;
+      score: number;
+      stage?: number;
+      createdAt?: string;
+      _id?: string;
+      photo?: string | null;
+    }>
   >([]);
   let myBestScore = $state<number | null>(null);
   let myBestStage = $state<number | null>(null);
@@ -1519,7 +1527,10 @@
             <ol class="list-group list-group-numbered">
               {#each rankList as r (r._id ?? `${r.nickname}:${r.score}`)}
                 <li class="list-group-item d-flex justify-content-between align-items-center">
-                  <span>{r.nickname}</span>
+                  <span class="d-inline-flex align-items-center gap-2 min-w-0">
+                    <GameProfilePhoto src={r.photo} name={r.nickname} />
+                    <span>{r.nickname}</span>
+                  </span>
                   <span class="text-end">
                     <span class="fw-bold font-monospace">{formatScore(r.score)}</span>
                     {#if r.stage != null && r.stage > 0}

@@ -3,6 +3,7 @@
   import { Confetti } from 'svelte-confetti';
   import { ko } from 'date-fns/locale';
   import { swalFire } from '$lib/util/swal.js';
+  import GameProfilePhoto from '$lib/components/GameProfilePhoto.svelte';
   import { formatRelativeTime } from '$lib/util/formatRelativeTime.js';
   import { MIN_BET } from './ssamchiEngine.js';
 
@@ -16,6 +17,7 @@
     nickname: string;
     balance: number;
     updatedAt?: string | null;
+    photo?: string | null;
   }
   interface RoundResult {
     mode: Mode;
@@ -44,6 +46,7 @@
     nickname: string;
     content: string;
     createdAt: string;
+    photo?: string | null;
     depth?: number;
     children?: GameComment[];
   }
@@ -445,7 +448,11 @@
         {#each rank as row, index (row.email)}<div
             class:me={row.email === data.session?.user?.email}
           >
-            <span>{index + 1}</span><b>{row.nickname}</b>
+            <span>{index + 1}</span>
+            <b class="rank-name">
+              <GameProfilePhoto src={row.photo} name={row.nickname} />
+              <span>{row.nickname}</span>
+            </b>
             <div class="rank-score">
               <strong>{formatNumber(row.balance)}</strong>
               {#if row.updatedAt}<small>{formatSocialTime(row.updatedAt)}</small>{/if}
@@ -737,7 +744,11 @@
         {#each comments as comment (comment.id ?? comment._id ?? `${comment.nickname}-${comment.createdAt}`)}
           <article style="--indent:{(Math.min(comment.depth ?? 1, 3) - 1) * 1}rem">
             <header>
-              <b>{comment.nickname}</b><time>{formatSocialTime(comment.createdAt)}</time>
+              <span class="comment-author">
+                <GameProfilePhoto src={comment.photo} name={comment.nickname} size={28} />
+                <b>{comment.nickname}</b>
+              </span>
+              <time>{formatSocialTime(comment.createdAt)}</time>
             </header>
             <p>{comment.content}</p>
           </article>
@@ -1215,6 +1226,17 @@
   .ranking strong {
     color: #a14a1f;
   }
+  .rank-name {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    min-width: 0;
+  }
+  .rank-name > span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
   .rank-score {
     display: grid;
     text-align: right;
@@ -1679,6 +1701,12 @@
     justify-content: space-between;
     gap: 1rem;
     font-size: 0.78rem;
+  }
+  .comment-author {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 0;
   }
   .comment-list time,
   .comment-empty,

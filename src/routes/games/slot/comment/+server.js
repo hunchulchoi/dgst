@@ -5,6 +5,7 @@ import { createComment, findCommentById, toCommentJson } from '$lib/server/board
 import convertToTree from '$lib/util/tree.js';
 import { checkAndLogSessionDevice } from '$lib/server/auth/checkSessionDevice.js';
 import { getGameSession, isLocalGameSmokeSession } from '$lib/server/localGameSmokeSession.js';
+import { attachGameProfilePhotos } from '$lib/server/gameProfilePhotos.js';
 import { updateSlotUserBalance } from '$lib/server/slotUserBalance.js';
 import { getSeotdaBalance, writeSeotdaScore } from '../../seotda/seotdaBalance.js';
 import { ensureSsamchiBalance, writeSsamchiScore } from '../../ssamchi/ssamchiBalance.js';
@@ -77,10 +78,12 @@ export async function GET(event) {
       orderBy: { createdAt: 'desc' }
     });
 
-    const comments = rows.map((c) => ({
-      ...toCommentJson(c),
-      parentCommentId: c.parentCommentId ?? undefined
-    }));
+    const comments = await attachGameProfilePhotos(
+      rows.map((c) => ({
+        ...toCommentJson(c),
+        parentCommentId: c.parentCommentId ?? undefined
+      }))
+    );
 
     // ID를 문자열로 변환하고 트리 구조로 변환
     const commentsWithId = comments.map((c) => ({

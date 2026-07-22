@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { ko } from 'date-fns/locale';
   import { formatRelativeTime } from '$lib/util/formatRelativeTime.js';
+  import GameProfilePhoto from '$lib/components/GameProfilePhoto.svelte';
   import { invalidateAll } from '$app/navigation';
   import { swalFire } from '$lib/util/swal.js';
   import { isOnlyOneEmoji } from '$lib/util/emoji.js';
@@ -78,7 +79,13 @@
   let reels = $state(['-', '-', '-']);
   let message = $state('');
   let rankList = $state<
-    Array<{ nickname: string; balance: number; updatedAt?: string; _id?: string }>
+    Array<{
+      nickname: string;
+      balance: number;
+      updatedAt?: string;
+      _id?: string;
+      photo?: string | null;
+    }>
   >([]);
   let comments = $state<
     Array<{
@@ -967,7 +974,10 @@
           <ol class="list-group list-group-numbered">
             {#each rankList as r, i (r._id ?? `${r.nickname}:${r.balance}`)}
               <li class="list-group-item d-flex justify-content-between align-items-center">
-                <span>{r.nickname}</span>
+                <span class="d-inline-flex align-items-center gap-2 min-w-0">
+                  <GameProfilePhoto src={r.photo} name={r.nickname} />
+                  <span>{r.nickname}</span>
+                </span>
                 <span class="text-end">
                   <span class="fw-bold font-monospace d-block">{formatNumber(r.balance)}</span>
                   {#if r.updatedAt}

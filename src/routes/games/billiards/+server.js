@@ -2,6 +2,7 @@ import { error, json } from '@sveltejs/kit';
 import { getPrisma } from '$lib/database/prisma.js';
 import { getGameSession, isLocalGameSmokeSession } from '$lib/server/localGameSmokeSession.js';
 import { getTodayBilliardsStats } from '$lib/server/gameBilliardsStats.js';
+import { attachGameProfilePhotos } from '$lib/server/gameProfilePhotos.js';
 import { normalizeToIsoString } from '$lib/util/formatRelativeTime.js';
 import { BILLIARDS_MODES, isBilliardsRankingMode, isValidScore } from './gameUtils';
 
@@ -25,13 +26,15 @@ async function getRankTop10(mode) {
     LIMIT 10
   `;
 
-  return rows.map((row) => ({
-    _id: row.email,
-    nickname: row.nickname,
-    mode: row.mode,
-    score: Number(row.score),
-    createdAt: normalizeToIsoString(row.createdAt)
-  }));
+  return attachGameProfilePhotos(
+    rows.map((row) => ({
+      _id: row.email,
+      nickname: row.nickname,
+      mode: row.mode,
+      score: Number(row.score),
+      createdAt: normalizeToIsoString(row.createdAt)
+    }))
+  );
 }
 
 export async function GET(event) {

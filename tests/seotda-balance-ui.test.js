@@ -103,6 +103,8 @@ describe('seotda betting UI', () => {
       '{#if isShowdown && revealDone && !ddaengLayerOpen && !shareOpen && !resultLayerDismissed}'
     );
     expect(pageSource).toContain('class="result-action-backdrop"');
+    expect(pageSource).toContain('use:keepBelowSiteHeader');
+    expect(pageSource).toContain('inset: var(--result-safe-top, 0) 0 0');
     expect(pageSource).toContain('class="result-action-layer"');
     expect(pageSource).toContain('class="result-action-delta"');
     expect(pageSource).toContain('+{formatNumber(userChipDelta)}점 땄다');

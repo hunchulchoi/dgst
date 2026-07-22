@@ -8,11 +8,34 @@
   import { ANTE, dynamicAnte, minRaisePay } from './seotdaEngine.js';
   import { contributionCapacity } from './seotdaRound.js';
   import SharedGameComments from '$lib/components/SharedGameComments.svelte';
+  import GameProfilePhoto from '$lib/components/GameProfilePhoto.svelte';
   import HwatuCardFace from './HwatuCardFace.svelte';
   import { HWATU_CARD_URLS } from './hwatuCardAssets';
 
   interface SeotdaPageProps {
     data: PageData;
+  }
+
+  function keepBelowSiteHeader(node: HTMLElement) {
+    const header = document.querySelector<HTMLElement>('.site-header');
+    const updateSafeTop = () => {
+      const headerBottom = header?.getBoundingClientRect().bottom ?? 0;
+      node.style.setProperty('--result-safe-top', `${Math.max(0, headerBottom)}px`);
+    };
+    const observer = header ? new ResizeObserver(updateSafeTop) : null;
+
+    if (header) observer?.observe(header);
+    window.addEventListener('resize', updateSafeTop);
+    window.addEventListener('scroll', updateSafeTop, { passive: true });
+    updateSafeTop();
+
+    return {
+      destroy() {
+        observer?.disconnect();
+        window.removeEventListener('resize', updateSafeTop);
+        window.removeEventListener('scroll', updateSafeTop);
+      }
+    };
   }
 
   interface SeotdaCard {
@@ -70,9 +93,14 @@
   let { data }: SeotdaPageProps = $props();
 
   let balance = $state(Number(data.balance ?? 0));
-  let rankList = $state<Array<{ nickname: string; balance: number; updatedAt?: string | null }>>(
-    data.rank ?? []
-  );
+  let rankList = $state<
+    Array<{
+      nickname: string;
+      balance: number;
+      updatedAt?: string | null;
+      photo?: string | null;
+    }>
+  >(data.rank ?? []);
   let todayStats = $state<{ hands: number; users: number }>(
     data.todayStats ?? { hands: 0, users: 0 }
   );
@@ -1049,6 +1077,7 @@
                 aria-modal="true"
                 aria-label="섯다 판 결과"
                 tabindex="-1"
+                use:keepBelowSiteHeader
               >
                 <div class="result-action-layer">
                   <span class="result-action-label">HAND COMPLETE</span>
@@ -1185,11 +1214,14 @@
             <ol class="list-group list-group-numbered list-group-flush">
               {#each rankList as r, i (r.nickname + i)}
                 <li class="list-group-item d-flex justify-content-between align-items-center px-0">
-                  <div>
-                    <span>{r.nickname}</span>
-                    {#if r.updatedAt}
-                      <small class="d-block text-muted">{formatRankAt(r.updatedAt)}</small>
-                    {/if}
+                  <div class="d-flex align-items-center gap-2 min-w-0">
+                    <GameProfilePhoto src={r.photo} name={r.nickname} />
+                    <div>
+                      <span>{r.nickname}</span>
+                      {#if r.updatedAt}
+                        <small class="d-block text-muted">{formatRankAt(r.updatedAt)}</small>
+                      {/if}
+                    </div>
                   </div>
                   <span class="fw-bold font-monospace">{formatNumber(r.balance)}</span>
                 </li>
@@ -1273,7 +1305,7 @@
   }
   .result-action-backdrop {
     position: fixed;
-    inset: 0;
+    inset: var(--result-safe-top, 0) 0 0;
     z-index: 1050;
     display: flex;
     align-items: center;

@@ -1,6 +1,9 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { ko } from 'date-fns/locale';
+  import GameProfilePhoto from '$lib/components/GameProfilePhoto.svelte';
   import { swalFire } from '$lib/util/swal.js';
+  import { formatRelativeTime } from '$lib/util/formatRelativeTime.js';
 
   type GameComment = {
     id?: string;
@@ -8,6 +11,7 @@
     nickname: string;
     content: string;
     createdAt: string;
+    photo?: string | null;
     depth?: number;
     parentCommentNickname?: string;
   };
@@ -34,16 +38,8 @@
     return String(comment.id ?? comment._id ?? '');
   }
 
-  function writtenAt(value: string): string {
-    const date = new Date(value);
-    return Number.isNaN(date.getTime())
-      ? ''
-      : date.toLocaleString('ko-KR', {
-          month: 'numeric',
-          day: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit'
-        });
+  function socialTime(value: string): string {
+    return formatRelativeTime(value, { locale: ko, addSuffix: true });
   }
 
   async function loadComments(nextPage = 1, append = false) {
@@ -179,14 +175,17 @@
             class:is-reply={(comment.depth ?? 1) > 1}
             style:--comment-depth={Math.min(3, Math.max(0, (comment.depth ?? 1) - 1))}
           >
-            <div class="d-flex justify-content-between gap-2">
-              <strong class="small">
-                {#if comment.parentCommentNickname}
-                  <span class="text-primary">@{comment.parentCommentNickname}</span>
-                {/if}
-                {comment.nickname}
-              </strong>
-              <time class="small text-muted">{writtenAt(comment.createdAt)}</time>
+            <div class="d-flex justify-content-between align-items-center gap-2">
+              <div class="d-flex align-items-center gap-2 min-w-0">
+                <GameProfilePhoto src={comment.photo} name={comment.nickname} size={28} />
+                <strong class="small">
+                  {#if comment.parentCommentNickname}
+                    <span class="text-primary">@{comment.parentCommentNickname}</span>
+                  {/if}
+                  {comment.nickname}
+                </strong>
+              </div>
+              <time class="small text-muted">{socialTime(comment.createdAt)}</time>
             </div>
             <div class="comment-content mt-1">{comment.content}</div>
             {#if loggedIn && id}

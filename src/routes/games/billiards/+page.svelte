@@ -5,6 +5,7 @@
   import Matter from 'matter-js';
   import { ko } from 'date-fns/locale';
   import { formatRelativeTime } from '$lib/util/formatRelativeTime.js';
+  import GameProfilePhoto from '$lib/components/GameProfilePhoto.svelte';
   import {
     BALL_RADIUS,
     BILLIARDS_MODES,
@@ -93,6 +94,7 @@
     score: number;
     createdAt?: string;
     _id?: string;
+    photo?: string | null;
   };
   type FourBallTurn = 'player' | 'npc';
   type NpcShotPlan = {
@@ -2254,59 +2256,109 @@
 
 <div class="billiards-page">
   <div class="billiards-game-column">
-  <section class="billiards-hud" aria-label="게임 상태">
-    <div class="hud-title">
-      <strong>{modeLabel}</strong>
-      <span
-        class:good={status === 'scored'}
-        class:bad={status === 'game-over' || status === 'miss'}
-      >
-        {statusText}
-      </span>
-    </div>
-    <div class="hud-stats">
-      {#if artMode}
-        <span>퍼즐 <strong>{artStageNumber}/10</strong></span>
-        <span>최고 <strong>{myBestScore === null ? '-' : `${myBestScore}점`}</strong></span>
-      {:else if isPocketBall}
-        <span>점수 <strong>{score}</strong></span>
-        <span>기회 <strong>{chances}</strong></span>
-        <span>남은공 <strong>{remainingObjects}</strong></span>
-        <span>최고 <strong>{myBestScore ?? '-'}</strong></span>
-      {:else}
-        <span>나 <strong>{score}</strong></span>
-        <span>겐세이 형 <strong>{npcScore}</strong></span>
-        <span>목표 <strong>{targetScore}</strong></span>
-        {#if activeCombo > 0}
-          <span>콤보 <strong>×{activeComboMultiplier}</strong></span>
+    <section class="billiards-hud" aria-label="게임 상태">
+      <div class="hud-title">
+        <strong>{modeLabel}</strong>
+        <span
+          class:good={status === 'scored'}
+          class:bad={status === 'game-over' || status === 'miss'}
+        >
+          {statusText}
+        </span>
+      </div>
+      <div class="hud-stats">
+        {#if artMode}
+          <span>퍼즐 <strong>{artStageNumber}/10</strong></span>
+          <span>최고 <strong>{myBestScore === null ? '-' : `${myBestScore}점`}</strong></span>
+        {:else if isPocketBall}
+          <span>점수 <strong>{score}</strong></span>
+          <span>기회 <strong>{chances}</strong></span>
+          <span>남은공 <strong>{remainingObjects}</strong></span>
+          <span>최고 <strong>{myBestScore ?? '-'}</strong></span>
+        {:else}
+          <span>나 <strong>{score}</strong></span>
+          <span>겐세이 형 <strong>{npcScore}</strong></span>
+          <span>목표 <strong>{targetScore}</strong></span>
+          {#if activeCombo > 0}
+            <span>콤보 <strong>×{activeComboMultiplier}</strong></span>
+          {/if}
         {/if}
-      {/if}
+      </div>
+      <span class="auto-save-status" aria-live="polite">{autoSaveMessage}</span>
+      <button type="button" class="new-game-button" onclick={newGame}>리셋</button>
+    </section>
+
+    <div class="mode-tabs" aria-label="당구 모드">
+      <button
+        type="button"
+        class:active={!artMode && currentMode === BILLIARDS_MODES.FOUR_BALL}
+        onclick={() => switchMode(BILLIARDS_MODES.FOUR_BALL)}
+      >
+        4구
+      </button>
+      <button
+        type="button"
+        class:active={!artMode && currentMode === BILLIARDS_MODES.POCKET_BALL}
+        onclick={() => switchMode(BILLIARDS_MODES.POCKET_BALL)}
+      >
+        포켓볼
+      </button>
+      <button type="button" class:active={artMode} onclick={switchToArtMode}>예술구</button>
     </div>
-    <span class="auto-save-status" aria-live="polite">{autoSaveMessage}</span>
-    <button type="button" class="new-game-button" onclick={newGame}>리셋</button>
-  </section>
 
-  <div class="mode-tabs" aria-label="당구 모드">
-    <button
-      type="button"
-      class:active={!artMode && currentMode === BILLIARDS_MODES.FOUR_BALL}
-      onclick={() => switchMode(BILLIARDS_MODES.FOUR_BALL)}
-    >
-      4구
-    </button>
-    <button
-      type="button"
-      class:active={!artMode && currentMode === BILLIARDS_MODES.POCKET_BALL}
-      onclick={() => switchMode(BILLIARDS_MODES.POCKET_BALL)}
-    >
-      포켓볼
-    </button>
-    <button type="button" class:active={artMode} onclick={switchToArtMode}>예술구</button>
-  </div>
-
-  {#if artMode}
-    <section class="art-stage-panel" aria-label="예술구 스테이지 선택">
-      <div class="art-stage-toolbar">
+    {#if artMode}
+      <section class="art-stage-panel" aria-label="예술구 스테이지 선택">
+        <div class="art-stage-toolbar">
+          <button
+            type="button"
+            class="help-trigger"
+            class:active={!!helpPlan}
+            onclick={showShotHelp}
+            disabled={!canPrepareShot()}
+          >
+            {helpPlan ? '도움 닫기' : '도움'}
+          </button>
+          <div class="art-stages" aria-label="예술구 단계">
+            {#each Array.from({ length: 10 }, (_, index) => index + 1) as stage (stage)}
+              <button
+                type="button"
+                class:active={artStageNumber === stage}
+                disabled={status === 'rolling'}
+                onclick={() => selectArtStage(stage)}
+              >
+                {stage}
+              </button>
+            {/each}
+          </div>
+        </div>
+        <div
+          class="art-mission"
+          class:success={artResult === 'success'}
+          class:failed={artResult === 'failed'}
+        >
+          <strong>{currentArtStage.title}</strong>
+          <span>
+            {artDemoState === 'waiting'
+              ? '잠시 후 정답 샷을 먼저 보여드립니다'
+              : artDemoState === 'playing'
+                ? '공의 경로와 쿠션 순서를 눈여겨보세요'
+                : artResult === 'idle'
+                  ? currentArtStage.description
+                  : artResultMessage}
+          </span>
+        </div>
+        {#if helpPlan}
+          <div class="shot-help" aria-label="예술구 도움">
+            <span>
+              당점 {currentArtStage.solution.tipLabel} · 파워 약
+              {Math.max(10, helpPlan.power - 6)}~{Math.min(100, helpPlan.power + 6)} · 파란 점선 참고
+              · 직접 조준·파워·당점을 맞춰보세요
+            </span>
+          </div>
+        {/if}
+      </section>
+    {:else if !isPocketBall}
+      <div class="target-selector" aria-label="4구 목표 점수와 NPC 난이도">
         <button
           type="button"
           class="help-trigger"
@@ -2314,424 +2366,380 @@
           onclick={showShotHelp}
           disabled={!canPrepareShot()}
         >
-          {helpPlan ? '도움 닫기' : '도움'}
+          {helpThinking ? '계산…' : helpPlan ? '닫기' : '도움'}
         </button>
-        <div class="art-stages" aria-label="예술구 단계">
-          {#each Array.from({ length: 10 }, (_, index) => index + 1) as stage (stage)}
-            <button
-              type="button"
-              class:active={artStageNumber === stage}
-              disabled={status === 'rolling'}
-              onclick={() => selectArtStage(stage)}
-            >
-              {stage}
-            </button>
-          {/each}
-        </div>
-      </div>
-      <div
-        class="art-mission"
-        class:success={artResult === 'success'}
-        class:failed={artResult === 'failed'}
-      >
-        <strong>{currentArtStage.title}</strong>
-        <span>
-          {artDemoState === 'waiting'
-            ? '잠시 후 정답 샷을 먼저 보여드립니다'
-            : artDemoState === 'playing'
-              ? '공의 경로와 쿠션 순서를 눈여겨보세요'
-              : artResult === 'idle'
-                ? currentArtStage.description
-                : artResultMessage}
-        </span>
+        {#each FOUR_BALL_TARGET_OPTIONS as option (option)}
+          <button
+            type="button"
+            class:active={targetScore === option}
+            disabled={status === 'rolling' || npcThinking}
+            onclick={() => switchTargetScore(option)}
+          >
+            {option}
+          </button>
+        {/each}
       </div>
       {#if helpPlan}
-        <div class="shot-help" aria-label="예술구 도움">
+        <div class="shot-help" aria-label="샷 도움">
           <span>
-            당점 {currentArtStage.solution.tipLabel} · 파워 약
-            {Math.max(10, helpPlan.power - 6)}~{Math.min(100, helpPlan.power + 6)} · 파란 점선 참고 ·
-            직접 조준·파워·당점을 맞춰보세요
+            중앙 부근 당점 · 파워 약 {Math.max(10, helpPlan.power - 8)}~{Math.min(
+              100,
+              helpPlan.power + 8
+            )} · {helpPlan.defensive ? '첫 적구를 노리는 길' : '득점 가능성이 높은 길'} · 파란 점선 참고
+            · 직접 조준·파워·당점을 맞춰보세요
           </span>
         </div>
       {/if}
+    {/if}
+
+    <section class="game-shell" aria-label={`${modeLabel} 게임`}>
+      <main class="table-wrap">
+        <canvas
+          bind:this={canvasEl}
+          class="billiards-canvas"
+          aria-label={`${modeLabel} 당구대`}
+          onpointerdown={handlePointerDown}
+          onpointermove={handlePointerMove}
+          onpointerup={handlePointerUp}
+          onpointercancel={handlePointerUp}
+        ></canvas>
+        {#if artMode && artDemoState !== 'idle'}
+          <div class="art-demo-banner" role="status" aria-label="예술구 시범">
+            <span>
+              <strong>{artDemoState === 'waiting' ? '시범 준비' : '정답 샷 시범'}</strong>
+              {artDemoState === 'waiting' ? '곧 자동으로 시작합니다' : '공의 움직임을 기억하세요'}
+            </span>
+            <button type="button" onclick={skipArtDemo}>시범 건너뛰기</button>
+          </div>
+        {/if}
+        {#if scoreEffect}
+          {#key scoreEffect.id}
+            <div class="score-effect {scoreEffect.tone}" role="status" aria-live="assertive">
+              {scoreEffect.text}
+            </div>
+          {/key}
+        {/if}
+        {#if artMode && status === 'game-over'}
+          <div
+            class="art-result-layer"
+            role="dialog"
+            aria-modal="true"
+            aria-label="예술구 결과"
+            tabindex="-1"
+          >
+            <div class="art-result-card" class:success={artResult === 'success'}>
+              <strong>{artResult === 'success' ? '클리어!' : '도전 실패'}</strong>
+              <p>{artResultMessage}</p>
+              {#if artScoreBreakdown}
+                <strong class="art-score-total">{artScoreBreakdown.total}점</strong>
+                <div class="art-score-breakdown" aria-label="예술구 점수 내역">
+                  <span>기본 {artScoreBreakdown.base}</span>
+                  <span
+                    >{artScoreBreakdown.noHelp ? '무도움' : '도움 사용'} +{artScoreBreakdown.noHelp}</span
+                  >
+                  <span>시네루 +{artScoreBreakdown.spin}</span>
+                  <span>당점 +{artScoreBreakdown.control}</span>
+                  <span>쿠션 +{artScoreBreakdown.cushion}</span>
+                </div>
+              {/if}
+              <div class="art-result-actions" class:single={artResult !== 'success'}>
+                <button type="button" class="play-again-button" onclick={newGame}>다시 도전</button>
+                {#if artResult === 'success'}
+                  <button type="button" class="next-stage-button" onclick={nextArtStage}
+                    >다음 단계</button
+                  >
+                {/if}
+              </div>
+            </div>
+          </div>
+        {/if}
+      </main>
+
+      <aside class="bottom-controls" aria-label="당점과 파워">
+        <div class="control-block tip-control">
+          <span class="control-label">당점</span>
+          <div
+            class="tip-ball"
+            role="button"
+            tabindex="0"
+            aria-label="당점"
+            class:disabled-pad={!canSpin()}
+            onpointerdown={(event) => {
+              event.stopPropagation();
+              event.preventDefault();
+              openSpinOverlay();
+            }}
+          >
+            <div class="tip-cross horizontal"></div>
+            <div class="tip-cross vertical"></div>
+            <div
+              class="tip-dot"
+              style={`left: ${displayedSpinTipX + 50}%; top: ${50 - displayedSpinTipY}%;`}
+            ></div>
+          </div>
+        </div>
+
+        <div class="control-block power-control">
+          <div class="power-heading">
+            <span class="control-label">파워</span>
+            <strong>{displayedPower}</strong>
+          </div>
+          <div
+            class="power-rail"
+            role="slider"
+            tabindex="0"
+            aria-label="샷 파워"
+            aria-valuemin="10"
+            aria-valuemax="100"
+            aria-valuenow={displayedPower}
+            class:disabled-pad={!canCharge()}
+            onpointerdown={(event) => {
+              event.stopPropagation();
+              handlePowerPointerDown(event);
+            }}
+            onpointermove={(event) => {
+              event.stopPropagation();
+              if (event.buttons === 1 || event.pointerType === 'touch')
+                updatePowerFromPointer(event);
+            }}
+            onkeydown={handlePowerKeyDown}
+          >
+            <div class="power-fill" style={`width: ${displayedPower}%;`}></div>
+            <div class="power-thumb" style={`left: ${displayedPower}%;`}></div>
+          </div>
+          <button
+            type="button"
+            class="shot-button"
+            onclick={() => shoot(power)}
+            disabled={!canCharge()}
+          >
+            SHOT
+          </button>
+        </div>
+      </aside>
     </section>
-  {:else if !isPocketBall}
-    <div class="target-selector" aria-label="4구 목표 점수와 NPC 난이도">
-      <button
-        type="button"
-        class="help-trigger"
-        class:active={!!helpPlan}
-        onclick={showShotHelp}
-        disabled={!canPrepareShot()}
-      >
-        {helpThinking ? '계산…' : helpPlan ? '닫기' : '도움'}
-      </button>
-      {#each FOUR_BALL_TARGET_OPTIONS as option (option)}
+
+    {#if lastPlayerReplay}
+      <div class="shot-review-actions" aria-label="마지막 샷 검토">
         <button
           type="button"
-          class:active={targetScore === option}
-          disabled={status === 'rolling' || npcThinking}
-          onclick={() => switchTargetScore(option)}
+          onclick={startReplay}
+          disabled={status === 'rolling' || npcThinking || replaying}
         >
-          {option}
+          {replaying ? '재생 중…' : 'REPLAY'}
         </button>
-      {/each}
-    </div>
-    {#if helpPlan}
-      <div class="shot-help" aria-label="샷 도움">
+        <button
+          type="button"
+          class="report-button"
+          onclick={openReport}
+          disabled={status === 'rolling' || npcThinking || replaying}
+        >
+          오류신고
+        </button>
+        <button
+          type="button"
+          class="share-button"
+          onclick={openShare}
+          disabled={status === 'rolling' || npcThinking || replaying}
+        >
+          게시판 공유
+        </button>
         <span>
-          중앙 부근 당점 · 파워 약 {Math.max(10, helpPlan.power - 8)}~{Math.min(
-            100,
-            helpPlan.power + 8
-          )} · {helpPlan.defensive ? '첫 적구를 노리는 길' : '득점 가능성이 높은 길'} · 파란 점선 참고
-          · 직접 조준·파워·당점을 맞춰보세요
+          {#if replaying}
+            파워 {displayedPower} · 당점 좌우 {displayedSideSpin}, 상하 {displayedVerticalSpin}
+          {:else}
+            {lastPlayerReplay.outcome}
+          {/if}
         </span>
       </div>
     {/if}
-  {/if}
 
-  <section class="game-shell" aria-label={`${modeLabel} 게임`}>
-    <main class="table-wrap">
-      <canvas
-        bind:this={canvasEl}
-        class="billiards-canvas"
-        aria-label={`${modeLabel} 당구대`}
-        onpointerdown={handlePointerDown}
-        onpointermove={handlePointerMove}
-        onpointerup={handlePointerUp}
-        onpointercancel={handlePointerUp}
-      ></canvas>
-      {#if artMode && artDemoState !== 'idle'}
-        <div class="art-demo-banner" role="status" aria-label="예술구 시범">
-          <span>
-            <strong>{artDemoState === 'waiting' ? '시범 준비' : '정답 샷 시범'}</strong>
-            {artDemoState === 'waiting' ? '곧 자동으로 시작합니다' : '공의 움직임을 기억하세요'}
-          </span>
-          <button type="button" onclick={skipArtDemo}>시범 건너뛰기</button>
-        </div>
-      {/if}
-      {#if scoreEffect}
-        {#key scoreEffect.id}
-          <div class="score-effect {scoreEffect.tone}" role="status" aria-live="assertive">
-            {scoreEffect.text}
-          </div>
-        {/key}
-      {/if}
-      {#if artMode && status === 'game-over'}
-        <div
-          class="art-result-layer"
-          role="dialog"
-          aria-modal="true"
-          aria-label="예술구 결과"
-          tabindex="-1"
-        >
-          <div class="art-result-card" class:success={artResult === 'success'}>
-            <strong>{artResult === 'success' ? '클리어!' : '도전 실패'}</strong>
-            <p>{artResultMessage}</p>
-            {#if artScoreBreakdown}
-              <strong class="art-score-total">{artScoreBreakdown.total}점</strong>
-              <div class="art-score-breakdown" aria-label="예술구 점수 내역">
-                <span>기본 {artScoreBreakdown.base}</span>
-                <span
-                  >{artScoreBreakdown.noHelp ? '무도움' : '도움 사용'} +{artScoreBreakdown.noHelp}</span
-                >
-                <span>시네루 +{artScoreBreakdown.spin}</span>
-                <span>당점 +{artScoreBreakdown.control}</span>
-                <span>쿠션 +{artScoreBreakdown.cushion}</span>
-              </div>
-            {/if}
-            <div class="art-result-actions" class:single={artResult !== 'success'}>
-              <button type="button" class="play-again-button" onclick={newGame}>다시 도전</button>
-              {#if artResult === 'success'}
-                <button type="button" class="next-stage-button" onclick={nextArtStage}
-                  >다음 단계</button
-                >
-              {/if}
-            </div>
-          </div>
-        </div>
-      {/if}
-    </main>
-
-    <aside class="bottom-controls" aria-label="당점과 파워">
-      <div class="control-block tip-control">
-        <span class="control-label">당점</span>
-        <div
-          class="tip-ball"
-          role="button"
-          tabindex="0"
-          aria-label="당점"
-          class:disabled-pad={!canSpin()}
-          onpointerdown={(event) => {
-            event.stopPropagation();
+    {#if shareOpen && lastPlayerReplay}
+      <div
+        class="report-overlay"
+        role="presentation"
+        onpointerdown={(event) => {
+          if (event.target === event.currentTarget) closeShare();
+        }}
+      >
+        <form
+          class="report-panel"
+          aria-label="리플레이 게시판 공유"
+          onsubmit={(event) => {
             event.preventDefault();
-            openSpinOverlay();
+            void submitReplayShare();
           }}
         >
-          <div class="tip-cross horizontal"></div>
-          <div class="tip-cross vertical"></div>
+          <div class="report-heading">
+            <strong>게시판에 리플레이 올리기</strong>
+            <span>파워 {lastPlayerReplay.power}</span>
+          </div>
+          <label for="replay-share-board">게시판</label>
+          <select id="replay-share-board" bind:value={shareBoard}>
+            <option value="free">자유게시판</option>
+            <option value="bug">버그신고</option>
+          </select>
+          <label for="replay-share-title">제목</label>
+          <input id="replay-share-title" bind:value={shareTitle} maxlength="80" required />
+          <label for="replay-share-note">내용 <small>(선택)</small></label>
+          <textarea
+            id="replay-share-note"
+            bind:value={shareNote}
+            maxlength="500"
+            rows="4"
+            placeholder="샷 설명을 적어주세요. 비워도 됩니다."
+          ></textarea>
+          <div class="report-actions">
+            <button type="button" onclick={closeShare} disabled={shareSending}>취소</button>
+            <button type="submit" disabled={shareSending}>
+              {shareSending ? '올리는 중…' : '게시하기'}
+            </button>
+          </div>
+        </form>
+      </div>
+    {/if}
+    {#if reportMessage}
+      <p
+        class:report-error={reportMessage.includes('실패')}
+        class="report-message"
+        aria-live="polite"
+      >
+        {reportMessage}
+      </p>
+    {/if}
+
+    {#if spinOverlayOpen}
+      <div
+        class="spin-overlay"
+        role="presentation"
+        onpointerdown={(event) => {
+          if (event.target === event.currentTarget) closeSpinOverlay();
+        }}
+      >
+        <div class="spin-panel" role="dialog" aria-modal="true" aria-label="당점 조절">
+          <div class="spin-panel-heading">
+            <span>당점</span>
+            <strong>{spin} / {verticalSpin}</strong>
+          </div>
           <div
-            class="tip-dot"
-            style={`left: ${displayedSpinTipX + 50}%; top: ${50 - displayedSpinTipY}%;`}
-          ></div>
+            class="tip-ball expanded"
+            role="slider"
+            tabindex="0"
+            aria-label="당점"
+            aria-valuemin="-100"
+            aria-valuemax="100"
+            aria-valuenow={spin}
+            aria-valuetext={`좌우 ${spin}, 상하 ${verticalSpin}`}
+            onpointerdown={(event) => {
+              event.stopPropagation();
+              handleSpinPointerDown(event);
+            }}
+            onpointermove={(event) => {
+              event.stopPropagation();
+              if (event.buttons === 1 || event.pointerType === 'touch')
+                updateSpinFromPointer(event);
+            }}
+          >
+            <div class="tip-cross horizontal"></div>
+            <div class="tip-cross vertical"></div>
+            <div class="tip-dot" style={`left: ${spinTipX + 50}%; top: ${50 - spinTipY}%;`}></div>
+          </div>
+          <div class="spin-panel-actions">
+            <button type="button" onclick={resetSpinTip}>초기화</button>
+            <button type="button" onclick={closeSpinOverlay}>확인</button>
+          </div>
         </div>
       </div>
+    {/if}
 
-      <div class="control-block power-control">
-        <div class="power-heading">
-          <span class="control-label">파워</span>
-          <strong>{displayedPower}</strong>
-        </div>
-        <div
-          class="power-rail"
-          role="slider"
-          tabindex="0"
-          aria-label="샷 파워"
-          aria-valuemin="10"
-          aria-valuemax="100"
-          aria-valuenow={displayedPower}
-          class:disabled-pad={!canCharge()}
-          onpointerdown={(event) => {
-            event.stopPropagation();
-            handlePowerPointerDown(event);
-          }}
-          onpointermove={(event) => {
-            event.stopPropagation();
-            if (event.buttons === 1 || event.pointerType === 'touch') updatePowerFromPointer(event);
-          }}
-          onkeydown={handlePowerKeyDown}
-        >
-          <div class="power-fill" style={`width: ${displayedPower}%;`}></div>
-          <div class="power-thumb" style={`left: ${displayedPower}%;`}></div>
-        </div>
-        <button
-          type="button"
-          class="shot-button"
-          onclick={() => shoot(power)}
-          disabled={!canCharge()}
-        >
-          SHOT
-        </button>
-      </div>
-    </aside>
-  </section>
-
-  {#if lastPlayerReplay}
-    <div class="shot-review-actions" aria-label="마지막 샷 검토">
-      <button
-        type="button"
-        onclick={startReplay}
-        disabled={status === 'rolling' || npcThinking || replaying}
-      >
-        {replaying ? '재생 중…' : 'REPLAY'}
-      </button>
-      <button
-        type="button"
-        class="report-button"
-        onclick={openReport}
-        disabled={status === 'rolling' || npcThinking || replaying}
-      >
-        오류신고
-      </button>
-      <button
-        type="button"
-        class="share-button"
-        onclick={openShare}
-        disabled={status === 'rolling' || npcThinking || replaying}
-      >
-        게시판 공유
-      </button>
-      <span>
-        {#if replaying}
-          파워 {displayedPower} · 당점 좌우 {displayedSideSpin}, 상하 {displayedVerticalSpin}
-        {:else}
-          {lastPlayerReplay.outcome}
-        {/if}
-      </span>
-    </div>
-  {/if}
-
-  {#if shareOpen && lastPlayerReplay}
-    <div
-      class="report-overlay"
-      role="presentation"
-      onpointerdown={(event) => {
-        if (event.target === event.currentTarget) closeShare();
-      }}
-    >
-      <form
-        class="report-panel"
-        aria-label="리플레이 게시판 공유"
-        onsubmit={(event) => {
-          event.preventDefault();
-          void submitReplayShare();
+    {#if reportOpen && lastPlayerReplay}
+      <div
+        class="report-overlay"
+        role="presentation"
+        onpointerdown={(event) => {
+          if (event.target === event.currentTarget) closeReport();
         }}
       >
-        <div class="report-heading">
-          <strong>게시판에 리플레이 올리기</strong>
-          <span>파워 {lastPlayerReplay.power}</span>
-        </div>
-        <label for="replay-share-board">게시판</label>
-        <select id="replay-share-board" bind:value={shareBoard}>
-          <option value="free">자유게시판</option>
-          <option value="bug">버그신고</option>
-        </select>
-        <label for="replay-share-title">제목</label>
-        <input id="replay-share-title" bind:value={shareTitle} maxlength="80" required />
-        <label for="replay-share-note">내용 <small>(선택)</small></label>
-        <textarea
-          id="replay-share-note"
-          bind:value={shareNote}
-          maxlength="500"
-          rows="4"
-          placeholder="샷 설명을 적어주세요. 비워도 됩니다."
-        ></textarea>
-        <div class="report-actions">
-          <button type="button" onclick={closeShare} disabled={shareSending}>취소</button>
-          <button type="submit" disabled={shareSending}>
-            {shareSending ? '올리는 중…' : '게시하기'}
-          </button>
-        </div>
-      </form>
-    </div>
-  {/if}
-  {#if reportMessage}
-    <p
-      class:report-error={reportMessage.includes('실패')}
-      class="report-message"
-      aria-live="polite"
-    >
-      {reportMessage}
-    </p>
-  {/if}
-
-  {#if spinOverlayOpen}
-    <div
-      class="spin-overlay"
-      role="presentation"
-      onpointerdown={(event) => {
-        if (event.target === event.currentTarget) closeSpinOverlay();
-      }}
-    >
-      <div class="spin-panel" role="dialog" aria-modal="true" aria-label="당점 조절">
-        <div class="spin-panel-heading">
-          <span>당점</span>
-          <strong>{spin} / {verticalSpin}</strong>
-        </div>
-        <div
-          class="tip-ball expanded"
-          role="slider"
-          tabindex="0"
-          aria-label="당점"
-          aria-valuemin="-100"
-          aria-valuemax="100"
-          aria-valuenow={spin}
-          aria-valuetext={`좌우 ${spin}, 상하 ${verticalSpin}`}
-          onpointerdown={(event) => {
-            event.stopPropagation();
-            handleSpinPointerDown(event);
-          }}
-          onpointermove={(event) => {
-            event.stopPropagation();
-            if (event.buttons === 1 || event.pointerType === 'touch') updateSpinFromPointer(event);
+        <form
+          class="report-panel"
+          aria-label="이상한 샷 오류신고"
+          onsubmit={(event) => {
+            event.preventDefault();
+            void submitShotReport();
           }}
         >
-          <div class="tip-cross horizontal"></div>
-          <div class="tip-cross vertical"></div>
-          <div class="tip-dot" style={`left: ${spinTipX + 50}%; top: ${50 - spinTipY}%;`}></div>
-        </div>
-        <div class="spin-panel-actions">
-          <button type="button" onclick={resetSpinTip}>초기화</button>
-          <button type="button" onclick={closeSpinOverlay}>확인</button>
-        </div>
+          <div class="report-heading">
+            <strong>이상한 샷 신고</strong>
+            <span>{lastPlayerReplay.outcome}</span>
+          </div>
+          <p>샷 궤적과 당점·파워가 자동 첨부됩니다.</p>
+          <label for="shot-report-note">내용 <small>(선택)</small></label>
+          <textarea
+            id="shot-report-note"
+            bind:value={reportNote}
+            maxlength="500"
+            rows="4"
+            placeholder="어떤 움직임이 이상했는지 적어주세요. 비워도 됩니다."
+          ></textarea>
+          <div class="report-actions">
+            <button type="button" onclick={closeReport} disabled={reportSending}>취소</button>
+            <button type="submit" disabled={reportSending}>
+              {reportSending ? '전송 중…' : '신고 보내기'}
+            </button>
+          </div>
+        </form>
       </div>
-    </div>
-  {/if}
+    {/if}
 
-  {#if reportOpen && lastPlayerReplay}
-    <div
-      class="report-overlay"
-      role="presentation"
-      onpointerdown={(event) => {
-        if (event.target === event.currentTarget) closeReport();
-      }}
-    >
-      <form
-        class="report-panel"
-        aria-label="이상한 샷 오류신고"
-        onsubmit={(event) => {
-          event.preventDefault();
-          void submitShotReport();
-        }}
-      >
-        <div class="report-heading">
-          <strong>이상한 샷 신고</strong>
-          <span>{lastPlayerReplay.outcome}</span>
-        </div>
-        <p>샷 궤적과 당점·파워가 자동 첨부됩니다.</p>
-        <label for="shot-report-note">내용 <small>(선택)</small></label>
-        <textarea
-          id="shot-report-note"
-          bind:value={reportNote}
-          maxlength="500"
-          rows="4"
-          placeholder="어떤 움직임이 이상했는지 적어주세요. 비워도 됩니다."
-        ></textarea>
-        <div class="report-actions">
-          <button type="button" onclick={closeReport} disabled={reportSending}>취소</button>
-          <button type="submit" disabled={reportSending}>
-            {reportSending ? '전송 중…' : '신고 보내기'}
-          </button>
-        </div>
-      </form>
-    </div>
-  {/if}
-
-  {#if status === 'game-over' && !artMode}
-    <div class="game-over-actions">
-      <button type="button" class="play-again-button" onclick={newGame}> 다시 치기 </button>
-    </div>
-  {/if}
-
+    {#if status === 'game-over' && !artMode}
+      <div class="game-over-actions">
+        <button type="button" class="play-again-button" onclick={newGame}> 다시 치기 </button>
+      </div>
+    {/if}
   </div>
   <aside class="billiards-ranking-column">
     <section class="rank-panel">
-    <div class="rank-heading">
-      <h2>랭킹</h2>
-      {#if rankLoading}<span>불러오는 중</span>{/if}
-    </div>
-    <div class="rank-mode-tabs" aria-label="당구 랭킹 모드">
-      {#each rankingTabs as tab (tab.mode)}
-        <button
-          type="button"
-          class:active={rankingMode === tab.mode}
-          onclick={() => selectRankingMode(tab.mode)}
-        >
-          {tab.label}
-        </button>
-      {/each}
-    </div>
-    <p class="rank-today">
-      오늘 참여 <strong>{todayStats.users}</strong>명 · 완료
-      <strong>{todayStats.games}</strong>판
-    </p>
-    {#if rankList.length}
-      <ol>
-        {#each rankList as item (item._id ?? `${item.nickname}:${item.score}:${item.createdAt ?? ''}`)}
-          <li>
-            <span>{item.nickname}</span>
-            <span class="rank-meta">
-              <strong>{formatRankScore(item.score)}</strong>
-              {#if item.createdAt}
-                <small>{formatRelativeTime(item.createdAt, { locale: ko, addSuffix: true })}</small>
-              {/if}
-            </span>
-          </li>
+      <div class="rank-heading">
+        <h2>랭킹</h2>
+        {#if rankLoading}<span>불러오는 중</span>{/if}
+      </div>
+      <div class="rank-mode-tabs" aria-label="당구 랭킹 모드">
+        {#each rankingTabs as tab (tab.mode)}
+          <button
+            type="button"
+            class:active={rankingMode === tab.mode}
+            onclick={() => selectRankingMode(tab.mode)}
+          >
+            {tab.label}
+          </button>
         {/each}
-      </ol>
-    {:else}
-      <p>아직 기록이 없습니다.</p>
-    {/if}
+      </div>
+      <p class="rank-today">
+        오늘 참여 <strong>{todayStats.users}</strong>명 · 완료
+        <strong>{todayStats.games}</strong>판
+      </p>
+      {#if rankList.length}
+        <ol>
+          {#each rankList as item (item._id ?? `${item.nickname}:${item.score}:${item.createdAt ?? ''}`)}
+            <li>
+              <span class="rank-player">
+                <GameProfilePhoto src={item.photo} name={item.nickname} />
+                <span>{item.nickname}</span>
+              </span>
+              <span class="rank-meta">
+                <strong>{formatRankScore(item.score)}</strong>
+                {#if item.createdAt}
+                  <small
+                    >{formatRelativeTime(item.createdAt, { locale: ko, addSuffix: true })}</small
+                  >
+                {/if}
+              </span>
+            </li>
+          {/each}
+        </ol>
+      {:else}
+        <p>아직 기록이 없습니다.</p>
+      {/if}
     </section>
 
     {#if !isLoggedIn}
@@ -3666,6 +3674,19 @@
 
   .rank-panel li:first-child {
     border-top: 0;
+  }
+
+  .rank-player {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .rank-player > span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .rank-meta {

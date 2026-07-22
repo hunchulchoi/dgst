@@ -3,6 +3,7 @@
   import { onMount, tick } from 'svelte';
   import { ko } from 'date-fns/locale';
   import { formatRelativeTime } from '$lib/util/formatRelativeTime.js';
+  import GameProfilePhoto from '$lib/components/GameProfilePhoto.svelte';
   import type { PageData } from './$types';
 
   interface Game2048Props {
@@ -17,9 +18,15 @@
   let grid = $state<number[]>([]);
   let score = $state(0);
   let gameOver = $state(false);
-  let rankList = $state<Array<{ nickname: string; score: number; createdAt?: string; _id?: string }>>(
-    []
-  );
+  let rankList = $state<
+    Array<{
+      nickname: string;
+      score: number;
+      createdAt?: string;
+      _id?: string;
+      photo?: string | null;
+    }>
+  >([]);
   let myBestScore = $state<number | null>(null);
   let myBestCreatedAt = $state<string | null>(null);
   let todayStats = $state<{ games: number; users: number }>({ games: 0, users: 0 });
@@ -708,7 +715,9 @@
                 <span class="fw-bold">현재 점수: {score}</span>
                 {#if isLoggedIn}
                   <span class="small text-muted">
-                    내 전체 최고: {myBestScore != null ? formatScore(myBestScore) : '—'}{#if myBestCreatedAt}
+                    내 전체 최고: {myBestScore != null
+                      ? formatScore(myBestScore)
+                      : '—'}{#if myBestCreatedAt}
                       · {formatRelativeTime(myBestCreatedAt, { locale: ko, addSuffix: true })}{/if}
                   </span>
                 {/if}
@@ -832,7 +841,10 @@
             <ol class="list-group list-group-numbered">
               {#each rankList as r (r._id ?? `${r.nickname}:${r.score}`)}
                 <li class="list-group-item d-flex justify-content-between align-items-center">
-                  <span>{r.nickname}</span>
+                  <span class="d-inline-flex align-items-center gap-2 min-w-0">
+                    <GameProfilePhoto src={r.photo} name={r.nickname} />
+                    <span>{r.nickname}</span>
+                  </span>
                   <span class="text-end">
                     <span class="fw-bold font-monospace">{formatScore(r.score)}</span>
                     {#if r.createdAt}
