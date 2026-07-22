@@ -91,9 +91,9 @@ describe('write page video upload', () => {
 
   it('passes server compression context so server logs explain device and fallback reason', () => {
     expect(lexicalEditor).toContain('createServerVideoCompressionContext');
-    expect(lexicalEditor).toContain("formData.set('serverCompressVideoReason'");
-    expect(lexicalEditor).toContain("formData.set('serverCompressVideoClient'");
-    expect(lexicalEditor).toContain("formData.set('serverCompressVideoWebCodecs'");
+    expect(lexicalEditor).toMatch(/formData\.set\(\s*'serverCompressVideoReason'/);
+    expect(lexicalEditor).toMatch(/formData\.set\(\s*'serverCompressVideoClient'/);
+    expect(lexicalEditor).toMatch(/formData\.set\(\s*'serverCompressVideoWebCodecs'/);
     expect(lexicalEditor).toContain('userAgent: nav?.userAgent');
     expect(uploadRoute).toContain('serverCompressVideoReason');
     expect(uploadRoute).toContain('serverCompressVideoClient');

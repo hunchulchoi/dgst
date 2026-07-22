@@ -1,18 +1,4 @@
-version: '3.9'
 services:
-  mongodb:
-    image: mongo
-    container_name: mongodb
-    restart: unless-stopped
-    networks:
-      - dgst-mongo-net
-    volumes:
-      - dgst-mongo-vol:/data/db
-    ports:
-      - '27017:27017'
-    environment:
-      - MONGO_INITDB_ROOT_USERNAME=root
-      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD:?MONGO_INITDB_ROOT_PASSWORD is required}
   redis:
     image: redis:latest
     container_name: dgst_redis
@@ -37,7 +23,23 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
       - POSTGRES_DB=dgstdb
     volumes:
-      - dgst-postgres-vol:/var/lib/postgresql/data
+      - dgst-postgres-vol:/var/lib/postgresql
+  dgst_farm_postgres:
+    image: postgres:18
+    container_name: dgst_farm_postgres
+    ports:
+      - '55432:5432'
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      - POSTGRES_DB=dgstdb
+    volumes:
+      - dgst-farm-postgres-vol:/var/lib/postgresql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d dgstdb']
+      interval: 2s
+      timeout: 2s
+      retries: 30
   dgst_svelte:
     image: dgst_svelte
     container_name: dgst_svelte
@@ -58,12 +60,11 @@ services:
       - .env
 
 networks:
-  dgst-mongo-net:
   dgst-svelte-net:
 
 
 volumes:
-  dgst-mongo-vol:
   dgst-storage-vol:
   dgst-redis-vol:
   dgst-postgres-vol:
+  dgst-farm-postgres-vol:

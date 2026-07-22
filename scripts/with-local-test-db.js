@@ -1,12 +1,13 @@
 import { readFileSync } from 'node:fs';
 import { spawn, spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 
 const FARM_POSTGRES_HOST = process.env.LOCAL_TEST_POSTGRES_HOST || '127.0.0.1';
 const FARM_POSTGRES_PORT = process.env.LOCAL_TEST_POSTGRES_PORT || '55432';
 const FARM_POSTGRES_CONTAINER = process.env.LOCAL_TEST_POSTGRES_CONTAINER || 'dgst_farm_postgres';
 const FARM_COMPOSE_FILE =
   process.env.LOCAL_TEST_FARM_COMPOSE_FILE ||
-  '/mnt/dgst/src/dgstfarm/dgst/conf/docker-compose.yml';
+  fileURLToPath(new URL('../conf/docker-compose.yml', import.meta.url));
 const DATABASE_URL_KEY = 'DATABASE' + '_URL';
 
 function parseEnvFile(path) {

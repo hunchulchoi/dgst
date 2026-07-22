@@ -14,7 +14,7 @@ describe('comment image upload spinner', () => {
   });
 
   it('can upload and record audio into comment content', () => {
-    expect(articlePage).toContain("accept=\"image/*,audio/*\"");
+    expect(articlePage).toContain('accept="image/*,video/*,audio/*"');
     expect(articlePage).toContain('appendCommentAudio');
     expect(articlePage).toContain('uploadCommentAudioFile');
     expect(articlePage).toContain('toggleCommentAudioRecording');
