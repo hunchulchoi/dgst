@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  applyTallAttachmentSizing,
   applyAttachmentImageSizing,
   DEFAULT_ATTACHMENT_IMAGE_MAX_HEIGHT,
   DESKTOP_PORTRAIT_ATTACHMENT_IMAGE_HEIGHT,
@@ -10,6 +11,19 @@ import {
 } from '../src/lib/util/attachmentImageSizing.js';
 
 describe('attachment image sizing', () => {
+  it('uses the standard tall-attachment height for comment videos', () => {
+    const style = { maxWidth: '', maxHeight: '', width: '', height: '' };
+
+    applyTallAttachmentSizing(style);
+
+    expect(style).toEqual({
+      maxWidth: '100%',
+      maxHeight: DEFAULT_ATTACHMENT_IMAGE_MAX_HEIGHT,
+      width: 'auto',
+      height: 'auto'
+    });
+  });
+
   it('caps regular phone-ratio images to the viewport height budget', () => {
     expect(getAttachmentImageMaxHeight({ naturalWidth: 1080, naturalHeight: 1920 })).toBe(
       DEFAULT_ATTACHMENT_IMAGE_MAX_HEIGHT

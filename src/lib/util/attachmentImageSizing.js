@@ -99,3 +99,16 @@ export function applyAttachmentImageSizing(style, img, options) {
     style.removeProperty?.('max-height');
   }
 }
+
+/**
+ * Keep comment videos at the same viewport-relative height used for tall
+ * attachments, without applying the larger desktop portrait-photo treatment.
+ *
+ * @param {{ maxWidth?: string; maxHeight?: string; width?: string; height?: string }} style
+ */
+export function applyTallAttachmentSizing(style) {
+  style.maxWidth = '100%';
+  style.width = 'auto';
+  style.height = 'auto';
+  style.maxHeight = DEFAULT_ATTACHMENT_IMAGE_MAX_HEIGHT;
+}

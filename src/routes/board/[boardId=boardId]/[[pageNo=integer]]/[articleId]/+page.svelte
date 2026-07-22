@@ -2259,6 +2259,7 @@
                               <AttachmentMedia
                                 src={editCommentVideoPreviewUrl}
                                 video
+                                tallAttachmentSize
                                 ariaLabel="댓글 동영상 미리보기"
                                 videoStyle="max-width: 100%"
                               />
@@ -2301,6 +2302,7 @@
                             <Col class="p-0 ps-1 m-0">
                               <AttachmentMedia
                                 src={comment.image}
+                                tallAttachmentSize
                                 alt="리플 짤"
                                 ariaLabel="리플 동영상"
                                 onimageload={handleAttachmentImageLoad}
@@ -2479,6 +2481,7 @@
                     <AttachmentMedia
                       src={reCommentVideoPreviewUrl}
                       video
+                      tallAttachmentSize
                       ariaLabel="리플 동영상 미리보기"
                       videoStyle="max-width: 100%"
                     />
@@ -2583,6 +2586,7 @@
                 <AttachmentMedia
                   src={commentVideoPreviewUrl}
                   video
+                  tallAttachmentSize
                   ariaLabel="댓글 동영상 미리보기"
                   videoStyle="max-width: 100%"
                 />

@@ -52,6 +52,7 @@ describe('board comment action layout', () => {
     expect(articlePage).toContain('ariaLabel="리플 동영상"');
     expect(articlePage).toContain('ariaLabel="댓글 동영상 미리보기"');
     expect(articlePage).toContain('ariaLabel="리플 동영상 미리보기"');
+    expect(articlePage.match(/^\s+tallAttachmentSize$/gm)).toHaveLength(4);
   });
 
   it('uses mobile-specific compact comment and article controls', () => {

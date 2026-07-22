@@ -40,10 +40,23 @@ describe('attachment media detection', () => {
     expect(attachmentComponent).toContain('muted');
   });
 
-  it('applies the same responsive sizing calculation to videos and images', () => {
+  it('loads an early video frame so attachments show a thumbnail before playback', () => {
+    expect(attachmentComponent).toContain('withVideoPreviewTime');
+    expect(attachmentComponent).toContain("#t=0.1");
+    expect(attachmentComponent).toContain('element.currentTime = previewTime');
+  });
+
+  it('sizes comment videos with the same viewport limit as tall attachments', () => {
+    expect(attachmentComponent).toContain('tallAttachmentSize = false');
+    expect(attachmentComponent).toContain('applyTallAttachmentSizing(element.style)');
     expect(attachmentComponent).toContain(
-      "import { applyAttachmentImageSizing } from '$lib/util/attachmentImageSizing.js'"
+      'class:attachment-video--tall-attachment={tallAttachmentSize}'
     );
+  });
+
+  it('applies the same responsive sizing calculation to videos and images', () => {
+    expect(attachmentComponent).toContain("from '$lib/util/attachmentImageSizing.js'");
+    expect(attachmentComponent).toContain('applyAttachmentImageSizing(element.style');
     expect(attachmentComponent).toContain('onloadedmetadata={handleVideoMetadata}');
     expect(attachmentComponent).toContain('naturalWidth: element.videoWidth');
     expect(attachmentComponent).toContain('naturalHeight: element.videoHeight');
