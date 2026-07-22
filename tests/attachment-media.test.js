@@ -37,6 +37,16 @@ describe('attachment media detection', () => {
     expect(attachmentComponent).toContain('playsinline');
     expect(attachmentComponent).toContain('preload="metadata"');
     expect(attachmentComponent).toContain('controls');
+    expect(attachmentComponent).toContain('muted');
+  });
+
+  it('applies the same responsive sizing calculation to videos and images', () => {
+    expect(attachmentComponent).toContain(
+      "import { applyAttachmentImageSizing } from '$lib/util/attachmentImageSizing.js'"
+    );
+    expect(attachmentComponent).toContain('onloadedmetadata={handleVideoMetadata}');
+    expect(attachmentComponent).toContain('naturalWidth: element.videoWidth');
+    expect(attachmentComponent).toContain('naturalHeight: element.videoHeight');
   });
 
   it('renames browser-compressed HEIC files to a matching WebP extension', () => {
