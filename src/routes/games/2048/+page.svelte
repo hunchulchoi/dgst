@@ -3,7 +3,7 @@
   import { onMount, tick } from 'svelte';
   import { ko } from 'date-fns/locale';
   import { formatRelativeTime } from '$lib/util/formatRelativeTime.js';
-  import GameProfilePhoto from '$lib/components/GameProfilePhoto.svelte';
+  import GameRankingRow from '$lib/components/GameRankingRow.svelte';
   import type { PageData } from './$types';
 
   interface Game2048Props {
@@ -838,22 +838,17 @@
             <strong>{todayStats.games}</strong>회
           </p>
           {#if isLoggedIn}
-            <ol class="list-group list-group-numbered">
-              {#each rankList as r (r._id ?? `${r.nickname}:${r.score}`)}
-                <li class="list-group-item d-flex justify-content-between align-items-center">
-                  <span class="d-inline-flex align-items-center gap-2 min-w-0">
-                    <GameProfilePhoto src={r.photo} name={r.nickname} />
-                    <span>{r.nickname}</span>
-                  </span>
-                  <span class="text-end">
-                    <span class="fw-bold font-monospace">{formatScore(r.score)}</span>
-                    {#if r.createdAt}
-                      <span class="small text-muted d-block">
-                        {formatRelativeTime(r.createdAt, { locale: ko, addSuffix: true })}
-                      </span>
-                    {/if}
-                  </span>
-                </li>
+            <ol class="list-group list-group-flush">
+              {#each rankList as r, index (r._id ?? `${r.nickname}:${r.score}`)}
+                <GameRankingRow
+                  {index}
+                  nickname={r.nickname}
+                  photo={r.photo}
+                  score={formatScore(r.score)}
+                  meta={r.createdAt
+                    ? formatRelativeTime(r.createdAt, { locale: ko, addSuffix: true })
+                    : ''}
+                />
               {/each}
             </ol>
           {:else}

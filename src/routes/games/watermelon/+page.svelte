@@ -4,7 +4,7 @@
   import { ko } from 'date-fns/locale';
   import Matter from 'matter-js';
   import { formatRelativeTime } from '$lib/util/formatRelativeTime.js';
-  import GameProfilePhoto from '$lib/components/GameProfilePhoto.svelte';
+  import GameRankingRow from '$lib/components/GameRankingRow.svelte';
   import { FRUITS, GAME_WIDTH, GAME_HEIGHT, WALL_THICKNESS, type FruitType } from './gameUtils';
 
   import type { PageData } from './$types';
@@ -733,25 +733,17 @@
               </div>
             {/if}
 
-            <ol class="list-group list-group-numbered">
-              {#each rankList as r (r._id ?? `${r.nickname}:${r.score}`)}
-                <li class="list-group-item d-flex justify-content-between align-items-center">
-                  <span
-                    class="d-inline-flex align-items-center gap-2 text-truncate"
-                    style="max-width: 150px;"
-                  >
-                    <GameProfilePhoto src={r.photo} name={r.nickname} />
-                    <span class="text-truncate">{r.nickname}</span>
-                  </span>
-                  <span class="text-end">
-                    <span class="fw-bold font-monospace">{formatScore(r.score)}</span>
-                    {#if r.createdAt}
-                      <span class="small text-muted d-block">
-                        {formatRelativeTime(r.createdAt, { locale: ko, addSuffix: true })}
-                      </span>
-                    {/if}
-                  </span>
-                </li>
+            <ol class="list-group list-group-flush">
+              {#each rankList as r, index (r._id ?? `${r.nickname}:${r.score}`)}
+                <GameRankingRow
+                  {index}
+                  nickname={r.nickname}
+                  photo={r.photo}
+                  score={formatScore(r.score)}
+                  meta={r.createdAt
+                    ? formatRelativeTime(r.createdAt, { locale: ko, addSuffix: true })
+                    : ''}
+                />
               {/each}
               {#if rankList.length === 0}
                 <li class="list-group-item text-center text-muted small">기록이 없습니다.</li>

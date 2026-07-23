@@ -3,7 +3,7 @@
   import { onMount } from 'svelte';
   import { ko } from 'date-fns/locale';
   import { formatRelativeTime } from '$lib/util/formatRelativeTime.js';
-  import GameProfilePhoto from '$lib/components/GameProfilePhoto.svelte';
+  import GameRankingRow from '$lib/components/GameRankingRow.svelte';
   import { swalFire } from '$lib/util/swal.js';
   import type { PageData } from './$types';
 
@@ -621,19 +621,15 @@
           {#if rankList.length}
             <ol class="sudoku-rank-list">
               {#each rankList as row, index}
-                <li>
-                  <span class="sudoku-rank-place">{index + 1}</span>
-                  <span class="sudoku-rank-name">
-                    <GameProfilePhoto src={row.photo} name={row.nickname} />
-                    <span>{row.nickname}</span>
-                  </span>
-                  <span class="sudoku-rank-score">{formatRecord(row.seconds, row.mistakes)}</span>
-                  {#if row.createdAt}
-                    <span class="sudoku-rank-date">
-                      {formatRelativeTime(row.createdAt, { locale: ko, addSuffix: true })}
-                    </span>
-                  {/if}
-                </li>
+                <GameRankingRow
+                  {index}
+                  nickname={row.nickname}
+                  photo={row.photo}
+                  score={formatRecord(row.seconds, row.mistakes)}
+                  meta={row.createdAt
+                    ? formatRelativeTime(row.createdAt, { locale: ko, addSuffix: true })
+                    : ''}
+                />
               {/each}
             </ol>
           {:else}
@@ -733,19 +729,15 @@
           {#if rankList.length}
             <ol class="sudoku-rank-list">
               {#each rankList as row, index}
-                <li>
-                  <span class="sudoku-rank-place">{index + 1}</span>
-                  <span class="sudoku-rank-name">
-                    <GameProfilePhoto src={row.photo} name={row.nickname} />
-                    <span>{row.nickname}</span>
-                  </span>
-                  <span class="sudoku-rank-score">{formatRecord(row.seconds, row.mistakes)}</span>
-                  {#if row.createdAt}
-                    <span class="sudoku-rank-date">
-                      {formatRelativeTime(row.createdAt, { locale: ko, addSuffix: true })}
-                    </span>
-                  {/if}
-                </li>
+                <GameRankingRow
+                  {index}
+                  nickname={row.nickname}
+                  photo={row.photo}
+                  score={formatRecord(row.seconds, row.mistakes)}
+                  meta={row.createdAt
+                    ? formatRelativeTime(row.createdAt, { locale: ko, addSuffix: true })
+                    : ''}
+                />
               {/each}
             </ol>
           {:else}
@@ -1034,59 +1026,6 @@
     padding: 0;
     margin: 0;
     list-style: none;
-  }
-
-  .sudoku-rank-list li {
-    display: grid;
-    grid-template-columns: 1.5rem minmax(0, 1fr) auto;
-    gap: 0.45rem;
-    align-items: center;
-    padding: 0.4rem 0;
-    border-bottom: 1px solid var(--bs-border-color);
-  }
-
-  .sudoku-rank-list li:last-child {
-    border-bottom: 0;
-  }
-
-  .sudoku-rank-place {
-    width: 1.5rem;
-    height: 1.5rem;
-    border-radius: 999px;
-    display: grid;
-    place-items: center;
-    background: var(--bs-tertiary-bg);
-    font-size: 0.78rem;
-    font-weight: 800;
-  }
-
-  .sudoku-rank-name,
-  .sudoku-rank-score {
-    font-weight: 700;
-    min-width: 0;
-  }
-
-  .sudoku-rank-name {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.45rem;
-    overflow: hidden;
-  }
-
-  .sudoku-rank-name > span {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .sudoku-rank-score {
-    white-space: nowrap;
-  }
-
-  .sudoku-rank-date {
-    grid-column: 2 / 4;
-    color: var(--bs-secondary-color);
-    font-size: 0.75rem;
   }
 
   @media (max-width: 900px) {

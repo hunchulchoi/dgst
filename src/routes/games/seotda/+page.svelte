@@ -8,7 +8,7 @@
   import { ANTE, dynamicAnte, minRaisePay } from './seotdaEngine.js';
   import { contributionCapacity } from './seotdaRound.js';
   import SharedGameComments from '$lib/components/SharedGameComments.svelte';
-  import GameProfilePhoto from '$lib/components/GameProfilePhoto.svelte';
+  import GameRankingRow from '$lib/components/GameRankingRow.svelte';
   import HwatuCardFace from './HwatuCardFace.svelte';
   import { HWATU_CARD_URLS } from './hwatuCardAssets';
 
@@ -1213,20 +1213,15 @@
           {#if rankList.length === 0}
             <p class="text-muted small mb-0">아직 랭킹 없음</p>
           {:else}
-            <ol class="list-group list-group-numbered list-group-flush">
+            <ol class="list-group list-group-flush">
               {#each rankList as r, i (r.nickname + i)}
-                <li class="list-group-item d-flex justify-content-between align-items-center px-0">
-                  <div class="d-flex align-items-center gap-2 min-w-0">
-                    <GameProfilePhoto src={r.photo} name={r.nickname} />
-                    <div>
-                      <span>{r.nickname}</span>
-                      {#if r.updatedAt}
-                        <small class="d-block text-muted">{formatRankAt(r.updatedAt)}</small>
-                      {/if}
-                    </div>
-                  </div>
-                  <span class="fw-bold font-monospace">{formatNumber(r.balance)}</span>
-                </li>
+                <GameRankingRow
+                  index={i}
+                  nickname={r.nickname}
+                  photo={r.photo}
+                  score={formatNumber(r.balance)}
+                  meta={r.updatedAt ? formatRankAt(r.updatedAt) : ''}
+                />
               {/each}
             </ol>
           {/if}

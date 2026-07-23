@@ -5,7 +5,7 @@
   import Matter from 'matter-js';
   import { ko } from 'date-fns/locale';
   import { formatRelativeTime } from '$lib/util/formatRelativeTime.js';
-  import GameProfilePhoto from '$lib/components/GameProfilePhoto.svelte';
+  import GameRankingRow from '$lib/components/GameRankingRow.svelte';
   import {
     BALL_RADIUS,
     BILLIARDS_MODES,
@@ -2720,21 +2720,16 @@
       </p>
       {#if rankList.length}
         <ol>
-          {#each rankList as item (item._id ?? `${item.nickname}:${item.score}:${item.createdAt ?? ''}`)}
-            <li>
-              <span class="rank-player">
-                <GameProfilePhoto src={item.photo} name={item.nickname} />
-                <span>{item.nickname}</span>
-              </span>
-              <span class="rank-meta">
-                <strong>{formatRankScore(item.score)}</strong>
-                {#if item.createdAt}
-                  <small
-                    >{formatRelativeTime(item.createdAt, { locale: ko, addSuffix: true })}</small
-                  >
-                {/if}
-              </span>
-            </li>
+          {#each rankList as item, index (item._id ?? `${item.nickname}:${item.score}:${item.createdAt ?? ''}`)}
+            <GameRankingRow
+              {index}
+              nickname={item.nickname}
+              photo={item.photo}
+              score={formatRankScore(item.score)}
+              meta={item.createdAt
+                ? formatRelativeTime(item.createdAt, { locale: ko, addSuffix: true })
+                : ''}
+            />
           {/each}
         </ol>
       {:else}
@@ -3664,44 +3659,6 @@
     padding: 0;
   }
 
-  .rank-panel li {
-    display: flex;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 7px 0;
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
-  }
-
-  .rank-panel li:first-child {
-    border-top: 0;
-  }
-
-  .rank-player {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    min-width: 0;
-  }
-
-  .rank-player > span {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .rank-meta {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 2px;
-    white-space: nowrap;
-  }
-
-  .rank-meta small {
-    color: #b4ccb8;
-    font-size: 0.74rem;
-  }
-
   .login-note {
     margin: 8px 0 0;
     text-align: center;
@@ -3767,11 +3724,6 @@
     .rank-panel ol {
       display: grid;
       grid-template-columns: 1fr;
-    }
-
-    .rank-panel li {
-      padding: 5px 0;
-      font-size: 0.82rem;
     }
   }
 </style>

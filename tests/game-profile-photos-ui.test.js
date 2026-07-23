@@ -11,20 +11,26 @@ const rankedGames = [
   'watermelon',
   'slot'
 ];
+const rankingRow = readFileSync('src/lib/components/GameRankingRow.svelte', 'utf8');
 
 describe('game profile photos', () => {
+  it('renders profile photos through the shared ranking row', () => {
+    expect(rankingRow).toContain('GameProfilePhoto');
+    expect(rankingRow).toContain('<GameProfilePhoto src={photo} name={nickname} />');
+  });
+
   it.each(rankedGames)('adds profile photos to the %s ranking API and UI', (game) => {
     const server = readFileSync(`src/routes/games/${game}/+server.js`, 'utf8');
     const page = readFileSync(`src/routes/games/${game}/+page.svelte`, 'utf8');
     expect(server).toContain('attachGameProfilePhotos');
-    expect(page).toContain('GameProfilePhoto');
+    expect(page).toContain('GameRankingRow');
   });
 
   it.each(['seotda', 'ssamchi'])('adds profile photos to the %s balance ranking', (game) => {
     const balance = readFileSync(`src/routes/games/${game}/${game}Balance.js`, 'utf8');
     const page = readFileSync(`src/routes/games/${game}/+page.svelte`, 'utf8');
     expect(balance).toContain('attachGameProfilePhotos');
-    expect(page).toContain('GameProfilePhoto');
+    expect(page).toContain('GameRankingRow');
   });
 
   it('shows social time and optional photos in shared game replies', () => {

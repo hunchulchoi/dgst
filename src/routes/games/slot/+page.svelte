@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { ko } from 'date-fns/locale';
   import { formatRelativeTime } from '$lib/util/formatRelativeTime.js';
-  import GameProfilePhoto from '$lib/components/GameProfilePhoto.svelte';
+  import GameRankingRow from '$lib/components/GameRankingRow.svelte';
   import { invalidateAll } from '$app/navigation';
   import { swalFire } from '$lib/util/swal.js';
   import { isOnlyOneEmoji } from '$lib/util/emoji.js';
@@ -971,20 +971,15 @@
               🔄
             </button>
           </div>
-          <ol class="list-group list-group-numbered">
+          <ol class="list-group list-group-flush">
             {#each rankList as r, i (r._id ?? `${r.nickname}:${r.balance}`)}
-              <li class="list-group-item d-flex justify-content-between align-items-center">
-                <span class="d-inline-flex align-items-center gap-2 min-w-0">
-                  <GameProfilePhoto src={r.photo} name={r.nickname} />
-                  <span>{r.nickname}</span>
-                </span>
-                <span class="text-end">
-                  <span class="fw-bold font-monospace d-block">{formatNumber(r.balance)}</span>
-                  {#if r.updatedAt}
-                    <small class="text-muted">{formatSlotUpdatedAt(r.updatedAt)}</small>
-                  {/if}
-                </span>
-              </li>
+              <GameRankingRow
+                index={i}
+                nickname={r.nickname}
+                photo={r.photo}
+                score={formatNumber(r.balance)}
+                meta={r.updatedAt ? formatSlotUpdatedAt(r.updatedAt) : ''}
+              />
             {/each}
           </ol>
         </div>
@@ -1466,14 +1461,6 @@
       width: 100%;
       min-width: auto;
     }
-  }
-  /* 1위 번호 위치에 왕관 아이콘 표시 */
-  :global(.list-group-numbered > .list-group-item:first-child::before) {
-    content: '👑' !important;
-    background: transparent !important;
-    color: inherit !important;
-    font-size: 1.1rem;
-    line-height: 1;
   }
   /* iOS Safari 자동 줌 인 방지 (font-size 16px 이상 필요) */
   .bet-input {

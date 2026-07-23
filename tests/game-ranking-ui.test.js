@@ -9,6 +9,9 @@ const sudokuPage = readFileSync('src/routes/games/sudoku/+page.svelte', 'utf8');
 const billiardsPage = readFileSync('src/routes/games/billiards/+page.svelte', 'utf8');
 const tetrisPage = readFileSync('src/routes/games/tetris/+page.svelte', 'utf8');
 const breakoutPage = readFileSync('src/routes/games/breakout/+page.svelte', 'utf8');
+const seotdaPage = readFileSync('src/routes/games/seotda/+page.svelte', 'utf8');
+const ssamchiPage = readFileSync('src/routes/games/ssamchi/+page.svelte', 'utf8');
+const rankingRow = readFileSync('src/lib/components/GameRankingRow.svelte', 'utf8');
 
 describe('game ranking UI', () => {
   it('shows all-time rankings with relative score timestamps for 2048, watermelon, minesweeper, tetris, and breakout', () => {
@@ -31,7 +34,7 @@ describe('game ranking UI', () => {
     expect(billiardsPage).toContain("{ mode: BILLIARDS_MODES.FOUR_BALL, label: '4구' }");
     expect(billiardsPage).toContain("{ mode: BILLIARDS_MODES.POCKET_BALL, label: '포켓볼' }");
     expect(billiardsPage).toContain("{ mode: BILLIARDS_MODES.ART_PUZZLE, label: '예술구' }");
-    expect(billiardsPage).toContain("? `${value}점` : String(value)");
+    expect(billiardsPage).toContain('? `${value}점` : String(value)');
     expect(billiardsPage).not.toContain("params.set('target'");
   });
 
@@ -95,5 +98,29 @@ describe('game ranking UI', () => {
     expect(slotPage).toContain('balanceUpdatedAt');
     expect(slotPage).toContain('formatSlotUpdatedAt(balanceUpdatedAt)');
     expect(slotPage).toContain('formatSlotUpdatedAt(r.updatedAt)');
+  });
+
+  it('uses one calm ranking layout across every ranked game', () => {
+    for (const page of [
+      game2048Page,
+      watermelonPage,
+      minesweeperPage,
+      slotPage,
+      sudokuPage,
+      billiardsPage,
+      tetrisPage,
+      breakoutPage,
+      seotdaPage,
+      ssamchiPage
+    ]) {
+      expect(page).toContain("import GameRankingRow from '$lib/components/GameRankingRow.svelte';");
+      expect(page).toContain('<GameRankingRow');
+    }
+
+    expect(rankingRow).toContain("index === 0 ? '👑'");
+    expect(rankingRow).toContain("index === 0 ? '1위'");
+    expect(rankingRow).toContain('grid-template-columns: 2rem minmax(0, 1fr) auto');
+    expect(rankingRow).toContain('text-align: left');
+    expect(rankingRow).toContain('text-align: right');
   });
 });

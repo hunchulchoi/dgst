@@ -4,6 +4,7 @@
   import { ko } from 'date-fns/locale';
   import { swalFire } from '$lib/util/swal.js';
   import GameProfilePhoto from '$lib/components/GameProfilePhoto.svelte';
+  import GameRankingRow from '$lib/components/GameRankingRow.svelte';
   import { formatRelativeTime } from '$lib/util/formatRelativeTime.js';
   import { MIN_BET } from './ssamchiEngine.js';
 
@@ -694,21 +695,18 @@
             <span>내 구슬 <b>{formatNumber(balance)}개</b></span>
           </div>
         </div>
-        {#if rank.length}<div class="ranking ranking-horizontal">
-            {#each rank as row, index (row.email)}<div
-                class:me={row.email === data.session?.user?.email}
-              >
-                <span>{index + 1}</span>
-                <b class="rank-name">
-                  <GameProfilePhoto src={row.photo} name={row.nickname} />
-                  <span>{row.nickname}</span>
-                </b>
-                <div class="rank-score">
-                  <strong>{formatNumber(row.balance)}</strong>
-                  {#if row.updatedAt}<small>{formatSocialTime(row.updatedAt)}</small>{/if}
-                </div>
-              </div>{/each}
-          </div>{:else}<p class="empty">첫 순위의 주인공이 되어 보세요.</p>{/if}
+        {#if rank.length}<ol class="ranking ranking-horizontal">
+            {#each rank as row, index (row.email)}
+              <GameRankingRow
+                {index}
+                nickname={row.nickname}
+                photo={row.photo}
+                score={formatNumber(row.balance)}
+                meta={row.updatedAt ? formatSocialTime(row.updatedAt) : ''}
+                current={row.email === data.session?.user?.email}
+              />
+            {/each}
+          </ol>{:else}<p class="empty">첫 순위의 주인공이 되어 보세요.</p>{/if}
       </section>
     </aside>
   </div>
@@ -1200,52 +1198,13 @@
   }
   .ranking {
     margin-top: 0.7rem;
+    margin-bottom: 0;
+    padding: 0;
+    list-style: none;
   }
   .ranking-horizontal {
     display: grid;
     grid-template-columns: 1fr;
-  }
-  .ranking-horizontal > div {
-    width: 100%;
-  }
-  .ranking > div {
-    display: grid;
-    align-items: center;
-    grid-template-columns: 28px 1fr auto;
-    padding: 0.55rem 0.35rem;
-    border-bottom: 1px solid var(--bs-border-color);
-    font-size: 0.82rem;
-  }
-  .ranking > div.me {
-    border: 0;
-    border-radius: 0.5rem;
-    background: #ffc10725;
-  }
-  .ranking span {
-    color: var(--bs-secondary-color);
-    font-weight: 800;
-  }
-  .ranking strong {
-    color: #a14a1f;
-  }
-  .rank-name {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.45rem;
-    min-width: 0;
-  }
-  .rank-name > span {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .rank-score {
-    display: grid;
-    text-align: right;
-  }
-  .rank-score small {
-    color: var(--bs-secondary-color);
-    font-size: 0.66rem;
   }
   .empty {
     margin: 0.8rem 0 0;

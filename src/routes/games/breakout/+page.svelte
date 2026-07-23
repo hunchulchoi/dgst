@@ -4,7 +4,7 @@
   import { onMount, tick } from 'svelte';
   import { ko } from 'date-fns/locale';
   import { formatRelativeTime } from '$lib/util/formatRelativeTime.js';
-  import GameProfilePhoto from '$lib/components/GameProfilePhoto.svelte';
+  import GameRankingRow from '$lib/components/GameRankingRow.svelte';
   import type { PageData } from './$types';
   import {
     AIM_ANGLE_STEP,
@@ -2158,25 +2158,17 @@
             {:else if rankList.length === 0}
               <p class="text-muted small mb-0">아직 기록이 없습니다.</p>
             {:else}
-              <ol class="list-group list-group-numbered list-group-flush">
+              <ol class="list-group list-group-flush">
                 {#each rankList as r, i (r._id ?? `${r.nickname}:${r.score}:${i}`)}
-                  <li
-                    class="list-group-item d-flex justify-content-between align-items-center px-0"
-                  >
-                    <span class="d-flex align-items-center gap-2 min-w-0">
-                      <GameProfilePhoto src={r.photo} name={r.nickname} />
-                      <span>
-                        <strong>{r.nickname}</strong>
-                        <span class="text-muted small ms-1">
-                          S{r.stage ?? 0}
-                          {#if r.createdAt}
-                            · {formatRelativeTime(r.createdAt, { locale: ko })}
-                          {/if}
-                        </span>
-                      </span>
-                    </span>
-                    <span class="badge bg-primary rounded-pill">{formatScore(r.score)}</span>
-                  </li>
+                  <GameRankingRow
+                    index={i}
+                    nickname={r.nickname}
+                    photo={r.photo}
+                    score={formatScore(r.score)}
+                    meta={`S${r.stage ?? 0}${
+                      r.createdAt ? ` · ${formatRelativeTime(r.createdAt, { locale: ko })}` : ''
+                    }`}
+                  />
                 {/each}
               </ol>
             {/if}
