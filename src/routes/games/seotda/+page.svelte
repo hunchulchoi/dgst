@@ -209,7 +209,7 @@
   const CLASSIC_GUIDE = [
     { name: '암행어사', detail: '4 + 7 · 13/18광땡을 잡음' },
     { name: '땡잡이', detail: '3 + 7 · 삥땡~구땡을 잡음 (장땡 제외)' },
-    { name: '구사', detail: '4 + 9 · 최고패가 알리 이하면 팟 유지 재경기' }
+    { name: '멍텅구리 구사', detail: '4 + 9 · 최고패가 장땡 이하면 팟 유지 재경기' }
   ] as const;
 
   /** @type {ReturnType<typeof setTimeout>[]} */
@@ -794,7 +794,7 @@
           <p class="small text-muted mb-2">
             NPC 3명과 5판 승부. 마지막 판은 가장 많이 이긴 NPC와 보스전.
             {currentRuleMode === 'classic'
-              ? '암행어사·땡잡이·구사 적용.'
+              ? '암행어사·땡잡이·멍텅구리 구사 적용.'
               : '간단한 기본 족보만 적용.'}
           </p>
 
@@ -886,7 +886,7 @@
                     onclick={() => (selectedRuleMode = 'classic')}
                   >
                     <strong>정통방</strong>
-                    <span>암행어사 · 땡잡이 · 구사</span>
+                    <span>암행어사 · 땡잡이 · 멍텅구리 구사</span>
                   </button>
                 </div>
                 <button
@@ -1325,7 +1325,7 @@
                           onclick={() => (selectedRuleMode = 'classic')}
                         >
                           정통방
-                          <small>암행어사·땡잡이·구사</small>
+                          <small>암행어사·땡잡이·멍텅구리 구사</small>
                         </button>
                       </div>
                     </div>

@@ -778,7 +778,7 @@ export function showdown(round, rng = Math.random) {
   }
 
   if (outcome.type === 'replay') {
-    restartAfterTie(round, rng, '구사! 알리 이하 무효');
+    restartAfterTie(round, rng, '멍텅구리 구사! 장땡 이하 무효');
     return;
   }
 

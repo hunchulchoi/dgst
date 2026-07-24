@@ -72,21 +72,33 @@ describe('seotda classic special hands', () => {
     expect(escaped).toMatchObject({ winnerIds: ['ddaeng'], handName: '장땡' });
   });
 
-  it('replays on gusa when the best ordinary hand is alli or lower', () => {
-    const replay = resolveHandOutcome(
+  it('replays on mungtunguri gusa against jang-ddaeng or lower', () => {
+    const alliReplay = resolveHandOutcome(
       [hand('alli', [{ month: 1 }, { month: 2 }]), hand('gusa', [{ month: 4 }, { month: 9 }])],
       'classic'
     );
-    const noReplay = resolveHandOutcome(
+    const jangDdaengReplay = resolveHandOutcome(
       [
-        hand('ddaeng', [{ month: 2 }, { month: 2 }]),
+        hand('ddaeng', [{ month: 10 }, { month: 10 }]),
         hand('gusa', [{ month: 4 }, { month: 9 }])
       ],
       'classic'
     );
 
-    expect(replay).toMatchObject({ type: 'replay', handName: '구사' });
-    expect(noReplay).toMatchObject({ type: 'win', winnerIds: ['ddaeng'] });
+    const noReplay = resolveHandOutcome(
+      [
+        hand('gwang', [
+          { month: 1, gwang: true },
+          { month: 3, gwang: true }
+        ]),
+        hand('gusa', [{ month: 4 }, { month: 9 }])
+      ],
+      'classic'
+    );
+
+    expect(alliReplay).toMatchObject({ type: 'replay', handName: '멍텅구리 구사' });
+    expect(jangDdaengReplay).toMatchObject({ type: 'replay', handName: '멍텅구리 구사' });
+    expect(noReplay).toMatchObject({ type: 'win', winnerIds: ['gwang'], handName: '13광땡' });
   });
 
   it('shows special names only in the classic room', () => {
@@ -94,7 +106,12 @@ describe('seotda classic special hands', () => {
       { month: 4, gwang: false },
       { month: 7, gwang: false }
     ];
+    const mungtunguriGusa = [
+      { month: 4, gwang: false },
+      { month: 9, gwang: false }
+    ];
     expect(displayHand(cards, 'classic').name).toBe('암행어사');
     expect(displayHand(cards, 'basic').name).toBe('1끗');
+    expect(displayHand(mungtunguriGusa, 'classic').name).toBe('멍텅구리 구사');
   });
 });
