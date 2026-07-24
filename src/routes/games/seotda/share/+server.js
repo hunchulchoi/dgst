@@ -5,7 +5,7 @@ import { createArticle } from '$lib/server/board/articleRepo.js';
 import { bustBoardListCache } from '$lib/server/boardListLoad.js';
 import { sanitizeArticleContent } from '$lib/server/sanitizeArticleContent.js';
 import { embedSeotdaReplay } from '$lib/server/seotdaReplay.js';
-import { evaluateHand } from '../seotdaEngine.js';
+import { displayHand } from '../seotdaClassic.js';
 import { getRound } from '../seotdaState.js';
 
 const ALLOWED_BOARDS = new Set(['free', 'bug']);
@@ -128,7 +128,7 @@ function buildShareContent(round, note) {
         chips: Math.max(0, Number(seat.chips) || 0),
         folded: !!seat.folded,
         winner: winnerIds.includes(seat.id),
-        handName: revealCards ? evaluateHand(seat.cards).name : '비공개',
+        handName: revealCards ? displayHand(seat.cards, round.ruleMode).name : '비공개',
         cards: revealCards ? seat.cards : []
       };
     }),
@@ -183,7 +183,8 @@ export async function POST(event) {
 
   const boardId = ALLOWED_BOARDS.has(body?.boardId) ? body.boardId : 'free';
   const user = round.seats.find((seat) => seat.id === 'user');
-  const userHand = user?.cards?.length === 2 ? evaluateHand(user.cards).name : '결과';
+  const userHand =
+    user?.cards?.length === 2 ? displayHand(user.cards, round.ruleMode).name : '결과';
   const title = cleanText(body?.title, 80) || `[섯다] ${userHand}`;
   const note = cleanText(body?.note, 500, true);
   const content = buildShareContent(round, note);

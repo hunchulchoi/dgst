@@ -642,6 +642,49 @@ describe('seotdaRound smoke', () => {
     expect(result.after).not.toBe(1000);
     expect(result.payout).toBe(result.bet + result.delta);
   });
+
+  it('settles amhaengeosa as the winner in the classic room', () => {
+    const round = createNewRound(1000, () => 0.5);
+    round.ruleMode = 'classic';
+    const [user, inspector, ...others] = round.seats;
+    user.cards = [
+      { month: 1, gwang: true },
+      { month: 3, gwang: true }
+    ];
+    inspector.cards = [
+      { month: 4, gwang: false },
+      { month: 7, gwang: false }
+    ];
+    for (const seat of others) seat.folded = true;
+
+    showdown(round);
+
+    expect(round.phase).toBe('showdown');
+    expect(round.winnerId).toBe(inspector.id);
+    expect(round.log.at(-1)).toContain('암행어사');
+  });
+
+  it('keeps the pot and redeals when gusa activates in the classic room', () => {
+    const round = createNewRound(1000, () => 0.5);
+    round.ruleMode = 'classic';
+    const [user, gusa, ...others] = round.seats;
+    user.cards = [
+      { month: 1, gwang: false },
+      { month: 2, gwang: false }
+    ];
+    gusa.cards = [
+      { month: 4, gwang: false },
+      { month: 9, gwang: false }
+    ];
+    for (const seat of others) seat.folded = true;
+    const potBefore = round.pot;
+
+    showdown(round, () => 0.5);
+
+    expect(round.phase).toBe('betting');
+    expect(round.pot).toBe(potBefore);
+    expect(round.log.at(-1)).toContain('구사');
+  });
 });
 
 describe('seotdaNpc bluff', () => {

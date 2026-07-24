@@ -104,7 +104,7 @@ function pressureCallChance(commitRatio, strength, potOdds, bluffCatcher, profil
 /**
  * @param {import('./seotdaEngine.js').SeotdaCard[]} cards
  * @param {NpcProfile} profile
- * @param {{ toCall: number; chips: number; pot: number; raiseSeen: boolean; forcePressure?: boolean; bluffCatcher?: boolean; sparkIntervention?: boolean; suspectedUserBluff?: boolean; isOpening?: boolean; activeOpponents?: number; ante?: number; playerRelief?: number; sparkStyle?: string | null }} ctx
+ * @param {{ toCall: number; chips: number; pot: number; raiseSeen: boolean; forcePressure?: boolean; bluffCatcher?: boolean; sparkIntervention?: boolean; suspectedUserBluff?: boolean; isOpening?: boolean; activeOpponents?: number; ante?: number; playerRelief?: number; sparkStyle?: string | null; emotionAggression?: number; emotionRevenge?: boolean }} ctx
  * @param {() => number} [rng]
  * @returns {SeotdaAction}
  */
@@ -133,6 +133,7 @@ export function chooseNpcAction(cards, profile, ctx, rng = Math.random) {
   const commitRatio = toCall > 0 ? toCall / Math.max(chips, 1) : 0;
   const potOdds = toCall > 0 ? toCall / Math.max(1, pot + toCall) : 0;
   const lowBankrollFun = playerRelief >= 1.45 && !ctx.sparkIntervention;
+  const emotionAggression = Math.max(0, Math.min(3, Number(ctx.emotionAggression ?? 0)));
 
   // 10만 이하: 약패로 팟을 키우는 뻥카는 늘리고, 재압박에는 오래 버티지 않는다.
   if (lowBankrollFun) {
@@ -144,6 +145,20 @@ export function chooseNpcAction(cards, profile, ctx, rng = Math.random) {
         return rng() < 0.95 || !canFullCall ? 'die' : 'call';
       }
       if (strength < 0.65 && rng() < 0.78) return 'die';
+    }
+  }
+
+  // 이전 판 감정은 실제 행동에 반영한다. 복수심이 높을수록 선 레이즈와 재압박이 늘어난다.
+  if (emotionAggression > 0 && canRaise) {
+    const openingEmotionChance = 0.1 * emotionAggression + (ctx.emotionRevenge ? 0.04 : 0);
+    if (toCall === 0 && rng() < openingEmotionChance) return 'raise';
+    if (
+      ctx.emotionRevenge &&
+      raiseSeen &&
+      strength >= 0.48 &&
+      rng() < 0.08 * emotionAggression
+    ) {
+      return 'raise';
     }
   }
 

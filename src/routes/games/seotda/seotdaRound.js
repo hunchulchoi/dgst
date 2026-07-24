@@ -1,5 +1,6 @@
 import {
   ANTE,
+  MAX_ANTE,
   compareHands,
   createDeck,
   dynamicAnte,
@@ -20,6 +21,10 @@ import {
   pickPressureNpc,
   publicBluffSuspicionChance
 } from './seotdaNpc.js';
+import { emotionView } from './seotdaEmotion.js';
+import { displayHand, resolveHandOutcome } from './seotdaClassic.js';
+import { eventForSeries, roundRaiseLimit } from './seotdaEvent.js';
+import { createNpcTell } from './seotdaTell.js';
 
 export const NPC_MAX_REFILL = 5_000_000_000;
 export const NPC_MAX_USER_BALANCE_RATIO = 0.9;
@@ -179,6 +184,10 @@ function createRoundId() {
  * @param {string} [openingActorId] 직전 판 승자
  * @param {number} [sparkTauntCooldown] 도발 노출 남은 판 수
  * @param {{ active?: boolean; npcId?: string | null; taunt?: string | null; difficulty?: string; npcStyle?: string | null; directPlay?: boolean; reason?: string } | null} [sparkDecision]
+ * @param {Record<string, { heat: number; confidence: number }>} [npcEmotionMap]
+ * @param {{ handNo: number; isBoss: boolean; bossNpcId: string | null; anteMultiplier: number; completed: number; userWins: number; npcWins: number } | null} [seriesConfig]
+ * @param {'basic' | 'classic'} [ruleMode]
+ * @param {boolean} [eventMode]
  */
 export function createNewRound(
   userChips,
@@ -186,10 +195,24 @@ export function createNewRound(
   npcChipMap = {},
   openingActorId = 'user',
   sparkTauntCooldown = 0,
-  sparkDecision = null
+  sparkDecision = null,
+  npcEmotionMap = {},
+  seriesConfig = null,
+  ruleMode = 'basic',
+  eventMode = false
 ) {
-  const ante = dynamicAnte(userChips);
+  const event = eventForSeries(seriesConfig, eventMode);
+  const seriesAnteMultiplier = seriesConfig?.isBoss
+    ? Math.max(1, Number(seriesConfig.anteMultiplier) || 2)
+    : 1;
+  const anteMultiplier = seriesAnteMultiplier * (event?.anteMultiplier ?? 1);
+  const ante = Math.min(MAX_ANTE, dynamicAnte(userChips) * anteMultiplier);
   let deck = shuffleDeck(createDeck(), rng);
+  const requestedBossId = String(seriesConfig?.bossNpcId ?? '');
+  const bossProfile = NPC_PROFILES.find((profile) => profile.id === requestedBossId);
+  const activeProfiles = seriesConfig?.isBoss
+    ? [bossProfile ?? NPC_PROFILES[0]]
+    : NPC_PROFILES;
   /** @type {import('./seotdaState.js').SeotdaSeat[]} */
   const seats = [
     {
@@ -210,7 +233,7 @@ export function createNewRound(
 
   const log = /** @type {string[]} */ ([]);
 
-  for (const profile of NPC_PROFILES) {
+  for (const profile of activeProfiles) {
     const hasSavedStack = Object.prototype.hasOwnProperty.call(npcChipMap, profile.id);
     const prepared = npcStackForNextRound(
       hasSavedStack ? npcChipMap[profile.id] : null,
@@ -232,9 +255,15 @@ export function createNewRound(
       totalContrib: 0,
       lastAction: null,
       lastActionAmount: 0,
-      needsAction: true
+      needsAction: true,
+      emotion: emotionView(npcEmotionMap[profile.id])
     });
     deck = deck.slice(2);
+  }
+  if (seriesConfig?.isBoss) {
+    log.push(`최종 보스전! ${activeProfiles[0].name}와 1:1 · 판돈 2배`);
+  } else if (event) {
+    log.push(`연전 이벤트: ${event.name} · ${event.description}`);
   }
 
   let pot = 0;
@@ -253,9 +282,12 @@ export function createNewRound(
   }
   log.push(`판돈 ${ante}씩 (팟 ${pot})`);
 
-  const pressureNpcId = pickPressureNpc(NPC_PROFILES, rng);
+  const pressureNpcId = pickPressureNpc(activeProfiles, rng);
+  for (const seat of seats.filter((candidate) => candidate.isNpc)) {
+    seat.tell = createNpcTell(seat.cards, seat.style, seat.emotion, rng);
+  }
   const requestedSparkNpcId = String(sparkDecision?.npcId ?? '');
-  const sparkNpcId = NPC_PROFILES.some((profile) => profile.id === requestedSparkNpcId)
+  const sparkNpcId = activeProfiles.some((profile) => profile.id === requestedSparkNpcId)
     ? requestedSparkNpcId
     : null;
   const sparkIntervention = !!sparkDecision?.active && !!sparkNpcId;
@@ -306,6 +338,10 @@ export function createNewRound(
     winnerId: null,
     showdown: false,
     antePaid: ante,
+    series: seriesConfig,
+    ruleMode,
+    eventMode,
+    event,
     handHistory: []
   };
 }
@@ -392,7 +428,7 @@ export function applyPlayerAction(round, seatId, action, raisePay) {
     round.log.push(`${seat.name}: ${seat.lastAction} (${pay})`);
     markActed(round, seatId, false);
   } else if (action === 'raise') {
-    if ((round.raiseCount ?? 0) >= MAX_RAISES) {
+    if ((round.raiseCount ?? 0) >= roundRaiseLimit(round, MAX_RAISES)) {
       const pay = Math.min(toCall, contributionCapacity(round, seat));
       seat.chips -= pay;
       seat.contrib += pay;
@@ -448,7 +484,9 @@ export function applyNpcSeatAction(round, seat, rng = Math.random, sparkChoice =
   const toCall = Math.max(0, round.currentBet - seat.contrib);
   const raiseSeen = (round.raiseCount ?? 0) > 0;
   const forcePressure =
-    seat.id === round.pressureNpcId && !raiseSeen && (round.raiseCount ?? 0) < MAX_RAISES;
+    seat.id === round.pressureNpcId &&
+    !raiseSeen &&
+    (round.raiseCount ?? 0) < roundRaiseLimit(round, MAX_RAISES);
   const sparkAssigned = round.sparkIntervention && seat.id === round.sparkNpcId;
   const bluffSuspicion = sparkAssigned
     ? publicBluffSuspicionChance({
@@ -477,12 +515,14 @@ export function applyNpcSeatAction(round, seat, rng = Math.random, sparkChoice =
         isOpening: seat.id === round.openingActorId && !round.openingActionTaken,
         bluffCatcher: seat.id === round.pressureNpcId && raiseSeen,
         ante: round.antePaid,
-        activeOpponents: round.seats.filter((other) => other.id !== seat.id && !other.folded).length
+        activeOpponents: round.seats.filter((other) => other.id !== seat.id && !other.folded).length,
+        emotionAggression: Number(seat.emotion?.aggression ?? 0),
+        emotionRevenge: !!seat.emotion?.revenge
       },
       rng
     );
 
-  if (action === 'raise' && (round.raiseCount ?? 0) >= MAX_RAISES) {
+  if (action === 'raise' && (round.raiseCount ?? 0) >= roundRaiseLimit(round, MAX_RAISES)) {
     action = toCall > 0 ? 'call' : 'call';
   }
   if (action === 'raise' && contributionCapacity(round, seat) <= toCall) action = 'call';
@@ -720,33 +760,44 @@ export function showdown(round, rng = Math.random) {
 
   /** @type {{ seat: (typeof alive)[0]; hand: ReturnType<typeof evaluateHand> }[]} */
   const ranked = alive.map((seat) => ({ seat, hand: evaluateHand(seat.cards) }));
-  let bestHand = ranked[0].hand;
-  for (let i = 1; i < ranked.length; i++) {
-    if (compareHands(ranked[i].hand, bestHand) > 0) bestHand = ranked[i].hand;
-  }
-  const winners = ranked.filter((r) => compareHands(r.hand, bestHand) === 0);
-  const winnerIds = winners.map((w) => w.seat.id);
+  const outcome = resolveHandOutcome(
+    alive.map((seat) => ({ id: seat.id, cards: seat.cards })),
+    round.ruleMode
+  );
 
   // 유저 다이면 NPC 패/족보 로그에 안 남김
   if (!userFolded) {
     for (const r of ranked) {
-      round.log.push(`${r.seat.name}: ${r.seat.cards.map(cardLabel).join('·')} → ${r.hand.name}`);
+      round.log.push(
+        `${r.seat.name}: ${r.seat.cards.map(cardLabel).join('·')} → ${displayHand(r.seat.cards, round.ruleMode).name}`
+      );
     }
   }
 
+  if (outcome.type === 'replay') {
+    restartAfterTie(round, rng, '구사! 알리 이하 무효');
+    return;
+  }
+
+  const winnerIds = outcome.winnerIds;
+  const winners = winnerIds
+    .map((id) => ranked.find((entry) => entry.seat.id === id))
+    .filter(Boolean);
   if (winnerIds.length > 1) {
     restartAfterTie(round, rng);
     return;
   }
 
-  round.seats = settleShowdownPots(round.seats, round.pot);
+  round.seats = settleShowdownPots(round.seats, round.pot, round.ruleMode);
   round.pot = 0;
   round.winnerIds = winnerIds;
   round.winnerId = winnerIds.length === 1 ? winnerIds[0] : null;
   round.phase = 'showdown';
   round.showdown = true;
   round.log.push(
-    userFolded ? `${winners[0].seat.name} 승리` : `${winners[0].seat.name} 승리! ${bestHand.name}`
+    userFolded
+      ? `${winners[0].seat.name} 승리`
+      : `${winners[0].seat.name} 승리! ${outcome.handName}`
   );
   applyDdaengValueToRound(round, winnerIds[0]);
 }
@@ -775,7 +826,7 @@ function applyDdaengValueToRound(round, winnerId) {
  * @param {import('./seotdaState.js').SeotdaRound} round
  * @param {() => number} rng
  */
-function restartAfterTie(round, rng) {
+function restartAfterTie(round, rng, reason = '무승부') {
   let deck = shuffleDeck(createDeck(), rng);
   const active = round.seats.filter((seat) => !seat.folded);
 
@@ -814,15 +865,16 @@ function restartAfterTie(round, rng) {
   round.ddaengValuePerLoser = 0;
   round.ddaengTotalPaid = 0;
   round.showdown = false;
-  round.log.push(`무승부! 생존자 ${active.length}명 팟 유지 (${round.pot}) — 재경기`);
+  round.log.push(`${reason}! 생존자 ${active.length}명 팟 유지 (${round.pot}) — 재경기`);
 }
 
 /**
  * 기여액 층마다 승자를 다시 계산해 메인팟과 사이드팟을 정산한다.
  * @param {import('./seotdaState.js').SeotdaSeat[]} seats
  * @param {number} pot
+ * @param {'basic' | 'classic' | undefined} ruleMode
  */
-function settleShowdownPots(seats, pot) {
+function settleShowdownPots(seats, pot, ruleMode) {
   const next = seats.map((seat) => ({ ...seat }));
   const levels = [...new Set(next.map((seat) => seat.contrib).filter((amount) => amount > 0))].sort(
     (a, b) => a - b
@@ -839,12 +891,17 @@ function settleShowdownPots(seats, pot) {
       continue;
     }
 
-    let best = evaluateHand(contenders[0].cards);
-    for (let i = 1; i < contenders.length; i++) {
-      const hand = evaluateHand(contenders[i].cards);
-      if (compareHands(hand, best) > 0) best = hand;
+    let outcome = resolveHandOutcome(
+      contenders.map((seat) => ({ id: seat.id, cards: seat.cards })),
+      ruleMode
+    );
+    if (outcome.type === 'replay') {
+      outcome = resolveHandOutcome(
+        contenders.map((seat) => ({ id: seat.id, cards: seat.cards })),
+        'basic'
+      );
     }
-    const winners = contenders.filter((seat) => compareHands(evaluateHand(seat.cards), best) === 0);
+    const winners = contenders.filter((seat) => outcome.winnerIds.includes(seat.id));
     const share = Math.floor(layerPot / winners.length);
     let remainder = layerPot - share * winners.length;
     for (const winner of winners) {
@@ -859,12 +916,17 @@ function settleShowdownPots(seats, pot) {
   const carriedPot = pot - paid;
   const alive = next.filter((seat) => !seat.folded);
   if (carriedPot > 0 && alive.length > 0) {
-    let best = evaluateHand(alive[0].cards);
-    for (let i = 1; i < alive.length; i++) {
-      const hand = evaluateHand(alive[i].cards);
-      if (compareHands(hand, best) > 0) best = hand;
+    let outcome = resolveHandOutcome(
+      alive.map((seat) => ({ id: seat.id, cards: seat.cards })),
+      ruleMode
+    );
+    if (outcome.type === 'replay') {
+      outcome = resolveHandOutcome(
+        alive.map((seat) => ({ id: seat.id, cards: seat.cards })),
+        'basic'
+      );
     }
-    const winners = alive.filter((seat) => compareHands(evaluateHand(seat.cards), best) === 0);
+    const winners = alive.filter((seat) => outcome.winnerIds.includes(seat.id));
     const share = Math.floor(carriedPot / winners.length);
     let remainder = carriedPot - share * winners.length;
     for (const winner of winners) {
@@ -902,7 +964,7 @@ function recordHandSnapshot(round) {
       name: seat.name,
       folded: seat.folded,
       cards: seat.cards.map(cardLabel),
-      hand: evaluateHand(seat.cards).name
+      hand: displayHand(seat.cards, round.ruleMode).name
     }))
   });
 }

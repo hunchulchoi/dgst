@@ -58,12 +58,24 @@
     cards: SeotdaCard[];
     handName: string | null;
     revealDdaeng?: boolean;
+    emotion?: {
+      mood: string;
+      line: string;
+      revenge: boolean;
+      aggression: number;
+    } | null;
+    tell?: {
+      signal: 'strong' | 'neutral' | 'weak';
+      label: string;
+      text: string;
+    } | null;
   }
 
   interface SeotdaRound {
     phase: string;
     pot: number;
     currentBet: number;
+    raiseCount?: number;
     antePaid: number;
     openingActorId?: string;
     log: string[];
@@ -79,6 +91,24 @@
     userChipsBefore?: number | null;
     userChipsAfter?: number | null;
     userChipDelta?: number | null;
+    series?: {
+      handNo: number;
+      isBoss: boolean;
+      bossNpcId: string | null;
+      anteMultiplier: number;
+      completed: number;
+      userWins: number;
+      npcWins: number;
+    } | null;
+    ruleMode?: 'basic' | 'classic';
+    eventMode?: boolean;
+    event?: {
+      id: 'scout' | 'lightning' | 'high-roller' | 'frenzy';
+      name: string;
+      description: string;
+      anteMultiplier: number;
+      maxRaises: number;
+    } | null;
     seats: SeotdaSeat[];
   }
 
@@ -153,6 +183,10 @@
   let resultLayerDismissed = $state(false);
   let bustRoundPending = $state(false);
   let oopsRemainingMs = $state(Number(data.oopsInfo?.remainingMs ?? 0));
+  let selectedRuleMode = $state<'basic' | 'classic'>(
+    (data.round as SeotdaRound | null)?.ruleMode === 'classic' ? 'classic' : 'basic'
+  );
+  let eventMode = $state(!!(data.round as SeotdaRound | null)?.eventMode);
 
   const PEEL_THRESHOLD = 0.55;
   const PEEL_MAX_PX = 220;
@@ -168,6 +202,11 @@
     { name: '장사', detail: '4 + 10', rank: '특수' },
     { name: '세륙', detail: '4 + 6', rank: '특수' },
     { name: '갑오 ~ 망통', detail: '월 합 % 10 (9>…>0), 동점=무승부', rank: '끗' }
+  ] as const;
+  const CLASSIC_GUIDE = [
+    { name: '암행어사', detail: '4 + 7 · 13/18광땡을 잡음' },
+    { name: '땡잡이', detail: '3 + 7 · 삥땡~구땡을 잡음 (장땡 제외)' },
+    { name: '구사', detail: '4 + 9 · 최고패가 알리 이하면 팟 유지 재경기' }
   ] as const;
 
   /** @type {ReturnType<typeof setTimeout>[]} */
@@ -214,6 +253,11 @@
   const minRaise = $derived(minRaisePay(toCall, roundAnte));
   const maxRaise = $derived(round && userSeat ? contributionCapacity(round, userSeat) : 0);
   const isLoggedIn = $derived(!!data.session?.user?.email);
+  const isBossRound = $derived(!!round?.series?.isBoss);
+  const currentRuleMode = $derived(round?.ruleMode ?? selectedRuleMode);
+  const raiseLimitReached = $derived(
+    !!round?.event && Number(round.raiseCount ?? 0) >= round.event.maxRaises
+  );
 
   $effect(() => {
     if (!canAct) return;
@@ -601,7 +645,7 @@
   async function startRound() {
     dealing = true;
     try {
-      await post({ action: 'start' });
+      await post({ action: 'start', ruleMode: selectedRuleMode, eventMode });
     } finally {
       dealing = false;
     }
@@ -702,7 +746,16 @@
       <div class="card shadow rounded-4 border-0">
         <div class="card-body">
           <div class="d-flex justify-content-between align-items-center mb-3">
-            <h4 class="mb-0">섯다</h4>
+            <h4 class="mb-0">
+              섯다
+              <span
+                class="badge ms-1 align-middle"
+                class:text-bg-danger={currentRuleMode === 'classic'}
+                class:text-bg-secondary={currentRuleMode === 'basic'}
+              >
+                {currentRuleMode === 'classic' ? '정통방' : '기본방'}
+              </span>
+            </h4>
             <div class="text-end">
               <div>보유 점수: <strong>{formatNumber(balance)}</strong></div>
               {#if oopsInfo?.waiting}
@@ -712,7 +765,10 @@
           </div>
 
           <p class="small text-muted mb-2">
-            NPC 3명과 라이트 섯다. 다이 / 콜 / 레이즈. 특수족보(암행어사 등) 없음.
+            NPC 3명과 5판 승부. 마지막 판은 가장 많이 이긴 NPC와 보스전.
+            {currentRuleMode === 'classic'
+              ? '암행어사·땡잡이·구사 적용.'
+              : '간단한 기본 족보만 적용.'}
           </p>
 
           <div class="mb-3">
@@ -726,7 +782,9 @@
             </button>
             {#if guideOpen}
               <div class="guide-panel mt-2 rounded-3 border p-3">
-                <div class="small text-muted mb-2">위가 더 셈 · 라이트 규칙</div>
+                <div class="small text-muted mb-2">
+                  위가 더 셈 · {currentRuleMode === 'classic' ? '정통 규칙' : '라이트 규칙'}
+                </div>
                 <ol class="guide-list mb-0 ps-3">
                   {#each HAND_GUIDE as row, i (row.name)}
                     <li class="mb-1">
@@ -736,6 +794,17 @@
                     </li>
                   {/each}
                 </ol>
+                {#if currentRuleMode === 'classic'}
+                  <div class="classic-guide mt-3 pt-3 border-top">
+                    <div class="fw-semibold small mb-2">조건부 특수족보</div>
+                    {#each CLASSIC_GUIDE as row (row.name)}
+                      <div class="small mb-1">
+                        <span class="badge text-bg-danger me-1">{row.name}</span>
+                        <span class="text-muted">{row.detail}</span>
+                      </div>
+                    {/each}
+                  </div>
+                {/if}
               </div>
             {/if}
           </div>
@@ -771,6 +840,41 @@
             <div class="seotda-table seotda-table-idle rounded-4 p-3 mb-3">
               <div class="seotda-idle-content text-center">
                 <p class="mb-3">아귀 · 고니 · 정마담 이 기다림.</p>
+                <div class="room-selector mb-3" role="group" aria-label="섯다 규칙 선택">
+                  <button
+                    type="button"
+                    class="room-option"
+                    class:active={selectedRuleMode === 'basic'}
+                    aria-pressed={selectedRuleMode === 'basic'}
+                    onclick={() => (selectedRuleMode = 'basic')}
+                  >
+                    <strong>기본방</strong>
+                    <span>빠르고 간단하게</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="room-option classic"
+                    class:active={selectedRuleMode === 'classic'}
+                    aria-pressed={selectedRuleMode === 'classic'}
+                    onclick={() => (selectedRuleMode = 'classic')}
+                  >
+                    <strong>정통방</strong>
+                    <span>암행어사 · 땡잡이 · 구사</span>
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  class="event-toggle mb-3"
+                  class:active={eventMode}
+                  aria-pressed={eventMode}
+                  onclick={() => (eventMode = !eventMode)}
+                >
+                  <span aria-hidden="true">{eventMode ? '⚡' : '○'}</span>
+                  <span>
+                    <strong>연전 이벤트 {eventMode ? 'ON' : 'OFF'}</strong>
+                    <small>탐색전 → 번개판 → 큰판 → 광란판</small>
+                  </span>
+                </button>
                 <button
                   class="btn btn-primary btn-lg rounded-pill px-4"
                   disabled={busy || !!oopsInfo?.waiting || oopsRemainingMs > 0}
@@ -785,8 +889,30 @@
               </div>
             </div>
           {:else}
-            <div class="seotda-table rounded-4 p-3 mb-3">
-              <div class="npc-row mb-4">
+            <div
+              class="seotda-table rounded-4 p-3 mb-3"
+              class:boss-table={isBossRound}
+            >
+              {#if round.series}
+                <div class="series-board" class:boss={isBossRound}>
+                  <span class="series-hand">
+                    {isBossRound ? 'FINAL BOSS' : `5판 승부 ${round.series.handNo}/5`}
+                  </span>
+                  <strong>나 {round.series.userWins} : {round.series.npcWins} NPC</strong>
+                  {#if isBossRound}
+                    <span>1:1 · 판돈 ×{round.series.anteMultiplier}</span>
+                  {/if}
+                </div>
+              {/if}
+              {#if round.event}
+                <div class="event-board" class:high-roller={round.event.id === 'high-roller'}>
+                  <span aria-hidden="true">{round.event.id === 'high-roller' ? '🪙' : '⚡'}</span>
+                  <strong>{round.event.name}</strong>
+                  <span>{round.event.description}</span>
+                  <small>레이즈 {round.raiseCount ?? 0}/{round.event.maxRaises}</small>
+                </div>
+              {/if}
+              <div class="npc-row mb-4" class:boss={isBossRound}>
                 {#each npcs as npc (npc.id)}
                   <div
                     class="seat text-center"
@@ -796,11 +922,35 @@
                   >
                     <div class="fw-semibold">
                       {npc.name}
+                      {#if isBossRound && round.series?.bossNpcId === npc.id}
+                        <span class="badge text-bg-danger ms-1">BOSS</span>
+                      {/if}
                       {#if round.openingActorId === npc.id}<span class="badge text-bg-warning ms-1"
                           >선</span
                         >{/if}
                     </div>
                     <div class="small opacity-75">{formatNumber(npc.chips)}점</div>
+                    {#if npc.emotion}
+                      <div
+                        class="npc-mood"
+                        class:revenge={npc.emotion.revenge}
+                        title={npc.emotion.line}
+                      >
+                        {npc.emotion.revenge ? '🔥' : '●'} {npc.emotion.mood}
+                      </div>
+                      {#if npc.emotion.aggression > 0}
+                        <div class="npc-mood-line" role="status">“{npc.emotion.line}”</div>
+                      {/if}
+                    {/if}
+                    {#if npc.tell && !npc.folded && !isShowdown}
+                      <div class="npc-tell" class:strong={npc.tell.signal === 'strong'}>
+                        <span>{npc.tell.signal === 'strong' ? '👁' : npc.tell.signal === 'weak' ? '💧' : '◆'}</span>
+                        <span>
+                          <strong>{npc.tell.label}</strong>
+                          <small>“{npc.tell.text}”</small>
+                        </span>
+                      </div>
+                    {/if}
                     <div class="cards my-2">
                       {#each npc.cards as card, i (`${npc.id}-${i}`)}
                         {@const open = npcCardVisible(npc, card)}
@@ -974,10 +1124,12 @@
                     </button>
                     <button
                       class="btn btn-danger"
-                      disabled={busy || maxRaise < minRaise}
+                      disabled={busy || maxRaise < minRaise || raiseLimitReached}
                       onclick={() => act('raise')}
                     >
-                      레이즈 +{formatNumber(Math.min(raiseBet, maxRaise))}
+                      {raiseLimitReached
+                        ? '레이즈 마감'
+                        : `레이즈 +${formatNumber(Math.min(raiseBet, maxRaise))}`}
                     </button>
                   </div>
                 </div>
@@ -1082,10 +1234,13 @@
                 use:keepBelowSiteHeader
               >
                 <div class="result-action-layer">
-                  <span class="result-action-label">HAND COMPLETE</span>
+                  <span class="result-action-label">
+                    {isBossRound ? 'FINAL BOSS COMPLETE' : 'HAND COMPLETE'}
+                  </span>
                   <strong class:loss={!userWon && !isDraw} class="result-action-title">
                     {#if isDraw}무승부
-                    {:else if userWon}이겼다!
+                    {:else if userWon}{isBossRound ? '보스 격파!' : '이겼다!'}
+                    {:else if isBossRound}보스에게 패배…
                     {:else}졌다…{/if}
                   </strong>
                   <div class="result-action-hand">
@@ -1130,7 +1285,7 @@
                       </button>
                     {:else}
                       <button class="btn btn-warning fw-bold" disabled={busy} onclick={nextRound}>
-                        다음 판
+                        {isBossRound ? '새 연전' : '다음 판'}
                         <span aria-hidden="true">→</span>
                       </button>
                     {/if}
@@ -1257,11 +1412,126 @@
     min-height: clamp(320px, 48vh, 470px);
     place-items: center;
   }
+  .seotda-table.boss-table {
+    border-color: rgb(255 92 48 / 72%);
+    background:
+      radial-gradient(circle at 50% 34%, rgb(139 24 16 / 62%), transparent 48%),
+      repeating-linear-gradient(115deg, transparent 0 34px, rgb(255 255 255 / 2%) 34px 36px),
+      linear-gradient(160deg, #442018 0%, #180b08 100%);
+    box-shadow:
+      inset 0 0 75px rgb(0 0 0 / 42%),
+      0 0 1.4rem rgb(255 67 32 / 24%);
+  }
+  .series-board {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    width: fit-content;
+    max-width: 100%;
+    align-items: center;
+    gap: 0.65rem;
+    margin: 0 auto 1rem;
+    padding: 0.35rem 0.75rem;
+    border: 1px solid rgb(255 255 255 / 18%);
+    border-radius: 999px;
+    font-size: 0.75rem;
+    background: rgb(0 0 0 / 24%);
+  }
+  .series-board.boss {
+    color: #ffe2b8;
+    border-color: rgb(255 107 54 / 62%);
+    background: rgb(77 12 4 / 62%);
+  }
+  .series-hand {
+    color: #ffd75e;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+  }
   .seotda-idle-content {
     position: relative;
     z-index: 1;
     padding: 2rem 1rem;
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
+  }
+  .room-selector {
+    display: grid;
+    width: min(100%, 25rem);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.55rem;
+  }
+  .room-option {
+    display: grid;
+    gap: 0.12rem;
+    padding: 0.7rem 0.65rem;
+    border: 1px solid rgb(255 255 255 / 22%);
+    border-radius: 0.8rem;
+    color: rgb(255 255 255 / 76%);
+    background: rgb(0 0 0 / 18%);
+  }
+  .room-option span {
+    font-size: 0.7rem;
+    opacity: 0.78;
+  }
+  .room-option.active {
+    color: white;
+    border-color: #ffd75e;
+    background: rgb(91 70 0 / 44%);
+    box-shadow: 0 0 0 2px rgb(255 215 94 / 18%);
+  }
+  .room-option.classic.active {
+    border-color: #ff7c59;
+    background: rgb(104 24 10 / 58%);
+    box-shadow: 0 0 0 2px rgb(255 85 46 / 18%);
+  }
+  .event-toggle {
+    display: flex;
+    width: min(100%, 25rem);
+    align-items: center;
+    justify-content: center;
+    gap: 0.55rem;
+    padding: 0.58rem 0.75rem;
+    border: 1px solid rgb(255 255 255 / 18%);
+    border-radius: 999px;
+    color: rgb(255 255 255 / 68%);
+    background: rgb(0 0 0 / 18%);
+  }
+  .event-toggle > span:last-child {
+    display: grid;
+    text-align: left;
+  }
+  .event-toggle small {
+    font-size: 0.68rem;
+    opacity: 0.75;
+  }
+  .event-toggle.active {
+    color: #fff5c2;
+    border-color: #ffd75e;
+    background: rgb(109 74 0 / 52%);
+    box-shadow: 0 0 1rem rgb(255 215 94 / 16%);
+  }
+  .event-board {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    width: fit-content;
+    max-width: 100%;
+    align-items: center;
+    gap: 0.4rem;
+    margin: -0.4rem auto 1rem;
+    padding: 0.3rem 0.65rem;
+    border: 1px solid rgb(255 215 94 / 48%);
+    border-radius: 0.6rem;
+    color: #fff1a8;
+    font-size: 0.72rem;
+    background: rgb(86 56 0 / 55%);
+  }
+  .event-board.high-roller {
+    color: #ffe0ad;
+    border-color: rgb(255 137 62 / 58%);
+    background: rgb(116 45 4 / 62%);
+  }
+  .event-board small {
+    opacity: 0.72;
   }
   .npc-row {
     display: grid;
@@ -1271,6 +1541,11 @@
   }
   .npc-row .seat {
     min-width: 0;
+  }
+  .npc-row.boss {
+    width: min(100%, 14rem);
+    grid-template-columns: minmax(0, 1fr);
+    margin-inline: auto;
   }
   .npc-row .seat > .fw-semibold {
     min-height: 1.5rem;
@@ -1283,6 +1558,77 @@
     justify-content: center;
     flex-wrap: nowrap;
     gap: 0.25rem;
+  }
+
+  .npc-mood {
+    display: inline-block;
+    margin-top: 0.2rem;
+    padding: 0.1rem 0.45rem;
+    border: 1px solid rgb(255 255 255 / 22%);
+    border-radius: 999px;
+    font-size: 0.7rem;
+    color: rgb(255 255 255 / 72%);
+    background: rgb(0 0 0 / 16%);
+  }
+
+  .npc-mood.revenge {
+    color: #ffd7b0;
+    border-color: rgb(255 126 36 / 60%);
+    background: rgb(128 34 0 / 32%);
+    animation: revengePulse 1.6s ease-in-out infinite alternate;
+  }
+
+  .npc-mood-line {
+    width: fit-content;
+    max-width: 9rem;
+    margin: 0.25rem auto 0;
+    padding: 0.22rem 0.42rem;
+    border-radius: 0.45rem;
+    font-size: 0.68rem;
+    line-height: 1.25;
+    color: #fff4dc;
+    background: rgb(0 0 0 / 34%);
+  }
+  .npc-tell {
+    display: flex;
+    width: min(100%, 9.5rem);
+    align-items: center;
+    justify-content: center;
+    gap: 0.3rem;
+    margin: 0.3rem auto 0;
+    padding: 0.28rem 0.38rem;
+    border: 1px solid rgb(158 207 255 / 30%);
+    border-radius: 0.5rem;
+    color: #d6ebff;
+    background: rgb(3 24 42 / 42%);
+  }
+  .npc-tell.strong {
+    color: #ffe7a6;
+    border-color: rgb(255 208 82 / 42%);
+    background: rgb(75 49 0 / 42%);
+  }
+  .npc-tell > span:last-child {
+    display: grid;
+    min-width: 0;
+    text-align: left;
+  }
+  .npc-tell strong {
+    font-size: 0.66rem;
+    line-height: 1.1;
+  }
+  .npc-tell small {
+    overflow: hidden;
+    font-size: 0.6rem;
+    line-height: 1.25;
+    opacity: 0.78;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  @keyframes revengePulse {
+    to {
+      box-shadow: 0 0 0.7rem rgb(255 88 24 / 38%);
+    }
   }
   .npc-row .hwatu-flip {
     flex: 0 1 3.5rem;

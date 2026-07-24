@@ -1,7 +1,6 @@
 import { error, json } from '@sveltejs/kit';
 import { checkRateLimit } from '$lib/server/apiRateLimit.js';
 import { getGameSession, isLocalGameSmokeSession } from '$lib/server/localGameSmokeSession.js';
-import { evaluateHand } from './seotdaEngine.js';
 import {
   ensureSeotdaBalance,
   didSeotdaTakeLead,
@@ -25,8 +24,14 @@ import {
   setRound,
   toPublicState,
   getNpcStacks,
+  getNpcEmotions,
+  getSeotdaSeriesRoundConfig,
   saveNpcStacks,
-  resetNpcStacks
+  saveNpcEmotions,
+  saveSeotdaSeries,
+  resetNpcStacks,
+  resetNpcEmotions,
+  resetSeotdaSeries
 } from './seotdaState.js';
 import {
   applyPlayerAction,
@@ -39,6 +44,7 @@ import {
   userChipResult
 } from './seotdaRound.js';
 import { decideSparkIntervention, decideSparkNpcAction } from './seotdaSparkAppServer.js';
+import { displayHand, normalizeRuleMode } from './seotdaClassic.js';
 
 const SMOKE_BALANCE = 1000;
 
@@ -129,7 +135,7 @@ function refreshSparkDecisionInBackground(email, context, force = false) {
  * @param {import('./seotdaState.js').SeotdaRound} round
  */
 function publicOf(round) {
-  return toPublicState(round, 'user', evaluateHand);
+  return toPublicState(round, 'user', (cards) => displayHand(cards, round.ruleMode));
 }
 
 /**
@@ -217,7 +223,18 @@ export async function POST(event) {
       const sparkTauntCooldown = sparkTauntCooldownAfterRound(prev);
       if (prev) saveNpcStacks(user.email, prev);
       clearRound(user.email);
-      return json(await beginRound(user.email, user.nickname, openingActorId, sparkTauntCooldown));
+      const ruleMode = normalizeRuleMode(body?.ruleMode);
+      const eventMode = body?.eventMode === true;
+      return json(
+        await beginRound(
+          user.email,
+          user.nickname,
+          openingActorId,
+          sparkTauntCooldown,
+          ruleMode,
+          eventMode
+        )
+      );
     }
 
     if (action === 'act') {
@@ -325,9 +342,20 @@ export async function POST(event) {
       const sparkTauntCooldown = sparkTauntCooldownAfterRound(round);
       if (round && round.phase === 'showdown') {
         saveNpcStacks(user.email, round);
+        saveNpcEmotions(user.email, round);
+        saveSeotdaSeries(user.email, round);
         clearRound(user.email);
       }
-      return json(await beginRound(user.email, user.nickname, openingActorId, sparkTauntCooldown));
+      return json(
+        await beginRound(
+          user.email,
+          user.nickname,
+          openingActorId,
+          sparkTauntCooldown,
+          normalizeRuleMode(round.ruleMode),
+          !!round.eventMode
+        )
+      );
     }
 
     throw error(400, { message: 'action: start | act | ack' });
@@ -344,7 +372,14 @@ export async function POST(event) {
  * @param {string} [openingActorId]
  * @param {number} [sparkTauntCooldown]
  */
-async function beginRound(email, nickname, openingActorId = 'user', sparkTauntCooldown = 0) {
+async function beginRound(
+  email,
+  nickname,
+  openingActorId = 'user',
+  sparkTauntCooldown = 0,
+  ruleMode = 'basic',
+  eventMode = false
+) {
   let { balance } = await ensureSeotdaBalance(email, nickname);
   if (isSeotdaOopsBalance(balance)) {
     balance = (await resolveSeotdaOops(email, nickname, balance)).balance;
@@ -353,6 +388,8 @@ async function beginRound(email, nickname, openingActorId = 'user', sparkTauntCo
     throw error(400, { message: '보유 점수가 부족합니다. 오링 후 잠시 기다려 주세요.' });
   }
   const npcChips = getNpcStacks(email);
+  const npcEmotions = getNpcEmotions(email);
+  const seriesConfig = getSeotdaSeriesRoundConfig(email);
   const history = await getSeotdaSparkHistory(email);
   const sparkContext = {
     balance,
@@ -369,7 +406,11 @@ async function beginRound(email, nickname, openingActorId = 'user', sparkTauntCo
     npcChips,
     openingActorId,
     sparkTauntCooldown,
-    sparkDecision
+    sparkDecision,
+    npcEmotions,
+    seriesConfig,
+    ruleMode,
+    eventMode
   );
   round.sparkHistory = history;
   const npcActions = await runNpcTurnsWithSpark(round, decideSparkNpcAction);
@@ -390,7 +431,22 @@ function handleSmoke(email, action, body) {
     }
     clearRound(email);
     resetNpcStacks(email);
-    const round = createNewRound(SMOKE_BALANCE, Math.random, {});
+    resetNpcEmotions(email);
+    resetSeotdaSeries(email);
+    const ruleMode = normalizeRuleMode(body?.ruleMode);
+    const eventMode = body?.eventMode === true;
+    const round = createNewRound(
+      SMOKE_BALANCE,
+      Math.random,
+      {},
+      'user',
+      0,
+      null,
+      {},
+      getSeotdaSeriesRoundConfig(email),
+      ruleMode,
+      eventMode
+    );
     chipsBeforeMap.set(email, SMOKE_BALANCE);
     setRound(email, round);
     return json({
@@ -408,13 +464,20 @@ function handleSmoke(email, action, body) {
     const openingActorId = prev?.winnerId ?? 'user';
     const sparkTauntCooldown = sparkTauntCooldownAfterRound(prev);
     if (prev) saveNpcStacks(email, prev);
+    if (prev) saveNpcEmotions(email, prev);
+    if (prev) saveSeotdaSeries(email, prev);
     clearRound(email);
     const round = createNewRound(
       SMOKE_BALANCE,
       Math.random,
       getNpcStacks(email),
       openingActorId,
-      sparkTauntCooldown
+      sparkTauntCooldown,
+      null,
+      getNpcEmotions(email),
+      getSeotdaSeriesRoundConfig(email),
+      normalizeRuleMode(prev.ruleMode),
+      !!prev.eventMode
     );
     const npcActions = runNpcTurns(round);
     chipsBeforeMap.set(email, SMOKE_BALANCE);

@@ -1,3 +1,11 @@
+import { nextNpcEmotions } from './seotdaEmotion.js';
+import {
+  advanceSeries,
+  createSeries,
+  publicSeries,
+  seriesRoundConfig
+} from './seotdaSeries.js';
+
 /**
  * 진행 중 라운드 메모리 상태
  * @typedef {import('./seotdaEngine.js').SeotdaCard} SeotdaCard
@@ -14,6 +22,8 @@
  *   lastAction: string | null;
  *   lastActionAmount?: number;
  *   needsAction?: boolean;
+ *   emotion?: { mood: string; line: string; revenge: boolean; aggression: number };
+ *   tell?: { signal: 'strong' | 'neutral' | 'weak'; label: string; text: string };
  * }} SeotdaSeat
  * @typedef {{
  *   roundId?: string;
@@ -65,6 +75,24 @@
  *       hand: string;
  *     }>;
  *   }>;
+ *   series?: {
+ *     handNo: number;
+ *     isBoss: boolean;
+ *     bossNpcId: string | null;
+ *     anteMultiplier: number;
+ *     completed: number;
+ *     userWins: number;
+ *     npcWins: number;
+ *   } | null;
+ *   ruleMode?: 'basic' | 'classic';
+ *   eventMode?: boolean;
+ *   event?: {
+ *     id: 'scout' | 'lightning' | 'high-roller' | 'frenzy';
+ *     name: string;
+ *     description: string;
+ *     anteMultiplier: number;
+ *     maxRaises: number;
+ *   } | null;
  * }} SeotdaRound
  */
 
@@ -73,6 +101,10 @@ const rounds = new Map();
 
 /** 테이블별 NPC 칩 잔고 (판 넘어가도 유지) @type {Map<string, Record<string, number>>} */
 const npcStacks = new Map();
+/** 테이블별 NPC 감정 (판 넘어가도 유지) @type {Map<string, Record<string, { heat: number; confidence: number }>>} */
+const npcEmotions = new Map();
+/** 테이블별 5판 연전 상태 @type {Map<string, import('./seotdaSeries.js').SeotdaSeries>} */
+const seotdaSeries = new Map();
 
 /**
  * @param {string} email
@@ -112,7 +144,7 @@ export function getNpcStacks(email) {
  */
 export function saveNpcStacks(email, round) {
   /** @type {Record<string, number>} */
-  const stacks = {};
+  const stacks = { ...(npcStacks.get(email) ?? {}) };
   for (const s of round.seats) {
     if (s.isNpc) stacks[s.id] = Math.max(0, s.chips);
   }
@@ -125,6 +157,48 @@ export function saveNpcStacks(email, round) {
  */
 export function resetNpcStacks(email) {
   npcStacks.delete(email);
+}
+
+/** @param {string} email */
+export function getNpcEmotions(email) {
+  return { ...(npcEmotions.get(email) ?? {}) };
+}
+
+/**
+ * @param {string} email
+ * @param {SeotdaRound} round
+ */
+export function saveNpcEmotions(email, round) {
+  npcEmotions.set(email, nextNpcEmotions(getNpcEmotions(email), round));
+}
+
+/** @param {string} email */
+export function resetNpcEmotions(email) {
+  npcEmotions.delete(email);
+}
+
+/** @param {string} email */
+export function getSeotdaSeries(email) {
+  const current = seotdaSeries.get(email) ?? createSeries();
+  return { ...current, npcWins: { ...current.npcWins } };
+}
+
+/** @param {string} email */
+export function getSeotdaSeriesRoundConfig(email) {
+  return seriesRoundConfig(getSeotdaSeries(email));
+}
+
+/**
+ * @param {string} email
+ * @param {SeotdaRound} round
+ */
+export function saveSeotdaSeries(email, round) {
+  seotdaSeries.set(email, advanceSeries(getSeotdaSeries(email), round));
+}
+
+/** @param {string} email */
+export function resetSeotdaSeries(email) {
+  seotdaSeries.delete(email);
 }
 
 /**
@@ -159,6 +233,10 @@ export function toPublicState(round, userSeatId = 'user', evalHand) {
     userChipsBefore: round.userChipsBefore ?? null,
     userChipsAfter: round.userChipsAfter ?? null,
     userChipDelta: round.userChipDelta ?? null,
+    series: publicSeries(round),
+    ruleMode: round.ruleMode ?? 'basic',
+    eventMode: !!round.eventMode,
+    event: round.event ?? null,
     seats: round.seats.map((s) => {
       const isUser = s.id === userSeatId;
       const revealDdaeng = isShowdown && userFolded && s.isNpc && s.id === round.ddaengWinnerId;
@@ -183,6 +261,8 @@ export function toPublicState(round, userSeatId = 'user', evalHand) {
         lastAction: s.lastAction,
         lastActionAmount: s.lastActionAmount ?? 0,
         needsAction: !!s.needsAction,
+        emotion: s.emotion ?? null,
+        tell: s.tell ?? null,
         revealDdaeng,
         cards: reveal ? s.cards : s.cards.map(() => ({ month: 0, gwang: false, hidden: true })),
         handName
