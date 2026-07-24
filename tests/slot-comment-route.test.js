@@ -93,7 +93,8 @@ describe('slot comment route', () => {
     await expect(response.json()).resolves.toEqual({
       success: true,
       comment: { id: 'reply-1', content: 'reply body' },
-      rewardGiven: true
+      rewardGiven: true,
+      rewardBalance: 600
     });
     expect(response.status).toBe(200);
     expect(upsertArticle).toHaveBeenCalledWith({
@@ -123,5 +124,66 @@ describe('slot comment route', () => {
         newCommentId: 'reply-1'
       })
     );
+  });
+
+  it('rewards an automatic seotda game-result reply and returns the updated balance', async () => {
+    const createdComment = {
+      id: 'seotda-comment-1',
+      email: 'player@example.com',
+      nickname: '타짜',
+      photo: null,
+      boardId: 'seotda',
+      articleId: 'seotda',
+      depth: 1,
+      content: '한 판 더',
+      image: null,
+      state: 'write',
+      modifiedEmail: null,
+      createdAt: new Date('2026-07-24T00:00:00.000Z'),
+      updatedAt: new Date('2026-07-24T00:00:00.000Z'),
+      likes: []
+    };
+    const createScore = vi.fn().mockResolvedValue({});
+    prismaModule.getPrisma.mockReturnValue({
+      article: { upsert: vi.fn().mockResolvedValue({}) },
+      gameScore: {
+        count: vi.fn().mockResolvedValue(0),
+        findFirst: vi.fn().mockResolvedValue({ balance: 900 }),
+        create: createScore
+      }
+    });
+    commentRepo.createComment.mockResolvedValue(createdComment);
+    commentRepo.toCommentJson.mockReturnValue({ id: 'seotda-comment-1', content: '한 판 더' });
+
+    const formData = new FormData();
+    formData.set('content', '한 판 더');
+    formData.set('game', 'seotda');
+    formData.set('automatic', '1');
+
+    const { POST } = await import('../src/routes/games/slot/comment/+server.js');
+    const response = await POST({
+      locals: {
+        auth: vi.fn().mockResolvedValue({
+          user: { email: 'player@example.com', nickname: '타짜', photo: null }
+        })
+      },
+      request: { formData: vi.fn().mockResolvedValue(formData) }
+    });
+
+    await expect(response.json()).resolves.toMatchObject({
+      success: true,
+      rewardGiven: true,
+      rewardBalance: 1000
+    });
+    expect(createScore).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        email: 'player@example.com',
+        game: 'seotda',
+        balance: 1000,
+        payout: 100,
+        delta: 100,
+        reels: ['comment', 'seotda', '-']
+      })
+    });
   });
 });

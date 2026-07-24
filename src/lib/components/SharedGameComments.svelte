@@ -20,9 +20,15 @@
     loggedIn?: boolean;
     refreshToken?: number;
     game?: 'slot' | 'seotda';
+    onReward?: (reward: { amount: number; balance: number }) => void;
   }
 
-  let { loggedIn = false, refreshToken = 0, game = 'seotda' }: Props = $props();
+  let {
+    loggedIn = false,
+    refreshToken = 0,
+    game = 'seotda',
+    onReward
+  }: Props = $props();
   let comments = $state<GameComment[]>([]);
   let content = $state('');
   let replyContent = $state<Record<string, string>>({});
@@ -88,6 +94,10 @@
       }
       await loadComments(1);
       if (result.rewardGiven) {
+        const rewardBalance = Number(result.rewardBalance);
+        if (Number.isFinite(rewardBalance)) {
+          onReward?.({ amount: 100, balance: rewardBalance });
+        }
         await swalFire({
           icon: 'success',
           title: '💬 리플 보상 +100점',

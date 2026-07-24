@@ -59,6 +59,9 @@ import {
  *   userChipsBefore?: number;
  *   userChipsAfter?: number;
  *   userChipDelta?: number;
+ *   userGameDelta?: number;
+ *   gaepyeongAmount?: number;
+ *   gaepyeongLine?: string | null;
  *   raiseCount?: number;
  *   log: string[];
  *   winnerId: string | null;
@@ -233,6 +236,9 @@ export function toPublicState(round, userSeatId = 'user', evalHand) {
     userChipsBefore: round.userChipsBefore ?? null,
     userChipsAfter: round.userChipsAfter ?? null,
     userChipDelta: round.userChipDelta ?? null,
+    userGameDelta: round.userGameDelta ?? round.userChipDelta ?? null,
+    gaepyeongAmount: round.gaepyeongAmount ?? 0,
+    gaepyeongLine: round.gaepyeongLine ?? null,
     series: publicSeries(round),
     ruleMode: round.ruleMode ?? 'basic',
     eventMode: !!round.eventMode,

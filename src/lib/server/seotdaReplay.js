@@ -48,7 +48,26 @@ export function sanitizeSeotdaReplay(value) {
       folded: Boolean(seat.folded),
       winner: Boolean(seat.winner),
       handName: cleanText(seat.handName, 32),
-      cards
+      cards,
+      emotion:
+        seat.emotion && typeof seat.emotion === 'object'
+          ? {
+              mood: cleanText(seat.emotion.mood, 24),
+              line: cleanText(seat.emotion.line, 80),
+              revenge: Boolean(seat.emotion.revenge),
+              aggression: cleanNumber(seat.emotion.aggression, 0, 3)
+            }
+          : null,
+      tell:
+        seat.tell &&
+        typeof seat.tell === 'object' &&
+        ['strong', 'neutral', 'weak'].includes(String(seat.tell.signal))
+          ? {
+              signal: String(seat.tell.signal),
+              label: cleanText(seat.tell.label, 24),
+              text: cleanText(seat.tell.text, 80)
+            }
+          : null
     };
   });
   if (seats.some((seat) => seat === null)) return null;
@@ -64,6 +83,7 @@ export function sanitizeSeotdaReplay(value) {
       'taunt',
       'showdown',
       'ddaeng',
+      'gaepyeong',
       'result'
     ]);
     if (!allowedTypes.has(type)) return null;
@@ -82,15 +102,60 @@ export function sanitizeSeotdaReplay(value) {
     replay.ddaeng && typeof replay.ddaeng === 'object'
       ? /** @type {Record<string, unknown>} */ (replay.ddaeng)
       : null;
+  const rawSeries =
+    replay.series && typeof replay.series === 'object'
+      ? /** @type {Record<string, unknown>} */ (replay.series)
+      : null;
+  const rawEvent =
+    replay.event && typeof replay.event === 'object'
+      ? /** @type {Record<string, unknown>} */ (replay.event)
+      : null;
+  const rawGaepyeong =
+    replay.gaepyeong && typeof replay.gaepyeong === 'object'
+      ? /** @type {Record<string, unknown>} */ (replay.gaepyeong)
+      : null;
+  const bossNpcId = cleanText(rawSeries?.bossNpcId, 32) || null;
 
   return {
-    version: 1,
+    version: cleanNumber(replay.version, 1, 2) || 1,
     result: ['승리', '패배', '무승부'].includes(String(replay.result))
       ? String(replay.result)
       : '무승부',
+    ruleMode: replay.ruleMode === 'classic' ? 'classic' : 'basic',
     ante: cleanNumber(replay.ante, 0, 1_000_000_000_000),
     finalPot: cleanNumber(replay.finalPot, 0, 1_000_000_000_000),
     note: cleanText(replay.note, 500),
+    series: rawSeries
+      ? {
+          handNo: cleanNumber(rawSeries.handNo, 1, 5) || 1,
+          isBoss: Boolean(rawSeries.isBoss),
+          bossNpcId: bossNpcId && seatIds.has(bossNpcId) ? bossNpcId : null,
+          anteMultiplier: cleanNumber(rawSeries.anteMultiplier, 1, 10) || 1,
+          completed: cleanNumber(rawSeries.completed, 0, 5),
+          userWins: cleanNumber(rawSeries.userWins, 0, 5),
+          npcWins: cleanNumber(rawSeries.npcWins, 0, 5)
+        }
+      : null,
+    event:
+      rawEvent &&
+      ['scout', 'lightning', 'high-roller', 'frenzy'].includes(String(rawEvent.id))
+        ? {
+            id: String(rawEvent.id),
+            name: cleanText(rawEvent.name, 24),
+            description: cleanText(rawEvent.description, 80),
+            anteMultiplier: cleanNumber(rawEvent.anteMultiplier, 1, 10) || 1,
+            maxRaises: cleanNumber(rawEvent.maxRaises, 0, 10)
+          }
+        : null,
+    gaepyeong:
+      rawGaepyeong &&
+      Number.isFinite(Number(rawGaepyeong.amount)) &&
+      Number(rawGaepyeong.amount) >= 700
+        ? {
+            amount: cleanNumber(rawGaepyeong.amount, 700, 100_000),
+            line: cleanText(rawGaepyeong.line, 120)
+          }
+        : null,
     seats,
     events,
     ddaeng: rawDdaeng

@@ -31,6 +31,9 @@ export const NPC_MAX_USER_BALANCE_RATIO = 0.9;
 export const NPC_REFILL_THRESHOLD_ANTE_MULTIPLIER = 4;
 /** 한 판 레이즈 횟수 상한 — 무한 콜/레이즈 방지 */
 export const MAX_RAISES = 3;
+export const GAEPYEONG_RATE = 0.1;
+export const GAEPYEONG_MIN = 700;
+export const GAEPYEONG_MAX = 100_000;
 
 /** 판돈은 유지하고 NPC 의사결정만 완화하는 잔고 구간 계수. */
 export function npcPlayerRelief(userBalance) {
@@ -949,6 +952,43 @@ export function userChipResult(chipsBefore, round) {
   const bet = user?.totalContrib ?? user?.contrib ?? Math.max(0, -delta);
   const payout = Math.max(0, bet + delta);
   return { after, delta, bet, payout };
+}
+
+/**
+ * 플레이 불가 잔액이 된 패자에게 실제 손실의 10%를 개평으로 돌려준다.
+ * 승부 정산과 개평 기록을 분리할 수 있도록 둘 다 반환한다.
+ * @param {number} chipsBefore
+ * @param {import('./seotdaState.js').SeotdaRound} round
+ */
+export function applyGaepyeongIfOops(chipsBefore, round) {
+  const handResult = userChipResult(chipsBefore, round);
+  const loss = Math.max(0, -handResult.delta);
+  const calculated = Math.floor(loss * GAEPYEONG_RATE);
+  const amount =
+    handResult.after < ANTE && calculated >= GAEPYEONG_MIN
+      ? Math.min(GAEPYEONG_MAX, calculated)
+      : 0;
+
+  round.userGameDelta = handResult.delta;
+  round.gaepyeongAmount = amount;
+  round.gaepyeongLine = null;
+
+  if (amount > 0) {
+    const user = round.seats.find((seat) => seat.id === 'user');
+    if (user) user.chips += amount;
+    const giver =
+      round.seats.find((seat) => seat.id === round.winnerId && seat.isNpc) ??
+      round.seats.find((seat) => seat.isNpc && !seat.folded);
+    const line = `${giver?.name ?? '판주'}: “오링났네. 잃은 돈 10%, ${amount.toLocaleString('ko-KR')}점 개평 줄게.”`;
+    round.gaepyeongLine = line;
+    round.log.push(line);
+  }
+
+  const finalResult = userChipResult(chipsBefore, round);
+  round.userChipsBefore = chipsBefore;
+  round.userChipsAfter = finalResult.after;
+  round.userChipDelta = finalResult.delta;
+  return { handResult, finalResult, amount };
 }
 
 /**

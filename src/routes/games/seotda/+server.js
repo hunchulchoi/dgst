@@ -16,7 +16,8 @@ import {
   sparkDecisionCooldownMs,
   sparkInterventionHands,
   writeSeotdaLeaderPromotion,
-  writeSeotdaScore
+  writeSeotdaScore,
+  writeSeotdaSettlement
 } from './seotdaBalance.js';
 import {
   clearRound,
@@ -35,13 +36,13 @@ import {
 } from './seotdaState.js';
 import {
   applyPlayerAction,
+  applyGaepyeongIfOops,
   contributionCapacity,
   createNewRound,
   runNpcTurns,
   runNpcTurnsWithSpark,
   seotdaAuditLogEntries,
-  sparkTauntCooldownAfterRound,
-  userChipResult
+  sparkTauntCooldownAfterRound
 } from './seotdaRound.js';
 import { decideSparkIntervention, decideSparkNpcAction } from './seotdaSparkAppServer.js';
 import { displayHand, normalizeRuleMode } from './seotdaClassic.js';
@@ -290,38 +291,55 @@ export async function POST(event) {
 
       if (round.phase === 'showdown') {
         const before = chipsBeforeMap.get(user.email) ?? round.seats[0].chips;
-        const result = userChipResult(before, round);
-        round.userChipsBefore = before;
-        round.userChipsAfter = result.after;
-        round.userChipDelta = result.delta;
+        const { handResult, finalResult, amount: gaepyeongAmount } = applyGaepyeongIfOops(
+          before,
+          round
+        );
         const leaderBefore = await getSeotdaCurrentLeader();
         // 다른 사용자가 보유하던 1위를 이번 판으로 추월한 경우만 축하한다.
-        const tookLead = didSeotdaTakeLead(leaderBefore, user.email, result.after);
+        const tookLead = didSeotdaTakeLead(leaderBefore, user.email, finalResult.after);
         const outcome =
           (round.winnerIds?.length ?? 0) > 1 ? 'draw' : round.winnerId === 'user' ? 'win' : 'lose';
-        await writeSeotdaScore(user.email, user.nickname, result.after, {
-          bet: result.bet,
-          payout: result.payout,
-          delta: result.delta,
-          reels: [
-            outcome,
-            String(result.delta),
-            round.seats.find((s) => s.id === 'user')?.lastAction ?? '-',
-            tookLead ? 'lead' : '-',
-            round.userMaxRaiseUsed ? 'user:max-raise' : 'user:no-max-raise',
-            round.sparkIntervention ? 'spark:on' : 'spark:off',
-            `spark:difficulty:${round.sparkDifficulty ?? 'balanced'}`,
-            round.sparkDirectPlay ? 'spark:direct-play' : 'spark:policy-only',
-            ...seotdaAuditLogEntries(round)
-          ]
-        });
+        await writeSeotdaSettlement(
+          user.email,
+          user.nickname,
+          {
+            balance: handResult.after,
+            bet: handResult.bet,
+            payout: handResult.payout,
+            delta: handResult.delta,
+            reels: [
+              outcome,
+              String(handResult.delta),
+              round.seats.find((s) => s.id === 'user')?.lastAction ?? '-',
+              tookLead ? 'lead' : '-',
+              round.userMaxRaiseUsed ? 'user:max-raise' : 'user:no-max-raise',
+              round.sparkIntervention ? 'spark:on' : 'spark:off',
+              `spark:difficulty:${round.sparkDifficulty ?? 'balanced'}`,
+              round.sparkDirectPlay ? 'spark:direct-play' : 'spark:policy-only',
+              ...seotdaAuditLogEntries(round)
+            ]
+          },
+          gaepyeongAmount > 0
+            ? {
+                balance: finalResult.after,
+                amount: gaepyeongAmount,
+                loss: Math.abs(handResult.delta)
+              }
+            : null
+        );
         const leaderAfter = await getSeotdaCurrentLeader();
         if (didSeotdaPromoteLeader(leaderBefore, leaderAfter, user.email) && leaderAfter) {
           await writeSeotdaLeaderPromotion(leaderAfter);
         }
         chipsBeforeMap.delete(user.email);
         saveNpcStacks(user.email, round);
-        return json({ success: true, balance: result.after, round: publicOf(round), npcActions });
+        return json({
+          success: true,
+          balance: finalResult.after,
+          round: publicOf(round),
+          npcActions
+        });
       }
 
       return json({
@@ -346,13 +364,17 @@ export async function POST(event) {
         saveSeotdaSeries(user.email, round);
         clearRound(user.email);
       }
+      const nextRuleMode =
+        body?.ruleMode == null
+          ? normalizeRuleMode(round.ruleMode)
+          : normalizeRuleMode(body.ruleMode);
       return json(
         await beginRound(
           user.email,
           user.nickname,
           openingActorId,
           sparkTauntCooldown,
-          normalizeRuleMode(round.ruleMode),
+          nextRuleMode,
           !!round.eventMode
         )
       );
@@ -467,6 +489,10 @@ function handleSmoke(email, action, body) {
     if (prev) saveNpcEmotions(email, prev);
     if (prev) saveSeotdaSeries(email, prev);
     clearRound(email);
+    const nextRuleMode =
+      body?.ruleMode == null
+        ? normalizeRuleMode(prev.ruleMode)
+        : normalizeRuleMode(body.ruleMode);
     const round = createNewRound(
       SMOKE_BALANCE,
       Math.random,
@@ -476,7 +502,7 @@ function handleSmoke(email, action, body) {
       null,
       getNpcEmotions(email),
       getSeotdaSeriesRoundConfig(email),
-      normalizeRuleMode(prev.ruleMode),
+      nextRuleMode,
       !!prev.eventMode
     );
     const npcActions = runNpcTurns(round);
@@ -504,14 +530,11 @@ function handleSmoke(email, action, body) {
     );
     const npcActions = runNpcTurns(round);
     setRound(email, round);
-    const userChips = round.seats.find((s) => s.id === 'user')?.chips ?? 0;
     if (round.phase === 'showdown') {
       const before = chipsBeforeMap.get(email) ?? SMOKE_BALANCE;
-      const result = userChipResult(before, round);
-      round.userChipsBefore = before;
-      round.userChipsAfter = result.after;
-      round.userChipDelta = result.delta;
+      applyGaepyeongIfOops(before, round);
     }
+    const userChips = round.seats.find((s) => s.id === 'user')?.chips ?? 0;
     return json({ success: true, balance: userChips, round: publicOf(round), npcActions });
   }
   throw error(400, { message: 'action: start | act | ack' });

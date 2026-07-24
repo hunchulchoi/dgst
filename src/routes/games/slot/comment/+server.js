@@ -216,8 +216,6 @@ export async function POST(event) {
     const rewardGame =
       requestedGame === 'seotda' || requestedGame === 'ssamchi' ? requestedGame : 'slot';
     const gameArticle = getGameArticle(rewardGame);
-    const automatic = data.get('automatic')?.toString() === '1';
-
     if (!content || content.length === 0) {
       throw error(400, { message: '댓글 내용을 입력해주세요.' });
     }
@@ -326,7 +324,8 @@ export async function POST(event) {
 
     // 댓글 작성 보상: 100점 지급 (하루 10개까지만)
     let rewardGiven = false;
-    if (!automatic && todayRewardCount < 10) {
+    let rewardBalance = null;
+    if (todayRewardCount < 10) {
       if (rewardGame === 'seotda') {
         const newBalance = (await getSeotdaBalance(email)) + 100;
         await writeSeotdaScore(email, nickname, newBalance, {
@@ -335,6 +334,7 @@ export async function POST(event) {
           delta: 100,
           reels: ['comment', 'seotda', '-']
         });
+        rewardBalance = newBalance;
       } else if (rewardGame === 'ssamchi') {
         const current = await ensureSsamchiBalance(email, nickname);
         const newBalance = current.balance + 100;
@@ -343,6 +343,7 @@ export async function POST(event) {
           delta: 100,
           reels: ['comment', 'ssamchi', '-']
         });
+        rewardBalance = newBalance;
       } else {
         const lastScore = await prisma.gameScore.findFirst({
           where: { email },
@@ -363,6 +364,7 @@ export async function POST(event) {
           }
         });
         await updateSlotUserBalance(email, nickname, newBalance, { incSpin: false });
+        rewardBalance = newBalance;
       }
       rewardGiven = true;
     }
@@ -384,7 +386,12 @@ export async function POST(event) {
 
     // 일반 댓글인 경우: 알림을 보내지 않음 (대댓글만 알림)
 
-    return json({ success: true, comment: toCommentJson(comment), rewardGiven });
+    return json({
+      success: true,
+      comment: toCommentJson(comment),
+      rewardGiven,
+      rewardBalance
+    });
   } catch (err) {
     if (err && typeof err === 'object' && 'status' in err) throw err;
     console.error('댓글 저장 실패', err);

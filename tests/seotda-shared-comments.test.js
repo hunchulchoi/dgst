@@ -14,6 +14,9 @@ describe('seotda shared game comments', () => {
     expect(commentRoute).toContain("game: { in: ['slot', 'seotda', 'ssamchi'] }");
     expect(commentRoute).toContain('todayRewardCount < 10');
     expect(commentRoute).toContain('writeSeotdaScore(email, nickname, newBalance');
+    expect(commentRoute).toContain('rewardBalance = newBalance');
+    expect(sharedComments).toContain('onReward?.({ amount: 100, balance: rewardBalance })');
+    expect(seotdaPage).toContain('onReward={applyCommentReward}');
   });
 
   it('writes automatic shared replies for ddaeng and bust results', () => {
@@ -26,7 +29,9 @@ describe('seotda shared game comments', () => {
     expect(seotdaPage).toContain('😢 섯다 오링!');
     expect(seotdaPage).toContain("form.set('automatic', '1')");
     expect(seotdaPage).toContain("fetch('/games/slot/comment'");
-    expect(commentRoute).toContain('!automatic && todayRewardCount < 10');
+    expect(commentRoute).toContain('if (todayRewardCount < 10)');
+    expect(commentRoute).not.toContain('!automatic && todayRewardCount < 10');
+    expect(seotdaPage).toContain('applyCommentReward({ amount: 100, balance: rewardBalance })');
   });
 
   it('closes the hand-complete layer instead of starting a busted hand', () => {

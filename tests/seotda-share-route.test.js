@@ -28,6 +28,23 @@ function completedRound() {
     winnerId: 'user',
     winnerIds: ['user'],
     pot: 0,
+    ruleMode: 'classic',
+    series: {
+      handNo: 3,
+      isBoss: false,
+      bossNpcId: null,
+      anteMultiplier: 1,
+      completed: 2,
+      userWins: 1,
+      npcWins: 1
+    },
+    event: {
+      id: 'high-roller',
+      name: '큰판',
+      description: '기본 판돈 2배',
+      anteMultiplier: 2,
+      maxRaises: 3
+    },
     log: ['나: 레이즈 (100)', '아귀: 콜 (100)', '나 승리! 알리'],
     seats: [
       {
@@ -50,7 +67,18 @@ function completedRound() {
         cards: [
           { month: 3, gwang: false },
           { month: 4, gwang: false }
-        ]
+        ],
+        emotion: {
+          mood: '벼르는 중',
+          line: '아까 그 판, 잊지 않았다.',
+          revenge: true,
+          aggression: 2
+        },
+        tell: {
+          signal: 'strong',
+          label: '강한 기색',
+          text: '입꼬리가 슬쩍 올라간다.'
+        }
       }
     ]
   };
@@ -99,6 +127,11 @@ describe('seotda board share route', () => {
     expect(replayPlayerSource).toContain('class="speech-bubble"');
     expect(replayPlayerSource).toContain('@keyframes speechPop');
     expect(replayPlayerSource).toContain('Math.min(6000, Math.max(3200');
+    expect(replayPlayerSource).toContain("game.ruleMode === 'classic'");
+    expect(replayPlayerSource).toContain('game.series?.isBoss');
+    expect(replayPlayerSource).toContain('game.event.name');
+    expect(replayPlayerSource).toContain('seat.emotion');
+    expect(replayPlayerSource).toContain('seat.tell');
   });
 
   it('creates an article from the server-owned completed round', async () => {
@@ -121,11 +154,27 @@ describe('seotda board share route', () => {
     );
     const { content } = articleRepo.createArticle.mock.calls[0][0];
     const replay = extractSeotdaReplay(content);
-    expect(replay).toMatchObject({ result: '승리', note: '레이즈 성공!' });
+    expect(replay).toMatchObject({
+      version: 2,
+      result: '승리',
+      note: '레이즈 성공!',
+      ruleMode: 'classic',
+      series: { handNo: 3, completed: 3, userWins: 2, npcWins: 1 },
+      event: { id: 'high-roller', name: '큰판', anteMultiplier: 2 }
+    });
     expect(replay.seats).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ id: 'user', winner: true, handName: '알리' }),
-        expect.objectContaining({ id: 'npc_agwi', name: '아귀' })
+        expect.objectContaining({
+          id: 'npc_agwi',
+          name: '아귀',
+          emotion: expect.objectContaining({
+            mood: '벼르는 중',
+            revenge: true,
+            aggression: 2
+          }),
+          tell: expect.objectContaining({ signal: 'strong', label: '강한 기색' })
+        })
       ])
     );
     expect(replay.events.map((event) => event.type)).toEqual([
@@ -198,6 +247,32 @@ describe('seotda board share route', () => {
       valuePerLoser: 200,
       totalPaid: 200
     });
+  });
+
+  it('includes a paid gaepyeong in the shared replay', async () => {
+    const round = completedRound();
+    round.gaepyeongAmount = 700;
+    round.gaepyeongLine = '아귀: “오링났네. 잃은 돈 10%, 700점 개평 줄게.”';
+    round.log.push(round.gaepyeongLine);
+    state.getRound.mockReturnValue(round);
+    const { POST } = await import('../src/routes/games/seotda/share/+server.js');
+
+    await POST(makeEvent({ boardId: 'free' }));
+
+    const { content } = articleRepo.createArticle.mock.calls[0][0];
+    const replay = extractSeotdaReplay(content);
+    expect(replay.gaepyeong).toEqual({
+      amount: 700,
+      line: round.gaepyeongLine
+    });
+    expect(replay.events).toContainEqual(
+      expect.objectContaining({
+        type: 'gaepyeong',
+        amount: 700,
+        text: round.gaepyeongLine
+      })
+    );
+    expect(content).toContain('개평 +700점');
   });
 
   it('requires login', async () => {

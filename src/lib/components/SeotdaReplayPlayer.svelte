@@ -3,7 +3,7 @@
   import HwatuCardFace from '../../routes/games/seotda/HwatuCardFace.svelte';
 
   /** @typedef {{ type: string; seatId: string | null; text: string; amount: number; potAfter: number }} ReplayEvent */
-  /** @typedef {{ id: string; name: string; chips: number; folded: boolean; winner: boolean; handName: string; cards: Array<{ month: number; gwang: boolean }> }} ReplaySeat */
+  /** @typedef {{ id: string; name: string; chips: number; folded: boolean; winner: boolean; handName: string; cards: Array<{ month: number; gwang: boolean }>; emotion?: { mood: string; line: string; revenge: boolean; aggression: number } | null; tell?: { signal: 'strong' | 'neutral' | 'weak'; label: string; text: string } | null }} ReplaySeat */
   let { replay } = $props();
   const game = $derived(replay?.data ?? replay ?? null);
   const seats = $derived(Array.isArray(game?.seats) ? game.seats : []);
@@ -39,7 +39,12 @@
 
   /** @param {ReplayEvent | null | undefined} event */
   function eventDelay(event) {
-    if (event?.type === 'showdown' || event?.type === 'ddaeng' || event?.type === 'result') {
+    if (
+      event?.type === 'showdown' ||
+      event?.type === 'ddaeng' ||
+      event?.type === 'gaepyeong' ||
+      event?.type === 'result'
+    ) {
       return 1500;
     }
     if (event?.type === 'taunt') {
@@ -129,14 +134,34 @@
 </script>
 
 {#if game && seats.length >= 2 && events.length >= 2}
-  <section class="seotda-replay" aria-label="섯다 게임 리플레이">
+  <section
+    class:boss-replay={game.series?.isBoss}
+    class="seotda-replay"
+    aria-label="섯다 게임 리플레이"
+  >
     <header>
       <div>
         <span class="eyebrow">SEOTDA REPLAY</span>
-        <strong>섯다 한 판</strong>
+        <strong>{game.series?.isBoss ? '최종 보스전' : '섯다 한 판'}</strong>
       </div>
       <span class:loss={game.result === '패배'} class="result-chip">{game.result}</span>
     </header>
+
+    <div class="replay-meta">
+      <span class:classic={game.ruleMode === 'classic'}>
+        {game.ruleMode === 'classic' ? '정통방' : '기본방'}
+      </span>
+      {#if game.series}
+        <span class:boss={game.series.isBoss}>
+          {game.series.isBoss ? 'FINAL BOSS' : `5판 승부 ${game.series.handNo}/5`}
+        </span>
+        <small>나 {game.series.userWins} : {game.series.npcWins} NPC</small>
+      {/if}
+      {#if game.event}
+        <span class="event">⚡ {game.event.name}</span>
+        <small>{game.event.description}</small>
+      {/if}
+    </div>
 
     {#if game.note}
       <p class="replay-note">{game.note}</p>
@@ -154,9 +179,29 @@
             class="seat"
           >
             <div class="seat-heading">
-              <strong>{seat.name}</strong>
+              <strong>
+                {seat.name}
+                {#if game.series?.isBoss && game.series.bossNpcId === seat.id}
+                  <b class="boss-tag">BOSS</b>
+                {/if}
+              </strong>
               <span>{formatNumber(seat.chips)}점</span>
             </div>
+            {#if seat.id !== 'user'}
+              <div class="npc-state">
+                {#if seat.emotion}
+                  <span class:revenge={seat.emotion.revenge} title={seat.emotion.line}>
+                    {seat.emotion.revenge ? '🔥' : '●'} {seat.emotion.mood}
+                  </span>
+                {/if}
+                {#if seat.tell}
+                  <span class:strong={seat.tell.signal === 'strong'} title={seat.tell.text}>
+                    {seat.tell.signal === 'strong' ? '👁' : seat.tell.signal === 'weak' ? '💧' : '◆'}
+                    {seat.tell.label}
+                  </span>
+                {/if}
+              </div>
+            {/if}
             <div class="cards" aria-label={`${seat.name} 패`}>
               {#each [0, 1] as cardIndex}
                 {@const card = seat.cards?.[cardIndex]}
@@ -211,7 +256,11 @@
       {/if}
 
       {#key step}
-        <div class:taunt={currentEvent?.type === 'taunt'} class="action-bubble">
+        <div
+          class:taunt={currentEvent?.type === 'taunt'}
+          class:gaepyeong={currentEvent?.type === 'gaepyeong'}
+          class="action-bubble"
+        >
           <span>{step + 1} / {events.length}</span>
           <strong>{currentEvent?.text}</strong>
         </div>
@@ -239,6 +288,12 @@
               .join(', ')}</strong
           >
           <b>{game.result}</b>
+          {#if game.gaepyeong}
+            <div class="replay-gaepyeong">
+              🪙 개평 +{formatNumber(game.gaepyeong.amount)}점
+              <small>{game.gaepyeong.line}</small>
+            </div>
+          {/if}
         </div>
       {/if}
     </div>
@@ -273,6 +328,12 @@
     background: linear-gradient(145deg, #123f30, #071f19 72%);
     color: #f8f1d4;
     box-shadow: 0 18px 45px rgba(0, 0, 0, 0.3);
+  }
+
+  .seotda-replay.boss-replay {
+    border-color: #ff7048;
+    background: linear-gradient(145deg, #4a2018, #170907 72%);
+    box-shadow: 0 18px 48px rgba(126, 25, 7, 0.38);
   }
 
   header {
@@ -310,6 +371,49 @@
 
   .result-chip.loss {
     color: #ff9999;
+  }
+
+  .replay-meta {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 0.38rem;
+    padding: 0.45rem 0.7rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(0, 0, 0, 0.16);
+    font-size: 0.68rem;
+  }
+
+  .replay-meta span {
+    padding: 0.18rem 0.42rem;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 999px;
+    color: #e8eee9;
+    font-weight: 900;
+  }
+
+  .replay-meta span.classic {
+    color: #ffd7c7;
+    border-color: rgba(255, 112, 72, 0.5);
+    background: rgba(119, 27, 9, 0.45);
+  }
+
+  .replay-meta span.boss {
+    color: #ffe0ba;
+    border-color: rgba(255, 112, 72, 0.68);
+    background: rgba(119, 27, 9, 0.58);
+  }
+
+  .replay-meta span.event {
+    color: #fff0a8;
+    border-color: rgba(255, 215, 94, 0.5);
+    background: rgba(90, 61, 0, 0.48);
+  }
+
+  .replay-meta small {
+    color: #b7c9bf;
+    font-size: 0.64rem;
   }
 
   .replay-note {
@@ -394,9 +498,53 @@
     white-space: nowrap;
   }
 
+  .boss-tag {
+    display: inline-block;
+    margin-left: 0.2rem;
+    padding: 0.08rem 0.28rem;
+    border-radius: 999px;
+    background: #d93c27;
+    color: #fff4e9;
+    font-size: 0.52rem;
+    vertical-align: 0.08rem;
+  }
+
   .seat-heading span {
     color: #b7ccc1;
     white-space: nowrap;
+  }
+
+  .npc-state {
+    display: flex;
+    min-height: 1.1rem;
+    align-items: center;
+    justify-content: center;
+    gap: 0.2rem;
+    margin: -0.1rem 0 0.25rem;
+  }
+
+  .npc-state span {
+    overflow: hidden;
+    padding: 0.1rem 0.28rem;
+    border: 1px solid rgba(166, 211, 255, 0.26);
+    border-radius: 999px;
+    color: #d5eaff;
+    background: rgba(4, 27, 45, 0.42);
+    font-size: 0.54rem;
+    line-height: 1.2;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .npc-state span.revenge {
+    color: #ffd6b4;
+    border-color: rgba(255, 120, 47, 0.5);
+    background: rgba(103, 31, 0, 0.42);
+  }
+
+  .npc-state span.strong {
+    color: #ffe69b;
+    border-color: rgba(255, 215, 94, 0.42);
   }
 
   .cards {
@@ -627,6 +775,16 @@
     font-size: 0.95rem;
   }
 
+  .action-bubble.gaepyeong {
+    border-color: rgb(255 215 94 / 55%);
+    background: rgb(91 61 0 / 72%);
+  }
+
+  .action-bubble.gaepyeong strong {
+    color: #ffe88a;
+    font-size: 0.95rem;
+  }
+
   .chip-flight {
     position: absolute;
     z-index: 6;
@@ -702,6 +860,24 @@
   .winner-layer b {
     color: #fff;
     font-size: 1.05rem;
+  }
+
+  .replay-gaepyeong {
+    display: grid;
+    margin-top: 0.45rem;
+    padding: 0.35rem 0.55rem;
+    border: 1px solid rgba(255, 215, 94, 0.48);
+    border-radius: 0.55rem;
+    color: #ffe378;
+    background: rgba(104, 69, 0, 0.45);
+    font-size: 0.78rem;
+    font-weight: 900;
+  }
+
+  .replay-gaepyeong small {
+    color: #fff1bd;
+    font-size: 0.62rem;
+    font-weight: 700;
   }
 
   .timeline {

@@ -30,7 +30,7 @@ describe('seotda betting UI', () => {
   it('carries the previous winner into the next round as the opening actor', () => {
     expect(serverSource).toContain("const openingActorId = round?.winnerId ?? 'user'");
     expect(serverSource).toMatch(
-      /createNewRound\(\s*balance,\s*Math\.random,\s*npcChips,\s*openingActorId,\s*sparkTauntCooldown,\s*sparkDecision\s*\)/s
+      /createNewRound\(\s*balance,\s*Math\.random,\s*npcChips,\s*openingActorId,\s*sparkTauntCooldown,\s*sparkDecision,/s
     );
   });
 
@@ -107,8 +107,9 @@ describe('seotda betting UI', () => {
     expect(pageSource).toContain('inset: var(--result-safe-top, 0) 0 0');
     expect(pageSource).toContain('class="result-action-layer"');
     expect(pageSource).toContain('class="result-action-delta"');
-    expect(pageSource).toContain('+{formatNumber(userChipDelta)}점 땄다');
-    expect(pageSource).toContain('-{formatNumber(Math.abs(userChipDelta))}점 잃었다');
+    expect(pageSource).toContain('+{formatNumber(userGameDelta)}점 땄다');
+    expect(pageSource).toContain('-{formatNumber(Math.abs(userGameDelta))}점 잃었다');
+    expect(pageSource).toContain('🪙 개평 +{formatNumber(gaepyeongAmount)}점');
     expect(pageSource).toContain(
       '{formatNumber(userChipsBefore)}점 → {formatNumber(userChipsAfter)}점'
     );
@@ -116,6 +117,23 @@ describe('seotda betting UI', () => {
     expect(serverSource).toContain(
       "throw error(400, { message: '끝난 판에서 다음 판을 눌러야 새 패를 돌릴 수 있습니다.' })"
     );
-    expect(serverSource).toContain('round.userChipDelta = result.delta');
+    expect(serverSource).toContain('applyGaepyeongIfOops');
+    expect(serverSource).toContain('writeSeotdaSettlement');
+  });
+
+  it('lets the player switch rooms before starting the next hand', () => {
+    expect(pageSource).toContain('class="next-room-picker"');
+    expect(pageSource).toContain('다음 판 방 선택');
+    expect(pageSource).toContain("onclick={() => (selectedRuleMode = 'basic')}");
+    expect(pageSource).toContain("onclick={() => (selectedRuleMode = 'classic')}");
+    expect(pageSource).toContain("await post({ action: 'ack', ruleMode: selectedRuleMode })");
+    expect(pageSource).toContain(
+      "{selectedRuleMode === 'classic' ? '정통방' : '기본방'}"
+    );
+    expect(serverSource).toContain('body?.ruleMode == null');
+    expect(serverSource).toContain('normalizeRuleMode(round.ruleMode)');
+    expect(serverSource).toContain('normalizeRuleMode(body.ruleMode)');
+    expect(serverSource).toContain('normalizeRuleMode(prev.ruleMode)');
+    expect(serverSource).toContain('nextRuleMode,');
   });
 });

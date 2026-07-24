@@ -91,6 +91,9 @@
     userChipsBefore?: number | null;
     userChipsAfter?: number | null;
     userChipDelta?: number | null;
+    userGameDelta?: number | null;
+    gaepyeongAmount?: number;
+    gaepyeongLine?: string | null;
     series?: {
       handNo: number;
       isBoss: boolean;
@@ -242,6 +245,8 @@
   const isDraw = $derived(isShowdown && winnerIds.length > 1);
   const userWon = $derived(winnerIds.includes('user') && !isDraw);
   const userChipDelta = $derived(Number(round?.userChipDelta ?? 0));
+  const userGameDelta = $derived(Number(round?.userGameDelta ?? round?.userChipDelta ?? 0));
+  const gaepyeongAmount = $derived(Number(round?.gaepyeongAmount ?? 0));
   const userChipsBefore = $derived(Number(round?.userChipsBefore ?? 0));
   const userChipsAfter = $derived(Number(round?.userChipsAfter ?? userSeat?.chips ?? 0));
   const isBustResult = $derived(isShowdown && userChipsAfter < ANTE);
@@ -564,14 +569,32 @@
       form.set('game', 'seotda');
       form.set('automatic', '1');
       const response = await fetch('/games/slot/comment', { method: 'POST', body: form });
+      const result = await response.json().catch(() => ({}));
       if (!response.ok) {
-        const result = await response.json().catch(() => ({}));
         throw new Error(result?.message ?? `HTTP ${response.status}`);
+      }
+      if (result.rewardGiven) {
+        const rewardBalance = Number(result.rewardBalance);
+        if (Number.isFinite(rewardBalance)) {
+          applyCommentReward({ amount: 100, balance: rewardBalance });
+        }
       }
       commentRefreshToken += 1;
     } catch (error) {
       console.error('[seotda automatic comment]', error);
     }
+  }
+
+  function applyCommentReward(reward: { amount: number; balance: number }) {
+    if (!Number.isFinite(reward.balance)) return;
+    balance = reward.balance;
+    if (balance >= ANTE) {
+      oopsInfo = null;
+      oopsRemainingMs = 0;
+      clearOopsCountdown();
+      clearTopupRefreshTimer();
+    }
+    void refreshGameState();
   }
 
   function closeResultLayer() {
@@ -596,7 +619,11 @@
         `🃏 섯다 땡! ${nextRound.ddaengHandName ?? '땡'} · ${winner} 승 · 땡값 ${formatNumber(nextRound.ddaengValuePerLoser ?? 0)}점씩 (총 ${formatNumber(nextRound.ddaengTotalPaid ?? 0)}점) · 실제 수익 ${actualProfitText}점`
       );
     }
-    if (nextBalance < ANTE) {
+    if (Number(nextRound.gaepyeongAmount ?? 0) > 0) {
+      await writeAutomaticComment(
+        `🪙 섯다 오링 개평! ${formatNumber(Math.abs(Number(nextRound.userGameDelta ?? 0)))}점 잃고 ${formatNumber(nextRound.gaepyeongAmount)}점 돌려받음`
+      );
+    } else if (nextBalance < ANTE) {
       await writeAutomaticComment(
         `😢 섯다 오링! ${user?.handName ? `${user.handName} · ` : ''}${formatNumber(Math.abs(Number(nextRound.userChipDelta ?? 0)))}점 잃음`
       );
@@ -671,7 +698,7 @@
   async function nextRound() {
     dealing = true;
     try {
-      await post({ action: 'ack' });
+      await post({ action: 'ack', ruleMode: selectedRuleMode });
     } finally {
       dealing = false;
     }
@@ -1247,18 +1274,25 @@
                     {userSeat?.handName ?? (isDraw ? '무승부' : userWon ? '승리' : '패배')}
                   </div>
                   <div
-                    class:win={userChipDelta > 0}
-                    class:loss={userChipDelta < 0}
+                    class:win={userGameDelta > 0}
+                    class:loss={userGameDelta < 0}
                     class="result-action-delta"
                   >
-                    {#if userChipDelta > 0}
-                      +{formatNumber(userChipDelta)}점 땄다
-                    {:else if userChipDelta < 0}
-                      -{formatNumber(Math.abs(userChipDelta))}점 잃었다
+                    {#if userGameDelta > 0}
+                      +{formatNumber(userGameDelta)}점 땄다
+                    {:else if userGameDelta < 0}
+                      -{formatNumber(Math.abs(userGameDelta))}점 잃었다
                     {:else}
                       본전
                     {/if}
                   </div>
+                  {#if gaepyeongAmount > 0}
+                    <div class="gaepyeong-box" role="status">
+                      <span>🪙 개평 +{formatNumber(gaepyeongAmount)}점</span>
+                      <strong>{round.gaepyeongLine ?? '잃은 돈 10%는 개평으로 줄게.'}</strong>
+                      <small>700점 이상 지급 · 최대 100,000점</small>
+                    </div>
+                  {/if}
                   <div class="result-action-balance">
                     {formatNumber(userChipsBefore)}점 → {formatNumber(userChipsAfter)}점
                   </div>
@@ -1268,6 +1302,32 @@
                       role="status"
                     >
                       오링! 5분 뒤 700점이 리필됩니다.
+                    </div>
+                  {/if}
+                  {#if !isBustResult}
+                    <div class="next-room-picker" role="group" aria-label="다음 판 규칙 선택">
+                      <span>다음 판 방 선택</span>
+                      <div>
+                        <button
+                          type="button"
+                          class:active={selectedRuleMode === 'basic'}
+                          aria-pressed={selectedRuleMode === 'basic'}
+                          onclick={() => (selectedRuleMode = 'basic')}
+                        >
+                          기본방
+                          <small>빠른 기본 족보</small>
+                        </button>
+                        <button
+                          type="button"
+                          class:active={selectedRuleMode === 'classic'}
+                          class:classic={selectedRuleMode === 'classic'}
+                          aria-pressed={selectedRuleMode === 'classic'}
+                          onclick={() => (selectedRuleMode = 'classic')}
+                        >
+                          정통방
+                          <small>암행어사·땡잡이·구사</small>
+                        </button>
+                      </div>
                     </div>
                   {/if}
                   <div class="result-action-buttons">
@@ -1285,7 +1345,8 @@
                       </button>
                     {:else}
                       <button class="btn btn-warning fw-bold" disabled={busy} onclick={nextRound}>
-                        {isBossRound ? '새 연전' : '다음 판'}
+                        {isBossRound ? '새 연전' : '다음 판'} ·
+                        {selectedRuleMode === 'classic' ? '정통방' : '기본방'}
                         <span aria-hidden="true">→</span>
                       </button>
                     {/if}
@@ -1386,7 +1447,12 @@
   </div>
   <div class="row g-3">
     <div class="col-lg-8">
-      <SharedGameComments loggedIn={isLoggedIn} refreshToken={commentRefreshToken} game="seotda" />
+      <SharedGameComments
+        loggedIn={isLoggedIn}
+        refreshToken={commentRefreshToken}
+        game="seotda"
+        onReward={applyCommentReward}
+      />
     </div>
   </div>
 </div>
@@ -1686,7 +1752,8 @@
     justify-items: center;
     width: min(100%, 23rem);
     padding: 1.4rem;
-    overflow: hidden;
+    max-height: calc(100% - 1rem);
+    overflow-y: auto;
     border: 2px solid #d8b24c;
     border-radius: 1.25rem;
     background:
@@ -1740,6 +1807,77 @@
     color: #aebfb6;
     font-size: 0.78rem;
     font-weight: 700;
+  }
+  .gaepyeong-box {
+    display: grid;
+    justify-items: center;
+    width: 100%;
+    margin-top: 0.8rem;
+    padding: 0.7rem;
+    border: 1px solid rgb(255 215 94 / 55%);
+    border-radius: 0.8rem;
+    color: #fff2b5;
+    background: rgb(91 61 0 / 40%);
+    box-shadow: 0 0 1rem rgb(255 215 94 / 12%);
+  }
+  .gaepyeong-box span {
+    color: #ffd75e;
+    font-size: 1.05rem;
+    font-weight: 900;
+  }
+  .gaepyeong-box strong {
+    margin-top: 0.15rem;
+    font-size: 0.76rem;
+  }
+  .gaepyeong-box small {
+    margin-top: 0.1rem;
+    font-size: 0.65rem;
+    opacity: 0.68;
+  }
+  .next-room-picker {
+    display: grid;
+    width: 100%;
+    gap: 0.35rem;
+    margin-top: 0.85rem;
+  }
+  .next-room-picker > span {
+    color: #c8d5ce;
+    font-size: 0.7rem;
+    font-weight: 800;
+  }
+  .next-room-picker > div {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.45rem;
+  }
+  .next-room-picker button {
+    display: grid;
+    gap: 0.08rem;
+    padding: 0.55rem 0.4rem;
+    border: 1px solid rgb(255 255 255 / 18%);
+    border-radius: 0.7rem;
+    color: #d9e1dc;
+    background: rgb(255 255 255 / 5%);
+    font: inherit;
+    font-size: 0.78rem;
+    font-weight: 900;
+  }
+  .next-room-picker button small {
+    font-size: 0.6rem;
+    font-weight: 600;
+    opacity: 0.72;
+  }
+  .next-room-picker button.active {
+    color: #fff3b1;
+    border-color: #ffd75e;
+    background: rgb(101 70 0 / 45%);
+    box-shadow: 0 0 0 2px rgb(255 215 94 / 12%);
+  }
+  .next-room-picker button.classic {
+    color: #ffe0d5;
+    border-color: #ff7955;
+    background: rgb(112 27 9 / 48%);
+    box-shadow: 0 0 0 2px rgb(255 99 59 / 12%);
   }
   .result-action-buttons {
     display: grid;

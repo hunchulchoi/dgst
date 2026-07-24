@@ -5,6 +5,7 @@ import {
   createNewRound,
   ddaengValue,
   applyNpcSeatAction,
+  applyGaepyeongIfOops,
   applyPlayerAction,
   contributionCapacity,
   finishIfNeeded,
@@ -31,6 +32,46 @@ import {
 } from './seotdaNpc.js';
 
 describe('seotdaRound smoke', () => {
+  it('returns 10% gaepyeong immediately after going bust', () => {
+    const round = createNewRound(7000, () => 0.5);
+    const user = round.seats.find((seat) => seat.id === 'user')!;
+    user.chips = 0;
+    round.winnerId = 'npc_agwi';
+    round.winnerIds = ['npc_agwi'];
+
+    const settlement = applyGaepyeongIfOops(7000, round);
+
+    expect(settlement).toMatchObject({
+      handResult: { after: 0, delta: -7000 },
+      finalResult: { after: 700, delta: -6300 },
+      amount: 700
+    });
+    expect(user.chips).toBe(700);
+    expect(round.gaepyeongLine).toContain('잃은 돈 10%, 700점 개평 줄게');
+  });
+
+  it('does not pay when 10% gaepyeong is below 700 points', () => {
+    const round = createNewRound(6990, () => 0.5);
+    round.seats.find((seat) => seat.id === 'user')!.chips = 0;
+
+    expect(applyGaepyeongIfOops(6990, round).amount).toBe(0);
+  });
+
+  it('caps gaepyeong at 100,000 points', () => {
+    const round = createNewRound(2_000_000, () => 0.5);
+    round.seats.find((seat) => seat.id === 'user')!.chips = 0;
+    round.winnerId = 'npc_goni';
+
+    expect(applyGaepyeongIfOops(2_000_000, round).amount).toBe(100_000);
+  });
+
+  it('does not pay gaepyeong while the player can still afford the ante', () => {
+    const round = createNewRound(1000, () => 0.5);
+    round.seats.find((seat) => seat.id === 'user')!.chips = 10;
+
+    expect(applyGaepyeongIfOops(1000, round).amount).toBe(0);
+  });
+
   it('applies stronger NPC relief below 100k while keeping relief above it modest', () => {
     expect(npcPlayerRelief(42_454)).toBe(1.5);
     expect(npcPlayerRelief(99_999)).toBe(1.5);

@@ -1,17 +1,18 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { gameScore } = vi.hoisted(() => ({
+const { gameScore, transaction } = vi.hoisted(() => ({
   gameScore: {
     findFirst: vi.fn(),
     create: vi.fn()
-  }
+  },
+  transaction: vi.fn()
 }));
 
 vi.mock('$lib/database/prisma.js', () => ({
-  getPrisma: () => ({ gameScore })
+  getPrisma: () => ({ gameScore, $transaction: transaction })
 }));
 
-import { resolveSeotdaOops } from './seotdaBalance.js';
+import { resolveSeotdaOops, writeSeotdaSettlement } from './seotdaBalance.js';
 
 describe('resolveSeotdaOops', () => {
   const oopsAt = new Date('2026-07-14T00:00:00.000Z');
@@ -20,6 +21,7 @@ describe('resolveSeotdaOops', () => {
     vi.useFakeTimers();
     gameScore.findFirst.mockReset();
     gameScore.create.mockReset();
+    transaction.mockReset();
   });
 
   afterEach(() => vi.useRealTimers());
@@ -74,5 +76,36 @@ describe('resolveSeotdaOops', () => {
       })
     );
     expect(gameScore.findFirst.mock.calls[0][0].where).not.toHaveProperty('bet');
+  });
+
+  it('writes the busted hand and eligible gaepyeong atomically', async () => {
+    gameScore.create.mockResolvedValue({});
+    transaction.mockResolvedValue([{}, {}]);
+
+    await writeSeotdaSettlement(
+      'user@example.com',
+      'user',
+      {
+        balance: 0,
+        bet: 7000,
+        payout: 0,
+        delta: -7000,
+        reels: ['lose', '-7000', '올인']
+      },
+      { balance: 700, amount: 700, loss: 7000 }
+    );
+
+    expect(transaction).toHaveBeenCalledTimes(1);
+    expect(gameScore.create).toHaveBeenCalledTimes(2);
+    expect(gameScore.create.mock.calls[1][0].data).toMatchObject({
+      balance: 700,
+      bet: 0,
+      payout: 700,
+      delta: 700,
+      reels: ['gaepyeong', '700', 'loss:7000']
+    });
+    expect(gameScore.create.mock.calls[1][0].data.createdAt.getTime()).toBeGreaterThan(
+      gameScore.create.mock.calls[0][0].data.createdAt.getTime()
+    );
   });
 });

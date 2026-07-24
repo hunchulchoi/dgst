@@ -7,6 +7,7 @@ import { sanitizeArticleContent } from '$lib/server/sanitizeArticleContent.js';
 import { embedSeotdaReplay } from '$lib/server/seotdaReplay.js';
 import { displayHand } from '../seotdaClassic.js';
 import { getRound } from '../seotdaState.js';
+import { publicSeries } from '../seotdaSeries.js';
 
 const ALLOWED_BOARDS = new Set(['free', 'bug']);
 const MAX_BODY_BYTES = 8 * 1024;
@@ -36,6 +37,7 @@ function buildShareContent(round, note) {
   const userFolded = !!user?.folded;
   const ddaengValuePerLoser = Math.max(0, Number(round.ddaengValuePerLoser) || 0);
   const ddaengTotalPaid = Math.max(0, Number(round.ddaengTotalPaid) || 0);
+  const gaepyeongAmount = Math.max(0, Number(round.gaepyeongAmount) || 0);
   const initialPot = Math.max(0, Number(round.antePaid) || 0) * round.seats.length;
   let runningPot = initialPot;
   /** @type {Array<{ type: string; seatId: string | null; text: string; amount: number; potAfter: number }>} */
@@ -58,7 +60,9 @@ function buildShareContent(round, note) {
     );
     const amountMatch = entry.match(/\(([\d,]+)\)/);
     const amount = amountMatch ? Number(amountMatch[1].replaceAll(',', '')) || 0 : 0;
-    const type = entry.includes('땡값')
+    const type = entry.includes('개평')
+      ? 'gaepyeong'
+      : entry.includes('땡값')
       ? 'ddaeng'
       : entry.includes('→')
         ? 'showdown'
@@ -68,7 +72,13 @@ function buildShareContent(round, note) {
             ? 'taunt'
             : 'action';
     if (type === 'action' && /콜|레이즈|올인/.test(entry)) runningPot += amount;
-    events.push({ type, seatId: seat?.id ?? null, text: entry, amount, potAfter: runningPot });
+    events.push({
+      type,
+      seatId: seat?.id ?? null,
+      text: entry,
+      amount: type === 'gaepyeong' ? gaepyeongAmount : amount,
+      potAfter: runningPot
+    });
   }
 
   const loggedResult = events.find((event) => event.type === 'result') ?? null;
@@ -93,6 +103,15 @@ function buildShareContent(round, note) {
       potAfter: runningPot
     });
   }
+  if (gaepyeongAmount && !events.some((event) => event.type === 'gaepyeong')) {
+    events.push({
+      type: 'gaepyeong',
+      seatId: null,
+      text: round.gaepyeongLine ?? `개평 +${gaepyeongAmount.toLocaleString('ko-KR')}점`,
+      amount: gaepyeongAmount,
+      potAfter: runningPot
+    });
+  }
   if (loggedResult) {
     events.push(loggedResult);
   } else {
@@ -114,11 +133,21 @@ function buildShareContent(round, note) {
     0
   );
   const replay = {
-    version: 1,
+    version: 2,
     result,
+    ruleMode: round.ruleMode ?? 'basic',
     ante: Math.max(0, Number(round.antePaid) || 0),
     finalPot: Math.max(runningPot, totalContributed),
     note,
+    series: publicSeries(round),
+    event: round.event ?? null,
+    gaepyeong:
+      Number(round.gaepyeongAmount ?? 0) > 0
+        ? {
+            amount: Number(round.gaepyeongAmount),
+            line: round.gaepyeongLine ?? '잃은 돈 10%는 개평으로 줄게.'
+          }
+        : null,
     seats: round.seats.map((seat) => {
       const revealDdaengWinner = userFolded && seat.isNpc && seat.id === round.ddaengWinnerId;
       const revealCards = !seat.isNpc || !userFolded || revealDdaengWinner;
@@ -129,7 +158,9 @@ function buildShareContent(round, note) {
         folded: !!seat.folded,
         winner: winnerIds.includes(seat.id),
         handName: revealCards ? displayHand(seat.cards, round.ruleMode).name : '비공개',
-        cards: revealCards ? seat.cards : []
+        cards: revealCards ? seat.cards : [],
+        emotion: seat.emotion ?? null,
+        tell: seat.tell ?? null
       };
     }),
     events,
@@ -143,8 +174,11 @@ function buildShareContent(round, note) {
       : null
   };
 
+  const gaepyeongSummary = gaepyeongAmount
+    ? `<p>🪙 개평 +${gaepyeongAmount.toLocaleString('ko-KR')}점</p>`
+    : '';
   return sanitizeArticleContent(
-    `<p>섯다 한 판 리플레이를 공유했습니다.</p>${embedSeotdaReplay(replay)}`
+    `<p>섯다 한 판 리플레이를 공유했습니다.</p>${gaepyeongSummary}${embedSeotdaReplay(replay)}`
   );
 }
 

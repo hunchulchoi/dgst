@@ -95,6 +95,56 @@ export async function writeSeotdaScore(email, nickname, balance, meta = {}) {
 }
 
 /**
+ * 승부 손실과 개평을 한 트랜잭션에 별도 기록한다.
+ * @param {string} email
+ * @param {string} nickname
+ * @param {{ balance: number; bet: number; payout: number; delta: number; reels: string[] }} hand
+ * @param {{ balance: number; amount: number; loss: number } | null} gaepyeong
+ */
+export async function writeSeotdaSettlement(email, nickname, hand, gaepyeong) {
+  try {
+    const prisma = getPrisma();
+    const settledAt = new Date();
+    const operations = [
+      prisma.gameScore.create({
+        data: {
+          email,
+          nickname,
+          game: SEOTDA_GAME,
+          bet: hand.bet,
+          payout: hand.payout,
+          delta: hand.delta,
+          balance: hand.balance,
+          reels: hand.reels,
+          createdAt: settledAt
+        }
+      })
+    ];
+    if (gaepyeong?.amount) {
+      operations.push(
+        prisma.gameScore.create({
+          data: {
+            email,
+            nickname,
+            game: SEOTDA_GAME,
+            bet: 0,
+            payout: gaepyeong.amount,
+            delta: gaepyeong.amount,
+            balance: gaepyeong.balance,
+            reels: ['gaepyeong', String(gaepyeong.amount), `loss:${gaepyeong.loss}`],
+            createdAt: new Date(settledAt.getTime() + 1)
+          }
+        })
+      );
+    }
+    return await prisma.$transaction(operations);
+  } catch (err) {
+    console.error('[seotda writeSeotdaSettlement]', err);
+    throw err;
+  }
+}
+
+/**
  * 기록 없으면 1000 지급
  * @param {string} email
  * @param {string} nickname
