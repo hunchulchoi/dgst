@@ -1189,11 +1189,11 @@
       <section class="status-board" aria-label="게임 현황">
         <div class="status-cell">
           <span class="status-label">MEDAL</span>
-          <span class="digital" id="medalDisplay">0100</span>
+          <span class="digital" id="medalDisplay">1000</span>
         </div>
         <div class="status-cell">
           <span class="status-label">BET</span>
-          <span class="digital" id="betDisplay">01</span>
+          <span class="digital" id="betDisplay">10</span>
         </div>
         <div class="status-cell">
           <span class="status-label">WIN</span>
@@ -1234,14 +1234,17 @@
             class="bet-range"
             id="betRange"
             type="range"
-            min="1"
-            max="20"
-            value="1"
+            min="10"
+            max="1000"
+            step="10"
+            value="10"
             aria-label="베팅 메달 수"
           />
           <button class="bet-control" id="betUp" type="button" aria-label="베팅 1 증가">＋</button>
         </div>
-        <div class="bet-limits" aria-hidden="true"><span>MIN 1</span><span>MAX 20</span></div>
+        <div class="bet-limits" aria-hidden="true">
+          <span>MIN 10</span><span id="betMaxLabel">MAX 1000</span>
+        </div>
       </section>
 
       <p class="controls-label">손을 고르세요 · 누르는 순간 CPU가 멈춥니다</p>
@@ -1277,6 +1280,8 @@
       const DEMO_INTERVAL_MS = 120;
       const RESULT_HOLD_MS = 1000;
       const ROULETTE_DURATION_MS = 2500;
+      const MIN_BET = 10;
+      const BET_STEP = 10;
 
       const elements = {
         machine: document.querySelector('#machine'),
@@ -1289,15 +1294,16 @@
         message: document.querySelector('#resultMessage'),
         wheel: document.querySelector('#wheel'),
         betRange: document.querySelector('#betRange'),
+        betMaxLabel: document.querySelector('#betMaxLabel'),
         betDown: document.querySelector('#betDown'),
         betUp: document.querySelector('#betUp'),
         choices: [...document.querySelectorAll('.choice')]
       };
 
       const state = {
-        medals: 100,
-        displayedMedals: 100,
-        bet: 1,
+        medals: 1000,
+        displayedMedals: 1000,
+        bet: MIN_BET,
         streak: 0,
         cpuIndex: 0,
         busy: false,
@@ -1408,13 +1414,22 @@
       }
 
       function updateBetUi() {
-        state.bet = Math.min(20, Math.max(1, state.bet));
+        const maxBet = Math.max(MIN_BET, state.medals);
+        state.bet = Math.min(maxBet, Math.max(MIN_BET, state.bet));
         elements.bet.textContent = pad(state.bet);
+        elements.betRange.min = String(MIN_BET);
+        elements.betRange.max = String(maxBet);
+        elements.betRange.step = String(BET_STEP);
         elements.betRange.value = String(state.bet);
-        elements.betRange.style.setProperty('--bet-progress', `${((state.bet - 1) / 19) * 100}%`);
-        elements.betDown.disabled = state.busy || state.bet <= 1;
-        elements.betUp.disabled = state.busy || state.bet >= 20 || state.bet >= state.medals;
-        elements.betRange.disabled = state.busy || state.medals <= 0;
+        const rangeSize = Math.max(BET_STEP, maxBet - MIN_BET);
+        elements.betRange.style.setProperty(
+          '--bet-progress',
+          `${((state.bet - MIN_BET) / rangeSize) * 100}%`
+        );
+        elements.betMaxLabel.textContent = `MAX ${state.medals}`;
+        elements.betDown.disabled = state.busy || state.bet <= MIN_BET;
+        elements.betUp.disabled = state.busy || state.bet >= state.medals;
+        elements.betRange.disabled = state.busy || state.medals < MIN_BET;
       }
 
       function updateControls() {
@@ -1425,7 +1440,7 @@
         elements.ledShell.classList.toggle('rainbow', state.streak >= 2);
         elements.streak.textContent = pad(state.streak);
         updateBetUi();
-        if (!state.busy && state.medals <= 0) setMessage('메달이 부족합니다', true);
+        if (!state.busy && state.medals < MIN_BET) setMessage('메달이 부족합니다', true);
       }
 
       /** 메달 표시를 현재 값에서 목표 값까지 부드럽게 카운트한다. */
@@ -1513,9 +1528,9 @@
         setLedResult();
         setMessage('', false);
         state.busy = false;
-        state.bet = Math.min(state.bet, Math.max(1, state.medals));
+        state.bet = Math.min(state.bet, Math.max(MIN_BET, state.medals));
         updateControls();
-        if (state.medals > 0) startDemo();
+        if (state.medals >= MIN_BET) startDemo();
       }
 
       /** 선택 순간 CPU 손을 고정하고 승패·메달·룰렛을 처리한다. */
@@ -1608,12 +1623,13 @@
       function changeBet(nextBet) {
         if (state.busy) return;
         sounds.button();
-        state.bet = Math.min(Number(nextBet), Math.min(20, Math.max(1, state.medals)));
+        const requested = Math.round(Number(nextBet) / BET_STEP) * BET_STEP;
+        state.bet = Math.min(Math.max(MIN_BET, requested), Math.max(MIN_BET, state.medals));
         updateControls();
       }
 
-      elements.betDown.addEventListener('click', () => changeBet(state.bet - 1));
-      elements.betUp.addEventListener('click', () => changeBet(state.bet + 1));
+      elements.betDown.addEventListener('click', () => changeBet(state.bet - BET_STEP));
+      elements.betUp.addEventListener('click', () => changeBet(state.bet + BET_STEP));
       elements.betRange.addEventListener('input', (event) => changeBet(event.target.value));
       elements.choices.forEach((button) => {
         button.addEventListener('click', () => playRound(button.dataset.choice, button));
@@ -1647,7 +1663,7 @@
           if (wasAwaiting) {
             void finishRound();
           } else {
-            state.bet = Math.min(state.bet, Math.max(1, state.medals));
+            state.bet = Math.min(state.bet, Math.max(MIN_BET, state.medals));
             updateControls();
           }
         });

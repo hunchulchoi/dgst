@@ -3,7 +3,7 @@ import { normalizeToIsoString } from '$lib/util/formatRelativeTime.js';
 import { attachGameProfilePhotos } from '$lib/server/gameProfilePhotos.js';
 
 export const MEDAL_JANKEN_GAME = 'medal-janken';
-export const INITIAL_MEDALS = 100;
+export const INITIAL_MEDALS = 1000;
 
 function startOfKstDay(baseDate = new Date()) {
   const shifted = new Date(baseDate.getTime() + 9 * 60 * 60_000);

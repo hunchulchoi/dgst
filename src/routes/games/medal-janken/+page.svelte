@@ -6,6 +6,7 @@
   import { formatRelativeTime } from '$lib/util/formatRelativeTime.js';
   import { swalFire } from '$lib/util/swal.js';
   import type { PageData } from './$types';
+  import { buildMedalJankenResultComment } from './medalJankenComments.js';
 
   type RankRow = {
     email: string;
@@ -24,8 +25,18 @@
     multiplier: number;
   };
 
+  type SettlementResult = {
+    balance: number;
+    outcome: 'win' | 'lose' | 'draw';
+    multiplier: number;
+    payout: number;
+    delta: number;
+    rank?: RankRow[];
+    todayStats?: { hands: number; users: number };
+  };
+
   let { data }: { data: PageData } = $props();
-  let balance = $state(untrack(() => Number(data.balance ?? 100)));
+  let balance = $state(untrack(() => Number(data.balance ?? 1000)));
   let rank = $state<RankRow[]>(untrack(() => (data.rank ?? []) as RankRow[]));
   let todayStats = $state(untrack(() => data.todayStats ?? { hands: 0, users: 0 }));
   let iframe = $state<HTMLIFrameElement | null>(null);
@@ -66,6 +77,32 @@
     if (sync) syncGame();
   }
 
+  async function writeResultComment(result: SettlementResult, round: RoundMessage) {
+    const content = buildMedalJankenResultComment(result, round);
+    if (!content) return;
+
+    try {
+      const form = new FormData();
+      form.set('game', 'medal-janken');
+      form.set('content', content);
+      const response = await fetch('/games/medal-janken/comment', {
+        method: 'POST',
+        body: form
+      });
+      const commentResult = await response.json().catch(() => ({}));
+      if (!response.ok) return;
+
+      commentRefreshToken += 1;
+      const rewardBalance = Number(commentResult.rewardBalance);
+      if (commentResult.rewardGiven && Number.isFinite(rewardBalance)) {
+        balance = rewardBalance;
+        await refreshSummary(false);
+      }
+    } catch (error) {
+      console.error('[medal-janken auto comment]', error);
+    }
+  }
+
   async function settleRound(round: RoundMessage) {
     if (!loggedIn) {
       balance = Math.max(0, Number(round.balance ?? balance));
@@ -84,11 +121,14 @@
           multiplier: round.multiplier
         })
       });
-      const result = await response.json().catch(() => ({}));
+      const result = (await response.json().catch(() => ({}))) as SettlementResult & {
+        message?: string;
+      };
       if (!response.ok) throw new Error(result?.message ?? '게임 정산에 실패했습니다.');
       balance = Number(result.balance ?? balance);
       rank = Array.isArray(result.rank) ? result.rank : rank;
       todayStats = result.todayStats ?? todayStats;
+      await writeResultComment(result, round);
     } catch (error) {
       await swalFire({
         icon: 'error',
@@ -202,7 +242,7 @@
       <section class="rules-card">
         <h2>게임 방법</h2>
         <ol>
-          <li>베팅할 메달을 1~20개 선택</li>
+          <li>10개부터 보유 메달까지 자유롭게 베팅</li>
           <li>CPU 손이 도는 중 가위·바위·보 선택</li>
           <li>승리하면 룰렛 배수만큼 메달 획득</li>
         </ol>

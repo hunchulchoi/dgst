@@ -73,8 +73,8 @@ export async function POST(event) {
     const cpuChoice = String(body?.cpuChoice ?? '');
     const requestedMultiplier = Number(body?.multiplier ?? 0);
 
-    if (!Number.isSafeInteger(bet) || bet < 1 || bet > 20) {
-      throw error(400, { message: '베팅은 1~20개만 가능합니다.' });
+    if (!Number.isSafeInteger(bet) || bet < 10) {
+      throw error(400, { message: '베팅은 10개 이상만 가능합니다.' });
     }
     if (!HANDS.has(playerChoice) || !HANDS.has(cpuChoice)) {
       throw error(400, { message: '잘못된 손 선택입니다.' });
