@@ -216,7 +216,7 @@
       <section class="game-card">
         <iframe
           bind:this={iframe}
-          src="/games/medal-janken/index.html"
+          src="/game-assets/medal-janken/index.html"
           title="메달 짱껨보 게임기"
           style:height={`${gameHeight}px`}
           onload={syncGame}

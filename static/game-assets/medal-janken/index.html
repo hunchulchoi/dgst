@@ -1,7 +1,13 @@
 <!doctype html>
+<!-- 충돌 방지를 위해 Svelte 라우트와 분리된 정적 게임기 경로에서 제공한다. -->
 <html lang="ko">
   <head>
     <meta charset="UTF-8" />
+    <script>
+      if (window.self === window.top && window.location.protocol !== 'file:') {
+        window.location.replace('/games/medal-janken');
+      }
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#090909" />
     <title>메달 짱껨보</title>
