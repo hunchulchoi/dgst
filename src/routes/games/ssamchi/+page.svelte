@@ -5,6 +5,7 @@
   import { swalFire } from '$lib/util/swal.js';
   import GameProfilePhoto from '$lib/components/GameProfilePhoto.svelte';
   import GameRankingRow from '$lib/components/GameRankingRow.svelte';
+  import { getArcadeGameLabel } from '$lib/util/arcadeGame.js';
   import { formatRelativeTime } from '$lib/util/formatRelativeTime.js';
   import { MIN_BET } from './ssamchiEngine.js';
 
@@ -17,6 +18,7 @@
     email: string;
     nickname: string;
     balance: number;
+    lastGame?: string | null;
     updatedAt?: string | null;
     photo?: string | null;
   }
@@ -97,6 +99,11 @@
   function formatSocialTime(value: string | null | undefined) {
     if (!value) return '';
     return formatRelativeTime(value, { locale: ko, addSuffix: true });
+  }
+  function formatRankMeta(row: RankRow) {
+    return [getArcadeGameLabel(row.lastGame), formatSocialTime(row.updatedAt)]
+      .filter(Boolean)
+      .join(' · ');
   }
   function selectMode(next: Mode) {
     mode = next;
@@ -702,7 +709,7 @@
                 nickname={row.nickname}
                 photo={row.photo}
                 score={formatNumber(row.balance)}
-                meta={row.updatedAt ? formatSocialTime(row.updatedAt) : ''}
+                meta={formatRankMeta(row)}
                 current={row.email === data.session?.user?.email}
               />
             {/each}

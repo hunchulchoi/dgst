@@ -3,6 +3,7 @@
   import { ko } from 'date-fns/locale';
   import GameRankingRow from '$lib/components/GameRankingRow.svelte';
   import SharedGameComments from '$lib/components/SharedGameComments.svelte';
+  import { getArcadeGameLabel } from '$lib/util/arcadeGame.js';
   import { formatRelativeTime } from '$lib/util/formatRelativeTime.js';
   import { swalFire } from '$lib/util/swal.js';
   import type { PageData } from './$types';
@@ -12,6 +13,7 @@
     email: string;
     nickname: string;
     balance: number;
+    lastGame?: string | null;
     updatedAt?: string | null;
     photo?: string | null;
   };
@@ -52,8 +54,12 @@
     return new Intl.NumberFormat('ko-KR').format(value);
   }
 
-  function formatRankAt(value: string | null | undefined) {
-    return value ? formatRelativeTime(value, { locale: ko, addSuffix: true }) : '';
+  function formatRankMeta(row: RankRow) {
+    const game = getArcadeGameLabel(row.lastGame);
+    const time = row.updatedAt
+      ? formatRelativeTime(row.updatedAt, { locale: ko, addSuffix: true })
+      : '';
+    return [game, time].filter(Boolean).join(' · ');
   }
 
   function syncGame() {
@@ -253,7 +259,7 @@
                 nickname={row.nickname}
                 photo={row.photo}
                 score={`${formatNumber(row.balance)}개`}
-                meta={formatRankAt(row.updatedAt)}
+                meta={formatRankMeta(row)}
                 current={row.email === currentEmail}
               />
             {/each}

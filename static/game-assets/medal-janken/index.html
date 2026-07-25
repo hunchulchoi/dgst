@@ -390,6 +390,20 @@
         pointer-events: none;
       }
 
+      .led::before {
+        position: absolute;
+        z-index: 1;
+        inset: 6px;
+        border: 3px dotted rgba(255, 92, 104, 0.72);
+        border-radius: inherit;
+        box-shadow:
+          0 0 5px #ff263f,
+          inset 0 0 8px rgba(255, 38, 63, 0.7);
+        content: '';
+        animation: bulb-ring-pulse 0.72s steps(2, end) infinite;
+        pointer-events: none;
+      }
+
       .led.win {
         border-color: #4ade80;
         background:
@@ -441,24 +455,99 @@
       }
 
       .hand {
+        --dot-color: #ff3b51;
         position: relative;
         z-index: 2;
-        display: grid;
-        width: 70%;
+        display: block;
+        width: 76%;
         aspect-ratio: 1;
-        place-items: center;
-        font-family: 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif;
-        font-size: clamp(5.6rem, 28vw, 7.4rem);
-        line-height: 1;
-        text-align: center;
-        filter: grayscale(1) brightness(3.6) contrast(1.6) drop-shadow(0 0 4px #ff2b2b)
-          drop-shadow(0 0 12px #ef4444);
-        transform: rotate(-10deg);
+        overflow: visible;
+        color: var(--dot-color);
+        filter: drop-shadow(0 0 3px currentColor) drop-shadow(0 0 11px currentColor);
+        transform: rotate(-6deg);
         user-select: none;
+      }
+
+      .hand-shape {
+        display: none;
+      }
+
+      .hand[data-hand='rock'] .hand-shape.rock,
+      .hand[data-hand='scissors'] .hand-shape.scissors,
+      .hand[data-hand='paper'] .hand-shape.paper {
+        display: block;
+      }
+
+      .hand-bulbs-off,
+      .hand-bulbs-on {
+        fill: none;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        stroke-dasharray: 0.1 5.2;
+      }
+
+      .hand-bulbs-off {
+        stroke: #4f1017;
+        stroke-width: 5.4;
+        opacity: 0.74;
+      }
+
+      .hand-bulbs-on {
+        stroke: currentColor;
+        stroke-width: 4.2;
+        animation: hand-bulb-flicker 0.54s steps(2, end) infinite;
+      }
+
+      .led.win .hand {
+        --dot-color: #64ff8d;
+      }
+
+      .led.draw .hand {
+        --dot-color: #fff36b;
+      }
+
+      .led.win::before {
+        border-color: rgba(100, 255, 141, 0.82);
+        box-shadow:
+          0 0 5px #22c55e,
+          inset 0 0 8px #16a34a;
+      }
+
+      .led.draw::before {
+        border-color: rgba(255, 243, 107, 0.88);
+        box-shadow:
+          0 0 5px #facc15,
+          inset 0 0 8px #eab308;
       }
 
       .hand.tick {
         animation: hand-tick 120ms ease-out;
+      }
+
+      @keyframes hand-bulb-flicker {
+        0%,
+        82% {
+          opacity: 1;
+        }
+        83%,
+        88% {
+          opacity: 0.68;
+        }
+        89%,
+        100% {
+          opacity: 0.96;
+        }
+      }
+
+      @keyframes bulb-ring-pulse {
+        0%,
+        48% {
+          opacity: 0.72;
+        }
+        49%,
+        100% {
+          opacity: 1;
+        }
       }
 
       .result-message {
@@ -1227,7 +1316,41 @@
         <div class="led-shell" id="ledShell">
           <div class="led" id="led">
             <span class="cpu-caption">CPU</span>
-            <span class="hand" id="cpuHand" aria-label="CPU 바위">✊</span>
+            <svg
+              class="hand"
+              id="cpuHand"
+              data-hand="rock"
+              viewBox="0 0 100 100"
+              role="img"
+              aria-label="CPU 바위"
+            >
+              <defs>
+                <path
+                  id="handRock"
+                  d="M28 70 C25 64 24 57 29 52 C25 47 27 40 33 38 C37 36 40 38 43 41 C40 35 43 29 49 28 C54 27 57 30 59 35 C59 30 64 27 69 30 C74 33 74 39 72 44 C77 42 82 46 82 52 C82 57 77 61 74 64 L70 76 C67 84 60 88 50 88 L43 87 C36 85 31 79 28 70 Z"
+                />
+                <path
+                  id="handScissors"
+                  d="M34 84 C29 77 28 68 30 58 L34 47 C36 42 42 42 45 46 L49 53 L43 28 C42 22 46 17 51 18 C55 18 57 21 58 26 L62 47 L69 22 C71 16 76 14 81 17 C85 20 85 24 83 29 L73 57 C80 53 86 55 88 60 C90 66 85 70 78 72 L69 80 C63 87 55 90 46 89 C41 89 37 87 34 84 Z"
+                />
+                <path
+                  id="handPaper"
+                  d="M29 83 C24 77 23 68 25 59 L29 41 C30 36 34 33 39 35 C42 36 43 40 42 44 L41 52 L43 25 C43 20 47 17 52 18 C56 18 58 22 57 27 L56 49 L60 20 C61 15 66 13 70 15 C74 17 75 21 74 26 L70 51 L76 25 C77 20 82 18 86 21 C89 23 90 27 88 32 L81 63 C79 72 75 81 67 86 C59 91 38 91 29 83 Z"
+                />
+              </defs>
+              <g class="hand-shape rock">
+                <use class="hand-bulbs-off" href="#handRock"></use>
+                <use class="hand-bulbs-on" href="#handRock"></use>
+              </g>
+              <g class="hand-shape scissors">
+                <use class="hand-bulbs-off" href="#handScissors"></use>
+                <use class="hand-bulbs-on" href="#handScissors"></use>
+              </g>
+              <g class="hand-shape paper">
+                <use class="hand-bulbs-off" href="#handPaper"></use>
+                <use class="hand-bulbs-on" href="#handPaper"></use>
+              </g>
+            </svg>
             <p class="result-message" id="resultMessage" aria-live="polite">READY!</p>
           </div>
         </div>
@@ -1391,7 +1514,7 @@
       /** 대기 중 CPU 손을 120ms 간격으로 순환한다. */
       function showCpuHand() {
         const hand = HANDS[state.cpuIndex];
-        elements.cpuHand.textContent = hand.emoji;
+        elements.cpuHand.dataset.hand = hand.id;
         elements.cpuHand.setAttribute('aria-label', `CPU ${hand.label}`);
         retriggerAnimation(elements.cpuHand, 'tick');
       }

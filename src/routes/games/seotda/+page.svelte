@@ -5,6 +5,7 @@
   import { ko } from 'date-fns/locale';
   import type { PageData } from './$types';
   import { formatRelativeTime } from '$lib/util/formatRelativeTime.js';
+  import { getArcadeGameLabel } from '$lib/util/arcadeGame.js';
   import { ANTE, dynamicAnte, minRaisePay } from './seotdaEngine.js';
   import { contributionCapacity } from './seotdaRound.js';
   import SharedGameComments from '$lib/components/SharedGameComments.svelte';
@@ -130,6 +131,7 @@
     Array<{
       nickname: string;
       balance: number;
+      lastGame?: string | null;
       updatedAt?: string | null;
       photo?: string | null;
     }>
@@ -227,6 +229,12 @@
     if (!value) return '';
     return formatRelativeTime(value, { locale: ko, addSuffix: true });
   };
+
+  const formatRankMeta = (row: {
+    lastGame?: string | null;
+    updatedAt?: string | null;
+  }): string =>
+    [getArcadeGameLabel(row.lastGame), formatRankAt(row.updatedAt)].filter(Boolean).join(' · ');
 
   const userSeat = $derived(round?.seats.find((s) => s.id === 'user') ?? null);
   const npcs = $derived(round?.seats.filter((s) => s.isNpc) ?? []);
@@ -1440,7 +1448,7 @@
                   nickname={r.nickname}
                   photo={r.photo}
                   score={formatNumber(r.balance)}
-                  meta={r.updatedAt ? formatRankAt(r.updatedAt) : ''}
+                  meta={formatRankMeta(r)}
                 />
               {/each}
             </ol>

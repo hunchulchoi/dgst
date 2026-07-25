@@ -384,16 +384,28 @@ export async function getArcadeRank(limit = 10) {
   const rows = await getPrisma().arcadeWallet.findMany({
     where: { balance: { gt: 0 } },
     orderBy: [{ balance: 'desc' }, { updatedAt: 'desc' }],
-    take: limit
+    take: limit,
+    include: {
+      ledgers: {
+        where: { game: { in: ARCADE_GAMES } },
+        orderBy: { createdAt: 'desc' },
+        take: 1,
+        select: { game: true, createdAt: true }
+      }
+    }
   });
   return attachGameProfilePhotos(
-    rows.map((row) => ({
-      email: row.email,
-      _id: row.email,
-      nickname: row.nickname,
-      balance: safeNumber(row.balance),
-      updatedAt: normalizeToIsoString(row.updatedAt)
-    }))
+    rows.map((row) => {
+      const latestActivity = row.ledgers[0];
+      return {
+        email: row.email,
+        _id: row.email,
+        nickname: row.nickname,
+        balance: safeNumber(row.balance),
+        lastGame: latestActivity?.game ?? null,
+        updatedAt: normalizeToIsoString(latestActivity?.createdAt ?? row.updatedAt)
+      };
+    })
   );
 }
 

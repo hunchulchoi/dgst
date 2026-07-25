@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { ko } from 'date-fns/locale';
   import { formatRelativeTime } from '$lib/util/formatRelativeTime.js';
+  import { getArcadeGameLabel } from '$lib/util/arcadeGame.js';
   import GameRankingRow from '$lib/components/GameRankingRow.svelte';
   import { invalidateAll } from '$app/navigation';
   import { swalFire } from '$lib/util/swal.js';
@@ -82,6 +83,7 @@
     Array<{
       nickname: string;
       balance: number;
+      lastGame?: string | null;
       updatedAt?: string;
       _id?: string;
       photo?: string | null;
@@ -671,6 +673,11 @@
     return formatRelativeTime(value, { locale: ko, addSuffix: true });
   };
 
+  const formatRankMeta = (row: { lastGame?: string | null; updatedAt?: string }): string =>
+    [getArcadeGameLabel(row.lastGame), formatSlotUpdatedAt(row.updatedAt)]
+      .filter(Boolean)
+      .join(' · ');
+
   const clearCommentAnchor = () => {
     try {
       const url = new URL(window.location.href);
@@ -978,7 +985,7 @@
                 nickname={r.nickname}
                 photo={r.photo}
                 score={formatNumber(r.balance)}
-                meta={r.updatedAt ? formatSlotUpdatedAt(r.updatedAt) : ''}
+                meta={formatRankMeta(r)}
               />
             {/each}
           </ol>
