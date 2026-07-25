@@ -1,6 +1,13 @@
 import { getPrisma } from '$lib/database/prisma.js';
-import { normalizeToIsoString } from '$lib/util/formatRelativeTime.js';
-import { attachGameProfilePhotos } from '$lib/server/gameProfilePhotos.js';
+import {
+  applyArcadeEntries,
+  applyArcadeEntry,
+  ensureArcadeWallet,
+  getArcadeBalance,
+  getArcadeLeader,
+  getArcadeRank,
+  resolveArcadeOops
+} from '$lib/server/arcadeWallet.js';
 import { ANTE, SEOTDA_GAME } from './seotdaEngine.js';
 
 export const SPARK_HIGH_RAISE_TRIGGER = 1_000_000_000;
@@ -53,12 +60,7 @@ function getKstStartOfDay(baseDate = new Date()) {
  */
 export async function getSeotdaBalance(email) {
   try {
-    const last = await getPrisma().gameScore.findFirst({
-      where: { email, game: SEOTDA_GAME },
-      orderBy: { createdAt: 'desc' },
-      select: { balance: true }
-    });
-    return Number(last?.balance ?? 0);
+    return await getArcadeBalance(email);
   } catch (err) {
     console.error('[seotda getSeotdaBalance]', err);
     return 0;
@@ -69,24 +71,22 @@ export async function getSeotdaBalance(email) {
  * @param {string} email
  * @param {string} nickname
  * @param {number} balance
- * @param {{ bet?: number; payout?: number; delta?: number; reels?: string[] }} [meta]
+ * @param {{ bet?: number; payout?: number; delta?: number; playId?: string; reels?: string[] }} [meta]
  */
 export async function writeSeotdaScore(email, nickname, balance, meta = {}) {
   try {
     const bet = Number(meta.bet ?? 0);
     const payout = Number(meta.payout ?? 0);
     const delta = Number(meta.delta ?? payout - bet);
-    return await getPrisma().gameScore.create({
-      data: {
-        email,
-        nickname,
-        game: SEOTDA_GAME,
-        bet,
-        payout,
-        delta,
-        balance,
-        reels: meta.reels ?? ['-', '-', '-']
-      }
+    return await applyArcadeEntry(email, nickname, {
+      game: SEOTDA_GAME,
+      kind: bet > 0 ? 'play' : meta.reels?.[0] === 'comment' ? 'comment-reward' : 'adjustment',
+      bet,
+      payout,
+      delta,
+      playId: meta.playId,
+      reels: meta.reels ?? ['-', '-', '-'],
+      meta: { requestedBalance: balance }
     });
   } catch (err) {
     console.error('[seotda writeSeotdaScore]', err);
@@ -98,46 +98,35 @@ export async function writeSeotdaScore(email, nickname, balance, meta = {}) {
  * 승부 손실과 개평을 한 트랜잭션에 별도 기록한다.
  * @param {string} email
  * @param {string} nickname
- * @param {{ balance: number; bet: number; payout: number; delta: number; reels: string[] }} hand
+ * @param {{ balance: number; bet: number; payout: number; delta: number; playId?: string; reels: string[] }} hand
  * @param {{ balance: number; amount: number; loss: number } | null} gaepyeong
  */
 export async function writeSeotdaSettlement(email, nickname, hand, gaepyeong) {
   try {
-    const prisma = getPrisma();
-    const settledAt = new Date();
-    const operations = [
-      prisma.gameScore.create({
-        data: {
-          email,
-          nickname,
-          game: SEOTDA_GAME,
-          bet: hand.bet,
-          payout: hand.payout,
-          delta: hand.delta,
-          balance: hand.balance,
-          reels: hand.reels,
-          createdAt: settledAt
-        }
-      })
+    const entries = [
+      {
+        game: SEOTDA_GAME,
+        kind: 'play',
+        bet: hand.bet,
+        payout: hand.payout,
+        delta: hand.delta,
+        playId: hand.playId,
+        reels: hand.reels,
+        meta: { requestedBalance: hand.balance }
+      }
     ];
     if (gaepyeong?.amount) {
-      operations.push(
-        prisma.gameScore.create({
-          data: {
-            email,
-            nickname,
-            game: SEOTDA_GAME,
-            bet: 0,
-            payout: gaepyeong.amount,
-            delta: gaepyeong.amount,
-            balance: gaepyeong.balance,
-            reels: ['gaepyeong', String(gaepyeong.amount), `loss:${gaepyeong.loss}`],
-            createdAt: new Date(settledAt.getTime() + 1)
-          }
-        })
-      );
+      entries.push({
+        game: SEOTDA_GAME,
+        kind: 'gaepyeong',
+        bet: 0,
+        payout: gaepyeong.amount,
+        delta: gaepyeong.amount,
+        reels: ['gaepyeong', String(gaepyeong.amount), `loss:${gaepyeong.loss}`],
+        meta: { requestedBalance: gaepyeong.balance }
+      });
     }
-    return await prisma.$transaction(operations);
+    return await applyArcadeEntries(email, nickname, entries);
   } catch (err) {
     console.error('[seotda writeSeotdaSettlement]', err);
     throw err;
@@ -152,20 +141,8 @@ export async function writeSeotdaSettlement(email, nickname, hand, gaepyeong) {
  */
 export async function ensureSeotdaBalance(email, nickname) {
   try {
-    const last = await getPrisma().gameScore.findFirst({
-      where: { email, game: SEOTDA_GAME },
-      orderBy: { createdAt: 'desc' }
-    });
-    if (!last) {
-      await writeSeotdaScore(email, nickname, SEOTDA_INITIAL, {
-        bet: 0,
-        payout: SEOTDA_INITIAL,
-        delta: SEOTDA_INITIAL,
-        reels: ['init', String(SEOTDA_INITIAL), '-']
-      });
-      return { balance: SEOTDA_INITIAL, granted: true };
-    }
-    return { balance: Number(last.balance), granted: false };
+    const wallet = await ensureArcadeWallet(email, nickname);
+    return { balance: Number(wallet.balance), granted: false };
   } catch (err) {
     console.error('[seotda ensureSeotdaBalance]', err);
     throw err;
@@ -183,44 +160,8 @@ export async function ensureSeotdaBalance(email, nickname) {
  */
 export async function resolveSeotdaOops(email, nickname, currentBalance = 0) {
   try {
-    const prisma = getPrisma();
-    // 구형 정산 기록은 bet가 0이거나 누락된 경우가 있어 현재 플레이 불가 잔액으로 판별한다.
-    const lastOops = await prisma.gameScore.findFirst({
-      where: { email, game: SEOTDA_GAME, balance: { lt: ANTE } },
-      orderBy: { createdAt: 'desc' }
-    });
-    if (!lastOops) return { balance: currentBalance, oopsInfo: null };
-
-    const after = await prisma.gameScore.findFirst({
-      where: {
-        email,
-        game: SEOTDA_GAME,
-        createdAt: { gt: lastOops.createdAt },
-        balance: { gte: ANTE }
-      },
-      orderBy: { createdAt: 'desc' }
-    });
-    if (after) return { balance: Number(after.balance), oopsInfo: null };
-
-    const timing = getSeotdaOopsTiming(lastOops.createdAt);
-    if (!timing.ready) {
-      return {
-        balance: currentBalance,
-        oopsInfo: {
-          createdAt: timing.createdAt,
-          remainingMs: timing.remainingMs,
-          waiting: true
-        }
-      };
-    }
-
-    await writeSeotdaScore(email, nickname, SEOTDA_OOPS_TOPUP, {
-      bet: 0,
-      payout: SEOTDA_OOPS_TOPUP,
-      delta: SEOTDA_OOPS_TOPUP,
-      reels: ['oops', String(SEOTDA_OOPS_TOPUP), '-']
-    });
-    return { balance: SEOTDA_OOPS_TOPUP, oopsInfo: null };
+    if (currentBalance >= ANTE) return { balance: currentBalance, oopsInfo: null };
+    return await resolveArcadeOops(email, nickname, SEOTDA_GAME);
   } catch (err) {
     console.error('[seotda resolveSeotdaOops]', err);
     return { balance: currentBalance, oopsInfo: null };
@@ -233,26 +174,7 @@ export async function resolveSeotdaOops(email, nickname, currentBalance = 0) {
  */
 export async function getSeotdaCurrentLeader() {
   try {
-    /** @type {Array<{ email: string; nickname: string; balance: number; createdAt: Date }>} */
-    const rows = await getPrisma().$queryRaw`
-      SELECT email, nickname, balance, "createdAt"
-      FROM (
-        SELECT
-          email,
-          nickname,
-          balance,
-          created_at AS "createdAt",
-          ROW_NUMBER() OVER (PARTITION BY email ORDER BY created_at DESC) AS rn
-        FROM game_scores
-        WHERE game = ${SEOTDA_GAME}
-      ) t
-      WHERE rn = 1 AND balance > 0
-      ORDER BY balance DESC, "createdAt" DESC
-      LIMIT 1
-    `;
-    return rows[0]
-      ? { email: rows[0].email, nickname: rows[0].nickname, balance: Number(rows[0].balance) }
-      : null;
+    return await getArcadeLeader();
   } catch (err) {
     console.error('[seotda getSeotdaCurrentLeader]', err);
     return null;
@@ -307,31 +229,7 @@ export async function writeSeotdaLeaderPromotion(leader) {
  */
 export async function getSeotdaRank(limit = 10) {
   try {
-    /** @type {Array<{ email: string; nickname: string; balance: number; createdAt: Date }>} */
-    const rows = await getPrisma().$queryRaw`
-      SELECT email, nickname, balance, "createdAt"
-      FROM (
-        SELECT
-          email,
-          nickname,
-          balance,
-          created_at AS "createdAt",
-          ROW_NUMBER() OVER (PARTITION BY email ORDER BY created_at DESC) AS rn
-        FROM game_scores
-        WHERE game = ${SEOTDA_GAME}
-      ) t
-      WHERE rn = 1 AND balance > 0
-      ORDER BY balance DESC
-      LIMIT ${limit}
-    `;
-    return await attachGameProfilePhotos(
-      rows.map((r) => ({
-        email: r.email,
-        nickname: r.nickname,
-        balance: Number(r.balance),
-        updatedAt: normalizeToIsoString(r.createdAt)
-      }))
-    );
+    return await getArcadeRank(limit);
   } catch (err) {
     console.error('[seotda getSeotdaRank]', err);
     return [];

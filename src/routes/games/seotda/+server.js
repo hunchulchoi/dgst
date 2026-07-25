@@ -2,6 +2,12 @@ import { error, json } from '@sveltejs/kit';
 import { checkRateLimit } from '$lib/server/apiRateLimit.js';
 import { getGameSession, isLocalGameSmokeSession } from '$lib/server/localGameSmokeSession.js';
 import {
+  ARCADE_ROUND_PLAY_TTL_MS,
+  ArcadePlayConflictError,
+  beginArcadePlay,
+  releaseArcadePlay
+} from '$lib/server/arcadeWallet.js';
+import {
   ensureSeotdaBalance,
   didSeotdaTakeLead,
   didSeotdaPromoteLeader,
@@ -291,16 +297,17 @@ export async function POST(event) {
 
       if (round.phase === 'showdown') {
         const before = chipsBeforeMap.get(user.email) ?? round.seats[0].chips;
-        const { handResult, finalResult, amount: gaepyeongAmount } = applyGaepyeongIfOops(
-          before,
-          round
-        );
+        const {
+          handResult,
+          finalResult,
+          amount: gaepyeongAmount
+        } = applyGaepyeongIfOops(before, round);
         const leaderBefore = await getSeotdaCurrentLeader();
         // 다른 사용자가 보유하던 1위를 이번 판으로 추월한 경우만 축하한다.
         const tookLead = didSeotdaTakeLead(leaderBefore, user.email, finalResult.after);
         const outcome =
           (round.winnerIds?.length ?? 0) > 1 ? 'draw' : round.winnerId === 'user' ? 'win' : 'lose';
-        await writeSeotdaSettlement(
+        const settlement = await writeSeotdaSettlement(
           user.email,
           user.nickname,
           {
@@ -308,6 +315,7 @@ export async function POST(event) {
             bet: handResult.bet,
             payout: handResult.payout,
             delta: handResult.delta,
+            playId: round.arcadePlayId,
             reels: [
               outcome,
               String(handResult.delta),
@@ -336,7 +344,7 @@ export async function POST(event) {
         saveNpcStacks(user.email, round);
         return json({
           success: true,
-          balance: finalResult.after,
+          balance: settlement.balance,
           round: publicOf(round),
           npcActions
         });
@@ -383,6 +391,15 @@ export async function POST(event) {
     throw error(400, { message: 'action: start | act | ack' });
   } catch (err) {
     if (err && typeof err === 'object' && 'status' in err) throw err;
+    if (err instanceof ArcadePlayConflictError) {
+      const conflictUser = await requireUser(event);
+      const round = getRound(conflictUser.email);
+      if (round?.arcadePlayId) {
+        await releaseArcadePlay(conflictUser.email, round.arcadePlayId);
+        clearRound(conflictUser.email);
+      }
+      throw error(409, { message: err.message });
+    }
     console.error('[seotda POST]', err);
     throw error(500, { message: err instanceof Error ? err.message : '섯다 요청 실패' });
   }
@@ -409,36 +426,55 @@ async function beginRound(
   if (balance < 10) {
     throw error(400, { message: '보유 점수가 부족합니다. 오링 후 잠시 기다려 주세요.' });
   }
-  const npcChips = getNpcStacks(email);
-  const npcEmotions = getNpcEmotions(email);
-  const seriesConfig = getSeotdaSeriesRoundConfig(email);
-  const history = await getSeotdaSparkHistory(email);
-  const sparkContext = {
-    balance,
-    npcChips,
-    openingActorId,
-    sparkTauntCooldown,
-    history
-  };
-  const sparkDecision = consumeSparkDecision(email);
-  void refreshSparkDecisionInBackground(email, sparkContext);
-  const round = createNewRound(
-    balance,
-    Math.random,
-    npcChips,
-    openingActorId,
-    sparkTauntCooldown,
-    sparkDecision,
-    npcEmotions,
-    seriesConfig,
-    ruleMode,
-    eventMode
-  );
-  round.sparkHistory = history;
-  const npcActions = await runNpcTurnsWithSpark(round, decideSparkNpcAction);
-  chipsBeforeMap.set(email, balance);
-  setRound(email, round);
-  return { success: true, balance: round.seats[0].chips, round: publicOf(round), npcActions };
+  let playId = '';
+  try {
+    const play = await beginArcadePlay(email, nickname, 'seotda', 10, ARCADE_ROUND_PLAY_TTL_MS);
+    playId = play.playId;
+    balance = play.balance;
+  } catch (cause) {
+    if (cause instanceof ArcadePlayConflictError) {
+      throw error(409, { message: cause.message });
+    }
+    throw error(400, {
+      message: cause instanceof Error ? cause.message : '게임을 시작할 수 없습니다.'
+    });
+  }
+  try {
+    const npcChips = getNpcStacks(email);
+    const npcEmotions = getNpcEmotions(email);
+    const seriesConfig = getSeotdaSeriesRoundConfig(email);
+    const history = await getSeotdaSparkHistory(email);
+    const sparkContext = {
+      balance,
+      npcChips,
+      openingActorId,
+      sparkTauntCooldown,
+      history
+    };
+    const sparkDecision = consumeSparkDecision(email);
+    void refreshSparkDecisionInBackground(email, sparkContext);
+    const round = createNewRound(
+      balance,
+      Math.random,
+      npcChips,
+      openingActorId,
+      sparkTauntCooldown,
+      sparkDecision,
+      npcEmotions,
+      seriesConfig,
+      ruleMode,
+      eventMode
+    );
+    round.arcadePlayId = playId;
+    round.sparkHistory = history;
+    const npcActions = await runNpcTurnsWithSpark(round, decideSparkNpcAction);
+    chipsBeforeMap.set(email, balance);
+    setRound(email, round);
+    return { success: true, balance: round.seats[0].chips, round: publicOf(round), npcActions };
+  } catch (cause) {
+    await releaseArcadePlay(email, playId);
+    throw cause;
+  }
 }
 
 /**
@@ -490,9 +526,7 @@ function handleSmoke(email, action, body) {
     if (prev) saveSeotdaSeries(email, prev);
     clearRound(email);
     const nextRuleMode =
-      body?.ruleMode == null
-        ? normalizeRuleMode(prev.ruleMode)
-        : normalizeRuleMode(body.ruleMode);
+      body?.ruleMode == null ? normalizeRuleMode(prev.ruleMode) : normalizeRuleMode(body.ruleMode);
     const round = createNewRound(
       SMOKE_BALANCE,
       Math.random,

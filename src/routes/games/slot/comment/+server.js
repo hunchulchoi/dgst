@@ -6,13 +6,7 @@ import convertToTree from '$lib/util/tree.js';
 import { checkAndLogSessionDevice } from '$lib/server/auth/checkSessionDevice.js';
 import { getGameSession, isLocalGameSmokeSession } from '$lib/server/localGameSmokeSession.js';
 import { attachGameProfilePhotos } from '$lib/server/gameProfilePhotos.js';
-import { updateSlotUserBalance } from '$lib/server/slotUserBalance.js';
-import { getSeotdaBalance, writeSeotdaScore } from '../../seotda/seotdaBalance.js';
-import { ensureSsamchiBalance, writeSsamchiScore } from '../../ssamchi/ssamchiBalance.js';
-import {
-  ensureMedalJankenBalance,
-  writeMedalJankenScore
-} from '../../medal-janken/medalJankenBalance.js';
+import { applyArcadeEntry } from '$lib/server/arcadeWallet.js';
 import {
   buildSubmitFingerprint,
   findRecentDuplicateComment,
@@ -338,55 +332,15 @@ export async function POST(event) {
     let rewardGiven = false;
     let rewardBalance = null;
     if (todayRewardCount < 10) {
-      if (rewardGame === 'seotda') {
-        const newBalance = (await getSeotdaBalance(email)) + 100;
-        await writeSeotdaScore(email, nickname, newBalance, {
-          bet: 0,
-          payout: 100,
-          delta: 100,
-          reels: ['comment', 'seotda', '-']
-        });
-        rewardBalance = newBalance;
-      } else if (rewardGame === 'ssamchi') {
-        const current = await ensureSsamchiBalance(email, nickname);
-        const newBalance = current.balance + 100;
-        await writeSsamchiScore(email, nickname, newBalance, {
-          payout: 100,
-          delta: 100,
-          reels: ['comment', 'ssamchi', '-']
-        });
-        rewardBalance = newBalance;
-      } else if (rewardGame === 'medal-janken') {
-        const currentBalance = await ensureMedalJankenBalance(email, nickname);
-        const newBalance = currentBalance + 100;
-        await writeMedalJankenScore(email, nickname, newBalance, {
-          payout: 100,
-          delta: 100,
-          reels: ['comment', 'medal-janken', '-']
-        });
-        rewardBalance = newBalance;
-      } else {
-        const lastScore = await prisma.gameScore.findFirst({
-          where: { email },
-          orderBy: { createdAt: 'desc' }
-        });
-        const currentBalance = Number(lastScore?.balance ?? 0);
-        const newBalance = currentBalance + 100;
-        await prisma.gameScore.create({
-          data: {
-            email,
-            nickname,
-            game: 'slot',
-            bet: 0,
-            payout: 100,
-            delta: 100,
-            balance: newBalance,
-            reels: ['-', '-', '-']
-          }
-        });
-        await updateSlotUserBalance(email, nickname, newBalance, { incSpin: false });
-        rewardBalance = newBalance;
-      }
+      const settlement = await applyArcadeEntry(email, nickname, {
+        game: rewardGame,
+        kind: 'comment-reward',
+        bet: 0,
+        payout: 100,
+        delta: 100,
+        reels: ['comment', rewardGame, '-']
+      });
+      rewardBalance = settlement.balance;
       rewardGiven = true;
     }
 

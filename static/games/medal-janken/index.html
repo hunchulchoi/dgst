@@ -1477,6 +1477,24 @@
         return WIN_MAP[player] === cpu ? 'win' : 'lose';
       }
 
+      let startResolver = null;
+
+      function requestRoundStart(bet, playerChoice) {
+        if (!state.embedded || !state.loggedIn) return Promise.resolve({ success: true });
+        return new Promise((resolve) => {
+          startResolver = resolve;
+          window.parent.postMessage(
+            { type: 'medal-janken:start', bet, playerChoice },
+            window.location.origin
+          );
+          window.setTimeout(() => {
+            if (startResolver !== resolve) return;
+            startResolver = null;
+            resolve({ success: false, message: '게임 시작 확인 시간이 초과되었습니다.' });
+          }, 10_000);
+        });
+      }
+
       /** 부모 레이아웃에 판 결과를 전달해 로그인 사용자의 메달과 랭킹을 저장한다. */
       function reportRound({ bet, playerChoice, cpuChoice, multiplier }) {
         if (!state.embedded) return;
@@ -1495,8 +1513,12 @@
       }
 
       /** 랜덤 칸을 고른 뒤 2.5초 ease-out 감속으로 포인터에 정렬한다. */
-      async function spinRoulette() {
-        const prizeIndex = Math.floor(Math.random() * PRIZES.length);
+      async function spinRoulette(forcedMultiplier = null) {
+        const forcedIndex = PRIZES.indexOf(Number(forcedMultiplier));
+        const prizeIndex =
+          forcedMultiplier == null || forcedIndex < 0
+            ? Math.floor(Math.random() * PRIZES.length)
+            : forcedIndex;
         const segmentAngle = 360 / PRIZES.length;
         const segmentCenter = prizeIndex * segmentAngle + segmentAngle / 2;
         const randomTurns = 6 + Math.floor(Math.random() * 3);
@@ -1543,13 +1565,35 @@
         button.classList.add('pressed');
         window.setTimeout(() => button.classList.remove('pressed'), 120);
 
-        const cpuChoice = HANDS[state.cpuIndex].id;
+        let cpuChoice = HANDS[state.cpuIndex].id;
         const playerHand = HANDS.find((hand) => hand.id === playerChoice);
-        const cpuHand = HANDS[state.cpuIndex];
-        const outcome = getOutcome(playerChoice, cpuChoice);
+        let cpuHand = HANDS[state.cpuIndex];
         const roundBet = state.bet;
 
         updateControls();
+        const startResult = await requestRoundStart(roundBet, playerChoice);
+        if (!startResult.success) {
+          setMessage(startResult.message || '다른 게임이 진행 중입니다.');
+          state.busy = false;
+          updateControls();
+          startDemo();
+          return;
+        }
+        if (state.loggedIn) {
+          const serverCpuIndex = HANDS.findIndex((hand) => hand.id === startResult.cpuChoice);
+          if (serverCpuIndex < 0 || !PRIZES.includes(Number(startResult.multiplier))) {
+            setMessage('서버 결과를 확인할 수 없습니다.');
+            state.busy = false;
+            updateControls();
+            startDemo();
+            return;
+          }
+          state.cpuIndex = serverCpuIndex;
+          cpuChoice = HANDS[state.cpuIndex].id;
+          cpuHand = HANDS[state.cpuIndex];
+          showCpuHand();
+        }
+        const outcome = getOutcome(playerChoice, cpuChoice);
         await commitMedals(state.medals - roundBet, 170);
 
         if (outcome === 'lose') {
@@ -1596,7 +1640,9 @@
 
         // LED 결과색은 약 1초 후 기본색으로 복귀하고 룰렛은 계속 회전한다.
         window.setTimeout(() => setLedResult(), RESULT_HOLD_MS);
-        const multiplier = await spinRoulette();
+        const multiplier = await spinRoulette(
+          state.loggedIn ? Number(startResult.multiplier) : null
+        );
         const payout = roundBet * multiplier;
 
         if (multiplier === 0) {
@@ -1649,11 +1695,22 @@
         if (
           !state.embedded ||
           event.origin !== window.location.origin ||
-          event.source !== window.parent ||
-          event.data?.type !== 'medal-janken:sync'
+          event.source !== window.parent
         ) {
           return;
         }
+        if (event.data?.type === 'medal-janken:start-result') {
+          const resolve = startResolver;
+          startResolver = null;
+          resolve?.({
+            success: Boolean(event.data.success),
+            message: String(event.data.message || ''),
+            cpuChoice: String(event.data.cpuChoice || ''),
+            multiplier: Number(event.data.multiplier)
+          });
+          return;
+        }
+        if (event.data?.type !== 'medal-janken:sync') return;
         const nextMedals = Number(event.data.medals);
         if (!Number.isFinite(nextMedals) || nextMedals < 0) return;
         const wasAwaiting = state.awaitingSync;

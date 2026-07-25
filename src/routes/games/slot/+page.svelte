@@ -842,7 +842,7 @@
             </button>
           </div>
           <div class="mb-2">
-            <div>보유 점수: <strong>{formatNumber(balance)}</strong></div>
+            <div>공용 메달: <strong>{formatNumber(balance)}</strong></div>
             {#if balanceUpdatedAt}
               <small class="text-muted"
                 >마지막 업데이트 {formatSlotUpdatedAt(balanceUpdatedAt)}</small
@@ -961,7 +961,7 @@
         {/if}
         <div class="card-body">
           <div class="d-flex justify-content-between align-items-center mb-3">
-            <h5 class="mb-0">랭킹 Top 10</h5>
+            <h5 class="mb-0">오락실 메달 Top 10</h5>
             <button
               class="btn btn-sm btn-outline-secondary"
               onclick={refreshAll}

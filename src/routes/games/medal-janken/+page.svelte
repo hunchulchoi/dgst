@@ -42,6 +42,7 @@
   let iframe = $state<HTMLIFrameElement | null>(null);
   let gameHeight = $state(900);
   let settling = $state(false);
+  let pendingSettlement: SettlementResult | null = null;
   let commentRefreshToken = $state(0);
 
   const loggedIn = $derived(Boolean(data.session?.user?.email));
@@ -103,6 +104,38 @@
     }
   }
 
+  async function reserveRound(bet: number, playerChoice: string) {
+    try {
+      const response = await fetch('/games/medal-janken/api', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bet, playerChoice })
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result?.message ?? '게임을 시작할 수 없습니다.');
+      pendingSettlement = result as SettlementResult;
+      iframe?.contentWindow?.postMessage(
+        {
+          type: 'medal-janken:start-result',
+          success: true,
+          cpuChoice: result.cpuChoice,
+          multiplier: result.multiplier
+        },
+        window.location.origin
+      );
+    } catch (error) {
+      pendingSettlement = null;
+      iframe?.contentWindow?.postMessage(
+        {
+          type: 'medal-janken:start-result',
+          success: false,
+          message: error instanceof Error ? error.message : '게임을 시작할 수 없습니다.'
+        },
+        window.location.origin
+      );
+    }
+  }
+
   async function settleRound(round: RoundMessage) {
     if (!loggedIn) {
       balance = Math.max(0, Number(round.balance ?? balance));
@@ -111,20 +144,8 @@
     if (settling) return;
     settling = true;
     try {
-      const response = await fetch('/games/medal-janken/api', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          bet: round.bet,
-          playerChoice: round.playerChoice,
-          cpuChoice: round.cpuChoice,
-          multiplier: round.multiplier
-        })
-      });
-      const result = (await response.json().catch(() => ({}))) as SettlementResult & {
-        message?: string;
-      };
-      if (!response.ok) throw new Error(result?.message ?? '게임 정산에 실패했습니다.');
+      if (!pendingSettlement) throw new Error('게임 시작 정보가 없습니다.');
+      const result = pendingSettlement;
       balance = Number(result.balance ?? balance);
       rank = Array.isArray(result.rank) ? result.rank : rank;
       todayStats = result.todayStats ?? todayStats;
@@ -140,6 +161,7 @@
       });
       await refreshSummary(false);
     } finally {
+      pendingSettlement = null;
       settling = false;
       syncGame();
     }
@@ -159,6 +181,8 @@
         syncGame();
       } else if (event.data?.type === 'medal-janken:height') {
         gameHeight = Math.min(1100, Math.max(720, Number(event.data.height) || 900));
+      } else if (event.data?.type === 'medal-janken:start') {
+        void reserveRound(Number(event.data.bet), String(event.data.playerChoice ?? ''));
       } else if (event.data?.type === 'medal-janken:round') {
         void settleRound(event.data as RoundMessage);
       }
@@ -181,7 +205,7 @@
       <p>CPU 손이 바뀌는 순간을 노려 룰렛 잭팟에 도전하세요.</p>
     </div>
     <div class="heading-stats" aria-label="메달 짱껨보 현황">
-      <span>내 메달 <b>{formatNumber(balance)}</b></span>
+      <span>공용 메달 <b>{formatNumber(balance)}</b></span>
       <span>오늘 <b>{formatNumber(todayStats.hands)}판</b></span>
       <span>참여 <b>{formatNumber(todayStats.users)}명</b></span>
     </div>
@@ -215,7 +239,7 @@
         <div class="ranking-head">
           <div>
             <span>HALL OF FAME</span>
-            <h2>🏆 메달 Top 10</h2>
+            <h2>🏆 오락실 메달 Top 10</h2>
           </div>
           <button type="button" onclick={() => void refreshSummary()} disabled={!loggedIn}>
             새로고침

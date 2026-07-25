@@ -784,7 +784,7 @@
               </span>
             </h4>
             <div class="text-end">
-              <div>보유 점수: <strong>{formatNumber(balance)}</strong></div>
+              <div>공용 메달: <strong>{formatNumber(balance)}</strong></div>
               {#if oopsInfo?.waiting}
                 <small class="text-danger">오링! 5분 후 700점 보충</small>
               {/if}
@@ -916,10 +916,7 @@
               </div>
             </div>
           {:else}
-            <div
-              class="seotda-table rounded-4 p-3 mb-3"
-              class:boss-table={isBossRound}
-            >
+            <div class="seotda-table rounded-4 p-3 mb-3" class:boss-table={isBossRound}>
               {#if round.series}
                 <div class="series-board" class:boss={isBossRound}>
                   <span class="series-hand">
@@ -963,7 +960,8 @@
                         class:revenge={npc.emotion.revenge}
                         title={npc.emotion.line}
                       >
-                        {npc.emotion.revenge ? '🔥' : '●'} {npc.emotion.mood}
+                        {npc.emotion.revenge ? '🔥' : '●'}
+                        {npc.emotion.mood}
                       </div>
                       {#if npc.emotion.aggression > 0}
                         <div class="npc-mood-line" role="status">“{npc.emotion.line}”</div>
@@ -971,7 +969,13 @@
                     {/if}
                     {#if npc.tell && !npc.folded && !isShowdown}
                       <div class="npc-tell" class:strong={npc.tell.signal === 'strong'}>
-                        <span>{npc.tell.signal === 'strong' ? '👁' : npc.tell.signal === 'weak' ? '💧' : '◆'}</span>
+                        <span
+                          >{npc.tell.signal === 'strong'
+                            ? '👁'
+                            : npc.tell.signal === 'weak'
+                              ? '💧'
+                              : '◆'}</span
+                        >
                         <span>
                           <strong>{npc.tell.label}</strong>
                           <small>“{npc.tell.text}”</small>
@@ -1425,7 +1429,7 @@
     <div class="col-lg-4 order-1 order-lg-2">
       <div class="card shadow rounded-4 border-0">
         <div class="card-body">
-          <h5 class="mb-3">섯다 Top10</h5>
+          <h5 class="mb-3">오락실 메달 Top 10</h5>
           {#if rankList.length === 0}
             <p class="text-muted small mb-0">아직 랭킹 없음</p>
           {:else}

@@ -1,9 +1,13 @@
 import { getPrisma } from '$lib/database/prisma.js';
-import { normalizeToIsoString } from '$lib/util/formatRelativeTime.js';
-import { attachGameProfilePhotos } from '$lib/server/gameProfilePhotos.js';
+import {
+  applyArcadeEntry,
+  ARCADE_INITIAL_BALANCE,
+  ensureArcadeWallet,
+  getArcadeRank
+} from '$lib/server/arcadeWallet.js';
 
 export const MEDAL_JANKEN_GAME = 'medal-janken';
-export const INITIAL_MEDALS = 1000;
+export const INITIAL_MEDALS = ARCADE_INITIAL_BALANCE;
 
 function startOfKstDay(baseDate = new Date()) {
   const shifted = new Date(baseDate.getTime() + 9 * 60 * 60_000);
@@ -13,63 +17,30 @@ function startOfKstDay(baseDate = new Date()) {
 
 /** @param {string} email @param {string} nickname */
 export async function ensureMedalJankenBalance(email, nickname) {
-  const last = await getPrisma().gameScore.findFirst({
-    where: { email, game: MEDAL_JANKEN_GAME },
-    orderBy: { createdAt: 'desc' }
-  });
-  if (last) return Number(last.balance);
-
-  await writeMedalJankenScore(email, nickname, INITIAL_MEDALS, {
-    payout: INITIAL_MEDALS,
-    delta: INITIAL_MEDALS,
-    reels: ['init', String(INITIAL_MEDALS)]
-  });
-  return INITIAL_MEDALS;
+  return Number((await ensureArcadeWallet(email, nickname)).balance);
 }
 
 /**
  * @param {string} email
  * @param {string} nickname
  * @param {number} balance
- * @param {{ bet?: number; payout?: number; delta?: number; reels?: string[] }} [meta]
+ * @param {{ bet?: number; payout?: number; delta?: number; playId?: string; reels?: string[] }} [meta]
  */
 export function writeMedalJankenScore(email, nickname, balance, meta = {}) {
-  return getPrisma().gameScore.create({
-    data: {
-      email,
-      nickname,
-      game: MEDAL_JANKEN_GAME,
-      bet: Number(meta.bet ?? 0),
-      payout: Number(meta.payout ?? 0),
-      delta: Number(meta.delta ?? 0),
-      balance,
-      reels: meta.reels ?? ['-', '-']
-    }
+  return applyArcadeEntry(email, nickname, {
+    game: MEDAL_JANKEN_GAME,
+    kind: meta.bet ? 'play' : meta.reels?.[0] === 'comment' ? 'comment-reward' : 'adjustment',
+    bet: Number(meta.bet ?? 0),
+    payout: Number(meta.payout ?? 0),
+    delta: Number(meta.delta ?? 0),
+    playId: meta.playId,
+    reels: meta.reels ?? ['-', '-'],
+    meta: { requestedBalance: balance }
   });
 }
 
 export async function getMedalJankenRank(limit = 10) {
-  /** @type {Array<{ email: string; nickname: string; balance: bigint; createdAt: Date }>} */
-  const rows = await getPrisma().$queryRaw`
-    SELECT email, nickname, balance, "createdAt"
-    FROM (
-      SELECT email, nickname, balance, created_at AS "createdAt",
-        ROW_NUMBER() OVER (PARTITION BY email ORDER BY created_at DESC) AS rn
-      FROM game_scores
-      WHERE game = ${MEDAL_JANKEN_GAME}
-    ) t
-    WHERE rn = 1
-    ORDER BY balance DESC, "createdAt" DESC
-    LIMIT ${limit}
-  `;
-  return attachGameProfilePhotos(
-    rows.map((row) => ({
-      email: row.email,
-      nickname: row.nickname,
-      balance: Number(row.balance),
-      updatedAt: normalizeToIsoString(row.createdAt)
-    }))
-  );
+  return getArcadeRank(limit);
 }
 
 export async function getTodayMedalJankenStats() {

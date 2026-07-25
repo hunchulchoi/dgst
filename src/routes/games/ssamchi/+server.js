@@ -2,6 +2,11 @@ import { error, json } from '@sveltejs/kit';
 import { checkRateLimit } from '$lib/server/apiRateLimit.js';
 import { getGameSession, isLocalGameSmokeSession } from '$lib/server/localGameSmokeSession.js';
 import {
+  ArcadePlayConflictError,
+  beginArcadePlay,
+  releaseArcadePlay
+} from '$lib/server/arcadeWallet.js';
+import {
   ensureSsamchiBalance,
   getSsamchiHost,
   getSsamchiRank,
@@ -57,6 +62,7 @@ export async function POST(event) {
   const user = await requireUser(event);
   if (settlingUsers.has(user.email)) throw error(409, { message: '이전 판을 정산 중입니다.' });
   settlingUsers.add(user.email);
+  let playId = '';
   try {
     const body = await event.request.json().catch(() => ({}));
     const mode = String(body?.mode ?? 'odd-even');
@@ -75,6 +81,11 @@ export async function POST(event) {
     if (!Number.isSafeInteger(bet) || bet < MIN_BET)
       throw error(400, { message: '판돈은 10점 이상입니다.' });
     if (bet > current.balance) throw error(400, { message: '보유 점수가 부족합니다.' });
+    if (!user.smoke) {
+      const play = await beginArcadePlay(user.email, user.nickname, 'ssamchi', bet);
+      playId = play.playId;
+      current.balance = play.balance;
+    }
 
     let result;
     let callLog = '-';
@@ -109,14 +120,15 @@ export async function POST(event) {
         message: cause instanceof Error ? cause.message : '잘못된 게임 요청입니다.'
       });
     }
-    const balance = current.balance + result.delta;
+    let balance = current.balance + result.delta;
     const nextHost = result.outcome === 'draw' ? host : result.outcome === 'win' ? 'user' : 'npc';
     if (user.smoke) smokeHosts.set(user.email, nextHost);
     if (!user.smoke) {
-      await writeSsamchiScore(user.email, user.nickname, balance, {
+      const settlement = await writeSsamchiScore(user.email, user.nickname, balance, {
         bet,
         payout: result.payout,
         delta: result.delta,
+        playId,
         reels: [
           result.outcome,
           `mode:${result.mode}`,
@@ -127,9 +139,19 @@ export async function POST(event) {
           answerLog
         ]
       });
+      balance = settlement.balance;
     }
     return json({ success: true, balance, result, host: nextHost });
+  } catch (cause) {
+    if (cause instanceof ArcadePlayConflictError) {
+      throw error(409, { message: cause.message });
+    }
+    if (cause instanceof Error && cause.message === '보유 메달이 부족합니다.') {
+      throw error(400, { message: cause.message });
+    }
+    throw cause;
   } finally {
+    if (playId) await releaseArcadePlay(user.email, playId);
     settlingUsers.delete(user.email);
   }
 }

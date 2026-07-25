@@ -430,7 +430,7 @@
       <p>상대가 손에 접은 구슬을 소리와 촉으로 맞혀 보세요.</p>
     </div>
     <div class="score" class:gain={effect?.kind === 'win'} class:loss={effect?.kind === 'lose'}>
-      <span>내 구슬</span><strong>{formatNumber(balance)}개</strong><small
+      <span>공용 메달</span><strong>{formatNumber(balance)}개</strong><small
         >오늘 {formatNumber(todayStats.hands)}판 · {formatNumber(todayStats.users)}명</small
       >
     </div>
@@ -471,7 +471,7 @@
               >
             </div>
             <div class="screen-balance">
-              <small>내 구슬</small><strong>{formatNumber(balance)}개</strong>
+              <small>공용 메달</small><strong>{formatNumber(balance)}개</strong>
             </div>
             {#if result}
               <div class="round-call">
@@ -688,11 +688,11 @@
     <aside class="col-lg-4 order-1 order-lg-2">
       <section class="ranking-card rounded-4 p-3 p-md-4">
         <div class="ranking-head">
-          <h2>🏆 구슬 부자 Top 10</h2>
+          <h2>🏆 오락실 메달 Top 10</h2>
           <div class="daily-stats">
             <span>오늘 참여 <b>{formatNumber(todayStats.users)}명</b></span>
             <span>오늘 <b>{formatNumber(todayStats.hands)}판</b></span>
-            <span>내 구슬 <b>{formatNumber(balance)}개</b></span>
+            <span>공용 메달 <b>{formatNumber(balance)}개</b></span>
           </div>
         </div>
         {#if rank.length}<ol class="ranking ranking-horizontal">

@@ -259,6 +259,45 @@ model SlotUserBalance {
   @@map("slot_user_balance")
 }
 
+model ArcadeWallet {
+  id        String         @id @default(cuid())
+  email     String         @unique
+  nickname  String
+  balance   BigInt         @default(1000)
+  oopsAt    DateTime?      @map("oops_at") @db.Timestamptz(3)
+  activeGame   String?     @map("active_game")
+  activePlayId String?     @map("active_play_id")
+  activeUntil  DateTime?   @map("active_until") @db.Timestamptz(3)
+  activePayload Json?      @map("active_payload")
+  createdAt DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime       @updatedAt @map("updated_at") @db.Timestamptz(3)
+  ledgers   ArcadeLedger[]
+
+  @@index([balance(sort: Desc)])
+  @@map("arcade_wallets")
+}
+
+model ArcadeLedger {
+  id        String       @id @default(cuid())
+  walletId  String       @map("wallet_id")
+  email     String
+  nickname  String
+  game      String
+  kind      String
+  bet       BigInt       @default(0)
+  payout    BigInt       @default(0)
+  delta     BigInt
+  balance   BigInt
+  meta      Json?
+  createdAt DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  wallet    ArcadeWallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
+
+  @@index([email, createdAt(sort: Desc)])
+  @@index([game, createdAt(sort: Desc)])
+  @@index([walletId, createdAt(sort: Desc)])
+  @@map("arcade_ledger")
+}
+
 model GameLog {
   id        String   @id @default(cuid())
   game      String

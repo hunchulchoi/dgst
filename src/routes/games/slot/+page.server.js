@@ -1,7 +1,6 @@
-import { getSlotBalance } from '$lib/server/slotUserBalance.js';
+import { ensureArcadeWallet } from '$lib/server/arcadeWallet.js';
 import { getTodaySlotStats } from '$lib/server/slotStats.js';
 import { getUnreadAlarmCount } from '$lib/server/alarm/alarmService.js';
-import { getPrisma } from '$lib/database/prisma.js';
 import { normalizeToIsoString } from '$lib/util/formatRelativeTime.js';
 import { getGameSession, isLocalGameSmokeSession } from '$lib/server/localGameSmokeSession.js';
 
@@ -22,12 +21,11 @@ export async function load(event) {
   if (isLocalGameSmokeSession(session)) {
     balance = SMOKE_SLOT_BALANCE;
   } else if (email) {
-    balance = await getSlotBalance(email);
-    const balanceRow = await getPrisma().slotUserBalance.findUnique({
-      where: { email },
-      select: { updatedAt: true }
-    });
-    balanceUpdatedAt = balanceRow?.updatedAt ? normalizeToIsoString(balanceRow.updatedAt) : null;
+    const nickname =
+      typeof session.user?.nickname === 'string' ? session.user.nickname : 'anonymous';
+    const wallet = await ensureArcadeWallet(email, nickname);
+    balance = Number(wallet.balance);
+    balanceUpdatedAt = normalizeToIsoString(wallet.updatedAt);
     unreadAlarmCount = await getUnreadAlarmCount(email);
     hasUnreadAlarm = unreadAlarmCount > 0;
   }
