@@ -19,16 +19,11 @@
   interface Props {
     loggedIn?: boolean;
     refreshToken?: number;
-    game?: 'slot' | 'seotda';
+    game?: 'slot' | 'seotda' | 'medal-janken';
     onReward?: (reward: { amount: number; balance: number }) => void;
   }
 
-  let {
-    loggedIn = false,
-    refreshToken = 0,
-    game = 'seotda',
-    onReward
-  }: Props = $props();
+  let { loggedIn = false, refreshToken = 0, game = 'seotda', onReward }: Props = $props();
   let comments = $state<GameComment[]>([]);
   let content = $state('');
   let replyContent = $state<Record<string, string>>({});
@@ -39,6 +34,10 @@
   let hasMore = $state(false);
   let total = $state(0);
   let seenRefreshToken = -1;
+  const gameLabel = $derived(
+    game === 'seotda' ? '섯다' : game === 'medal-janken' ? '메달 짱껨보' : '뺑뺑이'
+  );
+  const rewardLabel = $derived(game === 'medal-janken' ? '메달 100개' : '100점');
 
   function commentId(comment: GameComment): string {
     return String(comment.id ?? comment._id ?? '');
@@ -100,8 +99,8 @@
         }
         await swalFire({
           icon: 'success',
-          title: '💬 리플 보상 +100점',
-          text: '뺑뺑이·섯다 합산 하루 10개까지',
+          title: `💬 리플 보상 +${rewardLabel}`,
+          text: '게임 리플 합산 하루 10개까지',
           toast: true,
           position: 'center',
           showConfirmButton: false,
@@ -141,13 +140,13 @@
 
 <section
   class="shared-comments card shadow-sm rounded-4 border-0 mt-3"
-  aria-label={game === 'seotda' ? '섯다 리플' : '뺑뺑이 리플'}
+  aria-label={`${gameLabel} 리플`}
 >
   <div class="card-body">
     <div class="d-flex justify-content-between align-items-center gap-2 mb-3">
       <div>
-        <h5 class="mb-1">{game === 'seotda' ? '섯다' : '뺑뺑이'} 리플</h5>
-        <div class="small text-muted">리플 보상 100점 · 하루 10개</div>
+        <h5 class="mb-1">{gameLabel} 리플</h5>
+        <div class="small text-muted">리플 보상 {rewardLabel} · 하루 10개</div>
       </div>
       <span class="badge text-bg-secondary">{total}</span>
     </div>

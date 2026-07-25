@@ -1,0 +1,1678 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#090909" />
+    <title>메달 짱껨보</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --black: #070707;
+        --panel: #141414;
+        --red: #dc2626;
+        --led-red: #ff3131;
+        --yellow: #facc15;
+        --green: #16a34a;
+        --cream: #fff8d6;
+        --muted: #a3a3a3;
+        --bezel: clamp(8px, 2.7vw, 13px);
+      }
+
+      * {
+        box-sizing: border-box;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      html {
+        min-height: 100%;
+        background: #050505;
+      }
+
+      body {
+        min-height: 100dvh;
+        margin: 0;
+        padding: max(12px, env(safe-area-inset-top)) 10px max(16px, env(safe-area-inset-bottom));
+        overflow-x: hidden;
+        color: var(--cream);
+        font-family: 'Arial Black', 'Apple SD Gothic Neo', 'Noto Sans KR', system-ui, sans-serif;
+        background:
+          radial-gradient(circle at 50% -10%, #4b0c0c 0, transparent 38%),
+          repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.018) 0 1px, transparent 1px 5px),
+          #050505;
+      }
+
+      button,
+      input {
+        font: inherit;
+      }
+
+      button {
+        touch-action: manipulation;
+      }
+
+      .machine {
+        position: relative;
+        width: min(100%, 420px);
+        min-height: calc(100dvh - 28px);
+        margin: 0 auto;
+        padding: 14px 14px 20px;
+        overflow: hidden;
+        border: 3px solid #2e2e2e;
+        border-radius: 32px 32px 46px 46px;
+        background:
+          linear-gradient(
+            105deg,
+            transparent 0 45%,
+            rgba(255, 255, 255, 0.04) 47%,
+            transparent 51%
+          ),
+          linear-gradient(#171717, #070707 42%, #101010);
+        box-shadow:
+          0 0 0 3px #020202,
+          0 20px 70px rgba(0, 0, 0, 0.9),
+          inset 0 1px 2px rgba(255, 255, 255, 0.22),
+          inset 12px 0 30px rgba(255, 255, 255, 0.025),
+          inset -12px 0 30px #000;
+      }
+
+      .machine::before,
+      .machine::after {
+        position: absolute;
+        z-index: 3;
+        top: 84px;
+        width: 5px;
+        height: 52%;
+        border-radius: 999px;
+        background: linear-gradient(
+          transparent,
+          #4b0b0b 15%,
+          #e11d48 50%,
+          #4b0b0b 85%,
+          transparent
+        );
+        box-shadow: 0 0 12px #dc2626;
+        content: '';
+        opacity: 0.7;
+      }
+
+      .machine::before {
+        left: 3px;
+      }
+
+      .machine::after {
+        right: 3px;
+      }
+
+      .machine.shake {
+        animation: machine-shake 0.45s ease-out;
+      }
+
+      .marquee {
+        position: relative;
+        z-index: 4;
+        padding: 8px 12px 7px;
+        border: 3px solid #7f1d1d;
+        border-radius: 18px;
+        text-align: center;
+        background:
+          linear-gradient(rgba(255, 255, 255, 0.12), transparent 35%),
+          linear-gradient(90deg, #9f1111, #ef2929 50%, #9f1111);
+        box-shadow:
+          0 3px 0 #450a0a,
+          inset 0 0 16px #5b0000,
+          0 0 18px rgba(239, 68, 68, 0.36);
+      }
+
+      .marquee h1 {
+        margin: 0;
+        color: #fff6a5;
+        font-size: clamp(1.45rem, 7vw, 2rem);
+        line-height: 1;
+        letter-spacing: -0.08em;
+        text-shadow:
+          0 2px #8b0000,
+          0 0 8px #fff,
+          0 0 16px #facc15;
+        transform: skew(-4deg);
+      }
+
+      .marquee p {
+        margin: 5px 0 0;
+        color: white;
+        font:
+          800 0.62rem/1 system-ui,
+          sans-serif;
+        letter-spacing: 0.25em;
+      }
+
+      .status-board {
+        position: relative;
+        z-index: 2;
+        display: grid;
+        grid-template-columns: 1.2fr 1fr 0.8fr;
+        gap: 7px;
+        margin: 13px 2px 10px;
+      }
+
+      .status-cell {
+        min-width: 0;
+        padding: 7px 5px 6px;
+        border: 1px solid #57534e;
+        border-radius: 8px;
+        text-align: center;
+        background: #050505;
+        box-shadow:
+          inset 0 0 10px #000,
+          0 1px rgba(255, 255, 255, 0.12);
+      }
+
+      .status-label {
+        display: block;
+        margin-bottom: 2px;
+        color: #d6d3d1;
+        font:
+          800 0.58rem/1 system-ui,
+          sans-serif;
+        letter-spacing: 0.12em;
+      }
+
+      .digital {
+        display: inline-block;
+        overflow: hidden;
+        color: #ff3b30;
+        font-family: 'Courier New', ui-monospace, monospace;
+        font-size: clamp(1.15rem, 5.6vw, 1.55rem);
+        font-weight: 900;
+        line-height: 1;
+        letter-spacing: 0.04em;
+        text-shadow:
+          0 0 4px #ff0000,
+          0 0 10px #991b1b;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .status-cell:nth-child(2) .digital {
+        color: var(--yellow);
+        text-shadow: 0 0 8px #ca8a04;
+      }
+
+      .status-cell:nth-child(3) .digital {
+        color: white;
+        text-shadow: 0 0 8px #ef4444;
+      }
+
+      .cabinet {
+        position: relative;
+        z-index: 2;
+        padding: 12px 13px 16px;
+        border: var(--bezel) solid #282828;
+        border-radius: 34px;
+        background: linear-gradient(120deg, rgba(255, 255, 255, 0.07), transparent 18%), #080808;
+        box-shadow:
+          0 5px 0 #000,
+          0 7px 20px #000,
+          inset 0 0 0 2px #030303,
+          inset 0 0 18px #000;
+      }
+
+      .cabinet::before {
+        position: absolute;
+        inset: -6px;
+        z-index: -1;
+        border: 2px solid #4a4a4a;
+        border-radius: 30px;
+        content: '';
+        pointer-events: none;
+      }
+
+      .roulette-section {
+        position: relative;
+        display: grid;
+        place-items: center;
+        height: clamp(134px, 36vw, 154px);
+        margin-bottom: 4px;
+      }
+
+      .roulette-title {
+        position: absolute;
+        top: -5px;
+        z-index: 4;
+        padding: 3px 10px;
+        border: 1px solid #fde047;
+        border-radius: 999px;
+        color: #fff7ad;
+        font-size: 0.64rem;
+        letter-spacing: 0.18em;
+        background: #7f1d1d;
+        box-shadow: 0 0 10px #ef4444;
+      }
+
+      .pointer {
+        position: absolute;
+        top: 17px;
+        z-index: 5;
+        width: 0;
+        height: 0;
+        border-right: 11px solid transparent;
+        border-top: 22px solid #fff5a5;
+        border-left: 11px solid transparent;
+        filter: drop-shadow(0 0 4px #facc15);
+      }
+
+      .roulette-case {
+        display: grid;
+        width: clamp(126px, 34vw, 145px);
+        aspect-ratio: 1;
+        place-items: center;
+        margin-top: 12px;
+        border: 7px solid #333;
+        border-radius: 50%;
+        background: #111;
+        box-shadow:
+          0 0 0 3px #7f1d1d,
+          0 0 16px #dc2626,
+          inset 0 0 9px #000;
+      }
+
+      .wheel {
+        position: relative;
+        width: 100%;
+        aspect-ratio: 1;
+        border: 3px solid #fef08a;
+        border-radius: 50%;
+        background: conic-gradient(
+          #991b1b 0deg 51.43deg,
+          #18181b 51.43deg 102.86deg,
+          #b91c1c 102.86deg 154.29deg,
+          #18181b 154.29deg 205.72deg,
+          #991b1b 205.72deg 257.15deg,
+          #18181b 257.15deg 308.58deg,
+          #b91c1c 308.58deg 360deg
+        );
+        box-shadow:
+          inset 0 0 18px #000,
+          0 0 8px #facc15;
+        will-change: transform;
+      }
+
+      .wheel::after {
+        position: absolute;
+        inset: 41%;
+        border: 2px solid #fff3a3;
+        border-radius: 50%;
+        background: radial-gradient(circle at 35% 30%, #ff6b6b, #7f1d1d 62%, #260000);
+        box-shadow: 0 0 7px #ef4444;
+        content: '';
+      }
+
+      .prize {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 24px;
+        color: white;
+        font:
+          900 clamp(0.58rem, 2.7vw, 0.72rem)/1 Arial,
+          sans-serif;
+        text-align: center;
+        text-shadow:
+          0 1px 1px black,
+          0 0 4px #facc15;
+        transform: translate(-50%, -50%) rotate(calc(var(--i) * 51.4286deg + 25.7143deg))
+          translateY(-48px) rotate(calc(var(--i) * -51.4286deg - 25.7143deg));
+      }
+
+      .led-shell {
+        position: relative;
+        display: grid;
+        width: min(78vw, 292px);
+        aspect-ratio: 1;
+        place-items: center;
+        margin: -1px auto 3px;
+        border: 10px solid #353535;
+        border-radius: 50%;
+        background: #080808;
+        box-shadow:
+          0 0 0 3px #050505,
+          0 0 0 5px #606060,
+          0 7px 16px #000,
+          inset 0 4px 6px #000;
+      }
+
+      .led-shell.rainbow {
+        border-color: transparent;
+        background:
+          linear-gradient(#090909, #090909) padding-box,
+          conic-gradient(#ef4444, #facc15, #22c55e, #38bdf8, #a855f7, #ef4444) border-box;
+        animation: rainbow-pulse 0.75s linear infinite;
+      }
+
+      .led {
+        position: relative;
+        display: grid;
+        width: 91%;
+        aspect-ratio: 1;
+        overflow: hidden;
+        place-items: center;
+        border: 4px solid #ff5252;
+        border-radius: 50%;
+        background:
+          radial-gradient(circle, rgba(255, 65, 65, 0.25) 0 3%, transparent 4%),
+          radial-gradient(circle, #4f0505 0, #220202 54%, #070000 76%);
+        background-size:
+          12px 12px,
+          auto;
+        box-shadow:
+          inset 0 0 35px #ef4444,
+          inset 0 0 80px #220000,
+          0 0 13px #ef4444,
+          0 0 30px rgba(239, 68, 68, 0.46);
+        transition:
+          border-color 0.2s,
+          box-shadow 0.2s,
+          background 0.2s;
+        animation: led-breathe 1.05s ease-in-out infinite alternate;
+      }
+
+      .led::after {
+        position: absolute;
+        inset: 3%;
+        border-radius: inherit;
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.14), transparent 32%);
+        content: '';
+        pointer-events: none;
+      }
+
+      .led.win {
+        border-color: #4ade80;
+        background:
+          radial-gradient(circle, rgba(134, 239, 172, 0.22) 0 3%, transparent 4%),
+          radial-gradient(circle, #16a34a, #075521 58%, #021a0a);
+        background-size:
+          12px 12px,
+          auto;
+        box-shadow:
+          inset 0 0 50px #22c55e,
+          0 0 30px #16a34a;
+      }
+
+      .led.lose {
+        border-color: #ff7272;
+        background:
+          radial-gradient(circle, rgba(255, 196, 196, 0.24) 0 3%, transparent 4%),
+          radial-gradient(circle, #dc2626, #750c0c 58%, #210000);
+        background-size:
+          12px 12px,
+          auto;
+        box-shadow:
+          inset 0 0 50px #ef4444,
+          0 0 30px #dc2626;
+      }
+
+      .led.draw {
+        border-color: #fef08a;
+        background:
+          radial-gradient(circle, rgba(255, 255, 218, 0.28) 0 3%, transparent 4%),
+          radial-gradient(circle, #eab308, #7b5c00 58%, #201600);
+        background-size:
+          12px 12px,
+          auto;
+        box-shadow:
+          inset 0 0 50px #facc15,
+          0 0 30px #eab308;
+      }
+
+      .cpu-caption {
+        position: absolute;
+        top: 15%;
+        color: #fecaca;
+        font:
+          900 0.62rem/1 system-ui,
+          sans-serif;
+        letter-spacing: 0.28em;
+        text-shadow: 0 0 7px red;
+      }
+
+      .hand {
+        position: relative;
+        z-index: 2;
+        display: grid;
+        width: 70%;
+        aspect-ratio: 1;
+        place-items: center;
+        font-family: 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif;
+        font-size: clamp(5.6rem, 28vw, 7.4rem);
+        line-height: 1;
+        text-align: center;
+        filter: grayscale(1) brightness(3.6) contrast(1.6) drop-shadow(0 0 4px #ff2b2b)
+          drop-shadow(0 0 12px #ef4444);
+        transform: rotate(-10deg);
+        user-select: none;
+      }
+
+      .hand.tick {
+        animation: hand-tick 120ms ease-out;
+      }
+
+      .result-message {
+        position: absolute;
+        z-index: 6;
+        bottom: 11%;
+        left: 50%;
+        width: 82%;
+        margin: 0;
+        color: white;
+        font-size: clamp(1.05rem, 5vw, 1.4rem);
+        line-height: 1.15;
+        text-align: center;
+        text-shadow:
+          0 2px 2px #000,
+          0 0 9px #000;
+        opacity: 0;
+        transform: translate(-50%, 8px) scale(0.92);
+        transition:
+          opacity 0.2s,
+          transform 0.2s;
+        pointer-events: none;
+      }
+
+      .result-message.show {
+        opacity: 1;
+        transform: translate(-50%, 0) scale(1);
+      }
+
+      .bet-panel {
+        position: relative;
+        z-index: 2;
+        margin: 11px 6px 10px;
+        padding: 9px 12px;
+        border: 2px solid #3f3f46;
+        border-radius: 13px;
+        background: linear-gradient(#1b1b1b, #090909);
+        box-shadow:
+          inset 0 1px rgba(255, 255, 255, 0.1),
+          0 4px 7px #000;
+      }
+
+      .bet-row {
+        display: grid;
+        grid-template-columns: 46px 1fr 46px;
+        gap: 9px;
+        align-items: center;
+      }
+
+      .bet-control {
+        width: 44px;
+        height: 34px;
+        border: 2px solid #71717a;
+        border-radius: 8px;
+        color: white;
+        font-size: 1.2rem;
+        background: linear-gradient(#52525b, #18181b);
+        box-shadow:
+          0 3px #050505,
+          inset 0 1px rgba(255, 255, 255, 0.25);
+        cursor: pointer;
+      }
+
+      .bet-control:active:not(:disabled) {
+        transform: translateY(2px);
+        box-shadow: 0 1px #050505;
+      }
+
+      .bet-control:disabled {
+        opacity: 0.35;
+        cursor: not-allowed;
+      }
+
+      .bet-range {
+        width: 100%;
+        height: 7px;
+        margin: 0;
+        border-radius: 999px;
+        outline: none;
+        background: linear-gradient(
+          90deg,
+          #dc2626 var(--bet-progress),
+          #3f3f46 var(--bet-progress)
+        );
+        appearance: none;
+      }
+
+      .bet-range::-webkit-slider-thumb {
+        width: 22px;
+        height: 22px;
+        border: 3px solid #fef08a;
+        border-radius: 50%;
+        background: #dc2626;
+        box-shadow: 0 0 7px #ef4444;
+        appearance: none;
+        cursor: pointer;
+      }
+
+      .bet-range::-moz-range-thumb {
+        width: 17px;
+        height: 17px;
+        border: 3px solid #fef08a;
+        border-radius: 50%;
+        background: #dc2626;
+        box-shadow: 0 0 7px #ef4444;
+        cursor: pointer;
+      }
+
+      .bet-limits {
+        display: flex;
+        justify-content: space-between;
+        margin: 6px 54px 0;
+        color: #a8a29e;
+        font:
+          700 0.58rem/1 system-ui,
+          sans-serif;
+      }
+
+      .controls-label {
+        margin: 0 0 7px;
+        color: #fde68a;
+        font:
+          900 0.68rem/1 system-ui,
+          sans-serif;
+        text-align: center;
+        letter-spacing: 0.14em;
+      }
+
+      .controls {
+        position: relative;
+        z-index: 2;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+        padding: 0 2px;
+      }
+
+      .choice {
+        position: relative;
+        min-width: 0;
+        min-height: 76px;
+        padding: 7px 4px 5px;
+        border: 5px solid #991b1b;
+        border-radius: 50% 50% 44% 44%;
+        color: white;
+        background: radial-gradient(
+          circle at 42% 28%,
+          #ff8a8a,
+          #dc2626 27%,
+          #991b1b 61%,
+          #450a0a 75%
+        );
+        box-shadow:
+          0 7px 0 #3f0808,
+          0 10px 12px #000,
+          inset 0 2px 4px rgba(255, 255, 255, 0.65),
+          0 0 9px rgba(239, 68, 68, 0.48);
+        cursor: pointer;
+        transition:
+          transform 80ms,
+          filter 150ms,
+          opacity 150ms;
+      }
+
+      .choice::after {
+        position: absolute;
+        inset: -9px;
+        z-index: -1;
+        border: 3px solid #3f3f46;
+        border-radius: inherit;
+        background: #151515;
+        content: '';
+      }
+
+      .choice:active:not(:disabled),
+      .choice.pressed {
+        transform: translateY(6px) scale(0.97);
+        box-shadow:
+          0 1px 0 #3f0808,
+          0 3px 5px #000,
+          inset 0 2px 4px rgba(255, 255, 255, 0.55);
+      }
+
+      .choice:focus-visible,
+      .bet-control:focus-visible,
+      .bet-range:focus-visible {
+        outline: 3px solid white;
+        outline-offset: 3px;
+      }
+
+      .choice:disabled {
+        filter: grayscale(0.85) brightness(0.42);
+        opacity: 0.7;
+        cursor: not-allowed;
+      }
+
+      .choice-icon {
+        display: block;
+        height: 40px;
+        font-family: 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif;
+        font-size: clamp(1.8rem, 8vw, 2.35rem);
+        line-height: 1;
+        filter: grayscale(1) brightness(3);
+      }
+
+      .choice-name {
+        display: block;
+        margin-top: 2px;
+        font:
+          900 0.78rem/1 system-ui,
+          sans-serif;
+        text-shadow: 0 1px 2px #000;
+      }
+
+      .footer-note {
+        position: relative;
+        z-index: 2;
+        margin: 13px 0 0;
+        color: #78716c;
+        font:
+          700 0.56rem/1.35 system-ui,
+          sans-serif;
+        text-align: center;
+        letter-spacing: 0.03em;
+      }
+
+      @keyframes led-breathe {
+        from {
+          filter: brightness(0.82);
+        }
+        to {
+          filter: brightness(1.12);
+        }
+      }
+
+      @keyframes hand-tick {
+        0% {
+          opacity: 0.68;
+          transform: rotate(-10deg) scale(0.88);
+        }
+        55% {
+          opacity: 1;
+          transform: rotate(-10deg) scale(1.09);
+        }
+        100% {
+          transform: rotate(-10deg) scale(1);
+        }
+      }
+
+      @keyframes machine-shake {
+        0%,
+        100% {
+          transform: translateX(0);
+        }
+        18% {
+          transform: translateX(-7px) rotate(-0.7deg);
+        }
+        36% {
+          transform: translateX(6px) rotate(0.7deg);
+        }
+        54% {
+          transform: translateX(-4px);
+        }
+        72% {
+          transform: translateX(3px);
+        }
+      }
+
+      @keyframes rainbow-pulse {
+        0% {
+          filter: hue-rotate(0deg) drop-shadow(0 0 7px #ef4444);
+        }
+        100% {
+          filter: hue-rotate(360deg) drop-shadow(0 0 12px #38bdf8);
+        }
+      }
+
+      @media (min-width: 700px) and (min-height: 850px) {
+        body {
+          display: grid;
+          place-items: center;
+        }
+
+        .machine {
+          min-height: 0;
+        }
+      }
+
+      @media (max-height: 760px) {
+        .machine {
+          padding-top: 10px;
+          border-radius: 26px;
+        }
+
+        .marquee {
+          padding-block: 6px;
+        }
+
+        .status-board {
+          margin-block: 9px 7px;
+        }
+
+        .roulette-section {
+          height: 116px;
+        }
+
+        .roulette-case {
+          width: 116px;
+        }
+
+        .prize {
+          transform: translate(-50%, -50%) rotate(calc(var(--i) * 51.4286deg + 25.7143deg))
+            translateY(-38px) rotate(calc(var(--i) * -51.4286deg - 25.7143deg));
+        }
+
+        .led-shell {
+          width: min(64vw, 230px);
+        }
+
+        .hand {
+          font-size: 5.2rem;
+        }
+
+        .choice {
+          min-height: 66px;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          scroll-behavior: auto !important;
+          animation-duration: 0.01ms !important;
+          animation-iteration-count: 1 !important;
+          transition-duration: 0.01ms !important;
+        }
+      }
+
+      /* 첨부된 실제 메달교환기 외형: 각진 검정 몸체, 파란 전면판, 돌출 조작대 */
+      body {
+        padding-top: clamp(34px, 8vw, 58px);
+        background:
+          radial-gradient(ellipse at 50% 20%, #272727 0, #090909 46%, #020202 78%),
+          repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.018) 0 1px, transparent 1px 5px);
+      }
+
+      .machine {
+        min-height: 0;
+        overflow: visible;
+        padding: 12px 12px 88px;
+        border: 3px solid #aeb7c2;
+        border-radius: 8px 8px 18px 18px;
+        background: linear-gradient(102deg, #05070b 0 7%, #161b24 7% 91%, #030406 91%), #090b10;
+        box-shadow:
+          -18px 18px 28px rgba(0, 0, 0, 0.72),
+          inset 5px 0 9px rgba(255, 255, 255, 0.06),
+          inset -8px 0 13px #000;
+      }
+
+      .machine::before,
+      .machine::after {
+        display: none;
+      }
+
+      .marquee {
+        margin: 0 5px;
+        padding: 7px 10px 6px;
+        border: 3px solid #d4d9df;
+        border-radius: 2px;
+        background:
+          repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.04) 0 2px, transparent 2px 5px),
+          linear-gradient(90deg, #073d9a, #075cd4 50%, #073d9a);
+        box-shadow:
+          inset 0 0 12px #001d67,
+          0 3px 0 #020817;
+      }
+
+      .marquee::before {
+        position: absolute;
+        right: -25px;
+        bottom: calc(100% + 8px);
+        left: -25px;
+        height: clamp(38px, 12vw, 52px);
+        border: 3px solid #bfc8d3;
+        border-radius: 6px 6px 2px 2px;
+        background: linear-gradient(165deg, #273142 0 44%, #101723 48% 100%);
+        box-shadow:
+          0 8px 10px rgba(0, 0, 0, 0.75),
+          inset 0 2px 2px rgba(255, 255, 255, 0.13);
+        content: '';
+        clip-path: polygon(7% 0, 91% 0, 100% 64%, 96% 100%, 2% 100%, 0 58%);
+      }
+
+      .marquee h1 {
+        color: #ffec25;
+        font-size: clamp(1.35rem, 6.4vw, 1.85rem);
+        letter-spacing: -0.06em;
+        text-shadow:
+          2px 2px 0 #171717,
+          -1px -1px 0 #171717,
+          0 0 8px #facc15;
+        transform: none;
+      }
+
+      .marquee p {
+        color: #fff268;
+        font-size: 0.55rem;
+      }
+
+      .status-board {
+        gap: 4px;
+        margin: 7px 7px 6px;
+      }
+
+      .status-cell {
+        padding-block: 4px;
+        border-color: #263d6c;
+        border-radius: 2px;
+        background: #02050b;
+      }
+
+      .status-label {
+        font-size: 0.5rem;
+      }
+
+      .digital {
+        font-size: clamp(1rem, 4.8vw, 1.35rem);
+      }
+
+      .cabinet {
+        min-height: clamp(342px, 91vw, 382px);
+        margin: 0 5px;
+        padding: 8px;
+        border: 4px solid #d2d8e0;
+        border-radius: 2px;
+        background:
+          radial-gradient(circle at 12% 76%, #ffed24 0 4%, transparent 4.5%),
+          radial-gradient(circle at 87% 31%, #ffed24 0 5%, transparent 5.5%),
+          repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.035) 0 2px, transparent 2px 6px),
+          linear-gradient(135deg, #093994, #0871db 48%, #072e84);
+        box-shadow:
+          inset 0 0 0 3px #031b59,
+          inset 0 0 28px #00164c,
+          0 4px 0 #04070d;
+      }
+
+      .cabinet::before {
+        inset: 10px;
+        z-index: 0;
+        border: 2px solid rgba(255, 234, 31, 0.55);
+        border-radius: 3px;
+        box-shadow: inset 0 0 18px rgba(255, 255, 255, 0.12);
+      }
+
+      .cabinet::after {
+        position: absolute;
+        right: 16px;
+        bottom: 12px;
+        z-index: 1;
+        color: #ffec21;
+        font:
+          900 0.72rem/1 system-ui,
+          sans-serif;
+        text-shadow:
+          2px 2px #b91c1c,
+          -1px -1px #111;
+        transform: rotate(-8deg);
+        content: '이겨라!';
+      }
+
+      .roulette-section {
+        position: relative;
+        z-index: 2;
+        height: clamp(322px, 86vw, 360px);
+        margin: 0;
+      }
+
+      .roulette-title {
+        top: 6px;
+        padding: 3px 12px;
+        border-color: #111;
+        border-radius: 2px;
+        color: #111;
+        font-size: 0.7rem;
+        background: #ffea20;
+        box-shadow:
+          2px 2px #ef2929,
+          0 0 7px #facc15;
+      }
+
+      .pointer {
+        top: 30px;
+        border-right-width: 13px;
+        border-top: 25px solid #ffeb3b;
+        border-left-width: 13px;
+        filter: drop-shadow(1px 2px 0 #b91c1c) drop-shadow(0 0 5px #facc15);
+      }
+
+      .roulette-case {
+        width: min(78vw, 320px);
+        margin-top: 26px;
+        border: 7px solid #f1f1f1;
+        background: #141414;
+        box-shadow:
+          0 0 0 4px #121212,
+          0 0 0 7px #ef233c,
+          0 0 20px rgba(255, 26, 55, 0.75),
+          inset 0 0 10px #000;
+      }
+
+      .wheel {
+        border: 3px solid #1a1a1a;
+        background: conic-gradient(
+          #f46b76 0deg 51.43deg,
+          #ffd0d3 51.43deg 102.86deg,
+          #ed5361 102.86deg 154.29deg,
+          #ffb2b9 154.29deg 205.72deg,
+          #ed5361 205.72deg 257.15deg,
+          #ffd0d3 257.15deg 308.58deg,
+          #e83c4d 308.58deg 360deg
+        );
+        box-shadow:
+          inset 0 0 25px rgba(83, 0, 0, 0.75),
+          0 0 8px #facc15;
+      }
+
+      .wheel::before {
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        background: repeating-conic-gradient(
+          from 0deg,
+          transparent 0deg 50deg,
+          #991b1b 50deg 51.43deg
+        );
+        content: '';
+      }
+
+      .wheel::after {
+        inset: 28%;
+        border: 5px solid #fff;
+        background: #190000;
+        box-shadow:
+          0 0 0 4px #ef233c,
+          0 0 16px #ef4444;
+      }
+
+      .prize {
+        z-index: 2;
+        width: 40px;
+        color: #171717;
+        font-size: clamp(0.86rem, 4vw, 1.15rem);
+        text-shadow:
+          1px 1px 0 white,
+          0 0 2px white;
+        transform: translate(-50%, -50%) rotate(calc(var(--i) * 51.4286deg + 25.7143deg))
+          translateY(clamp(-122px, -29vw, -104px)) rotate(calc(var(--i) * -51.4286deg - 25.7143deg));
+      }
+
+      .led-shell {
+        position: absolute;
+        z-index: 5;
+        top: clamp(92px, 26vw, 110px);
+        left: 50%;
+        width: min(46vw, 188px);
+        margin: 0;
+        border: 6px solid #f1f1f1;
+        background: #140000;
+        box-shadow:
+          0 0 0 4px #b91c1c,
+          0 0 18px #ef4444,
+          inset 0 3px 5px #000;
+        transform: translateX(-50%);
+      }
+
+      .led-shell.rainbow {
+        border-width: 6px;
+      }
+
+      .led {
+        width: 94%;
+        border-width: 3px;
+      }
+
+      .cpu-caption {
+        top: 11%;
+        font-size: 0.52rem;
+      }
+
+      .hand {
+        width: 84%;
+        font-size: clamp(4rem, 19vw, 5.2rem);
+      }
+
+      .result-message {
+        bottom: 7%;
+        font-size: clamp(0.72rem, 3.4vw, 0.95rem);
+      }
+
+      .bet-panel {
+        z-index: 4;
+        margin: 0 4px;
+        padding: 8px 17px 10px;
+        border: 3px solid #aeb7c2;
+        border-radius: 1px;
+        background:
+          radial-gradient(ellipse at center, rgba(180, 18, 32, 0.46), transparent 55%),
+          linear-gradient(#232630, #0b0d13);
+        box-shadow:
+          0 8px 0 #020306,
+          inset 0 1px rgba(255, 255, 255, 0.18);
+        clip-path: polygon(4% 0, 96% 0, 100% 100%, 0 100%);
+      }
+
+      .controls-label {
+        position: relative;
+        z-index: 5;
+        margin: 12px 0 9px;
+        color: #ffed49;
+        font-size: 0.58rem;
+      }
+
+      .controls {
+        z-index: 4;
+        gap: clamp(14px, 6vw, 28px);
+        margin: 0 19px;
+        padding: 16px 13px 19px;
+        border: 3px solid #aeb7c2;
+        border-top: 0;
+        background:
+          radial-gradient(circle at 50% 0, rgba(220, 38, 38, 0.48), transparent 52%),
+          linear-gradient(155deg, #242833, #07080c 70%);
+        box-shadow:
+          0 7px 0 #020203,
+          inset 0 1px rgba(255, 255, 255, 0.16);
+        clip-path: polygon(4% 0, 96% 0, 100% 100%, 0 100%);
+      }
+
+      .choice {
+        min-height: 63px;
+        padding: 6px 3px 3px;
+        border: 5px solid #d9d9d9;
+        border-radius: 50%;
+        color: #171717;
+        background: radial-gradient(circle at 42% 28%, white, #f8dce0 43%, #bbb 72%, #777 78%);
+        box-shadow:
+          0 6px 0 #6b6b6b,
+          0 9px 10px #000,
+          inset 0 2px 4px white,
+          0 0 11px rgba(255, 24, 51, 0.62);
+      }
+
+      .choice::after {
+        inset: -9px;
+        border-color: #2b3039;
+        background: #111319;
+      }
+
+      .choice:active:not(:disabled),
+      .choice.pressed {
+        box-shadow:
+          0 1px 0 #686868,
+          0 3px 4px #000,
+          inset 0 2px 4px white;
+      }
+
+      .choice-icon {
+        height: 34px;
+        color: #dc2626;
+        font-size: clamp(1.55rem, 7vw, 2rem);
+        filter: grayscale(1) contrast(2);
+      }
+
+      .choice-name {
+        color: #9f1239;
+        font-size: 0.68rem;
+        text-shadow: 0 1px white;
+      }
+
+      .footer-note {
+        margin-top: 16px;
+        color: #8c929c;
+      }
+
+      .footer-note::after {
+        display: block;
+        width: 54px;
+        height: 45px;
+        margin: 14px 34px 0 auto;
+        border: 5px solid #040506;
+        border-radius: 2px;
+        background: linear-gradient(
+          #151922 0 28%,
+          #020203 28% 38%,
+          #12151c 38% 64%,
+          #020203 64% 74%,
+          #11141a 74%
+        );
+        box-shadow:
+          0 0 0 2px #272b32,
+          inset 0 0 8px #000;
+        content: '';
+      }
+
+      @media (max-height: 760px) {
+        .roulette-section {
+          height: 300px;
+        }
+
+        .roulette-case {
+          width: 275px;
+        }
+
+        .led-shell {
+          top: 90px;
+          width: 160px;
+        }
+
+        .prize {
+          transform: translate(-50%, -50%) rotate(calc(var(--i) * 51.4286deg + 25.7143deg))
+            translateY(-105px) rotate(calc(var(--i) * -51.4286deg - 25.7143deg));
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="machine" id="machine">
+      <header class="marquee">
+        <h1>메달 짱껨보!</h1>
+        <p>MEDAL ROCK · PAPER · SCISSORS</p>
+      </header>
+
+      <section class="status-board" aria-label="게임 현황">
+        <div class="status-cell">
+          <span class="status-label">MEDAL</span>
+          <span class="digital" id="medalDisplay">0100</span>
+        </div>
+        <div class="status-cell">
+          <span class="status-label">BET</span>
+          <span class="digital" id="betDisplay">01</span>
+        </div>
+        <div class="status-cell">
+          <span class="status-label">WIN</span>
+          <span class="digital" id="streakDisplay">00</span>
+        </div>
+      </section>
+
+      <section class="cabinet" aria-label="메달 짱껨보 게임기">
+        <div class="roulette-section" aria-label="당첨 룰렛">
+          <span class="roulette-title">BONUS ROULETTE</span>
+          <span class="pointer" aria-hidden="true"></span>
+          <div class="roulette-case">
+            <div class="wheel" id="wheel">
+              <span class="prize" style="--i: 0">1</span>
+              <span class="prize" style="--i: 1">2</span>
+              <span class="prize" style="--i: 2">4</span>
+              <span class="prize" style="--i: 3">7</span>
+              <span class="prize" style="--i: 4">10</span>
+              <span class="prize" style="--i: 5">20</span>
+              <span class="prize" style="--i: 6">꽝</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="led-shell" id="ledShell">
+          <div class="led" id="led">
+            <span class="cpu-caption">CPU</span>
+            <span class="hand" id="cpuHand" aria-label="CPU 바위">✊</span>
+            <p class="result-message" id="resultMessage" aria-live="polite">READY!</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="bet-panel" aria-label="베팅 조절">
+        <div class="bet-row">
+          <button class="bet-control" id="betDown" type="button" aria-label="베팅 1 감소">−</button>
+          <input
+            class="bet-range"
+            id="betRange"
+            type="range"
+            min="1"
+            max="20"
+            value="1"
+            aria-label="베팅 메달 수"
+          />
+          <button class="bet-control" id="betUp" type="button" aria-label="베팅 1 증가">＋</button>
+        </div>
+        <div class="bet-limits" aria-hidden="true"><span>MIN 1</span><span>MAX 20</span></div>
+      </section>
+
+      <p class="controls-label">손을 고르세요 · 누르는 순간 CPU가 멈춥니다</p>
+      <section class="controls" aria-label="짱껨보 선택">
+        <button class="choice" type="button" data-choice="scissors" aria-label="가위 선택">
+          <span class="choice-icon">✌️</span>
+          <span class="choice-name">가위</span>
+        </button>
+        <button class="choice" type="button" data-choice="rock" aria-label="바위 선택">
+          <span class="choice-icon">✊</span>
+          <span class="choice-name">바위</span>
+        </button>
+        <button class="choice" type="button" data-choice="paper" aria-label="보 선택">
+          <span class="choice-icon">✋</span>
+          <span class="choice-name">보</span>
+        </button>
+      </section>
+
+      <p class="footer-note">WIN → 룰렛 배수 지급 · DRAW → 베팅 반환 · LOSE → 베팅 차감</p>
+    </main>
+
+    <script>
+      'use strict';
+
+      // 게임 상수 및 DOM 캐시
+      const HANDS = [
+        { id: 'rock', emoji: '✊', label: '바위' },
+        { id: 'scissors', emoji: '✌️', label: '가위' },
+        { id: 'paper', emoji: '✋', label: '보' }
+      ];
+      const PRIZES = [1, 2, 4, 7, 10, 20, 0];
+      const WIN_MAP = { rock: 'scissors', scissors: 'paper', paper: 'rock' };
+      const DEMO_INTERVAL_MS = 120;
+      const RESULT_HOLD_MS = 1000;
+      const ROULETTE_DURATION_MS = 2500;
+
+      const elements = {
+        machine: document.querySelector('#machine'),
+        medal: document.querySelector('#medalDisplay'),
+        bet: document.querySelector('#betDisplay'),
+        streak: document.querySelector('#streakDisplay'),
+        led: document.querySelector('#led'),
+        ledShell: document.querySelector('#ledShell'),
+        cpuHand: document.querySelector('#cpuHand'),
+        message: document.querySelector('#resultMessage'),
+        wheel: document.querySelector('#wheel'),
+        betRange: document.querySelector('#betRange'),
+        betDown: document.querySelector('#betDown'),
+        betUp: document.querySelector('#betUp'),
+        choices: [...document.querySelectorAll('.choice')]
+      };
+
+      const state = {
+        medals: 100,
+        displayedMedals: 100,
+        bet: 1,
+        streak: 0,
+        cpuIndex: 0,
+        busy: false,
+        demoTimer: null,
+        wheelRotation: 0,
+        medalAnimation: null,
+        audioContext: null,
+        embedded: window.parent !== window,
+        loggedIn: false,
+        awaitingSync: false
+      };
+
+      const wait = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
+      const pad = (value, length = 2) =>
+        String(Math.max(0, Math.round(value))).padStart(length, '0');
+
+      /** Web Audio API만으로 오락기 효과음을 합성한다. */
+      function getAudioContext() {
+        if (!state.audioContext) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          if (AudioContext) state.audioContext = new AudioContext();
+        }
+        if (state.audioContext?.state === 'suspended') state.audioContext.resume();
+        return state.audioContext;
+      }
+
+      function tone(frequency, duration, options = {}) {
+        const context = getAudioContext();
+        if (!context) return;
+        const { type = 'square', volume = 0.035, delay = 0, endFrequency = frequency } = options;
+        const start = context.currentTime + delay;
+        const oscillator = context.createOscillator();
+        const gain = context.createGain();
+        oscillator.type = type;
+        oscillator.frequency.setValueAtTime(frequency, start);
+        oscillator.frequency.exponentialRampToValueAtTime(
+          Math.max(20, endFrequency),
+          start + duration
+        );
+        gain.gain.setValueAtTime(volume, start);
+        gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+        oscillator.connect(gain).connect(context.destination);
+        oscillator.start(start);
+        oscillator.stop(start + duration);
+      }
+
+      const sounds = {
+        button() {
+          tone(180, 0.055, { volume: 0.045, endFrequency: 110 });
+        },
+        tick() {
+          tone(880, 0.018, { volume: 0.012 });
+        },
+        lose() {
+          tone(180, 0.22, { type: 'sawtooth', volume: 0.045, endFrequency: 65 });
+        },
+        draw() {
+          tone(330, 0.08, { volume: 0.03 });
+          tone(330, 0.08, { volume: 0.03, delay: 0.12 });
+        },
+        win() {
+          [660, 880, 1100].forEach((frequency, index) =>
+            tone(frequency, 0.13, { type: 'triangle', volume: 0.04, delay: index * 0.08 })
+          );
+        },
+        coins() {
+          [1320, 1760, 1560, 2090].forEach((frequency, index) =>
+            tone(frequency, 0.09, { type: 'sine', volume: 0.032, delay: index * 0.055 })
+          );
+        }
+      };
+
+      function retriggerAnimation(element, className) {
+        element.classList.remove(className);
+        void element.offsetWidth;
+        element.classList.add(className);
+      }
+
+      /** 대기 중 CPU 손을 120ms 간격으로 순환한다. */
+      function showCpuHand() {
+        const hand = HANDS[state.cpuIndex];
+        elements.cpuHand.textContent = hand.emoji;
+        elements.cpuHand.setAttribute('aria-label', `CPU ${hand.label}`);
+        retriggerAnimation(elements.cpuHand, 'tick');
+      }
+
+      function startDemo() {
+        stopDemo();
+        state.demoTimer = window.setInterval(() => {
+          state.cpuIndex = (state.cpuIndex + 1) % HANDS.length;
+          showCpuHand();
+        }, DEMO_INTERVAL_MS);
+      }
+
+      function stopDemo() {
+        if (state.demoTimer) window.clearInterval(state.demoTimer);
+        state.demoTimer = null;
+      }
+
+      function setMessage(text, visible = true) {
+        elements.message.textContent = text;
+        elements.message.classList.toggle('show', visible);
+      }
+
+      function setLedResult(result = '') {
+        elements.led.classList.remove('win', 'lose', 'draw');
+        if (result) elements.led.classList.add(result);
+      }
+
+      function updateBetUi() {
+        state.bet = Math.min(20, Math.max(1, state.bet));
+        elements.bet.textContent = pad(state.bet);
+        elements.betRange.value = String(state.bet);
+        elements.betRange.style.setProperty('--bet-progress', `${((state.bet - 1) / 19) * 100}%`);
+        elements.betDown.disabled = state.busy || state.bet <= 1;
+        elements.betUp.disabled = state.busy || state.bet >= 20 || state.bet >= state.medals;
+        elements.betRange.disabled = state.busy || state.medals <= 0;
+      }
+
+      function updateControls() {
+        const cannotPlay = state.busy || state.medals < state.bet || state.medals <= 0;
+        elements.choices.forEach((button) => {
+          button.disabled = cannotPlay;
+        });
+        elements.ledShell.classList.toggle('rainbow', state.streak >= 2);
+        elements.streak.textContent = pad(state.streak);
+        updateBetUi();
+        if (!state.busy && state.medals <= 0) setMessage('메달이 부족합니다', true);
+      }
+
+      /** 메달 표시를 현재 값에서 목표 값까지 부드럽게 카운트한다. */
+      function animateMedals(target, duration = 550) {
+        if (state.medalAnimation) cancelAnimationFrame(state.medalAnimation);
+        const startValue = state.displayedMedals;
+        const startTime = performance.now();
+        const delta = target - startValue;
+
+        return new Promise((resolve) => {
+          const frame = (now) => {
+            const progress = Math.min(1, (now - startTime) / duration);
+            const eased = 1 - Math.pow(1 - progress, 3);
+            state.displayedMedals = Math.round(startValue + delta * eased);
+            elements.medal.textContent = pad(state.displayedMedals, 4);
+            if (progress < 1) {
+              state.medalAnimation = requestAnimationFrame(frame);
+            } else {
+              state.medalAnimation = null;
+              resolve();
+            }
+          };
+          state.medalAnimation = requestAnimationFrame(frame);
+        });
+      }
+
+      function commitMedals(nextValue, duration) {
+        state.medals = Math.max(0, Math.round(nextValue));
+        return animateMedals(state.medals, duration);
+      }
+
+      function getOutcome(player, cpu) {
+        if (player === cpu) return 'draw';
+        return WIN_MAP[player] === cpu ? 'win' : 'lose';
+      }
+
+      /** 부모 레이아웃에 판 결과를 전달해 로그인 사용자의 메달과 랭킹을 저장한다. */
+      function reportRound({ bet, playerChoice, cpuChoice, multiplier }) {
+        if (!state.embedded) return;
+        window.parent.postMessage(
+          {
+            type: 'medal-janken:round',
+            balance: state.medals,
+            bet,
+            playerChoice,
+            cpuChoice,
+            multiplier
+          },
+          window.location.origin
+        );
+        state.awaitingSync = state.loggedIn;
+      }
+
+      /** 랜덤 칸을 고른 뒤 2.5초 ease-out 감속으로 포인터에 정렬한다. */
+      async function spinRoulette() {
+        const prizeIndex = Math.floor(Math.random() * PRIZES.length);
+        const segmentAngle = 360 / PRIZES.length;
+        const segmentCenter = prizeIndex * segmentAngle + segmentAngle / 2;
+        const randomTurns = 6 + Math.floor(Math.random() * 3);
+        const currentNormalized = ((state.wheelRotation % 360) + 360) % 360;
+        const desiredNormalized = (360 - segmentCenter) % 360;
+        const alignment = (desiredNormalized - currentNormalized + 360) % 360;
+        state.wheelRotation += randomTurns * 360 + alignment;
+
+        elements.wheel.style.transition = `transform ${ROULETTE_DURATION_MS}ms cubic-bezier(.12,.78,.08,1)`;
+        elements.wheel.style.transform = `rotate(${state.wheelRotation}deg)`;
+
+        // 회전 중 점점 느려지는 틱 소리
+        [0, 90, 190, 310, 450, 620, 820, 1060, 1340, 1660, 2010, 2320].forEach((delay) => {
+          window.setTimeout(() => {
+            if (state.busy) sounds.tick();
+          }, delay);
+        });
+
+        await wait(ROULETTE_DURATION_MS);
+        return PRIZES[prizeIndex];
+      }
+
+      async function finishRound() {
+        if (state.awaitingSync) {
+          setMessage('메달 정산 중…', true);
+          updateControls();
+          return;
+        }
+        setLedResult();
+        setMessage('', false);
+        state.busy = false;
+        state.bet = Math.min(state.bet, Math.max(1, state.medals));
+        updateControls();
+        if (state.medals > 0) startDemo();
+      }
+
+      /** 선택 순간 CPU 손을 고정하고 승패·메달·룰렛을 처리한다. */
+      async function playRound(playerChoice, button) {
+        if (state.busy || state.medals < state.bet || state.medals <= 0) return;
+        getAudioContext();
+        sounds.button();
+        state.busy = true;
+        stopDemo();
+        button.classList.add('pressed');
+        window.setTimeout(() => button.classList.remove('pressed'), 120);
+
+        const cpuChoice = HANDS[state.cpuIndex].id;
+        const playerHand = HANDS.find((hand) => hand.id === playerChoice);
+        const cpuHand = HANDS[state.cpuIndex];
+        const outcome = getOutcome(playerChoice, cpuChoice);
+        const roundBet = state.bet;
+
+        updateControls();
+        await commitMedals(state.medals - roundBet, 170);
+
+        if (outcome === 'lose') {
+          state.streak = 0;
+          setLedResult('lose');
+          setMessage(`패배 · ${playerHand.label} < ${cpuHand.label} · -${roundBet}`);
+          sounds.lose();
+          updateControls();
+          reportRound({
+            bet: roundBet,
+            playerChoice,
+            cpuChoice,
+            multiplier: 0
+          });
+          await wait(RESULT_HOLD_MS);
+          await finishRound();
+          return;
+        }
+
+        if (outcome === 'draw') {
+          state.streak = 0;
+          setLedResult('draw');
+          setMessage(`무승부 · 베팅 ${roundBet} 반환`);
+          sounds.draw();
+          await commitMedals(state.medals + roundBet, 300);
+          updateControls();
+          reportRound({
+            bet: roundBet,
+            playerChoice,
+            cpuChoice,
+            multiplier: 0
+          });
+          await wait(RESULT_HOLD_MS);
+          await finishRound();
+          return;
+        }
+
+        state.streak += 1;
+        setLedResult('win');
+        setMessage(`승리! ${playerHand.label} > ${cpuHand.label} · 룰렛 GO!`);
+        sounds.win();
+        updateControls();
+        retriggerAnimation(elements.machine, 'shake');
+
+        // LED 결과색은 약 1초 후 기본색으로 복귀하고 룰렛은 계속 회전한다.
+        window.setTimeout(() => setLedResult(), RESULT_HOLD_MS);
+        const multiplier = await spinRoulette();
+        const payout = roundBet * multiplier;
+
+        if (multiplier === 0) {
+          setMessage('아쉽다! 룰렛 꽝');
+          sounds.lose();
+        } else {
+          setMessage(`${multiplier}배 당첨! +${payout} 메달`);
+          sounds.coins();
+          retriggerAnimation(elements.machine, 'shake');
+          await commitMedals(state.medals + payout, 720);
+        }
+
+        updateControls();
+        reportRound({
+          bet: roundBet,
+          playerChoice,
+          cpuChoice,
+          multiplier
+        });
+        await wait(RESULT_HOLD_MS);
+        await finishRound();
+      }
+
+      function changeBet(nextBet) {
+        if (state.busy) return;
+        sounds.button();
+        state.bet = Math.min(Number(nextBet), Math.min(20, Math.max(1, state.medals)));
+        updateControls();
+      }
+
+      elements.betDown.addEventListener('click', () => changeBet(state.bet - 1));
+      elements.betUp.addEventListener('click', () => changeBet(state.bet + 1));
+      elements.betRange.addEventListener('input', (event) => changeBet(event.target.value));
+      elements.choices.forEach((button) => {
+        button.addEventListener('click', () => playRound(button.dataset.choice, button));
+      });
+
+      // 키보드 1/2/3으로도 가위/바위/보를 선택할 수 있다.
+      window.addEventListener('keydown', (event) => {
+        if (event.repeat || state.busy) return;
+        const shortcut = { 1: 'scissors', 2: 'rock', 3: 'paper' }[event.key];
+        if (!shortcut) return;
+        const button = elements.choices.find((choice) => choice.dataset.choice === shortcut);
+        button?.click();
+      });
+
+      // 공통 사이트 레이아웃과 초기 메달·로그인 상태·프레임 높이를 동기화한다.
+      window.addEventListener('message', (event) => {
+        if (
+          !state.embedded ||
+          event.origin !== window.location.origin ||
+          event.source !== window.parent ||
+          event.data?.type !== 'medal-janken:sync'
+        ) {
+          return;
+        }
+        const nextMedals = Number(event.data.medals);
+        if (!Number.isFinite(nextMedals) || nextMedals < 0) return;
+        const wasAwaiting = state.awaitingSync;
+        state.loggedIn = Boolean(event.data.loggedIn);
+        state.awaitingSync = false;
+        void commitMedals(nextMedals, 260).then(() => {
+          if (wasAwaiting) {
+            void finishRound();
+          } else {
+            state.bet = Math.min(state.bet, Math.max(1, state.medals));
+            updateControls();
+          }
+        });
+      });
+
+      function notifyParentHeight() {
+        if (!state.embedded) return;
+        window.parent.postMessage(
+          {
+            type: 'medal-janken:height',
+            height: document.documentElement.scrollHeight
+          },
+          window.location.origin
+        );
+      }
+
+      // 초기 화면
+      showCpuHand();
+      updateControls();
+      startDemo();
+      if (state.embedded) {
+        window.parent.postMessage({ type: 'medal-janken:ready' }, window.location.origin);
+        notifyParentHeight();
+        new ResizeObserver(notifyParentHeight).observe(document.body);
+      }
+    </script>
+  </body>
+</html>

@@ -258,6 +258,15 @@
           </NavItem>
           <NavItem>
             <NavLink
+              href="/games/medal-janken"
+              active={pathname?.startsWith('/games/medal-janken')}
+              class="px-3 text-center"
+            >
+              <span>✊</span><span class="d-none d-sm-inline ms-1">짱껨보</span>
+            </NavLink>
+          </NavItem>
+          <NavItem>
+            <NavLink
               href="/games/watermelon"
               active={pathname?.startsWith('/games/watermelon')}
               class="px-3 text-center"

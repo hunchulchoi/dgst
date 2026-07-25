@@ -10,6 +10,10 @@ import { updateSlotUserBalance } from '$lib/server/slotUserBalance.js';
 import { getSeotdaBalance, writeSeotdaScore } from '../../seotda/seotdaBalance.js';
 import { ensureSsamchiBalance, writeSsamchiScore } from '../../ssamchi/ssamchiBalance.js';
 import {
+  ensureMedalJankenBalance,
+  writeMedalJankenScore
+} from '../../medal-janken/medalJankenBalance.js';
+import {
   buildSubmitFingerprint,
   findRecentDuplicateComment,
   tryAcquireSubmitDedup
@@ -18,13 +22,19 @@ import {
 const GAME_ARTICLES = {
   slot: { boardId: 'slot', articleId: 'slot', title: '뺑뺑이' },
   seotda: { boardId: 'seotda', articleId: 'seotda', title: '섯다' },
-  ssamchi: { boardId: 'ssamchi', articleId: 'ssamchi', title: '홀짝·쌈치기' }
+  ssamchi: { boardId: 'ssamchi', articleId: 'ssamchi', title: '홀짝·쌈치기' },
+  'medal-janken': {
+    boardId: 'medal-janken',
+    articleId: 'medal-janken',
+    title: '메달 짱껨보'
+  }
 };
 
 /** @param {string | null | undefined} game */
 function getGameArticle(game) {
   if (game === 'seotda') return GAME_ARTICLES.seotda;
   if (game === 'ssamchi') return GAME_ARTICLES.ssamchi;
+  if (game === 'medal-janken') return GAME_ARTICLES['medal-janken'];
   return GAME_ARTICLES.slot;
 }
 
@@ -214,7 +224,9 @@ export async function POST(event) {
     const parentCommentId = data.get('parentCommentId')?.toString();
     const requestedGame = data.get('game')?.toString();
     const rewardGame =
-      requestedGame === 'seotda' || requestedGame === 'ssamchi' ? requestedGame : 'slot';
+      requestedGame === 'seotda' || requestedGame === 'ssamchi' || requestedGame === 'medal-janken'
+        ? requestedGame
+        : 'slot';
     const gameArticle = getGameArticle(rewardGame);
     if (!content || content.length === 0) {
       throw error(400, { message: '댓글 내용을 입력해주세요.' });
@@ -285,11 +297,11 @@ export async function POST(event) {
     const prisma = getPrisma();
     await ensureGameArticle(prisma, gameArticle);
 
-    // 게임 리플 보상은 뺑뺑이·섯다·쌈치기 합산 하루 10개까지만 지급한다.
+    // 게임 리플 보상은 모든 지원 게임 합산 하루 10개까지만 지급한다.
     const todayRewardCount = await prisma.gameScore.count({
       where: {
         email,
-        game: { in: ['slot', 'seotda', 'ssamchi'] },
+        game: { in: ['slot', 'seotda', 'ssamchi', 'medal-janken'] },
         bet: 0,
         payout: 100,
         delta: 100,
@@ -342,6 +354,15 @@ export async function POST(event) {
           payout: 100,
           delta: 100,
           reels: ['comment', 'ssamchi', '-']
+        });
+        rewardBalance = newBalance;
+      } else if (rewardGame === 'medal-janken') {
+        const currentBalance = await ensureMedalJankenBalance(email, nickname);
+        const newBalance = currentBalance + 100;
+        await writeMedalJankenScore(email, nickname, newBalance, {
+          payout: 100,
+          delta: 100,
+          reels: ['comment', 'medal-janken', '-']
         });
         rewardBalance = newBalance;
       } else {
