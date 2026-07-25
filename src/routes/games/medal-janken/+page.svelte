@@ -181,6 +181,13 @@
   }
 
   onMount(() => {
+    // 예전 iframe URL의 영구 리다이렉트가 브라우저에 캐시된 경우 페이지가 재귀로
+    // 중첩될 수 있다. iframe 안에서 열린 래퍼는 오락기 정적 화면으로 즉시 교체한다.
+    if (window.self !== window.top) {
+      window.location.replace('/game-assets/medal-janken/index.html');
+      return;
+    }
+
     const handleMessage = (event: MessageEvent) => {
       if (event.origin !== window.location.origin || event.source !== iframe?.contentWindow) return;
       if (event.data?.type === 'medal-janken:ready') {
