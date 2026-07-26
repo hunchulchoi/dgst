@@ -18,6 +18,8 @@ import {
 
 const HANDS = new Set(['rock', 'scissors', 'paper']);
 const MULTIPLIERS = new Set([0, 1, 2, 4, 7, 10, 20]);
+const MIN_BET = 10;
+const MAX_BET = 10_000;
 const HAND_LIST = [...HANDS];
 const MULTIPLIER_LIST = [...MULTIPLIERS];
 /** @type {Record<string, string>} */
@@ -73,8 +75,8 @@ export async function PUT(event) {
   const body = await event.request.json().catch(() => ({}));
   const bet = Number(body?.bet);
   const playerChoice = String(body?.playerChoice ?? '');
-  if (!Number.isSafeInteger(bet) || bet < 10) {
-    throw error(400, { message: '베팅은 10개 이상만 가능합니다.' });
+  if (!Number.isSafeInteger(bet) || bet < MIN_BET || bet > MAX_BET) {
+    throw error(400, { message: '베팅은 10개부터 10,000개까지만 가능합니다.' });
   }
   if (!HANDS.has(playerChoice)) throw error(400, { message: '잘못된 손 선택입니다.' });
   const cpuChoice = HAND_LIST[randomInt(HAND_LIST.length)];
@@ -170,8 +172,8 @@ export async function POST(event) {
     const bet = Number(body?.bet);
     const playerChoice = String(body?.playerChoice ?? '');
 
-    if (!Number.isSafeInteger(bet) || bet < 10) {
-      throw error(400, { message: '베팅은 10개 이상만 가능합니다.' });
+    if (!Number.isSafeInteger(bet) || bet < MIN_BET || bet > MAX_BET) {
+      throw error(400, { message: '베팅은 10개부터 10,000개까지만 가능합니다.' });
     }
     if (!HANDS.has(playerChoice)) {
       throw error(400, { message: '잘못된 손 선택입니다.' });

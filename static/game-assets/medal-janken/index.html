@@ -1364,7 +1364,7 @@
             id="betRange"
             type="range"
             min="10"
-            max="1000"
+            max="10000"
             step="10"
             value="10"
             aria-label="베팅 메달 수"
@@ -1372,7 +1372,7 @@
           <button class="bet-control" id="betUp" type="button" aria-label="베팅 1 증가">＋</button>
         </div>
         <div class="bet-limits" aria-hidden="true">
-          <span>MIN 10</span><span id="betMaxLabel">MAX 1000</span>
+          <span>MIN 10</span><span id="betMaxLabel">MAX 10000</span>
         </div>
       </section>
 
@@ -1410,6 +1410,7 @@
       const RESULT_HOLD_MS = 1000;
       const ROULETTE_DURATION_MS = 2500;
       const MIN_BET = 10;
+      const MAX_BET = 10_000;
       const BET_STEP = 10;
 
       const elements = {
@@ -1543,7 +1544,7 @@
       }
 
       function updateBetUi() {
-        const maxBet = Math.max(MIN_BET, state.medals);
+        const maxBet = Math.max(MIN_BET, Math.min(MAX_BET, state.medals));
         state.bet = Math.min(maxBet, Math.max(MIN_BET, state.bet));
         elements.bet.textContent = pad(state.bet);
         elements.betRange.min = String(MIN_BET);
@@ -1555,9 +1556,9 @@
           '--bet-progress',
           `${((state.bet - MIN_BET) / rangeSize) * 100}%`
         );
-        elements.betMaxLabel.textContent = `MAX ${state.medals}`;
+        elements.betMaxLabel.textContent = `MAX ${maxBet}`;
         elements.betDown.disabled = state.busy || state.bet <= MIN_BET;
-        elements.betUp.disabled = state.busy || state.bet >= state.medals;
+        elements.betUp.disabled = state.busy || state.bet >= maxBet;
         elements.betRange.disabled = state.busy || state.medals < MIN_BET;
       }
 
@@ -1679,7 +1680,7 @@
         setLedResult();
         setMessage('', false);
         state.busy = false;
-        state.bet = Math.min(state.bet, Math.max(MIN_BET, state.medals));
+        state.bet = Math.min(state.bet, Math.max(MIN_BET, Math.min(MAX_BET, state.medals)));
         updateControls();
         if (state.medals >= MIN_BET) startDemo();
       }
@@ -1799,7 +1800,10 @@
         if (state.busy) return;
         sounds.button();
         const requested = Math.round(Number(nextBet) / BET_STEP) * BET_STEP;
-        state.bet = Math.min(Math.max(MIN_BET, requested), Math.max(MIN_BET, state.medals));
+        state.bet = Math.min(
+          Math.max(MIN_BET, requested),
+          Math.max(MIN_BET, Math.min(MAX_BET, state.medals))
+        );
         updateControls();
       }
 
@@ -1849,7 +1853,10 @@
           if (wasAwaiting) {
             void finishRound();
           } else {
-            state.bet = Math.min(state.bet, Math.max(MIN_BET, state.medals));
+            state.bet = Math.min(
+              state.bet,
+              Math.max(MIN_BET, Math.min(MAX_BET, state.medals))
+            );
             updateControls();
           }
         });

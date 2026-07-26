@@ -279,7 +279,7 @@
       <section class="rules-card">
         <h2>게임 방법</h2>
         <ol>
-          <li>10개부터 보유 메달까지 자유롭게 베팅</li>
+          <li>10개부터 최대 10,000개까지 자유롭게 베팅</li>
           <li>CPU 손이 도는 중 가위·바위·보 선택</li>
           <li>승리하면 룰렛 배수만큼 메달 획득</li>
         </ol>
@@ -478,11 +478,6 @@
 
     .heading-stats {
       justify-content: start;
-    }
-
-    .ranking-card {
-      max-height: 23rem;
-      overflow: auto;
     }
 
     .rules-card {
