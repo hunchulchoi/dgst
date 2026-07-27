@@ -103,8 +103,36 @@ describe('game ranking routes', () => {
     expect(sql).not.toContain('created_at >=');
     expect(findFirst).toHaveBeenCalledWith({
       where: { email: 'me@example.com' },
-      orderBy: [{ score: 'desc' }, { createdAt: 'desc' }],
+      orderBy: [{ score: 'desc' }, { createdAt: 'asc' }],
       select: { score: true, createdAt: true }
+    });
+    expect(sql).toContain('ORDER BY score DESC, created_at ASC');
+  });
+
+  it('stores a 2048 score idempotently', async () => {
+    const createMany = vi.fn().mockResolvedValue({ count: 0 });
+    prismaModule.getPrisma.mockReturnValue({
+      gameScore2048: { createMany }
+    });
+
+    const { POST } = await import('../src/routes/games/2048/+server.js');
+    const response = await POST({
+      locals: {
+        auth: vi.fn().mockResolvedValue({
+          user: { email: 'me@example.com', nickname: 'me' }
+        })
+      },
+      request: new Request('https://dgst.me/games/2048', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ score: 113688 })
+      })
+    });
+
+    expect(await response.json()).toEqual({ success: true, score: 113688 });
+    expect(createMany).toHaveBeenCalledWith({
+      data: { email: 'me@example.com', nickname: 'me', score: 113688 },
+      skipDuplicates: true
     });
   });
 

@@ -9,9 +9,17 @@ const prismaModule = vi.hoisted(() => ({
 vi.mock('$lib/database/prisma.js', () => prismaModule);
 
 describe('board celebrations', () => {
-  it('includes dedicated seotda runner-up promotion events in rank-one fireworks', () => {
+  it('uses only shared-medal leader changes for medal-game fireworks', () => {
     const source = readFileSync('src/lib/server/boardCelebrations.js', 'utf8');
-    expect(source).toContain("WHERE game IN ('seotda', 'seotda-leader')");
+    expect(source).toContain("WHERE kind = 'leader-change'");
+    expect(source).not.toContain("WHERE game IN ('seotda', 'seotda-leader')");
+  });
+
+  it('uses the first 2048 achievement row for a stable celebration id', () => {
+    const source = readFileSync('src/lib/server/boardCelebrations.js', 'utf8');
+    expect(source).toContain(
+      'ROW_NUMBER() OVER (PARTITION BY email ORDER BY score DESC, created_at ASC) AS rn'
+    );
   });
 
   it('temporarily celebrates the current ssamchi leader', async () => {

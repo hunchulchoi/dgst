@@ -14,7 +14,7 @@ async function getRankTop10() {
     SELECT email, nickname, score, created_at AS "createdAt"
     FROM (
       SELECT email, nickname, score, created_at,
-        ROW_NUMBER() OVER (PARTITION BY email ORDER BY score DESC, created_at DESC) AS rn
+        ROW_NUMBER() OVER (PARTITION BY email ORDER BY score DESC, created_at ASC) AS rn
       FROM game_score_2048
     ) t
     WHERE rn = 1
@@ -44,7 +44,7 @@ export async function GET(event) {
       (async () => {
         const myDoc = await getPrisma().gameScore2048.findFirst({
           where: { email },
-          orderBy: [{ score: 'desc' }, { createdAt: 'desc' }],
+          orderBy: [{ score: 'desc' }, { createdAt: 'asc' }],
           select: { score: true, createdAt: true }
         });
         return myDoc
@@ -85,6 +85,9 @@ export async function POST(event) {
       ? user.nickname
       : 'anonymous';
 
-  await getPrisma().gameScore2048.create({ data: { email, nickname, score } });
+  await getPrisma().gameScore2048.createMany({
+    data: { email, nickname, score },
+    skipDuplicates: true
+  });
   return json({ success: true, score });
 }

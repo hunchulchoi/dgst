@@ -100,7 +100,7 @@ async function rank1FromScoreTable(table, game, label) {
           SELECT nickname, score, created_at AS "createdAt"
           FROM (
             SELECT email, nickname, score, created_at,
-              ROW_NUMBER() OVER (PARTITION BY email ORDER BY score DESC, created_at DESC) AS rn
+              ROW_NUMBER() OVER (PARTITION BY email ORDER BY score DESC, created_at ASC) AS rn
             FROM game_score_2048
           ) t
           WHERE rn = 1
@@ -268,19 +268,19 @@ export async function rank1Sudoku() {
 }
 
 /**
- * @param {{ nickname: string; balance: number; email: string }} row
+ * @param {{ nickname: string; balance: number; email: string; game: string }} row
  * @param {Date | string} createdAt
  * @param {string} id
  * @returns {BoardCelebration | null}
  */
-function seotdaRank1Celebration(row, createdAt, id) {
+function arcadeRank1Celebration(row, createdAt, id) {
   const at = normalizeToIsoString(createdAt);
   if (!at) return null;
   return {
     id,
     kind: 'rank1',
-    game: 'seotda',
-    label: '섯다 1등',
+    game: row.game === 'arcade' ? 'slot' : row.game,
+    label: '메달 게임 1등',
     nickname: row.nickname || 'anonymous',
     detail: `${Number(row.balance).toLocaleString()}점`,
     at,
@@ -289,30 +289,30 @@ function seotdaRank1Celebration(row, createdAt, id) {
 }
 
 /**
- * 섯다 — reels에 lead 마킹된 최근 1등 탈환 (판 정산 시점에 기록)
+ * 공용 메달 게임의 최근 실제 선두 교체
  * @returns {Promise<BoardCelebration | null>}
  */
-async function rank1Seotda() {
-  /** @type {Array<{ nickname: string; balance: number; createdAt: Date; email: string }>} */
+async function rank1Arcade() {
+  /** @type {Array<{ nickname: string; balance: number; createdAt: Date; email: string; game: string }>} */
   const rows = await getPrisma().$queryRaw`
     SELECT
       nickname,
       balance,
       created_at AS "createdAt",
-      email
-    FROM game_scores
-    WHERE game IN ('seotda', 'seotda-leader')
-      AND 'lead' = ANY(reels)
+      email,
+      game
+    FROM arcade_ledger
+    WHERE kind = 'leader-change'
     ORDER BY created_at DESC
     LIMIT 1
   `;
   if (rows.length && withinWindow(rows[0].createdAt)) {
     const at = normalizeToIsoString(rows[0].createdAt);
     if (!at) return null;
-    return seotdaRank1Celebration(
+    return arcadeRank1Celebration(
       rows[0],
       rows[0].createdAt,
-      `rank1:seotda:${rows[0].email}:${at}`
+      `rank1:arcade:${rows[0].email}:${at}`
     );
   }
 
@@ -390,7 +390,7 @@ export async function getBoardCelebrations() {
     rank1Minesweeper(),
     rank1Billiards(),
     rank1Sudoku(),
-    rank1Seotda(),
+    rank1Arcade(),
     rank1SsamchiBootstrap()
   ];
 

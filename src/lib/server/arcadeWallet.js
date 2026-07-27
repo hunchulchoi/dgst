@@ -10,6 +10,7 @@ export const ARCADE_MIN_PLAY_BALANCE = 10;
 export const ARCADE_GAMES = ['slot', 'seotda', 'ssamchi', 'medal-janken'];
 export const ARCADE_QUICK_PLAY_TTL_MS = 30_000;
 export const ARCADE_ROUND_PLAY_TTL_MS = 15 * 60_000;
+const ARCADE_LEADER_EVENT_KINDS = ['leader-baseline', 'leader-change'];
 
 export class ArcadePlayConflictError extends Error {
   constructor(message = '다른 게임이 진행 중입니다.') {
@@ -33,6 +34,43 @@ function safeNumber(value) {
   if (!Number.isSafeInteger(number))
     throw new Error('공용 메달 값이 안전한 정수 범위를 벗어났습니다.');
   return number;
+}
+
+/**
+ * 공용 메달 선두가 실제로 바뀐 경우에만 전용 원장을 남긴다.
+ * 최초 관측은 baseline으로 저장해 현재 1등을 새 1등처럼 축하하지 않는다.
+ * @param {import('@prisma/client').Prisma.TransactionClient} tx
+ * @param {string} sourceGame
+ */
+export async function recordArcadeLeaderChange(tx, sourceGame) {
+  if (typeof tx.$executeRaw === 'function') {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(20482048)`;
+  }
+
+  const leader = await tx.arcadeWallet.findFirst({
+    where: { balance: { gt: 0 } },
+    orderBy: [{ balance: 'desc' }, { createdAt: 'asc' }]
+  });
+  if (!leader) return null;
+
+  const previous = await tx.arcadeLedger.findFirst({
+    where: { kind: { in: ARCADE_LEADER_EVENT_KINDS } },
+    orderBy: { createdAt: 'desc' }
+  });
+  if (previous?.email === leader.email) return null;
+
+  return tx.arcadeLedger.create({
+    data: {
+      walletId: leader.id,
+      email: leader.email,
+      nickname: leader.nickname,
+      game: ARCADE_GAMES.includes(sourceGame) ? sourceGame : 'arcade',
+      kind: previous ? 'leader-change' : 'leader-baseline',
+      delta: 0,
+      balance: leader.balance,
+      meta: { previousLeaderEmail: previous?.email ?? null }
+    }
+  });
 }
 
 /** @param {string} email @param {string} nickname */
@@ -77,6 +115,7 @@ export async function ensureArcadeWallet(email, nickname) {
           }
         }
       });
+      await recordArcadeLeaderChange(tx, 'arcade');
       return wallet;
     });
   } catch (error) {
@@ -200,6 +239,7 @@ export async function applyArcadeEntries(email, nickname, entries) {
       });
     }
 
+    await recordArcadeLeaderChange(tx, entries.at(-1)?.game ?? 'arcade');
     return { balance: safeNumber(wallet.balance), wallet, scores };
   });
 }
@@ -372,6 +412,7 @@ export async function resolveArcadeOops(email, nickname, sourceGame) {
         meta: { reels }
       }
     });
+    await recordArcadeLeaderChange(tx, sourceGame);
     return tx.arcadeWallet.findUniqueOrThrow({ where: { email } });
   });
 
@@ -383,7 +424,7 @@ export async function resolveArcadeOops(email, nickname, sourceGame) {
 export async function getArcadeRank(limit = 10) {
   const rows = await getPrisma().arcadeWallet.findMany({
     where: { balance: { gt: 0 } },
-    orderBy: [{ balance: 'desc' }, { updatedAt: 'desc' }],
+    orderBy: [{ balance: 'desc' }, { createdAt: 'asc' }],
     take: limit,
     include: {
       ledgers: {

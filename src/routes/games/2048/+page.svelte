@@ -583,17 +583,6 @@
     isAnimating = false;
   }
 
-  /** 이탈 시(탭 닫기/새로고침/다른 페이지 이동) 점수 제출. keepalive로 페이지 종료 후에도 전송 시도 */
-  function submitScoreOnLeave(scoreToSubmit: number) {
-    if (!isLoggedIn || scoreToSubmit <= 0) return;
-    fetch('/games/2048', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ score: scoreToSubmit }),
-      keepalive: true
-    }).catch((e) => console.error('[2048 이탈 시 점수 전송 실패]', e));
-  }
-
   $effect(() => {
     if (isLoggedIn) loadRank();
   });
@@ -608,8 +597,6 @@
 
     const handleBeforeUnload = () => {
       saveStateToStorage();
-      const state = getStateToSave();
-      if (state && state.score > 0) submitScoreOnLeave(state.score);
     };
 
     window.addEventListener('keydown', handleKeydown);
@@ -619,8 +606,6 @@
       window.removeEventListener('keydown', handleKeydown);
       window.removeEventListener('beforeunload', handleBeforeUnload);
       saveStateToStorage();
-      const state = getStateToSave();
-      if (state && state.score > 0) submitScoreOnLeave(state.score);
       if (tickTimeout) clearTimeout(tickTimeout);
       if (spawnTimeout) clearTimeout(spawnTimeout);
       if (spawnEffectTimeout) clearTimeout(spawnEffectTimeout);

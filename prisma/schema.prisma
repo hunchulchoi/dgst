@@ -184,6 +184,7 @@ model GameScore2048 {
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   @@index([createdAt(sort: Desc)])
+  @@unique([email, score])
   @@index([email, score(sort: Desc)])
   @@map("game_score_2048")
 }
@@ -294,6 +295,7 @@ model ArcadeLedger {
 
   @@index([email, createdAt(sort: Desc)])
   @@index([game, createdAt(sort: Desc)])
+  @@index([kind, createdAt(sort: Desc)])
   @@index([walletId, createdAt(sort: Desc)])
   @@map("arcade_ledger")
 }
