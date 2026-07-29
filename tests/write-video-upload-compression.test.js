@@ -20,11 +20,14 @@ describe('write page video upload', () => {
   });
 
   it('uses different MIME filters for image and video upload buttons', () => {
-    expect(lexicalEditor).toContain("const accept = kind === 'image' ? 'image/*' : kind === 'audio' ? 'audio/*' : 'video/*'");
+    expect(lexicalEditor).toContain("? 'image/*'");
+    expect(lexicalEditor).toContain("? 'audio/*'");
+    expect(lexicalEditor).toContain("? 'application/pdf,.pdf'");
     expect(lexicalEditor).toContain('fileInput.accept = accept');
     expect(lexicalEditor).toContain('accept={selectedUploadAccept}');
     expect(lexicalEditor).toContain("onclick={() => openFilePicker('image')}");
     expect(lexicalEditor).toContain("onclick={() => openFilePicker('video')}");
+    expect(lexicalEditor).toContain("onclick={() => openFilePicker('pdf')}");
     expect(lexicalEditor).toContain("onclick={() => openFilePicker('audio')}");
     expect(lexicalEditor).toContain('aria-label="음성 파일 업로드"');
   });

@@ -75,6 +75,7 @@
     "mediabunny": "^1.46.0",
     "mime": "^4.0.4",
     "patch-package": "^8.0.0",
+    "pdf-lib": "^1.17.1",
     "pg": "^8.21.0",
     "pino": "^10.3.1",
     "postinstall-postinstall": "^2.1.0",

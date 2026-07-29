@@ -42,17 +42,30 @@ export async function GET({ params }) {
       '.mp4': 'video/mp4',
       '.mov': 'video/quicktime',
       '.avi': 'video/x-msvideo',
-      '.webm': 'video/webm'
+      '.webm': 'video/webm',
+      '.pdf': 'application/pdf'
     };
 
     const contentType = mimeTypes[ext] || 'application/octet-stream';
+    /** @type {Record<string, string>} */
+    const headers = {
+      'Content-Type': contentType,
+      'Cache-Control': 'public, max-age=31536000',
+      'Content-Length': fileBuffer.length.toString(),
+      'X-Content-Type-Options': 'nosniff'
+    };
+
+    if (ext === '.pdf') {
+      const originalFileName = path.basename(filepath);
+      const asciiFileName = originalFileName.replace(/[^A-Za-z0-9_.-]/g, '_');
+      headers['Content-Disposition'] =
+        `inline; filename="${asciiFileName}"; filename*=UTF-8''${encodeURIComponent(originalFileName)}`;
+      headers['Content-Security-Policy'] =
+        "sandbox; default-src 'none'; style-src 'unsafe-inline'; img-src data: blob:";
+    }
 
     return new Response(fileBuffer, {
-      headers: {
-        'Content-Type': contentType,
-        'Cache-Control': 'public, max-age=31536000',
-        'Content-Length': fileBuffer.length.toString()
-      }
+      headers
     });
   } catch (err) {
     console.error('Error serving file:', err);

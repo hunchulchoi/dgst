@@ -3,6 +3,7 @@ import mime from 'mime';
 import { format } from 'date-fns';
 
 import { UPLOAD_PATH } from '$env/static/private';
+import { sanitizePdfBuffer } from '$lib/server/pdfSanitizer.js';
 import { isPathUnderRoot } from '$lib/server/pathSafety.js';
 import { error } from '@sveltejs/kit';
 import path from 'path';
@@ -19,10 +20,13 @@ function safeString(_name, _path) {
   _name = decodeURIComponent(_name);
 
   const mimeType = mime.getType(_name);
-  // 이미지, 비디오, 오디오 모두 허용
+  // 이미지, 비디오, 오디오, PDF만 허용
   const isValid =
     mimeType &&
-    (mimeType.startsWith('image') || mimeType.startsWith('video') || mimeType.startsWith('audio'));
+    (mimeType.startsWith('image') ||
+      mimeType.startsWith('video') ||
+      mimeType.startsWith('audio') ||
+      mimeType === 'application/pdf');
 
   if (!isValid) {
     console.debug('Invalid file type:', mimeType, 'for file:', _name);
@@ -123,6 +127,7 @@ export async function write(file, email, preservePath = 'jjal', options = {}) {
     console.debug('Generated fileName:', fileName);
 
     const fileBuffer = Buffer.from(await file.arrayBuffer());
+    const isPdf = mime.getType(file.name) === 'application/pdf';
     let fullPath = `${UPLOAD_PATH}${dir}/${fileName}`;
     let fileWritten = false;
 
@@ -132,6 +137,18 @@ export async function write(file, email, preservePath = 'jjal', options = {}) {
       fileWritten = true;
       console.debug('File written successfully');
     };
+
+    if (isPdf) {
+      const sanitizedPdf = await sanitizePdfBuffer(fileBuffer);
+      fs.writeFileSync(fullPath, sanitizedPdf, { flag: 'wx' });
+      fileWritten = true;
+      logger.info({
+        fileName,
+        originalBytes: fileBuffer.length,
+        sanitizedBytes: sanitizedPdf.length,
+        message: 'PDF sanitized and saved'
+      });
+    }
 
     // 이미지만 처리 (비디오는 제외)
     if (file.type.startsWith('image')) {
@@ -348,7 +365,7 @@ export async function write(file, email, preservePath = 'jjal', options = {}) {
           logger.warn({ message: 'Failed to remove temporary video input', error: cleanupErr });
         }
       }
-    } else {
+    } else if (!isPdf) {
       writeOriginalFile();
       console.debug('Video file - skipping WebP conversion');
     }

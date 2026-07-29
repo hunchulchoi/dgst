@@ -122,7 +122,16 @@
   }
 
   /** @param {File | Blob} file */
+  function isPdfFile(file) {
+    return (
+      file.type === 'application/pdf' ||
+      (file instanceof File && file.name.toLowerCase().endsWith('.pdf'))
+    );
+  }
+
+  /** @param {File | Blob} file */
   function getUploadKind(file) {
+    if (isPdfFile(file)) return 'PDF';
     if (file.type.startsWith('audio/')) return '음성';
     if (file.type.startsWith('video/')) return '동영상';
     if (file.type.startsWith('image/')) return '이미지';
@@ -1482,6 +1491,10 @@
             insertHtmlBlock(
               `<video src="${escapeHtml(url)}" controls style="max-width: 100%; height: auto; display: block; margin: 1em 0;"></video>`
             );
+          } else if (isPdfFile(preparedFile)) {
+            insertHtmlBlock(
+              `<a href="${escapeHtml(url)}" target="dgst_out_link" rel="noopener noreferrer" class="pdf-attachment" style="display: inline-flex; align-items: center; gap: 0.5em; margin: 1em 0; padding: 0.75em 1em; border: 1px solid var(--bs-border-color); border-radius: 0.5rem; text-decoration: none;">📄 ${escapeHtml(preparedFile.name)}</a>`
+            );
           } else {
             insertHtmlBlock(
               `<img src="${escapeHtml(url)}" alt="" style="max-width: 100%; height: auto; display: block; margin: 1em 0;">`
@@ -1536,9 +1549,16 @@
     }
   }
 
-  /** @param {'image' | 'video' | 'audio'} kind */
+  /** @param {'image' | 'video' | 'audio' | 'pdf'} kind */
   function openFilePicker(kind) {
-    const accept = kind === 'image' ? 'image/*' : kind === 'audio' ? 'audio/*' : 'video/*';
+    const accept =
+      kind === 'image'
+        ? 'image/*'
+        : kind === 'audio'
+          ? 'audio/*'
+          : kind === 'pdf'
+            ? 'application/pdf,.pdf'
+            : 'video/*';
     selectedUploadAccept = accept;
     if (fileInput) {
       fileInput.accept = accept;
@@ -1956,6 +1976,15 @@
         onclick={() => openFilePicker('video')}
       >
         <span class="lexical-toolbar__media-icon" aria-hidden="true">🎞️</span>
+      </button>
+      <button
+        class="lexical-toolbar__button lexical-toolbar__button--media lexical-toolbar__button--media-pdf"
+        type="button"
+        aria-label="PDF 업로드"
+        title="PDF 업로드 (소독 후 첨부)"
+        onclick={() => openFilePicker('pdf')}
+      >
+        <span class="lexical-toolbar__media-icon" aria-hidden="true">📄</span>
       </button>
       <button
         class="lexical-toolbar__button lexical-toolbar__button--media lexical-toolbar__button--media-audio"
