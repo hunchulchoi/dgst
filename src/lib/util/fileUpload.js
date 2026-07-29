@@ -3,7 +3,7 @@ import mime from 'mime';
 import { format } from 'date-fns';
 
 import { UPLOAD_PATH } from '$env/static/private';
-import { sanitizePdfBuffer } from '$lib/server/pdfSanitizer.js';
+import { sanitizePdf } from '$lib/server/pdfSanitizer.js';
 import { isPathUnderRoot } from '$lib/server/pathSafety.js';
 import { error } from '@sveltejs/kit';
 import path from 'path';
@@ -57,6 +57,39 @@ function runFfmpeg(args) {
 }
 
 /**
+ * Render only the first page of an already sanitized PDF.
+ * @param {string} inputPath
+ * @param {string} outputPrefix
+ * @returns {Promise<void>}
+ */
+function runPdfCoverRender(inputPath, outputPrefix) {
+  return new Promise((resolve, reject) => {
+    execFile(
+      'pdftoppm',
+      [
+        '-f',
+        '1',
+        '-l',
+        '1',
+        '-singlefile',
+        '-scale-to-x',
+        '640',
+        '-scale-to-y',
+        '-1',
+        '-png',
+        inputPath,
+        outputPrefix
+      ],
+      { timeout: 30000 },
+      (err) => {
+        if (err) reject(err);
+        else resolve();
+      }
+    );
+  });
+}
+
+/**
  * Decode a HEIC/HEIF image with the system libheif installation.
  * @param {string} inputPath
  * @param {string} outputPath
@@ -84,7 +117,7 @@ function isHeicImage(file) {
  * @param {File} file
  * @param {string | undefined | null} email
  * @param {string} [preservePath='jjal']
- * @param {{ compressVideo?: boolean, removeVideoAudio?: boolean, extractVideoAudio?: boolean, serverCompressVideoContext?: unknown }} [options]
+ * @param {{ compressVideo?: boolean, removeVideoAudio?: boolean, extractVideoAudio?: boolean, serverCompressVideoContext?: unknown, returnMetadata?: boolean }} [options]
  */
 export async function write(file, email, preservePath = 'jjal', options = {}) {
   try {
@@ -130,6 +163,8 @@ export async function write(file, email, preservePath = 'jjal', options = {}) {
     const isPdf = mime.getType(file.name) === 'application/pdf';
     let fullPath = `${UPLOAD_PATH}${dir}/${fileName}`;
     let fileWritten = false;
+    /** @type {{ pageCount: number, previewUrl?: string } | null} */
+    let uploadMetadata = null;
 
     const writeOriginalFile = () => {
       console.debug('Writing file to:', fullPath);
@@ -139,13 +174,51 @@ export async function write(file, email, preservePath = 'jjal', options = {}) {
     };
 
     if (isPdf) {
-      const sanitizedPdf = await sanitizePdfBuffer(fileBuffer);
-      fs.writeFileSync(fullPath, sanitizedPdf, { flag: 'wx' });
+      const sanitizedPdf = await sanitizePdf(fileBuffer);
+      fs.writeFileSync(fullPath, sanitizedPdf.buffer, { flag: 'wx' });
       fileWritten = true;
+      uploadMetadata = { pageCount: sanitizedPdf.pageCount };
+
+      const coverToken = randomUUID();
+      const coverPrefix = path.join(`${UPLOAD_PATH}${dir}`, `.pdf-cover-${coverToken}`);
+      const renderedCoverPath = `${coverPrefix}.png`;
+      const previewPath = `${fullPath}.cover.webp`;
+      try {
+        await runPdfCoverRender(fullPath, coverPrefix);
+        await sharp(renderedCoverPath)
+          .resize({ width: 480, withoutEnlargement: true })
+          .webp({ quality: 82, effort: 4 })
+          .toFile(previewPath);
+        uploadMetadata.previewUrl = `/images${dir}/${fileName}.cover.webp`;
+      } catch (previewError) {
+        try {
+          if (fs.existsSync(previewPath)) fs.unlinkSync(previewPath);
+        } catch {
+          // The upload remains valid even when a partial optional preview cannot be removed.
+        }
+        logger.warn({
+          fileName,
+          error: previewError,
+          message: 'PDF cover preview generation failed'
+        });
+      } finally {
+        try {
+          if (fs.existsSync(renderedCoverPath)) fs.unlinkSync(renderedCoverPath);
+        } catch (cleanupError) {
+          logger.warn({
+            fileName,
+            error: cleanupError,
+            message: 'Failed to remove temporary PDF cover'
+          });
+        }
+      }
+
       logger.info({
         fileName,
         originalBytes: fileBuffer.length,
-        sanitizedBytes: sanitizedPdf.length,
+        sanitizedBytes: sanitizedPdf.buffer.length,
+        pageCount: sanitizedPdf.pageCount,
+        previewUrl: uploadMetadata.previewUrl,
         message: 'PDF sanitized and saved'
       });
     }
@@ -387,8 +460,12 @@ export async function write(file, email, preservePath = 'jjal', options = {}) {
     });
 
     if (fs.existsSync(finalPath)) {
-      console.debug('File uploaded successfully:', `/images${dir}/${fileName}`);
-      return `/images${dir}/${fileName}`;
+      const url = `/images${dir}/${fileName}`;
+      console.debug('File uploaded successfully:', url);
+      if (options.returnMetadata) {
+        return { url, ...uploadMetadata };
+      }
+      return url;
     } else {
       // 파일이 없으면 디렉토리 내용 확인
       try {

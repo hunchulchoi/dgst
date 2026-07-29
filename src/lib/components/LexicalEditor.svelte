@@ -373,6 +373,14 @@
     return `${mb >= 10 ? Math.ceil(mb) : mb.toFixed(1)}MB`;
   }
 
+  /** @param {number} bytes */
+  function formatFileSize(bytes) {
+    if (bytes < 1024 * 1024) {
+      return `${Math.max(1, Math.ceil(bytes / 1024))}KB`;
+    }
+    return formatMegabytes(bytes);
+  }
+
   /** @param {File | Blob} file */
   function createUploadTooLargeError(file) {
     return Object.assign(
@@ -1492,8 +1500,16 @@
               `<video src="${escapeHtml(url)}" controls style="max-width: 100%; height: auto; display: block; margin: 1em 0;"></video>`
             );
           } else if (isPdfFile(preparedFile)) {
+            const pageCount = Number(data.pageCount);
+            const pageLabel =
+              Number.isInteger(pageCount) && pageCount > 0 ? `${pageCount}페이지` : '페이지 확인됨';
+            const previewUrl =
+              typeof data.previewUrl === 'string' && data.previewUrl ? data.previewUrl : '';
+            const cover = previewUrl
+              ? `<img src="${escapeHtml(previewUrl)}" alt="${escapeHtml(preparedFile.name)} 첫 페이지" class="pdf-attachment__cover" width="160">`
+              : `<span class="pdf-attachment__cover pdf-attachment__cover--fallback">PDF</span>`;
             insertHtmlBlock(
-              `<a href="${escapeHtml(url)}" target="dgst_out_link" rel="noopener noreferrer" class="pdf-attachment" style="display: inline-flex; align-items: center; gap: 0.5em; margin: 1em 0; padding: 0.75em 1em; border: 1px solid var(--bs-border-color); border-radius: 0.5rem; text-decoration: none;">📄 ${escapeHtml(preparedFile.name)}</a>`
+              `<a href="${escapeHtml(url)}" target="dgst_out_link" rel="noopener noreferrer" class="pdf-attachment">${cover}<span class="pdf-attachment__body"><strong class="pdf-attachment__name">${escapeHtml(preparedFile.name)}</strong><span class="pdf-attachment__meta">PDF · ${formatFileSize(preparedFile.size)} · ${pageLabel}</span><span class="pdf-attachment__action">PDF 열기</span></span></a>`
             );
           } else {
             insertHtmlBlock(
@@ -1957,7 +1973,7 @@
   <div class="lexical-toolbar" aria-label="에디터 툴바">
     <div
       class="lexical-toolbar__group lexical-toolbar__group--primary"
-      aria-label="이미지와 동영상 삽입"
+      aria-label="이미지, 동영상, PDF 삽입"
     >
       <button
         class="lexical-toolbar__button lexical-toolbar__button--media lexical-toolbar__button--media-image"
@@ -1984,7 +2000,19 @@
         title="PDF 업로드 (소독 후 첨부)"
         onclick={() => openFilePicker('pdf')}
       >
-        <span class="lexical-toolbar__media-icon" aria-hidden="true">📄</span>
+        <svg
+          class="pdf-upload-icon"
+          viewBox="0 0 28 32"
+          role="img"
+          aria-hidden="true"
+        >
+          <path d="M4 1h13l7 7v23H4z" fill="#fff" />
+          <path d="M17 1v8h7" fill="#ffd6d6" />
+          <rect x="1" y="15" width="26" height="11" rx="3" fill="#d92d20" />
+          <text x="14" y="23" text-anchor="middle" fill="#fff" font-size="7" font-weight="800">
+            PDF
+          </text>
+        </svg>
       </button>
       <button
         class="lexical-toolbar__button lexical-toolbar__button--media lexical-toolbar__button--media-audio"
@@ -2283,6 +2311,25 @@
   .lexical-toolbar__button--media-video:hover {
     background: linear-gradient(135deg, #ff922b, #f43f5e);
     color: #fff;
+  }
+
+  .lexical-toolbar__button--media-pdf {
+    background: linear-gradient(135deg, #b42318, #ef4444);
+    box-shadow:
+      0 4px 12px rgba(180, 35, 24, 0.24),
+      inset 0 1px 0 rgba(255, 255, 255, 0.24);
+  }
+
+  .lexical-toolbar__button--media-pdf:hover {
+    background: linear-gradient(135deg, #d92d20, #f87171);
+    color: #fff;
+  }
+
+  .pdf-upload-icon {
+    display: block;
+    width: 1.35rem;
+    height: 1.55rem;
+    overflow: visible;
   }
 
   .lexical-toolbar__button--media-audio {

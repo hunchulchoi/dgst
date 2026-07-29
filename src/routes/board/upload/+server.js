@@ -101,17 +101,26 @@ export async function POST({ request, locals }) {
       compressVideo: serverCompressVideo,
       removeVideoAudio,
       extractVideoAudio,
-      serverCompressVideoContext
+      serverCompressVideoContext,
+      returnMetadata: true
     });
+    const responseBody =
+      typeof res === 'string'
+        ? { url: res }
+        : {
+            url: res.url,
+            previewUrl: res.previewUrl,
+            pageCount: res.pageCount
+          };
 
     logger.info({
       message: 'Image upload success',
       fileName: uploadFile?.name,
-      url: res,
+      url: responseBody.url,
       user: email
     });
 
-    return json({ url: res });
+    return json(responseBody);
   } catch (err) {
     const errorMessage = getErrorMessage(err);
     logger.error({

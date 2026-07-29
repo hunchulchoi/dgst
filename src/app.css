@@ -645,3 +645,103 @@ textarea.form-control {
   border-color: #6ea8fe !important;
   box-shadow: 0 0 0 0.25rem rgba(110, 168, 254, 0.25) !important;
 }
+
+.pdf-attachment {
+  display: inline-flex;
+  align-items: stretch;
+  width: min(100%, 520px);
+  min-height: 190px;
+  margin: 1rem 0;
+  overflow: hidden;
+  border: 1px solid var(--bs-border-color);
+  border-radius: 14px;
+  background: var(--bs-body-bg);
+  color: var(--bs-body-color);
+  text-decoration: none;
+  box-shadow: 0 8px 24px rgba(16, 24, 40, 0.1);
+  transition:
+    border-color 140ms ease,
+    box-shadow 140ms ease,
+    transform 140ms ease;
+}
+
+.pdf-attachment:hover {
+  border-color: #d92d20;
+  color: var(--bs-body-color);
+  box-shadow: 0 12px 30px rgba(180, 35, 24, 0.16);
+  transform: translateY(-1px);
+}
+
+.pdf-attachment__cover {
+  display: block;
+  flex: 0 0 160px;
+  width: 160px;
+  min-height: 190px;
+  max-height: 230px;
+  border-right: 1px solid var(--bs-border-color);
+  background: #fff;
+  object-fit: contain;
+}
+
+.pdf-attachment__cover--fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(145deg, #fff5f5, #fee2e2);
+  color: #b42318;
+  font-size: 1.3rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
+.pdf-attachment__body {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.6rem;
+  padding: 1.15rem 1.25rem;
+}
+
+.pdf-attachment__name {
+  overflow: hidden;
+  color: var(--bs-body-color);
+  font-size: 1rem;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pdf-attachment__meta {
+  color: var(--bs-secondary-color);
+  font-size: 0.88rem;
+}
+
+.pdf-attachment__action {
+  align-self: flex-start;
+  border-radius: 999px;
+  background: #d92d20;
+  color: #fff;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+@media (max-width: 575.98px) {
+  .pdf-attachment {
+    min-height: 150px;
+  }
+
+  .pdf-attachment__cover {
+    flex-basis: 112px;
+    width: 112px;
+    min-height: 150px;
+    max-height: 180px;
+  }
+
+  .pdf-attachment__body {
+    gap: 0.45rem;
+    padding: 0.85rem;
+  }
+}

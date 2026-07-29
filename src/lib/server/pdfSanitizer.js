@@ -68,9 +68,9 @@ function stripActiveContent(document) {
  * actions are discarded instead of preserving the uploaded object graph.
  *
  * @param {Buffer | Uint8Array} input
- * @returns {Promise<Buffer>}
+ * @returns {Promise<{ buffer: Buffer, pageCount: number }>}
  */
-export async function sanitizePdfBuffer(input) {
+export async function sanitizePdf(input) {
   const bytes = Buffer.from(input);
   if (bytes.length > PDF_UPLOAD_MAX_BYTES) {
     throw error(413, {
@@ -122,11 +122,21 @@ export async function sanitizePdfBuffer(input) {
   sanitized.setCreator('DGST PDF sanitizer');
   sanitized.setProducer('DGST PDF sanitizer');
 
-  return Buffer.from(
+  const buffer = Buffer.from(
     await sanitized.save({
       addDefaultPage: false,
       useObjectStreams: false,
       updateFieldAppearances: false
     })
   );
+
+  return { buffer, pageCount };
+}
+
+/**
+ * @param {Buffer | Uint8Array} input
+ * @returns {Promise<Buffer>}
+ */
+export async function sanitizePdfBuffer(input) {
+  return (await sanitizePdf(input)).buffer;
 }

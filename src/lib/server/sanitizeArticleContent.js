@@ -44,10 +44,11 @@ const ARTICLE_SANITIZE_OPTIONS = {
     ],
     video: ['src', 'controls', 'style', 'width', 'height'],
     audio: ['src', 'controls', 'style'],
-    a: ['href', 'target', 'rel'],
-    img: ['src', 'alt', 'width', 'height', 'style'],
+    a: ['href', 'target', 'rel', 'class'],
+    img: ['src', 'alt', 'width', 'height', 'style', 'class'],
     div: ['class', 'style', 'position'],
     span: ['style', 'class'],
+    strong: ['class'],
     pre: ['class'],
     code: ['class']
   },

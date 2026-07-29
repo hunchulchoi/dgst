@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { PDFDocument } from 'pdf-lib';
 
 const mocks = vi.hoisted(() => {
   const uploadRoot = '/tmp/dgst-upload-test';
@@ -60,6 +61,34 @@ describe('fileUpload image resizing', () => {
     mocks.fs.readdirSync.mockReturnValue([]);
     mocks.fs.statSync.mockReturnValue({ size: mocks.finalBuffer.length });
     mocks.sharp.mockReturnValue(mocks.sharpPipeline);
+  });
+
+  it('returns a PDF cover URL and verified page count', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-07-29T00:00:00.000Z'));
+    const source = await PDFDocument.create();
+    source.addPage([300, 400]);
+    source.addPage([300, 400]);
+    const file = new File([await source.save()], 'manual.pdf', { type: 'application/pdf' });
+    const { write } = await import('../src/lib/util/fileUpload.js');
+
+    const result = await write(file, 'person@example.com', 'jjal', { returnMetadata: true });
+
+    expect(result).toEqual({
+      url: '/images/jjal/2026/7/29/persone_manual_1785283200000.pdf',
+      previewUrl: '/images/jjal/2026/7/29/persone_manual_1785283200000.pdf.cover.webp',
+      pageCount: 2
+    });
+    expect(mocks.execFile).toHaveBeenCalledWith(
+      'pdftoppm',
+      expect.arrayContaining(['-f', '1', '-singlefile', '-png']),
+      expect.objectContaining({ timeout: 30000 }),
+      expect.any(Function)
+    );
+    expect(mocks.sharpPipeline.toFile).toHaveBeenCalledWith(
+      '/tmp/dgst-upload-test/jjal/2026/7/29/persone_manual_1785283200000.pdf.cover.webp'
+    );
+    vi.useRealTimers();
   });
 
   it('converts large gif uploads on the server for clients that cannot compress them', async () => {

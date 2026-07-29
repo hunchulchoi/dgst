@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { PDFDocument, PDFName, PDFString } from 'pdf-lib';
 
-import { PDF_UPLOAD_MAX_PAGES, sanitizePdfBuffer } from '../src/lib/server/pdfSanitizer.js';
+import {
+  PDF_UPLOAD_MAX_PAGES,
+  sanitizePdf,
+  sanitizePdfBuffer
+} from '../src/lib/server/pdfSanitizer.js';
 
 async function createPdf({ pages = 1, javascript = false } = {}) {
   const document = await PDFDocument.create();
@@ -32,6 +36,14 @@ async function createPdf({ pages = 1, javascript = false } = {}) {
 }
 
 describe('sanitizePdfBuffer', () => {
+  it('returns sanitized bytes with the verified page count', async () => {
+    const source = await createPdf({ pages: 3 });
+    const result = await sanitizePdf(source);
+
+    expect(result.pageCount).toBe(3);
+    expect(result.buffer).toBeInstanceOf(Buffer);
+  });
+
   it('rebuilds a PDF and removes automatic JavaScript actions', async () => {
     const unsafe = await createPdf({ javascript: true });
     const sanitized = await sanitizePdfBuffer(unsafe);
