@@ -21,13 +21,16 @@ const mocks = vi.hoisted(() => {
       existsSync: vi.fn(() => true),
       mkdirSync: vi.fn(),
       writeFileSync: vi.fn(),
+      readFileSync: vi.fn(() => finalBuffer),
       unlinkSync: vi.fn(),
+      rmSync: vi.fn(),
       statSync: vi.fn(() => ({ size: finalBuffer.length })),
       unlink: vi.fn(),
       renameSync: vi.fn(),
       readdirSync: vi.fn(() => [])
     },
-    execFile: vi.fn((command, args, options, callback) => callback(null))
+    execFile: vi.fn((command, args, options, callback) => callback(null)),
+    putUploadObject: vi.fn(async () => ({ etag: 'etag' }))
   };
 });
 
@@ -43,6 +46,10 @@ vi.mock('child_process', () => ({
 
 vi.mock('sharp', () => ({
   default: mocks.sharp
+}));
+
+vi.mock('../src/lib/server/minioStorage.js', () => ({
+  putUploadObject: mocks.putUploadObject
 }));
 
 vi.mock('../src/lib/util/logger.js', () => ({
@@ -87,6 +94,14 @@ describe('fileUpload image resizing', () => {
     );
     expect(mocks.sharpPipeline.toFile).toHaveBeenCalledWith(
       '/tmp/dgst-upload-test/jjal/2026/7/29/persone_manual_1785283200000.pdf.cover.webp'
+    );
+    expect(mocks.putUploadObject).toHaveBeenCalledWith(
+      expect.objectContaining({
+        key: 'jjal/2026/7/29/persone_manual_1785283200000.pdf',
+        originalFileName: 'manual.pdf',
+        uploader: 'person@example.com',
+        uploadedAt: new Date('2026-07-29T00:00:00.000Z')
+      })
     );
     vi.useRealTimers();
   });
@@ -155,9 +170,7 @@ describe('fileUpload image resizing', () => {
 
     const url = await write(browserCompressed, 'person@example.com', 'jjal');
 
-    expect(url).toBe(
-      '/images/jjal/2026/7/22/persone_browser_co_1784678400000.HEIC.webp'
-    );
+    expect(url).toBe('/images/jjal/2026/7/22/persone_browser_co_1784678400000.HEIC.webp');
     expect(mocks.execFile).not.toHaveBeenCalledWith(
       'heif-convert',
       expect.anything(),

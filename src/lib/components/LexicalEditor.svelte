@@ -40,6 +40,7 @@
   } from '@lexical/selection';
   import { mergeRegister } from '@lexical/utils';
   import { swalFire } from '$lib/util/swal.js';
+  import { encodeMultipartFormData } from '$lib/util/multipartFormData.js';
   import { reportClientError } from '$lib/util/reportClientPageError.js';
   import { createLexicalEditorFailureDetails } from '$lib/util/lexicalErrorDetails.js';
   import { BOARD_UPLOAD_MAX_BYTES, BOARD_UPLOAD_MAX_MB } from '$lib/util/uploadLimits.js';
@@ -1413,6 +1414,32 @@
     return true;
   }
 
+  /**
+   * Safari can omit FormData's boundary. Encode body and header together.
+   * @param {FormData} formData
+   */
+  function postUploadFormData(formData) {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      const multipart = encodeMultipartFormData(formData);
+      xhr.open('POST', '/board/upload');
+      xhr.withCredentials = true;
+      xhr.setRequestHeader('Content-Type', multipart.contentType);
+      xhr.addEventListener('load', () => {
+        const responseText = xhr.responseText;
+        resolve({
+          ok: xhr.status >= 200 && xhr.status < 300,
+          status: xhr.status,
+          text: async () => responseText,
+          json: async () => JSON.parse(responseText)
+        });
+      });
+      xhr.addEventListener('error', () => reject(new Error('Upload network request failed')));
+      xhr.addEventListener('abort', () => reject(new Error('Upload request was aborted')));
+      xhr.send(multipart.body);
+    });
+  }
+
   /** @param {File[]} files */
   async function uploadAndInsertFiles(files) {
     if (!editor || files.length === 0) return;
@@ -1471,11 +1498,7 @@
             );
           }
 
-          const response = await fetch('/board/upload', {
-            method: 'POST',
-            body: formData,
-            credentials: 'include'
-          });
+          const response = await postUploadFormData(formData);
 
           if (!response.ok) {
             if (response.status === 413) {
@@ -2000,12 +2023,7 @@
         title="PDF 업로드 (소독 후 첨부)"
         onclick={() => openFilePicker('pdf')}
       >
-        <svg
-          class="pdf-upload-icon"
-          viewBox="0 0 28 32"
-          role="img"
-          aria-hidden="true"
-        >
+        <svg class="pdf-upload-icon" viewBox="0 0 28 32" role="img" aria-hidden="true">
           <path d="M4 1h13l7 7v23H4z" fill="#fff" />
           <path d="M17 1v8h7" fill="#ffd6d6" />
           <rect x="1" y="15" width="26" height="11" rx="3" fill="#d92d20" />

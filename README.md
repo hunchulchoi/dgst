@@ -37,12 +37,28 @@ DATABASE_URL="postgresql://postgres:password@localhost:5432/dgstdb"
 PUBLIC_GOOGLE_RECAPTCHA_SITE_KEY=""
 GOOGLE_RECAPTCHA_SECRET_KEY=""
 UPLOAD_PATH=""
+MINIO_ENDPOINT=""
+MINIO_ACCESS_KEY=""
+MINIO_SECRET_KEY=""
+MINIO_BUCKET=""
+MINIO_REGION=""
 ```
 
 Notes:
 
 - `DATABASE_URL` is required for app runtime.
+- Uploads are stored in MinIO. `UPLOAD_PATH` is only a temporary processing directory.
+- `MINIO_ENDPOINT` accepts an HTTP(S) endpoint. `MINIO_BUCKET` accepts either a bucket
+  name such as `dgst` or a bucket/key-prefix pair such as `local/dgst`.
 - Google/Kakao OAuth and reCAPTCHA are required for the full auth flow.
+
+To copy legacy files from `UPLOAD_PATH` into MinIO without deleting local originals:
+
+```bash
+npm run migrate:uploads:minio
+```
+
+The migration is idempotent: objects already present in MinIO are skipped.
 
 ### 3. Generate Prisma client and apply schema
 
@@ -116,6 +132,7 @@ Recent smoke coverage for this branch confirmed:
 - Keep `conf/docker-compose.yml` changes separate from app/runtime commits unless you are explicitly working on deployment config.
 - Do not modify production MongoDB data during migration validation.
 - PostgreSQL can start empty before a fresh migration import, but verify data before switching production traffic.
+
 ## Lotto Cron
 
 로또 645 공식 결과를 주기적으로 동기화하려면 아래 엔드포인트를 호출합니다.

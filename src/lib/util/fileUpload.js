@@ -11,6 +11,7 @@ import sharp from 'sharp';
 import logger from './logger';
 import { execFile } from 'child_process';
 import { randomUUID } from 'crypto';
+import { putUploadObject } from '$lib/server/minioStorage.js';
 
 /**
  * @param {string} _name
@@ -163,6 +164,8 @@ export async function write(file, email, preservePath = 'jjal', options = {}) {
     const isPdf = mime.getType(file.name) === 'application/pdf';
     let fullPath = `${UPLOAD_PATH}${dir}/${fileName}`;
     let fileWritten = false;
+    /** @type {string | null} */
+    let previewPath = null;
     /** @type {{ pageCount: number, previewUrl?: string } | null} */
     let uploadMetadata = null;
 
@@ -182,7 +185,7 @@ export async function write(file, email, preservePath = 'jjal', options = {}) {
       const coverToken = randomUUID();
       const coverPrefix = path.join(`${UPLOAD_PATH}${dir}`, `.pdf-cover-${coverToken}`);
       const renderedCoverPath = `${coverPrefix}.png`;
-      const previewPath = `${fullPath}.cover.webp`;
+      previewPath = `${fullPath}.cover.webp`;
       try {
         await runPdfCoverRender(fullPath, coverPrefix);
         await sharp(renderedCoverPath)
@@ -287,10 +290,7 @@ export async function write(file, email, preservePath = 'jjal', options = {}) {
               `${UPLOAD_PATH}${dir}`,
               `.heic-${temporaryToken}${path.extname(file.name) || '.heic'}`
             );
-            const jpegOutputPath = path.join(
-              `${UPLOAD_PATH}${dir}`,
-              `.heic-${temporaryToken}.jpg`
-            );
+            const jpegOutputPath = path.join(`${UPLOAD_PATH}${dir}`, `.heic-${temporaryToken}.jpg`);
             temporaryPaths.push(heicInputPath, jpegOutputPath);
             fs.writeFileSync(heicInputPath, fileBuffer);
             await runHeifConvert(heicInputPath, jpegOutputPath);
@@ -329,7 +329,8 @@ export async function write(file, email, preservePath = 'jjal', options = {}) {
           logger.error({ message: 'Image to WebP conversion failed', error: err });
           if (isHeic) {
             throw error(415, {
-              message: 'HEIC 이미지를 변환하지 못했습니다. JPEG 또는 PNG로 변경한 뒤 다시 업로드해 주세요.'
+              message:
+                'HEIC 이미지를 변환하지 못했습니다. JPEG 또는 PNG로 변경한 뒤 다시 업로드해 주세요.'
             });
           }
           // 일반 이미지 변환 실패 시 기존 동작처럼 원본 파일 유지
@@ -373,7 +374,19 @@ export async function write(file, email, preservePath = 'jjal', options = {}) {
         fs.writeFileSync(inputPath, fileBuffer);
         const audioArgs = removeVideoAudio ? ['-an'] : ['-c:a', 'aac', '-b:a', '64k'];
         const ffmpegArgs = extractVideoAudio
-          ? ['-y', '-i', inputPath, '-vn', '-c:a', 'aac', '-b:a', '96k', '-movflags', '+faststart', compressedPath]
+          ? [
+              '-y',
+              '-i',
+              inputPath,
+              '-vn',
+              '-c:a',
+              'aac',
+              '-b:a',
+              '96k',
+              '-movflags',
+              '+faststart',
+              compressedPath
+            ]
           : [
               '-y',
               '-i',
@@ -461,11 +474,51 @@ export async function write(file, email, preservePath = 'jjal', options = {}) {
 
     if (fs.existsSync(finalPath)) {
       const url = `/images${dir}/${fileName}`;
-      console.debug('File uploaded successfully:', url);
-      if (options.returnMetadata) {
-        return { url, ...uploadMetadata };
+      const objectKey = `${dir.slice(1)}/${fileName}`;
+      try {
+        await putUploadObject({
+          key: objectKey,
+          body: fs.readFileSync(finalPath),
+          contentType: mime.getType(fileName) || file.type || 'application/octet-stream',
+          originalFileName: file.name,
+          uploader: email || 'anonymous',
+          uploadedAt: now
+        });
+
+        if (previewPath && uploadMetadata?.previewUrl && fs.existsSync(previewPath)) {
+          try {
+            await putUploadObject({
+              key: `${objectKey}.cover.webp`,
+              body: fs.readFileSync(previewPath),
+              contentType: 'image/webp',
+              originalFileName: `${file.name}.cover.webp`,
+              uploader: email || 'anonymous',
+              uploadedAt: now
+            });
+          } catch (previewUploadError) {
+            delete uploadMetadata.previewUrl;
+            logger.warn({
+              fileName,
+              error: previewUploadError,
+              message: 'PDF cover preview MinIO upload failed'
+            });
+          }
+        }
+      } finally {
+        try {
+          fs.rmSync(finalPath, { force: true });
+          if (previewPath) fs.rmSync(previewPath, { force: true });
+        } catch (cleanupError) {
+          logger.warn({
+            fileName,
+            error: cleanupError,
+            message: 'Failed to remove local upload staging file'
+          });
+        }
       }
-      return url;
+
+      console.debug('File uploaded successfully:', url);
+      return options.returnMetadata ? { url, ...uploadMetadata } : url;
     } else {
       // 파일이 없으면 디렉토리 내용 확인
       try {
