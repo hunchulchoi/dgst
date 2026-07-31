@@ -245,6 +245,12 @@ export function toPublicState(round, userSeatId = 'user', evalHand) {
       const isUser = s.id === userSeatId;
       const revealDdaeng = isShowdown && userFolded && s.isNpc && s.id === round.ddaengWinnerId;
       const reveal = isUser || (s.isNpc && revealNpcHands) || revealDdaeng;
+      const publishBossDori =
+        !isShowdown &&
+        round.series?.isBoss &&
+        s.id === round.series.bossNpcId &&
+        Array.isArray(s.doriIndices);
+      const revealBossDori = publishBossDori && s.doriIndices?.length === 3;
       /** @type {string | null} */
       let handName = null;
       const handCards = round.series?.isBoss ? (s.resultCards ?? []) : s.cards;
@@ -276,8 +282,14 @@ export function toPublicState(round, userSeatId = 'user', evalHand) {
         emotion: s.emotion ?? null,
         tell: s.tell ?? null,
         revealDdaeng,
-        doriIndices: isUser || reveal ? (s.doriIndices ?? null) : null,
-        cards: reveal ? s.cards : s.cards.map(() => ({ month: 0, gwang: false, hidden: true })),
+        doriIndices: isUser || reveal || publishBossDori ? (s.doriIndices ?? null) : null,
+        cards: reveal
+          ? s.cards
+          : s.cards.map((card, index) =>
+              revealBossDori && s.doriIndices?.includes(index)
+                ? card
+                : { month: 0, gwang: false, hidden: true }
+            ),
         handName
       };
     })

@@ -188,6 +188,8 @@
   let commentRefreshToken = $state(0);
   let resultLayerDismissed = $state(false);
   let doriDraft = $state<number[]>([]);
+  let bossResultRevealed = $state(false);
+  let bossDoriRevealCount = $state(0);
   let bustRoundPending = $state(false);
   let oopsRemainingMs = $state(Number(data.oopsInfo?.remainingMs ?? 0));
   let selectedRuleMode = $state<'basic' | 'classic'>(
@@ -227,6 +229,9 @@
     return Number(value).toLocaleString('ko-KR');
   };
 
+  const visibleHandName = (value: string | null | undefined): string | null =>
+    value && value !== '노메이드' ? value : null;
+
   const formatRankAt = (value: string | null | undefined): string => {
     if (!value) return '';
     return formatRelativeTime(value, { locale: ko, addSuffix: true });
@@ -243,6 +248,8 @@
       !!userSeat &&
       !userSeat?.folded &&
       (!round.series?.isBoss || userSeat?.doriIndices !== null) &&
+      (!round.series?.isBoss || bossDoriRevealCount >= 3) &&
+      (!round.series?.isBoss || userSeat?.doriIndices?.length !== 3 || bossResultRevealed) &&
       !!userSeat?.needsAction &&
       !busy &&
       revealDone
@@ -269,7 +276,11 @@
   const isLoggedIn = $derived(!!data.session?.user?.email);
   const isBossRound = $derived(!!round?.series?.isBoss);
   const canArrangeDori = $derived(
-    isBossRound && round?.phase === 'betting' && userSeat?.doriIndices === null && !busy
+    isBossRound &&
+      bossDoriRevealCount >= 3 &&
+      round?.phase === 'betting' &&
+      userSeat?.doriIndices === null &&
+      !busy
   );
   const doriDraftSum = $derived(
     doriDraft.reduce((sum, index) => sum + Number(userSeat?.cards[index]?.month ?? 0), 0)
@@ -350,6 +361,7 @@
   onMount(() => {
     if (oopsInfo?.waiting) startOopsCountdown(Number(oopsInfo.remainingMs ?? 0));
     if (balance < ANTE) void refreshGameState();
+    if (isBossRound && !isShowdown) scheduleBossDoriReveal();
   });
 
   onDestroy(() => {
@@ -375,6 +387,11 @@
   async function confirmDori() {
     if (!doriDraftValid) return;
     await post({ action: 'arrange', indices: doriDraft });
+  }
+
+  function revealBossResultOnScroll(event: Event) {
+    const target = event.currentTarget as HTMLElement;
+    if (target.scrollTop >= 48) bossResultRevealed = true;
   }
 
   function actionEffectText(seat: SeotdaSeat): string {
@@ -485,6 +502,21 @@
       openCardFlipped = true;
     }, 280);
     timers.push(t);
+    scheduleBossDoriReveal();
+  }
+
+  function scheduleBossDoriReveal() {
+    bossDoriRevealCount = 0;
+    if (!round?.series?.isBoss || isShowdown) return;
+    [0, 1, 2].forEach((step) => {
+      const timer = setTimeout(
+        () => {
+          bossDoriRevealCount = step + 1;
+        },
+        1100 + step * 420
+      );
+      timers.push(timer);
+    });
   }
 
   function openPeelLayer() {
@@ -555,6 +587,7 @@
     } else if (isNewDeal) {
       bustRoundPending = false;
       doriDraft = [];
+      bossResultRevealed = false;
       startDealFlip();
     } else if (!nowShowdown) {
       hiddenNpcIds = new Set();
@@ -656,7 +689,7 @@
       );
     } else if (nextBalance < ANTE) {
       await writeAutomaticComment(
-        `😢 섯다 오링! ${user?.handName ? `${user.handName} · ` : ''}${formatNumber(Math.abs(Number(nextRound.userChipDelta ?? 0)))}점 잃음`
+        `😢 섯다 오링! ${visibleHandName(user?.handName) ? `${visibleHandName(user?.handName)} · ` : ''}${formatNumber(Math.abs(Number(nextRound.userChipDelta ?? 0)))}점 잃음`
       );
     }
   }
@@ -742,7 +775,7 @@
       return;
     }
     const result = isDraw ? '무승부' : userWon ? '승리' : '패배';
-    shareTitle = `[섯다] ${userSeat?.handName ?? result} ${result}`;
+    shareTitle = `[섯다] ${visibleHandName(userSeat?.handName) ?? result} ${result}`;
     shareBoard = 'free';
     shareNote = '';
     message = '';
@@ -1015,11 +1048,18 @@
                     {/if}
                     <div class="cards my-2">
                       {#each npc.cards as card, i (`${npc.id}-${i}`)}
-                        {@const open = npcCardVisible(npc, card)}
+                        {@const bossDoriPosition = npc.doriIndices?.indexOf(i) ?? -1}
+                        {@const open =
+                          npcCardVisible(npc, card) ||
+                          (isBossRound &&
+                            round.series?.bossNpcId === npc.id &&
+                            bossDoriPosition >= 0 &&
+                            bossDoriPosition < bossDoriRevealCount)}
                         <span
                           class="hwatu-flip"
                           class:flipped={open}
                           class:gwang={open && card.gwang}
+                          class:boss-dori-card={open && bossDoriPosition >= 0 && !isShowdown}
                         >
                           <span class="hwatu-face back">?</span>
                           <span class="hwatu-face front">
@@ -1028,8 +1068,13 @@
                         </span>
                       {/each}
                     </div>
-                    {#if npc.handName && !hiddenNpcIds.has(npc.id) && isShowdown && !npc.folded && ((round.revealNpcHands !== false && !userSeat?.folded) || npc.revealDdaeng)}
-                      <div class="badge text-bg-dark hand-pop">{npc.handName}</div>
+                    {#if isBossRound && round.series?.bossNpcId === npc.id && Array.isArray(npc.doriIndices) && !isShowdown && (bossDoriRevealCount < 3 || npc.doriIndices.length === 3)}
+                      <div class="small boss-dori-status">
+                        {bossDoriRevealCount < 3 ? '보스가 도리를 확인하는 중…' : '보스 도리 공개'}
+                      </div>
+                    {/if}
+                    {#if visibleHandName(npc.handName) && !hiddenNpcIds.has(npc.id) && isShowdown && !npc.folded && ((round.revealNpcHands !== false && !userSeat?.folded) || npc.revealDdaeng)}
+                      <div class="badge text-bg-dark hand-pop">{visibleHandName(npc.handName)}</div>
                     {/if}
                     {#if thinkingNpcId === npc.id}
                       <div class="action-effect thinking">생각 중…</div>
@@ -1084,15 +1129,28 @@
                       {#each userSeat.cards as card, i (`user-boss-${i}`)}
                         <button
                           type="button"
-                          class="hwatu-flip boss-card-choice flipped"
-                          class:gwang={card.gwang}
+                          class="hwatu-flip boss-card-choice"
+                          class:flipped={userSeat.doriIndices?.length !== 3 ||
+                            userSeat.doriIndices.includes(i) ||
+                            bossResultRevealed ||
+                            isShowdown}
+                          class:gwang={card.gwang &&
+                            (userSeat.doriIndices?.length !== 3 ||
+                              userSeat.doriIndices.includes(i) ||
+                              bossResultRevealed ||
+                              isShowdown)}
                           class:dori-selected={(userSeat.doriIndices ?? doriDraft).includes(i)}
                           class:result-card={Array.isArray(userSeat.doriIndices) &&
                             userSeat.doriIndices.length === 3 &&
                             !userSeat.doriIndices.includes(i)}
                           disabled={!canArrangeDori}
                           aria-pressed={(userSeat.doriIndices ?? doriDraft).includes(i)}
-                          aria-label={`${cardText(card)}${(userSeat.doriIndices ?? doriDraft).includes(i) ? ' 도리 선택됨' : ''}`}
+                          aria-label={userSeat.doriIndices?.length === 3 &&
+                          !userSeat.doriIndices.includes(i) &&
+                          !bossResultRevealed &&
+                          !isShowdown
+                            ? '공개되지 않은 승부패'
+                            : `${cardText(card)}${(userSeat.doriIndices ?? doriDraft).includes(i) ? ' 도리 선택됨' : ''}`}
                           onclick={() => toggleDoriCard(i)}
                         >
                           <span class="hwatu-face back">?</span>
@@ -1146,17 +1204,31 @@
                         onclick={confirmDori}>도리 확정</button
                       >
                     </div>
-                  {:else if isBossRound && userSeat.doriIndices?.length === 0}
-                    <div class="badge text-bg-secondary mb-2">
-                      만들 수 있는 도리 없음 · 노메이드
-                    </div>
                   {:else if isBossRound && userSeat.doriIndices?.length === 3}
-                    <div class="small dori-made mb-2">도리 완성 · 테두리 패 2장으로 승부</div>
+                    {#if !bossResultRevealed && !isShowdown}
+                      <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+                      <div
+                        class="boss-result-scroll"
+                        role="region"
+                        aria-label="마지막 두 장 공개"
+                        tabindex="0"
+                        onscroll={revealBossResultOnScroll}
+                      >
+                        <div class="boss-result-scroll-track">
+                          <strong>아래로 스크롤해서 마지막 2장 공개</strong>
+                          <span aria-hidden="true">↓</span>
+                        </div>
+                      </div>
+                    {:else}
+                      <div class="small dori-made mb-2">마지막 2장 공개</div>
+                    {/if}
                   {:else if !holeRevealed && !isShowdown && !userSeat.folded}
                     <div class="small peel-tip">뒷장 눌러서 까기 ↓</div>
                   {/if}
-                  {#if userSeat.handName && (isBossRound || holeRevealed || isShowdown)}
-                    <div class="badge text-bg-primary mb-2 hand-pop">{userSeat.handName}</div>
+                  {#if visibleHandName(userSeat.handName) && (!isBossRound || bossResultRevealed || isShowdown) && (isBossRound || holeRevealed || isShowdown)}
+                    <div class="badge text-bg-primary mb-2 hand-pop">
+                      {visibleHandName(userSeat.handName)}
+                    </div>
                   {/if}
                   {#if userSeat.lastAction}
                     <div
@@ -1351,7 +1423,13 @@
                     {:else}졌다…{/if}
                   </strong>
                   <div class="result-action-hand">
-                    {userSeat?.handName ?? (isDraw ? '무승부' : userWon ? '승리' : '패배')}
+                    {visibleHandName(userSeat?.handName)
+                      ? visibleHandName(userSeat?.handName)
+                      : isDraw
+                        ? '무승부'
+                        : userWon
+                          ? '승리'
+                          : '패배'}
                   </div>
                   <div
                     class:win={userGameDelta > 0}
@@ -2158,6 +2236,14 @@
     border: 3px solid #ffd85e;
     box-shadow: 0 0 0 2px rgb(255 216 94 / 25%);
   }
+  .hwatu-flip.boss-dori-card .front {
+    border: 3px solid #dc3545;
+    box-shadow: 0 0 0 2px rgb(220 53 69 / 25%);
+  }
+  .boss-dori-status {
+    min-height: 1.25rem;
+    color: #ff9da7;
+  }
   .dori-arrange-panel {
     display: flex;
     width: min(100%, 24rem);
@@ -2178,6 +2264,30 @@
   .dori-arrange-panel span.valid,
   .dori-made {
     color: #74e6a4;
+  }
+  .boss-result-scroll {
+    width: min(100%, 22rem);
+    height: 5.5rem;
+    margin: 0.5rem auto;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scroll-snap-type: y mandatory;
+    border: 1px solid rgb(255 216 94 / 55%);
+    border-radius: 0.75rem;
+    background: rgb(0 0 0 / 28%);
+  }
+  .boss-result-scroll-track {
+    min-height: 11rem;
+    padding: 1rem 0.75rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    color: #ffd85e;
+    scroll-snap-align: start;
+  }
+  .boss-result-scroll-track span {
+    font-size: 1.6rem;
   }
   .hwatu-flip.tap-hint {
     animation: wiggle 1.4s ease-in-out infinite;

@@ -121,15 +121,28 @@ describe('seotda betting UI', () => {
     expect(serverSource).toContain('writeSeotdaSettlement');
   });
 
+  it('hides the boss result pair until the user scrolls to reveal it', () => {
+    expect(pageSource).toContain('let bossResultRevealed = $state(false)');
+    expect(pageSource).toContain('function revealBossResultOnScroll');
+    expect(pageSource).toContain('class="boss-result-scroll"');
+    expect(pageSource).toContain('아래로 스크롤해서 마지막 2장 공개');
+    expect(pageSource).not.toContain('만들 수 있는 도리 없음 · 노메이드');
+  });
+
+  it('pauses before revealing the boss dori one card at a time', () => {
+    expect(pageSource).toContain('let bossDoriRevealCount = $state(0)');
+    expect(pageSource).toContain('function scheduleBossDoriReveal');
+    expect(pageSource).toContain('보스가 도리를 확인하는 중');
+    expect(pageSource).toContain('bossDoriRevealCount >= 3');
+  });
+
   it('lets the player switch rooms before starting the next hand', () => {
     expect(pageSource).toContain('class="next-room-picker"');
     expect(pageSource).toContain('다음 판 방 선택');
     expect(pageSource).toContain("onclick={() => (selectedRuleMode = 'basic')}");
     expect(pageSource).toContain("onclick={() => (selectedRuleMode = 'classic')}");
     expect(pageSource).toContain("await post({ action: 'ack', ruleMode: selectedRuleMode })");
-    expect(pageSource).toContain(
-      "{selectedRuleMode === 'classic' ? '정통방' : '기본방'}"
-    );
+    expect(pageSource).toContain("{selectedRuleMode === 'classic' ? '정통방' : '기본방'}");
     expect(serverSource).toContain('body?.ruleMode == null');
     expect(serverSource).toContain('normalizeRuleMode(round.ruleMode)');
     expect(serverSource).toContain('normalizeRuleMode(body.ruleMode)');

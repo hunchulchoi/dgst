@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<!DOCTYPE fontconfig SYSTEM "urn:fontconfig:fonts.dtd">
+<fontconfig>
+  <dir>/System/Library/Fonts</dir>
+  <dir>/Library/Fonts</dir>
+  <dir>/Users/hunchulchoi/Library/Fonts</dir>
+  <cachedir>/Users/hunchulchoi/projects/workspace/dgst/.codex-artifacts/kctv_official/font-cache</cachedir>
+  <config>
+    <rescan>
+      <int>30</int>
+    </rescan>
+  </config>
+</fontconfig>

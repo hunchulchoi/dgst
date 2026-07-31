@@ -1,0 +1,126 @@
+{
+  "input": "/Users/hunchulchoi/projects/workspace/dgst/.codex-artifacts/kctv_official/output/KCTV_\ubc29\ud654\ubcbd_\uc870\ud68c_\uacc4\uc815_\uc2e0\uccad_\uacf5\ubb38_\ud0c0\ubbf8\uc6b0\uc2a4\uc591\uc2dd.docx",
+  "fonts_by_char_count": {
+    "Noto Serif CJK KR": 333,
+    "Noto Sans CJK KR": 123
+  },
+  "direct_run_formatting_runs": 24,
+  "direct_paragraph_formatting_paragraphs": 21,
+  "heading_like_paragraphs_not_heading_style": [
+    {
+      "para_index": 1,
+      "text": "\u321c\ud0c0\ubbf8\uc6b0\uc2a4\uace8\ud504\uc564\ube4c\ub9ac\uc9c0",
+      "style": "Normal"
+    },
+    {
+      "para_index": 2,
+      "text": "63040 \uc81c\uc8fc\ud2b9\ubcc4\uc790\uce58\ub3c4 \uc81c\uc8fc\uc2dc \uc560\uc6d4\uc74d \ud654\uc804\uae38 201 / TEL(064)793-0703 / FAX (064)793-0709",
+      "style": "Normal"
+    },
+    {
+      "para_index": 3,
+      "text": "\uc81c    \ubaa9 : \ub0b4\ubd80 \ub124\ud2b8\uc6cc\ud06c \ud604\ud669 \ud655\uc778\uc744 \uc704\ud55c \ubc29\ud654\ubcbd \uc870\ud68c\uc6a9 \uacc4\uc815 \uc694\uccad",
+      "style": "Normal"
+    },
+    {
+      "para_index": 6,
+      "text": "-   \uc544      \ub798   -",
+      "style": "Normal"
+    },
+    {
+      "para_index": 9,
+      "text": "\u321c\ud0c0\ubbf8\uc6b0\uc2a4\uace8\ud504\uc564\ube4c\ub9ac\uc9c0  \ub300\ud45c\uc774\uc0ac  \uae40  \uc591  \uc625",
+      "style": "Normal"
+    },
+    {
+      "para_index": 10,
+      "text": "\ubb38\uc11c\ubc88\ud638 : \ud0c0\ubbf8\uc6b0\uc2a4-2026-01",
+      "style": "Normal"
+    },
+    {
+      "para_index": 12,
+      "text": "\uc218    \uc2e0 : KCTV \uc81c\uc8fc\ubc29\uc1a1",
+      "style": "Normal"
+    },
+    {
+      "para_index": 13,
+      "text": "\ucc38    \uc870 : \ub124\ud2b8\uc6cc\ud06c / \ubcf4\uc548 \ub2f4\ub2f9\uc790",
+      "style": "Normal"
+    },
+    {
+      "para_index": 16,
+      "text": "\uc694\uccad \ubaa9\uc801",
+      "style": "Normal"
+    },
+    {
+      "para_index": 18,
+      "text": "\uc694\uccad \uad8c\ud55c",
+      "style": "Normal"
+    },
+    {
+      "para_index": 20,
+      "text": "\uc2e0\uccad \uacc4\uc815 \uc815\ubcf4",
+      "style": "Normal"
+    }
+  ],
+  "examples": {
+    "direct_paragraph_formatting": [
+      {
+        "para_index": 1,
+        "text": "\u321c\ud0c0\ubbf8\uc6b0\uc2a4\uace8\ud504\uc564\ube4c\ub9ac\uc9c0",
+        "style": "Normal"
+      },
+      {
+        "para_index": 2,
+        "text": "63040 \uc81c\uc8fc\ud2b9\ubcc4\uc790\uce58\ub3c4 \uc81c\uc8fc\uc2dc \uc560\uc6d4\uc74d \ud654\uc804\uae38 201 / TEL(064)793-0703 / FAX (064)793-0709",
+        "style": "Normal"
+      },
+      {
+        "para_index": 3,
+        "text": "\uc81c    \ubaa9 : \ub0b4\ubd80 \ub124\ud2b8\uc6cc\ud06c \ud604\ud669 \ud655\uc778\uc744 \uc704\ud55c \ubc29\ud654\ubcbd \uc870\ud68c\uc6a9 \uacc4\uc815 \uc694\uccad",
+        "style": "Normal"
+      },
+      {
+        "para_index": 4,
+        "text": "\uadc0\uc0ac\uc758 \uc77c\uc775 \ubc88\ucc3d\ud558\uc2ec\uc744 \uae30\uc6d0\ud569\ub2c8\ub2e4.",
+        "style": "List Number"
+      },
+      {
+        "para_index": 5,
+        "text": "\ub2f9\uc0ac \ub0b4\ubd80 \ub124\ud2b8\uc6cc\ud06c \ud604\ud669 \ud655\uc778 \ubc0f \ud1b5\uc2e0 \uc0c1\ud0dc \uc810\uac80\uc744 \uc704\ud558\uc5ec \uc544\ub798\uc640 \uac19\uc774 KCTV \ubc29\ud654\ubcbd\uc758 \uc870\ud68c\uc6a9(Read-Only) \uacc4\uc815 \uc0dd\uc131\uc744 \uc694\uccad\ub4dc\ub9ac\uc624\ub2c8 \ud611\uc870\ud558\uc5ec \uc8fc\uc2dc\uae30 \ubc14\ub78d\ub2c8\ub2e4.",
+        "style": "List Number"
+      }
+    ],
+    "direct_run_formatting": [
+      {
+        "para_index": 1,
+        "run_text": "\u321c\ud0c0\ubbf8\uc6b0\uc2a4\uace8\ud504\uc564\ube4c\ub9ac\uc9c0",
+        "style": "Normal"
+      },
+      {
+        "para_index": 2,
+        "run_text": "63040 \uc81c\uc8fc\ud2b9\ubcc4\uc790\uce58\ub3c4 \uc81c\uc8fc\uc2dc \uc560\uc6d4\uc74d \ud654\uc804\uae38 201 / TEL(064)793-0703 / FAX (064)793-0709",
+        "style": "Normal"
+      },
+      {
+        "para_index": 3,
+        "run_text": "\uc81c    \ubaa9 : ",
+        "style": "Normal"
+      },
+      {
+        "para_index": 3,
+        "run_text": "\ub0b4\ubd80 \ub124\ud2b8\uc6cc\ud06c \ud604\ud669 \ud655\uc778\uc744 \uc704\ud55c \ubc29\ud654\ubcbd \uc870\ud68c\uc6a9 \uacc4\uc815 \uc694\uccad",
+        "style": "Normal"
+      },
+      {
+        "para_index": 4,
+        "run_text": "\uadc0\uc0ac\uc758 \uc77c\uc775 \ubc88\ucc3d\ud558\uc2ec\uc744 \uae30\uc6d0\ud569\ub2c8\ub2e4.",
+        "style": "List Number"
+      }
+    ]
+  },
+  "notes": [
+    "Direct formatting is not always wrong, but it often causes inconsistent output when templates change.",
+    "Heading-like paragraphs not using Heading styles can break TOC and accessibility."
+  ]
+}

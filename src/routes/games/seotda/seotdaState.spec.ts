@@ -3,6 +3,69 @@ import { toPublicState } from './seotdaState.js';
 import { evaluateHand } from './seotdaEngine.js';
 
 describe('toPublicState hide NPC when user folded', () => {
+  it('publishes only the boss dori cards before showdown', () => {
+    const round = /** @type {import('./seotdaState.js').SeotdaRound} */ {
+      phase: 'betting',
+      pot: 20,
+      currentBet: 10,
+      turnIndex: 0,
+      pressureNpcId: null,
+      log: [],
+      winnerId: null,
+      showdown: false,
+      antePaid: 10,
+      series: { isBoss: true, bossNpcId: 'boss' },
+      seats: [
+        {
+          id: 'user',
+          name: '나',
+          isNpc: false,
+          chips: 990,
+          cards: [
+            { month: 1, gwang: false },
+            { month: 2, gwang: false },
+            { month: 3, gwang: false },
+            { month: 4, gwang: false },
+            { month: 10, gwang: false }
+          ],
+          doriIndices: null,
+          folded: false,
+          contrib: 10,
+          lastAction: null,
+          needsAction: true
+        },
+        {
+          id: 'boss',
+          name: '보스',
+          isNpc: true,
+          chips: 990,
+          cards: [
+            { month: 1, gwang: true },
+            { month: 2, gwang: false },
+            { month: 3, gwang: false },
+            { month: 7, gwang: false },
+            { month: 9, gwang: false }
+          ],
+          doriIndices: [0, 1, 3],
+          resultCards: [
+            { month: 3, gwang: false },
+            { month: 9, gwang: false }
+          ],
+          folded: false,
+          contrib: 10,
+          lastAction: null,
+          needsAction: true
+        }
+      ]
+    };
+
+    const boss = toPublicState(round, 'user', evaluateHand).seats.find(
+      (seat) => seat.id === 'boss'
+    );
+    expect(boss?.doriIndices).toEqual([0, 1, 3]);
+    expect(boss?.cards.map((card) => card.month)).toEqual([1, 2, 0, 7, 0]);
+  });
+
   it('does not reveal NPC cards if user died', () => {
     const round = /** @type {import('./seotdaState.js').SeotdaRound} */ {
       phase: /** @type {'showdown'} */ 'showdown',

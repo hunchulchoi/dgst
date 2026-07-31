@@ -1,0 +1,22 @@
+# KCTV 공문 양식 재현 계약
+
+- Reference: `/Users/hunchulchoi/Downloads/타미우스 공문양식.hwp`
+- SHA-256: `a4d69472f9631e2a54dd4103a1ce61c87d2d002f6a274ff170c4ca618258ad20`
+- Source content: `/Users/hunchulchoi/Downloads/KCTV_방화벽_조회_계정_신청_공문_v3.docx`
+- Source SHA-256: `b8aab6966968a415f76be5c0cd16c0a54faa4a455682873043461195fa21ec44`
+- Evidence: `hwp_preview/preview.bin` (724×1024 PNG), `hwp_preview/preview.txt`
+- Page system: A4 portrait, one page, approximately 20 mm left/right/top/bottom margins.
+- First block: centered company name in bold sans-serif, centered address/contact line, then a full-width light-gray rule.
+- Metadata/approval block: metadata labels at left; black bordered approval grid at right. Grid contains 선결/지시, 접수/일자/접수번호/처리과/담당자, 결재·공람 with three blank approval columns.
+- Subject: bold `제    목 :` followed by the source title, with a black bottom rule.
+- Body: three numbered items. Item 2 is followed by a centered `-   아      래   -` and a compact two-column request-information table.
+- Closing: centered, bold company/representative line near the lower page area.
+- Editable slots:
+  - document number → `타미우스-2026-01`
+  - date → `2026. 07. 30.`
+  - recipient → `KCTV 제주방송`
+  - reference → `네트워크 / 보안 담당자`
+  - subject/body/request table → preserve source meaning and wording
+  - representative → HWP template authority: `㈜타미우스골프앤빌리지  대표이사  김  양  옥`
+- Fidelity gates: one A4 page; intact Korean glyphs; no clipping/overlap; approval grid remains blank; company title, address line, rule, metadata alignment, subject rule, and bottom representative line remain recognizable from the HWP preview.
+- Intentional reconstruction: LibreOffice cannot faithfully decode the HWP 5.x body. The HWP-embedded preview PNG/text are used as the visual/content authority; the deliverable is rebuilt as DOCX.
