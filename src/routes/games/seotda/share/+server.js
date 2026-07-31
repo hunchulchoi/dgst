@@ -12,6 +12,11 @@ import { publicSeries } from '../seotdaSeries.js';
 const ALLOWED_BOARDS = new Set(['free', 'bug']);
 const MAX_BODY_BYTES = 8 * 1024;
 
+/** @param {import('../seotdaState.js').SeotdaRound} round @param {import('../seotdaState.js').SeotdaSeat} seat */
+function handCards(round, seat) {
+  return round.series?.isBoss && Array.isArray(seat.resultCards) ? seat.resultCards : seat.cards;
+}
+
 /** @param {unknown} value @param {number} maxLength @param {boolean} [multiline] */
 function cleanText(value, maxLength, multiline = false) {
   return Array.from(String(value ?? ''))
@@ -63,14 +68,14 @@ function buildShareContent(round, note) {
     const type = entry.includes('개평')
       ? 'gaepyeong'
       : entry.includes('땡값')
-      ? 'ddaeng'
-      : entry.includes('→')
-        ? 'showdown'
-        : entry.includes('승리') || entry.includes('무승부')
-          ? 'result'
-          : entry.includes('“')
-            ? 'taunt'
-            : 'action';
+        ? 'ddaeng'
+        : entry.includes('→')
+          ? 'showdown'
+          : entry.includes('승리') || entry.includes('무승부')
+            ? 'result'
+            : entry.includes('“')
+              ? 'taunt'
+              : 'action';
     if (type === 'action' && /콜|레이즈|올인/.test(entry)) runningPot += amount;
     events.push({
       type,
@@ -157,8 +162,13 @@ function buildShareContent(round, note) {
         chips: Math.max(0, Number(seat.chips) || 0),
         folded: !!seat.folded,
         winner: winnerIds.includes(seat.id),
-        handName: revealCards ? displayHand(seat.cards, round.ruleMode).name : '비공개',
+        handName: revealCards
+          ? handCards(round, seat).length === 2
+            ? displayHand(handCards(round, seat), round.ruleMode).name
+            : '노메이드'
+          : '비공개',
         cards: revealCards ? seat.cards : [],
+        doriIndices: revealCards ? (seat.doriIndices ?? null) : null,
         emotion: seat.emotion ?? null,
         tell: seat.tell ?? null
       };
@@ -217,8 +227,9 @@ export async function POST(event) {
 
   const boardId = ALLOWED_BOARDS.has(body?.boardId) ? body.boardId : 'free';
   const user = round.seats.find((seat) => seat.id === 'user');
+  const userCards = user ? handCards(round, user) : [];
   const userHand =
-    user?.cards?.length === 2 ? displayHand(user.cards, round.ruleMode).name : '결과';
+    userCards.length === 2 ? displayHand(userCards, round.ruleMode).name : '노메이드';
   const title = cleanText(body?.title, 80) || `[섯다] ${userHand}`;
   const note = cleanText(body?.note, 500, true);
   const content = buildShareContent(round, note);

@@ -139,6 +139,47 @@ export function evaluateHand(cards) {
 }
 
 /**
+ * 도리짓고땡: 다섯 장 중 합이 10의 배수인 세 장과 남은 두 장을 모두 찾는다.
+ * @param {SeotdaCard[]} cards
+ */
+export function doriArrangements(cards) {
+  if (!Array.isArray(cards) || cards.length !== 5) return [];
+  const arrangements = [];
+  for (let a = 0; a < 3; a++) {
+    for (let b = a + 1; b < 4; b++) {
+      for (let c = b + 1; c < 5; c++) {
+        const doriIndices = [a, b, c];
+        const sum = doriIndices.reduce((total, index) => total + cards[index].month, 0);
+        if (sum % 10 !== 0) continue;
+        const resultIndices = cards
+          .map((_, index) => index)
+          .filter((index) => !doriIndices.includes(index));
+        const resultCards = resultIndices.map((index) => cards[index]);
+        arrangements.push({
+          doriIndices,
+          resultIndices,
+          resultCards,
+          doriSum: sum,
+          hand: evaluateHand(resultCards)
+        });
+      }
+    }
+  }
+  return arrangements;
+}
+
+/** @param {SeotdaCard[]} cards */
+export function bestDoriArrangement(cards) {
+  const arrangements = doriArrangements(cards);
+  if (arrangements.length === 0) return null;
+  let best = arrangements[0];
+  for (const arrangement of arrangements.slice(1)) {
+    if (compareHands(arrangement.hand, best.hand) > 0) best = arrangement;
+  }
+  return best;
+}
+
+/**
  * @param {SeotdaHand} a
  * @param {SeotdaHand} b
  * @returns {number} >0 if a wins

@@ -41,6 +41,7 @@ import {
   resetSeotdaSeries
 } from './seotdaState.js';
 import {
+  arrangeBossHand,
   applyPlayerAction,
   applyGaepyeongIfOops,
   contributionCapacity,
@@ -244,6 +245,25 @@ export async function POST(event) {
       );
     }
 
+    if (action === 'arrange') {
+      const round = getRound(user.email);
+      if (!round || round.phase !== 'betting' || !round.series?.isBoss) {
+        throw error(400, { message: '진행 중인 보스전이 없습니다.' });
+      }
+      try {
+        arrangeBossHand(round, 'user', Array.isArray(body?.indices) ? body.indices : []);
+      } catch (cause) {
+        throw error(400, { message: cause instanceof Error ? cause.message : '도리 선택 실패' });
+      }
+      setRound(user.email, round);
+      return json({
+        success: true,
+        balance: round.seats.find((seat) => seat.id === 'user')?.chips ?? 0,
+        round: publicOf(round),
+        npcActions: []
+      });
+    }
+
     if (action === 'act') {
       const round = getRound(user.email);
       if (!round || round.phase !== 'betting') {
@@ -388,7 +408,7 @@ export async function POST(event) {
       );
     }
 
-    throw error(400, { message: 'action: start | act | ack' });
+    throw error(400, { message: 'action: start | arrange | act | ack' });
   } catch (err) {
     if (err && typeof err === 'object' && 'status' in err) throw err;
     if (err instanceof ArcadePlayConflictError) {
@@ -549,6 +569,24 @@ function handleSmoke(email, action, body) {
       npcActions
     });
   }
+  if (action === 'arrange') {
+    const round = getRound(email);
+    if (!round || round.phase !== 'betting' || !round.series?.isBoss) {
+      throw error(400, { message: '진행 중인 보스전이 없습니다.' });
+    }
+    try {
+      arrangeBossHand(round, 'user', Array.isArray(body?.indices) ? body.indices : []);
+    } catch (cause) {
+      throw error(400, { message: cause instanceof Error ? cause.message : '도리 선택 실패' });
+    }
+    setRound(email, round);
+    return json({
+      success: true,
+      balance: round.seats.find((seat) => seat.id === 'user')?.chips ?? 0,
+      round: publicOf(round),
+      npcActions: []
+    });
+  }
   if (action === 'act') {
     const round = getRound(email);
     if (!round || round.phase !== 'betting') {
@@ -571,5 +609,5 @@ function handleSmoke(email, action, body) {
     const userChips = round.seats.find((s) => s.id === 'user')?.chips ?? 0;
     return json({ success: true, balance: userChips, round: publicOf(round), npcActions });
   }
-  throw error(400, { message: 'action: start | act | ack' });
+  throw error(400, { message: 'action: start | arrange | act | ack' });
 }

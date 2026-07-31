@@ -1,7 +1,7 @@
 import {
   ANTE,
   MAX_ANTE,
-  compareHands,
+  bestDoriArrangement,
   createDeck,
   dynamicAnte,
   evaluateHand,
@@ -35,7 +35,60 @@ export const GAEPYEONG_RATE = 0.1;
 export const GAEPYEONG_MIN = 700;
 export const GAEPYEONG_MAX = 100_000;
 
-/** 판돈은 유지하고 NPC 의사결정만 완화하는 잔고 구간 계수. */
+/** @param {import('./seotdaState.js').SeotdaSeat} seat */
+export function bossResultCards(seat) {
+  return Array.isArray(seat.resultCards) && seat.resultCards.length === 2 ? seat.resultCards : [];
+}
+
+/**
+ * 사용자가 직접 고른 세 장으로 도리를 확정한다.
+ * @param {import('./seotdaState.js').SeotdaRound} round
+ * @param {string} seatId
+ * @param {number[]} indices
+ */
+export function arrangeBossHand(round, seatId, indices) {
+  if (!round.series?.isBoss || round.phase !== 'betting') {
+    throw new Error('지금은 도리를 만들 수 없습니다.');
+  }
+  const seat = round.seats.find((candidate) => candidate.id === seatId);
+  if (!seat || seat.isNpc || seat.cards.length !== 5) {
+    throw new Error('사용자 보스전 패만 선택할 수 있습니다.');
+  }
+  const picked = [...new Set(indices.map(Number))].sort((a, b) => a - b);
+  if (
+    picked.length !== 3 ||
+    picked.some((index) => !Number.isInteger(index) || index < 0 || index > 4)
+  ) {
+    throw new Error('도리로 사용할 카드 3장을 선택해 주세요.');
+  }
+  const sum = picked.reduce((total, index) => total + seat.cards[index].month, 0);
+  if (sum % 10 !== 0) throw new Error('선택한 세 장의 합이 10의 배수여야 합니다.');
+  seat.doriIndices = picked;
+  seat.resultCards = seat.cards.filter((_, index) => !picked.includes(index));
+  round.log.push(`${seat.name}: 도리 ${sum} 완성`);
+}
+
+/** @param {import('./seotdaState.js').SeotdaRound} round @param {import('./seotdaState.js').SeotdaSeat} seat */
+function playingCards(round, seat) {
+  return round.series?.isBoss ? bossResultCards(seat) : seat.cards;
+}
+
+/** @param {import('./seotdaState.js').SeotdaRound} round @param {import('./seotdaState.js').SeotdaSeat} seat */
+function playingHand(round, seat) {
+  const cards = playingCards(round, seat);
+  return cards.length === 2
+    ? displayHand(cards, round.ruleMode)
+    : { tier: -1, sub: 0, name: '노메이드', cards: [] };
+}
+
+/** @param {import('./seotdaState.js').SeotdaSeat} seat */
+function arrangeNpcDori(seat) {
+  const best = bestDoriArrangement(seat.cards);
+  seat.doriIndices = best?.doriIndices ?? [];
+  seat.resultCards = best?.resultCards ?? [];
+}
+
+/** 판돈은 유지하고 NPC 의사결정만 완화하는 잔고 구간 계수. @param {number} userBalance */
 export function npcPlayerRelief(userBalance) {
   const balance = Number(userBalance);
   if (balance <= 100_000) return 1.5;
@@ -106,18 +159,20 @@ export function ddaengValue(cards, ante) {
  * @param {T[]} seats
  * @param {string} winnerId
  * @param {number} ante
+ * @param {(seat: T) => import('./seotdaEngine.js').SeotdaCard[]} [cardsForSeat]
  */
-export function settleDdaengValue(seats, winnerId, ante) {
+export function settleDdaengValue(seats, winnerId, ante, cardsForSeat) {
+  const getCards = cardsForSeat ?? ((seat) => seat.cards);
   const next = seats.map((seat) => ({ ...seat }));
   const winner = next.find((seat) => seat.id === winnerId);
-  const valuePerLoser = winner ? ddaengValue(winner.cards, ante) : 0;
+  const valuePerLoser = winner ? ddaengValue(getCards(winner), ante) : 0;
   /** @type {string[]} */
   const payerIds = [];
   let totalPaid = 0;
 
   if (winner && valuePerLoser > 0) {
     for (const loser of next) {
-      if (loser.id === winnerId || ddaengValue(loser.cards, ante) > 0) continue;
+      if (loser.id === winnerId || ddaengValue(getCards(loser), ante) > 0) continue;
       const paid = Math.min(valuePerLoser, Math.max(0, loser.chips));
       if (paid <= 0) continue;
       loser.chips -= paid;
@@ -191,6 +246,7 @@ function createRoundId() {
  * @param {{ handNo: number; isBoss: boolean; bossNpcId: string | null; anteMultiplier: number; completed: number; userWins: number; npcWins: number } | null} [seriesConfig]
  * @param {'basic' | 'classic'} [ruleMode]
  * @param {boolean} [eventMode]
+ * @returns {import('./seotdaState.js').SeotdaRound}
  */
 export function createNewRound(
   userChips,
@@ -213,9 +269,8 @@ export function createNewRound(
   let deck = shuffleDeck(createDeck(), rng);
   const requestedBossId = String(seriesConfig?.bossNpcId ?? '');
   const bossProfile = NPC_PROFILES.find((profile) => profile.id === requestedBossId);
-  const activeProfiles = seriesConfig?.isBoss
-    ? [bossProfile ?? NPC_PROFILES[0]]
-    : NPC_PROFILES;
+  const activeProfiles = seriesConfig?.isBoss ? [bossProfile ?? NPC_PROFILES[0]] : NPC_PROFILES;
+  const cardsPerSeat = seriesConfig?.isBoss ? 5 : 2;
   /** @type {import('./seotdaState.js').SeotdaSeat[]} */
   const seats = [
     {
@@ -223,7 +278,8 @@ export function createNewRound(
       name: '나',
       isNpc: false,
       chips: userChips,
-      cards: [deck[0], deck[1]],
+      cards: deck.slice(0, cardsPerSeat),
+      doriIndices: seriesConfig?.isBoss ? null : undefined,
       folded: false,
       contrib: 0,
       totalContrib: 0,
@@ -232,7 +288,7 @@ export function createNewRound(
       needsAction: true
     }
   ];
-  deck = deck.slice(2);
+  deck = deck.slice(cardsPerSeat);
 
   const log = /** @type {string[]} */ ([]);
 
@@ -252,7 +308,7 @@ export function createNewRound(
       isNpc: true,
       style: profile.style,
       chips,
-      cards: [deck[0], deck[1]],
+      cards: deck.slice(0, cardsPerSeat),
       folded: false,
       contrib: 0,
       totalContrib: 0,
@@ -261,10 +317,17 @@ export function createNewRound(
       needsAction: true,
       emotion: emotionView(npcEmotionMap[profile.id])
     });
-    deck = deck.slice(2);
+    if (seriesConfig?.isBoss) arrangeNpcDori(seats[seats.length - 1]);
+    deck = deck.slice(cardsPerSeat);
   }
   if (seriesConfig?.isBoss) {
-    log.push(`최종 보스전! ${activeProfiles[0].name}와 1:1 · 판돈 2배`);
+    const userSeat = seats[0];
+    if (!bestDoriArrangement(userSeat.cards)) {
+      userSeat.doriIndices = [];
+      userSeat.resultCards = [];
+      log.push('나: 만들 수 있는 도리 없음 · 노메이드');
+    }
+    log.push(`최종 보스전! ${activeProfiles[0].name}와 도리짓고땡 1:1 · 판돈 2배`);
   } else if (event) {
     log.push(`연전 이벤트: ${event.name} · ${event.description}`);
   }
@@ -287,7 +350,14 @@ export function createNewRound(
 
   const pressureNpcId = pickPressureNpc(activeProfiles, rng);
   for (const seat of seats.filter((candidate) => candidate.isNpc)) {
-    seat.tell = createNpcTell(seat.cards, seat.style, seat.emotion, rng);
+    seat.tell = /** @type {import('./seotdaState.js').SeotdaSeat['tell']} */ (
+      createNpcTell(
+        seriesConfig?.isBoss ? bossResultCards(seat) : seat.cards,
+        seat.style,
+        seat.emotion,
+        rng
+      )
+    );
   }
   const requestedSparkNpcId = String(sparkDecision?.npcId ?? '');
   const sparkNpcId = activeProfiles.some((profile) => profile.id === requestedSparkNpcId)
@@ -411,6 +481,9 @@ export function applyPlayerAction(round, seatId, action, raisePay) {
   if (!seat.needsAction) {
     throw new Error('지금은 당신 차례가 아닙니다.');
   }
+  if (round.series?.isBoss && seat.id === 'user' && seat.doriIndices === null) {
+    throw new Error('먼저 카드 3장을 골라 도리를 만들어 주세요.');
+  }
   const toCall = Math.max(0, round.currentBet - seat.contrib);
   let wasRaise = false;
 
@@ -503,7 +576,7 @@ export function applyNpcSeatAction(round, seat, rng = Math.random, sparkChoice =
   let action =
     sparkChoice?.action ??
     chooseNpcAction(
-      seat.cards,
+      playingCards(round, seat),
       profile,
       {
         toCall,
@@ -518,7 +591,8 @@ export function applyNpcSeatAction(round, seat, rng = Math.random, sparkChoice =
         isOpening: seat.id === round.openingActorId && !round.openingActionTaken,
         bluffCatcher: seat.id === round.pressureNpcId && raiseSeen,
         ante: round.antePaid,
-        activeOpponents: round.seats.filter((other) => other.id !== seat.id && !other.folded).length,
+        activeOpponents: round.seats.filter((other) => other.id !== seat.id && !other.folded)
+          .length,
         emotionAggression: Number(seat.emotion?.aggression ?? 0),
         emotionRevenge: !!seat.emotion?.revenge
       },
@@ -535,7 +609,8 @@ export function applyNpcSeatAction(round, seat, rng = Math.random, sparkChoice =
     const potBeforeRaise = round.pot;
     const available = contributionCapacity(round, seat);
     const lowBankrollFun = Number(round.npcPlayerRelief ?? 0) >= 1.45 && !sparkAssigned;
-    const strongHand = !lowBankrollFun && handStrength(evaluateHand(seat.cards)) >= 0.65;
+    const strongHand =
+      !lowBankrollFun && handStrength(evaluateHand(playingCards(round, seat))) >= 0.65;
     const minPay = minRaisePay(toCall, round.antePaid);
     const forcedTarget =
       sparkChoice?.raiseScale === 'max'
@@ -680,12 +755,12 @@ export async function runNpcTurnsWithSpark(round, decideAction, rng = Math.rando
 
     let sparkChoice = null;
     if (next.id === round.sparkNpcId) {
-      const hand = evaluateHand(next.cards);
+      const hand = evaluateHand(playingCards(round, next));
       sparkChoice = await decideAction({
         npcId: next.id,
         npcName: next.name,
         npcStyle: round.sparkNpcStyle ?? next.style ?? null,
-        cards: next.cards.map((card) => ({ month: card.month, gwang: card.gwang })),
+        cards: playingCards(round, next).map((card) => ({ month: card.month, gwang: card.gwang })),
         handName: hand.name,
         handStrength: handStrength(hand),
         chips: next.chips,
@@ -751,7 +826,32 @@ export function finishIfNeeded(round, rng = Math.random) {
 }
 
 /**
+ * 보스전은 도리로 남긴 두 장만 비교하며 노메이드는 정상 패보다 낮다.
  * @param {import('./seotdaState.js').SeotdaRound} round
+ * @param {import('./seotdaState.js').SeotdaSeat[]} seats
+ * @param {'basic' | 'classic' | undefined} ruleMode
+ */
+function resolveRoundOutcome(round, seats, ruleMode) {
+  const playable = seats.filter((seat) => playingCards(round, seat).length === 2);
+  if (playable.length === 0) {
+    return { type: 'replay', winnerIds: [], handName: '노메이드' };
+  }
+  if (playable.length === 1 && seats.length > 1) {
+    return {
+      type: 'win',
+      winnerIds: [playable[0].id],
+      handName: playingHand(round, playable[0]).name
+    };
+  }
+  return resolveHandOutcome(
+    playable.map((seat) => ({ id: seat.id, cards: playingCards(round, seat) })),
+    ruleMode
+  );
+}
+
+/**
+ * @param {import('./seotdaState.js').SeotdaRound} round
+ * @param {() => number} [rng]
  */
 export function showdown(round, rng = Math.random) {
   const alive = round.seats.filter((s) => !s.folded);
@@ -762,23 +862,32 @@ export function showdown(round, rng = Math.random) {
   const userFolded = !!round.seats.find((s) => s.id === 'user')?.folded;
 
   /** @type {{ seat: (typeof alive)[0]; hand: ReturnType<typeof evaluateHand> }[]} */
-  const ranked = alive.map((seat) => ({ seat, hand: evaluateHand(seat.cards) }));
-  const outcome = resolveHandOutcome(
-    alive.map((seat) => ({ id: seat.id, cards: seat.cards })),
-    round.ruleMode
-  );
+  const ranked = alive.map((seat) => ({ seat, hand: playingHand(round, seat) }));
+  const outcome = resolveRoundOutcome(round, alive, round.ruleMode);
 
   // 유저 다이면 NPC 패/족보 로그에 안 남김
   if (!userFolded) {
     for (const r of ranked) {
-      round.log.push(
-        `${r.seat.name}: ${r.seat.cards.map(cardLabel).join('·')} → ${displayHand(r.seat.cards, round.ruleMode).name}`
-      );
+      if (round.series?.isBoss) {
+        const dori = (r.seat.doriIndices ?? [])
+          .map((index) => cardLabel(r.seat.cards[index]))
+          .join('·');
+        const result = playingCards(round, r.seat).map(cardLabel).join('·');
+        round.log.push(
+          `${r.seat.name}: ${dori || '도리 없음'} / ${result || '노메이드'} → ${r.hand.name}`
+        );
+      } else {
+        round.log.push(`${r.seat.name}: ${r.seat.cards.map(cardLabel).join('·')} → ${r.hand.name}`);
+      }
     }
   }
 
   if (outcome.type === 'replay') {
-    restartAfterTie(round, rng, '멍텅구리 구사! 장땡 이하 무효');
+    restartAfterTie(
+      round,
+      rng,
+      outcome.handName === '노메이드' ? '양쪽 모두 노메이드' : '멍텅구리 구사! 장땡 이하 무효'
+    );
     return;
   }
 
@@ -791,16 +900,18 @@ export function showdown(round, rng = Math.random) {
     return;
   }
 
-  round.seats = settleShowdownPots(round.seats, round.pot, round.ruleMode);
+  round.seats = settleShowdownPots(round, round.seats, round.pot, round.ruleMode);
   round.pot = 0;
   round.winnerIds = winnerIds;
   round.winnerId = winnerIds.length === 1 ? winnerIds[0] : null;
   round.phase = 'showdown';
   round.showdown = true;
+  const winnerEntry = winners[0];
+  if (!winnerEntry) return;
   round.log.push(
     userFolded
-      ? `${winners[0].seat.name} 승리`
-      : `${winners[0].seat.name} 승리! ${outcome.handName}`
+      ? `${winnerEntry.seat.name} 승리`
+      : `${winnerEntry.seat.name} 승리! ${outcome.handName}`
   );
   applyDdaengValueToRound(round, winnerIds[0]);
 }
@@ -812,8 +923,10 @@ export function showdown(round, rng = Math.random) {
 function applyDdaengValueToRound(round, winnerId) {
   const winner = round.seats.find((seat) => seat.id === winnerId);
   if (!winner) return;
-  const hand = evaluateHand(winner.cards);
-  const result = settleDdaengValue(round.seats, winnerId, round.antePaid);
+  const hand = evaluateHand(playingCards(round, winner));
+  const result = settleDdaengValue(round.seats, winnerId, round.antePaid, (seat) =>
+    playingCards(round, seat)
+  );
   if (result.valuePerLoser <= 0) return;
 
   round.seats = /** @type {typeof round.seats} */ (result.seats);
@@ -832,6 +945,7 @@ function applyDdaengValueToRound(round, winnerId) {
 function restartAfterTie(round, rng, reason = '무승부') {
   let deck = shuffleDeck(createDeck(), rng);
   const active = round.seats.filter((seat) => !seat.folded);
+  const cardsPerSeat = round.series?.isBoss ? 5 : 2;
 
   for (const seat of round.seats) {
     seat.contrib = 0;
@@ -840,8 +954,16 @@ function restartAfterTie(round, rng, reason = '무승부') {
     seat.needsAction = false;
   }
   for (const seat of active) {
-    seat.cards = [deck[0], deck[1]];
-    deck = deck.slice(2);
+    seat.cards = deck.slice(0, cardsPerSeat);
+    deck = deck.slice(cardsPerSeat);
+    if (round.series?.isBoss) {
+      if (seat.isNpc) arrangeNpcDori(seat);
+      else {
+        const canMakeDori = !!bestDoriArrangement(seat.cards);
+        seat.doriIndices = canMakeDori ? null : [];
+        seat.resultCards = canMakeDori ? undefined : [];
+      }
+    }
     seat.needsAction = !seat.isNpc || contributionCapacity(round, seat) > 0;
   }
 
@@ -873,11 +995,12 @@ function restartAfterTie(round, rng, reason = '무승부') {
 
 /**
  * 기여액 층마다 승자를 다시 계산해 메인팟과 사이드팟을 정산한다.
+ * @param {import('./seotdaState.js').SeotdaRound} round
  * @param {import('./seotdaState.js').SeotdaSeat[]} seats
  * @param {number} pot
  * @param {'basic' | 'classic' | undefined} ruleMode
  */
-function settleShowdownPots(seats, pot, ruleMode) {
+function settleShowdownPots(round, seats, pot, ruleMode) {
   const next = seats.map((seat) => ({ ...seat }));
   const levels = [...new Set(next.map((seat) => seat.contrib).filter((amount) => amount > 0))].sort(
     (a, b) => a - b
@@ -894,15 +1017,9 @@ function settleShowdownPots(seats, pot, ruleMode) {
       continue;
     }
 
-    let outcome = resolveHandOutcome(
-      contenders.map((seat) => ({ id: seat.id, cards: seat.cards })),
-      ruleMode
-    );
+    let outcome = resolveRoundOutcome(round, contenders, ruleMode);
     if (outcome.type === 'replay') {
-      outcome = resolveHandOutcome(
-        contenders.map((seat) => ({ id: seat.id, cards: seat.cards })),
-        'basic'
-      );
+      outcome = resolveRoundOutcome(round, contenders, 'basic');
     }
     const winners = contenders.filter((seat) => outcome.winnerIds.includes(seat.id));
     const share = Math.floor(layerPot / winners.length);
@@ -919,15 +1036,9 @@ function settleShowdownPots(seats, pot, ruleMode) {
   const carriedPot = pot - paid;
   const alive = next.filter((seat) => !seat.folded);
   if (carriedPot > 0 && alive.length > 0) {
-    let outcome = resolveHandOutcome(
-      alive.map((seat) => ({ id: seat.id, cards: seat.cards })),
-      ruleMode
-    );
+    let outcome = resolveRoundOutcome(round, alive, ruleMode);
     if (outcome.type === 'replay') {
-      outcome = resolveHandOutcome(
-        alive.map((seat) => ({ id: seat.id, cards: seat.cards })),
-        'basic'
-      );
+      outcome = resolveRoundOutcome(round, alive, 'basic');
     }
     const winners = alive.filter((seat) => outcome.winnerIds.includes(seat.id));
     const share = Math.floor(carriedPot / winners.length);
@@ -1004,7 +1115,7 @@ function recordHandSnapshot(round) {
       name: seat.name,
       folded: seat.folded,
       cards: seat.cards.map(cardLabel),
-      hand: displayHand(seat.cards, round.ruleMode).name
+      hand: playingHand(round, seat).name
     }))
   });
 }

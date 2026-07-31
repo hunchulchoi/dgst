@@ -1,10 +1,5 @@
 import { nextNpcEmotions } from './seotdaEmotion.js';
-import {
-  advanceSeries,
-  createSeries,
-  publicSeries,
-  seriesRoundConfig
-} from './seotdaSeries.js';
+import { advanceSeries, createSeries, publicSeries, seriesRoundConfig } from './seotdaSeries.js';
 
 /**
  * 진행 중 라운드 메모리 상태
@@ -16,9 +11,12 @@ import {
  *   style?: string;
  *   chips: number;
  *   cards: SeotdaCard[];
+ *   doriIndices?: number[] | null;
+ *   resultCards?: SeotdaCard[];
  *   folded: boolean;
  *   contrib: number;
  *   totalContrib?: number;
+ *   borrowedChips?: number;
  *   lastAction: string | null;
  *   lastActionAmount?: number;
  *   needsAction?: boolean;
@@ -249,12 +247,20 @@ export function toPublicState(round, userSeatId = 'user', evalHand) {
       const reveal = isUser || (s.isNpc && revealNpcHands) || revealDdaeng;
       /** @type {string | null} */
       let handName = null;
-      if (reveal && evalHand && s.cards.length === 2) {
+      const handCards = round.series?.isBoss ? (s.resultCards ?? []) : s.cards;
+      if (reveal && evalHand && handCards.length === 2) {
         try {
-          handName = evalHand(s.cards).name;
+          handName = evalHand(handCards).name;
         } catch {
           handName = null;
         }
+      } else if (
+        reveal &&
+        round.series?.isBoss &&
+        Array.isArray(s.doriIndices) &&
+        s.doriIndices.length === 0
+      ) {
+        handName = '노메이드';
       }
       return {
         id: s.id,
@@ -270,6 +276,7 @@ export function toPublicState(round, userSeatId = 'user', evalHand) {
         emotion: s.emotion ?? null,
         tell: s.tell ?? null,
         revealDdaeng,
+        doriIndices: isUser || reveal ? (s.doriIndices ?? null) : null,
         cards: reveal ? s.cards : s.cards.map(() => ({ month: 0, gwang: false, hidden: true })),
         handName
       };

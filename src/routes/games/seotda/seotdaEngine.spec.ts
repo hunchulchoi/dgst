@@ -5,6 +5,8 @@ import {
   createDeck,
   dynamicAnte,
   MAX_ANTE,
+  bestDoriArrangement,
+  doriArrangements,
   evaluateHand,
   handStrength,
   minRaisePay,
@@ -44,6 +46,33 @@ describe('seotdaEngine deck', () => {
 });
 
 describe('seotdaEngine hands', () => {
+  it('finds every valid dori arrangement and keeps the remaining two cards', () => {
+    const cards = [c(1), c(2), c(7), c(9), c(9)];
+    const arrangements = doriArrangements(cards);
+
+    expect(arrangements).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          doriIndices: [0, 1, 2],
+          resultCards: [c(9), c(9)],
+          hand: expect.objectContaining({ name: '구땡' })
+        })
+      ])
+    );
+  });
+
+  it('chooses the strongest remaining two-card hand for an NPC', () => {
+    const cards = [c(1), c(2), c(7), c(3, true), c(8, true)];
+    const best = bestDoriArrangement(cards);
+
+    expect(best?.doriIndices).toEqual([0, 1, 2]);
+    expect(best?.hand.name).toBe('38광땡');
+  });
+
+  it('returns null when five cards cannot make dori', () => {
+    expect(bestDoriArrangement([c(1), c(1), c(1), c(2), c(2)])).toBeNull();
+  });
+
   it('ranks 38 gwangddang highest', () => {
     const a = evaluateHand([c(3, true), c(8, true)]);
     const b = evaluateHand([c(1, true), c(3, true)]);

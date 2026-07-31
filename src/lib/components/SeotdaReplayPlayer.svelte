@@ -3,7 +3,7 @@
   import HwatuCardFace from '../../routes/games/seotda/HwatuCardFace.svelte';
 
   /** @typedef {{ type: string; seatId: string | null; text: string; amount: number; potAfter: number }} ReplayEvent */
-  /** @typedef {{ id: string; name: string; chips: number; folded: boolean; winner: boolean; handName: string; cards: Array<{ month: number; gwang: boolean }>; emotion?: { mood: string; line: string; revenge: boolean; aggression: number } | null; tell?: { signal: 'strong' | 'neutral' | 'weak'; label: string; text: string } | null }} ReplaySeat */
+  /** @typedef {{ id: string; name: string; chips: number; folded: boolean; winner: boolean; handName: string; cards: Array<{ month: number; gwang: boolean }>; doriIndices?: number[] | null; emotion?: { mood: string; line: string; revenge: boolean; aggression: number } | null; tell?: { signal: 'strong' | 'neutral' | 'weak'; label: string; text: string } | null }} ReplaySeat */
   let { replay } = $props();
   const game = $derived(replay?.data ?? replay ?? null);
   const seats = $derived(Array.isArray(game?.seats) ? game.seats : []);
@@ -191,22 +191,36 @@
               <div class="npc-state">
                 {#if seat.emotion}
                   <span class:revenge={seat.emotion.revenge} title={seat.emotion.line}>
-                    {seat.emotion.revenge ? '🔥' : '●'} {seat.emotion.mood}
+                    {seat.emotion.revenge ? '🔥' : '●'}
+                    {seat.emotion.mood}
                   </span>
                 {/if}
                 {#if seat.tell}
                   <span class:strong={seat.tell.signal === 'strong'} title={seat.tell.text}>
-                    {seat.tell.signal === 'strong' ? '👁' : seat.tell.signal === 'weak' ? '💧' : '◆'}
+                    {seat.tell.signal === 'strong'
+                      ? '👁'
+                      : seat.tell.signal === 'weak'
+                        ? '💧'
+                        : '◆'}
                     {seat.tell.label}
                   </span>
                 {/if}
               </div>
             {/if}
-            <div class="cards" aria-label={`${seat.name} 패`}>
-              {#each [0, 1] as cardIndex}
-                {@const card = seat.cards?.[cardIndex]}
+            <div
+              class:five-cards={seat.cards?.length === 5}
+              class="cards"
+              aria-label={`${seat.name} 패`}
+            >
+              {#each seat.cards ?? [] as card, cardIndex}
                 {@const showCard = Boolean(card) && cardsRevealed}
-                <div class:flipped={showCard} class="card-shell">
+                <div
+                  class:flipped={showCard}
+                  class:dori-card={seat.doriIndices?.includes(cardIndex)}
+                  class:result-card={seat.doriIndices?.length === 3 &&
+                    !seat.doriIndices.includes(cardIndex)}
+                  class="card-shell"
+                >
                   <span class="card-back">花</span>
                   {#if card}
                     <span class="card-face"><HwatuCardFace {card} /></span>
@@ -559,6 +573,15 @@
     position: relative;
     width: min(44%, 48px);
     aspect-ratio: 2 / 3;
+  }
+  .cards.five-cards .card-shell {
+    width: min(18%, 42px);
+  }
+  .card-shell.dori-card .card-face {
+    border: 2px solid #33d17a;
+  }
+  .card-shell.result-card .card-face {
+    border: 2px solid #ffd85e;
   }
 
   .card-back,

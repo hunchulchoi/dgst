@@ -116,9 +116,7 @@ describe('seotda board share route', () => {
     expect(replayPlayerSource).toContain("currentEvent?.type === 'ddaeng'");
     expect(replayPlayerSource).toContain("currentEvent?.type === 'result'");
     expect(replayPlayerSource).toContain('class:user-seat');
-    expect(replayPlayerSource).toContain(
-      '{@const showCard = Boolean(card) && cardsRevealed}'
-    );
+    expect(replayPlayerSource).toContain('{@const showCard = Boolean(card) && cardsRevealed}');
     expect(replayPlayerSource).not.toContain("seat.id === 'user' ? step > 0 : cardsRevealed");
     expect(replayPlayerSource).toContain('grid-template-columns: repeat(3, minmax(0, 1fr))');
     expect(replayPlayerSource).toContain('@keyframes chipToPot');
@@ -186,6 +184,40 @@ describe('seotda board share route', () => {
       'result'
     ]);
     expect(boardCache.bustBoardListCache).toHaveBeenCalledWith('free');
+  });
+
+  it('shares all five boss cards plus the user-selected dori', async () => {
+    const round = completedRound();
+    round.series = { ...round.series, handNo: 5, isBoss: true, bossNpcId: 'npc_agwi' };
+    round.seats[0].cards = [
+      { month: 1, gwang: false },
+      { month: 2, gwang: false },
+      { month: 7, gwang: false },
+      { month: 9, gwang: false },
+      { month: 9, gwang: false }
+    ];
+    round.seats[0].doriIndices = [0, 1, 2];
+    round.seats[0].resultCards = [round.seats[0].cards[3], round.seats[0].cards[4]];
+    round.seats[1].cards = [
+      { month: 1, gwang: false },
+      { month: 3, gwang: false },
+      { month: 6, gwang: false },
+      { month: 8, gwang: false },
+      { month: 8, gwang: false }
+    ];
+    round.seats[1].doriIndices = [0, 1, 2];
+    round.seats[1].resultCards = [round.seats[1].cards[3], round.seats[1].cards[4]];
+    state.getRound.mockReturnValue(round);
+    const { POST } = await import('../src/routes/games/seotda/share/+server.js');
+
+    await POST(makeEvent({ boardId: 'free' }));
+
+    const replay = extractSeotdaReplay(articleRepo.createArticle.mock.calls[0][0].content);
+    expect(replay.seats[0]).toMatchObject({
+      handName: '구땡',
+      doriIndices: [0, 1, 2]
+    });
+    expect(replay.seats[0].cards).toHaveLength(5);
   });
 
   it('rejects sharing before showdown', async () => {

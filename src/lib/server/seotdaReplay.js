@@ -32,7 +32,7 @@ export function sanitizeSeotdaReplay(value) {
     if (!id || !name || seatIds.has(id)) return null;
     seatIds.add(id);
     const rawCards = Array.isArray(seat.cards) ? seat.cards : [];
-    if (rawCards.length > 2) return null;
+    if (rawCards.length > 5) return null;
     const cards = rawCards.map((rawCard) => {
       if (!rawCard || typeof rawCard !== 'object') return null;
       const card = /** @type {Record<string, unknown>} */ (rawCard);
@@ -41,6 +41,26 @@ export function sanitizeSeotdaReplay(value) {
       return { month, gwang: Boolean(card.gwang) };
     });
     if (cards.some((card) => card === null)) return null;
+    const rawDoriIndices = Array.isArray(seat.doriIndices) ? seat.doriIndices : null;
+    const hasDoriIndices = rawDoriIndices !== null;
+    const doriIndices = rawDoriIndices
+      ? [...new Set(rawDoriIndices.map((index) => Number(index)))].sort((a, b) => a - b)
+      : null;
+    const emotion =
+      seat.emotion && typeof seat.emotion === 'object'
+        ? /** @type {Record<string, unknown>} */ (seat.emotion)
+        : null;
+    const tell =
+      seat.tell && typeof seat.tell === 'object'
+        ? /** @type {Record<string, unknown>} */ (seat.tell)
+        : null;
+    if (
+      doriIndices &&
+      ((doriIndices.length !== 0 && doriIndices.length !== 3) ||
+        doriIndices.some((index) => !Number.isInteger(index) || index < 0 || index >= cards.length))
+    ) {
+      return null;
+    }
     return {
       id,
       name,
@@ -49,23 +69,21 @@ export function sanitizeSeotdaReplay(value) {
       winner: Boolean(seat.winner),
       handName: cleanText(seat.handName, 32),
       cards,
-      emotion:
-        seat.emotion && typeof seat.emotion === 'object'
-          ? {
-              mood: cleanText(seat.emotion.mood, 24),
-              line: cleanText(seat.emotion.line, 80),
-              revenge: Boolean(seat.emotion.revenge),
-              aggression: cleanNumber(seat.emotion.aggression, 0, 3)
-            }
-          : null,
+      ...(hasDoriIndices ? { doriIndices } : {}),
+      emotion: emotion
+        ? {
+            mood: cleanText(emotion.mood, 24),
+            line: cleanText(emotion.line, 80),
+            revenge: Boolean(emotion.revenge),
+            aggression: cleanNumber(emotion.aggression, 0, 3)
+          }
+        : null,
       tell:
-        seat.tell &&
-        typeof seat.tell === 'object' &&
-        ['strong', 'neutral', 'weak'].includes(String(seat.tell.signal))
+        tell && ['strong', 'neutral', 'weak'].includes(String(tell.signal))
           ? {
-              signal: String(seat.tell.signal),
-              label: cleanText(seat.tell.label, 24),
-              text: cleanText(seat.tell.text, 80)
+              signal: String(tell.signal),
+              label: cleanText(tell.label, 24),
+              text: cleanText(tell.text, 80)
             }
           : null
     };
@@ -137,8 +155,7 @@ export function sanitizeSeotdaReplay(value) {
         }
       : null,
     event:
-      rawEvent &&
-      ['scout', 'lightning', 'high-roller', 'frenzy'].includes(String(rawEvent.id))
+      rawEvent && ['scout', 'lightning', 'high-roller', 'frenzy'].includes(String(rawEvent.id))
         ? {
             id: String(rawEvent.id),
             name: cleanText(rawEvent.name, 24),

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   npcPlayerRelief,
   npcStartingChips,
+  arrangeBossHand,
   createNewRound,
   ddaengValue,
   applyNpcSeatAction,
@@ -32,6 +33,107 @@ import {
 } from './seotdaNpc.js';
 
 describe('seotdaRound smoke', () => {
+  it('deals five cards in the boss hand and lets only the user arrange their dori', () => {
+    const round = createNewRound(
+      1000,
+      () => 0.5,
+      {},
+      'user',
+      0,
+      null,
+      {},
+      {
+        handNo: 5,
+        isBoss: true,
+        bossNpcId: 'npc_goni',
+        anteMultiplier: 2,
+        completed: 4,
+        userWins: 2,
+        npcWins: 2
+      }
+    );
+    const user = round.seats.find((seat) => seat.id === 'user')!;
+    const npc = round.seats.find((seat) => seat.isNpc)!;
+
+    expect(round.seats).toHaveLength(2);
+    expect(user.cards).toHaveLength(5);
+    expect(npc.cards).toHaveLength(5);
+    expect(npc.doriIndices).not.toBeNull();
+  });
+
+  it('accepts only a user-selected three-card dori whose sum is a multiple of ten', () => {
+    const round = createNewRound(1000, () => 0.5);
+    round.series = {
+      handNo: 5,
+      isBoss: true,
+      bossNpcId: 'npc_goni',
+      anteMultiplier: 2,
+      completed: 4,
+      userWins: 2,
+      npcWins: 2
+    };
+    const user = round.seats.find((seat) => seat.id === 'user')!;
+    user.cards = [
+      { month: 1, gwang: false },
+      { month: 2, gwang: false },
+      { month: 7, gwang: false },
+      { month: 9, gwang: false },
+      { month: 9, gwang: false }
+    ];
+    user.doriIndices = null;
+
+    expect(() => arrangeBossHand(round, 'user', [0, 1, 3])).toThrow('합이 10의 배수');
+    arrangeBossHand(round, 'user', [0, 1, 2]);
+    expect(user.doriIndices).toEqual([0, 1, 2]);
+    expect(user.resultCards?.map((card) => card.month)).toEqual([9, 9]);
+  });
+
+  it('settles a boss showdown using only the two cards left after each dori', () => {
+    const round = createNewRound(
+      1000,
+      () => 0.5,
+      {},
+      'user',
+      0,
+      null,
+      {},
+      {
+        handNo: 5,
+        isBoss: true,
+        bossNpcId: 'npc_goni',
+        anteMultiplier: 2,
+        completed: 4,
+        userWins: 2,
+        npcWins: 2
+      }
+    );
+    const user = round.seats.find((seat) => seat.id === 'user')!;
+    const npc = round.seats.find((seat) => seat.isNpc)!;
+    user.cards = [
+      { month: 1, gwang: false },
+      { month: 2, gwang: false },
+      { month: 7, gwang: false },
+      { month: 9, gwang: false },
+      { month: 9, gwang: false }
+    ];
+    npc.cards = [
+      { month: 1, gwang: false },
+      { month: 3, gwang: false },
+      { month: 6, gwang: false },
+      { month: 8, gwang: false },
+      { month: 8, gwang: false }
+    ];
+    user.doriIndices = [0, 1, 2];
+    user.resultCards = [user.cards[3], user.cards[4]];
+    npc.doriIndices = [0, 1, 2];
+    npc.resultCards = [npc.cards[3], npc.cards[4]];
+
+    showdown(round);
+
+    expect(round.winnerId).toBe('user');
+    expect(round.log).toContain('나 승리! 구땡');
+  });
+
   it('returns 10% gaepyeong immediately after going bust', () => {
     const round = createNewRound(7000, () => 0.5);
     const user = round.seats.find((seat) => seat.id === 'user')!;

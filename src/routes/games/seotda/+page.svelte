@@ -57,6 +57,7 @@
     lastActionAmount?: number;
     needsAction?: boolean;
     cards: SeotdaCard[];
+    doriIndices?: number[] | null;
     handName: string | null;
     revealDdaeng?: boolean;
     emotion?: {
@@ -186,6 +187,7 @@
   let shareNote = $state('');
   let commentRefreshToken = $state(0);
   let resultLayerDismissed = $state(false);
+  let doriDraft = $state<number[]>([]);
   let bustRoundPending = $state(false);
   let oopsRemainingMs = $state(Number(data.oopsInfo?.remainingMs ?? 0));
   let selectedRuleMode = $state<'basic' | 'classic'>(
@@ -230,10 +232,7 @@
     return formatRelativeTime(value, { locale: ko, addSuffix: true });
   };
 
-  const formatRankMeta = (row: {
-    lastGame?: string | null;
-    updatedAt?: string | null;
-  }): string =>
+  const formatRankMeta = (row: { lastGame?: string | null; updatedAt?: string | null }): string =>
     [getArcadeGameLabel(row.lastGame), formatRankAt(row.updatedAt)].filter(Boolean).join(' · ');
 
   const userSeat = $derived(round?.seats.find((s) => s.id === 'user') ?? null);
@@ -241,7 +240,9 @@
   const canAct = $derived(
     !!round &&
       round.phase === 'betting' &&
+      !!userSeat &&
       !userSeat?.folded &&
+      (!round.series?.isBoss || userSeat?.doriIndices !== null) &&
       !!userSeat?.needsAction &&
       !busy &&
       revealDone
@@ -267,6 +268,13 @@
   const maxRaise = $derived(round && userSeat ? contributionCapacity(round, userSeat) : 0);
   const isLoggedIn = $derived(!!data.session?.user?.email);
   const isBossRound = $derived(!!round?.series?.isBoss);
+  const canArrangeDori = $derived(
+    isBossRound && round?.phase === 'betting' && userSeat?.doriIndices === null && !busy
+  );
+  const doriDraftSum = $derived(
+    doriDraft.reduce((sum, index) => sum + Number(userSeat?.cards[index]?.month ?? 0), 0)
+  );
+  const doriDraftValid = $derived(doriDraft.length === 3 && doriDraftSum % 10 === 0);
   const currentRuleMode = $derived(round?.ruleMode ?? selectedRuleMode);
   const raiseLimitReached = $derived(
     !!round?.event && Number(round.raiseCount ?? 0) >= round.event.maxRaises
@@ -353,6 +361,20 @@
   function cardText(card: SeotdaCard): string {
     if (card.hidden || card.month === 0) return '?';
     return `${card.month}${card.gwang ? '광' : ''}`;
+  }
+
+  function toggleDoriCard(index: number) {
+    if (!canArrangeDori) return;
+    if (doriDraft.includes(index)) {
+      doriDraft = doriDraft.filter((picked) => picked !== index);
+    } else if (doriDraft.length < 3) {
+      doriDraft = [...doriDraft, index].sort((a, b) => a - b);
+    }
+  }
+
+  async function confirmDori() {
+    if (!doriDraftValid) return;
+    await post({ action: 'arrange', indices: doriDraft });
   }
 
   function actionEffectText(seat: SeotdaSeat): string {
@@ -532,6 +554,7 @@
       startShowdownReveal(next);
     } else if (isNewDeal) {
       bustRoundPending = false;
+      doriDraft = [];
       startDealFlip();
     } else if (!nowShowdown) {
       hiddenNpcIds = new Set();
@@ -800,7 +823,7 @@
           </div>
 
           <p class="small text-muted mb-2">
-            NPC 3명과 5판 승부. 마지막 판은 가장 많이 이긴 NPC와 보스전.
+            NPC 3명과 5판 승부. 마지막 판은 가장 많이 이긴 NPC와 도리짓고땡 보스전.
             {currentRuleMode === 'classic'
               ? '암행어사·땡잡이·멍텅구리 구사 적용.'
               : '간단한 기본 족보만 적용.'}
@@ -932,7 +955,7 @@
                   </span>
                   <strong>나 {round.series.userWins} : {round.series.npcWins} NPC</strong>
                   {#if isBossRound}
-                    <span>1:1 · 판돈 ×{round.series.anteMultiplier}</span>
+                    <span>도리짓고땡 1:1 · 판돈 ×{round.series.anteMultiplier}</span>
                   {/if}
                 </div>
               {/if}
@@ -1057,37 +1080,82 @@
                   </div>
                   <div class="small opacity-75">{formatNumber(userSeat.chips)}점</div>
                   <div class="cards my-2">
-                    {#each userSeat.cards as card, i (`user-${i}`)}
-                      {#if i === 0}
-                        <span
-                          class="hwatu-flip"
-                          class:flipped={openCardFlipped}
-                          class:gwang={openCardFlipped && card.gwang}
-                        >
-                          <span class="hwatu-face back">?</span>
-                          <span class="hwatu-face front open"><HwatuCardFace {card} /></span>
-                        </span>
-                      {:else}
+                    {#if isBossRound}
+                      {#each userSeat.cards as card, i (`user-boss-${i}`)}
                         <button
                           type="button"
-                          class="hwatu-flip hole-btn"
-                          class:flipped={holeRevealed || isShowdown}
-                          class:gwang={(holeRevealed || isShowdown) && card.gwang}
-                          class:tap-hint={!holeRevealed && !isShowdown}
-                          disabled={holeRevealed || isShowdown || userSeat.folded}
-                          aria-label={holeRevealed ? cardText(card) : '뒷장 까기'}
-                          onclick={openPeelLayer}
+                          class="hwatu-flip boss-card-choice flipped"
+                          class:gwang={card.gwang}
+                          class:dori-selected={(userSeat.doriIndices ?? doriDraft).includes(i)}
+                          class:result-card={Array.isArray(userSeat.doriIndices) &&
+                            userSeat.doriIndices.length === 3 &&
+                            !userSeat.doriIndices.includes(i)}
+                          disabled={!canArrangeDori}
+                          aria-pressed={(userSeat.doriIndices ?? doriDraft).includes(i)}
+                          aria-label={`${cardText(card)}${(userSeat.doriIndices ?? doriDraft).includes(i) ? ' 도리 선택됨' : ''}`}
+                          onclick={() => toggleDoriCard(i)}
                         >
                           <span class="hwatu-face back">?</span>
                           <span class="hwatu-face front open"><HwatuCardFace {card} /></span>
                         </button>
-                      {/if}
-                    {/each}
+                      {/each}
+                    {:else}
+                      {#each userSeat.cards as card, i (`user-${i}`)}
+                        {#if i === 0}
+                          <span
+                            class="hwatu-flip"
+                            class:flipped={openCardFlipped}
+                            class:gwang={openCardFlipped && card.gwang}
+                          >
+                            <span class="hwatu-face back">?</span>
+                            <span class="hwatu-face front open"><HwatuCardFace {card} /></span>
+                          </span>
+                        {:else}
+                          <button
+                            type="button"
+                            class="hwatu-flip hole-btn"
+                            class:flipped={holeRevealed || isShowdown}
+                            class:gwang={(holeRevealed || isShowdown) && card.gwang}
+                            class:tap-hint={!holeRevealed && !isShowdown}
+                            disabled={holeRevealed || isShowdown || userSeat.folded}
+                            aria-label={holeRevealed ? cardText(card) : '뒷장 까기'}
+                            onclick={openPeelLayer}
+                          >
+                            <span class="hwatu-face back">?</span>
+                            <span class="hwatu-face front open"><HwatuCardFace {card} /></span>
+                          </button>
+                        {/if}
+                      {/each}
+                    {/if}
                   </div>
-                  {#if !holeRevealed && !isShowdown && !userSeat.folded}
+                  {#if canArrangeDori}
+                    <div class="dori-arrange-panel" role="group" aria-label="도리 카드 선택">
+                      <strong>도리로 만들 3장을 고르세요</strong>
+                      <span class:valid={doriDraftValid}>
+                        {doriDraft.length}/3장 · 합 {doriDraftSum}
+                        {doriDraft.length === 3
+                          ? doriDraftValid
+                            ? ' · 도리 완성'
+                            : ' · 10의 배수가 아님'
+                          : ''}
+                      </span>
+                      <button
+                        type="button"
+                        class="btn btn-sm btn-warning"
+                        disabled={!doriDraftValid || busy}
+                        onclick={confirmDori}>도리 확정</button
+                      >
+                    </div>
+                  {:else if isBossRound && userSeat.doriIndices?.length === 0}
+                    <div class="badge text-bg-secondary mb-2">
+                      만들 수 있는 도리 없음 · 노메이드
+                    </div>
+                  {:else if isBossRound && userSeat.doriIndices?.length === 3}
+                    <div class="small dori-made mb-2">도리 완성 · 테두리 패 2장으로 승부</div>
+                  {:else if !holeRevealed && !isShowdown && !userSeat.folded}
                     <div class="small peel-tip">뒷장 눌러서 까기 ↓</div>
                   {/if}
-                  {#if userSeat.handName && (holeRevealed || isShowdown)}
+                  {#if userSeat.handName && (isBossRound || holeRevealed || isShowdown)}
                     <div class="badge text-bg-primary mb-2 hand-pop">{userSeat.handName}</div>
                   {/if}
                   {#if userSeat.lastAction}
@@ -1621,7 +1689,7 @@
     min-width: 0;
   }
   .npc-row.boss {
-    width: min(100%, 14rem);
+    width: min(100%, 24rem);
     grid-template-columns: minmax(0, 1fr);
     margin-inline: auto;
   }
@@ -2072,6 +2140,44 @@
     padding: 0;
     background: transparent;
     cursor: pointer;
+  }
+  .boss-card-choice {
+    width: clamp(2.45rem, 12vw, 3.5rem);
+    transition:
+      transform 0.45s ease,
+      filter 0.18s ease;
+  }
+  .boss-card-choice:not(:disabled):hover {
+    filter: brightness(1.1);
+  }
+  .boss-card-choice.dori-selected .front {
+    border: 3px solid #33d17a;
+    box-shadow: 0 0 0 2px rgb(51 209 122 / 25%);
+  }
+  .boss-card-choice.result-card .front {
+    border: 3px solid #ffd85e;
+    box-shadow: 0 0 0 2px rgb(255 216 94 / 25%);
+  }
+  .dori-arrange-panel {
+    display: flex;
+    width: min(100%, 24rem);
+    margin: 0.5rem auto 0;
+    padding: 0.65rem;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 0.4rem 0.65rem;
+    border: 1px solid rgb(255 255 255 / 25%);
+    border-radius: 0.75rem;
+    background: rgb(0 0 0 / 20%);
+  }
+  .dori-arrange-panel span {
+    color: #ffb4ab;
+    font-size: 0.8rem;
+  }
+  .dori-arrange-panel span.valid,
+  .dori-made {
+    color: #74e6a4;
   }
   .hwatu-flip.tap-hint {
     animation: wiggle 1.4s ease-in-out infinite;
