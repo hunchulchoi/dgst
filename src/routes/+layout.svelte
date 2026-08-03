@@ -38,12 +38,18 @@
   /** @type {number | undefined} */
   let mobileLayoutNormalizationTimer;
 
+  /** @type {number | undefined} */
+  let boardDetailScrollResetFrame;
+
+  /** @type {number | undefined} */
+  let boardDetailScrollResetTimer;
+
   /** 게시판 목록 → 글 상세 이동 시 blur (beforeNavigate에서 미리 켬 — 첫 클릭부터 적용) */
   let boardListToDetailBlur = $state(false);
 
   /** @param {string} pathname */
   function isBoardListPath(pathname) {
-    return /^\/board\/[^/]+(\/\d+)?$/.test(pathname);
+    return pathname === '/' || /^\/board\/[^/]+(\/\d+)?$/.test(pathname);
   }
 
   /** @param {string} pathname */
@@ -123,12 +129,44 @@
     navigationToPath = to?.url?.pathname;
 
     if (from && to) {
+      const listToDetail =
+        isBoardListPath(from.url.pathname) && isBoardDetailPath(to.url.pathname);
       boardListToDetailBlur =
-        (isBoardListPath(from.url.pathname) && isBoardDetailPath(to.url.pathname)) ||
+        listToDetail ||
         isBoardListNavigation(from.url.pathname, to.url.pathname) ||
         isBoardDetailToListNavigation(from.url.pathname, to.url.pathname);
+      if (listToDetail) resetViewportScrollToTop();
     }
   });
+
+  function resetViewportScrollToTop() {
+    if (!browser) return;
+    const previousScrollBehavior = document.documentElement.style.scrollBehavior;
+    document.documentElement.style.scrollBehavior = 'auto';
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+    document.documentElement.style.scrollBehavior = previousScrollBehavior;
+  }
+
+  function scheduleBoardDetailScrollReset() {
+    if (!browser) return;
+    resetViewportScrollToTop();
+
+    if (boardDetailScrollResetFrame !== undefined) {
+      cancelAnimationFrame(boardDetailScrollResetFrame);
+    }
+    clearTimeout(boardDetailScrollResetTimer);
+
+    boardDetailScrollResetFrame = requestAnimationFrame(() => {
+      boardDetailScrollResetFrame = undefined;
+      resetViewportScrollToTop();
+    });
+    boardDetailScrollResetTimer = window.setTimeout(() => {
+      boardDetailScrollResetTimer = undefined;
+      resetViewportScrollToTop();
+    }, 250);
+  }
 
   function resetHorizontalScrollPositions() {
     if (!browser) return;
@@ -207,6 +245,15 @@
   }
 
   afterNavigate(({ to }) => {
+    if (
+      navigationFromPath &&
+      to &&
+      isBoardListPath(navigationFromPath) &&
+      isBoardDetailPath(to.url.pathname)
+    ) {
+      scheduleBoardDetailScrollReset();
+    }
+
     if (navigationStartedAt > 0) {
       reportSlowLoad({
         type: 'navigation',
@@ -299,7 +346,11 @@
       if (mobileLayoutNormalizationFrame !== undefined) {
         cancelAnimationFrame(mobileLayoutNormalizationFrame);
       }
+      if (boardDetailScrollResetFrame !== undefined) {
+        cancelAnimationFrame(boardDetailScrollResetFrame);
+      }
       clearTimeout(mobileLayoutNormalizationTimer);
+      clearTimeout(boardDetailScrollResetTimer);
     };
   });
 </script>
