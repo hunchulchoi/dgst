@@ -8,10 +8,13 @@ const articlePage = readFileSync(
 
 describe('article list navigation scroll reset', () => {
   it('owns scroll handling and resets after the destination has rendered', () => {
+    expect(articlePage).toContain('function resetViewportScroll()');
     expect(articlePage).toContain('async function resetListPageScrollAfterNavigation()');
     expect(articlePage).toMatch(/requestAnimationFrame\(\(\) => requestAnimationFrame\(resolve\)\)/);
     expect(articlePage).toMatch(/replaceState: true,[\s\S]*?noScroll: true/);
+    expect(articlePage).toMatch(/resetViewportScroll\(\);[\s\S]*?await goto\(/);
     expect(articlePage).toMatch(/await goto\([\s\S]*?await resetListPageScrollAfterNavigation\(\);/);
+    expect(articlePage).not.toContain("await invalidate('board-list')");
   });
 
   it('temporarily overrides Bootstrap smooth scrolling and resets every viewport scroll root', () => {

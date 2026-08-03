@@ -1,6 +1,6 @@
 <script>
   import { Badge, Button, Col, Icon, InputGroup, Row } from '$lib/components/ui/index.js';
-  import { goto, invalidate } from '$app/navigation';
+  import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
   import { boardListPath } from '$lib/util/boardPaths.js';
   import { page } from '$app/stores';
@@ -255,11 +255,8 @@
     }
   }
 
-  async function resetListPageScrollAfterNavigation() {
+  function resetViewportScroll() {
     if (!browser) return;
-
-    // Wait until the destination DOM and SvelteKit's navigation lifecycle have settled.
-    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 
     // Bootstrap sets `:root { scroll-behavior: smooth }`. `behavior: 'auto'` follows that
     // computed value, so temporarily disable it and cover Safari's body scroll root too.
@@ -271,10 +268,20 @@
     document.documentElement.style.scrollBehavior = previousScrollBehavior;
   }
 
+  async function resetListPageScrollAfterNavigation() {
+    if (!browser) return;
+
+    // Wait until the destination DOM and SvelteKit's navigation lifecycle have settled.
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    resetViewportScroll();
+  }
+
   async function list() {
     const currentPageNo = Number(pageNo) || 1;
 
-    await invalidate('board-list');
+    // Give immediate feedback while the destination list is loading, then correct once more
+    // after navigation in case the browser restores an older position.
+    resetViewportScroll();
     await goto(resolve(/** @type {any} */ (boardListPath(boardId, currentPageNo))), {
       replaceState: true,
       noScroll: true
