@@ -4,6 +4,7 @@
   interface Card {
     month: number;
     gwang: boolean;
+    animal?: boolean;
   }
 
   let { card }: { card: Card } = $props();
@@ -15,12 +16,12 @@
 <span class="hwatu-art" class:gwang={card.gwang}>
   <img
     src={imageSrc}
-    alt={`${card.month}월${card.gwang ? ' 광' : ''} 화투패`}
+    alt={`${card.month}월${card.gwang ? ' 광' : card.animal ? ' 열끗' : ''} 화투패`}
     loading="eager"
     decoding="sync"
     draggable="false"
   />
-  <span class="card-label">{card.month}{card.gwang ? ' 광' : ''}</span>
+  <span class="card-label">{card.month}{card.gwang ? ' 광' : card.animal ? ' 열' : ''}</span>
 </span>
 
 <style>

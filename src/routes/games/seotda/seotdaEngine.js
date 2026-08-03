@@ -15,7 +15,7 @@ export function dynamicAnte(chips) {
 }
 
 /**
- * @typedef {{ month: number; gwang: boolean }} SeotdaCard
+ * @typedef {{ month: number; gwang: boolean; animal?: boolean }} SeotdaCard
  * @typedef {{ tier: number; sub: number; name: string; cards: SeotdaCard[] }} SeotdaHand
  * @typedef {{ id: string; chips: number; folded: boolean; contrib: number }} SeotdaPlayerPot
  */
@@ -28,6 +28,9 @@ export function createDeck() {
     if (month === 1 || month === 3 || month === 8) {
       deck.push({ month, gwang: true });
       deck.push({ month, gwang: false });
+    } else if (month === 4 || month === 9) {
+      deck.push({ month, gwang: false, animal: true });
+      deck.push({ month, gwang: false, animal: false });
     } else {
       deck.push({ month, gwang: false });
       deck.push({ month, gwang: false });
@@ -203,6 +206,7 @@ export function handStrength(hand) {
   for (const card of hand.cards) {
     const index = remaining.findIndex(
       (candidate) => candidate.month === card.month && candidate.gwang === card.gwang
+        && !!candidate.animal === !!card.animal
     );
     if (index >= 0) remaining.splice(index, 1);
   }

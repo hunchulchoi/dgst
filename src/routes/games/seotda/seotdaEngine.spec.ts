@@ -30,6 +30,7 @@ describe('seotdaEngine deck', () => {
     for (let m = 1; m <= 10; m++) {
       expect(deck.filter((x) => x.month === m)).toHaveLength(2);
     }
+    expect(deck.filter((x) => x.animal).map((x) => x.month)).toEqual([4, 9]);
   });
 
   it('shuffle keeps same multiset', () => {

@@ -886,7 +886,11 @@ export function showdown(round, rng = Math.random) {
     restartAfterTie(
       round,
       rng,
-      outcome.handName === '노메이드' ? '양쪽 모두 노메이드' : '멍텅구리 구사! 장땡 이하 무효'
+      outcome.handName === '노메이드'
+        ? '양쪽 모두 노메이드'
+        : outcome.handName === '구사'
+          ? '구사! 구땡 이하 무효'
+          : '멍텅구리 구사! 장땡 이하 무효'
     );
     return;
   }

@@ -17,7 +17,7 @@ export function classicSpecialName(cards) {
   const key = `${months[0]}-${months[1]}`;
   if (key === '4-7') return '암행어사';
   if (key === '3-7') return '땡잡이';
-  if (key === '4-9') return '멍텅구리 구사';
+  if (key === '4-9') return cards.every((card) => card.animal) ? '멍텅구리 구사' : '구사';
   return null;
 }
 
@@ -34,7 +34,7 @@ export function displayHand(cards, ruleMode) {
 
 /**
  * @typedef {{ id: string; cards: import('./seotdaEngine.js').SeotdaCard[] }} HandEntry
- * @typedef {{ type: 'win'; winnerIds: string[]; handName: string } | { type: 'replay'; winnerIds: []; handName: '멍텅구리 구사' }} HandOutcome
+ * @typedef {{ type: 'win'; winnerIds: string[]; handName: string } | { type: 'replay'; winnerIds: []; handName: '구사' | '멍텅구리 구사' }} HandOutcome
  */
 
 /**
@@ -57,6 +57,13 @@ export function resolveHandOutcome(entries, ruleMode) {
     );
     if (gusa.length > 0 && bestHand.tier <= 80) {
       return { type: 'replay', winnerIds: [], handName: '멍텅구리 구사' };
+    }
+
+    const regularGusa = ranked.filter((entry) => classicSpecialName(entry.cards) === '구사');
+    const guDdaengOrLower =
+      bestHand.tier < 80 || (bestHand.tier === 80 && bestHand.sub <= 9);
+    if (regularGusa.length > 0 && guDdaengOrLower) {
+      return { type: 'replay', winnerIds: [], handName: '구사' };
     }
 
     if (['13광땡', '18광땡'].includes(bestHand.name)) {
