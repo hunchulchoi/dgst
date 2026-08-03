@@ -61,6 +61,14 @@
    * @param {string} fromPathname
    * @param {string} toPathname
    */
+  function isBoardDetailNavigation(fromPathname, toPathname) {
+    return fromPathname !== toPathname && isBoardDetailPath(toPathname);
+  }
+
+  /**
+   * @param {string} fromPathname
+   * @param {string} toPathname
+   */
   function isBoardListNavigation(fromPathname, toPathname) {
     return isBoardListPath(fromPathname) && isBoardListPath(toPathname);
   }
@@ -129,13 +137,15 @@
     navigationToPath = to?.url?.pathname;
 
     if (from && to) {
-      const listToDetail =
-        isBoardListPath(from.url.pathname) && isBoardDetailPath(to.url.pathname);
+      const entersBoardDetail = isBoardDetailNavigation(
+        from.url.pathname,
+        to.url.pathname
+      );
       boardListToDetailBlur =
-        listToDetail ||
+        entersBoardDetail ||
         isBoardListNavigation(from.url.pathname, to.url.pathname) ||
         isBoardDetailToListNavigation(from.url.pathname, to.url.pathname);
-      if (listToDetail) resetViewportScrollToTop();
+      if (entersBoardDetail) resetViewportScrollToTop();
     }
   });
 
@@ -248,8 +258,7 @@
     if (
       navigationFromPath &&
       to &&
-      isBoardListPath(navigationFromPath) &&
-      isBoardDetailPath(to.url.pathname)
+      isBoardDetailNavigation(navigationFromPath, to.url.pathname)
     ) {
       scheduleBoardDetailScrollReset();
     }

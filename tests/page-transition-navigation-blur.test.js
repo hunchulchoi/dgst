@@ -10,11 +10,15 @@ describe('page transition navigation blur', () => {
     expect(layout).toContain('filter: blur(3px)');
   });
 
-  it('treats the canonical free-board root as a list and resets list-to-detail scroll', () => {
+  it('resets scroll whenever navigation opens a different board detail', () => {
     expect(layout).toContain("pathname === '/' || /^\\/board\\/[^/]+(\\/\\d+)?$/.test(pathname)");
+    expect(layout).toContain('function isBoardDetailNavigation(fromPathname, toPathname)');
+    expect(layout).toContain('fromPathname !== toPathname && isBoardDetailPath(toPathname)');
     expect(layout).toContain('function scheduleBoardDetailScrollReset()');
-    expect(layout).toMatch(/if \(listToDetail\) resetViewportScrollToTop\(\);/);
-    expect(layout).toMatch(/afterNavigate\([\s\S]*?scheduleBoardDetailScrollReset\(\);/);
+    expect(layout).toMatch(/if \(entersBoardDetail\) resetViewportScrollToTop\(\);/);
+    expect(layout).toMatch(
+      /afterNavigate\([\s\S]*?isBoardDetailNavigation\(navigationFromPath, to\.url\.pathname\)[\s\S]*?scheduleBoardDetailScrollReset\(\);/
+    );
   });
 
   it('starts the immediate blur when board pagination navigates between list pages', () => {
