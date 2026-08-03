@@ -7,21 +7,10 @@ const articlePage = readFileSync(
 );
 
 describe('article list navigation scroll reset', () => {
-  it('owns scroll handling and resets after the destination has rendered', () => {
-    expect(articlePage).toContain('function resetViewportScroll()');
-    expect(articlePage).toContain('async function resetListPageScrollAfterNavigation()');
-    expect(articlePage).toMatch(/requestAnimationFrame\(\(\) => requestAnimationFrame\(resolve\)\)/);
+  it('preserves the current position so the root layout can animate to the top', () => {
     expect(articlePage).toMatch(/replaceState: true,[\s\S]*?noScroll: true/);
-    expect(articlePage).toMatch(/resetViewportScroll\(\);[\s\S]*?await goto\(/);
-    expect(articlePage).toMatch(/await goto\([\s\S]*?await resetListPageScrollAfterNavigation\(\);/);
+    expect(articlePage).not.toContain('function resetViewportScroll()');
+    expect(articlePage).not.toContain('resetListPageScrollAfterNavigation');
     expect(articlePage).not.toContain("await invalidate('board-list')");
-  });
-
-  it('temporarily overrides Bootstrap smooth scrolling and resets every viewport scroll root', () => {
-    expect(articlePage).toContain("document.documentElement.style.scrollBehavior = 'auto'");
-    expect(articlePage).toContain('window.scrollTo(0, 0)');
-    expect(articlePage).toContain('document.documentElement.scrollTop = 0');
-    expect(articlePage).toContain('document.body.scrollTop = 0');
-    expect(articlePage).toContain('document.documentElement.style.scrollBehavior = previousScrollBehavior');
   });
 });

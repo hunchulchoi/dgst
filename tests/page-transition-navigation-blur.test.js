@@ -16,10 +16,15 @@ describe('page transition navigation blur', () => {
     expect(layout).toContain('fromPathname !== toPathname && isBoardDetailPath(toPathname)');
     expect(layout).toContain('function scheduleBoardDetailScrollReset()');
     expect(layout).toContain('function resetBoardDetailViewport()');
+    expect(layout).toContain('function scrollBoardDetailViewportToTop()');
     expect(layout).toMatch(/resetHorizontalScrollPositions\(\);[\s\S]*?window\.dispatchEvent\(new Event\('resize'\)\);/);
-    expect(layout).toMatch(/if \(entersBoardDetail\) resetBoardDetailViewport\(\);/);
+    expect(layout).toContain("window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });");
     expect(layout).toMatch(
-      /afterNavigate\([\s\S]*?isBoardDetailNavigation\(navigationFromPath, to\.url\.pathname\)[\s\S]*?scheduleBoardDetailScrollReset\(\);/
+      /if \(entersBoardDetail \|\| returnsToBoardList\) resetBoardDetailWidth\(\);/
+    );
+    expect(layout).toMatch(/boardDetailScrollResetTimer[\s\S]*?resetBoardDetailViewport\(\);[\s\S]*?500\);/);
+    expect(layout).toMatch(
+      /afterNavigate\([\s\S]*?isBoardDetailNavigation\(navigationFromPath, to\.url\.pathname\)[\s\S]*?disableScrollHandling\(\);[\s\S]*?scheduleBoardDetailScrollReset\(\);/
     );
   });
 
@@ -32,6 +37,11 @@ describe('page transition navigation blur', () => {
   it('starts the immediate blur when returning from a board detail page to a board list page', () => {
     expect(layout).toContain('function isBoardDetailToListNavigation(fromPathname, toPathname)');
     expect(layout).toContain('isBoardDetailPath(fromPathname) && isBoardListPath(toPathname)');
-    expect(layout).toContain('isBoardDetailToListNavigation(from.url.pathname, to.url.pathname)');
+    expect(layout).toMatch(
+      /const returnsToBoardList = isBoardDetailToListNavigation\([\s\S]*?from\.url\.pathname,[\s\S]*?to\.url\.pathname[\s\S]*?\);/
+    );
+    expect(layout).toMatch(
+      /afterNavigate\([\s\S]*?isBoardDetailToListNavigation\(navigationFromPath, to\.url\.pathname\)[\s\S]*?scheduleBoardDetailScrollReset\(\);/
+    );
   });
 });

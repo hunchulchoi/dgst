@@ -6,7 +6,12 @@
   import { blur } from 'svelte/transition';
   import { page } from '$app/stores';
   import { updated } from '$app/state';
-  import { afterNavigate, beforeNavigate, invalidateAll } from '$app/navigation';
+  import {
+    afterNavigate,
+    beforeNavigate,
+    disableScrollHandling,
+    invalidateAll
+  } from '$app/navigation';
   import { browser } from '$app/environment';
   import { onMount } from 'svelte';
   import { reportSlowInitialLoad, reportSlowLoad } from '$lib/util/logSlowLoad.js';
@@ -141,11 +146,15 @@
         from.url.pathname,
         to.url.pathname
       );
+      const returnsToBoardList = isBoardDetailToListNavigation(
+        from.url.pathname,
+        to.url.pathname
+      );
       boardListToDetailBlur =
         entersBoardDetail ||
         isBoardListNavigation(from.url.pathname, to.url.pathname) ||
-        isBoardDetailToListNavigation(from.url.pathname, to.url.pathname);
-      if (entersBoardDetail) resetBoardDetailViewport();
+        returnsToBoardList;
+      if (entersBoardDetail || returnsToBoardList) resetBoardDetailWidth();
     }
   });
 
@@ -161,7 +170,6 @@
 
   function scheduleBoardDetailScrollReset() {
     if (!browser) return;
-    resetBoardDetailViewport();
 
     if (boardDetailScrollResetFrame !== undefined) {
       cancelAnimationFrame(boardDetailScrollResetFrame);
@@ -170,12 +178,12 @@
 
     boardDetailScrollResetFrame = requestAnimationFrame(() => {
       boardDetailScrollResetFrame = undefined;
-      resetBoardDetailViewport();
+      scrollBoardDetailViewportToTop();
     });
     boardDetailScrollResetTimer = window.setTimeout(() => {
       boardDetailScrollResetTimer = undefined;
       resetBoardDetailViewport();
-    }, 250);
+    }, 500);
   }
 
   function resetHorizontalScrollPositions() {
@@ -195,8 +203,19 @@
   function resetBoardDetailViewport() {
     if (!browser) return;
     resetViewportScrollToTop();
+    resetBoardDetailWidth();
+  }
+
+  function resetBoardDetailWidth() {
+    if (!browser) return;
     resetHorizontalScrollPositions();
     if (window.innerWidth <= 768) window.dispatchEvent(new Event('resize'));
+  }
+
+  function scrollBoardDetailViewportToTop() {
+    if (!browser) return;
+    resetBoardDetailWidth();
+    window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
   }
 
   function scheduleMobileLayoutWidthNormalization() {
@@ -265,8 +284,10 @@
     if (
       navigationFromPath &&
       to &&
-      isBoardDetailNavigation(navigationFromPath, to.url.pathname)
+      (isBoardDetailNavigation(navigationFromPath, to.url.pathname) ||
+        isBoardDetailToListNavigation(navigationFromPath, to.url.pathname))
     ) {
+      disableScrollHandling();
       scheduleBoardDetailScrollReset();
     }
 
