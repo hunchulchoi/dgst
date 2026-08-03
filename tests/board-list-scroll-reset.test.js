@@ -13,4 +13,10 @@ describe('article list navigation scroll reset', () => {
     expect(articlePage).not.toContain('resetListPageScrollAfterNavigation');
     expect(articlePage).not.toContain("await invalidate('board-list')");
   });
+
+  it('requests mobile width normalization after the list has rendered', () => {
+    expect(articlePage).toMatch(
+      /await goto\([\s\S]*?window\.dispatchEvent\(new CustomEvent\('dgst:normalize-mobile-layout-width'\)\);/
+    );
+  });
 });

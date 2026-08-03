@@ -264,6 +264,9 @@
       replaceState: true,
       noScroll: true
     });
+    if (browser) {
+      window.dispatchEvent(new CustomEvent('dgst:normalize-mobile-layout-width'));
+    }
   }
 
   /** @param {string} value */

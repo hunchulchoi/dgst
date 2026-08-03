@@ -24,6 +24,9 @@ describe('mobile layout width renormalization events', () => {
     expect(layout).toContain("window.dispatchEvent(new Event('resize'))");
     expect(layout).toContain('requestAnimationFrame(() =>');
     expect(layout).toContain('clearTimeout(mobileLayoutNormalizationTimer)');
+    expect(layout).toMatch(
+      /mobileLayoutNormalizationTimer = window\.setTimeout\([\s\S]*?window\.dispatchEvent\(new Event\('resize'\)\);[\s\S]*?}, 180\)/
+    );
     expect(layout).toContain('}, 180)');
   });
 

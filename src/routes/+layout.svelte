@@ -236,6 +236,7 @@
       mobileLayoutNormalizationTimer = undefined;
       resetHorizontalScrollPositions();
       window.scrollTo({ left: 0, top: window.scrollY, behavior: 'auto' });
+      window.dispatchEvent(new Event('resize'));
     }, 180);
   }
 
