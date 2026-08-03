@@ -121,11 +121,11 @@ describe('seotda betting UI', () => {
     expect(serverSource).toContain('writeSeotdaSettlement');
   });
 
-  it('hides the boss result pair until the user scrolls to reveal it', () => {
-    expect(pageSource).toContain('let bossResultRevealed = $state(false)');
-    expect(pageSource).toContain('function revealBossResultOnScroll');
-    expect(pageSource).toContain('class="boss-result-scroll"');
-    expect(pageSource).toContain('아래로 스크롤해서 마지막 2장 공개');
+  it('shows the boss result pair without a scroll reveal control', () => {
+    expect(pageSource).not.toContain('bossResultRevealed');
+    expect(pageSource).not.toContain('revealBossResultOnScroll');
+    expect(pageSource).not.toContain('class="boss-result-scroll"');
+    expect(pageSource).toContain('도리 완성 · 남은 2장으로 승부');
     expect(pageSource).not.toContain('만들 수 있는 도리 없음 · 노메이드');
   });
 
@@ -134,6 +134,28 @@ describe('seotda betting UI', () => {
     expect(pageSource).toContain('function scheduleBossDoriReveal');
     expect(pageSource).toContain('보스가 도리를 확인하는 중');
     expect(pageSource).toContain('bossDoriRevealCount >= 3');
+  });
+
+  it('deals the five user boss cards one at a time before dori selection', () => {
+    expect(pageSource).toContain('let bossUserDealCount = $state(0)');
+    expect(pageSource).toContain('bossUserDealCount = step + 1');
+    expect(pageSource).toContain('패 받는 중… {bossUserDealCount}/5');
+    expect(pageSource).toContain('bossUserDealCount >= 5');
+    expect(pageSource).toContain('class:boss-card-pending={!dealt}');
+  });
+
+  it('deals the boss five cards before revealing the boss dori', () => {
+    expect(pageSource).toContain('let bossNpcDealCount = $state(0)');
+    expect(pageSource).toContain('bossNpcDealCount = step + 1');
+    expect(pageSource).toContain('보스 패 받는 중… {bossNpcDealCount}/5');
+    expect(pageSource).toContain('2700 + step * 420');
+  });
+
+  it('keeps only the fifth user card hidden until a scroll reveal', () => {
+    expect(pageSource).toContain('let bossUserLastCardRevealed = $state(false)');
+    expect(pageSource).toContain('function revealBossUserLastCardOnScroll');
+    expect(pageSource).toContain('i < 4 || bossUserLastCardRevealed || isShowdown');
+    expect(pageSource).toContain('아래로 스크롤해서 마지막 1장 공개');
   });
 
   it('lets the player switch rooms before starting the next hand', () => {
