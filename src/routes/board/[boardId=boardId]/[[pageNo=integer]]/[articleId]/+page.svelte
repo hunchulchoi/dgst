@@ -255,14 +255,31 @@
     }
   }
 
+  async function resetListPageScrollAfterNavigation() {
+    if (!browser) return;
+
+    // Wait until the destination DOM and SvelteKit's navigation lifecycle have settled.
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+
+    // Bootstrap sets `:root { scroll-behavior: smooth }`. `behavior: 'auto'` follows that
+    // computed value, so temporarily disable it and cover Safari's body scroll root too.
+    const previousScrollBehavior = document.documentElement.style.scrollBehavior;
+    document.documentElement.style.scrollBehavior = 'auto';
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+    document.documentElement.style.scrollBehavior = previousScrollBehavior;
+  }
+
   async function list() {
     const currentPageNo = Number(pageNo) || 1;
 
     await invalidate('board-list');
     await goto(resolve(/** @type {any} */ (boardListPath(boardId, currentPageNo))), {
-      replaceState: true
+      replaceState: true,
+      noScroll: true
     });
-    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    await resetListPageScrollAfterNavigation();
   }
 
   /** @param {string} value */

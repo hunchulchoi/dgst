@@ -7,9 +7,18 @@ const articlePage = readFileSync(
 );
 
 describe('article list navigation scroll reset', () => {
-  it('forces the list page to the top after client-side navigation', () => {
-    expect(articlePage).toMatch(
-      /async function list\(\)[\s\S]*?await goto\([\s\S]*?replaceState: true[\s\S]*?window\.scrollTo\(\{ top: 0, left: 0, behavior: 'auto' \}\);/
-    );
+  it('owns scroll handling and resets after the destination has rendered', () => {
+    expect(articlePage).toContain('async function resetListPageScrollAfterNavigation()');
+    expect(articlePage).toMatch(/requestAnimationFrame\(\(\) => requestAnimationFrame\(resolve\)\)/);
+    expect(articlePage).toMatch(/replaceState: true,[\s\S]*?noScroll: true/);
+    expect(articlePage).toMatch(/await goto\([\s\S]*?await resetListPageScrollAfterNavigation\(\);/);
+  });
+
+  it('temporarily overrides Bootstrap smooth scrolling and resets every viewport scroll root', () => {
+    expect(articlePage).toContain("document.documentElement.style.scrollBehavior = 'auto'");
+    expect(articlePage).toContain('window.scrollTo(0, 0)');
+    expect(articlePage).toContain('document.documentElement.scrollTop = 0');
+    expect(articlePage).toContain('document.body.scrollTop = 0');
+    expect(articlePage).toContain('document.documentElement.style.scrollBehavior = previousScrollBehavior');
   });
 });

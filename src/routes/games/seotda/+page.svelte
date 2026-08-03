@@ -6,6 +6,7 @@
   import type { PageData } from './$types';
   import { formatRelativeTime } from '$lib/util/formatRelativeTime.js';
   import { getArcadeGameLabel } from '$lib/util/arcadeGame.js';
+  import { swalFire } from '$lib/util/swal.js';
   import { ANTE, dynamicAnte, minRaisePay } from './seotdaEngine.js';
   import { contributionCapacity } from './seotdaRound.js';
   import SharedGameComments from '$lib/components/SharedGameComments.svelte';
@@ -80,6 +81,8 @@
     raiseCount?: number;
     antePaid: number;
     openingActorId?: string;
+    dealNo?: number;
+    replayReason?: string | null;
     log: string[];
     winnerId: string | null;
     winnerIds?: string[];
@@ -611,12 +614,19 @@
   /**
    * @param {SeotdaRound | null} next
    * @param {boolean} fromShowdownAct
+   * @param {boolean} forceNewDeal
    */
-  function applyRound(next: SeotdaRound | null, fromShowdownAct = false) {
+  function applyRound(
+    next: SeotdaRound | null,
+    fromShowdownAct = false,
+    forceNewDeal = false
+  ) {
     const wasShowdown = round && (round.showdown || round.phase === 'showdown');
     const nowShowdown = next && (next.showdown || next.phase === 'showdown');
     const isNewDeal =
-      next && next.phase === 'betting' && (!round || wasShowdown || round.phase !== 'betting');
+      next &&
+      next.phase === 'betting' &&
+      (forceNewDeal || !round || wasShowdown || round.phase !== 'betting');
 
     round = next;
     if (nowShowdown && !wasShowdown) resultLayerDismissed = false;
@@ -749,11 +759,24 @@
         return;
       }
       const npcActions = Array.isArray(j.npcActions) ? (j.npcActions as NpcAction[]) : [];
-      await playNpcActions(npcActions);
-      balance = Number(j.balance ?? balance);
       const next = (j.round as SeotdaRound | null) ?? null;
       const hitShowdown = !!(next && (next.showdown || next.phase === 'showdown'));
-      applyRound(next, body.action === 'act' && hitShowdown);
+      const isReplayDeal =
+        !!next &&
+        next.phase === 'betting' &&
+        Number(next.dealNo ?? 1) > Number(round?.dealNo ?? 1);
+      if (isReplayDeal) {
+        await swalFire({
+          icon: 'info',
+          title: next.replayReason ?? '무승부',
+          text: '팟을 유지하고 패를 다시 나눕니다.',
+          confirmButtonText: '확인'
+        });
+        applyRound(next, false, true);
+      }
+      await playNpcActions(npcActions);
+      balance = Number(j.balance ?? balance);
+      if (!isReplayDeal) applyRound(next, body.action === 'act' && hitShowdown);
       if (hitShowdown) resetRaiseBet(null, balance);
       else if (body.action === 'ack' || body.action === 'start') resetRaiseBet(next, balance);
       npcActionPreview = {};

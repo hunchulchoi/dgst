@@ -703,6 +703,7 @@ describe('seotdaRound smoke', () => {
     expect(folded.folded).toBe(true);
     expect(folded.needsAction).toBe(false);
     expect(round.log.at(-1)).toContain('재경기');
+    expect(round.replayReason).toBe('무승부');
     expect(round.handHistory).toHaveLength(1);
 
     const chipsBeforeReplayBet = user.chips;

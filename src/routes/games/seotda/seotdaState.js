@@ -76,6 +76,7 @@ import { advanceSeries, createSeries, publicSeries, seriesRoundConfig } from './
  *       hand: string;
  *     }>;
  *   }>;
+ *   replayReason?: string | null;
  *   series?: {
  *     handNo: number;
  *     isBoss: boolean;
@@ -221,6 +222,8 @@ export function toPublicState(round, userSeatId = 'user', evalHand) {
     antePaid: round.antePaid,
     turnIndex: round.turnIndex,
     openingActorId: round.openingActorId ?? 'user',
+    dealNo: (round.handHistory?.length ?? 0) + 1,
+    replayReason: round.replayReason ?? null,
     log: round.log.slice(-12),
     winnerId: round.winnerId,
     winnerIds: round.winnerIds ?? (round.winnerId ? [round.winnerId] : []),

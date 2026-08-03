@@ -990,6 +990,7 @@ function restartAfterTie(round, rng, reason = '무승부') {
   round.ddaengValuePerLoser = 0;
   round.ddaengTotalPaid = 0;
   round.showdown = false;
+  round.replayReason = reason;
   round.log.push(`${reason}! 생존자 ${active.length}명 팟 유지 (${round.pot}) — 재경기`);
 }
 
