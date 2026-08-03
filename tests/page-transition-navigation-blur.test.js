@@ -15,7 +15,9 @@ describe('page transition navigation blur', () => {
     expect(layout).toContain('function isBoardDetailNavigation(fromPathname, toPathname)');
     expect(layout).toContain('fromPathname !== toPathname && isBoardDetailPath(toPathname)');
     expect(layout).toContain('function scheduleBoardDetailScrollReset()');
-    expect(layout).toMatch(/if \(entersBoardDetail\) resetViewportScrollToTop\(\);/);
+    expect(layout).toContain('function resetBoardDetailViewport()');
+    expect(layout).toMatch(/resetHorizontalScrollPositions\(\);[\s\S]*?window\.dispatchEvent\(new Event\('resize'\)\);/);
+    expect(layout).toMatch(/if \(entersBoardDetail\) resetBoardDetailViewport\(\);/);
     expect(layout).toMatch(
       /afterNavigate\([\s\S]*?isBoardDetailNavigation\(navigationFromPath, to\.url\.pathname\)[\s\S]*?scheduleBoardDetailScrollReset\(\);/
     );

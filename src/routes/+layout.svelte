@@ -145,7 +145,7 @@
         entersBoardDetail ||
         isBoardListNavigation(from.url.pathname, to.url.pathname) ||
         isBoardDetailToListNavigation(from.url.pathname, to.url.pathname);
-      if (entersBoardDetail) resetViewportScrollToTop();
+      if (entersBoardDetail) resetBoardDetailViewport();
     }
   });
 
@@ -161,7 +161,7 @@
 
   function scheduleBoardDetailScrollReset() {
     if (!browser) return;
-    resetViewportScrollToTop();
+    resetBoardDetailViewport();
 
     if (boardDetailScrollResetFrame !== undefined) {
       cancelAnimationFrame(boardDetailScrollResetFrame);
@@ -170,11 +170,11 @@
 
     boardDetailScrollResetFrame = requestAnimationFrame(() => {
       boardDetailScrollResetFrame = undefined;
-      resetViewportScrollToTop();
+      resetBoardDetailViewport();
     });
     boardDetailScrollResetTimer = window.setTimeout(() => {
       boardDetailScrollResetTimer = undefined;
-      resetViewportScrollToTop();
+      resetBoardDetailViewport();
     }, 250);
   }
 
@@ -190,6 +190,13 @@
       if (!(element instanceof HTMLElement)) continue;
       if (element.scrollLeft !== 0) element.scrollLeft = 0;
     }
+  }
+
+  function resetBoardDetailViewport() {
+    if (!browser) return;
+    resetViewportScrollToTop();
+    resetHorizontalScrollPositions();
+    if (window.innerWidth <= 768) window.dispatchEvent(new Event('resize'));
   }
 
   function scheduleMobileLayoutWidthNormalization() {
