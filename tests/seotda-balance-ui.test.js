@@ -151,11 +151,13 @@ describe('seotda betting UI', () => {
     expect(pageSource).toContain('2700 + step * 420');
   });
 
-  it('keeps only the fifth user card hidden until a scroll reveal', () => {
+  it('reveals the fifth user card with the standard seotda peel interaction', () => {
     expect(pageSource).toContain('let bossUserLastCardRevealed = $state(false)');
-    expect(pageSource).toContain('function revealBossUserLastCardOnScroll');
+    expect(pageSource).toContain("let peelMode = $state<'normal' | 'boss-last'>('normal')");
+    expect(pageSource).toContain('function openBossLastCardPeel');
     expect(pageSource).toContain('i < 4 || bossUserLastCardRevealed || isShowdown');
-    expect(pageSource).toContain('아래로 스크롤해서 마지막 1장 공개');
+    expect(pageSource).toContain('마지막 패 눌러서 까기 ↓');
+    expect(pageSource).not.toContain('boss-last-card-scroll');
   });
 
   it('lets the player switch rooms before starting the next hand', () => {

@@ -167,6 +167,7 @@
   let peelPull = $state(0);
   let peelDragging = $state(false);
   let peelStartY = 0;
+  let peelMode = $state<'normal' | 'boss-last'>('normal');
   /** 연출 끝난 뒤에만 승패/다음판 표시 */
   let revealDone = $state(true);
   let ddaengLayerOpen = $state(
@@ -394,11 +395,6 @@
     await post({ action: 'arrange', indices: doriDraft });
   }
 
-  function revealBossUserLastCardOnScroll(event: Event) {
-    const target = event.currentTarget as HTMLElement;
-    if (target.scrollTop >= 48) bossUserLastCardRevealed = true;
-  }
-
   function actionEffectText(seat: SeotdaSeat): string {
     const amount = Number(seat.lastActionAmount ?? 0);
     if (seat.lastAction === '레이즈') return `레이즈 +${formatNumber(amount)}`;
@@ -545,6 +541,15 @@
 
   function openPeelLayer() {
     if (holeRevealed || isShowdown) return;
+    peelMode = 'normal';
+    peelOpen = true;
+    peelPull = 0;
+  }
+
+  function openBossLastCardPeel() {
+    if (bossUserLastCardRevealed || bossUserDealCount < 5 || bossDoriRevealCount < 3 || isShowdown)
+      return;
+    peelMode = 'boss-last';
     peelOpen = true;
     peelPull = 0;
   }
@@ -553,15 +558,18 @@
     peelOpen = false;
     peelPull = 0;
     peelDragging = false;
+    peelMode = 'normal';
   }
 
   function finishPeel() {
-    holeRevealed = true;
+    if (peelMode === 'boss-last') bossUserLastCardRevealed = true;
+    else holeRevealed = true;
     peelPull = 1;
     peelDragging = false;
     const t = setTimeout(() => {
       peelOpen = false;
       peelPull = 0;
+      peelMode = 'normal';
     }, 280);
     timers.push(t);
   }
@@ -570,7 +578,11 @@
    * @param {number} clientY
    */
   function onPeelStart(clientY: number) {
-    if (holeRevealed) return;
+    if (
+      (peelMode === 'normal' && holeRevealed) ||
+      (peelMode === 'boss-last' && bossUserLastCardRevealed)
+    )
+      return;
     peelDragging = true;
     peelStartY = clientY - peelPull * PEEL_MAX_PX;
   }
@@ -579,7 +591,12 @@
    * @param {number} clientY
    */
   function onPeelMove(clientY: number) {
-    if (!peelDragging || holeRevealed) return;
+    if (
+      !peelDragging ||
+      (peelMode === 'normal' && holeRevealed) ||
+      (peelMode === 'boss-last' && bossUserLastCardRevealed)
+    )
+      return;
     const dy = Math.max(0, clientY - peelStartY);
     peelPull = Math.min(1, dy / PEEL_MAX_PX);
   }
@@ -1169,18 +1186,30 @@
                           class:flipped={open}
                           class:gwang={open && card.gwang}
                           class:boss-card-pending={!dealt}
+                          class:tap-hint={i === 4 &&
+                            dealt &&
+                            !bossUserLastCardRevealed &&
+                            bossDoriRevealCount >= 3}
                           class:dori-selected={(userSeat.doriIndices ?? doriDraft).includes(i)}
                           class:result-card={Array.isArray(userSeat.doriIndices) &&
                             userSeat.doriIndices.length === 3 &&
                             !userSeat.doriIndices.includes(i)}
-                          disabled={!canArrangeDori}
+                          disabled={i === 4 &&
+                          dealt &&
+                          !bossUserLastCardRevealed &&
+                          bossDoriRevealCount >= 3
+                            ? false
+                            : !canArrangeDori}
                           aria-pressed={(userSeat.doriIndices ?? doriDraft).includes(i)}
                           aria-label={open
                             ? `${cardText(card)}${(userSeat.doriIndices ?? doriDraft).includes(i) ? ' 도리 선택됨' : ''}`
                             : dealt
                               ? '공개되지 않은 마지막 패'
                               : '아직 받지 않은 패'}
-                          onclick={() => toggleDoriCard(i)}
+                          onclick={() =>
+                            i === 4 && !bossUserLastCardRevealed
+                              ? openBossLastCardPeel()
+                              : toggleDoriCard(i)}
                         >
                           <span class="hwatu-face back">?</span>
                           <span class="hwatu-face front open"><HwatuCardFace {card} /></span>
@@ -1220,19 +1249,7 @@
                       패 받는 중… {bossUserDealCount}/5
                     </div>
                   {:else if isBossRound && bossDoriRevealCount >= 3 && !bossUserLastCardRevealed && !isShowdown}
-                    <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-                    <div
-                      class="boss-last-card-scroll"
-                      role="region"
-                      aria-label="마지막 한 장 공개"
-                      tabindex="0"
-                      onscroll={revealBossUserLastCardOnScroll}
-                    >
-                      <div class="boss-last-card-scroll-track">
-                        <strong>아래로 스크롤해서 마지막 1장 공개</strong>
-                        <span aria-hidden="true">↓</span>
-                      </div>
-                    </div>
+                    <div class="small peel-tip">마지막 패 눌러서 까기 ↓</div>
                   {:else if canArrangeDori}
                     <div class="dori-arrange-panel" role="group" aria-label="도리 카드 선택">
                       <strong>도리로 만들 3장을 고르세요</strong>
@@ -1346,7 +1363,7 @@
               {/if}
             </div>
 
-            {#if peelOpen && userSeat?.cards[1]}
+            {#if peelOpen && userSeat && (peelMode === 'boss-last' ? userSeat.cards[4] : userSeat.cards[1])}
               <!-- svelte-ignore a11y_no_static_element_interactions -->
               <div
                 class="peel-backdrop"
@@ -1383,14 +1400,20 @@
                       if (peelDragging) onPeelEnd();
                     }}
                   >
-                    <div class="peel-face"><HwatuCardFace card={userSeat.cards[1]} /></div>
+                    <div class="peel-face">
+                      <HwatuCardFace
+                        card={peelMode === 'boss-last' ? userSeat.cards[4] : userSeat.cards[1]}
+                      />
+                    </div>
                     <div
                       class="peel-cover"
                       class:snapping={!peelDragging}
                       style="transform: translateY({peelPull * PEEL_MAX_PX}px)"
                     >
                       <div class="peel-cover-inner">
-                        <HwatuCardFace card={userSeat.cards[0]} />
+                        <HwatuCardFace
+                          card={peelMode === 'boss-last' ? userSeat.cards[3] : userSeat.cards[0]}
+                        />
                         <span class="peel-drag-hint">↓ 내려서 새 패 보기</span>
                       </div>
                     </div>
@@ -2283,28 +2306,6 @@
   .boss-user-deal-status {
     min-height: 1.25rem;
     color: #ffd85e;
-  }
-  .boss-last-card-scroll {
-    width: min(100%, 22rem);
-    height: 5.5rem;
-    margin: 0.5rem auto;
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    border: 1px solid rgb(255 216 94 / 55%);
-    border-radius: 0.75rem;
-    background: rgb(0 0 0 / 28%);
-  }
-  .boss-last-card-scroll-track {
-    min-height: 11rem;
-    padding: 1rem 0.75rem;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: space-between;
-    color: #ffd85e;
-  }
-  .boss-last-card-scroll-track span {
-    font-size: 1.6rem;
   }
   .dori-arrange-panel {
     display: flex;
