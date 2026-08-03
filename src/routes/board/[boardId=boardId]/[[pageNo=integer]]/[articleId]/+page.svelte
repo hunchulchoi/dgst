@@ -259,9 +259,10 @@
     const currentPageNo = Number(pageNo) || 1;
 
     await invalidate('board-list');
-    goto(resolve(/** @type {any} */ (boardListPath(boardId, currentPageNo))), {
+    await goto(resolve(/** @type {any} */ (boardListPath(boardId, currentPageNo))), {
       replaceState: true
     });
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
   }
 
   /** @param {string} value */
