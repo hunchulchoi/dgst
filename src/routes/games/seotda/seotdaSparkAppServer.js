@@ -71,6 +71,18 @@ function inactiveDecision(reason) {
   };
 }
 
+/** @param {unknown} error */
+export function isSparkUsageLimitError(error) {
+  if (!error || typeof error !== 'object') return false;
+  const value = /** @type {Record<string, any>} */ (error);
+  const status = Number(value.status ?? value.statusCode ?? value.response?.status);
+  if (status === 429) return true;
+  const message = String(value.message ?? value.error ?? '').toLowerCase();
+  return /usage[ _-]?limit|rate[ _-]?limit|quota|insufficient (?:credits?|tokens?)|credits? exhausted|tokens? left|limit reached|한도/.test(
+    message
+  );
+}
+
 /** @param {unknown} raw */
 export function normalizeSparkDecision(raw) {
   if (!raw || typeof raw !== 'object') {
@@ -121,10 +133,10 @@ function decisionPrompt(context) {
   return [
     '섯다 게임의 Spark 밸런스 개입 여부를 판단하라.',
     '확률 추첨을 하지 말고 제공된 최근 실제 플레이 통계와 경제 상태만 판단 근거로 사용하라.',
-      '목표: 10만점 미만 유저는 100판 기준 +3~5% 재미 구간, 10만점 이상은 +0.5~1% 완만한 구간.',
-      '10만점 미만에서는 개입을 최소화하고, 연속 다이·연속 최대 레이즈 같은 재미 저하 신호가 명확할 때만 짧게 개입하라.',
-      '10만점 이상은 최근 10판 수익이 잔고의 8~10%를 넘으면 즉시 개입하고, 전체적으로 15~20% 정도의 판에서 제동이 체감되게 판단하라.',
-      '10만~20만점은 balanced를 우선하고, challenge는 최근 10판 급등 또는 20만점 이상일 때만 선택하라.',
+    '목표: 10만점 미만 유저는 100판 기준 +3~5% 재미 구간, 10만점 이상은 +0.5~1% 완만한 구간.',
+    '10만점 미만에서는 개입을 최소화하고, 연속 다이·연속 최대 레이즈 같은 재미 저하 신호가 명확할 때만 짧게 개입하라.',
+    '10만점 이상은 최근 10판 수익이 잔고의 8~10%를 넘으면 즉시 개입하고, 전체적으로 15~20% 정도의 판에서 제동이 체감되게 판단하라.',
+    '10만~20만점은 balanced를 우선하고, challenge는 최근 10판 급등 또는 20만점 이상일 때만 선택하라.',
     'Spark는 연속 최대 레이즈, 연속 다이, 과도한 장기 수익, NPC 자금 편중을 완화하는 보조 수단이다.',
     '재미 흐름에 따라 give-room, balanced, challenge 중 난이도와 지정 NPC의 임시 성향을 고른다.',
     '직접 플레이가 재미에 필요할 때만 directPlay를 true로 한다. 연속 Spark 판이면 개입을 쉬어라.',
@@ -367,9 +379,10 @@ function bridgeTelemetry(body, model, startedAt) {
  * @param {number} startedAt
  */
 function bridgeError(body, status, model, startedAt) {
-  const error = /** @type {Error & { telemetry?: SparkTelemetry }} */ (
+  const error = /** @type {Error & { status?: number; telemetry?: SparkTelemetry }} */ (
     new Error(`Spark bridge ${status}: ${String(body?.error ?? 'request failed')}`)
   );
+  error.status = status;
   error.telemetry = bridgeTelemetry(body, model, startedAt);
   return error;
 }
@@ -487,6 +500,15 @@ export async function decideSparkIntervention(context, options = {}) {
       error && typeof error === 'object' && 'telemetry' in error
         ? /** @type {{ telemetry?: SparkTelemetry }} */ (error).telemetry
         : null;
+    if (isSparkUsageLimitError(error)) {
+      console.info('[seotda spark app-server] pass', {
+        operation: 'intervention',
+        status: 'usage-limit-pass',
+        model: telemetry?.model ?? process.env.DGST_SPARK_CODEX_MODEL ?? DEFAULT_MODEL,
+        elapsedMs: telemetry?.elapsedMs ?? Date.now() - startedAt
+      });
+      return inactiveDecision('usage-limit-pass');
+    }
     console.error('[seotda spark app-server] decision failed', {
       name: error instanceof Error ? error.name : 'UnknownError',
       message: error instanceof Error ? error.message : String(error),
@@ -534,6 +556,16 @@ export async function decideSparkNpcAction(context, options = {}) {
     });
     return action;
   } catch (error) {
+    if (isSparkUsageLimitError(error)) {
+      console.info('[seotda spark app-server] pass', {
+        operation: 'npc-action',
+        status: 'usage-limit-pass',
+        model: process.env.DGST_SPARK_CODEX_MODEL ?? DEFAULT_MODEL,
+        elapsedMs: Date.now() - startedAt,
+        npcId: String(context.npcId ?? '')
+      });
+      return null;
+    }
     console.error('[seotda spark app-server] action failed', {
       name: error instanceof Error ? error.name : 'UnknownError',
       message: error instanceof Error ? error.message : String(error),

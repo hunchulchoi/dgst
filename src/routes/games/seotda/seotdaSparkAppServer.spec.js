@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   decideSparkIntervention,
   decideSparkNpcAction,
+  isSparkUsageLimitError,
   normalizeSparkDecision,
   requestSparkDecisionFromAppServer
 } from './seotdaSparkAppServer.js';
@@ -151,6 +152,35 @@ describe('seotda Spark Codex app-server decision', () => {
     errorLog.mockRestore();
   });
 
+  it('passes Spark intervention when the AI usage limit is exhausted', async () => {
+    const errorLog = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const infoLog = vi.spyOn(console, 'info').mockImplementation(() => {});
+    const limitError = Object.assign(new Error('usage limit reached'), { status: 429 });
+
+    const result = await decideSparkIntervention(
+      { balance: 50_000, npcChips: {}, sparkTauntCooldown: 0, history: {} },
+      { requestDecision: vi.fn().mockRejectedValue(limitError) }
+    );
+
+    expect(result).toEqual({
+      active: false,
+      npcId: null,
+      taunt: null,
+      difficulty: 'balanced',
+      npcStyle: null,
+      directPlay: false,
+      reason: 'usage-limit-pass'
+    });
+    expect(isSparkUsageLimitError(limitError)).toBe(true);
+    expect(errorLog).not.toHaveBeenCalled();
+    expect(infoLog).toHaveBeenCalledWith(
+      '[seotda spark app-server] pass',
+      expect.objectContaining({ operation: 'intervention', status: 'usage-limit-pass' })
+    );
+    errorLog.mockRestore();
+    infoLog.mockRestore();
+  });
+
   it('rejects unknown NPCs and taunts from model output', () => {
     expect(
       normalizeSparkDecision({ active: true, npcId: 'user', taunt: '임의 대사', reason: 'x' })
@@ -193,6 +223,25 @@ describe('seotda Spark Codex app-server decision', () => {
         totalTokens: 102
       })
     );
+    infoLog.mockRestore();
+  });
+
+  it('passes direct AI play to the local NPC logic when usage is exhausted', async () => {
+    const errorLog = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const infoLog = vi.spyOn(console, 'info').mockImplementation(() => {});
+
+    const result = await decideSparkNpcAction(
+      { npcId: 'npc_goni' },
+      { requestAction: vi.fn().mockRejectedValue(new Error('insufficient quota')) }
+    );
+
+    expect(result).toBeNull();
+    expect(errorLog).not.toHaveBeenCalled();
+    expect(infoLog).toHaveBeenCalledWith(
+      '[seotda spark app-server] pass',
+      expect.objectContaining({ operation: 'npc-action', status: 'usage-limit-pass' })
+    );
+    errorLog.mockRestore();
     infoLog.mockRestore();
   });
 });
