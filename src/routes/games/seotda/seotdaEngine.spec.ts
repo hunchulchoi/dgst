@@ -4,7 +4,6 @@ import {
   compareHands,
   createDeck,
   dynamicAnte,
-  MAX_ANTE,
   bestDoriArrangement,
   doriArrangements,
   evaluateHand,
@@ -136,7 +135,7 @@ describe('seotdaEngine pot', () => {
     expect(ANTE).toBe(10);
   });
 
-  it('uses the 0.5% / 1% / 1.5% ante tiers with a 30k cap', () => {
+  it('uses a 2% ante from 100m points with no ante cap', () => {
     expect(dynamicAnte(1000)).toBe(10);
     expect(dynamicAnte(10_000)).toBe(50);
     expect(dynamicAnte(99_999)).toBe(499);
@@ -145,8 +144,10 @@ describe('seotdaEngine pot', () => {
     expect(dynamicAnte(1_000_000)).toBe(15_000);
     expect(dynamicAnte(2_000_000)).toBe(30_000);
     expect(dynamicAnte(10_000_000)).toBe(150_000);
-    expect(dynamicAnte(6_451_000_000)).toBe(96_765_000);
-    expect(dynamicAnte(14_300_000_000)).toBe(MAX_ANTE);
+    expect(dynamicAnte(99_999_999)).toBe(1_499_999);
+    expect(dynamicAnte(100_000_000)).toBe(2_000_000);
+    expect(dynamicAnte(6_451_000_000)).toBe(129_020_000);
+    expect(dynamicAnte(14_300_000_000)).toBe(286_000_000);
   });
 
   it('raiseAmount respects requested size with min clamp', () => {

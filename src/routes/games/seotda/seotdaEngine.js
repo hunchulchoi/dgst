@@ -1,17 +1,17 @@
 /** 섯다 라이트 엔진 — 덱·족보·팟 */
 
 export const ANTE = 10;
-export const MAX_ANTE = 200_000_000;
 export const SEOTDA_GAME = 'seotda';
 
 /**
- * 시작 판돈: 10만 미만 0.5%, 10만~100만 1%, 100만 이상 1.5%.
+ * 시작 판돈: 10만 미만 0.5%, 10만~100만 1%, 100만~1억 1.5%, 1억 이상 2%.
  * @param {number} chips
  */
 export function dynamicAnte(chips) {
   const balance = Math.max(0, Math.floor(Number(chips) || 0));
-  const ratio = balance < 100_000 ? 0.005 : balance < 1_000_000 ? 0.01 : 0.015;
-  return Math.min(MAX_ANTE, Math.max(ANTE, Math.floor(balance * ratio)));
+  const ratio =
+    balance < 100_000 ? 0.005 : balance < 1_000_000 ? 0.01 : balance < 100_000_000 ? 0.015 : 0.02;
+  return Math.max(ANTE, Math.floor(balance * ratio));
 }
 
 /**
@@ -205,8 +205,10 @@ export function handStrength(hand) {
   const remaining = createDeck();
   for (const card of hand.cards) {
     const index = remaining.findIndex(
-      (candidate) => candidate.month === card.month && candidate.gwang === card.gwang
-        && !!candidate.animal === !!card.animal
+      (candidate) =>
+        candidate.month === card.month &&
+        candidate.gwang === card.gwang &&
+        !!candidate.animal === !!card.animal
     );
     if (index >= 0) remaining.splice(index, 1);
   }

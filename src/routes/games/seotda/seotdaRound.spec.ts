@@ -470,34 +470,34 @@ describe('seotdaRound smoke', () => {
     }
   });
 
-  it('refills tomato-sized users NPCs to the 5b maximum next hand', () => {
+  it('refills high-balance NPCs to 90% of the user balance without a cap', () => {
     expect(npcStackForNextRound(0, 14_300_000_000, 30_000)).toEqual({
-      chips: 5_000_000_000,
+      chips: 12_870_000_000,
       reason: 'refill'
     });
-    expect(npcStartingChips(30_000, 20_000_000_000)).toBe(5_000_000_000);
-    expect(npcStartingChips(30_000, 50_000_000_000)).toBe(5_000_000_000);
+    expect(npcStartingChips(30_000, 20_000_000_000)).toBe(18_000_000_000);
+    expect(npcStartingChips(30_000, 50_000_000_000)).toBe(45_000_000_000);
     expect(npcStartingChips(10, 1_000)).toBe(900);
   });
 
-  it('caps the ante at 200m while keeping NPCs inside the 5b refill cap', () => {
+  it('does not cap the ante and scales NPC stacks with the user balance', () => {
     const round = createNewRound(14_300_000_000, () => 0.5, {});
 
-    expect(round.antePaid).toBe(200_000_000);
-    expect(round.pot).toBe(800_000_000);
+    expect(round.antePaid).toBe(286_000_000);
+    expect(round.pot).toBe(1_144_000_000);
     for (const npc of round.seats.filter((seat) => seat.isNpc)) {
-      expect(npc.chips).toBe(4_800_000_000);
+      expect(npc.chips).toBe(12_584_000_000);
       expect(npc.borrowedChips ?? 0).toBe(0);
     }
   });
 
-  it('keeps earned NPC chips and trims oversized stacks at the next-hand cap', () => {
+  it('keeps earned NPC chips and trims oversized stacks to 90% of the user balance', () => {
     expect(npcStackForNextRound(2_000_000, 14_300_000_000, 30_000)).toEqual({
       chips: 2_000_000,
       reason: 'keep'
     });
     expect(npcStackForNextRound(50_000_000_000, 14_300_000_000, 30_000)).toEqual({
-      chips: 5_000_000_000,
+      chips: 12_870_000_000,
       reason: 'trim'
     });
   });
@@ -596,7 +596,7 @@ describe('seotdaRound smoke', () => {
     applyPlayerAction(round, 'user', 'raise', user.chips);
 
     expect(user.totalContrib).toBe(10_000_000_000);
-    expect(round.pot).toBe(10_450_000_000);
+    expect(round.pot).toBe(10_600_000_000);
   });
 
   it('accepts the third raise and turns a fourth raise into a call', () => {

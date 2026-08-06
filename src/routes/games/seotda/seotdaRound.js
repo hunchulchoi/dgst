@@ -1,6 +1,5 @@
 import {
   ANTE,
-  MAX_ANTE,
   bestDoriArrangement,
   createDeck,
   dynamicAnte,
@@ -26,7 +25,6 @@ import { displayHand, resolveHandOutcome } from './seotdaClassic.js';
 import { eventForSeries, roundRaiseLimit } from './seotdaEvent.js';
 import { createNpcTell } from './seotdaTell.js';
 
-export const NPC_MAX_REFILL = 5_000_000_000;
 export const NPC_MAX_USER_BALANCE_RATIO = 0.9;
 export const NPC_REFILL_THRESHOLD_ANTE_MULTIPLIER = 4;
 /** 한 판 레이즈 횟수 상한 — 무한 콜/레이즈 방지 */
@@ -105,10 +103,7 @@ export function npcPlayerRelief(userBalance) {
  */
 export function npcStartingChips(ante = ANTE, userChips = 0) {
   if (Number(userChips) <= 0) return Math.max(ante, ANTE);
-  return Math.max(
-    Math.min(ante, NPC_MAX_REFILL),
-    Math.min(NPC_MAX_REFILL, Math.floor(Number(userChips) * NPC_MAX_USER_BALANCE_RATIO))
-  );
+  return Math.max(ante, Math.floor(Number(userChips) * NPC_MAX_USER_BALANCE_RATIO));
 }
 
 /**
@@ -265,7 +260,7 @@ export function createNewRound(
     ? Math.max(1, Number(seriesConfig.anteMultiplier) || 2)
     : 1;
   const anteMultiplier = seriesAnteMultiplier * (event?.anteMultiplier ?? 1);
-  const ante = Math.min(MAX_ANTE, dynamicAnte(userChips) * anteMultiplier);
+  const ante = dynamicAnte(userChips) * anteMultiplier;
   let deck = shuffleDeck(createDeck(), rng);
   const requestedBossId = String(seriesConfig?.bossNpcId ?? '');
   const bossProfile = NPC_PROFILES.find((profile) => profile.id === requestedBossId);
