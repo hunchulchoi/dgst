@@ -16,4 +16,11 @@ describe('global stylesheet', () => {
     expect(css).toContain('color: #0366d6;');
     expect(css).toContain('text-decoration: underline;');
   });
+
+  it('keeps markdown list markers visible after the CSS reset', () => {
+    const css = readFileSync('src/app.css', 'utf8');
+
+    expect(css).toMatch(/\.markdown-body ul\s*\{[^}]*list-style-type:\s*disc;/s);
+    expect(css).toMatch(/\.markdown-body ol\s*\{[^}]*list-style-type:\s*decimal;/s);
+  });
 });
