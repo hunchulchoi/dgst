@@ -69,6 +69,8 @@ html,
 body {
   max-width: 100%;
   overflow-x: hidden;
+  /* Bootstrap의 :root smooth가 Safari 페이지 이동까지 느리게 만드는 것을 방지 */
+  scroll-behavior: auto !important;
 }
 
 .site-header,

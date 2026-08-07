@@ -23,4 +23,10 @@ describe('global stylesheet', () => {
     expect(css).toMatch(/\.markdown-body ul\s*\{[^}]*list-style-type:\s*disc;/s);
     expect(css).toMatch(/\.markdown-body ol\s*\{[^}]*list-style-type:\s*decimal;/s);
   });
+
+  it('does not let Bootstrap animate default document scrolling', () => {
+    const css = readFileSync('src/app.css', 'utf8');
+
+    expect(css).toMatch(/html,\s*body\s*\{[^}]*scroll-behavior:\s*auto !important;/s);
+  });
 });
