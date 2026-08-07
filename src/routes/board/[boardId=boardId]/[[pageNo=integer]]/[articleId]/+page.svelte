@@ -2922,6 +2922,11 @@
     line-height: 1.55;
   }
 
+  .comment-text :global(.markdown-body :is(ul, ol)) {
+    list-style-position: inside;
+    padding-left: 0;
+  }
+
   .comment-text :global(.markdown-body > * + *) {
     margin-top: 0.35rem;
   }

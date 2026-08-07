@@ -7,6 +7,12 @@ const articlePage = readFileSync(
 );
 
 describe('board comment action layout', () => {
+  it('keeps markdown list markers inside the comment body', () => {
+    expect(articlePage).toMatch(
+      /\.comment-text :global\(\.markdown-body :is\(ul, ol\)\)\s*\{[^}]*list-style-position: inside;[^}]*padding-left: 0;/
+    );
+  });
+
   it('keeps article action buttons right aligned on desktop', () => {
     expect(articlePage).toContain('class="article-toolbar text-end pe-md-3 p-xs-0 m-xs-0"');
     expect(articlePage).toContain('class="article-toolbar text-end pe-1"');
