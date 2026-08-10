@@ -14,9 +14,9 @@ Exercise protected game flows as `local-game-smoke@dgst.local`. Keep the bypass 
 
 ```bash
 DGST_LOCAL_GAME_SMOKE=1 \
-DATABASE_URL='postgresql://smoke:smoke@127.0.0.1:1/dgst_smoke' \
-AUTH_SECRET='local-smoke-only' \
-NEXTAUTH_SECRET='local-smoke-only' \
+DATABASE_URL='postgresql://smoke:placeholder@127.0.0.1:1/dgst_smoke' \
+AUTH_SECRET='placeholder' \
+NEXTAUTH_SECRET='placeholder' \
 npm run dev -- --host 127.0.0.1
 ```
 

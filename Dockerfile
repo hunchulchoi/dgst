@@ -47,4 +47,4 @@ USER www-data
 EXPOSE 3000
 
 # 실행
-ENTRYPOINT ["sh", "-c", "./node_modules/.bin/prisma migrate deploy && BODY_SIZE_LIMIT=100M exec node ."]
+ENTRYPOINT ["sh", "-c", "BODY_SIZE_LIMIT=100M exec node ."]
