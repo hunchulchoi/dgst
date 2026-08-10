@@ -831,7 +831,7 @@
 
   /**
    * @param {File} file
-   * @param {{width?: number, quality?: number}} options
+   * @param {{quality?: number}} options
    * @returns {Promise<File | Blob>}
    */
   async function convertToWebP(file, options = {}) {
@@ -853,7 +853,9 @@
     const imageCompression = (await import('browser-image-compression')).default;
     return imageCompression(file, {
       maxSizeMB: 10,
-      maxWidthOrHeight: options.width || 1400,
+      // Server applies the canonical 1400px width limit. Keeping resolution here prevents a
+      // 539x9597 image from becoming 78x1400 just because its longest edge is vertical.
+      alwaysKeepResolution: true,
       useWebWorker: true,
       fileType: 'image/webp',
       initialQuality: options.quality || 0.85
@@ -1248,7 +1250,7 @@
       setUploadStatus('이미지 변환 중...');
       let prepared = await convertHeicToJpeg(file);
       if (prepared.type !== 'image/webp') {
-        const webp = await convertToWebP(prepared, { width: 1400, quality: 0.85 });
+        const webp = await convertToWebP(prepared, { quality: 0.85 });
         if (webp !== prepared) {
           const base = prepared.name.replace(/\.[^.]+$/, '') || 'image';
           prepared = new File([webp], `${base}.webp`, { type: 'image/webp' });

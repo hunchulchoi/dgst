@@ -11,4 +11,9 @@ describe('Lexical upload transport', () => {
     expect(lexicalEditor).toContain('xhr.send(multipart.body)');
     expect(lexicalEditor).toContain('await postUploadFormData(formData)');
   });
+
+  it('preserves image resolution until the server applies its width-only resize', () => {
+    expect(lexicalEditor).toContain('alwaysKeepResolution: true');
+    expect(lexicalEditor).not.toContain('maxWidthOrHeight: options.width || 1400');
+  });
 });

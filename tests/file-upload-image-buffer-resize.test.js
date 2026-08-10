@@ -157,6 +157,31 @@ describe('fileUpload image resizing', () => {
     vi.useRealTimers();
   });
 
+  it('normalizes small WebP uploads with the server width-only resize', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-08-10T00:00:00.000Z'));
+
+    const { write } = await import('../src/lib/util/fileUpload.js');
+    const image = new File([Buffer.alloc(128 * 1024, 7)], 'tall.webp', {
+      type: 'image/webp'
+    });
+
+    const url = await write(image, 'person@example.com', 'jjal');
+
+    expect(url).toBe('/images/jjal/2026/8/10/persone_tall_1786320000000.webp');
+    expect(mocks.sharp).toHaveBeenCalledWith(expect.any(Buffer), { animated: true });
+    expect(mocks.sharpPipeline.resize).toHaveBeenCalledWith({
+      width: 1400,
+      withoutEnlargement: true
+    });
+    expect(mocks.fs.writeFileSync).toHaveBeenCalledWith(
+      '/tmp/dgst-upload-test/jjal/2026/8/10/persone_tall_1786320000000.webp',
+      mocks.finalBuffer
+    );
+
+    vi.useRealTimers();
+  });
+
   it('trusts an explicit WebP MIME over a stale HEIC filename', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-07-22T00:00:00.000Z'));

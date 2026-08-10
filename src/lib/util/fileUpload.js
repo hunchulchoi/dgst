@@ -237,9 +237,12 @@ export async function write(file, email, preservePath = 'jjal', options = {}) {
       });
 
       const isCommentImage = false;
-      const isWebP = file.type === 'image/webp' || file.name.endsWith('.webp');
+      const isWebP =
+        file.type === 'image/webp' || file.name.toLowerCase().endsWith('.webp');
       const isHeic = isHeicImage(file);
-      const shouldResize = isCommentImage || isHeic || file.size > 1024 * 1024;
+      // Normalize every claimed WebP. Some Safari versions return PNG bytes when canvas WebP
+      // encoding is requested, and the client intentionally leaves dimensions unchanged.
+      const shouldResize = isCommentImage || isHeic || isWebP || file.size > 1024 * 1024;
 
       logger.info({
         type: file.type,
@@ -279,7 +282,7 @@ export async function write(file, email, preservePath = 'jjal', options = {}) {
             message: 'WebP conversion path setup'
           });
 
-          // 모든 이미지는 1400px로 리사이즈
+          // 가로만 1400px로 제한해 세로로 긴 이미지의 가로 해상도를 보존한다.
           const maxWidth = 1400;
 
           /** @type {Buffer | string} */
