@@ -12,7 +12,7 @@
   />
 </svelte:head>
 
-<main class="container privacy-policy py-4 py-md-5">
+<main class="container privacy-policy px-3 px-md-4 py-4 py-md-5">
   <header class="mb-5">
     <h1 class="mb-3">개인정보처리방침</h1>
     <p class="text-muted mb-1">시행일: 2026년 8월 10일</p>
