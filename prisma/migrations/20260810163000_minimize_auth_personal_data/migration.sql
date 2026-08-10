@@ -1,3 +1,5 @@
+BEGIN;
+
 -- Consolidate the legacy account image before removing duplicate profile fields.
 UPDATE "users"
 SET "photo" = "image"
@@ -63,3 +65,5 @@ WHERE "namespace" IN ('user', 'session', 'device');
 
 DELETE FROM "dedup_lock"
 WHERE "key" LIKE 'dau:%';
+
+COMMIT;
