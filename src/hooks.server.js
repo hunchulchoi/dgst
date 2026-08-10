@@ -6,8 +6,6 @@ import { getPrismaAdapter } from '$lib/server/auth/prismaAdapter.js';
 import { checkAuthRateLimit } from '$lib/server/auth/rateLimit.js';
 import { shouldRejectCrossOriginRequest } from '$lib/server/auth/requestOrigin.js';
 import { evaluateAuthSignIn, resolveSafeAuthRedirect } from '$lib/server/auth/authPolicy.js';
-import * as pgCache from '$lib/server/cache/pgCache.js';
-import { tryAcquire } from '$lib/server/cache/pgDedup.js';
 import crypto from 'crypto';
 import { redirect, json } from '@sveltejs/kit';
 import logger from '$lib/util/logger';
@@ -37,15 +35,13 @@ const providers = [
     profile(profile) {
       // 사용자 정보에 필요한 필드만 저장 (name/image 등 불필요한 값 제외)
       return {
-        id: profile.sub,
+        id: crypto.randomUUID(),
         email: crypto.createHash('sha512').update(profile.email).digest('base64url'),
         nickname: profile.name ?? '',
         introduction: '우리 자기',
         photo: null, // 구글/카카오 로그인 시 기본 이미지를 가져오지 않음
-        emailVerified: profile.email_verified ?? true,
         state: 'registered',
-        grade: 'user',
-        lastModified: new Date()
+        grade: 'user'
       };
     }
   }),
@@ -58,7 +54,7 @@ const providers = [
       const emailHash = crypto.createHash('sha512').update(`kakao:${kakaoId}`).digest('base64url');
 
       return {
-        id: kakaoId,
+        id: crypto.randomUUID(),
         email: kakaoAccount?.email
           ? crypto.createHash('sha512').update(kakaoAccount.email).digest('base64url')
           : emailHash,
@@ -66,28 +62,12 @@ const providers = [
           kakaoAccount?.profile?.nickname || kakaoAccount?.name || `카카오${kakaoId.slice(-4)}`,
         introduction: '우리 자기',
         photo: null, // 구글/카카오 로그인 시 기본 이미지를 가져오지 않음
-        emailVerified: true,
         state: 'registered',
-        grade: 'user',
-        lastModified: new Date()
+        grade: 'user'
       };
     }
   })
 ];
-
-// 프로바이더 목록 로그 (상세)
-console.log(
-  '등록된 프로바이더:',
-  providers.map((p) => ({
-    id: p.id || p.name,
-    type: p.type,
-    name: p.name
-  }))
-);
-console.log(
-  '카카오 프로바이더 포함 여부:',
-  providers.some((p) => p.id === 'kakao')
-);
 
 export const {
   handle: authHandle,
@@ -115,13 +95,7 @@ export const {
             decision.reason === 'user-denied'
               ? '로그인 실패: 차단된 사용자'
               : '로그인 실패: 이메일 미인증',
-          email: params.profile?.email,
-          userId: params.user?.id,
-          provider: params.account?.provider,
-          providerAccountId: params.account?.providerAccountId,
-          accountType: params.account?.type,
-          state: params.user?.state,
-          emailVerifiedRaw: params.profile?.email_verified ?? params.profile?.emailVerified
+          provider: params.account?.provider
         });
       }
 
@@ -186,67 +160,15 @@ export const {
 
 const DEVICE_COOKIE_NAME = 'dgst_device';
 const DEVICE_COOKIE_MAX_AGE_DAYS = 365;
-/** pgCache device 키 TTL — 쿠키보다 짧게 (키 누적 방지) */
-const DEVICE_CACHE_TTL_SECONDS = 30 * 24 * 60 * 60;
-/** DAU dedup 키 TTL — KST 자정 경계 여유 */
-const DAU_TTL_SECONDS = 48 * 60 * 60;
-const DEVICE_NS = 'device';
+const LOGIN_LOG_RETENTION_DAYS = 30;
 const AUTH_SESSION_COOKIE_NAME =
   privateEnv.NODE_ENV === 'production' ? '__Secure-authjs.session-token' : 'authjs.session-token';
 
 /** @param {import('@sveltejs/kit').RequestEvent} event */
 const getRequestMeta = (event) => {
-  const forwardedFor =
-    event.request?.headers?.get?.('x-forwarded-for') ||
-    event.request?.headers?.get?.('x-real-ip') ||
-    '';
-  const clientIp =
-    (forwardedFor ? String(forwardedFor).split(',')[0].trim() : '') ||
-    event.getClientAddress?.() ||
-    'unknown';
-
   return {
-    method: event.request?.method,
-    clientIp,
-    userAgent: event.request?.headers?.get?.('user-agent') ?? '',
-    referer: event.request?.headers?.get?.('referer') ?? '',
-    requestUrl: event.url?.toString?.(),
-    search: event.url?.search ?? ''
+    method: event.request?.method
   };
-};
-
-/** @param {string} pathname */
-const isDauTrackablePath = (pathname) =>
-  !pathname.startsWith('/_app/') &&
-  !pathname.startsWith('/favicon') &&
-  !pathname.startsWith('/api/log') &&
-  !pathname.includes('.');
-
-/** KST 기준 YYYY-MM-DD */
-const getKstDateKey = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' });
-
-/**
- * 로그인 사용자 DAU — KST 기준 하루 1회 user.active 로그
- *
- * @param {string} userId
- * @param {string} pathname
- */
-const recordDailyActiveUser = (userId, pathname) => {
-  const dauDate = getKstDateKey();
-  const dauKey = `dau:${dauDate}:${userId}`;
-
-  tryAcquire(dauKey, DAU_TTL_SECONDS)
-    .then((isFirstToday) => {
-      if (!isFirstToday) return;
-      logger.info({
-        message: 'user active',
-        event: 'user.active',
-        user_id: userId,
-        dau_date: dauDate,
-        pathname
-      });
-    })
-    .catch(() => {});
 };
 
 // 우리의 handle 함수 (Auth 핸들러와 함께 사용)
@@ -257,7 +179,6 @@ export async function handle({ event, resolve }) {
 
   // 기기 식별용 UUID 쿠키 (없으면 생성 후 설정)
   let deviceId = event.cookies.get(DEVICE_COOKIE_NAME);
-  const hadDeviceCookie = Boolean(deviceId);
   if (!deviceId) {
     deviceId = crypto.randomUUID();
     event.cookies.set(DEVICE_COOKIE_NAME, deviceId, {
@@ -271,18 +192,6 @@ export async function handle({ event, resolve }) {
   // cookie.get()은 string을 반환하므로 안전하게 문자열로 고정
   deviceId = String(deviceId);
   event.locals.deviceId = deviceId;
-
-  // 재방문(기존 쿠키)만 pgCache 갱신 — 봇·최초 방문마다 키 생성되는 것 방지
-  if (hadDeviceCookie && !pathname.startsWith('/_app/') && !pathname.includes('.')) {
-    pgCache
-      .setJson(
-        `device:${deviceId}`,
-        { lastSeen: new Date().toISOString() },
-        DEVICE_CACHE_TTL_SECONDS,
-        DEVICE_NS
-      )
-      .catch(() => {});
-  }
 
   // 브라우저/클라이언트가 요청하는 아이콘 경로 → favicon으로 리다이렉트
   const faviconRedirects = [
@@ -377,23 +286,16 @@ export async function handle({ event, resolve }) {
     if (status === 302 && location && location.includes('/login') && location.includes('error=')) {
       const url = new URL(location, event.url.origin);
       const errorType = url.searchParams.get('error') ?? '';
-      const errorDescription = url.searchParams.get('error_description') ?? '';
       const provider = pathname.startsWith('/auth/callback/')
         ? pathname.split('/').pop()
         : undefined;
-      const authQuery = Object.fromEntries(event.url.searchParams.entries());
-      const errorQuery = Object.fromEntries(url.searchParams.entries());
       logger.error({
         message: '로그인 실패: Auth 리다이렉트',
         pathname,
         provider,
         ...getRequestMeta(event),
         errorType,
-        errorDescription,
-        callbackPath: pathname.startsWith('/auth/callback/') ? pathname : undefined,
-        authQuery,
-        redirectLocation: location,
-        redirectQuery: errorQuery
+        callbackPath: pathname.startsWith('/auth/callback/') ? pathname : undefined
       });
     }
   } catch {
@@ -414,16 +316,6 @@ export async function handle({ event, resolve }) {
       );
 
       if (didSetSessionCookie) {
-        const rawIp =
-          event.request?.headers?.get?.('x-forwarded-for') ||
-          event.request?.headers?.get?.('x-real-ip') ||
-          '';
-        const ip =
-          (rawIp ? String(rawIp).split(',')[0].trim() : '') ||
-          event.getClientAddress?.() ||
-          'unknown';
-        const userAgent = event.request?.headers?.get?.('user-agent') ?? '';
-
         let userId = null;
         try {
           const prefix = `${AUTH_SESSION_COOKIE_NAME}=`;
@@ -440,17 +332,17 @@ export async function handle({ event, resolve }) {
           logger.warn({ message: 'login_logs: getSessionAndUser failed', error: e });
         }
 
-        await getPrisma().loginLog.create({
-          data: {
-            at: new Date(),
-            userId,
-            ip,
-            deviceId,
-            userAgent,
-            provider: pathname.split('/').pop(),
-            path: pathname
-          }
-        });
+        if (userId) {
+          const prisma = getPrisma();
+          await prisma.loginLog.create({ data: { at: new Date(), userId } });
+          await prisma.loginLog.deleteMany({
+            where: {
+              at: {
+                lt: new Date(Date.now() - LOGIN_LOG_RETENTION_DAYS * 24 * 60 * 60 * 1000)
+              }
+            }
+          });
+        }
       }
     }
   } catch (e) {
@@ -459,18 +351,6 @@ export async function handle({ event, resolve }) {
       error: e,
       pathname
     });
-  }
-
-  if (isDauTrackablePath(pathname)) {
-    try {
-      const session = await event.locals.auth();
-      const userId = session?.user?.id;
-      if (userId) {
-        recordDailyActiveUser(String(userId), pathname);
-      }
-    } catch {
-      // DAU 기록 실패는 요청 처리에 영향 없음
-    }
   }
 
   const endTime = Date.now();

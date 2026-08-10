@@ -14,8 +14,6 @@ export const load = async ({ locals }) => {
       select: { id: true, nickname: true, introduction: true, photo: true }
     });
 
-    console.log('profile', profile);
-
     if (!profile) {
       throw error(410, { message: `회원 정보를 찾을 수 없습니다.` });
     }

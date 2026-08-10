@@ -20,8 +20,6 @@ export async function GET({ params, locals }) {
 
     const found = await getPrisma().user.count({ where });
 
-    console.debug('found', found);
-
     if (!found) return new Response(null, { status: 204 });
 
     return new Response(found.toString(), { status: 200 });

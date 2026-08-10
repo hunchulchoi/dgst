@@ -2,18 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { attachGameProfilePhotos, profilePhotoFromUser } from './gameProfilePhotos.js';
 
 describe('game profile photos', () => {
-  it('prefers an uploaded profile photo over the account image', () => {
-    expect(profilePhotoFromUser({ photo: ' /profile.webp ', image: '/google.png' })).toBe(
-      '/profile.webp'
-    );
-  });
-
-  it('falls back to the account image', () => {
-    expect(profilePhotoFromUser({ photo: ' ', image: ' /google.png ' })).toBe('/google.png');
+  it('returns the uploaded profile photo', () => {
+    expect(profilePhotoFromUser({ photo: ' /profile.webp ' })).toBe('/profile.webp');
   });
 
   it('returns null when no profile image exists', () => {
-    expect(profilePhotoFromUser({ photo: null, image: '' })).toBeNull();
+    expect(profilePhotoFromUser({ photo: null })).toBeNull();
     expect(profilePhotoFromUser(null)).toBeNull();
   });
 
@@ -24,8 +18,8 @@ describe('game profile photos', () => {
     ];
     const result = await attachGameProfilePhotos(rows, {
       findUsers: async () => [
-        { email: 'one@example.com', photo: '/one.webp', image: null },
-        { email: 'two@example.com', photo: null, image: null }
+        { email: 'one@example.com', photo: '/one.webp' },
+        { email: 'two@example.com', photo: null }
       ]
     });
 

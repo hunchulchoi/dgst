@@ -7,21 +7,17 @@ datasource db {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  email         String?   @unique
-  emailVerified DateTime? @map("email_verified") @db.Timestamptz(3)
-  name          String?
-  image         String?
-  nickname      String    @unique
+  id            String     @id @default(cuid())
+  email         String?    @unique
+  emailVerified DateTime?  @map("email_verified") @db.Timestamptz(3)
+  nickname      String     @unique
   introduction  String
   photo         String?
   state         String
-  grade         String    @default("user")
-  createdAt     DateTime? @map("created_at") @db.Timestamptz(3)
-  latestLoginAt DateTime? @map("latest_login_at") @db.Timestamptz(3)
-  lastModified  DateTime? @map("last_modified") @db.Timestamptz(3)
+  grade         String     @default("user")
   accounts      Account[]
   sessions      Session[]
+  loginLogs     LoginLog[]
 
   @@map("users")
 }
@@ -328,14 +324,10 @@ model Memo {
 }
 
 model LoginLog {
-  id        String   @id @default(cuid())
-  at        DateTime @default(now()) @db.Timestamptz(3)
-  userId    String?  @map("user_id")
-  ip        String
-  deviceId  String?  @map("device_id")
-  userAgent String?  @map("user_agent")
-  provider  String?
-  path      String?
+  id     String   @id @default(cuid())
+  at     DateTime @default(now()) @db.Timestamptz(3)
+  userId String   @map("user_id")
+  user   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([at(sort: Desc)])
   @@index([userId])

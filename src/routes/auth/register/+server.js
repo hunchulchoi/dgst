@@ -23,15 +23,6 @@ export async function PATCH({ request, locals }) {
     throw error(400, { message: captcha.message });
   }
 
-  console.debug('formData', formData, 'session', session);
-
-  console.debug(
-    'photo222',
-    formData.get('photo'),
-    formData.get('photo') === 'undefined',
-    formData.get('photo') === undefined
-  );
-
   //파일 저장
   let storeFileName;
   const photoFile = formData.get('photo');
@@ -51,13 +42,10 @@ export async function PATCH({ request, locals }) {
   const updateData = {
     nickname: nicknameRaw,
     introduction: String(formData.get('introduction') ?? ''),
-    state: 'registered',
-    lastModified: new Date()
+    state: 'registered'
   };
 
   if (storeFileName) updateData.photo = storeFileName;
-
-  console.debug('update', updateData);
 
   try {
     const existing = await getPrisma().user.findFirst({
@@ -73,16 +61,12 @@ export async function PATCH({ request, locals }) {
       data: updateData
     });
 
-    console.debug('registeredUser', registeredUser);
-
     if (user) {
       user.email = registeredUser.email ?? email;
       user.nickname = registeredUser.nickname;
       user.introduction = registeredUser.introduction;
       user.photo = registeredUser.photo;
     }
-
-    console.debug('session', session);
 
     return json({ nickname: registeredUser.nickname, photo: registeredUser.photo });
   } catch (err) {

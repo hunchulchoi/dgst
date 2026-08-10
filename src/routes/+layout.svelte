@@ -15,10 +15,7 @@
   import { browser } from '$app/environment';
   import { onMount } from 'svelte';
   import { reportSlowInitialLoad, reportSlowLoad } from '$lib/util/logSlowLoad.js';
-  import {
-    isExternalSerialPortError,
-    reportClientError
-  } from '$lib/util/reportClientPageError.js';
+  import { isExternalSerialPortError, reportClientError } from '$lib/util/reportClientPageError.js';
   import { isInterruptedFetchError } from '$lib/util/fetchErrors.js';
   import { isFreeBoardLegacyPath } from '$lib/util/boardPaths.js';
   import { promptKakaoExternalBrowser } from '$lib/util/kakaoExternalBrowser.js';
@@ -142,14 +139,8 @@
     navigationToPath = to?.url?.pathname;
 
     if (from && to) {
-      const entersBoardDetail = isBoardDetailNavigation(
-        from.url.pathname,
-        to.url.pathname
-      );
-      const returnsToBoardList = isBoardDetailToListNavigation(
-        from.url.pathname,
-        to.url.pathname
-      );
+      const entersBoardDetail = isBoardDetailNavigation(from.url.pathname, to.url.pathname);
+      const returnsToBoardList = isBoardDetailToListNavigation(from.url.pathname, to.url.pathname);
       boardListToDetailBlur =
         entersBoardDetail ||
         isBoardListNavigation(from.url.pathname, to.url.pathname) ||
@@ -347,8 +338,6 @@
         type: 'unhandled-rejection',
         message: 'Unhandled promise rejection',
         pathname: window.location.pathname,
-        href: window.location.href,
-        search: window.location.search,
         routeId: $page.route.id ?? undefined,
         phase: 'unhandledrejection'
       });

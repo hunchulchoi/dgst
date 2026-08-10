@@ -24,6 +24,9 @@ SvelteKit + Auth.js + Prisma 기반 인증 구조를 정리한 문서입니다.
 
 - 신규 가입 후 첫 이동: `/auth/profile` (프로필 설정)
 - Google/Kakao 프로필 이미지는 저장하지 않고, 이메일은 해시 처리해 저장합니다.
+- `users`에는 내부 ID, 해시 이메일, 닉네임, 소개, 업로드 프로필 사진, 상태와 등급만 저장합니다.
+- OAuth `name`, `image`, 이메일 인증 시각과 회원 활동 시각은 별도로 저장하지 않습니다.
+- Auth.js 호환용 nullable `email_verified` 컬럼은 유지하지만 현재 OAuth 흐름에서는 값을 수집하지 않습니다.
 
 ---
 
@@ -84,11 +87,16 @@ SvelteKit + Auth.js + Prisma 기반 인증 구조를 정리한 문서입니다.
 - **Auth Rate Limit**: `/auth/*` POST 요청에 대해 IP당 30회/분 제한 (`rate_limit` UNLOGGED 테이블)
 - **Submit Dedup**: 중복 제출 방지용 lock은 `dedup_lock` UNLOGGED 테이블 사용
 - **세션·기기 불일치 로그 (추이 관찰)**
-  - 글쓰기·댓글 요청 시 세션 쿠키 기준으로 `pgCache`에 저장된 deviceId/UA와 현재 요청의 `dgst_device` 쿠키·User-Agent를 비교
-  - 불일치 시 `logger.error`로만 기록 (요청은 그대로 진행)
+  - 글쓰기·댓글 요청 시 세션 쿠키 기준으로 `pgCache`에 저장된 deviceId/브라우저·운영체제 계열과 현재 요청을 비교
+  - 전체 User-Agent는 저장하지 않으며, 불일치 로그에도 기기 ID와 User-Agent 값을 남기지 않음
+  - 불일치 시 사유 종류만 `logger.error`로 기록 (요청은 그대로 진행)
   - 적용 위치: 게시글 작성(`board.write`), 보드 댓글(`board.comment`), 슬롯 댓글(`games.slot.comment`)
   - 캐시 키: `session_device:<sessionToken>`, TTL 30일
   - 구현: `src/lib/server/auth/checkSessionDevice.js` → `checkAndLogSessionDevice(event, { action })`
+- **로그인 기록**
+  - `login_logs`에는 회원 내부 ID와 로그인 시각만 저장
+  - IP, 기기 ID, User-Agent, provider, 요청 경로는 저장하지 않음
+  - 생성 후 30일이 지난 기록은 다음 로그인 처리 시 자동 삭제
 
 ---
 

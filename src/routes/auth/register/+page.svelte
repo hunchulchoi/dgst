@@ -43,7 +43,6 @@
    */
   /** @param {HTMLInputElement} fileEl */
   function preview(fileEl) {
-    console.log(fileEl);
     const file = fileEl.files?.[0];
     const previewImage = /** @type {HTMLImageElement | null} */ (
       document.querySelector('#preview')
@@ -94,11 +93,6 @@
             formData.append('photo', files[0]); // 변환 실패 시 원본 사용
           }
         } else {
-          console.log(
-            '[browser-image-compression] 1MB 이하 이미지는 원본 유지:',
-            fileSizeMB.toFixed(2),
-            'MB'
-          );
           formData.append('photo', files[0]);
         }
       }
@@ -110,7 +104,6 @@
     try {
       formData.append('recaptchaToken', await getRecaptchaToken(PUBLIC_GOOGLE_RECAPTCHA_SITE_KEY));
       const res = await fetch('/auth/register', { method: 'PATCH', body: formData });
-      console.log('res', res);
 
       if (res.ok) {
         await swalFire({
@@ -284,7 +277,9 @@
       </Row>
     </CardBody>
     <CardFooter class="mb-3">
-      <strong>dgst.me는 개인정보를 수집하고 저장하지 않습니다.</strong>
+      <strong>
+        계정 및 프로필 정보는 <a href={resolve('/privacy')}>개인정보처리방침</a>에 따라 처리됩니다.
+      </strong>
       <div class="recaptcha-notice text-muted mt-2">
         이 페이지는 reCAPTCHA로 보호되며 Google
         <a href="https://policies.google.com/privacy" target="_blank" rel="noreferrer"

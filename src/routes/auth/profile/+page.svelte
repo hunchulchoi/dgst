@@ -247,7 +247,6 @@
       });
 
       clearTimeout(timeoutId);
-      console.log('res', res);
 
       if (res.ok) {
         const data = await res.json();
@@ -418,7 +417,9 @@
       </Row>
     </CardBody>
     <CardFooter class="mb-3">
-      <strong>dgst.me는 개인정보를 수집하고 저장하지 않습니다.</strong>
+      <strong>
+        계정 및 프로필 정보는 <a href={resolve('/privacy')}>개인정보처리방침</a>에 따라 처리됩니다.
+      </strong>
       <div class="recaptcha-notice text-muted mt-2">
         이 페이지는 reCAPTCHA로 보호되며 Google
         <a href="https://policies.google.com/privacy" target="_blank" rel="noreferrer"

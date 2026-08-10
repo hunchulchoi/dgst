@@ -10,7 +10,7 @@ const USER_EMAIL_PREFIX = 'user:email:';
 const USER_CACHE_TTL = 1800; // 30분
 
 /** @type {readonly string[]} */
-export const USER_DATE_KEYS = ['emailVerified', 'createdAt', 'lastModified', 'latestLoginAt'];
+export const USER_DATE_KEYS = ['emailVerified'];
 
 /**
  * @param {Record<string, unknown>} obj

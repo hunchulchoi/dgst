@@ -40,16 +40,10 @@ import { captureClientCallTrace, serializeError } from '$lib/util/formatErrorTra
 const MAX_LEN = {
   message: 500,
   trace: 8000,
-  href: 512,
-  referer: 512,
   routeId: 128,
-  search: 256,
-  userAgent: 512,
   filename: 512,
   chunkUrl: 512,
   importTarget: 256,
-  platform: 128,
-  language: 64,
   cause: 1000,
   phase: 64
 };
@@ -191,25 +185,10 @@ export function reportClientError(error, context = {}) {
     clip(context.message, MAX_LEN.message) ??
     fallbackMessage;
 
-  const safeHref =
-    clip(context.href, MAX_LEN.href) ??
-    (typeof location !== 'undefined' ? clip(location.href, MAX_LEN.href) : undefined);
   const safePathname =
     clip(context.pathname, 256) ??
     (typeof location !== 'undefined' ? clip(location.pathname, 256) : undefined);
-  const safeSearch =
-    clip(context.search, MAX_LEN.search) ??
-    (typeof location !== 'undefined' ? clip(location.search, MAX_LEN.search) : undefined);
-  const safeReferer =
-    clip(context.referer, MAX_LEN.referer) ??
-    (typeof document !== 'undefined' ? clip(document.referrer, MAX_LEN.referer) : undefined);
   const safeRouteId = clip(context.routeId, MAX_LEN.routeId);
-  const userAgent =
-    typeof navigator !== 'undefined' ? clip(navigator.userAgent, MAX_LEN.userAgent) : undefined;
-  const platform =
-    typeof navigator !== 'undefined' ? clip(navigator.platform, MAX_LEN.platform) : undefined;
-  const language =
-    typeof navigator !== 'undefined' ? clip(navigator.language, MAX_LEN.language) : undefined;
   const viewport =
     typeof window !== 'undefined' ? `${window.innerWidth}x${window.innerHeight}` : undefined;
   const clientAt = new Date().toISOString();
@@ -224,7 +203,8 @@ export function reportClientError(error, context = {}) {
     ) ?? '';
 
   const type = clip(context.type, 64) ?? 'client-error';
-  const details = context.details && typeof context.details === 'object' ? context.details : undefined;
+  const details =
+    context.details && typeof context.details === 'object' ? context.details : undefined;
   const summary = `[${type}] ${context.message ?? errorMessage}`;
   const detailParts = [
     errorName && `name=${errorName}`,
@@ -236,10 +216,7 @@ export function reportClientError(error, context = {}) {
     filename && `file=${filename}`,
     Number.isFinite(context.lineno) && `line=${context.lineno}`,
     Number.isFinite(context.colno) && `col=${context.colno}`,
-    platform && `platform=${platform}`,
-    language && `lang=${language}`,
     viewport && `viewport=${viewport}`,
-    userAgent && `ua=${userAgent}`,
     `clientAt=${clientAt}`
   ].filter((part) => typeof part === 'string');
   const logLine = `${summary} | ${detailParts.join(' | ')}`;
@@ -275,14 +252,8 @@ export function reportClientError(error, context = {}) {
         trace,
         ...(errorName && { errorName }),
         ...(cause && { cause }),
-        ...(safeHref && { href: safeHref }),
-        ...(safeSearch && { search: safeSearch }),
-        ...(safeReferer && { referer: safeReferer }),
         ...(safeRouteId && { routeId: safeRouteId }),
         ...(viewport && { viewport }),
-        ...(userAgent && { userAgent }),
-        ...(platform && { platform }),
-        ...(language && { language }),
         ...(filename && { filename }),
         ...(Number.isFinite(context.lineno) && { lineno: context.lineno }),
         ...(Number.isFinite(context.colno) && { colno: context.colno }),
@@ -325,7 +296,9 @@ export function reportClientPageError(payload) {
 
   const parsedError =
     error && typeof error === 'object'
-      ? /** @type {{ message?: unknown; stack?: unknown; name?: unknown; cause?: unknown }} */ (error)
+      ? /** @type {{ message?: unknown; stack?: unknown; name?: unknown; cause?: unknown }} */ (
+          error
+        )
       : undefined;
   const errorId = clip(payload.errorId, 64) ?? extractPageErrorId(error);
   const resolvedMessage =

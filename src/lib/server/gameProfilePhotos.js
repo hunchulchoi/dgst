@@ -1,17 +1,14 @@
 import { getPrisma } from '$lib/database/prisma.js';
 
-/** @param {{ photo?: unknown; image?: unknown } | null | undefined} user */
+/** @param {{ photo?: unknown } | null | undefined} user */
 export function profilePhotoFromUser(user) {
-  for (const value of [user?.photo, user?.image]) {
-    if (typeof value === 'string' && value.trim()) return value.trim();
-  }
-  return null;
+  return typeof user?.photo === 'string' && user.photo.trim() ? user.photo.trim() : null;
 }
 
 /**
  * @template {Record<string, unknown>} T
  * @param {T[]} rows
- * @param {{ findUsers?: (args: Record<string, unknown>) => Promise<Array<{ email: string | null; photo?: string | null; image?: string | null }>> }} [options]
+ * @param {{ findUsers?: (args: Record<string, unknown>) => Promise<Array<{ email: string | null; photo?: string | null }>> }} [options]
  * @returns {Promise<Array<T & { photo?: string }>>}
  */
 export async function attachGameProfilePhotos(rows, options = {}) {
@@ -30,7 +27,7 @@ export async function attachGameProfilePhotos(rows, options = {}) {
     if (!findUsers) return rows;
     const users = await findUsers({
       where: { email: { in: /** @type {string[]} */ (emails) } },
-      select: { email: true, photo: true, image: true }
+      select: { email: true, photo: true }
     });
     const photos = new Map(
       users

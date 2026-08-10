@@ -54,8 +54,8 @@ export function getUserAgentFingerprint(userAgent) {
 }
 
 /**
- * @param {{ deviceId?: string; userAgent?: string }} stored
- * @param {{ deviceId?: string; userAgent?: string }} current
+ * @param {{ deviceId?: string; userAgent?: string; userAgentFingerprint?: string }} stored
+ * @param {{ deviceId?: string; userAgent?: string; userAgentFingerprint?: string }} current
  * @returns {Array<'deviceId' | 'userAgent'> | null}
  */
 export function getSessionDeviceMismatch(stored, current) {
@@ -66,10 +66,11 @@ export function getSessionDeviceMismatch(stored, current) {
     reasons.push('deviceId');
   }
 
-  if (
-    getUserAgentFingerprint(stored.userAgent ?? '') !==
-    getUserAgentFingerprint(current.userAgent ?? '')
-  ) {
+  const storedFingerprint =
+    stored.userAgentFingerprint ?? getUserAgentFingerprint(stored.userAgent ?? '');
+  const currentFingerprint =
+    current.userAgentFingerprint ?? getUserAgentFingerprint(current.userAgent ?? '');
+  if (storedFingerprint !== currentFingerprint) {
     reasons.push('userAgent');
   }
 
@@ -85,33 +86,29 @@ export async function checkAndLogSessionDevice(event, meta = {}) {
     const sessionToken = event.cookies.get(SESSION_COOKIE_NAME);
     const deviceId = event.cookies.get(DEVICE_COOKIE_NAME) ?? '';
     const userAgent = event.request?.headers?.get?.('user-agent') ?? '';
+    const userAgentFingerprint = getUserAgentFingerprint(userAgent);
 
     if (!sessionToken) return;
 
     const key = SESSION_DEVICE_PREFIX + sessionToken;
-    const stored = /** @type {{ deviceId?: string; userAgent?: string } | null} */ (
-      await pgCache.getJson(key, DEVICE_NS)
-    );
+    const stored =
+      /** @type {{ deviceId?: string; userAgent?: string; userAgentFingerprint?: string } | null} */ (
+        await pgCache.getJson(key, DEVICE_NS)
+      );
 
     const mismatchReasons = stored
-      ? getSessionDeviceMismatch(stored, { deviceId, userAgent })
+      ? getSessionDeviceMismatch(stored, { deviceId, userAgentFingerprint })
       : null;
 
     if (stored && mismatchReasons) {
       logger.error({
         message: 'Session deviceId/UA mismatch (추이 관찰)',
         action: meta.action ?? 'unknown',
-        mismatchReasons,
-        storedDeviceId: stored.deviceId ?? '',
-        currentDeviceId: deviceId,
-        storedUserAgentFingerprint: getUserAgentFingerprint(stored.userAgent ?? ''),
-        currentUserAgentFingerprint: getUserAgentFingerprint(userAgent),
-        storedUserAgent: (stored.userAgent ?? '').slice(0, 200),
-        currentUserAgent: userAgent.slice(0, 200)
+        mismatchReasons
       });
     }
 
-    await pgCache.setJson(key, { deviceId, userAgent }, SESSION_DEVICE_TTL, DEVICE_NS);
+    await pgCache.setJson(key, { deviceId, userAgentFingerprint }, SESSION_DEVICE_TTL, DEVICE_NS);
   } catch (e) {
     // pgCache/로그 실패해도 요청은 방해하지 않음
     logger.warn({ message: 'checkSessionDevice failed', error: e });

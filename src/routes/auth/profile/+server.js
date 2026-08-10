@@ -72,21 +72,9 @@ function logProfileSaveFailure(err, metadata) {
  * @param {import('@sveltejs/kit').RequestEvent} event
  */
 function getRequestMeta(event) {
-  const forwardedFor =
-    event.request.headers.get('x-forwarded-for') || event.request.headers.get('x-real-ip') || '';
-  const clientIp =
-    (forwardedFor ? String(forwardedFor).split(',')[0].trim() : '') ||
-    event.getClientAddress?.() ||
-    'unknown';
-
   return {
     pathname: event.url.pathname,
-    method: event.request.method,
-    clientIp,
-    userAgent: event.request.headers.get('user-agent') ?? '',
-    referer: event.request.headers.get('referer') ?? '',
-    requestUrl: event.url.toString(),
-    search: event.url.search
+    method: event.request.method
   };
 }
 
@@ -120,15 +108,6 @@ export async function PATCH(event) {
     if (!captcha.ok) {
       throw error(400, { message: captcha.message });
     }
-
-    console.debug('formData', formData, 'session', session);
-
-    console.debug(
-      'photo222',
-      formData.get('photo'),
-      formData.get('photo') === 'undefined',
-      formData.get('photo') === undefined
-    );
 
     //파일 저장
     let storeFileName;
@@ -190,7 +169,6 @@ export async function PATCH(event) {
         console.error('파일 업로드 오류:', uploadErr);
         logProfileSaveFailure(uploadErr, {
           stage,
-          user: email,
           hasPhotoUpload,
           photo
         });
@@ -224,15 +202,12 @@ export async function PATCH(event) {
     const updateData = {
       nickname: nicknameRaw,
       introduction: String(formData.get('introduction') || ''),
-      state: 'registered',
-      lastModified: new Date()
+      state: 'registered'
     };
 
     if (storeFileName) {
       updateData.photo = storeFileName;
     }
-
-    console.debug('update', updateData);
 
     try {
       stage = 'database-update';
@@ -248,8 +223,6 @@ export async function PATCH(event) {
         where: { id: existing.id },
         data: updateData
       });
-
-      console.debug('registeredUser', registeredUser);
 
       await invalidateUser(registeredUser.id, registeredUser.email ?? email);
 
@@ -271,7 +244,6 @@ export async function PATCH(event) {
       console.error('프로필 업데이트 실패:', err);
       logProfileSaveFailure(err, {
         stage,
-        user: email,
         nicknameLength,
         introductionLength,
         hasPhotoUpload,
@@ -292,7 +264,6 @@ export async function PATCH(event) {
     if (!profileFailureLogged && !wasProfileSaveErrorLogged(topLevelErr)) {
       logProfileSaveFailure(topLevelErr, {
         stage,
-        user: email || undefined,
         nicknameLength,
         introductionLength,
         hasPhotoUpload,

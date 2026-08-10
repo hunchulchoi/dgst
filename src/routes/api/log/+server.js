@@ -58,7 +58,6 @@ export async function POST(event) {
         typeof logData.message === 'string' ? logData.message.slice(0, 1000) : 'Client error',
       event: 'client.log',
       source: 'browser',
-      userAgent: request.headers.get('user-agent'),
       timestamp: new Date().toISOString(),
       ...(typeof logData.type === 'string' && { type: logData.type.slice(0, 32) }),
       ...(typeof logData.pathname === 'string' && { pathname: logData.pathname.slice(0, 256) }),
@@ -74,13 +73,8 @@ export async function POST(event) {
       ...(typeof logData.trace === 'string' && { trace: logData.trace.slice(0, 8000) }),
       ...(typeof logData.errorName === 'string' && { errorName: logData.errorName.slice(0, 64) }),
       ...(typeof logData.cause === 'string' && { cause: logData.cause.slice(0, 1000) }),
-      ...(typeof logData.href === 'string' && { href: logData.href.slice(0, 512) }),
-      ...(typeof logData.search === 'string' && { search: logData.search.slice(0, 256) }),
-      ...(typeof logData.referer === 'string' && { referer: logData.referer.slice(0, 512) }),
       ...(typeof logData.routeId === 'string' && { routeId: logData.routeId.slice(0, 128) }),
       ...(typeof logData.viewport === 'string' && { viewport: logData.viewport.slice(0, 32) }),
-      ...(typeof logData.platform === 'string' && { platform: logData.platform.slice(0, 128) }),
-      ...(typeof logData.language === 'string' && { language: logData.language.slice(0, 64) }),
       ...(typeof logData.filename === 'string' && { filename: logData.filename.slice(0, 512) }),
       ...(Number.isFinite(logData.lineno) && { lineno: logData.lineno }),
       ...(Number.isFinite(logData.colno) && { colno: logData.colno }),
@@ -91,9 +85,10 @@ export async function POST(event) {
       ...(typeof logData.phase === 'string' && { phase: logData.phase.slice(0, 64) }),
       ...(typeof logData.clientAt === 'string' && { clientAt: logData.clientAt.slice(0, 32) }),
       ...(typeof logData.errorId === 'string' && { errorId: logData.errorId.slice(0, 64) }),
-      ...(logData.details && typeof logData.details === 'object' && {
-        details: sanitizeClientLogDetails(logData.details)
-      })
+      ...(logData.details &&
+        typeof logData.details === 'object' && {
+          details: sanitizeClientLogDetails(logData.details)
+        })
     };
 
     // 로그 레벨에 따라 다른 logger 메서드 호출
