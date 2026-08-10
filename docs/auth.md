@@ -34,7 +34,7 @@ SvelteKit + Auth.js + Prisma 기반 인증 구조를 정리한 문서입니다.
 
 - **전략**: `strategy: 'database'` (JWT 아님)
 - **저장소**: PostgreSQL `sessions` 테이블
-- **만료**: `maxAge: 30일`, `updateAge: 24시간` (갱신 주기)
+- **만료**: 마지막 이용 후 최대 30일(`maxAge`, 24시간 주기 갱신), 최초 생성 후 절대 최대 90일
 - **쿠키**
   - 개발: `authjs.session-token`
   - 프로덕션: `__Secure-authjs.session-token`, `secure: true`
