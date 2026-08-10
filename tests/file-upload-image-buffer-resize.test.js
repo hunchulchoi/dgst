@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PDFDocument } from 'pdf-lib';
 
 const mocks = vi.hoisted(() => {
-  const uploadRoot = '/tmp/dgst-upload-test';
   const finalBuffer = Buffer.from('converted-webp');
   const sharpPipeline = {
     resize: vi.fn(() => sharpPipeline),
@@ -13,7 +12,6 @@ const mocks = vi.hoisted(() => {
   };
 
   return {
-    uploadRoot,
     finalBuffer,
     sharpPipeline,
     sharp: vi.fn(() => sharpPipeline),
@@ -34,11 +32,11 @@ const mocks = vi.hoisted(() => {
   };
 });
 
-vi.mock('$env/static/private', () => ({
-  UPLOAD_PATH: mocks.uploadRoot
-}));
-
 vi.mock('fs', () => mocks.fs);
+
+vi.mock('os', () => ({
+  tmpdir: () => '/tmp'
+}));
 
 vi.mock('child_process', () => ({
   execFile: mocks.execFile
@@ -93,7 +91,7 @@ describe('fileUpload image resizing', () => {
       expect.any(Function)
     );
     expect(mocks.sharpPipeline.toFile).toHaveBeenCalledWith(
-      '/tmp/dgst-upload-test/jjal/2026/7/29/persone_manual_1785283200000.pdf.cover.webp'
+      expect.stringMatching(/^\/tmp\/\.dgst-upload-[\w-]+\.pdf\.cover\.webp$/)
     );
     expect(mocks.putUploadObject).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -121,7 +119,7 @@ describe('fileUpload image resizing', () => {
     expect(mocks.sharpPipeline.toBuffer).toHaveBeenCalled();
     expect(mocks.sharpPipeline.toFile).not.toHaveBeenCalled();
     expect(mocks.fs.writeFileSync).toHaveBeenCalledWith(
-      '/tmp/dgst-upload-test/jjal/2026/6/16/persone_motion_1781568000000.gif.webp',
+      expect.stringMatching(/^\/tmp\/\.dgst-upload-[\w-]+\.webp$/),
       mocks.finalBuffer
     );
 
@@ -142,15 +140,14 @@ describe('fileUpload image resizing', () => {
     expect(mocks.sharp).toHaveBeenCalledWith(expect.any(Buffer), { animated: true });
     expect(mocks.sharpPipeline.toBuffer).toHaveBeenCalled();
     expect(mocks.sharpPipeline.toFile).not.toHaveBeenCalled();
+    expect(mocks.fs.mkdirSync).not.toHaveBeenCalled();
     expect(mocks.fs.writeFileSync).toHaveBeenCalledTimes(1);
     expect(mocks.fs.writeFileSync).toHaveBeenCalledWith(
-      '/tmp/dgst-upload-test/jjal/2026/6/16/persone_sample_1781568000000.jpg.webp',
+      expect.stringMatching(/^\/tmp\/\.dgst-upload-[\w-]+\.webp$/),
       mocks.finalBuffer
     );
     const writePaths = mocks.fs.writeFileSync.mock.calls.map(([filePath]) => filePath);
-    expect(writePaths).not.toContain(
-      '/tmp/dgst-upload-test/jjal/2026/6/16/persone_sample_1781568000000.jpg'
-    );
+    expect(writePaths.some((filePath) => String(filePath).includes('/jjal/2026/'))).toBe(false);
     expect(mocks.fs.unlink).not.toHaveBeenCalled();
     expect(mocks.fs.renameSync).not.toHaveBeenCalled();
 
@@ -175,7 +172,7 @@ describe('fileUpload image resizing', () => {
       withoutEnlargement: true
     });
     expect(mocks.fs.writeFileSync).toHaveBeenCalledWith(
-      '/tmp/dgst-upload-test/jjal/2026/8/10/persone_tall_1786320000000.webp',
+      expect.stringMatching(/^\/tmp\/\.dgst-upload-[\w-]+\.webp$/),
       mocks.finalBuffer
     );
 
@@ -228,7 +225,7 @@ describe('fileUpload image resizing', () => {
       animated: true
     });
     expect(mocks.fs.writeFileSync).toHaveBeenCalledWith(
-      '/tmp/dgst-upload-test/jjal/2026/7/22/persone_sample_1784678400000.HEIC.webp',
+      expect.stringMatching(/^\/tmp\/\.dgst-upload-[\w-]+\.webp$/),
       mocks.finalBuffer
     );
     expect(mocks.fs.unlinkSync).toHaveBeenCalledTimes(2);
@@ -272,11 +269,11 @@ describe('fileUpload image resizing', () => {
       expect.any(Function)
     );
     expect(mocks.fs.writeFileSync).toHaveBeenCalledWith(
-      '/tmp/dgst-upload-test/jjal/2026/6/16/persone_clip_1781568000000.mov.input',
+      expect.stringMatching(/^\/tmp\/\.dgst-upload-[\w-]+\.mov\.input$/),
       expect.any(Buffer)
     );
     expect(mocks.fs.writeFileSync).not.toHaveBeenCalledWith(
-      '/tmp/dgst-upload-test/jjal/2026/6/16/persone_clip_1781568000000.mov',
+      expect.stringMatching(/\/jjal\/2026\/6\/16\//),
       expect.any(Buffer)
     );
 

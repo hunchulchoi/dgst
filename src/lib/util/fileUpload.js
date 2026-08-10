@@ -1,8 +1,8 @@
 import * as fs from 'fs';
 import mime from 'mime';
 import { format } from 'date-fns';
+import { tmpdir } from 'os';
 
-import { UPLOAD_PATH } from '$env/static/private';
 import { sanitizePdf } from '$lib/server/pdfSanitizer.js';
 import { isPathUnderRoot } from '$lib/server/pathSafety.js';
 import { error } from '@sveltejs/kit';
@@ -12,6 +12,8 @@ import logger from './logger';
 import { execFile } from 'child_process';
 import { randomUUID } from 'crypto';
 import { putUploadObject } from '$lib/server/minioStorage.js';
+
+const OBJECT_KEY_SAFETY_ROOT = '/minio-uploads';
 
 /**
  * @param {string} _name
@@ -36,10 +38,10 @@ function safeString(_name, _path) {
 
   _path = decodeURIComponent(_path);
 
-  const candidatePath = path.join(UPLOAD_PATH, _path, _name);
-  const isPathSafe = isPathUnderRoot(candidatePath, UPLOAD_PATH);
+  const candidatePath = path.resolve(OBJECT_KEY_SAFETY_ROOT, _path, _name);
+  const isPathSafe = isPathUnderRoot(candidatePath, OBJECT_KEY_SAFETY_ROOT);
 
-  console.debug('Path safety check:', { candidatePath, UPLOAD_PATH, isPathSafe });
+  console.debug('Object key safety check:', { candidatePath, isPathSafe });
 
   return isPathSafe;
 }
@@ -144,12 +146,6 @@ export async function write(file, email, preservePath = 'jjal', options = {}) {
 
     const dir = `/${preservePath}/${year}/${month}/${date}`;
 
-    if (!fs.existsSync(`${UPLOAD_PATH}${dir}`)) {
-      fs.mkdirSync(`${UPLOAD_PATH}${dir}`, { recursive: true });
-    }
-
-    console.debug('Upload directory:', `${UPLOAD_PATH}${dir}`);
-
     // 파일명 생성 (특수문자 안전 처리)
     const emailPrefix = email?.substring(0, 8).replace(/[^a-zA-Z0-9]/g, '') || 'anonymous';
     const baseName = file.name.substring(0, file.name.lastIndexOf('.'));
@@ -162,7 +158,8 @@ export async function write(file, email, preservePath = 'jjal', options = {}) {
 
     const fileBuffer = Buffer.from(await file.arrayBuffer());
     const isPdf = mime.getType(file.name) === 'application/pdf';
-    let fullPath = `${UPLOAD_PATH}${dir}/${fileName}`;
+    const stagingBase = path.join(tmpdir(), `.dgst-upload-${randomUUID()}`);
+    let fullPath = `${stagingBase}${ext}`;
     let fileWritten = false;
     /** @type {string | null} */
     let previewPath = null;
@@ -183,7 +180,7 @@ export async function write(file, email, preservePath = 'jjal', options = {}) {
       uploadMetadata = { pageCount: sanitizedPdf.pageCount };
 
       const coverToken = randomUUID();
-      const coverPrefix = path.join(`${UPLOAD_PATH}${dir}`, `.pdf-cover-${coverToken}`);
+      const coverPrefix = `${stagingBase}.pdf-cover-${coverToken}`;
       const renderedCoverPath = `${coverPrefix}.png`;
       previewPath = `${fullPath}.cover.webp`;
       try {
@@ -273,7 +270,7 @@ export async function write(file, email, preservePath = 'jjal', options = {}) {
           const convertStart = Date.now();
           // 이미 .webp 확장자가 있으면 그대로 사용, 없으면 추가
           const finalFileName = fileName.endsWith('.webp') ? fileName : `${fileName}.webp`;
-          const webpPath = `${UPLOAD_PATH}${dir}/${finalFileName}`;
+          const webpPath = `${stagingBase}.webp`;
 
           logger.info({
             fullPath,
@@ -289,11 +286,8 @@ export async function write(file, email, preservePath = 'jjal', options = {}) {
           let sharpInput = fileBuffer;
           if (isHeic) {
             const temporaryToken = randomUUID();
-            const heicInputPath = path.join(
-              `${UPLOAD_PATH}${dir}`,
-              `.heic-${temporaryToken}${path.extname(file.name) || '.heic'}`
-            );
-            const jpegOutputPath = path.join(`${UPLOAD_PATH}${dir}`, `.heic-${temporaryToken}.jpg`);
+            const heicInputPath = `${stagingBase}.heic-${temporaryToken}${path.extname(file.name) || '.heic'}`;
+            const jpegOutputPath = `${stagingBase}.heic-${temporaryToken}.jpg`;
             temporaryPaths.push(heicInputPath, jpegOutputPath);
             fs.writeFileSync(heicInputPath, fileBuffer);
             await runHeifConvert(heicInputPath, jpegOutputPath);
@@ -358,7 +352,7 @@ export async function write(file, email, preservePath = 'jjal', options = {}) {
       const compressedFileName = `${fileName.substring(0, fileName.lastIndexOf('.'))}${
         extractVideoAudio ? '.m4a' : '.mp4'
       }`;
-      const compressedPath = `${UPLOAD_PATH}${dir}/${compressedFileName}`;
+      const compressedPath = `${stagingBase}${extractVideoAudio ? '.m4a' : '.mp4'}`;
       const serverCompressVideoContext = options.serverCompressVideoContext;
       const removeVideoAudio = options.removeVideoAudio === true;
 
@@ -463,8 +457,7 @@ export async function write(file, email, preservePath = 'jjal', options = {}) {
       writeOriginalFile();
     }
 
-    // fullPath가 업데이트되었으면 그것을 사용, 아니면 새로 계산
-    const finalPath = fullPath || `${UPLOAD_PATH}${dir}/${fileName}`;
+    const finalPath = fullPath;
 
     logger.info({
       finalPath,
@@ -523,21 +516,7 @@ export async function write(file, email, preservePath = 'jjal', options = {}) {
       console.debug('File uploaded successfully:', url);
       return options.returnMetadata ? { url, ...uploadMetadata } : url;
     } else {
-      // 파일이 없으면 디렉토리 내용 확인
-      try {
-        const dirContents = fs.readdirSync(`${UPLOAD_PATH}${dir}`);
-        logger.error({
-          finalPath,
-          dirContents,
-          message: 'File not found after save - directory contents listed'
-        });
-      } catch (dirErr) {
-        logger.error({
-          message: 'File not found after save - could not read directory',
-          finalPath,
-          error: dirErr
-        });
-      }
+      logger.error({ finalPath, message: 'File not found after save' });
       throw error(500, '파일 저장 중에 오류가 발생하였습니다. 쿠훕ㅠㅠ');
     }
   } catch (err) {
