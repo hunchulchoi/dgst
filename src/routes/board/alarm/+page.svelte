@@ -57,7 +57,7 @@
             >
               {@const commentIds = Array.isArray(alarm.comments) ? alarm.comments : []}
               {@const commentId =
-                alarm.comment || (commentIds.length > 0 ? commentIds[commentIds.length - 1] : '')}
+                commentIds.length > 0 ? commentIds[commentIds.length - 1] : alarm.comment}
               <a
                 data-sveltekit-preload-data="tap"
                 data-sveltekit-invalidate="all"
@@ -66,7 +66,7 @@
                     ? commentId
                       ? `/games/slot?cmt=${commentId}&alarm=${alarm.id}`
                       : `/games/slot?alarm=${alarm.id}`
-                    : `/board/${alarm.boardId}/${alarm.articleId}?a=cmt${alarm.comment}&alarm=${alarm.id}`
+                    : `/board/${alarm.boardId}/${alarm.articleId}?a=cmt${commentId}&alarm=${alarm.id}`
                 )}
                 class="alarm-list-link link-underline link-underline-opacity-0 link-offset-2 link-underline-opacity-50-hover stretched-link"
               >

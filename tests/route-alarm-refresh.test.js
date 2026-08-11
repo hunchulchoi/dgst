@@ -34,6 +34,13 @@ describe('route alarm refresh', () => {
     );
   });
 
+  it('polls unread alarms while a signed-in tab remains open', () => {
+    expect(header).toContain('const ALARM_POLL_INTERVAL_MS = 30_000;');
+    expect(header).toContain('window.setInterval(refreshIfVisible, ALARM_POLL_INTERVAL_MS)');
+    expect(header).toContain("window.addEventListener('focus', refreshIfVisible)");
+    expect(header).toContain("document.addEventListener('visibilitychange', refreshIfVisible)");
+  });
+
   it('refreshes unread alarm count after a successful comment write', () => {
     expect(articlePage).toContain('async function refreshUnreadAlarmCount()');
     expect(articlePage).toContain("fetch('/api/alarm/unread-count'");

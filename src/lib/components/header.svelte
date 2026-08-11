@@ -25,6 +25,7 @@
 
   // Svelte 5 Runes - Props
   let { session, pathname, unreadAlarmCount = 0 } = $props();
+  const ALARM_POLL_INTERVAL_MS = 30_000;
 
   let navigatingSpinner = $state(false);
 
@@ -85,6 +86,25 @@
       // 탭 reload 자체는 유지한다. layout 쪽 route refresh에서도 같은 API를 다시 시도한다.
     }
   }
+
+  /** 열린 탭에서도 새 알림 뱃지가 나타나도록 주기적·포커스 복귀 시 갱신 */
+  $effect(() => {
+    if (!session?.user?.nickname) return;
+
+    const refreshIfVisible = () => {
+      if (document.visibilityState === 'visible') void refreshUnreadAlarmCount();
+    };
+    const timer = window.setInterval(refreshIfVisible, ALARM_POLL_INTERVAL_MS);
+
+    window.addEventListener('focus', refreshIfVisible);
+    document.addEventListener('visibilitychange', refreshIfVisible);
+
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener('focus', refreshIfVisible);
+      document.removeEventListener('visibilitychange', refreshIfVisible);
+    };
+  });
 
   /** 자유게시판 탭 — 목록 reload + blur */
   /** @param {MouseEvent} e */
