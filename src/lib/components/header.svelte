@@ -112,7 +112,7 @@
 
 <header class="site-header w-100 m-0">
   <Navbar expand="md" class="site-header-top m-0 rounded-top">
-    <NavbarBrand href="/" class="p-0">
+    <NavbarBrand href="/" onclick={handleFreeBoardTabClick} class="p-0">
       {#if new Date().getMonth() === 3 && new Date().getDate() >= 15 && new Date().getDate() <= 17}
         <img
           title="잊지않을께"

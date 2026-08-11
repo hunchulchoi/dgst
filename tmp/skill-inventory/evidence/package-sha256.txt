@@ -1,0 +1,15 @@
+17eec19c86b7188e9b1e77de43a235bdabdd6d93ff03ae1ee358ceb16cfe5931  /Users/hunchulchoi/projects/workspace/dgst/tmp/skill-inventory/reference-package/[Content_Types].xml
+0fd3d935399dc6c4f2b1bfaf1bb6662bf42a7c54efee9a19da73644a7998d505  /Users/hunchulchoi/projects/workspace/dgst/tmp/skill-inventory/reference-package/_rels/.rels
+5a3e0c27b70399f69a34847e1601131c7cef7ce934c0ae08ae78245f78384851  /Users/hunchulchoi/projects/workspace/dgst/tmp/skill-inventory/reference-package/docProps/app.xml
+0998f23ba0f39ac26e92639b7ccdf76bf7f36a198dd13414481ce1b9998d8bc5  /Users/hunchulchoi/projects/workspace/dgst/tmp/skill-inventory/reference-package/docProps/core.xml
+5f6d20f800af17c90f0dbf0a24ed1ceee5dce5b95b047c8b7fb5429765b50373  /Users/hunchulchoi/projects/workspace/dgst/tmp/skill-inventory/reference-package/docProps/thumbnail.emf
+4984fd80e83f7eeb9c75574e31c0c298e29ede9c9d3dd94b06f2d9f8ba657054  /Users/hunchulchoi/projects/workspace/dgst/tmp/skill-inventory/reference-package/word/_rels/document.xml.rels
+9a02e71c8c9482a3e960c56198334cd8e89c600f1734f0a2a0e44c610597801d  /Users/hunchulchoi/projects/workspace/dgst/tmp/skill-inventory/reference-package/word/document.xml
+4496b5b1a8b71b9b894bbe6d7864d063defffa6a9c138c01a66948fd81e3427f  /Users/hunchulchoi/projects/workspace/dgst/tmp/skill-inventory/reference-package/word/endnotes.xml
+f1ba996ec9d7963c8501c1511dd7c5c3dae146b9222bb66c2f431b5feb15f7d2  /Users/hunchulchoi/projects/workspace/dgst/tmp/skill-inventory/reference-package/word/fontTable.xml
+c022c0a53bb98b35367f7bd8a9bebf9ca222fee0052fa3146b381c8f5928b3d5  /Users/hunchulchoi/projects/workspace/dgst/tmp/skill-inventory/reference-package/word/footnotes.xml
+4db0fe7763fce39d6a5e5670c496e2d5f92696120362762df57a6fe6707977eb  /Users/hunchulchoi/projects/workspace/dgst/tmp/skill-inventory/reference-package/word/numbering.xml
+987825f681687238f15e321a621eadcad1437f90d1a4f0d99d5371d69c7b0c95  /Users/hunchulchoi/projects/workspace/dgst/tmp/skill-inventory/reference-package/word/settings.xml
+abd25e4cbfdb71fc9d66fa8ed7e66bd7aaa4e2668fa4004d2679172d55571265  /Users/hunchulchoi/projects/workspace/dgst/tmp/skill-inventory/reference-package/word/styles.xml
+2764ca7e252fce884df517b90ce05f455ed9919f126f182b371a2a1a39475cfc  /Users/hunchulchoi/projects/workspace/dgst/tmp/skill-inventory/reference-package/word/theme/theme1.xml
+600e4e5bea53730ec3419ad3690c272e1796011c0e1c66c6dbdd27e9cb517af5  /Users/hunchulchoi/projects/workspace/dgst/tmp/skill-inventory/reference-package/word/webSettings.xml

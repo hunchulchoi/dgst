@@ -10,6 +10,12 @@ const alarmPage = readFileSync('src/routes/board/alarm/+page.svelte', 'utf8');
 const header = readFileSync('src/lib/components/header.svelte', 'utf8');
 
 describe('route alarm refresh', () => {
+  it('reloads the free-board list when the header logo is clicked', () => {
+    expect(header).toMatch(
+      /<NavbarBrand\s+href="\/"\s+onclick=\{handleFreeBoardTabClick\}\s+class="p-0">/
+    );
+  });
+
   it('refreshes unread alarm count after every route navigation', () => {
     expect(layout).toContain('alarmCount, boardListReloadKey, boardListReloading');
     expect(layout).toContain('async function refreshUnreadAlarmCount()');

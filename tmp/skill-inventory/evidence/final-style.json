@@ -1,0 +1,170 @@
+{
+  "input": "/Users/hunchulchoi/projects/workspace/dgst/output/documents/\ud478\ub978IT_\uc2a4\ud0ac\uc778\ubca4\ud1a0\ub9ac_\ucd5c\ud6c8\ucca0_\uc644\uc131\ubcf8.docx",
+  "fonts_by_char_count": {
+    "Arial Unicode MS": 1702
+  },
+  "direct_run_formatting_runs": 360,
+  "direct_paragraph_formatting_paragraphs": 224,
+  "heading_like_paragraphs_not_heading_style": [
+    {
+      "para_index": 9,
+      "text": "\uac1c \uc778 \uc774 \ub825 \uce74 \ub4dc",
+      "style": "Normal"
+    },
+    {
+      "para_index": 10,
+      "text": "\uc131 \uba85",
+      "style": "Normal"
+    },
+    {
+      "para_index": 11,
+      "text": "\ucd5c\ud6c8\ucca0",
+      "style": "Normal"
+    },
+    {
+      "para_index": 12,
+      "text": "\ucd5c\ud6c8\ucca0",
+      "style": "Normal"
+    },
+    {
+      "para_index": 13,
+      "text": "\uc0dd\ub144\uc6d4\uc77c",
+      "style": "Normal"
+    },
+    {
+      "para_index": 14,
+      "text": "\uc0dd\ub144\uc6d4\uc77c",
+      "style": "Normal"
+    },
+    {
+      "para_index": 15,
+      "text": "\uc0dd\ub144\uc6d4\uc77c",
+      "style": "Normal"
+    },
+    {
+      "para_index": 18,
+      "text": "\uc131 \ubcc4",
+      "style": "Normal"
+    },
+    {
+      "para_index": 20,
+      "text": "\uc18c\uc18d\ud68c\uc0ac",
+      "style": "Normal"
+    },
+    {
+      "para_index": 27,
+      "text": "\uc804\uc0b0\uacbd\ub825",
+      "style": "Normal"
+    },
+    {
+      "para_index": 30,
+      "text": "\ubd80 \uc11c",
+      "style": "\ud45c\uc900 \ub2e8\ub77d"
+    },
+    {
+      "para_index": 32,
+      "text": "\uc9c1\uc704",
+      "style": "Normal"
+    },
+    {
+      "para_index": 33,
+      "text": "\uc9c1\uc704",
+      "style": "Normal"
+    },
+    {
+      "para_index": 35,
+      "text": "\uad70\ubcf5\ubb34\uae30\uac04",
+      "style": "Normal"
+    },
+    {
+      "para_index": 36,
+      "text": "\uad70\ubcf5\ubb34\uae30\uac04",
+      "style": "Normal"
+    },
+    {
+      "para_index": 38,
+      "text": "\ub4f1\uae09",
+      "style": "Normal"
+    },
+    {
+      "para_index": 40,
+      "text": "\uba74\uc811\uac00\ub2a5\uc77c\uc790",
+      "style": "Normal"
+    },
+    {
+      "para_index": 41,
+      "text": "\uba74\uc811\uac00\ub2a5\uc77c\uc790",
+      "style": "Normal"
+    },
+    {
+      "para_index": 45,
+      "text": "\ucd9c\uadfc\uac00\ub2a5\uc77c\uc790",
+      "style": "Normal"
+    },
+    {
+      "para_index": 46,
+      "text": "\ucd9c\uadfc\uac00\ub2a5\uc77c\uc790",
+      "style": "Normal"
+    }
+  ],
+  "examples": {
+    "direct_paragraph_formatting": [
+      {
+        "para_index": 1,
+        "text": "",
+        "style": "Normal"
+      },
+      {
+        "para_index": 7,
+        "text": "",
+        "style": "Normal"
+      },
+      {
+        "para_index": 8,
+        "text": "",
+        "style": "Normal"
+      },
+      {
+        "para_index": 11,
+        "text": "\ucd5c\ud6c8\ucca0",
+        "style": "Normal"
+      },
+      {
+        "para_index": 12,
+        "text": "\ucd5c\ud6c8\ucca0",
+        "style": "Normal"
+      }
+    ],
+    "direct_run_formatting": [
+      {
+        "para_index": 9,
+        "run_text": "\uac1c",
+        "style": "Normal"
+      },
+      {
+        "para_index": 9,
+        "run_text": " ",
+        "style": "Normal"
+      },
+      {
+        "para_index": 9,
+        "run_text": "\uc778",
+        "style": "Normal"
+      },
+      {
+        "para_index": 9,
+        "run_text": " ",
+        "style": "Normal"
+      },
+      {
+        "para_index": 9,
+        "run_text": "\uc774",
+        "style": "Normal"
+      }
+    ]
+  },
+  "notes": [
+    "Direct formatting is not always wrong, but it often causes inconsistent output when templates change.",
+    "Heading-like paragraphs not using Heading styles can break TOC and accessibility."
+  ]
+}
