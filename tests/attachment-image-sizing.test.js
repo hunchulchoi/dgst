@@ -76,7 +76,7 @@ describe('attachment image sizing', () => {
     expect(style.maxWidth).toBe('100%');
     expect(style.maxHeight).toBe(DESKTOP_PORTRAIT_ATTACHMENT_IMAGE_HEIGHT);
     expect(style.width).toBe('auto');
-    expect(style.height).toBe(DESKTOP_PORTRAIT_ATTACHMENT_IMAGE_HEIGHT);
+    expect(style.height).toBe('auto');
   });
 
   it('shows regular portrait photos at full content width on mobile', () => {

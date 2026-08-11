@@ -87,7 +87,7 @@ export function applyAttachmentImageSizing(style, img, options) {
 
   if (shouldUseDesktopPortraitSizing(img, options)) {
     style.width = 'auto';
-    style.height = DESKTOP_PORTRAIT_ATTACHMENT_IMAGE_HEIGHT;
+    style.height = 'auto';
     style.maxHeight = DESKTOP_PORTRAIT_ATTACHMENT_IMAGE_HEIGHT;
     return;
   }
