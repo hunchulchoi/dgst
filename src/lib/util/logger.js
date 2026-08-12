@@ -1,7 +1,5 @@
 import winston from 'winston';
-import * as fs from 'fs';
 import * as os from 'os';
-import * as path from 'path';
 
 const environment = process.env.NODE_ENV || 'development';
 const isProduction = environment === 'production';
@@ -15,14 +13,6 @@ const logFormat =
     : isProduction
       ? 'json'
       : 'pretty';
-
-const logDir = process.env.LOG_DIR || './logs';
-if (!fs.existsSync(logDir)) {
-  fs.mkdirSync(logDir, { recursive: true });
-}
-
-const getErrorLogPath = () =>
-  path.join(logDir, `error-${new Date().toISOString().split('T')[0]}.log`);
 
 const ANSI_ESCAPE_REGEX = new RegExp(String.raw`\u001b\[[0-9;]*m`, 'g');
 
@@ -141,16 +131,7 @@ const activeFormat = logFormat === 'json' ? grafanaJsonFormat : prettyFormat;
 
 const logger = winston.createLogger({
   level: process.env.LOG_LEVEL || (isProduction ? 'info' : 'debug'),
-  transports: [
-    new winston.transports.Console({
-      format: activeFormat
-    }),
-    new winston.transports.File({
-      filename: getErrorLogPath(),
-      level: 'warn',
-      format: grafanaJsonFormat
-    })
-  ]
+  transports: [new winston.transports.Console({ format: activeFormat })]
 });
 
 export default logger;
