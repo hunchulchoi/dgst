@@ -3,6 +3,10 @@ import GoogleProvider from '@auth/core/providers/google';
 import { env as privateEnv } from '$env/dynamic/private';
 import { getPrisma } from '$lib/database/prisma.js';
 import { getPrismaAdapter } from '$lib/server/auth/prismaAdapter.js';
+import {
+  mapGoogleAuthProfile,
+  mapKakaoAuthProfile
+} from '$lib/server/auth/providerProfiles.js';
 import { checkAuthRateLimit } from '$lib/server/auth/rateLimit.js';
 import { shouldRejectCrossOriginRequest } from '$lib/server/auth/requestOrigin.js';
 import { evaluateAuthSignIn, resolveSafeAuthRedirect } from '$lib/server/auth/authPolicy.js';
@@ -32,40 +36,12 @@ const providers = [
   GoogleProvider({
     clientId: privateEnv.GOOGLE_CLIENT_ID,
     clientSecret: privateEnv.GOOGLE_CLIENT_SECRET,
-    profile(profile) {
-      // 사용자 정보에 필요한 필드만 저장 (name/image 등 불필요한 값 제외)
-      return {
-        id: crypto.randomUUID(),
-        email: crypto.createHash('sha512').update(profile.email).digest('base64url'),
-        nickname: profile.name ?? '',
-        introduction: '우리 자기',
-        photo: null, // 구글/카카오 로그인 시 기본 이미지를 가져오지 않음
-        state: 'registered',
-        grade: 'user'
-      };
-    }
+    profile: mapGoogleAuthProfile
   }),
   KakaoProvider({
     clientId: privateEnv.KAKAO_CLIENT_ID,
     clientSecret: privateEnv.KAKAO_CLIENT_SECRET,
-    profile(profile) {
-      const kakaoAccount = profile.kakao_account || {};
-      const kakaoId = String(profile.id);
-      const emailHash = crypto.createHash('sha512').update(`kakao:${kakaoId}`).digest('base64url');
-
-      return {
-        id: crypto.randomUUID(),
-        email: kakaoAccount?.email
-          ? crypto.createHash('sha512').update(kakaoAccount.email).digest('base64url')
-          : emailHash,
-        nickname:
-          kakaoAccount?.profile?.nickname || kakaoAccount?.name || `카카오${kakaoId.slice(-4)}`,
-        introduction: '우리 자기',
-        photo: null, // 구글/카카오 로그인 시 기본 이미지를 가져오지 않음
-        state: 'registered',
-        grade: 'user'
-      };
-    }
+    profile: mapKakaoAuthProfile
   })
 ];
 
