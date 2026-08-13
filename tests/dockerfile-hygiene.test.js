@@ -11,6 +11,11 @@ describe('production container hygiene', () => {
     expect(dockerfile).not.toContain('RUN npm install');
   });
 
+  it('keeps Debian package sources unchanged so minimal images can update reliably', () => {
+    expect(dockerfile).toContain('RUN apt-get update');
+    expect(dockerfile).not.toContain("sed -i 's|http://deb.debian.org|https://deb.debian.org|g'");
+  });
+
   it('copies only the generated Prisma client payload after production install', () => {
     expect(dockerfile).toContain(
       'COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma'
