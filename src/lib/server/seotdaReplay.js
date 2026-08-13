@@ -1,5 +1,7 @@
 const REPLAY_CLASS = 'seotda-replay-data';
 const MAX_EVENTS = 64;
+// ASCII control characters are intentionally matched so replay text cannot embed them.
+// eslint-disable-next-line no-control-regex
 const CONTROL_CHARACTERS = new RegExp('[\\u0000-\\u001f\\u007f]', 'g');
 
 /** @param {unknown} value @param {number} maxLength */

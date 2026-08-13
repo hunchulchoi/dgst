@@ -128,7 +128,7 @@ export function npcStackForNextRound(savedChips, userChips, ante = ANTE) {
 
 /**
  * @param {number} bankroll
- * @param {number} ante
+ * @param {number} [_ante]
  * @param {number} [opponentStack]
  */
 export function maxRoundContribution(bankroll, _ante = ANTE, opponentStack = Infinity) {
