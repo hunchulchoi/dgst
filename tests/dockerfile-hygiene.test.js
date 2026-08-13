@@ -25,6 +25,16 @@ describe('production container hygiene', () => {
     );
   });
 
+  it('uses a non-secret, build-only Prisma URL without persisting it in the image', () => {
+    expect(dockerfile).toContain(
+      'RUN DATABASE_URL=postgresql://localhost/dgst_build npm run db:generate'
+    );
+    expect(dockerfile).toContain(
+      'RUN DATABASE_URL=postgresql://localhost/dgst_build npm ci --omit dev'
+    );
+    expect(dockerfile).not.toContain('ENV DATABASE_URL=');
+  });
+
   it('never sends local secrets or generated reports in the build context', () => {
     expect(dockerignore).toMatch(/^\.env\*$/m);
     expect(dockerignore).toMatch(/^\.codex-artifacts$/m);

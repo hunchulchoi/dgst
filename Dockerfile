@@ -8,7 +8,8 @@ RUN npm ci
 COPY . .
 
 ENV SKIP_DB_CONNECT=true
-RUN npm run db:generate && npm run build
+RUN DATABASE_URL=postgresql://localhost/dgst_build npm run db:generate \
+  && npm run build
 
 FROM node:22-trixie-slim AS production
 
@@ -25,7 +26,7 @@ COPY --from=build /app/package-lock.json .
 COPY --from=build /app/prisma ./prisma
 COPY --from=build /app/prisma.config.ts .
 
-RUN npm ci --omit dev
+RUN DATABASE_URL=postgresql://localhost/dgst_build npm ci --omit dev
 
 COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma
 
