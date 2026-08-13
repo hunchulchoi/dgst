@@ -10,11 +10,12 @@ describe('seotda shared game comments', () => {
   it('renders the shared reply feed and posts rewards to the seotda balance', () => {
     expect(seotdaPage).toContain('<SharedGameComments');
     expect(sharedComments).toContain("form.set('game', game)");
-    expect(commentRoute).toContain("rewardGame === 'seotda'");
-    expect(commentRoute).toContain("game: { in: ['slot', 'seotda', 'ssamchi'] }");
+    expect(commentRoute).toContain("requestedGame === 'seotda'");
+    expect(commentRoute).toContain("game: { in: ['slot', 'seotda', 'ssamchi', 'medal-janken'] }");
     expect(commentRoute).toContain('todayRewardCount < 10');
-    expect(commentRoute).toContain('writeSeotdaScore(email, nickname, newBalance');
-    expect(commentRoute).toContain('rewardBalance = newBalance');
+    expect(commentRoute).toContain('applyArcadeEntry(email, nickname');
+    expect(commentRoute).toContain('game: rewardGame');
+    expect(commentRoute).toContain('rewardBalance = settlement.balance');
     expect(sharedComments).toContain('onReward?.({ amount: 100, balance: rewardBalance })');
     expect(seotdaPage).toContain('onReward={applyCommentReward}');
   });

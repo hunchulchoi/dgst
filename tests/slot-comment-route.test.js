@@ -13,7 +13,7 @@ const commentRepo = vi.hoisted(() => ({
   toCommentJson: vi.fn()
 }));
 const authCheck = vi.hoisted(() => ({ checkAndLogSessionDevice: vi.fn() }));
-const slotUserBalance = vi.hoisted(() => ({ updateSlotUserBalance: vi.fn() }));
+const arcadeWallet = vi.hoisted(() => ({ applyArcadeEntry: vi.fn() }));
 const submitDedup = vi.hoisted(() => ({
   buildSubmitFingerprint: vi.fn(() => 'fingerprint'),
   findRecentDuplicateComment: vi.fn(),
@@ -24,7 +24,7 @@ vi.mock('$lib/database/prisma.js', () => prismaModule);
 vi.mock('$lib/server/alarm/alarmService.js', () => alarmService);
 vi.mock('$lib/server/board/commentRepo.js', () => commentRepo);
 vi.mock('$lib/server/auth/checkSessionDevice.js', () => authCheck);
-vi.mock('$lib/server/slotUserBalance.js', () => slotUserBalance);
+vi.mock('$lib/server/arcadeWallet.js', () => arcadeWallet);
 vi.mock('$lib/server/submitDedup.js', () => submitDedup);
 
 describe('slot comment route', () => {
@@ -33,6 +33,7 @@ describe('slot comment route', () => {
     vi.resetModules();
 
     submitDedup.tryAcquireSubmitDedup.mockResolvedValue(true);
+    arcadeWallet.applyArcadeEntry.mockResolvedValue({ balance: 600, score: {} });
   });
 
   it('creates replies without failing the slot comment request', async () => {
@@ -64,13 +65,11 @@ describe('slot comment route', () => {
       likes: []
     };
     const count = vi.fn().mockResolvedValue(0);
-    const findFirst = vi.fn().mockResolvedValue({ balance: 500 });
-    const createScore = vi.fn().mockResolvedValue({});
     const upsertArticle = vi.fn().mockResolvedValue({});
 
     prismaModule.getPrisma.mockReturnValue({
       article: { upsert: upsertArticle },
-      gameScore: { count, findFirst, create: createScore }
+      gameScore: { count }
     });
     commentRepo.findCommentById.mockResolvedValue(parentComment);
     commentRepo.createComment.mockResolvedValue(createdComment);
@@ -143,13 +142,11 @@ describe('slot comment route', () => {
       updatedAt: new Date('2026-07-24T00:00:00.000Z'),
       likes: []
     };
-    const createScore = vi.fn().mockResolvedValue({});
+    arcadeWallet.applyArcadeEntry.mockResolvedValue({ balance: 1000, score: {} });
     prismaModule.getPrisma.mockReturnValue({
       article: { upsert: vi.fn().mockResolvedValue({}) },
       gameScore: {
-        count: vi.fn().mockResolvedValue(0),
-        findFirst: vi.fn().mockResolvedValue({ balance: 900 }),
-        create: createScore
+        count: vi.fn().mockResolvedValue(0)
       }
     });
     commentRepo.createComment.mockResolvedValue(createdComment);
@@ -175,15 +172,15 @@ describe('slot comment route', () => {
       rewardGiven: true,
       rewardBalance: 1000
     });
-    expect(createScore).toHaveBeenCalledWith({
-      data: expect.objectContaining({
-        email: 'player@example.com',
+    expect(arcadeWallet.applyArcadeEntry).toHaveBeenCalledWith(
+      'player@example.com',
+      '타짜',
+      expect.objectContaining({
         game: 'seotda',
-        balance: 1000,
         payout: 100,
         delta: 100,
         reels: ['comment', 'seotda', '-']
       })
-    });
+    );
   });
 });

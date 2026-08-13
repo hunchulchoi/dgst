@@ -8,10 +8,10 @@ const rankedGames = [
   'minesweeper',
   'sudoku',
   'tetris',
-  'watermelon',
-  'slot'
+  'watermelon'
 ];
 const rankingRow = readFileSync('src/lib/components/GameRankingRow.svelte', 'utf8');
+const arcadeWallet = readFileSync('src/lib/server/arcadeWallet.js', 'utf8');
 
 describe('game profile photos', () => {
   it('renders profile photos through the shared ranking row', () => {
@@ -26,10 +26,19 @@ describe('game profile photos', () => {
     expect(page).toContain('GameRankingRow');
   });
 
+  it('adds profile photos to the shared arcade ranking used by slot', () => {
+    const server = readFileSync('src/routes/games/slot/+server.js', 'utf8');
+    const page = readFileSync('src/routes/games/slot/+page.svelte', 'utf8');
+    expect(server).toContain('getArcadeRank');
+    expect(arcadeWallet).toContain('attachGameProfilePhotos');
+    expect(page).toContain('GameRankingRow');
+  });
+
   it.each(['seotda', 'ssamchi'])('adds profile photos to the %s balance ranking', (game) => {
     const balance = readFileSync(`src/routes/games/${game}/${game}Balance.js`, 'utf8');
     const page = readFileSync(`src/routes/games/${game}/+page.svelte`, 'utf8');
-    expect(balance).toContain('attachGameProfilePhotos');
+    expect(balance).toContain('getArcadeRank');
+    expect(arcadeWallet).toContain('attachGameProfilePhotos');
     expect(page).toContain('GameRankingRow');
   });
 

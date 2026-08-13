@@ -97,7 +97,8 @@ describe('game ranking UI', () => {
   it('shows when slot scores were last updated', () => {
     expect(slotPage).toContain('balanceUpdatedAt');
     expect(slotPage).toContain('formatSlotUpdatedAt(balanceUpdatedAt)');
-    expect(slotPage).toContain('formatSlotUpdatedAt(r.updatedAt)');
+    expect(slotPage).toContain('meta={formatRankMeta(r)}');
+    expect(slotPage).toContain('formatSlotUpdatedAt(row.updatedAt)');
   });
 
   it('uses one calm ranking layout across every ranked game', () => {

@@ -1,5 +1,15 @@
 /** @type {import('@playwright/test').PlaywrightTestConfig} */
 const config = {
+  reporter: [
+    ['list'],
+    [
+      'html',
+      {
+        outputFolder: 'playwright-report',
+        open: process.env.PLAYWRIGHT_HTML_OPEN === 'always' ? 'always' : 'never'
+      }
+    ]
+  ],
   webServer: {
     command:
       'PLAYWRIGHT_SMOKE=1 npm run build && PLAYWRIGHT_SMOKE=1 npm run preview -- --host 127.0.0.1',

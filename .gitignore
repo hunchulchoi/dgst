@@ -11,6 +11,9 @@ vite.config.ts.timestamp-*
 /private
 /logs
 /output
+/vitest-report
+/playwright-report
+/test-results
 /conf
 .antigravitycli/
 pnpm-lock.yaml

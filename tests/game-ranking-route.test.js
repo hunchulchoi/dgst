@@ -37,6 +37,12 @@ const slotStats = vi.hoisted(() => ({
   getTodaySlotStats: vi.fn()
 }));
 
+const arcadeWallet = vi.hoisted(() => ({
+  ensureArcadeWallet: vi.fn(),
+  getArcadeRank: vi.fn(),
+  resolveArcadeOops: vi.fn()
+}));
+
 vi.mock('$lib/database/prisma.js', () => prismaModule);
 vi.mock('$lib/server/game2048Stats.js', () => stats2048);
 vi.mock('$lib/server/gameWatermelonStats.js', () => statsWatermelon);
@@ -46,6 +52,7 @@ vi.mock('$lib/server/gameBreakoutStats.js', () => statsBreakout);
 vi.mock('$lib/server/gameSudokuStats.js', () => statsSudoku);
 vi.mock('$lib/server/gameBilliardsStats.js', () => statsBilliards);
 vi.mock('$lib/server/slotStats.js', () => slotStats);
+vi.mock('$lib/server/arcadeWallet.js', () => arcadeWallet);
 
 describe('game ranking routes', () => {
   beforeEach(() => {
@@ -59,6 +66,12 @@ describe('game ranking routes', () => {
     statsSudoku.getTodaySudokuStats.mockResolvedValue({ games: 0, users: 0 });
     statsBilliards.getTodayBilliardsStats.mockResolvedValue({ games: 0, users: 0 });
     slotStats.getTodaySlotStats.mockResolvedValue({ spins: 0, users: 0 });
+    arcadeWallet.ensureArcadeWallet.mockResolvedValue({
+      balance: 1000,
+      updatedAt: new Date('2026-06-12T12:00:00.000Z')
+    });
+    arcadeWallet.resolveArcadeOops.mockResolvedValue({ balance: 1000, oopsInfo: null });
+    arcadeWallet.getArcadeRank.mockResolvedValue([]);
   });
 
   it('loads 2048 all-time per-user best scores with score timestamps', async () => {
@@ -409,28 +422,21 @@ describe('game ranking routes', () => {
   });
 
   it('loads slot balances with last updated timestamps', async () => {
-    const findFirst = vi.fn().mockResolvedValue({
-      balance: 1200,
-      createdAt: new Date('2026-06-10T12:00:00.000Z')
-    });
-    const findMany = vi.fn().mockResolvedValue([
-      {
-        email: 'slot@example.com',
-        nickname: 'slotter',
-        balance: 1300,
-        totalSpin: 9,
-        updatedAt: new Date('2026-06-11T12:00:00.000Z')
-      }
-    ]);
-    const count = vi.fn().mockResolvedValue(1);
-    const findUnique = vi.fn().mockResolvedValue({
+    arcadeWallet.resolveArcadeOops.mockResolvedValue({ balance: 1200, oopsInfo: null });
+    arcadeWallet.ensureArcadeWallet.mockResolvedValue({
       balance: 1200,
       updatedAt: new Date('2026-06-12T12:00:00.000Z')
     });
-    prismaModule.getPrisma.mockReturnValue({
-      gameScore: { findFirst },
-      slotUserBalance: { count, findMany, findUnique }
-    });
+    arcadeWallet.getArcadeRank.mockResolvedValue([
+      {
+        email: 'slot@example.com',
+        _id: 'slot@example.com',
+        nickname: 'slotter',
+        balance: 1300,
+        lastGame: 'slot',
+        updatedAt: '2026-06-11T12:00:00.000Z'
+      }
+    ]);
 
     const { GET } = await import('../src/routes/games/slot/+server.js');
     const response = await GET({
@@ -441,22 +447,19 @@ describe('game ranking routes', () => {
 
     expect(body.balanceUpdatedAt).toBe('2026-06-12T12:00:00.000Z');
     expect(body.rank[0]).toEqual({
+      email: 'slot@example.com',
       _id: 'slot@example.com',
       nickname: 'slotter',
       balance: 1300,
-      totalSpin: 9,
+      lastGame: 'slot',
       updatedAt: '2026-06-11T12:00:00.000Z'
     });
-    expect(findMany).toHaveBeenCalledWith({
-      where: { totalSpin: { gt: 0 } },
-      orderBy: { balance: 'desc' },
-      take: 10,
-      select: { email: true, nickname: true, balance: true, totalSpin: true, updatedAt: true }
-    });
-    expect(findUnique).toHaveBeenCalledWith({
-      where: { email: 'me@example.com' },
-      select: { balance: true, updatedAt: true }
-    });
+    expect(arcadeWallet.resolveArcadeOops).toHaveBeenCalledWith(
+      'me@example.com',
+      'anonymous',
+      'slot'
+    );
+    expect(arcadeWallet.getArcadeRank).toHaveBeenCalledWith(10);
   });
 
   it('loads tetris all-time per-user best scores from game_logs', async () => {

@@ -1,12 +1,8 @@
 import { SvelteKitAuth } from '@auth/sveltekit';
-import GoogleProvider from '@auth/core/providers/google';
 import { env as privateEnv } from '$env/dynamic/private';
 import { getPrisma } from '$lib/database/prisma.js';
 import { getPrismaAdapter } from '$lib/server/auth/prismaAdapter.js';
-import {
-  mapGoogleAuthProfile,
-  mapKakaoAuthProfile
-} from '$lib/server/auth/providerProfiles.js';
+import { createAuthProviders } from '$lib/server/auth/providers.js';
 import { checkAuthRateLimit } from '$lib/server/auth/rateLimit.js';
 import { shouldRejectCrossOriginRequest } from '$lib/server/auth/requestOrigin.js';
 import { evaluateAuthSignIn, resolveSafeAuthRedirect } from '$lib/server/auth/authPolicy.js';
@@ -29,21 +25,13 @@ export function depends(key) {
   cache.set(key, new Date().getTime());
 }
 
-import KakaoProvider from '@auth/core/providers/kakao';
-
 // SvelteKit 2 + @auth/sveltekit v1.x 호환
-const providers = [
-  GoogleProvider({
-    clientId: privateEnv.GOOGLE_CLIENT_ID,
-    clientSecret: privateEnv.GOOGLE_CLIENT_SECRET,
-    profile: mapGoogleAuthProfile
-  }),
-  KakaoProvider({
-    clientId: privateEnv.KAKAO_CLIENT_ID,
-    clientSecret: privateEnv.KAKAO_CLIENT_SECRET,
-    profile: mapKakaoAuthProfile
-  })
-];
+const providers = createAuthProviders({
+  googleClientId: privateEnv.GOOGLE_CLIENT_ID,
+  googleClientSecret: privateEnv.GOOGLE_CLIENT_SECRET,
+  kakaoClientId: privateEnv.KAKAO_CLIENT_ID,
+  kakaoClientSecret: privateEnv.KAKAO_CLIENT_SECRET
+});
 
 export const {
   handle: authHandle,

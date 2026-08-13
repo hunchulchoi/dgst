@@ -90,8 +90,20 @@ npm run preview
 npm run check
 npm run lint
 npm run test:unit
+npm run test:ui
+npm run test:report
+npm run test:report:open
 npm run test:integration
+npm run test:integration:report
+npm run test:integration:report:open
 ```
+
+- `test:ui`: Vitest 결과를 실시간 브라우저 UI로 표시
+- `test:report`: `vitest-report/index.html` 정적 결과 페이지 생성
+- `test:report:open`: 생성된 Vitest 결과 페이지를 로컬 서버로 열기
+- `test:integration`: Playwright 실행 후 `playwright-report` HTML 결과 생성
+- `test:integration:report`: Playwright를 실행하고 결과 페이지 자동 열기
+- `test:integration:report:open`: 이미 생성된 마지막 Playwright 결과만 열기
 
 ## Database Workflow
 

@@ -977,7 +977,8 @@
     }
   }
 
-  @media (max-width: 1004px),
+  /* 태블릿에서는 보드가 전체 행을 쓰고 랭킹은 페이지 아래로 흐르게 한다. */
+  @media (max-width: 1399.98px),
     (orientation: landscape) and (max-width: 991.98px) and (max-height: 500px) {
     .minesweeper-game-root.minesweeper-game-active {
       width: 100% !important;
@@ -994,8 +995,8 @@
 
     .minesweeper-rank-col {
       order: 2 !important;
-      width: 100vw !important;
-      max-width: 100vw !important;
+      width: 100% !important;
+      max-width: 100% !important;
       min-width: 0 !important;
       flex: 0 0 auto !important;
       margin-top: 1rem !important;
@@ -1004,6 +1005,10 @@
       padding-left: max(0.5rem, env(safe-area-inset-left, 0px));
       padding-right: max(0.5rem, env(safe-area-inset-right, 0px));
       overflow-x: hidden;
+    }
+
+    .minesweeper-game-active .minesweeper-game-col {
+      order: 1 !important;
     }
 
     .minesweeper-rank-col :global(.card) {
@@ -1054,6 +1059,20 @@
 
     .minesweeper-game-active .minesweeper-wrapper {
       padding: 1rem;
+    }
+  }
+
+  @media (min-width: 768px) and (max-width: 1399.98px) {
+    .minesweeper-game-root.minesweeper-game-active {
+      padding-inline: 0 !important;
+    }
+
+    .minesweeper-game-active .minesweeper-game-card-body {
+      padding: 0.25rem;
+    }
+
+    .minesweeper-game-active .minesweeper-wrapper {
+      padding: 0;
     }
   }
 

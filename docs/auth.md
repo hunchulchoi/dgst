@@ -28,6 +28,15 @@ SvelteKit + Auth.js + Prisma 기반 인증 구조를 정리한 문서입니다.
 - OAuth `name`, `image`, 이메일 인증 시각과 회원 활동 시각은 별도로 저장하지 않습니다.
 - Auth.js 호환용 nullable `email_verified` 컬럼은 유지하지만 현재 OAuth 흐름에서는 값을 수집하지 않습니다.
 
+### OAuth 계정 식별자 불변 규칙 — 절대 변경 금지
+
+- Google profile mapper는 반드시 `id: profile.sub`를 반환합니다.
+- Kakao profile mapper는 반드시 `id: String(profile.id)`를 반환합니다.
+- 이 `id`는 Auth.js가 `accounts.provider_account_id`에 저장하여 기존 OAuth 계정을 찾는 키입니다.
+- UUID, CUID, 이메일 해시 또는 매 요청마다 달라질 수 있는 값으로 대체하면 안 됩니다. 바꾸면 로그인마다 신규 계정 연결이 생성됩니다.
+- `users.id` 내부 식별자 익명화와 OAuth provider account ID는 서로 다른 값입니다. 내부 ID 변경은 adapter 또는 DB 마이그레이션에서만 처리합니다.
+- 관련 회귀 테스트: `tests/auth-provider-profile.test.js`. 인증 provider 변경 시 반드시 실행합니다.
+
 ---
 
 ## 3. 세션
@@ -138,6 +147,8 @@ SvelteKit + Auth.js + Prisma 기반 인증 구조를 정리한 문서입니다.
 | -------------------------------------- | --------------------------------------------------------------------- |
 | `src/hooks.server.js`                  | SvelteKitAuth 설정, providers, callbacks, session/cookies, rate limit |
 | `src/lib/server/auth/prismaAdapter.js` | Prisma Adapter 래핑, User/Session 캐시                                |
+| `src/lib/server/auth/providers.js`     | OAuth provider 구성과 계정 식별자 mapper 연결                         |
+| `src/lib/server/auth/providerProfiles.js` | Google/Kakao 최소 프로필 변환 및 안정적인 provider ID 보존         |
 | `src/lib/server/auth/sessionCache.js`  | 세션+유저 조회 결과 캐시                                              |
 | `src/lib/server/auth/userCache.js`     | 회원정보 캐시 및 무효화                                               |
 | `src/lib/server/auth/rateLimit.js`     | Auth 경로 rate limit                                                  |
