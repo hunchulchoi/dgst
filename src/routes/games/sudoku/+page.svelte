@@ -543,8 +543,8 @@
           aria-label="수도쿠 9x9 보드"
           class:sudoku-board-paused={!started && !gameWon}
         >
-          {#each userGrid as row, rowIndex}
-            {#each row as value, colIndex}
+          {#each userGrid as row, rowIndex (rowIndex)}
+            {#each row as value, colIndex (colIndex)}
               <button
                 type="button"
                 class="sudoku-cell"
@@ -564,7 +564,7 @@
                   {value}
                 {:else if notesGrid[rowIndex][colIndex]}
                   <span class="sudoku-notes">
-                    {#each cellNotes(notesGrid[rowIndex][colIndex]) as note}
+                    {#each cellNotes(notesGrid[rowIndex][colIndex]) as note (note)}
                       <span>{note}</span>
                     {/each}
                   </span>
@@ -620,7 +620,7 @@
 
           {#if rankList.length}
             <ol class="sudoku-rank-list">
-              {#each rankList as row, index}
+              {#each rankList as row, index (row)}
                 <GameRankingRow
                   {index}
                   nickname={row.nickname}
@@ -641,7 +641,7 @@
 
     <aside class="sudoku-panel" aria-label="수도쿠 조작">
       <div class="sudoku-difficulty" aria-label="난이도 선택">
-        {#each difficultyEntries() as [key, config]}
+        {#each difficultyEntries() as [key, config] (key)}
           <button
             type="button"
             class="btn btn-outline-primary"
@@ -693,7 +693,7 @@
       </div>
 
       <div class="sudoku-pad" aria-label="숫자 입력">
-        {#each DIGITS as value}
+        {#each DIGITS as value (value)}
           <button
             type="button"
             class="btn btn-light"
@@ -728,7 +728,7 @@
 
           {#if rankList.length}
             <ol class="sudoku-rank-list">
-              {#each rankList as row, index}
+              {#each rankList as row, index (row)}
                 <GameRankingRow
                   {index}
                   nickname={row.nickname}

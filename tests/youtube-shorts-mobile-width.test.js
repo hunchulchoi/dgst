@@ -11,8 +11,10 @@ const sanitizeArticleContent = readFileSync('src/lib/server/sanitizeArticleConte
 
 describe('youtube shorts mobile width', () => {
   it('marks youtube shorts iframes so mobile article rendering can force full width', () => {
-    expect(lexicalEditor).toContain("class=\"youtube-shorts-embed\"");
-    expect(lexicalEditor).toContain("const widthStyle = youtube.isShorts ? '100%' : `${youtube.width}px`");
+    expect(lexicalEditor).toContain('class="youtube-shorts-embed"');
+    expect(lexicalEditor).toContain(
+      "const widthStyle = youtube.isShorts ? '100%' : `${youtube.width}px`"
+    );
     expect(articlePage).toContain('.article-content iframe.youtube-shorts-embed');
     expect(articlePage).toContain('width: 100% !important;');
   });
@@ -21,7 +23,9 @@ describe('youtube shorts mobile width', () => {
     expect(articlePage).toContain("'class'");
     expect(sanitizeArticleContent).toContain("'class'");
     expect(commentEmbeder).toContain('class="youtube-shorts-embed"');
-    expect(commentEmbeder).toContain("const wrapperWidth = isShorts ? '100%; max-width: 320px' : width");
+    expect(commentEmbeder).toContain(
+      "const wrapperWidth = isShorts ? '100%; max-width: 320px' : width"
+    );
     expect(articlePage).toContain('.youtube-shorts-wrapper');
   });
 });

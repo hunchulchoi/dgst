@@ -1,3 +1,4 @@
+// @ts-nocheck -- Public-state fixtures intentionally omit unrelated round fields.
 import { describe, expect, it } from 'vitest';
 import { toPublicState } from './seotdaState.js';
 import { evaluateHand } from './seotdaEngine.js';

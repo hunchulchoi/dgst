@@ -40,7 +40,9 @@ describe('write page video upload', () => {
     expect(lexicalEditor).toContain('stopAudioRecording');
     expect(lexicalEditor).toContain('toggleAudioRecording');
     expect(lexicalEditor).toContain('uploadAndInsertFiles([file])');
-    expect(lexicalEditor).toContain('aria-label={isRecording ? \'음성 녹음 중지\' : \'음성 녹음 시작\'}');
+    expect(lexicalEditor).toContain(
+      "aria-label={isRecording ? '음성 녹음 중지' : '음성 녹음 시작'}"
+    );
     expect(lexicalEditor).toContain('class:lexical-toolbar__button--recording={isRecording}');
   });
 
@@ -59,7 +61,9 @@ describe('write page video upload', () => {
     expect(lexicalEditor).toContain("type: 'lexical-video-compression-failed'");
     expect(lexicalEditor).toContain('lastFfmpegLoadDetails');
     expect(lexicalEditor).toContain('getClientCapabilityDetails');
-    expect(lexicalEditor).toContain("FFMPEG_CORE_BASE_URL = 'https://unpkg.com/@ffmpeg/core@0.12.9/dist/umd'");
+    expect(lexicalEditor).toContain(
+      "FFMPEG_CORE_BASE_URL = 'https://unpkg.com/@ffmpeg/core@0.12.9/dist/umd'"
+    );
     expect(lexicalEditor).toContain('loadFfmpegCoreBlobUrl');
     expect(lexicalEditor).toContain("loadDetails.phase = 'downloading-core-assets'");
     expect(lexicalEditor).toContain("loadDetails.phase = 'importing-modules'");
@@ -134,7 +138,7 @@ describe('write page video upload', () => {
   it('can upload videos without audio when the mute option is enabled', () => {
     expect(lexicalEditor).toContain('removeVideoAudio');
     expect(lexicalEditor).toContain("mute: '음성제거'");
-    expect(lexicalEditor).toContain("audio: removeVideoAudio");
+    expect(lexicalEditor).toContain('audio: removeVideoAudio');
     expect(lexicalEditor).toContain("formData.set('removeVideoAudio', 'true')");
     expect(uploadRoute).toContain('removeVideoAudio');
     const fileUpload = readFileSync('src/lib/util/fileUpload.js', 'utf8');
@@ -161,7 +165,9 @@ describe('write page video upload', () => {
     expect(lexicalEditor).toContain('const insertAsAudio =');
     expect(lexicalEditor).toContain("preparedFile.type.startsWith('audio/') ||");
     expect(lexicalEditor).toContain("file.type.startsWith('video/') && extractVideoAudio");
-    expect(lexicalEditor).toContain("const preparedUploadKind = insertAsAudio ? '음성' : getUploadKind(preparedFile)");
+    expect(lexicalEditor).toContain(
+      "const preparedUploadKind = insertAsAudio ? '음성' : getUploadKind(preparedFile)"
+    );
     expect(lexicalEditor).toContain('<audio src="${escapeHtml(url)}" controls');
     expect(uploadRoute).toContain('extractVideoAudio');
     const fileUpload = readFileSync('src/lib/util/fileUpload.js', 'utf8');
@@ -233,7 +239,7 @@ describe('write page video upload', () => {
   });
 
   it('sets adapter-node BODY_SIZE_LIMIT to the board upload limit in production', () => {
-    expect(uploadLimits).toContain("BOARD_UPLOAD_BODY_SIZE_LIMIT = `${BOARD_UPLOAD_MAX_MB}M`");
+    expect(uploadLimits).toContain('BOARD_UPLOAD_BODY_SIZE_LIMIT = `${BOARD_UPLOAD_MAX_MB}M`');
     expect(dockerfile).toContain('ENV BODY_SIZE_LIMIT=100M');
     expect(dockerfile).toContain('BODY_SIZE_LIMIT=100M exec node .');
     expect(dockerCompose).toContain('BODY_SIZE_LIMIT: 100M');

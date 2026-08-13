@@ -162,8 +162,13 @@
       }
 
       const numbers =
-        typeof json === 'object' && json !== null && 'numbers' in json && Array.isArray((json as { numbers: unknown }).numbers)
-          ? (json as { numbers: number[] }).numbers.filter((x) => typeof x === 'number' && Number.isInteger(x)).slice(0, 6)
+        typeof json === 'object' &&
+        json !== null &&
+        'numbers' in json &&
+        Array.isArray((json as { numbers: unknown }).numbers)
+          ? (json as { numbers: number[] }).numbers
+              .filter((x) => typeof x === 'number' && Number.isInteger(x))
+              .slice(0, 6)
           : [];
 
       if (numbers.length === 6) {
@@ -255,7 +260,8 @@
       type="button"
     >
       {#if refreshing}
-        <span class="spinner-border spinner-border-sm" role="status" aria-label="새로고침 중"></span>
+        <span class="spinner-border spinner-border-sm" role="status" aria-label="새로고침 중"
+        ></span>
       {:else}
         <Icon name="arrow-clockwise" aria-hidden="true" />
       {/if}
@@ -280,7 +286,8 @@
         <h4 class="h6 text-secondary mb-2">직전 주 &amp; 공식 당첨 비교</h4>
 
         <div class="small text-muted mb-1">
-          비교 구간 · <strong>{lottoWeekMatch.weekLabel}</strong> 서울 기준월~일 / 참고 회차 동행복권 <strong>{dr.drwNo}회</strong>
+          비교 구간 · <strong>{lottoWeekMatch.weekLabel}</strong> 서울 기준월~일 / 참고 회차
+          동행복권 <strong>{dr.drwNo}회</strong>
           {#if dr.drwNoDate}
             (<span>{dr.drwNoDate}</span>)
           {/if}
@@ -288,7 +295,9 @@
         </div>
 
         {#if officialSync?.notes}
-          <div class="small text-muted mb-2">자동 동기화 · {formatSyncNotes(officialSync.notes)}</div>
+          <div class="small text-muted mb-2">
+            자동 동기화 · {formatSyncNotes(officialSync.notes)}
+          </div>
         {/if}
 
         <div class="d-flex flex-wrap align-items-center gap-1 mb-2">
@@ -375,7 +384,9 @@
       {#if lottoHistory.length}
         <ul class="list-unstyled mb-0">
           {#each lottoHistory as row (row.id)}
-            <li class="d-flex flex-wrap align-items-center gap-2 py-1 border-bottom border-secondary-subtle">
+            <li
+              class="d-flex flex-wrap align-items-center gap-2 py-1 border-bottom border-secondary-subtle"
+            >
               {#if row.photo && row.photo.trim() !== ''}
                 <img
                   src={row.photo}

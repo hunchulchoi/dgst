@@ -82,7 +82,10 @@ export async function fetchBoardArticleList({ boardId, pageNo, pageUnit, created
     ]);
     const readAtByArticleId = new Map(
       articleReads.map(
-        /** @param {{ articleId: string, readAt: Date }} read */ (read) => [read.articleId, read.readAt]
+        /** @param {{ articleId: string, readAt: Date }} read */ (read) => [
+          read.articleId,
+          read.readAt
+        ]
       )
     );
     /** @type {Map<string, Date>} */

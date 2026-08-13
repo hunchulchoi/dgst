@@ -424,7 +424,6 @@
   $effect(() => {
     console.log('uploading', uploading);
   });
-
 </script>
 
 <main class="container board-page-inset my-1">

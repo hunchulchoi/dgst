@@ -31,13 +31,7 @@ export function buildKakaoExternalBrowserUrl(href) {
  *   navigate: (url: string) => void
  * }} options
  */
-export async function offerKakaoExternalBrowser({
-  userAgent,
-  href,
-  storage,
-  confirm,
-  navigate
-}) {
+export async function offerKakaoExternalBrowser({ userAgent, href, storage, confirm, navigate }) {
   if (!isKakaoInAppBrowser(userAgent)) return false;
 
   const externalUrl = buildKakaoExternalBrowserUrl(href);

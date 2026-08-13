@@ -1,9 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import {
-  createWebpUploadFile,
-  isVideoAttachment
-} from '../src/lib/util/attachmentMedia.js';
+import { createWebpUploadFile, isVideoAttachment } from '../src/lib/util/attachmentMedia.js';
 
 const commentRoute = readFileSync(
   'src/routes/board/[boardId=boardId]/[[pageNo=integer]]/[articleId]/comment/+server.js',
@@ -42,7 +39,7 @@ describe('attachment media detection', () => {
 
   it('loads an early video frame so attachments show a thumbnail before playback', () => {
     expect(attachmentComponent).toContain('withVideoPreviewTime');
-    expect(attachmentComponent).toContain("#t=0.1");
+    expect(attachmentComponent).toContain('#t=0.1');
     expect(attachmentComponent).toContain('element.currentTime = previewTime');
   });
 

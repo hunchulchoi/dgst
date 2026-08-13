@@ -287,11 +287,7 @@ describe('breakout gameUtils', () => {
     }
     expect(shouldEscapeIronTrap(capped, t0 + 100)).toBe(true);
 
-    const escaped = escapeIronTrap(
-      { ...ball, x: 200, y: 120, vx: 3, vy: -3 },
-      6,
-      () => 0.5
-    );
+    const escaped = escapeIronTrap({ ...ball, x: 200, y: 120, vx: 3, vy: -3 }, 6, () => 0.5);
     expect(escaped.vy).toBeGreaterThan(0);
     expect(escaped.y).toBeGreaterThan(120);
     expect(escaped.ironStreak).toBeUndefined();
@@ -627,10 +623,7 @@ describe('breakout gameUtils', () => {
     }
 
     const objects = createBilliardObjectBalls(5);
-    const billiardIrons = createBonusIronBricks(
-      () => 0.3,
-      zonesFromBonusTargets({ objects })
-    );
+    const billiardIrons = createBonusIronBricks(() => 0.3, zonesFromBonusTargets({ objects }));
     for (const iron of billiardIrons) {
       for (const o of objects) {
         expect(zoneOverlapsBrick({ x: o.x, y: o.y, radius: o.radius }, iron, 6)).toBe(false);

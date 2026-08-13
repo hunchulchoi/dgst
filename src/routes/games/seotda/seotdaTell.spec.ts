@@ -1,3 +1,4 @@
+// @ts-nocheck -- Hidden-card response fixtures are runtime-only projections.
 import { describe, expect, it } from 'vitest';
 import { createNpcTell } from './seotdaTell.js';
 import { createNewRound } from './seotdaRound.js';

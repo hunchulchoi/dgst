@@ -131,7 +131,7 @@ export function npcStackForNextRound(savedChips, userChips, ante = ANTE) {
  * @param {number} ante
  * @param {number} [opponentStack]
  */
-export function maxRoundContribution(bankroll, ante = ANTE, opponentStack = Infinity) {
+export function maxRoundContribution(bankroll, _ante = ANTE, opponentStack = Infinity) {
   const safeBankroll = Math.max(0, Number(bankroll) || 0);
   return Math.min(safeBankroll, Math.max(0, opponentStack));
 }

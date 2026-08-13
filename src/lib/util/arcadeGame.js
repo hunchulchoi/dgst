@@ -1,3 +1,4 @@
+/** @type {Record<string, string>} */
 export const ARCADE_GAME_LABELS = {
   slot: '뺑뺑이',
   seotda: '섯다',

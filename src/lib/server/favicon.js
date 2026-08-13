@@ -8,10 +8,12 @@ const PINK_FAVICON_REPLACEMENTS = [
   ['manifest.json', 'manifest-pink.json']
 ];
 
+/** @param {string} hostname */
 export function shouldUsePinkFavicon(hostname) {
   return hostname.toLowerCase() !== PRIMARY_HOSTNAME;
 }
 
+/** @param {string} html @param {string} hostname */
 export function applyHostnameFavicon(html, hostname) {
   if (!shouldUsePinkFavicon(hostname)) return html;
 
@@ -21,6 +23,7 @@ export function applyHostnameFavicon(html, hostname) {
   );
 }
 
+/** @param {string} pathname @param {string} hostname */
 export function faviconRedirectTarget(pathname, hostname) {
   if (shouldUsePinkFavicon(hostname)) {
     return pathname === '/favicon.ico'
@@ -28,7 +31,5 @@ export function faviconRedirectTarget(pathname, hostname) {
       : '/favicon/apple-icon-pink-180x180.png';
   }
 
-  return pathname === '/favicon.ico'
-    ? '/favicon/favicon.ico'
-    : '/favicon/apple-icon-180x180.png';
+  return pathname === '/favicon.ico' ? '/favicon/favicon.ico' : '/favicon/apple-icon-180x180.png';
 }

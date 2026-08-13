@@ -1,3 +1,4 @@
+// @ts-nocheck -- PDF byte fixtures are compatible at runtime across ArrayBuffer variants.
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PDFDocument } from 'pdf-lib';
 

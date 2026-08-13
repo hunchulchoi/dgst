@@ -5,15 +5,9 @@ import { getBoardCelebrations } from '$lib/server/boardCelebrations.js';
 export async function GET() {
   try {
     const celebrations = await getBoardCelebrations();
-    return json(
-      { celebrations },
-      { headers: { 'Cache-Control': 'no-store, max-age=0' } }
-    );
+    return json({ celebrations }, { headers: { 'Cache-Control': 'no-store, max-age=0' } });
   } catch (err) {
     console.error('[celebrations GET]', err);
-    return json(
-      { celebrations: [] },
-      { headers: { 'Cache-Control': 'no-store, max-age=0' } }
-    );
+    return json({ celebrations: [] }, { headers: { 'Cache-Control': 'no-store, max-age=0' } });
   }
 }

@@ -39,7 +39,9 @@
         error: pageError,
         details: {
           reloadAttempted,
-          pageDataKeys: Object.keys($page.data ?? {}).sort().slice(0, 30)
+          pageDataKeys: Object.keys($page.data ?? {})
+            .sort()
+            .slice(0, 30)
         }
       });
 

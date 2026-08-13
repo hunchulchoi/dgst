@@ -2,6 +2,7 @@ import { getPrisma } from '$lib/database/prisma.js';
 import { normalizeToIsoString } from '$lib/util/formatRelativeTime.js';
 import { attachGameProfilePhotos } from '$lib/server/gameProfilePhotos.js';
 import { randomUUID } from 'node:crypto';
+import { Prisma } from '@prisma/client';
 
 export const ARCADE_INITIAL_BALANCE = 1000;
 export const ARCADE_OOPS_TOPUP = 700;
@@ -183,7 +184,7 @@ export async function applyArcadeEntries(email, nickname, entries) {
                 activeGame: null,
                 activePlayId: null,
                 activeUntil: null,
-                activePayload: null
+                activePayload: Prisma.DbNull
               }
             : {})
         }
@@ -234,7 +235,9 @@ export async function applyArcadeEntries(email, nickname, entries) {
           payout,
           delta,
           balance,
-          meta: entry.meta ?? { reels }
+          meta: /** @type {import('@prisma/client').Prisma.InputJsonValue} */ (
+            entry.meta ?? { reels }
+          )
         }
       });
     }
@@ -290,7 +293,10 @@ export async function beginArcadePlay(
       activeGame: game,
       activePlayId: playId,
       activeUntil,
-      activePayload: payload
+      activePayload:
+        payload === null
+          ? Prisma.DbNull
+          : /** @type {import('@prisma/client').Prisma.InputJsonValue} */ (payload)
     }
   });
   if (claimed.count !== 1) {
@@ -322,7 +328,12 @@ export async function getArcadePlay(email, playId) {
 export async function releaseArcadePlay(email, playId) {
   await getPrisma().arcadeWallet.updateMany({
     where: { email, activePlayId: playId },
-    data: { activeGame: null, activePlayId: null, activeUntil: null, activePayload: null }
+    data: {
+      activeGame: null,
+      activePlayId: null,
+      activeUntil: null,
+      activePayload: Prisma.DbNull
+    }
   });
 }
 
@@ -331,6 +342,15 @@ export async function releaseArcadePlay(email, playId) {
  * @param {string} email
  * @param {string} nickname
  * @param {string} sourceGame
+ * @returns {Promise<{
+ *   balance: number;
+ *   oopsInfo: null | {
+ *     createdAt?: string;
+ *     readyAt?: string;
+ *     remainingMs: number;
+ *     waiting?: true;
+ *   };
+ * }>}
  */
 export async function resolveArcadeOops(email, nickname, sourceGame) {
   let wallet = await ensureArcadeWallet(email, nickname);

@@ -212,7 +212,7 @@
               class="cards"
               aria-label={`${seat.name} 패`}
             >
-              {#each seat.cards ?? [] as card, cardIndex}
+              {#each seat.cards ?? [] as card, cardIndex (cardIndex)}
                 {@const showCard = Boolean(card) && cardsRevealed}
                 <div
                   class:flipped={showCard}

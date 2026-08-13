@@ -1,3 +1,4 @@
+// @ts-nocheck -- Runtime-focused Prisma transaction mocks are intentionally partial.
 import { describe, expect, it } from 'vitest';
 import {
   ARCADE_INITIAL_BALANCE,

@@ -1,3 +1,4 @@
+// @ts-nocheck -- Playwright browser callbacks use runtime DOM types.
 import { expect, test } from '@playwright/test';
 
 const STORAGE_KEY = 'dgst_tetris_state';

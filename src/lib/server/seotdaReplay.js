@@ -1,10 +1,11 @@
 const REPLAY_CLASS = 'seotda-replay-data';
 const MAX_EVENTS = 64;
+const CONTROL_CHARACTERS = new RegExp('[\\u0000-\\u001f\\u007f]', 'g');
 
 /** @param {unknown} value @param {number} maxLength */
 function cleanText(value, maxLength) {
   return String(value ?? '')
-    .replace(/[\u0000-\u001f\u007f]/g, ' ')
+    .replace(CONTROL_CHARACTERS, ' ')
     .trim()
     .slice(0, maxLength);
 }

@@ -21,9 +21,8 @@ describe('billiardsReplayRepo', () => {
     );
     prismaModule.getPrisma.mockReturnValue({ $transaction: transaction });
 
-    const { createBilliardsReplayArticle } = await import(
-      '../src/lib/server/billiardsReplayRepo.js'
-    );
+    const { createBilliardsReplayArticle } =
+      await import('../src/lib/server/billiardsReplayRepo.js');
     const result = await createBilliardsReplayArticle({
       email: 'player@example.com',
       nickname: '선수',

@@ -1,3 +1,4 @@
+// @ts-nocheck -- Smoke-test session and route events are intentionally partial fixtures.
 import { describe, expect, it } from 'vitest';
 import { Client } from 'minio';
 import {
@@ -12,9 +13,7 @@ const smoke = process.env.RUN_MINIO_SMOKE === 'true' ? it : it.skip;
 
 function minioTarget() {
   const endpoint = new URL(
-    /^[a-z][a-z\d+.-]*:\/\//i.test(MINIO_ENDPOINT)
-      ? MINIO_ENDPOINT
-      : `http://${MINIO_ENDPOINT}`
+    /^[a-z][a-z\d+.-]*:\/\//i.test(MINIO_ENDPOINT) ? MINIO_ENDPOINT : `http://${MINIO_ENDPOINT}`
   );
   const [bucket, ...prefixParts] = MINIO_BUCKET.split('/').filter(Boolean);
   return {

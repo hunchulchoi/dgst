@@ -25,11 +25,11 @@ function shouldUseMobilePortraitSizing(img, options) {
   const viewportWidth = getViewportWidth(options);
   return Boolean(
     viewportWidth &&
-      viewportWidth <= MOBILE_ATTACHMENT_VIEWPORT_MAX_WIDTH &&
-      isPortraitImage(img) &&
-      img?.naturalHeight &&
-      img?.naturalWidth &&
-      img.naturalHeight < img.naturalWidth * LONG_IMAGE_RATIO_THRESHOLD
+    viewportWidth <= MOBILE_ATTACHMENT_VIEWPORT_MAX_WIDTH &&
+    isPortraitImage(img) &&
+    img?.naturalHeight &&
+    img?.naturalWidth &&
+    img.naturalHeight < img.naturalWidth * LONG_IMAGE_RATIO_THRESHOLD
   );
 }
 
@@ -41,11 +41,11 @@ function shouldUseDesktopPortraitSizing(img, options) {
   const viewportWidth = getViewportWidth(options);
   return Boolean(
     viewportWidth &&
-      viewportWidth > MOBILE_ATTACHMENT_VIEWPORT_MAX_WIDTH &&
-      isPortraitImage(img) &&
-      img?.naturalHeight &&
-      img?.naturalWidth &&
-      img.naturalHeight < img.naturalWidth * LONG_IMAGE_RATIO_THRESHOLD
+    viewportWidth > MOBILE_ATTACHMENT_VIEWPORT_MAX_WIDTH &&
+    isPortraitImage(img) &&
+    img?.naturalHeight &&
+    img?.naturalWidth &&
+    img.naturalHeight < img.naturalWidth * LONG_IMAGE_RATIO_THRESHOLD
   );
 }
 

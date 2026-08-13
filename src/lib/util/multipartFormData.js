@@ -1,3 +1,4 @@
+/** @param {string} value */
 function escapeDispositionValue(value) {
   return String(value).replace(/[\r\n"]/g, (character) => {
     if (character === '"') return '%22';
@@ -36,9 +37,7 @@ export function encodeMultipartFormData(formData, boundary = createMultipartBoun
       continue;
     }
 
-    parts.push(
-      `Content-Disposition: form-data; name="${escapedName}"\r\n\r\n${String(value)}\r\n`
-    );
+    parts.push(`Content-Disposition: form-data; name="${escapedName}"\r\n\r\n${String(value)}\r\n`);
   }
 
   parts.push(`--${boundary}--\r\n`);

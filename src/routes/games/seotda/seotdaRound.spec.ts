@@ -1,3 +1,4 @@
+// @ts-nocheck -- Large behavioral fixtures are validated at runtime by Vitest.
 import { describe, expect, it } from 'vitest';
 import {
   npcPlayerRelief,

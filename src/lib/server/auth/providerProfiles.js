@@ -35,8 +35,7 @@ export function mapKakaoAuthProfile(profile) {
   return {
     id: kakaoId,
     email: kakaoAccount.email ? hash(kakaoAccount.email) : hash(`kakao:${kakaoId}`),
-    nickname:
-      kakaoAccount.profile?.nickname || kakaoAccount.name || `카카오${kakaoId.slice(-4)}`,
+    nickname: kakaoAccount.profile?.nickname || kakaoAccount.name || `카카오${kakaoId.slice(-4)}`,
     introduction: '우리 자기',
     photo: null,
     state: 'registered',

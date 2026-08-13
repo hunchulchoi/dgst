@@ -132,9 +132,7 @@ export function evaluateFourBallShot(contacts: ShotContact[]): {
 } {
   const hitRedIds = Array.from(
     new Set(
-      contacts
-        .filter((contact) => contact.cueRole === 'red')
-        .map((contact) => contact.targetId)
+      contacts.filter((contact) => contact.cueRole === 'red').map((contact) => contact.targetId)
     )
   );
 

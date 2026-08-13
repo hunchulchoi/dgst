@@ -94,7 +94,9 @@ describe('database time contract', () => {
     expect(migration).toContain('UPDATE "comments"');
     expect(migration.match(/- INTERVAL '9 hours'/g)).toHaveLength(5);
     expect(migration.match(/> CURRENT_TIMESTAMP/g)).toHaveLength(10);
-    expect(migration).toContain("RAISE EXCEPTION 'future board timestamps remain after KST repair'");
+    expect(migration).toContain(
+      "RAISE EXCEPTION 'future board timestamps remain after KST repair'"
+    );
     expect(migration).not.toContain('UPDATE "sessions"');
     expect(migration).not.toContain('UPDATE "verification_tokens"');
   });

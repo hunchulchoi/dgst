@@ -1,9 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  evaluateAuthSignIn,
-  resolveSafeAuthRedirect
-} from '../src/lib/server/auth/authPolicy.js';
+import { evaluateAuthSignIn, resolveSafeAuthRedirect } from '../src/lib/server/auth/authPolicy.js';
 
 describe('authentication sign-in policy', () => {
   it.each(['blocked', 'banned'])('denies %s Kakao users', (state) => {

@@ -23,7 +23,7 @@ export function getPrismaAdapter() {
   if (cachedAdapter) return cachedAdapter;
 
   const base =
-    /** @type {import('@auth/core/adapters').Adapter & Required<Pick<import('@auth/core/adapters').Adapter, 'getUser' | 'getUserByEmail' | 'updateUser' | 'getSessionAndUser' | 'updateSession' | 'deleteSession'>>} */ (
+    /** @type {import('@auth/core/adapters').Adapter & Required<Pick<import('@auth/core/adapters').Adapter, 'getUser' | 'getUserByEmail' | 'updateUser' | 'linkAccount' | 'getSessionAndUser' | 'updateSession' | 'deleteSession'>>} */ (
       PrismaAdapter(getPrisma())
     );
 
@@ -49,7 +49,7 @@ export function getPrismaAdapter() {
       await sessionCache.invalidateSessionsForUser(user.id);
       return updated;
     },
-    async linkAccount(account) {
+    linkAccount(account) {
       return base.linkAccount({
         userId: account.userId,
         type: account.type,
@@ -68,9 +68,7 @@ export function getPrismaAdapter() {
             await sessionCache.invalidateSession(sessionToken);
           } else if (
             isDeniedAuthUser(cached.user) ||
-            isSessionAbsolutelyExpired(
-              /** @type {{ createdAt?: unknown }} */ (cached.session)
-            )
+            isSessionAbsolutelyExpired(/** @type {{ createdAt?: unknown }} */ (cached.session))
           ) {
             await sessionCache.invalidateSession(sessionToken);
             await base.deleteSession(sessionToken);
@@ -86,9 +84,7 @@ export function getPrismaAdapter() {
             /** @type {{ createdAt?: unknown }} */ (result.session).createdAt
           ) ||
             isDeniedAuthUser(result.user) ||
-            isSessionAbsolutelyExpired(
-              /** @type {{ createdAt?: unknown }} */ (result.session)
-            ))
+            isSessionAbsolutelyExpired(/** @type {{ createdAt?: unknown }} */ (result.session)))
         ) {
           await sessionCache.invalidateSession(sessionToken);
           await base.deleteSession(sessionToken);

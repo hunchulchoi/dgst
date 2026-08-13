@@ -5,6 +5,16 @@
     applyTallAttachmentSizing
   } from '$lib/util/attachmentImageSizing.js';
 
+  /** @type {{
+   *   src: string;
+   *   video?: boolean;
+   *   alt?: string;
+   *   ariaLabel?: string;
+   *   tallAttachmentSize?: boolean;
+   *   imageStyle?: string;
+   *   videoStyle?: string;
+   *   onimageload?: (event: Event) => void;
+   * }} */
   let {
     src,
     video = false,
@@ -16,9 +26,10 @@
     onimageload
   } = $props();
 
-  /** @param {unknown} value */
+  /** @param {unknown} value @returns {string} */
   function withVideoPreviewTime(value) {
-    if (typeof value !== 'string' || !value || value.includes('#t=')) return value;
+    if (typeof value !== 'string') return '';
+    if (!value || value.includes('#t=')) return value;
     return `${value.split('#', 1)[0]}#t=0.1`;
   }
 

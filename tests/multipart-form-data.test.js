@@ -17,10 +17,9 @@ describe('encodeMultipartFormData', () => {
     const parsed = await request.formData();
     const parsedFile = parsed.get('upload');
 
-    expect(multipart.contentType).toBe(
-      'multipart/form-data; boundary=dgst-test-boundary'
-    );
+    expect(multipart.contentType).toBe('multipart/form-data; boundary=dgst-test-boundary');
     expect(parsedFile).toBeInstanceOf(File);
+    if (!(parsedFile instanceof File)) throw new TypeError('Expected multipart upload file');
     expect(parsedFile.name).toBe('원본 사진.png');
     expect(parsedFile.type).toBe('image/png');
     expect(new Uint8Array(await parsedFile.arrayBuffer())).toEqual(bytes);

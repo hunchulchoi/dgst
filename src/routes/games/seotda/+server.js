@@ -22,7 +22,6 @@ import {
   sparkDecisionCooldownMs,
   sparkInterventionHands,
   writeSeotdaLeaderPromotion,
-  writeSeotdaScore,
   writeSeotdaSettlement
 } from './seotdaBalance.js';
 import {
@@ -146,21 +145,36 @@ function publicOf(round) {
   return toPublicState(round, 'user', (cards) => displayHand(cards, round.ruleMode));
 }
 
+/** @param {import('./seotdaState.js').SeotdaRound} round */
+function isShowdown(round) {
+  return round.phase === 'showdown';
+}
+
 /**
  * @param {import('@sveltejs/kit').RequestEvent} event
+ * @returns {Promise<{ email: string; nickname: string; smoke: boolean }>}
  */
 async function requireUser(event) {
   const session = await getGameSession(event);
-  if (isLocalGameSmokeSession(session)) {
+  const sessionEmail = session?.user?.email;
+  if (isLocalGameSmokeSession(session) && typeof sessionEmail === 'string') {
     return {
-      email: session.user.email,
-      nickname: session.user.nickname || '로컬스모크',
+      email: sessionEmail,
+      nickname:
+        typeof session?.user?.nickname === 'string' && session.user.nickname
+          ? session.user.nickname
+          : '로컬스모크',
       smoke: true
     };
   }
-  const email = session?.user?.email;
-  if (!email) throw error(401, { message: '로그인이 필요합니다.' });
-  const nickname = session?.user?.nickname || session?.user?.name || 'anonymous';
+  if (typeof sessionEmail !== 'string' || !sessionEmail) {
+    throw error(401, { message: '로그인이 필요합니다.' });
+  }
+  const email = sessionEmail;
+  const nickname =
+    (typeof session?.user?.nickname === 'string' && session.user.nickname) ||
+    (typeof session?.user?.name === 'string' && session.user.name) ||
+    'anonymous';
   return { email, nickname, smoke: false };
 }
 
@@ -315,7 +329,7 @@ export async function POST(event) {
       const npcActions = await runNpcTurnsWithSpark(round, decideSparkNpcAction);
       setRound(user.email, round);
 
-      if (round.phase === 'showdown') {
+      if (isShowdown(round)) {
         const before = chipsBeforeMap.get(user.email) ?? round.seats[0].chips;
         const {
           handResult,
@@ -430,6 +444,8 @@ export async function POST(event) {
  * @param {string} nickname
  * @param {string} [openingActorId]
  * @param {number} [sparkTauntCooldown]
+ * @param {'basic' | 'classic'} [ruleMode]
+ * @param {boolean} [eventMode]
  */
 async function beginRound(
   email,
@@ -602,7 +618,7 @@ function handleSmoke(email, action, body) {
     );
     const npcActions = runNpcTurns(round);
     setRound(email, round);
-    if (round.phase === 'showdown') {
+    if (isShowdown(round)) {
       const before = chipsBeforeMap.get(email) ?? SMOKE_BALANCE;
       applyGaepyeongIfOops(before, round);
     }

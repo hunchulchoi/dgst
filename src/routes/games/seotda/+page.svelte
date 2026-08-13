@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onDestroy, onMount } from 'svelte';
+  import { onDestroy, onMount, untrack } from 'svelte';
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
   import { ko } from 'date-fns/locale';
@@ -130,8 +130,9 @@
   }
 
   let { data }: SeotdaPageProps = $props();
+  const initialData = untrack(() => data);
 
-  let balance = $state(Number(data.balance ?? 0));
+  let balance = $state(Number(initialData.balance ?? 0));
   let rankList = $state<
     Array<{
       nickname: string;
@@ -140,11 +141,11 @@
       updatedAt?: string | null;
       photo?: string | null;
     }>
-  >(data.rank ?? []);
+  >(initialData.rank ?? []);
   let todayStats = $state<{ hands: number; users: number }>(
-    data.todayStats ?? { hands: 0, users: 0 }
+    initialData.todayStats ?? { hands: 0, users: 0 }
   );
-  let round = $state<SeotdaRound | null>((data.round as SeotdaRound | null) ?? null);
+  let round = $state<SeotdaRound | null>((initialData.round as SeotdaRound | null) ?? null);
   let busy = $state(false);
   let dealing = $state(false);
   let message = $state('');
@@ -152,7 +153,7 @@
     waiting?: boolean;
     createdAt?: string;
     remainingMs?: number;
-  } | null>(data.oopsInfo ?? null);
+  } | null>(initialData.oopsInfo ?? null);
 
   /** 쇼다운 연출: 아직 안 깐 NPC id 집합 */
   let hiddenNpcIds = $state<Set<string>>(new Set());
@@ -161,8 +162,9 @@
   /** 두 번째 장(히든) 까봤는지 — 쇼다운 중이면 이미 연 */
   let holeRevealed = $state(
     !!(
-      data.round &&
-      ((data.round as SeotdaRound).showdown || (data.round as SeotdaRound).phase === 'showdown')
+      initialData.round &&
+      ((initialData.round as SeotdaRound).showdown ||
+        (initialData.round as SeotdaRound).phase === 'showdown')
     )
   );
   /** 패 까기 레이어 */
@@ -175,7 +177,7 @@
   /** 연출 끝난 뒤에만 승패/다음판 표시 */
   let revealDone = $state(true);
   let ddaengLayerOpen = $state(
-    Number((data.round as SeotdaRound | null)?.ddaengValuePerLoser ?? 0) > 0
+    Number((initialData.round as SeotdaRound | null)?.ddaengValuePerLoser ?? 0) > 0
   );
   /** 지금 까는 좌석 (하이라이트) */
   let revealingId = $state<string | null>(null);
@@ -198,11 +200,11 @@
   let bossNpcDealCount = $state(0);
   let bossUserLastCardRevealed = $state(false);
   let bustRoundPending = $state(false);
-  let oopsRemainingMs = $state(Number(data.oopsInfo?.remainingMs ?? 0));
+  let oopsRemainingMs = $state(Number(initialData.oopsInfo?.remainingMs ?? 0));
   let selectedRuleMode = $state<'basic' | 'classic'>(
-    (data.round as SeotdaRound | null)?.ruleMode === 'classic' ? 'classic' : 'basic'
+    (initialData.round as SeotdaRound | null)?.ruleMode === 'classic' ? 'classic' : 'basic'
   );
-  let eventMode = $state(!!(data.round as SeotdaRound | null)?.eventMode);
+  let eventMode = $state(!!(initialData.round as SeotdaRound | null)?.eventMode);
 
   const PEEL_THRESHOLD = 0.55;
   const PEEL_MAX_PX = 220;
@@ -618,11 +620,7 @@
    * @param {boolean} fromShowdownAct
    * @param {boolean} forceNewDeal
    */
-  function applyRound(
-    next: SeotdaRound | null,
-    fromShowdownAct = false,
-    forceNewDeal = false
-  ) {
+  function applyRound(next: SeotdaRound | null, fromShowdownAct = false, forceNewDeal = false) {
     const wasShowdown = round && (round.showdown || round.phase === 'showdown');
     const nowShowdown = next && (next.showdown || next.phase === 'showdown');
     const isNewDeal =
@@ -764,9 +762,7 @@
       const next = (j.round as SeotdaRound | null) ?? null;
       const hitShowdown = !!(next && (next.showdown || next.phase === 'showdown'));
       const isReplayDeal =
-        !!next &&
-        next.phase === 'betting' &&
-        Number(next.dealNo ?? 1) > Number(round?.dealNo ?? 1);
+        !!next && next.phase === 'betting' && Number(next.dealNo ?? 1) > Number(round?.dealNo ?? 1);
       if (isReplayDeal) {
         await swalFire({
           icon: 'info',
@@ -1393,6 +1389,7 @@
               <div
                 class="peel-backdrop"
                 role="dialog"
+                tabindex="-1"
                 aria-modal="true"
                 aria-label="패 까기"
                 onclick={(e) => {

@@ -1,3 +1,4 @@
+// @ts-nocheck -- Constructor mocks intentionally implement only the exercised MinIO surface.
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({

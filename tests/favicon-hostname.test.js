@@ -32,9 +32,7 @@ describe('hostname-specific favicon', () => {
   });
 
   it('uses the matching icon for direct browser requests', () => {
-    expect(faviconRedirectTarget('/favicon.ico', 'www.dgst.me')).toBe(
-      '/favicon/favicon.ico'
-    );
+    expect(faviconRedirectTarget('/favicon.ico', 'www.dgst.me')).toBe('/favicon/favicon.ico');
     expect(faviconRedirectTarget('/favicon.ico', 'localhost')).toBe(
       '/favicon/favicon-pink-32x32.png'
     );

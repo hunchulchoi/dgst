@@ -58,7 +58,9 @@ export function resolveLifeLoss(lives: number, shieldCharges: number): LifeLossR
 
 /** 게임 루프를 계속 돌려야 하는 화면인지 */
 export function shouldContinueGameLoop(screen: BreakoutScreen): boolean {
-  return screen === 'playing' || screen === 'ready' || screen === 'paused' || screen === 'stageClear';
+  return (
+    screen === 'playing' || screen === 'ready' || screen === 'paused' || screen === 'stageClear'
+  );
 }
 
 export const PADDLE_EXPAND_MULTIPLIER = 1.55;
@@ -349,46 +351,11 @@ const BONUS_PATTERN_BY_STAGE: Record<number, PatternId> = {
  * 철로 통로·포켓을 만들고, 그 사이 벽돌만 깨면 클리어 (당구 3쿠션 감성)
  */
 const BONUS_PUZZLE_MAPS: Record<PatternId, string[]> = {
-  cushion: [
-    'IIIIIIIIII',
-    'I........I',
-    'I..NNNN..I',
-    'I........I',
-    'I..IIII..I',
-    'I........I'
-  ],
-  pockets: [
-    'I.I....I.I',
-    'I.INNNNI.I',
-    'I.I....I.I',
-    'IIII..IIII',
-    '....NN....',
-    'I........I'
-  ],
-  lane: [
-    'IIII..IIII',
-    'I..N..N..I',
-    'I..IIII..I',
-    'I..N..N..I',
-    'I..IIII..I',
-    'I........I'
-  ],
-  cage: [
-    'IIIIIIIIII',
-    'I.N.II.N.I',
-    'I...II...I',
-    'IIII..IIII',
-    'I.N....N.I',
-    'I........I'
-  ],
-  bank: [
-    'I........I',
-    'I.IIIIII.I',
-    'I.I.NN.I.I',
-    'I.I....I.I',
-    'I.INNNNI.I',
-    'I........I'
-  ],
+  cushion: ['IIIIIIIIII', 'I........I', 'I..NNNN..I', 'I........I', 'I..IIII..I', 'I........I'],
+  pockets: ['I.I....I.I', 'I.INNNNI.I', 'I.I....I.I', 'IIII..IIII', '....NN....', 'I........I'],
+  lane: ['IIII..IIII', 'I..N..N..I', 'I..IIII..I', 'I..N..N..I', 'I..IIII..I', 'I........I'],
+  cage: ['IIIIIIIIII', 'I.N.II.N.I', 'I...II...I', 'IIII..IIII', 'I.N....N.I', 'I........I'],
+  bank: ['I........I', 'I.IIIIII.I', 'I.I.NN.I.I', 'I.I....I.I', 'I.INNNNI.I', 'I........I'],
   full: [],
   pyramid: [],
   diamond: [],
@@ -509,11 +476,16 @@ function buildPatternMask(pattern: PatternId): boolean[][] {
     case 'checker':
       return fillMask((row, col) => (row + col) % 2 === 0);
     case 'tunnel':
-      return fillMask((row, col) => col <= 1 || col >= BRICK_COLS - 2 || row === 0 || row === 2 || row === 4);
+      return fillMask(
+        (row, col) => col <= 1 || col >= BRICK_COLS - 2 || row === 0 || row === 2 || row === 4
+      );
     case 'U':
       return fillMask((row, col) => col === 0 || col === BRICK_COLS - 1 || row === BRICK_ROWS - 1);
     case 'walls':
-      return fillMask((row, col) => row === 0 || row === BRICK_ROWS - 1 || col === 0 || col === BRICK_COLS - 1 || row === 2);
+      return fillMask(
+        (row, col) =>
+          row === 0 || row === BRICK_ROWS - 1 || col === 0 || col === BRICK_COLS - 1 || row === 2
+      );
     case 'sparse':
       return fillMask((row, col) => (row + col) % 3 === 0);
     default:
@@ -631,14 +603,50 @@ export const POWER_UP_META: Record<
     bad: false,
     durationMs: MULTIBALL_DURATION_MS
   },
-  expand: { label: '패들 확대', color: '#a5d6a7', symbol: '↔', bad: false, durationMs: PADDLE_EXPAND_DURATION_MS },
+  expand: {
+    label: '패들 확대',
+    color: '#a5d6a7',
+    symbol: '↔',
+    bad: false,
+    durationMs: PADDLE_EXPAND_DURATION_MS
+  },
   extraLife: { label: '추가 목숨', color: '#f48fb1', symbol: '♥', bad: false },
-  slow: { label: '슬로우', color: '#ce93d8', symbol: '▼', bad: false, durationMs: SLOW_BALL_DURATION_MS },
-  fast: { label: '가속', color: '#ef9a9a', symbol: '▲', bad: true, durationMs: FAST_BALL_DURATION_MS },
-  shrink: { label: '패들 축소', color: '#ffab91', symbol: '⇔', bad: true, durationMs: PADDLE_SHRINK_DURATION_MS },
-  invincible: { label: '무적공', color: '#fff176', symbol: '☄', bad: false, durationMs: INVINCIBLE_BALL_DURATION_MS },
+  slow: {
+    label: '슬로우',
+    color: '#ce93d8',
+    symbol: '▼',
+    bad: false,
+    durationMs: SLOW_BALL_DURATION_MS
+  },
+  fast: {
+    label: '가속',
+    color: '#ef9a9a',
+    symbol: '▲',
+    bad: true,
+    durationMs: FAST_BALL_DURATION_MS
+  },
+  shrink: {
+    label: '패들 축소',
+    color: '#ffab91',
+    symbol: '⇔',
+    bad: true,
+    durationMs: PADDLE_SHRINK_DURATION_MS
+  },
+  invincible: {
+    label: '무적공',
+    color: '#fff176',
+    symbol: '☄',
+    bad: false,
+    durationMs: INVINCIBLE_BALL_DURATION_MS
+  },
   shield: { label: '보호막', color: '#80cbc4', symbol: '🛡', bad: false },
-  laser: { label: '레이저', color: '#ff8a80', symbol: '🔫', bad: false, durationMs: LASER_DURATION_MS },
+  laser: {
+    label: '레이저',
+    color: '#ff8a80',
+    symbol: '🔫',
+    bad: false,
+    durationMs: LASER_DURATION_MS
+  },
   bomb: { label: '전체 폭파', color: '#ff6f00', symbol: '💣', bad: false },
   bigBall: {
     label: '거대 공',
@@ -658,7 +666,14 @@ const POWER_UP_DROP_CHANCE: Record<BrickType, number> = {
 };
 
 const GOOD_POWER_UPS: PowerUpType[] = [
-  'multiball', 'expand', 'extraLife', 'slow', 'invincible', 'shield', 'laser', 'bigBall'
+  'multiball',
+  'expand',
+  'extraLife',
+  'slow',
+  'invincible',
+  'shield',
+  'laser',
+  'bigBall'
 ];
 const BAD_POWER_UPS: PowerUpType[] = ['fast', 'shrink'];
 const RAINBOW_POWER_UPS: PowerUpType[] = [
@@ -846,12 +861,7 @@ export function dragRatioFromAimAngle(angleDeg: number): number {
 }
 
 /** 조준각으로 공 발사 벡터 생성 */
-export function createAimedBall(
-  paddle: Paddle,
-  speed: number,
-  angleDeg: number,
-  spin = 0
-): Ball {
+export function createAimedBall(paddle: Paddle, speed: number, angleDeg: number, spin = 0): Ball {
   const rad = (clampAimAngle(angleDeg) * Math.PI) / 180;
   return {
     x: paddle.x + paddle.width / 2,
@@ -992,9 +1002,7 @@ export function buildBonusClearPerformance(params: {
   const clearBonus = cleared ? getStageClearBonus(stage, attemptsUsed) : 0;
   const displayTotal = cleared ? playScore * shotMultiplier + clearBonus : playScore;
 
-  const lines: BonusClearScoreLine[] = [
-    { label: '플레이 점수', value: playScore, delayMs: 200 }
-  ];
+  const lines: BonusClearScoreLine[] = [{ label: '플레이 점수', value: playScore, delayMs: 200 }];
   if (cleared && shotMultiplier > 1) {
     lines.push({ label: '1발 클리어 ×2', value: playScore, delayMs: 700 });
   }
@@ -1044,7 +1052,9 @@ export function buildBonusClearPerformance(params: {
   };
 
   return {
-    title: (cleared ? clearTitles : failTitles)[challenge] ?? (cleared ? '보너스 클리어' : '보너스 실패'),
+    title:
+      (cleared ? clearTitles : failTitles)[challenge] ??
+      (cleared ? '보너스 클리어' : '보너스 실패'),
     lines,
     grade,
     gradeLabel: cleared
@@ -1243,9 +1253,9 @@ export function createBilliardCueBall(paddle: Paddle, speed: number, angleDeg: n
 /**
  * 사방 쿠션 반사. 바닥도 쿠션 — 공 무한 생존.
  */
-export function handleEnclosedCushionCollision<T extends { x: number; y: number; vx: number; vy: number; radius: number }>(
-  ball: T
-): { ball: T; cushionHit: boolean } {
+export function handleEnclosedCushionCollision<
+  T extends { x: number; y: number; vx: number; vy: number; radius: number }
+>(ball: T): { ball: T; cushionHit: boolean } {
   let { x, y, vx, vy } = ball;
   const r = ball.radius;
   let cushionHit = false;
@@ -1275,9 +1285,9 @@ export function handleEnclosedCushionCollision<T extends { x: number; y: number;
 /**
  * 상·좌·우 쿠션만. 바닥은 패들로 받음 (스핀샷).
  */
-export function handleTopAndSideCushionCollision<T extends { x: number; y: number; vx: number; vy: number; radius: number }>(
-  ball: T
-): { ball: T; cushionHit: boolean } {
+export function handleTopAndSideCushionCollision<
+  T extends { x: number; y: number; vx: number; vy: number; radius: number }
+>(ball: T): { ball: T; cushionHit: boolean } {
   let { x, y, vx, vy } = ball;
   const r = ball.radius;
   let cushionHit = false;
@@ -1367,11 +1377,7 @@ export function isBilliardClear(
   requiredCushions: number,
   objects: BilliardBall[]
 ): boolean {
-  return (
-    cushionCount >= requiredCushions &&
-    objects.length > 0 &&
-    objects.every((b) => b.hit)
-  );
+  return cushionCount >= requiredCushions && objects.length > 0 && objects.every((b) => b.hit);
 }
 
 export function getBilliardTimeLeftMs(endsAt: number, now: number): number {
@@ -1648,11 +1654,7 @@ export interface FallingFly {
 }
 
 /** 떨어지는 파리 1개 생성 */
-export function createFallingFly(
-  seq: number,
-  rng = Math.random,
-  fallScale = 1
-): FallingFly {
+export function createFallingFly(seq: number, rng = Math.random, fallScale = 1): FallingFly {
   const margin = 28;
   const scale = Math.max(0.8, fallScale);
   const speedSpan = (FLIES_FALL_MAX - FLIES_FALL_MIN) * scale;
@@ -1929,9 +1931,7 @@ export function resolveVaultHit(
     };
   }
 
-  const nextTargets = targets.map((t) =>
-    t.number === hitNumber ? { ...t, activated: true } : t
-  );
+  const nextTargets = targets.map((t) => (t.number === hitNumber ? { ...t, activated: true } : t));
   const nextIndex = sequenceIndex + 1;
   return {
     targets: nextTargets,
@@ -2082,7 +2082,15 @@ export function handlePaddleCollision(
   options?: { impartSpin?: boolean }
 ): PaddleCollisionResult {
   if (
-    !circleRectCollision(ball.x, ball.y, ball.radius, paddle.x, paddle.y, paddle.width, paddle.height)
+    !circleRectCollision(
+      ball.x,
+      ball.y,
+      ball.radius,
+      paddle.x,
+      paddle.y,
+      paddle.width,
+      paddle.height
+    )
   ) {
     return { ball, hit: false };
   }
@@ -2262,7 +2270,15 @@ export function handleBrickCollision(
       const brick = nextBricks[i];
       if (!brick.alive) continue;
       if (
-        !circleRectCollision(ball.x, ball.y, ball.radius, brick.x, brick.y, brick.width, brick.height)
+        !circleRectCollision(
+          ball.x,
+          ball.y,
+          ball.radius,
+          brick.x,
+          brick.y,
+          brick.width,
+          brick.height
+        )
       ) {
         continue;
       }
@@ -2526,9 +2542,7 @@ export function handleLaserBrickCollision(
     for (let bi = 0; bi < nextBricks.length; bi++) {
       const brick = nextBricks[bi];
       if (!brick.alive) continue;
-      if (
-        !circleRectCollision(laser.x, laser.y, 3, brick.x, brick.y, brick.width, brick.height)
-      ) {
+      if (!circleRectCollision(laser.x, laser.y, 3, brick.x, brick.y, brick.width, brick.height)) {
         continue;
       }
       // 철: 레이저 소멸만 (관통 금지)
@@ -2705,12 +2719,18 @@ export function getActiveEffectLabels(
   if (effects.bigBallUntil > now) {
     labels.push(`거대공×3·관통 ${Math.ceil((effects.bigBallUntil - now) / 1000)}s`);
   }
-  if (effects.expandPaddleUntil > now) labels.push(`확대 ${Math.ceil((effects.expandPaddleUntil - now) / 1000)}s`);
-  if (effects.shrinkPaddleUntil > now) labels.push(`축소 ${Math.ceil((effects.shrinkPaddleUntil - now) / 1000)}s`);
-  if (effects.slowBallsUntil > now) labels.push(`슬로우 ${Math.ceil((effects.slowBallsUntil - now) / 1000)}s`);
-  if (effects.fastBallsUntil > now) labels.push(`가속 ${Math.ceil((effects.fastBallsUntil - now) / 1000)}s`);
-  if (effects.invincibleBallUntil > now) labels.push(`무적공 ${Math.ceil((effects.invincibleBallUntil - now) / 1000)}s`);
-  if (effects.laserUntil > now) labels.push(`레이저 ${Math.ceil((effects.laserUntil - now) / 1000)}s`);
+  if (effects.expandPaddleUntil > now)
+    labels.push(`확대 ${Math.ceil((effects.expandPaddleUntil - now) / 1000)}s`);
+  if (effects.shrinkPaddleUntil > now)
+    labels.push(`축소 ${Math.ceil((effects.shrinkPaddleUntil - now) / 1000)}s`);
+  if (effects.slowBallsUntil > now)
+    labels.push(`슬로우 ${Math.ceil((effects.slowBallsUntil - now) / 1000)}s`);
+  if (effects.fastBallsUntil > now)
+    labels.push(`가속 ${Math.ceil((effects.fastBallsUntil - now) / 1000)}s`);
+  if (effects.invincibleBallUntil > now)
+    labels.push(`무적공 ${Math.ceil((effects.invincibleBallUntil - now) / 1000)}s`);
+  if (effects.laserUntil > now)
+    labels.push(`레이저 ${Math.ceil((effects.laserUntil - now) / 1000)}s`);
   return labels;
 }
 

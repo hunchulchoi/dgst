@@ -3,7 +3,7 @@ import { compareHands, evaluateHand } from './seotdaEngine.js';
 export const SEOTDA_RULE_BASIC = 'basic';
 export const SEOTDA_RULE_CLASSIC = 'classic';
 
-/** @param {unknown} value */
+/** @param {unknown} value @returns {'basic' | 'classic'} */
 export function normalizeRuleMode(value) {
   return value === SEOTDA_RULE_CLASSIC ? SEOTDA_RULE_CLASSIC : SEOTDA_RULE_BASIC;
 }
@@ -52,24 +52,19 @@ export function resolveHandOutcome(entries, ruleMode) {
   }
 
   if (normalizeRuleMode(ruleMode) === SEOTDA_RULE_CLASSIC) {
-    const gusa = ranked.filter(
-      (entry) => classicSpecialName(entry.cards) === '멍텅구리 구사'
-    );
+    const gusa = ranked.filter((entry) => classicSpecialName(entry.cards) === '멍텅구리 구사');
     if (gusa.length > 0 && bestHand.tier <= 80) {
       return { type: 'replay', winnerIds: [], handName: '멍텅구리 구사' };
     }
 
     const regularGusa = ranked.filter((entry) => classicSpecialName(entry.cards) === '구사');
-    const guDdaengOrLower =
-      bestHand.tier < 80 || (bestHand.tier === 80 && bestHand.sub <= 9);
+    const guDdaengOrLower = bestHand.tier < 80 || (bestHand.tier === 80 && bestHand.sub <= 9);
     if (regularGusa.length > 0 && guDdaengOrLower) {
       return { type: 'replay', winnerIds: [], handName: '구사' };
     }
 
     if (['13광땡', '18광땡'].includes(bestHand.name)) {
-      const inspectors = ranked.filter(
-        (entry) => classicSpecialName(entry.cards) === '암행어사'
-      );
+      const inspectors = ranked.filter((entry) => classicSpecialName(entry.cards) === '암행어사');
       if (inspectors.length > 0) {
         return {
           type: 'win',

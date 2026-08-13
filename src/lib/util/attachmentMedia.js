@@ -1,6 +1,6 @@
 const VIDEO_ATTACHMENT_PATTERN = /\.(mp4|m4v|mov|webm|ogv|ogg)(?:[?#].*)?$/i;
 
-/** @param {string | File | null | undefined} attachment */
+/** @param {string | { name?: string, type?: string } | null | undefined} attachment */
 export function isVideoAttachment(attachment) {
   if (!attachment) return false;
   if (typeof attachment === 'object') {

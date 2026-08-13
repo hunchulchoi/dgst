@@ -16,7 +16,9 @@ const slotPage = readFileSync('src/routes/games/slot/+page.svelte', 'utf8');
  * @param {string} selector
  */
 const cssBlock = (source, selector) => {
-  const match = source.match(new RegExp(`${selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*\\{([^}]*)\\}`));
+  const match = source.match(
+    new RegExp(`${selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*\\{([^}]*)\\}`)
+  );
   expect(match).not.toBeNull();
   return match?.[1] ?? '';
 };
@@ -30,9 +32,9 @@ describe('comment write group layout CSS', () => {
   });
 
   it('keeps board comment textarea 16px only on mobile to prevent focus zoom', () => {
-    expect(cssBlock(articlePage, ':global(.comment-section .comment-write-group textarea)')).not.toContain(
-      'font-size: 16px'
-    );
+    expect(
+      cssBlock(articlePage, ':global(.comment-section .comment-write-group textarea)')
+    ).not.toContain('font-size: 16px');
     expect(articlePage).toMatch(
       /@media \(max-width: 767\.98px\)\s*\{[^]*:global\(\.comment-section \.comment-write-group textarea\)\s*\{[^}]*font-size:\s*16px/
     );

@@ -234,8 +234,7 @@ export async function write(file, email, preservePath = 'jjal', options = {}) {
       });
 
       const isCommentImage = false;
-      const isWebP =
-        file.type === 'image/webp' || file.name.toLowerCase().endsWith('.webp');
+      const isWebP = file.type === 'image/webp' || file.name.toLowerCase().endsWith('.webp');
       const isHeic = isHeicImage(file);
       // Normalize every claimed WebP. Some Safari versions return PNG bytes when canvas WebP
       // encoding is requested, and the client intentionally leaves dimensions unchanged.

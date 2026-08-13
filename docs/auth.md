@@ -143,19 +143,19 @@ SvelteKit + Auth.js + Prisma 기반 인증 구조를 정리한 문서입니다.
 
 ## 8. 관련 파일
 
-| 경로                                   | 역할                                                                  |
-| -------------------------------------- | --------------------------------------------------------------------- |
-| `src/hooks.server.js`                  | SvelteKitAuth 설정, providers, callbacks, session/cookies, rate limit |
-| `src/lib/server/auth/prismaAdapter.js` | Prisma Adapter 래핑, User/Session 캐시                                |
-| `src/lib/server/auth/providers.js`     | OAuth provider 구성과 계정 식별자 mapper 연결                         |
-| `src/lib/server/auth/providerProfiles.js` | Google/Kakao 최소 프로필 변환 및 안정적인 provider ID 보존         |
-| `src/lib/server/auth/sessionCache.js`  | 세션+유저 조회 결과 캐시                                              |
-| `src/lib/server/auth/userCache.js`     | 회원정보 캐시 및 무효화                                               |
-| `src/lib/server/auth/rateLimit.js`     | Auth 경로 rate limit                                                  |
-| `src/lib/server/cache/pgCache.js`      | UNLOGGED cache_kv 기반 캐시                                           |
-| `src/lib/server/cache/pgRateLimit.js`  | UNLOGGED rate_limit 기반 rate limit                                   |
-| `src/lib/server/cache/pgDedup.js`      | UNLOGGED dedup_lock 기반 중복 제출 방지                               |
-| `src/routes/auth/profile/+server.js`   | 프로필 수정 API, 수정 후 사용자 캐시 무효화                           |
+| 경로                                      | 역할                                                                  |
+| ----------------------------------------- | --------------------------------------------------------------------- |
+| `src/hooks.server.js`                     | SvelteKitAuth 설정, providers, callbacks, session/cookies, rate limit |
+| `src/lib/server/auth/prismaAdapter.js`    | Prisma Adapter 래핑, User/Session 캐시                                |
+| `src/lib/server/auth/providers.js`        | OAuth provider 구성과 계정 식별자 mapper 연결                         |
+| `src/lib/server/auth/providerProfiles.js` | Google/Kakao 최소 프로필 변환 및 안정적인 provider ID 보존            |
+| `src/lib/server/auth/sessionCache.js`     | 세션+유저 조회 결과 캐시                                              |
+| `src/lib/server/auth/userCache.js`        | 회원정보 캐시 및 무효화                                               |
+| `src/lib/server/auth/rateLimit.js`        | Auth 경로 rate limit                                                  |
+| `src/lib/server/cache/pgCache.js`         | UNLOGGED cache_kv 기반 캐시                                           |
+| `src/lib/server/cache/pgRateLimit.js`     | UNLOGGED rate_limit 기반 rate limit                                   |
+| `src/lib/server/cache/pgDedup.js`         | UNLOGGED dedup_lock 기반 중복 제출 방지                               |
+| `src/routes/auth/profile/+server.js`      | 프로필 수정 API, 수정 후 사용자 캐시 무효화                           |
 
 ---
 

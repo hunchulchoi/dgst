@@ -46,8 +46,7 @@ export function createNpcTell(cards, style, emotion, rng = Math.random) {
 
   return {
     signal,
-    label:
-      signal === 'strong' ? '강한 기색' : signal === 'weak' ? '흔들림' : '포커페이스',
+    label: signal === 'strong' ? '강한 기색' : signal === 'weak' ? '흔들림' : '포커페이스',
     text: TELL_COPY[normalizedStyle][signal]
   };
 }

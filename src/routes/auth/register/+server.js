@@ -28,7 +28,8 @@ export async function PATCH({ request, locals }) {
   const photoFile = formData.get('photo');
 
   if (photoFile instanceof File && photoFile.size > 0) {
-    storeFileName = await write(photoFile, email, 'profiles');
+    const stored = await write(photoFile, email, 'profiles');
+    storeFileName = typeof stored === 'string' ? stored : stored?.url;
 
     if (!storeFileName) return new Response('파일 저장에 실패 하였습니다.', { status: 500 });
   }

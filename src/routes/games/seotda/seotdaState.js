@@ -25,6 +25,7 @@ import { advanceSeries, createSeries, publicSeries, seriesRoundConfig } from './
  * }} SeotdaSeat
  * @typedef {{
  *   roundId?: string;
+ *   arcadePlayId?: string;
  *   phase: 'betting' | 'showdown' | 'idle';
  *   pot: number;
  *   currentBet: number;

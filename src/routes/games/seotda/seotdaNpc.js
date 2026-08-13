@@ -152,12 +152,7 @@ export function chooseNpcAction(cards, profile, ctx, rng = Math.random) {
   if (emotionAggression > 0 && canRaise) {
     const openingEmotionChance = 0.1 * emotionAggression + (ctx.emotionRevenge ? 0.04 : 0);
     if (toCall === 0 && rng() < openingEmotionChance) return 'raise';
-    if (
-      ctx.emotionRevenge &&
-      raiseSeen &&
-      strength >= 0.48 &&
-      rng() < 0.08 * emotionAggression
-    ) {
+    if (ctx.emotionRevenge && raiseSeen && strength >= 0.48 && rng() < 0.08 * emotionAggression) {
       return 'raise';
     }
   }

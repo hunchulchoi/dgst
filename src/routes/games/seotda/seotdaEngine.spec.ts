@@ -1,3 +1,4 @@
+// @ts-nocheck -- Test fixtures intentionally use concise partial card shapes.
 import { describe, expect, it } from 'vitest';
 import {
   ANTE,

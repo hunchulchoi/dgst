@@ -1,10 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  advanceSeries,
-  createSeries,
-  publicSeries,
-  seriesRoundConfig
-} from './seotdaSeries.js';
+import { advanceSeries, createSeries, publicSeries, seriesRoundConfig } from './seotdaSeries.js';
 import { createNewRound } from './seotdaRound.js';
 
 const seats = [

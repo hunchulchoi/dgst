@@ -1,3 +1,4 @@
+// @ts-nocheck -- Test fixtures intentionally use partial event objects.
 import { describe, expect, it } from 'vitest';
 import { eventForSeries, roundRaiseLimit } from './seotdaEvent.js';
 import { applyPlayerAction, createNewRound } from './seotdaRound.js';
@@ -43,12 +44,13 @@ describe('seotda series events', () => {
       npcWins: 1
     };
 
-    expect(createNewRound(1000, () => 0.5, {}, 'user', 0, null, {}, series, 'basic', true))
-      .toMatchObject({
-        antePaid: 20,
-        eventMode: true,
-        event: { id: 'high-roller' }
-      });
+    expect(
+      createNewRound(1000, () => 0.5, {}, 'user', 0, null, {}, series, 'basic', true)
+    ).toMatchObject({
+      antePaid: 20,
+      eventMode: true,
+      event: { id: 'high-roller' }
+    });
     expect(
       createNewRound(1000, () => 0.5, {}, 'user', 0, null, {}, series, 'basic', false).antePaid
     ).toBe(10);
@@ -64,18 +66,7 @@ describe('seotda series events', () => {
       userWins: 0,
       npcWins: 1
     };
-    const round = createNewRound(
-      1000,
-      () => 0.5,
-      {},
-      'user',
-      0,
-      null,
-      {},
-      series,
-      'basic',
-      true
-    );
+    const round = createNewRound(1000, () => 0.5, {}, 'user', 0, null, {}, series, 'basic', true);
     const user = round.seats[0];
 
     applyPlayerAction(round, 'user', 'raise', 20);

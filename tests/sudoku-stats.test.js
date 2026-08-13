@@ -17,7 +17,9 @@ describe('sudoku today stats', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-07-14T03:00:00.000Z'));
     const count = vi.fn().mockResolvedValue(7);
-    const groupBy = vi.fn().mockResolvedValue([{ email: 'a@example.com' }, { email: 'b@example.com' }]);
+    const groupBy = vi
+      .fn()
+      .mockResolvedValue([{ email: 'a@example.com' }, { email: 'b@example.com' }]);
     prismaModule.getPrisma.mockReturnValue({
       gameScoreSudoku: { count, groupBy }
     });

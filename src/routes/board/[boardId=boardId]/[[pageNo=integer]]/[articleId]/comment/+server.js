@@ -103,7 +103,10 @@ export async function GET({ params, locals }) {
     const comments = await findCommentsByArticle(articleId, boardId, BOARD_COMMENT_SELECT);
 
     if (session?.user?.email) {
-      await Promise.all([markAsRead(session.user.email, articleId), addRead(articleId, session.user.email)]);
+      await Promise.all([
+        markAsRead(session.user.email, articleId),
+        addRead(articleId, session.user.email)
+      ]);
     }
 
     const commentsTree = convertToTree(
@@ -168,9 +171,10 @@ export async function POST(event) {
     const image = data.get('image');
 
     if (image && image instanceof File && image.size > 0) {
-      storeFileName = await write(image, userEmail, 'jjal', {
+      const stored = await write(image, userEmail, 'jjal', {
         compressVideo: isVideoAttachment(image)
       });
+      storeFileName = typeof stored === 'string' ? stored : stored?.url;
     }
 
     let parentComment = null;
@@ -279,9 +283,10 @@ export async function PUT({ request, params, locals }) {
     const image = data.get('image');
 
     if (image && image instanceof File && image.size > 0) {
-      storeFileName = await write(image, userEmail, 'jjal', {
+      const stored = await write(image, userEmail, 'jjal', {
         compressVideo: isVideoAttachment(image)
       });
+      storeFileName = typeof stored === 'string' ? stored : stored?.url;
     }
 
     const existing = await findOwnedActiveComment({

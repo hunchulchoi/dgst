@@ -26,9 +26,9 @@ describe('board celebrations', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-07-18T14:00:00.000Z'));
     prismaModule.getPrisma.mockReturnValue({
-      $queryRaw: vi.fn().mockResolvedValue([
-        { email: 'leader@example.com', nickname: '구슬왕', balance: 4321 }
-      ])
+      $queryRaw: vi
+        .fn()
+        .mockResolvedValue([{ email: 'leader@example.com', nickname: '구슬왕', balance: 4321 }])
     });
 
     const { rank1SsamchiBootstrap } = await import('../src/lib/server/boardCelebrations.js');

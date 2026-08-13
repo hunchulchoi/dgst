@@ -156,7 +156,6 @@ export function viewComment(comment) {
         comment = comment.replace(m, youtubeEmbed);
         return;
       }
-
     });
 
     // 일반 링크는 마크다운이 아닐 때만 본문 링크로 유지한다.

@@ -1,10 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { displayHand, resolveHandOutcome } from './seotdaClassic.js';
 
-const hand = (
-  id: string,
-  cards: Array<{ month: number; gwang?: boolean; animal?: boolean }>
-) => ({
+const hand = (id: string, cards: Array<{ month: number; gwang?: boolean; animal?: boolean }>) => ({
   id,
   cards: cards.map((card) => ({
     month: card.month,
@@ -119,17 +116,11 @@ describe('seotda classic special hands', () => {
 
   it('replays on regular gusa against gu-ddaeng or lower but not jang-ddaeng', () => {
     const guDdaengReplay = resolveHandOutcome(
-      [
-        hand('ddaeng', [{ month: 9 }, { month: 9 }]),
-        hand('gusa', [{ month: 4 }, { month: 9 }])
-      ],
+      [hand('ddaeng', [{ month: 9 }, { month: 9 }]), hand('gusa', [{ month: 4 }, { month: 9 }])],
       'classic'
     );
     const jangDdaengWins = resolveHandOutcome(
-      [
-        hand('ddaeng', [{ month: 10 }, { month: 10 }]),
-        hand('gusa', [{ month: 4 }, { month: 9 }])
-      ],
+      [hand('ddaeng', [{ month: 10 }, { month: 10 }]), hand('gusa', [{ month: 4 }, { month: 9 }])],
       'classic'
     );
 

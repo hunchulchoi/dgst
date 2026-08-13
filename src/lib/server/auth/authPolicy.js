@@ -1,6 +1,6 @@
 const DENIED_USER_STATES = new Set(['blocked', 'banned']);
 
-/** @param {{ state?: unknown } | null | undefined} user */
+/** @param {{ state?: unknown, id?: unknown } | null | undefined} user */
 export function isDeniedAuthUser(user) {
   return typeof user?.state === 'string' && DENIED_USER_STATES.has(user.state);
 }
@@ -8,7 +8,7 @@ export function isDeniedAuthUser(user) {
 /**
  * @param {{
  *   provider?: string,
- *   user?: { state?: unknown } | null,
+ *   user?: { state?: unknown, id?: unknown } | null,
  *   profile?: Record<string, unknown> | null
  * }} input
  * @returns {{ allowed: true } | { allowed: false; reason: 'user-denied' | 'email-unverified' }}

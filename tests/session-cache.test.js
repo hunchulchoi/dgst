@@ -1,3 +1,4 @@
+// @ts-nocheck -- Cached sessions include the database-only createdAt extension.
 import { describe, expect, it, vi } from 'vitest';
 
 const pgCache = vi.hoisted(() => ({

@@ -93,14 +93,17 @@ function ensureFarmPostgres(fileEnv) {
     throw new Error('POSTGRES_PASSWORD is required to start dgst_farm_postgres');
   }
 
-  const result = runDocker(['compose', '-f', FARM_COMPOSE_FILE, 'up', '-d', FARM_POSTGRES_CONTAINER], {
-    stdio: 'inherit',
-    env: {
-      ...process.env,
-      ...fileEnv,
-      POSTGRES_PASSWORD: password
+  const result = runDocker(
+    ['compose', '-f', FARM_COMPOSE_FILE, 'up', '-d', FARM_POSTGRES_CONTAINER],
+    {
+      stdio: 'inherit',
+      env: {
+        ...process.env,
+        ...fileEnv,
+        POSTGRES_PASSWORD: password
+      }
     }
-  });
+  );
 
   if (result.status !== 0) {
     throw new Error(`Failed to start ${FARM_POSTGRES_CONTAINER}`);

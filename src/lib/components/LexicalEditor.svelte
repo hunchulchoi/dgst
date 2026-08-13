@@ -201,8 +201,7 @@
       connectionDownlink: connection?.downlink,
       connectionRtt: connection?.rtt,
       saveData: connection?.saveData,
-      crossOriginIsolated:
-        typeof crossOriginIsolated !== 'undefined' ? crossOriginIsolated : undefined,
+      crossOriginIsolated: globalThis.crossOriginIsolated,
       webAssembly: typeof WebAssembly !== 'undefined',
       sharedArrayBuffer: typeof SharedArrayBuffer !== 'undefined',
       worker: typeof Worker !== 'undefined'

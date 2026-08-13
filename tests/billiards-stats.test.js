@@ -17,11 +17,13 @@ describe('billiards today stats', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-07-14T03:00:00.000Z'));
     const count = vi.fn().mockResolvedValue(9);
-    const groupBy = vi.fn().mockResolvedValue([
-      { email: 'a@example.com' },
-      { email: 'b@example.com' },
-      { email: 'c@example.com' }
-    ]);
+    const groupBy = vi
+      .fn()
+      .mockResolvedValue([
+        { email: 'a@example.com' },
+        { email: 'b@example.com' },
+        { email: 'c@example.com' }
+      ]);
     prismaModule.getPrisma.mockReturnValue({
       gameScoreBilliards: { count, groupBy }
     });

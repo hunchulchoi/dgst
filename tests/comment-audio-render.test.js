@@ -22,9 +22,7 @@ describe('comment audio rendering', () => {
   });
 
   it('keeps youtube embeds separate from plain clickable URLs', () => {
-    const rendered = viewComment(
-      '영상 https://youtu.be/abc123xyz89 참고 https://example.com/post'
-    );
+    const rendered = viewComment('영상 https://youtu.be/abc123xyz89 참고 https://example.com/post');
 
     expect(rendered).toContain('src="https://www.youtube.com/embed/abc123xyz89"');
     expect(rendered).toContain(

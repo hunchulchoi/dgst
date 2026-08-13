@@ -222,7 +222,7 @@ export async function handle({ event, resolve }) {
       ...opts,
       transformPageChunk: async (chunk) => {
         const html = upstreamTransform ? await upstreamTransform(chunk) : chunk.html;
-        return applyHostnameFavicon(html, resolveEvent.url.hostname);
+        return applyHostnameFavicon(html ?? chunk.html, resolveEvent.url.hostname);
       }
     });
   };

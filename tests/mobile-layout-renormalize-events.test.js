@@ -39,9 +39,13 @@ describe('mobile layout width renormalization events', () => {
     expect(articlePage).toMatch(/import\s+\{[^}]*\bonMount\b[^}]*\btick\b[^}]*\}\s+from 'svelte';/);
     expect(articlePage).toContain('async function comments()');
     expect(articlePage).toContain('await comments();');
-    expect(articlePage).toContain("window.dispatchEvent(new CustomEvent('dgst:normalize-mobile-layout-width'))");
-    expect(articlePage.indexOf("window.dispatchEvent(new CustomEvent('dgst:normalize-mobile-layout-width'))")).toBeGreaterThan(
-      articlePage.indexOf('commentData = d;')
+    expect(articlePage).toContain(
+      "window.dispatchEvent(new CustomEvent('dgst:normalize-mobile-layout-width'))"
     );
+    expect(
+      articlePage.indexOf(
+        "window.dispatchEvent(new CustomEvent('dgst:normalize-mobile-layout-width'))"
+      )
+    ).toBeGreaterThan(articlePage.indexOf('commentData = d;'));
   });
 });

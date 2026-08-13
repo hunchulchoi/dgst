@@ -24,6 +24,7 @@ const userAgent =
 function makeEvent() {
   return {
     cookies: {
+      /** @param {string} name */
       get(name) {
         if (name.includes('session-token')) return 'session-secret';
         if (name === 'dgst_device') return 'device-secret';

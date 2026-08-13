@@ -1853,10 +1853,7 @@
           if (wasAwaiting) {
             void finishRound();
           } else {
-            state.bet = Math.min(
-              state.bet,
-              Math.max(MIN_BET, Math.min(MAX_BET, state.medals))
-            );
+            state.bet = Math.min(state.bet, Math.max(MIN_BET, Math.min(MAX_BET, state.medals)));
             updateControls();
           }
         });

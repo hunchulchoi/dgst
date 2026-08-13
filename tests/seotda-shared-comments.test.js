@@ -51,9 +51,7 @@ describe('seotda shared game comments', () => {
   });
 
   it('keeps the idle state inside the green game table', () => {
-    expect(seotdaPage).toContain(
-      'class="seotda-table seotda-table-idle rounded-4 p-3 mb-3"'
-    );
+    expect(seotdaPage).toContain('class="seotda-table seotda-table-idle rounded-4 p-3 mb-3"');
     expect(seotdaPage).toContain('linear-gradient(160deg, #1a573e 0%, #0b3023 100%)');
     expect(seotdaPage).toContain('min-height: clamp(320px, 48vh, 470px)');
   });

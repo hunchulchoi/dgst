@@ -103,6 +103,16 @@ export async function writeSeotdaScore(email, nickname, balance, meta = {}) {
  */
 export async function writeSeotdaSettlement(email, nickname, hand, gaepyeong) {
   try {
+    /** @type {Array<{
+     *   game: string;
+     *   kind: string;
+     *   bet: number;
+     *   payout: number;
+     *   delta: number;
+     *   playId?: string;
+     *   reels: string[];
+     *   meta: { requestedBalance: number };
+     * }>} */
     const entries = [
       {
         game: SEOTDA_GAME,
@@ -155,7 +165,12 @@ export async function ensureSeotdaBalance(email, nickname) {
  * @param {string} nickname
  * @returns {Promise<{
  *   balance: number;
- *   oopsInfo: { createdAt: string; remainingMs: number; waiting: true } | null;
+ *   oopsInfo: {
+ *     createdAt?: string;
+ *     readyAt?: string;
+ *     remainingMs: number;
+ *     waiting?: true;
+ *   } | null;
  * }>}
  */
 export async function resolveSeotdaOops(email, nickname, currentBalance = 0) {

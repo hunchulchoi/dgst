@@ -424,10 +424,7 @@
               fileType: 'image/webp',
               initialQuality: 0.85
             });
-            setCommentImageTarget(
-              target,
-              createWebpUploadFile(webp, currentImage.name)
-            );
+            setCommentImageTarget(target, createWebpUploadFile(webp, currentImage.name));
           } catch (error) {
             console.error('[browser-image-compression] 댓글 이미지 변환 실패:', error);
             // 변환 실패 시 원본 사용

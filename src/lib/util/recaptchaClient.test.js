@@ -41,9 +41,7 @@ describe('getRecaptchaToken', () => {
 
     setTimeout(() => {
       const browserWindow =
-        /** @type {Window & typeof globalThis & { grecaptcha?: Grecaptcha }} */ (
-          globalThis.window
-        );
+        /** @type {Window & typeof globalThis & { grecaptcha?: Grecaptcha }} */ (globalThis.window);
       browserWindow.grecaptcha = {
         ready: (callback) => callback(),
         execute

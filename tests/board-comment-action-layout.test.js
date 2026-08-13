@@ -16,9 +16,7 @@ describe('board comment action layout', () => {
   it('keeps article action buttons right aligned on desktop', () => {
     expect(articlePage).toContain('class="article-toolbar text-end pe-md-3 p-xs-0 m-xs-0"');
     expect(articlePage).toContain('class="article-toolbar text-end pe-1"');
-    expect(articlePage).toMatch(
-      /:global\(\.article-toolbar\)\s*\{[^}]*justify-content: flex-end;/
-    );
+    expect(articlePage).toMatch(/:global\(\.article-toolbar\)\s*\{[^}]*justify-content: flex-end;/);
     expect(articlePage).not.toContain('class="article-toolbar text-start');
   });
 
@@ -27,9 +25,7 @@ describe('board comment action layout', () => {
     expect(articlePage).toContain(':global(.comment-section)');
     expect(articlePage).toContain(':global(.comment-heading-bar)');
     expect(articlePage).toContain('max-width: min(48rem, 100%);');
-    expect(articlePage).toMatch(
-      /:global\(\.comment-actions\)\s*\{[^}]*justify-content: flex-end;/
-    );
+    expect(articlePage).toMatch(/:global\(\.comment-actions\)\s*\{[^}]*justify-content: flex-end;/);
     expect(articlePage).not.toContain('class="comment-actions text-start pe-2 m-0"');
   });
 
@@ -42,7 +38,9 @@ describe('board comment action layout', () => {
     expect(articlePage).toContain('flex-wrap: nowrap;');
     expect(articlePage).toContain('align-items: stretch;');
     expect(articlePage).toContain('max-width: min(44rem, 100%);');
-    expect(articlePage).toContain(':global(.comment-section .comment-write-group .comment-form-btn)');
+    expect(articlePage).toContain(
+      ':global(.comment-section .comment-write-group .comment-form-btn)'
+    );
     expect(articlePage).toContain('align-self: stretch;');
     expect(articlePage).toContain('min-width: 6.25rem;');
     expect(articlePage).toContain('width: auto;');
@@ -53,7 +51,9 @@ describe('board comment action layout', () => {
 
   it('accepts and renders comment videos through the shared media component', () => {
     expect(articlePage.match(/accept="image\/\*,video\/\*,audio\/\*"/g)).toHaveLength(3);
-    expect(articlePage).toContain("import AttachmentMedia from '$lib/components/AttachmentMedia.svelte'");
+    expect(articlePage).toContain(
+      "import AttachmentMedia from '$lib/components/AttachmentMedia.svelte'"
+    );
     expect(articlePage).toContain('<AttachmentMedia');
     expect(articlePage).toContain('ariaLabel="리플 동영상"');
     expect(articlePage).toContain('ariaLabel="댓글 동영상 미리보기"');
@@ -114,7 +114,7 @@ describe('board comment action layout', () => {
       /await comments\(\);[\s\S]*await scrollToCommentSectionStartAfterRender\(\);/
     );
     expect(articlePage).not.toContain('const scrollY = browser ? window.scrollY : 0;');
-    expect(articlePage).toContain("onclick={refreshCommentsFromToolbar}");
+    expect(articlePage).toContain('onclick={refreshCommentsFromToolbar}');
     expect(articlePage).toContain(
       'class="text-end article-comment-refresh d-flex align-items-center justify-content-end"'
     );
@@ -124,7 +124,7 @@ describe('board comment action layout', () => {
   });
 
   it('shows a preparing message while initial comments are being prepared', () => {
-    expect(articlePage).toContain("let initialCommentLoading = $state(true);");
+    expect(articlePage).toContain('let initialCommentLoading = $state(true);');
     expect(articlePage).toContain('댓글을 준비하고 있습니다');
     expect(articlePage).toContain('{#if initialCommentLoading}');
     expect(articlePage).toContain('initialCommentLoading = false;');
@@ -136,11 +136,15 @@ describe('board comment action layout', () => {
     expect(articlePage).toContain("block: 'center'");
     expect(articlePage).toContain('const createdCommentId = createdCommentBody?.id;');
     expect(articlePage).toContain('scrollToCreatedComment(createdCommentId);');
-    expect(articlePage).toMatch(/await comments\(\);[\s\S]*scrollToCreatedComment\(createdCommentId\);/);
+    expect(articlePage).toMatch(
+      /await comments\(\);[\s\S]*scrollToCreatedComment\(createdCommentId\);/
+    );
   });
 
   it('scrolls near the edited comment after saving an edit', () => {
     expect(articlePage).toContain('const editedCommentId = editingCommentId;');
-    expect(articlePage).toMatch(/cancelEditComment\(\);[\s\S]*await comments\(\);[\s\S]*scrollToCreatedComment\(editedCommentId\);/);
+    expect(articlePage).toMatch(
+      /cancelEditComment\(\);[\s\S]*await comments\(\);[\s\S]*scrollToCreatedComment\(editedCommentId\);/
+    );
   });
 });

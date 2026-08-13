@@ -8,6 +8,8 @@ describe('reply alarm link', () => {
     expect(alarmPage).toMatch(
       /commentIds\.length\s*>\s*0\s*\?\s*commentIds\[commentIds\.length\s*-\s*1\]\s*:\s*alarm\.comment/
     );
-    expect(alarmPage).toContain('`/board/${alarm.boardId}/${alarm.articleId}?a=cmt${commentId}&alarm=${alarm.id}`');
+    expect(alarmPage).toContain(
+      '`/board/${alarm.boardId}/${alarm.articleId}?a=cmt${commentId}&alarm=${alarm.id}`'
+    );
   });
 });
