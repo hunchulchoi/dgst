@@ -3,6 +3,9 @@ import { describe, expect, it } from 'vitest';
 
 const dockerfile = readFileSync('Dockerfile', 'utf8');
 const dockerignore = readFileSync('.dockerignore', 'utf8');
+const minioStorage = readFileSync('src/lib/server/minioStorage.js', 'utf8');
+const profilePage = readFileSync('src/routes/auth/profile/+page.svelte', 'utf8');
+const registerPage = readFileSync('src/routes/auth/register/+page.svelte', 'utf8');
 
 describe('production container hygiene', () => {
   it('uses reproducible installs and a slim runtime image', () => {
@@ -41,5 +44,12 @@ describe('production container hygiene', () => {
     expect(dockerignore).toMatch(/^tmp$/m);
     expect(dockerignore).toMatch(/^vitest-report$/m);
     expect(dockerignore).toMatch(/^playwright-report$/m);
+  });
+
+  it('reads deployment secrets and public runtime configuration dynamically', () => {
+    expect(minioStorage).toContain("from '$env/dynamic/private'");
+    expect(minioStorage).not.toContain("from '$env/static/private'");
+    expect(profilePage).toContain("from '$env/dynamic/public'");
+    expect(registerPage).toContain("from '$env/dynamic/public'");
   });
 });

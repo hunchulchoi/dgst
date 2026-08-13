@@ -23,7 +23,7 @@
     ModalHeader
   } from '$lib/components/ui/index.js';
 
-  import { PUBLIC_GOOGLE_RECAPTCHA_SITE_KEY } from '$env/static/public';
+  import { env as publicEnv } from '$env/dynamic/public';
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
   import { browser } from '$app/environment';
@@ -33,6 +33,8 @@
   import { getProfileSaveErrorMessage } from '$lib/util/profileSubmit.js';
   import { getProfileValidationMessage } from '$lib/util/profileValidation.js';
   import { getRecaptchaToken } from '$lib/util/recaptchaClient.js';
+
+  const PUBLIC_GOOGLE_RECAPTCHA_SITE_KEY = publicEnv.PUBLIC_GOOGLE_RECAPTCHA_SITE_KEY;
 
   /** @typedef {{ x: number; y: number; width: number; height: number }} CropData */
   /** @typedef {import('cropperjs').default} CropperInstance */
