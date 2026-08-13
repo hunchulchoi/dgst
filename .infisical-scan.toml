@@ -1,0 +1,8 @@
+title = "DGST secret scanning configuration"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "False positive from minified CKEditor KeystrokeHandler code in a removed 2023 patch"
+commits = ["b0a5465de66c9e5a11bc6a526d029f52054ed0e1"]

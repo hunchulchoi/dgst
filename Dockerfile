@@ -1,29 +1,19 @@
 FROM node:22-trixie AS build
-LABEL authors="hunchulchoi"
 
-# 앱디렉토리를 만듬
 WORKDIR /app
 
-# 종속성 설치
-COPY ./package*.json ./
-#COPY ./patches ./patches
+COPY package.json package-lock.json ./
+RUN npm ci
 
-RUN npm install
-
-# 앱 소스 코드를 복사
 COPY . .
 
-# 앱 빌드 (MongoDB 없이 — 런타임에만 연결)
 ENV SKIP_DB_CONNECT=true
 RUN npm run db:generate && npm run build
 
-FROM node:22-trixie AS production
+FROM node:22-trixie-slim AS production
 
 WORKDIR /app
 ENV BODY_SIZE_LIMIT=100M
-
-# RUN groupadd -g 999 www-data
-# RUN useradd -r -u 999 -g www-data www-data
 
 RUN sed -i 's|http://deb.debian.org|https://deb.debian.org|g' /etc/apt/sources.list.d/debian.sources \
   && apt-get update \
@@ -35,16 +25,13 @@ COPY --from=build /app/package.json .
 COPY --from=build /app/package-lock.json .
 COPY --from=build /app/prisma ./prisma
 COPY --from=build /app/prisma.config.ts .
-#COPY --from=build /app/patches ./patches
 
 RUN npm ci --omit dev
 
 COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=build /app/node_modules/@prisma/client ./node_modules/@prisma/client
 
 USER www-data
 
 EXPOSE 3000
 
-# 실행
-ENTRYPOINT ["sh", "-c", "BODY_SIZE_LIMIT=100M exec node ."]
+ENTRYPOINT ["node", "."]
