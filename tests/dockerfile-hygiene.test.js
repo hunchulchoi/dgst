@@ -61,7 +61,7 @@ describe('production container hygiene', () => {
     expect(dockerEntrypoint).toContain('infisical login');
     expect(dockerEntrypoint).toContain('--method=universal-auth');
     expect(dockerEntrypoint).toContain('exec infisical run');
-    expect(dockerEntrypoint).toContain('--projectId="$INFISICAL_PROJECT_ID"');
+    expect(dockerEntrypoint).toContain('--projectId="$PROJECT_ID"');
     expect(dockerEntrypoint).toContain('INFISICAL_SECRET_ENV is required');
     expect(dockerEntrypoint).toContain('unset INFISICAL_CLIENT_SECRET');
   });

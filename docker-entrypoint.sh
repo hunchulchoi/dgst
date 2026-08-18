@@ -3,7 +3,7 @@ set -eu
 
 : "${INFISICAL_CLIENT_ID:?INFISICAL_CLIENT_ID is required}"
 : "${INFISICAL_CLIENT_SECRET:?INFISICAL_CLIENT_SECRET is required}"
-: "${INFISICAL_PROJECT_ID:?INFISICAL_PROJECT_ID is required}"
+: "${PROJECT_ID:?PROJECT_ID is required}"
 : "${INFISICAL_DOMAIN:?INFISICAL_DOMAIN is required}"
 : "${INFISICAL_SECRET_ENV:?INFISICAL_SECRET_ENV is required}"
 
@@ -19,7 +19,7 @@ unset INFISICAL_CLIENT_SECRET
 
 exec infisical run \
   --token="$INFISICAL_TOKEN" \
-  --projectId="$INFISICAL_PROJECT_ID" \
+  --projectId="$PROJECT_ID" \
   --env="$INFISICAL_SECRET_ENV" \
   --domain="$INFISICAL_DOMAIN" \
   -- "$@"
