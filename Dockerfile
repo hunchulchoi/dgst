@@ -18,6 +18,10 @@ ENV BODY_SIZE_LIMIT=100M
 
 RUN apt-get update \
   && apt-get install -y --no-install-recommends ffmpeg libheif-examples poppler-utils \
+  && apt-get install -y --no-install-recommends bash ca-certificates curl \
+  && curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash \
+  && apt-get update \
+  && apt-get install -y --no-install-recommends infisical \
   && rm -rf /var/lib/apt/lists/*
 
 COPY --from=build /app/build .
@@ -29,9 +33,11 @@ COPY --from=build /app/prisma.config.ts .
 RUN DATABASE_URL=postgresql://localhost/dgst_build npm ci --omit dev
 
 COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
 USER www-data
 
 EXPOSE 3000
 
-ENTRYPOINT ["node", "."]
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
+CMD ["node", "."]

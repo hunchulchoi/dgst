@@ -241,7 +241,8 @@ describe('write page video upload', () => {
   it('sets adapter-node BODY_SIZE_LIMIT to the board upload limit in production', () => {
     expect(uploadLimits).toContain('BOARD_UPLOAD_BODY_SIZE_LIMIT = `${BOARD_UPLOAD_MAX_MB}M`');
     expect(dockerfile).toContain('ENV BODY_SIZE_LIMIT=100M');
-    expect(dockerfile).toContain('ENTRYPOINT ["node", "."]');
+    expect(dockerfile).toContain('ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]');
+    expect(dockerfile).toContain('CMD ["node", "."]');
     expect(dockerfile.match(/BODY_SIZE_LIMIT=100M/g)).toHaveLength(1);
     expect(dockerCompose).toContain('BODY_SIZE_LIMIT: 100M');
   });
