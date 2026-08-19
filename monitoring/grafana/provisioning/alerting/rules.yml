@@ -172,7 +172,7 @@ groups:
           summary: DGST 페이지 응답 p95가 2초를 초과했습니다
           description: p95 duration_ms = {{ $values.A }}ms
         labels:
-          severity: warning
+          severity: critical
           service: dgst
 
       - uid: dgst-slow-critical
@@ -220,7 +220,7 @@ groups:
           summary: DGST 2초 초과 slow response가 다수 발생했습니다
           description: slow_tier=critical 건수(5분) = {{ $values.A }}
         labels:
-          severity: warning
+          severity: critical
           service: dgst
 
   - orgId: 1

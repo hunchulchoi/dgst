@@ -1304,7 +1304,7 @@
           },
           "editorMode": "code",
           "expr": "sum(count_over_time({service=~\"$service\", event=\"http.response\"} | json | __error__=\"\" | slow_tier=\"warn\" [$__interval]))",
-          "legendFormat": "slow >100ms",
+          "legendFormat": "slow ≥500ms",
           "queryType": "range",
           "refId": "A"
         },
@@ -1315,7 +1315,7 @@
           },
           "editorMode": "code",
           "expr": "sum(count_over_time({service=~\"$service\", event=\"http.response\"} | json | __error__=\"\" | slow_tier=\"critical\" [$__interval]))",
-          "legendFormat": "slow >2s",
+          "legendFormat": "slow ≥2s",
           "queryType": "range",
           "refId": "B"
         }

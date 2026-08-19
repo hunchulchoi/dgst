@@ -19,6 +19,8 @@ warmupConnections();
 
 /** @type {Map<string, number>} */
 const cache = new Map();
+const HTTP_SLOW_WARN_THRESHOLD_MS = 500;
+const HTTP_SLOW_CRITICAL_THRESHOLD_MS = 2000;
 
 /** @param {string} key */
 export function depends(key) {
@@ -313,12 +315,12 @@ export async function handle({ event, resolve }) {
   };
 
   if (
-    executionTime >= 2000 &&
+    executionTime >= HTTP_SLOW_CRITICAL_THRESHOLD_MS &&
     !pathname.startsWith('/api/og') &&
     !pathname.startsWith('/auth/signin') &&
     !pathname.startsWith('/auth/callback')
   ) {
-    logger.warn({
+    logger.error({
       message: 'http slow response',
       ...httpLogBase,
       slow_response: true,
@@ -330,7 +332,7 @@ export async function handle({ event, resolve }) {
       ...httpLogBase
     });
   } else if (
-    executionTime > 100 &&
+    executionTime >= HTTP_SLOW_WARN_THRESHOLD_MS &&
     !pathname.startsWith('/api/og') &&
     !pathname.startsWith('/auth/signin') &&
     !pathname.startsWith('/auth/callback')
