@@ -21,6 +21,16 @@ npm install
 
 ### 2. Configure environment
 
+Local development loads secrets from the Infisical project configured in `.infisical.json`.
+Install and authenticate the Infisical CLI before starting the app:
+
+```bash
+infisical login
+```
+
+`npm run dev` automatically runs Vite through `infisical run` using the configured `dev`
+environment.
+
 Use [.env.example](/Users/hunchulchoi/projects/workspace/dgst/.env.example) as the starting point.
 
 Minimum local runtime values:

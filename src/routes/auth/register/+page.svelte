@@ -28,7 +28,7 @@
   import { isNicknameAllowed } from '$lib/util/nickname.js';
   import { getRecaptchaToken } from '$lib/util/recaptchaClient.js';
 
-  const PUBLIC_GOOGLE_RECAPTCHA_SITE_KEY = publicEnv.PUBLIC_GOOGLE_RECAPTCHA_SITE_KEY;
+  const PUBLIC_GOOGLE_RECAPTCHA_SITE_KEY = publicEnv.PUBLIC_GOOGLE_RECAPTCHA_SITE_KEY ?? '';
 
   // Svelte 5 Runes
   let { data } = $props();

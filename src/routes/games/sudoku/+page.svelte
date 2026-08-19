@@ -564,7 +564,7 @@
                   {value}
                 {:else if notesGrid[rowIndex][colIndex]}
                   <span class="sudoku-notes">
-                    {#each cellNotes(notesGrid[rowIndex][colIndex]) as note (note)}
+                    {#each cellNotes(notesGrid[rowIndex][colIndex]) as note, noteIndex (noteIndex)}
                       <span>{note}</span>
                     {/each}
                   </span>

@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "prepare": "svelte-kit sync",
-    "dev": "vite dev --host",
+    "dev": "infisical run -- vite dev --host",
     "build": "vite build",
     "preview": "vite preview --host",
     "check:secrets": "node scripts/check-secrets.js",

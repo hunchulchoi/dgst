@@ -27,10 +27,10 @@ export function depends(key) {
 
 // SvelteKit 2 + @auth/sveltekit v1.x 호환
 const providers = createAuthProviders({
-  googleClientId: privateEnv.GOOGLE_CLIENT_ID,
-  googleClientSecret: privateEnv.GOOGLE_CLIENT_SECRET,
-  kakaoClientId: privateEnv.KAKAO_CLIENT_ID,
-  kakaoClientSecret: privateEnv.KAKAO_CLIENT_SECRET
+  googleClientId: privateEnv.GOOGLE_CLIENT_ID ?? '',
+  googleClientSecret: privateEnv.GOOGLE_CLIENT_SECRET ?? '',
+  kakaoClientId: privateEnv.KAKAO_CLIENT_ID ?? '',
+  kakaoClientSecret: privateEnv.KAKAO_CLIENT_SECRET ?? ''
 });
 
 export const {
