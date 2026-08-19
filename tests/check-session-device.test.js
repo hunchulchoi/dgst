@@ -15,23 +15,8 @@ describe('session device mismatch detection', () => {
       getUserAgentFingerprint(currentUserAgent)
     );
     expect(
-      getSessionDeviceMismatch(
-        { deviceId: 'same-device', userAgent: storedUserAgent },
-        { deviceId: 'same-device', userAgent: currentUserAgent }
-      )
+      getSessionDeviceMismatch({ userAgent: storedUserAgent }, { userAgent: currentUserAgent })
     ).toBeNull();
-  });
-
-  it('detects device id changes even when user-agent is stable', () => {
-    const userAgent =
-      'Mozilla/5.0 (iPhone; CPU iPhone OS 26_5_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/148.0.7778.166 Mobile/15E148 Safari/604.1';
-
-    expect(
-      getSessionDeviceMismatch(
-        { deviceId: 'stored-device', userAgent },
-        { deviceId: 'current-device', userAgent }
-      )
-    ).toEqual(['deviceId']);
   });
 
   it('detects browser family changes on the same device', () => {
@@ -40,11 +25,8 @@ describe('session device mismatch detection', () => {
     const chrome =
       'Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/148.0.7778.166 Mobile/15E148 Safari/604.1';
 
-    expect(
-      getSessionDeviceMismatch(
-        { deviceId: 'same-device', userAgent: safari },
-        { deviceId: 'same-device', userAgent: chrome }
-      )
-    ).toEqual(['userAgent']);
+    expect(getSessionDeviceMismatch({ userAgent: safari }, { userAgent: chrome })).toEqual([
+      'userAgent'
+    ]);
   });
 });

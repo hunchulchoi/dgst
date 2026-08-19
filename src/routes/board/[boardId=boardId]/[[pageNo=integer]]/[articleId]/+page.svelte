@@ -1436,7 +1436,6 @@
 
 <svelte:head>
   <!-- <script defer src="https://platform.instagram.com/en_US/embeds.js"></script> -->
-  <script defer src="//www.tiktok.com/embed.js"></script>
   <style>
     .article-header {
       row-gap: 0.35rem;

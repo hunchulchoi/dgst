@@ -27,7 +27,6 @@ function makeEvent() {
       /** @param {string} name */
       get(name) {
         if (name.includes('session-token')) return 'session-secret';
-        if (name === 'dgst_device') return 'device-secret';
         return undefined;
       }
     },
@@ -48,24 +47,23 @@ describe('session device storage minimization', () => {
 
     expect(mocks.setJson).toHaveBeenCalledWith(
       'session_device:session-secret',
-      { deviceId: 'device-secret', userAgentFingerprint: 'ios:iphone:safari' },
+      { userAgentFingerprint: 'ios:iphone:safari' },
       30 * 24 * 60 * 60,
       'device'
     );
   });
 
-  it('does not include device identifiers or user-agent values in mismatch logs', async () => {
+  it('does not include user-agent values in mismatch logs', async () => {
     mocks.getJson.mockResolvedValue({
-      deviceId: 'previous-device-secret',
       userAgentFingerprint: 'windows:chrome'
     });
 
     await checkAndLogSessionDevice(makeEvent(), { action: 'board.write' });
 
     expect(mocks.error).toHaveBeenCalledWith({
-      message: 'Session deviceId/UA mismatch (추이 관찰)',
+      message: 'Session UA mismatch (추이 관찰)',
       action: 'board.write',
-      mismatchReasons: ['deviceId', 'userAgent']
+      mismatchReasons: ['userAgent']
     });
   });
 });

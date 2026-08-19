@@ -47,4 +47,13 @@ describe('secret scanner', () => {
 
     expect(findings).toEqual([]);
   });
+
+  test('does not read the next line as the value of an empty assignment', () => {
+    const findings = scanTextForSecrets(
+      '.env.example',
+      ['AUTH_SECRET=', '# jwt secret', 'NEXTAUTH_SECRET=', 'GOOGLE_CLIENT_SECRET='].join('\n')
+    );
+
+    expect(findings).toEqual([]);
+  });
 });

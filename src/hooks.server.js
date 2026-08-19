@@ -122,8 +122,6 @@ export const {
   debug: false
 });
 
-const DEVICE_COOKIE_NAME = 'dgst_device';
-const DEVICE_COOKIE_MAX_AGE_DAYS = 365;
 const LOGIN_LOG_RETENTION_DAYS = 30;
 const AUTH_SESSION_COOKIE_NAME =
   privateEnv.NODE_ENV === 'production' ? '__Secure-authjs.session-token' : 'authjs.session-token';
@@ -140,22 +138,6 @@ const getRequestMeta = (event) => {
 export async function handle({ event, resolve }) {
   const startTime = Date.now();
   const { pathname } = event.url;
-
-  // 기기 식별용 UUID 쿠키 (없으면 생성 후 설정)
-  let deviceId = event.cookies.get(DEVICE_COOKIE_NAME);
-  if (!deviceId) {
-    deviceId = crypto.randomUUID();
-    event.cookies.set(DEVICE_COOKIE_NAME, deviceId, {
-      path: '/',
-      httpOnly: true,
-      sameSite: 'lax',
-      secure: privateEnv.NODE_ENV === 'production',
-      maxAge: DEVICE_COOKIE_MAX_AGE_DAYS * 24 * 60 * 60
-    });
-  }
-  // cookie.get()은 string을 반환하므로 안전하게 문자열로 고정
-  deviceId = String(deviceId);
-  event.locals.deviceId = deviceId;
 
   // 브라우저/클라이언트가 요청하는 아이콘 경로 → favicon으로 리다이렉트
   const faviconRedirects = [

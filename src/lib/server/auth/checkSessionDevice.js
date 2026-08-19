@@ -1,12 +1,11 @@
 /**
- * 글쓰기/댓글 등 요청 시 세션의 deviceId·UA 계열을 pgCache에 저장된 값과 비교.
+ * 글쓰기/댓글 등 요청 시 세션의 UA 계열을 pgCache에 저장된 값과 비교.
  * 불일치 시 error 로그만 남기고 추이 관찰용(요청은 그대로 진행).
  */
 import { NODE_ENV } from '$env/static/private';
 import * as pgCache from '$lib/server/cache/pgCache.js';
 import logger from '$lib/util/logger.js';
 
-const DEVICE_COOKIE_NAME = 'dgst_device';
 const SESSION_DEVICE_PREFIX = 'session_device:';
 const SESSION_DEVICE_TTL = 30 * 24 * 60 * 60; // 30일
 const DEVICE_NS = 'device';
@@ -54,17 +53,13 @@ export function getUserAgentFingerprint(userAgent) {
 }
 
 /**
- * @param {{ deviceId?: string; userAgent?: string; userAgentFingerprint?: string }} stored
- * @param {{ deviceId?: string; userAgent?: string; userAgentFingerprint?: string }} current
- * @returns {Array<'deviceId' | 'userAgent'> | null}
+ * @param {{ userAgent?: string; userAgentFingerprint?: string }} stored
+ * @param {{ userAgent?: string; userAgentFingerprint?: string }} current
+ * @returns {Array<'userAgent'> | null}
  */
 export function getSessionDeviceMismatch(stored, current) {
-  /** @type {Array<'deviceId' | 'userAgent'>} */
+  /** @type {Array<'userAgent'>} */
   const reasons = [];
-
-  if ((stored.deviceId ?? '') !== (current.deviceId ?? '')) {
-    reasons.push('deviceId');
-  }
 
   const storedFingerprint =
     stored.userAgentFingerprint ?? getUserAgentFingerprint(stored.userAgent ?? '');
@@ -84,31 +79,29 @@ export function getSessionDeviceMismatch(stored, current) {
 export async function checkAndLogSessionDevice(event, meta = {}) {
   try {
     const sessionToken = event.cookies.get(SESSION_COOKIE_NAME);
-    const deviceId = event.cookies.get(DEVICE_COOKIE_NAME) ?? '';
     const userAgent = event.request?.headers?.get?.('user-agent') ?? '';
     const userAgentFingerprint = getUserAgentFingerprint(userAgent);
 
     if (!sessionToken) return;
 
     const key = SESSION_DEVICE_PREFIX + sessionToken;
-    const stored =
-      /** @type {{ deviceId?: string; userAgent?: string; userAgentFingerprint?: string } | null} */ (
-        await pgCache.getJson(key, DEVICE_NS)
-      );
+    const stored = /** @type {{ userAgent?: string; userAgentFingerprint?: string } | null} */ (
+      await pgCache.getJson(key, DEVICE_NS)
+    );
 
     const mismatchReasons = stored
-      ? getSessionDeviceMismatch(stored, { deviceId, userAgentFingerprint })
+      ? getSessionDeviceMismatch(stored, { userAgentFingerprint })
       : null;
 
     if (stored && mismatchReasons) {
       logger.error({
-        message: 'Session deviceId/UA mismatch (추이 관찰)',
+        message: 'Session UA mismatch (추이 관찰)',
         action: meta.action ?? 'unknown',
         mismatchReasons
       });
     }
 
-    await pgCache.setJson(key, { deviceId, userAgentFingerprint }, SESSION_DEVICE_TTL, DEVICE_NS);
+    await pgCache.setJson(key, { userAgentFingerprint }, SESSION_DEVICE_TTL, DEVICE_NS);
   } catch (e) {
     // pgCache/로그 실패해도 요청은 방해하지 않음
     logger.warn({ message: 'checkSessionDevice failed', error: e });

@@ -21,7 +21,7 @@ const SECRET_ENV_NAMES = new Set([
   'NEXTAUTH_SECRET',
   'GOOGLE_CLIENT_SECRET',
   'KAKAO_CLIENT_SECRET',
-  'GOOGLE_RECAPTCHA_SECRET_KEY',
+  'CLOUDFLARE_TURNSTILE_SECRET_KEY',
   'DATABASE_URL',
   'MONGODB_CONNECTION_STRING',
   'REDIS_URL',
@@ -32,7 +32,7 @@ const SECRET_ENV_NAMES = new Set([
 
 const DB_URL_PATTERN = /\b(?:mongodb(?:\+srv)?|postgres(?:ql)?|redis(?:s)?)?:\/\/[^\s'"`<>]+/gi;
 const ENV_ASSIGNMENT_PATTERN =
-  /^\s*(?:[-\s]*)?([A-Z][A-Z0-9_]*(?:SECRET|TOKEN|PASSWORD|KEY|URL)[A-Z0-9_]*)\s*[:=]\s*["']?([^"'\s]+)?/gm;
+  /^[^\S\r\n]*(?:-[^\S\r\n]*)?([A-Z][A-Z0-9_]*(?:SECRET|TOKEN|PASSWORD|KEY|URL)[A-Z0-9_]*)[^\S\r\n]*[:=][^\S\r\n]*["']?([^"'\s]+)?/gm;
 
 /**
  * @typedef {{ filePath: string; line: number; rule: string; message: string }} SecretFinding

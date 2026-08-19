@@ -7,9 +7,7 @@ describe('profile validation message', () => {
     expect(
       getProfileValidationMessage({
         nickname: '',
-        introduction: 'hello',
-        nicknameInvalid: false,
-        introductionInvalid: false
+        nicknameInvalid: false
       })
     ).toBe('닉네임을 입력해주세요.');
   });
@@ -18,10 +16,8 @@ describe('profile validation message', () => {
     expect(
       getProfileValidationMessage({
         nickname: 'a',
-        introduction: 'hello',
         nicknameInvalid: true,
-        nicknameTaken: false,
-        introductionInvalid: false
+        nicknameTaken: false
       })
     ).toBe('닉네임은 2~15글자로 입력해주세요.');
   });
@@ -30,32 +26,26 @@ describe('profile validation message', () => {
     expect(
       getProfileValidationMessage({
         nickname: 'validname',
-        introduction: 'hello',
         nicknameInvalid: true,
-        nicknameTaken: true,
-        introductionInvalid: false
+        nicknameTaken: true
       })
     ).toBe('사용중인 아이디 입니다.');
   });
 
-  it('asks for an introduction when introduction is empty', () => {
+  it('allows an empty optional introduction', () => {
     expect(
       getProfileValidationMessage({
         nickname: 'validname',
-        introduction: '',
-        nicknameInvalid: false,
-        introductionInvalid: false
+        nicknameInvalid: false
       })
-    ).toBe('자기소개를 입력해주세요.');
+    ).toBeNull();
   });
 
   it('returns null when profile input is valid', () => {
     expect(
       getProfileValidationMessage({
         nickname: 'validname',
-        introduction: 'hello',
-        nicknameInvalid: false,
-        introductionInvalid: false
+        nicknameInvalid: false
       })
     ).toBeNull();
   });

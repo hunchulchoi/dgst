@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
@@ -119,7 +119,7 @@ if (!command) {
   process.exit(1);
 }
 
-const fileEnv = parseEnvFile('.env');
+const fileEnv = existsSync('.env') ? parseEnvFile('.env') : {};
 const databaseUrl = process.env.DATABASE_URL || fileEnv.DATABASE_URL;
 
 if (!databaseUrl) {

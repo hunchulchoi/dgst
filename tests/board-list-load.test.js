@@ -110,7 +110,7 @@ describe('loadBoardList', () => {
     );
   });
 
-  it('falls back to the device cookie as the board list viewer id when auth fails', async () => {
+  it('does not assign a viewer id when auth fails', async () => {
     articleRepo.countArticles.mockResolvedValue(1);
     boardArticleList.fetchBoardArticleList.mockResolvedValue([{ _id: 'article-1' }]);
 
@@ -122,7 +122,6 @@ describe('loadBoardList', () => {
         locals: {
           auth: vi.fn().mockRejectedValue(new Error('auth unavailable'))
         },
-        cookies: { get: vi.fn().mockReturnValue('device-1') },
         params: { pageNo: '1' },
         url: new URL('https://dgst.me/board/free')
       },
@@ -131,12 +130,12 @@ describe('loadBoardList', () => {
 
     expect(boardArticleList.fetchBoardArticleList).toHaveBeenCalledWith(
       expect.objectContaining({
-        viewerId: 'device-1'
+        viewerId: undefined
       })
     );
   });
 
-  it('uses the request-local device id when the device cookie was just created', async () => {
+  it('does not assign a viewer id to anonymous visitors', async () => {
     articleRepo.countArticles.mockResolvedValue(1);
     boardArticleList.fetchBoardArticleList.mockResolvedValue([{ _id: 'article-1' }]);
 
@@ -146,10 +145,8 @@ describe('loadBoardList', () => {
       {
         depends: vi.fn(),
         locals: {
-          auth: vi.fn().mockResolvedValue(null),
-          deviceId: 'fresh-device-1'
+          auth: vi.fn().mockResolvedValue(null)
         },
-        cookies: { get: vi.fn().mockReturnValue(undefined) },
         params: { pageNo: '1' },
         url: new URL('https://dgst.me/board/free')
       },
@@ -158,7 +155,7 @@ describe('loadBoardList', () => {
 
     expect(boardArticleList.fetchBoardArticleList).toHaveBeenCalledWith(
       expect.objectContaining({
-        viewerId: 'fresh-device-1'
+        viewerId: undefined
       })
     );
   });

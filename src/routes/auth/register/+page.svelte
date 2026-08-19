@@ -26,9 +26,9 @@
   import imageCompression from 'browser-image-compression';
   import { swalFire } from '$lib/util/swal.js';
   import { isNicknameAllowed } from '$lib/util/nickname.js';
-  import { getRecaptchaToken } from '$lib/util/recaptchaClient.js';
+  import TurnstileWidget from '$lib/components/TurnstileWidget.svelte';
 
-  const PUBLIC_GOOGLE_RECAPTCHA_SITE_KEY = publicEnv.PUBLIC_GOOGLE_RECAPTCHA_SITE_KEY ?? '';
+  const PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY = publicEnv.PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY ?? '';
 
   // Svelte 5 Runes
   let { data } = $props();
@@ -65,6 +65,18 @@
   let introduction = $state('');
 
   let fight = $state(false);
+  let turnstileToken = $state('');
+  let turnstileResetKey = $state(0);
+
+  function resetTurnstile() {
+    turnstileToken = '';
+    turnstileResetKey += 1;
+  }
+
+  /** @param {string} token */
+  function setTurnstileToken(token) {
+    turnstileToken = token;
+  }
 
   const doSubmit = async () => {
     doValidate();
@@ -104,7 +116,7 @@
     formData.append('introduction', introduction);
 
     try {
-      formData.append('recaptchaToken', await getRecaptchaToken(PUBLIC_GOOGLE_RECAPTCHA_SITE_KEY));
+      formData.append('turnstileToken', turnstileToken);
       const res = await fetch('/auth/register', { method: 'PATCH', body: formData });
 
       if (res.ok) {
@@ -116,6 +128,7 @@
         });
         goto(resolve('/'));
       } else {
+        resetTurnstile();
         await swalFire({
           icon: 'error',
           title: '저장 실패',
@@ -124,6 +137,7 @@
         });
       }
     } catch (reason) {
+      resetTurnstile();
       console.error(reason);
       await swalFire({
         icon: 'error',
@@ -140,7 +154,7 @@
       .forEach((el) => changeHandler(/** @type {HTMLInputElement | HTMLTextAreaElement} */ (el)));
   };
 
-  const invalids = { nickname: false, introduction: false };
+  const invalids = { nickname: false };
 
   /** @param {HTMLInputElement | HTMLTextAreaElement} target */
   const changeHandler = async (target) => {
@@ -163,22 +177,19 @@
         }
 
         break;
-      case 'introduction':
-        invalids.introduction = !target.value;
-        break;
       case 'fight':
         if (/** @type {HTMLInputElement} */ (target).checked) doValidate();
     }
   };
 
-  let isInvalid = $derived(
-    !(nickname && !invalids.nickname && introduction && !invalids.introduction && fight)
-  );
+  let isInvalid = $derived(!(nickname && !invalids.nickname && fight));
 </script>
 
 <svelte:head>
   <script
-    src="https://www.google.com/recaptcha/api.js?render={PUBLIC_GOOGLE_RECAPTCHA_SITE_KEY}"
+    src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
+    async
+    defer
   ></script>
 </svelte:head>
 
@@ -241,18 +252,12 @@
               accept="image/*"
             />
           </InputGroup>
-          <FormGroup floating label="자기소개" labelFor="introduction">
+          <FormGroup floating label="자기소개 (선택)" labelFor="introduction">
             <Input
               id="introduction"
               bind:value={introduction}
-              onchange={(/** @type {Event & { currentTarget: HTMLTextAreaElement }} */ evt) =>
-                changeHandler(evt.currentTarget)}
-              oninput={(/** @type {Event & { currentTarget: HTMLTextAreaElement }} */ evt) =>
-                changeHandler(evt.currentTarget)}
-              bind:invalid={invalids.introduction}
               type="textarea"
-              feedback="간단히 뜬구름 잡는 얘기 써주세요^^"
-              class="needs-validation"
+              placeholder="간단한 자기소개를 입력할 수 있어요"
             />
           </FormGroup>
           <FormGroup>
@@ -269,9 +274,20 @@
               class="needs-validation"
             />
           </FormGroup>
+          <TurnstileWidget
+            siteKey={PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY}
+            action="register"
+            resetKey={turnstileResetKey}
+            onToken={setTurnstileToken}
+          />
           <hr />
           <div class="text-end">
-            <Button size="lg" onclick={doSubmit} color="success" disabled={isInvalid}>
+            <Button
+              size="lg"
+              onclick={doSubmit}
+              color="success"
+              disabled={isInvalid || !turnstileToken}
+            >
               <Icon name="arrow-through-heart-fill" class="pe-2" />가입
             </Button>
           </div>
@@ -282,12 +298,13 @@
       <strong>
         계정 및 프로필 정보는 <a href={resolve('/privacy')}>개인정보처리방침</a>에 따라 처리됩니다.
       </strong>
-      <div class="recaptcha-notice text-muted mt-2">
-        이 페이지는 reCAPTCHA로 보호되며 Google
-        <a href="https://policies.google.com/privacy" target="_blank" rel="noreferrer"
+      <div class="turnstile-notice text-muted mt-2">
+        이 페이지는 Cloudflare Turnstile로 보호되며 Cloudflare
+        <a href="https://www.cloudflare.com/privacypolicy/" target="_blank" rel="noreferrer"
           >개인정보처리방침</a
         >과
-        <a href="https://policies.google.com/terms" target="_blank" rel="noreferrer">서비스 약관</a
+        <a href="https://www.cloudflare.com/website-terms/" target="_blank" rel="noreferrer"
+          >서비스 약관</a
         >이 적용됩니다.
       </div>
     </CardFooter>
@@ -295,7 +312,7 @@
 </Row>
 
 <style>
-  .recaptcha-notice {
+  .turnstile-notice {
     font-size: 0.75rem;
     line-height: 1.35;
   }

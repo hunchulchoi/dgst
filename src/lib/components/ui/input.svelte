@@ -6,8 +6,8 @@
     feedback = '',
     class: className = '',
     id = undefined,
-    onchange,
-    oninput,
+    onchange = undefined,
+    oninput = undefined,
     ...rest
   } = $props();
 

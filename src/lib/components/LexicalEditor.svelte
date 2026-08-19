@@ -539,7 +539,6 @@
       url.includes('youtube.com') ||
       url.includes('youtu.be') ||
       url.includes('instagram.com') ||
-      url.includes('tiktok.com') ||
       url.includes('tv.naver.com') ||
       /\.(mp4|webm|ogg|mov)(\?.*)?$/i.test(url)
     );
@@ -714,9 +713,7 @@
   /** @param {HTMLElement} root */
   function preserveMediaHtmlBlocks(root) {
     const candidates = Array.from(
-      root.querySelectorAll(
-        '.og-card-blot, img, video, audio, iframe, blockquote.instagram-media, blockquote.tiktok-embed'
-      )
+      root.querySelectorAll('.og-card-blot, img, video, audio, iframe, blockquote.instagram-media')
     );
     const preserved = new Set();
 
@@ -1764,16 +1761,6 @@
       insertHtmlBlock(
         `<video src="${escapeHtml(url)}" controls style="max-width: 100%; height: auto; display: block; margin: 1em 0;"></video>`
       );
-    } else if (url.includes('tiktok.com')) {
-      const match = url.match(/tiktok\.com\/(.*)\/video\/([\w-]+)/);
-      if (match) {
-        insertHtmlBlock(
-          `<blockquote class="tiktok-embed" cite="https://www.tiktok.com/${escapeHtml(match[1])}/video/${escapeHtml(match[2])}" data-video-id="${escapeHtml(match[2])}" style="max-width: 605px; min-width: 0; width: 100%;"></blockquote>`
-        );
-      } else {
-        await createOGCard(url);
-        return;
-      }
     } else if (url.includes('tv.naver.com')) {
       const id = url.match(/tv\.naver\.com\/v\/([\w-]+)/)?.[1] || null;
       if (id) {
@@ -1979,10 +1966,6 @@
     void insertMediaUrl(url);
   });
 </script>
-
-<svelte:head>
-  <script defer src="//www.tiktok.com/embed.js"></script>
-</svelte:head>
 
 <main class="lexical-editor">
   <input

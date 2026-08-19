@@ -44,8 +44,8 @@ GOOGLE_CLIENT_SECRET=""
 KAKAO_CLIENT_ID=""
 KAKAO_CLIENT_SECRET=""
 DATABASE_URL="postgresql://postgres:password@localhost:5432/dgstdb"
-PUBLIC_GOOGLE_RECAPTCHA_SITE_KEY=""
-GOOGLE_RECAPTCHA_SECRET_KEY=""
+PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY=""
+CLOUDFLARE_TURNSTILE_SECRET_KEY=""
 UPLOAD_PATH=""
 MINIO_ENDPOINT=""
 MINIO_ACCESS_KEY=""
@@ -60,7 +60,7 @@ Notes:
 - Uploads are stored in MinIO. `UPLOAD_PATH` is only a temporary processing directory.
 - `MINIO_ENDPOINT` accepts an HTTP(S) endpoint. `MINIO_BUCKET` accepts either a bucket
   name such as `dgst` or a bucket/key-prefix pair such as `local/dgst`.
-- Google/Kakao OAuth and reCAPTCHA are required for the full auth flow.
+- Google/Kakao OAuth and Cloudflare Turnstile are required for the full auth flow.
 
 To copy legacy files from `UPLOAD_PATH` into MinIO without deleting local originals:
 

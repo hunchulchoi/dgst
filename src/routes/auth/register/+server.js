@@ -1,6 +1,6 @@
 import { error, json } from '@sveltejs/kit';
 import { getPrisma } from '$lib/database/prisma.js';
-import { verifyRecaptchaToken } from '$lib/server/recaptcha.js';
+import { verifyTurnstileToken } from '$lib/server/turnstile.js';
 import { write } from '$lib/util/fileUpload.js';
 import { isNicknameAllowed } from '$lib/util/nickname.js';
 
@@ -15,8 +15,8 @@ export async function PATCH({ request, locals }) {
 
   const formData = await request.formData();
 
-  const captcha = await verifyRecaptchaToken(
-    formData.get('recaptchaToken')?.toString(),
+  const captcha = await verifyTurnstileToken(
+    formData.get('turnstileToken')?.toString(),
     'register'
   );
   if (!captcha.ok) {

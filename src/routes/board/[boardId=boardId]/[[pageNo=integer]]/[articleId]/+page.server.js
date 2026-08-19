@@ -33,7 +33,7 @@ const BOARD_COMMENT_SELECT = {
 const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
 
 /** @param {import('@sveltejs/kit').ServerLoadEvent} event */
-export const load = async ({ params, locals, cookies }) => {
+export const load = async ({ params, locals }) => {
   const { articleId, boardId } = params;
   if (!articleId || !boardId) {
     throw error(400, { message: '잘못된 접근입니다.' });
@@ -42,7 +42,7 @@ export const load = async ({ params, locals, cookies }) => {
   try {
     const session = await locals.auth();
 
-    const viewerId = session?.user?.email || cookies.get('dgst_device') || locals.deviceId;
+    const viewerId = session?.user?.email || undefined;
 
     let article = await findArticleById(articleId, boardId, 'write');
     if (!article) {
