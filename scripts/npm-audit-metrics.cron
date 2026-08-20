@@ -1,0 +1,4 @@
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+30 7 * * * root /mnt/dgst/src/dgstv2/scripts/npm-audit-metrics.sh >> /var/log/dgst-npm-audit.log 2>&1

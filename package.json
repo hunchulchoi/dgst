@@ -12,6 +12,7 @@
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./jsconfig.json --watch",
     "test": "npm run test:integration && npm run test:unit",
     "lint": "prettier --check . && eslint .",
+    "audit:metrics": "bash scripts/npm-audit-metrics.sh",
     "format": "prettier --write .",
     "pretest:integration": "node scripts/ensure-playwright-chromium.js",
     "test:integration": "node scripts/with-local-test-db.js playwright test",
