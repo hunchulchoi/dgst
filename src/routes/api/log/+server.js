@@ -85,6 +85,20 @@ export async function POST(event) {
       ...(typeof logData.phase === 'string' && { phase: logData.phase.slice(0, 64) }),
       ...(typeof logData.clientAt === 'string' && { clientAt: logData.clientAt.slice(0, 32) }),
       ...(typeof logData.errorId === 'string' && { errorId: logData.errorId.slice(0, 64) }),
+      ...(typeof logData.fingerprint === 'string' && {
+        fingerprint: logData.fingerprint.slice(0, 64)
+      }),
+      ...(typeof logData.buildVersion === 'string' && {
+        buildVersion: logData.buildVersion.slice(0, 128)
+      }),
+      ...(typeof logData.component === 'string' && { component: logData.component.slice(0, 128) }),
+      ...(typeof logData.operation === 'string' && { operation: logData.operation.slice(0, 128) }),
+      ...(typeof logData.currentPath === 'string' && {
+        currentPath: logData.currentPath.slice(0, 256)
+      }),
+      ...(typeof logData.previousPath === 'string' && {
+        previousPath: logData.previousPath.slice(0, 256)
+      }),
       ...(logData.details &&
         typeof logData.details === 'object' && {
           details: sanitizeClientLogDetails(logData.details)

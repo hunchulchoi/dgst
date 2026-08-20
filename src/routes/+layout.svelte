@@ -21,6 +21,11 @@
   import { promptKakaoExternalBrowser } from '$lib/util/kakaoExternalBrowser.js';
   import { alarmCount, boardListReloadKey, boardListReloading } from '$lib/util/store.js';
   import { isValidTimeZone, serializeTimeZoneCookie } from '$lib/util/formatRelativeTime.js';
+  import {
+    getClientNavigationContext,
+    recordClientNavigationComplete,
+    recordClientNavigationStart
+  } from '$lib/util/clientNavigationContext.js';
   import '../app.css';
 
   let { data, children } = $props();
@@ -127,7 +132,7 @@
     $boardListReloading || boardListToDetailBlur ? blurTransition : undefined
   );
 
-  beforeNavigate(({ from, to, willUnload, cancel }) => {
+  beforeNavigate(({ from, to, type, willUnload, cancel }) => {
     if (browser && updated.current && !willUnload && to?.url) {
       cancel();
       location.href = to.url.href;
@@ -137,6 +142,13 @@
     navigationStartedAt = performance.now();
     navigationFromPath = from?.url?.pathname;
     navigationToPath = to?.url?.pathname;
+    recordClientNavigationStart({
+      fromPath: from?.url?.pathname,
+      toPath: to?.url?.pathname,
+      fromRouteId: from?.route?.id ?? undefined,
+      toRouteId: to?.route?.id ?? undefined,
+      type
+    });
 
     if (from && to) {
       const entersBoardDetail = isBoardDetailNavigation(from.url.pathname, to.url.pathname);
@@ -273,6 +285,10 @@
   }
 
   afterNavigate(({ to }) => {
+    recordClientNavigationComplete({
+      path: to?.url?.pathname,
+      routeId: to?.route?.id ?? undefined
+    });
     if (
       navigationFromPath &&
       to &&
@@ -312,6 +328,7 @@
 
     /** @param {ErrorEvent} event */
     const handleWindowError = (event) => {
+      const navigation = getClientNavigationContext();
       reportClientError(event.error ?? event.message, {
         type: 'window-error',
         message: event.message || 'Unhandled window error',
@@ -322,7 +339,12 @@
         filename: event.filename,
         lineno: event.lineno,
         colno: event.colno,
-        phase: 'window-error'
+        phase: 'window-error',
+        component: 'window',
+        operation: navigation.operation ?? 'window-error',
+        currentPath: navigation.currentPath,
+        previousPath: navigation.previousPath,
+        details: navigation
       });
 
       if (isStaleBuildError(event.error ?? event.message)) {
@@ -334,12 +356,22 @@
     const handleUnhandledRejection = (event) => {
       if (isExternalSerialPortError(event.reason)) return;
 
+      const navigation = getClientNavigationContext();
+
       reportClientError(event.reason, {
         type: 'unhandled-rejection',
         message: 'Unhandled promise rejection',
         pathname: window.location.pathname,
         routeId: $page.route.id ?? undefined,
-        phase: 'unhandledrejection'
+        phase: 'unhandledrejection',
+        component: 'window',
+        operation: navigation.operation ?? 'unhandled-promise-rejection',
+        currentPath: navigation.currentPath,
+        previousPath: navigation.previousPath,
+        details: {
+          ...navigation,
+          rejectionReasonType: event.reason == null ? String(event.reason) : typeof event.reason
+        }
       });
 
       if (isStaleBuildError(event.reason)) {

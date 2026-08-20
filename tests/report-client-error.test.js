@@ -1,10 +1,123 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import {
+  createClientErrorFingerprint,
   isExternalSerialPortError,
   reportClientError,
   reportClientPageError
 } from '../src/lib/util/reportClientPageError.js';
+import {
+  recordClientNavigationStart,
+  resetClientNavigationContext,
+  setClientNavigationOperation
+} from '../src/lib/util/clientNavigationContext.js';
+import { handleError as handleClientError } from '../src/hooks.client.js';
+
+describe('client error fingerprint', () => {
+  it('groups the same minified failure across changing asset hashes and line numbers', () => {
+    const first = Object.assign(new Error('Failed in chunk abcdef123456'), {
+      stack:
+        'Error: Failed in chunk abcdef123456\n at render (https://www.dgst.me/a-12345678.js:10:20)'
+    });
+    const second = Object.assign(new Error('Failed in chunk fedcba654321'), {
+      stack:
+        'Error: Failed in chunk fedcba654321\n at render (https://www.dgst.me/a-87654321.js:99:4)'
+    });
+    const context = { routeId: '/', phase: 'client-handle-error', component: 'route:/' };
+
+    expect(createClientErrorFingerprint(first, context)).toBe(
+      createClientErrorFingerprint(second, context)
+    );
+  });
+});
+
+describe('hooks.client handleError', () => {
+  it('captures the original render error before SvelteKit exposes Internal Error', () => {
+    const originalFetch = globalThis.fetch;
+    const originalConsoleError = console.error;
+    const originalLocation = globalThis.location;
+    /** @type {RequestInit | undefined} */
+    let capturedInit;
+    const logPost = { catch: vi.fn() };
+    globalThis.fetch = /** @type {typeof fetch} */ (
+      /** @type {unknown} */ (
+        vi.fn((_, init) => {
+          capturedInit = init;
+          return logPost;
+        })
+      )
+    );
+    console.error = vi.fn();
+    Object.defineProperty(globalThis, 'location', {
+      configurable: true,
+      value: { pathname: '/board/alarm' }
+    });
+
+    try {
+      setClientNavigationOperation('free-board-home-navigation');
+      recordClientNavigationStart({
+        fromPath: '/board/alarm',
+        toPath: '/',
+        fromRouteId: '/board/alarm',
+        toRouteId: '/',
+        type: 'link'
+      });
+      const cause = new Error('nested render cause');
+      const error = new Error('root render failed', { cause });
+      const appError = /** @type {{ message?: string, errorId?: string, fingerprint?: string }} */ (
+        handleClientError({
+          error,
+          status: 500,
+          message: 'Internal Error',
+          event: {
+            url: new URL('https://www.dgst.me/?alarm=private-alarm-id'),
+            params: {},
+            route: { id: '/' }
+          }
+        })
+      );
+
+      const body = JSON.parse(String(capturedInit?.body ?? '{}'));
+      expect(appError).toMatchObject({
+        message: 'Internal Error',
+        errorId: expect.any(String),
+        fingerprint: expect.stringMatching(/^ce-/)
+      });
+      expect(body).toMatchObject({
+        type: 'sveltekit-client-error',
+        errorMessage: 'root render failed',
+        cause: 'Error: nested render cause',
+        routeId: '/',
+        currentPath: '/board/alarm',
+        previousPath: '/board/alarm',
+        operation: 'free-board-home-navigation',
+        component: 'route:/'
+      });
+      expect(body.trace).toContain('root render failed');
+      expect(body.errorId).toBe(appError.errorId);
+      expect(body.fingerprint).toBe(appError.fingerprint);
+      expect(body.buildVersion).toEqual(expect.any(String));
+      expect(body.details).toMatchObject({
+        navigationFrom: '/board/alarm',
+        navigationTo: '/',
+        navigationType: 'link',
+        navigationActive: true
+      });
+      expect(JSON.stringify(body)).not.toContain('private-alarm-id');
+      expect(body).not.toHaveProperty('href');
+      expect(body).not.toHaveProperty('search');
+      expect(body).not.toHaveProperty('referer');
+    } finally {
+      resetClientNavigationContext();
+      globalThis.fetch = originalFetch;
+      console.error = originalConsoleError;
+      Object.defineProperty(globalThis, 'location', {
+        configurable: true,
+        value: originalLocation
+      });
+    }
+  });
+});
 
 describe('isExternalSerialPortError', () => {
   it('matches the injected Web Serial open failure', () => {

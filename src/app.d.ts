@@ -24,6 +24,7 @@ declare global {
     interface Error {
       message?: string;
       errorId?: string;
+      fingerprint?: string;
     }
     interface Locals {
       getSession: () => Promise<Session | null>;

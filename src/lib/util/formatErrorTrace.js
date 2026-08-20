@@ -106,6 +106,11 @@ export function serializeError(err) {
     message: parsed.message ?? String(err),
     stack: parsed.stack,
     cause,
-    trace: formatErrorTrace({ ...parsed, cause: parsed.cause })
+    trace: formatErrorTrace({
+      name: parsed.name,
+      message: parsed.message,
+      stack: parsed.stack,
+      cause: parsed.cause
+    })
   };
 }

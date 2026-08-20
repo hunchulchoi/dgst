@@ -13,8 +13,9 @@
   import { page } from '$app/stores';
   import { onMount } from 'svelte';
   import { reportClientPageError } from '$lib/util/reportClientPageError.js';
+  import { getClientNavigationContext } from '$lib/util/clientNavigationContext.js';
 
-  /** @typedef {Error & { stack?: string; name?: string; cause?: unknown; errorId?: string }} PageError */
+  /** @typedef {Error & { stack?: string; name?: string; cause?: unknown; errorId?: string; fingerprint?: string }} PageError */
 
   // Svelte 5 Runes - page store 필요 (error page는 예외)
 
@@ -24,6 +25,10 @@
       const pageError = /** @type {PageError | undefined} */ ($page.error);
       const reloadKey = `dgst:error-reload:${$page.url.pathname}${$page.url.search}`;
       const reloadAttempted = sessionStorage.getItem(reloadKey) === '1';
+      const navigation = getClientNavigationContext({
+        currentPath: $page.url.pathname,
+        routeId: $page.route?.id ?? undefined
+      });
       reportClientPageError({
         status: $page.status,
         pathname: $page.url.pathname,
@@ -36,8 +41,10 @@
         name: pageError?.name,
         cause: pageError?.cause,
         errorId: pageError?.errorId,
+        fingerprint: pageError?.fingerprint,
         error: pageError,
         details: {
+          ...navigation,
           reloadAttempted,
           pageDataKeys: Object.keys($page.data ?? {})
             .sort()

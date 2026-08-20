@@ -1,4 +1,5 @@
 import { captureClientCallTrace, serializeError } from '$lib/util/formatErrorTrace.js';
+import { version } from '$app/environment';
 
 /** @typedef {Object} ClientPageErrorPayload
  * @property {number} status
@@ -12,6 +13,7 @@ import { captureClientCallTrace, serializeError } from '$lib/util/formatErrorTra
  * @property {string} [routeId]
  * @property {string} [referer]
  * @property {string} [errorId]
+ * @property {string} [fingerprint]
  * @property {unknown} [error]
  * @property {Record<string, unknown>} [details]
  */
@@ -31,6 +33,11 @@ import { captureClientCallTrace, serializeError } from '$lib/util/formatErrorTra
  * @property {string} [chunkUrl]
  * @property {string} [importTarget]
  * @property {string} [phase]
+ * @property {string} [fingerprint]
+ * @property {string} [component]
+ * @property {string} [operation]
+ * @property {string} [currentPath]
+ * @property {string} [previousPath]
  * @property {boolean} [clientPageError]
  * @property {number} [status]
  * @property {Record<string, unknown>} [details]
@@ -47,6 +54,60 @@ const MAX_LEN = {
   cause: 1000,
   phase: 64
 };
+
+/** @param {string} value */
+function fnv1a(value) {
+  let hash = 0x811c9dc5;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return (hash >>> 0).toString(16).padStart(8, '0');
+}
+
+/**
+ * 배포 hash, line/column, URL의 가변 부분을 제거해 같은 오류를 한 그룹으로 묶는다.
+ * 원문이나 세션 값은 fingerprint에 포함하거나 전송하지 않는다.
+ * @param {unknown} error
+ * @param {{ routeId?: string, phase?: string, component?: string, operation?: string }} [context]
+ */
+export function createClientErrorFingerprint(error, context = {}) {
+  const serialized = serializeError(error);
+  const stackHead = (serialized?.stack ?? serialized?.trace ?? '')
+    .split('\n')
+    .slice(0, 6)
+    .join('\n')
+    .replace(/https?:\/\/[^\s)]+/g, '<url>')
+    .replace(/\b[\w-]{8,}\.(?:js|mjs|svelte)\b/g, '<asset>')
+    .replace(/\b[0-9a-f]{8,}\b/gi, '<id>')
+    .replace(/:\d+:\d+/g, ':<line>:<col>')
+    .replace(/\b\d{4,}\b/g, '<n>');
+  const message = (serialized?.message ?? String(error ?? 'unknown'))
+    .replace(/https?:\/\/[^\s)]+/g, '<url>')
+    .replace(/\b[0-9a-f]{8,}\b/gi, '<id>')
+    .replace(/\b\d{4,}\b/g, '<n>');
+  const signature = [
+    serialized?.name ?? 'Error',
+    message,
+    stackHead,
+    context.routeId ?? '',
+    context.phase ?? '',
+    context.component ?? '',
+    context.operation ?? ''
+  ].join('|');
+  return `ce-${fnv1a(signature)}`;
+}
+
+export function createClientErrorId() {
+  try {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+      return crypto.randomUUID();
+    }
+  } catch {
+    // 제한된 WebView에서는 시간/난수 fallback 사용
+  }
+  return `client-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
 
 /**
  * 앱은 Web Serial을 사용하지 않는다. 이 오류는 Windows Chrome 확장 프로그램이나
@@ -90,6 +151,12 @@ function stringifyCause(value) {
   if (value == null) return undefined;
   if (value instanceof Error) return `${value.name}: ${value.message}`;
   if (typeof value === 'string') return value;
+  if (typeof value === 'object') {
+    const parsed = /** @type {{ name?: unknown, message?: unknown }} */ (value);
+    if (typeof parsed.message === 'string') {
+      return `${typeof parsed.name === 'string' ? parsed.name : 'Error'}: ${parsed.message}`;
+    }
+  }
 
   try {
     return JSON.stringify(value);
@@ -203,6 +270,18 @@ export function reportClientError(error, context = {}) {
     ) ?? '';
 
   const type = clip(context.type, 64) ?? 'client-error';
+  const component = clip(context.component, 128);
+  const operation = clip(context.operation, 128);
+  const currentPath = clip(context.currentPath, 256) ?? safePathname;
+  const previousPath = clip(context.previousPath, 256);
+  const fingerprint =
+    clip(context.fingerprint, 64) ??
+    createClientErrorFingerprint(error, {
+      routeId: safeRouteId,
+      phase: context.phase,
+      component,
+      operation
+    });
   const details =
     context.details && typeof context.details === 'object' ? context.details : undefined;
   const summary = `[${type}] ${context.message ?? errorMessage}`;
@@ -210,6 +289,7 @@ export function reportClientError(error, context = {}) {
     errorName && `name=${errorName}`,
     `msg=${errorMessage}`,
     context.errorId && `errorId=${context.errorId}`,
+    fingerprint && `fingerprint=${fingerprint}`,
     safePathname && `path=${safePathname}`,
     safeRouteId && `route=${safeRouteId}`,
     chunkUrl && `chunk=${chunkUrl}`,
@@ -263,6 +343,12 @@ export function reportClientError(error, context = {}) {
         }),
         ...(clip(context.phase, MAX_LEN.phase) && { phase: clip(context.phase, MAX_LEN.phase) }),
         ...(context.errorId && { errorId: context.errorId }),
+        fingerprint,
+        buildVersion: version,
+        ...(component && { component }),
+        ...(operation && { operation }),
+        ...(currentPath && { currentPath }),
+        ...(previousPath && { previousPath }),
         ...(details && { details }),
         clientAt
       })
@@ -289,6 +375,7 @@ export function reportClientPageError(payload) {
     routeId,
     referer,
     error,
+    fingerprint: payloadFingerprint,
     details
   } = payload;
 
@@ -296,11 +383,14 @@ export function reportClientPageError(payload) {
 
   const parsedError =
     error && typeof error === 'object'
-      ? /** @type {{ message?: unknown; stack?: unknown; name?: unknown; cause?: unknown }} */ (
+      ? /** @type {{ message?: unknown; stack?: unknown; name?: unknown; cause?: unknown; fingerprint?: unknown }} */ (
           error
         )
       : undefined;
   const errorId = clip(payload.errorId, 64) ?? extractPageErrorId(error);
+  const fingerprint =
+    clip(payloadFingerprint, 64) ??
+    (typeof parsedError?.fingerprint === 'string' ? clip(parsedError.fingerprint, 64) : undefined);
   const resolvedMessage =
     message ?? (typeof parsedError?.message === 'string' ? parsedError.message : undefined);
   const errorMessage = clip(resolvedMessage, MAX_LEN.message) ?? '알 수 없는 오류';
@@ -332,7 +422,12 @@ export function reportClientPageError(payload) {
       referer,
       routeId,
       errorId,
+      fingerprint,
       phase: 'page-render',
+      component: '+error.svelte',
+      operation: typeof details?.operation === 'string' ? details.operation : 'error-page-render',
+      currentPath: typeof details?.currentPath === 'string' ? details.currentPath : pathname,
+      previousPath: typeof details?.previousPath === 'string' ? details.previousPath : undefined,
       details: { ...pageDiagnostics, ...details }
     }
   );

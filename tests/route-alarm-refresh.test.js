@@ -16,6 +16,19 @@ describe('route alarm refresh', () => {
     );
   });
 
+  it('does not remount the current alarm/article page before navigating home', () => {
+    const handler = header.slice(
+      header.indexOf('async function handleFreeBoardTabClick'),
+      header.indexOf('</script>')
+    );
+    const gotoBranch = handler.slice(handler.indexOf('if (!onHome)'), handler.indexOf('} else {'));
+
+    expect(gotoBranch).toContain("await goto(resolve('/'),");
+    expect(gotoBranch).not.toContain('boardListReloadKey.update');
+    expect(gotoBranch).not.toContain("invalidate('board-list')");
+    expect(handler).toContain('if (freeBoardNavigationInFlight) return');
+  });
+
   it('refreshes unread alarm count after every route navigation', () => {
     expect(layout).toContain('alarmCount, boardListReloadKey, boardListReloading');
     expect(layout).toContain('async function refreshUnreadAlarmCount()');

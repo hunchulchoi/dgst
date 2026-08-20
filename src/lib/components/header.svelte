@@ -22,12 +22,14 @@
 
   import { alarmCount, boardListReloading, boardListReloadKey } from '$lib/util/store.js';
   import { isFreeBoardHomePath } from '$lib/util/boardPaths.js';
+  import { setClientNavigationOperation } from '$lib/util/clientNavigationContext.js';
 
   // Svelte 5 Runes - Props
   let { session, pathname, unreadAlarmCount = 0 } = $props();
   const ALARM_POLL_INTERVAL_MS = 30_000;
 
   let navigatingSpinner = $state(false);
+  let freeBoardNavigationInFlight = $state(false);
 
   $effect(() => {
     if ($navigating) {
@@ -110,22 +112,26 @@
   /** @param {MouseEvent} e */
   async function handleFreeBoardTabClick(e) {
     e.preventDefault();
+    if (freeBoardNavigationInFlight) return;
 
     const currentPath = pathname?.split('?')[0] ?? '';
     const onHome = isFreeBoardHomePath(currentPath);
+    freeBoardNavigationInFlight = true;
+    setClientNavigationOperation(onHome ? 'free-board-refresh' : 'free-board-home-navigation');
 
     boardListReloading.set(true);
-    boardListReloadKey.update((n) => n + 1);
 
     try {
       if (!onHome) {
         await goto(resolve('/'), { invalidateAll: false, replaceState: true });
+      } else {
+        boardListReloadKey.update((n) => n + 1);
+        await invalidate('board-list');
       }
-
-      await invalidate('board-list');
       await refreshUnreadAlarmCount();
     } finally {
       boardListReloading.set(false);
+      freeBoardNavigationInFlight = false;
     }
   }
 </script>
