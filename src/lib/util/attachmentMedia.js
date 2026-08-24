@@ -1,4 +1,5 @@
 const VIDEO_ATTACHMENT_PATTERN = /\.(mp4|m4v|mov|webm|ogv|ogg)(?:[?#].*)?$/i;
+const PDF_ATTACHMENT_PATTERN = /\.pdf(?:[?#].*)?$/i;
 
 /** @param {string | { name?: string, type?: string } | null | undefined} attachment */
 export function isVideoAttachment(attachment) {
@@ -9,6 +10,17 @@ export function isVideoAttachment(attachment) {
     );
   }
   return VIDEO_ATTACHMENT_PATTERN.test(attachment);
+}
+
+/** @param {string | { name?: string, type?: string } | null | undefined} attachment */
+export function isPdfAttachment(attachment) {
+  if (!attachment) return false;
+  if (typeof attachment === 'object') {
+    return (
+      attachment.type === 'application/pdf' || PDF_ATTACHMENT_PATTERN.test(attachment.name ?? '')
+    );
+  }
+  return PDF_ATTACHMENT_PATTERN.test(attachment);
 }
 
 /**

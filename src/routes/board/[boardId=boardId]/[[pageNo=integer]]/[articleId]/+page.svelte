@@ -24,7 +24,11 @@
   import { isOnlyOneEmoji } from '$lib/util/emoji.js';
   import { linkifyPlainUrls } from '$lib/util/linkifyPlainUrls.js';
   import { repairOgCardHtmlEntities } from '$lib/util/ogCardHtmlRepair.js';
-  import { createWebpUploadFile, isVideoAttachment } from '$lib/util/attachmentMedia.js';
+  import {
+    createWebpUploadFile,
+    isPdfAttachment,
+    isVideoAttachment
+  } from '$lib/util/attachmentMedia.js';
   import {
     applyAttachmentImageSizing,
     shouldApplyAttachmentImageSizing
@@ -358,7 +362,8 @@
       if (
         clipboardData.files?.length &&
         (clipboardData.files[0].type.startsWith('image') ||
-          clipboardData.files[0].type.startsWith('video'))
+          clipboardData.files[0].type.startsWith('video') ||
+          isPdfAttachment(clipboardData.files[0]))
       ) {
         setCommentImageTarget(target, clipboardData.files[0]);
 
@@ -378,7 +383,7 @@
     }
 
     const selectedImage = getCommentImageTarget(target);
-    if (selectedImage && isVideoAttachment(selectedImage)) {
+    if (selectedImage && (isVideoAttachment(selectedImage) || isPdfAttachment(selectedImage))) {
       if (target === 'reply') {
         reCommentVideoPreviewUrl = replaceAttachmentObjectUrl(
           reCommentVideoPreviewUrl,
@@ -654,12 +659,15 @@
     editCommentImage = null;
     editCommentRemoveImage = false;
     editExistingAttachment = comment.image ?? '';
-    editCommentVideoPreviewUrl = isVideoAttachment(comment.image) ? (comment.image ?? '') : '';
+    editCommentVideoPreviewUrl =
+      isVideoAttachment(comment.image) || isPdfAttachment(comment.image)
+        ? (comment.image ?? '')
+        : '';
 
     // DOM이 업데이트된 후 미리보기 설정
     setTimeout(() => {
       if (editPreviewEl) {
-        if (comment.image && !isVideoAttachment(comment.image)) {
+        if (comment.image && !isVideoAttachment(comment.image) && !isPdfAttachment(comment.image)) {
           editPreviewEl.src = comment.image;
           editPreviewEl.classList.remove('d-none');
         } else {
@@ -849,7 +857,8 @@
       if (
         clipboardData.files?.length &&
         (clipboardData.files[0].type.startsWith('image') ||
-          clipboardData.files[0].type.startsWith('video'))
+          clipboardData.files[0].type.startsWith('video') ||
+          isPdfAttachment(clipboardData.files[0]))
       ) {
         editCommentImage = clipboardData.files[0];
         editCommentRemoveImage = false;
@@ -872,7 +881,10 @@
       }
     }
 
-    if (editCommentImage && isVideoAttachment(editCommentImage)) {
+    if (
+      editCommentImage &&
+      (isVideoAttachment(editCommentImage) || isPdfAttachment(editCommentImage))
+    ) {
       editCommentVideoPreviewUrl = replaceAttachmentObjectUrl(
         editCommentVideoPreviewUrl,
         editCommentImage
@@ -2210,7 +2222,7 @@
                               type="file"
                               bind:this={editCommentImageEl}
                               onchange={handleEditImageChange}
-                              accept="image/*,video/*,audio/*"
+                              accept="image/*,video/*,audio/*,application/pdf,.pdf"
                               class="comment-file-input form-control"
                               aria-label="댓글 이미지, 동영상 또는 음성 파일 첨부"
                             />
@@ -2246,11 +2258,13 @@
                           <!-- 이미지 미리보기 -->
                           <div class="mb-2">
                             <img
-                              src={isVideoAttachment(editExistingAttachment)
+                              src={isVideoAttachment(editExistingAttachment) ||
+                              isPdfAttachment(editExistingAttachment)
                                 ? ''
                                 : editExistingAttachment}
                               class:d-none={!editExistingAttachment ||
-                                isVideoAttachment(editExistingAttachment)}
+                                isVideoAttachment(editExistingAttachment) ||
+                                isPdfAttachment(editExistingAttachment)}
                               class="comment-upload-preview"
                               bind:this={editPreviewEl}
                               alt="댓글 이미지 미리보기"
@@ -2259,7 +2273,10 @@
                             {#if editCommentVideoPreviewUrl}
                               <AttachmentMedia
                                 src={editCommentVideoPreviewUrl}
-                                video
+                                video={isVideoAttachment(
+                                  editCommentImage ?? editExistingAttachment
+                                )}
+                                pdf={isPdfAttachment(editCommentImage ?? editExistingAttachment)}
                                 tallAttachmentSize
                                 ariaLabel="댓글 동영상 미리보기"
                                 videoStyle="max-width: 100%"
@@ -2452,7 +2469,7 @@
                     type="file"
                     bind:this={reCommentImageEl}
                     onchange={handleReplyImageChange}
-                    accept="image/*,video/*,audio/*"
+                    accept="image/*,video/*,audio/*,application/pdf,.pdf"
                     class="comment-file-input form-control"
                     aria-label="댓글 이미지, 동영상 또는 음성 파일 첨부"
                   />
@@ -2481,7 +2498,8 @@
                   {#if reCommentVideoPreviewUrl}
                     <AttachmentMedia
                       src={reCommentVideoPreviewUrl}
-                      video
+                      video={isVideoAttachment(reCommentImage)}
+                      pdf={isPdfAttachment(reCommentImage)}
                       tallAttachmentSize
                       ariaLabel="리플 동영상 미리보기"
                       videoStyle="max-width: 100%"
@@ -2560,7 +2578,7 @@
                 type="file"
                 bind:this={commentImageEl}
                 onchange={handleCommentImageChange}
-                accept="image/*,video/*,audio/*"
+                accept="image/*,video/*,audio/*,application/pdf,.pdf"
                 class="comment-file-input form-control"
                 aria-label="댓글 이미지, 동영상 또는 음성 파일 첨부"
               />
@@ -2586,7 +2604,8 @@
               {#if commentVideoPreviewUrl}
                 <AttachmentMedia
                   src={commentVideoPreviewUrl}
-                  video
+                  video={isVideoAttachment(commentImage)}
+                  pdf={isPdfAttachment(commentImage)}
                   tallAttachmentSize
                   ariaLabel="댓글 동영상 미리보기"
                   videoStyle="max-width: 100%"

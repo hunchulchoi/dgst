@@ -1,6 +1,10 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { createWebpUploadFile, isVideoAttachment } from '../src/lib/util/attachmentMedia.js';
+import {
+  createWebpUploadFile,
+  isPdfAttachment,
+  isVideoAttachment
+} from '../src/lib/util/attachmentMedia.js';
 
 const commentRoute = readFileSync(
   'src/routes/board/[boardId=boardId]/[[pageNo=integer]]/[articleId]/comment/+server.js',
@@ -24,6 +28,20 @@ describe('attachment media detection', () => {
   it('keeps images as images', () => {
     expect(isVideoAttachment('/images/jjal/example.webp')).toBe(false);
     expect(isVideoAttachment({ name: 'photo.jpg', type: 'image/jpeg' })).toBe(false);
+  });
+
+  it.each([
+    '/images/jjal/manual.pdf',
+    '/images/jjal/manual.PDF?download=1',
+    { name: 'upload.bin', type: 'application/pdf' }
+  ])('recognizes a PDF attachment: %s', (attachment) => {
+    expect(isPdfAttachment(attachment)).toBe(true);
+  });
+
+  it('renders PDFs as download links instead of images', () => {
+    expect(attachmentComponent).toContain('{:else if pdf || isPdfAttachment(src)}');
+    expect(attachmentComponent).toContain('download');
+    expect(attachmentComponent).toContain('PDF 다운로드');
   });
 
   it('asks the server upload pipeline to normalize comment videos', () => {

@@ -1,5 +1,5 @@
 <script>
-  import { isVideoAttachment } from '$lib/util/attachmentMedia.js';
+  import { isPdfAttachment, isVideoAttachment } from '$lib/util/attachmentMedia.js';
   import {
     applyAttachmentImageSizing,
     applyTallAttachmentSizing
@@ -8,6 +8,7 @@
   /** @type {{
    *   src: string;
    *   video?: boolean;
+   *   pdf?: boolean;
    *   alt?: string;
    *   ariaLabel?: string;
    *   tallAttachmentSize?: boolean;
@@ -18,6 +19,7 @@
   let {
     src,
     video = false,
+    pdf = false,
     alt = '',
     ariaLabel = '첨부 동영상',
     tallAttachmentSize = false,
@@ -74,6 +76,11 @@
     style={videoStyle}
     onloadedmetadata={handleVideoMetadata}
   ></video>
+{:else if pdf || isPdfAttachment(src)}
+  <a class="attachment-pdf" href={src} download aria-label="PDF 다운로드">
+    <span class="attachment-pdf__icon" aria-hidden="true">PDF</span>
+    <span>PDF 다운로드</span>
+  </a>
 {:else}
   <img {src} {alt} style={imageStyle} onload={onimageload} />
 {/if}
@@ -88,5 +95,26 @@
 
   .attachment-video--tall-attachment {
     object-fit: contain;
+  }
+
+  .attachment-pdf {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.625rem;
+    max-width: 100%;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 0.75rem;
+    background: var(--bs-body-bg);
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  .attachment-pdf__icon {
+    padding: 0.2rem 0.4rem;
+    border-radius: 0.25rem;
+    background: var(--bs-danger);
+    color: white;
+    font-size: 0.75rem;
   }
 </style>

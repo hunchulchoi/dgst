@@ -50,7 +50,9 @@ describe('board comment action layout', () => {
   });
 
   it('accepts and renders comment videos through the shared media component', () => {
-    expect(articlePage.match(/accept="image\/\*,video\/\*,audio\/\*"/g)).toHaveLength(3);
+    expect(
+      articlePage.match(/accept="image\/\*,video\/\*,audio\/\*,application\/pdf,\.pdf"/g)
+    ).toHaveLength(3);
     expect(articlePage).toContain(
       "import AttachmentMedia from '$lib/components/AttachmentMedia.svelte'"
     );
@@ -58,6 +60,8 @@ describe('board comment action layout', () => {
     expect(articlePage).toContain('ariaLabel="리플 동영상"');
     expect(articlePage).toContain('ariaLabel="댓글 동영상 미리보기"');
     expect(articlePage).toContain('ariaLabel="리플 동영상 미리보기"');
+    expect(articlePage).toContain('pdf={isPdfAttachment(reCommentImage)}');
+    expect(articlePage).toContain('pdf={isPdfAttachment(commentImage)}');
     expect(articlePage.match(/^\s+tallAttachmentSize$/gm)).toHaveLength(4);
   });
 
