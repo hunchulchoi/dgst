@@ -4,7 +4,14 @@ import {
   createClientErrorId,
   reportClientError
 } from '$lib/util/reportClientPageError.js';
-import { getClientNavigationContext } from '$lib/util/clientNavigationContext.js';
+import { isInterruptedFetchError } from '$lib/util/fetchErrors.js';
+import {
+  getClientEventTrace,
+  getClientNavigationContext,
+  installClientNavigationDiagnostics
+} from '$lib/util/clientNavigationContext.js';
+
+installClientNavigationDiagnostics();
 
 /** @type {import('@sveltejs/kit').HandleClientError} */
 export function handleError({ error, event, status, message }) {
@@ -23,6 +30,7 @@ export function handleError({ error, event, status, message }) {
     component,
     operation
   });
+  const clientEventTrace = isInterruptedFetchError(error) ? getClientEventTrace() : undefined;
 
   reportClientError(error, {
     type: 'sveltekit-client-error',
@@ -39,6 +47,7 @@ export function handleError({ error, event, status, message }) {
     previousPath: navigation.previousPath,
     details: {
       ...navigation,
+      ...(clientEventTrace ? { clientEventTrace } : {}),
       svelteKitMessage: message,
       buildVersion: version
     }

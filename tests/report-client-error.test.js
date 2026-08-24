@@ -7,6 +7,8 @@ import {
   reportClientPageError
 } from '../src/lib/util/reportClientPageError.js';
 import {
+  getClientEventTrace,
+  recordClientNavigationComplete,
   recordClientNavigationStart,
   resetClientNavigationContext,
   setClientNavigationOperation
@@ -103,6 +105,7 @@ describe('hooks.client handleError', () => {
         navigationType: 'link',
         navigationActive: true
       });
+      expect(body.details).not.toHaveProperty('clientEventTrace');
       expect(JSON.stringify(body)).not.toContain('private-alarm-id');
       expect(body).not.toHaveProperty('href');
       expect(body).not.toHaveProperty('search');
@@ -116,6 +119,78 @@ describe('hooks.client handleError', () => {
         value: originalLocation
       });
     }
+  });
+
+  it('attaches buffered navigation events only to interrupted fetch errors', () => {
+    const originalFetch = globalThis.fetch;
+    const originalConsoleError = console.error;
+    const originalLocation = globalThis.location;
+    /** @type {RequestInit | undefined} */
+    let capturedInit;
+    globalThis.fetch = /** @type {typeof fetch} */ (
+      /** @type {unknown} */ (
+        vi.fn((_, init) => {
+          capturedInit = init;
+          return { catch: vi.fn() };
+        })
+      )
+    );
+    console.error = vi.fn();
+    Object.defineProperty(globalThis, 'location', {
+      configurable: true,
+      value: { pathname: '/' }
+    });
+
+    try {
+      recordClientNavigationStart({ fromPath: '/board/free', toPath: '/', type: 'popstate' });
+      handleClientError({
+        error: new TypeError('Failed to fetch'),
+        status: 500,
+        message: 'Internal Error',
+        event: { url: new URL('https://www.dgst.me/'), params: {}, route: { id: '/' } }
+      });
+
+      const body = JSON.parse(String(capturedInit?.body ?? '{}'));
+      expect(body.details.clientEventTrace).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            event: 'navigation-start',
+            fromPath: '/board/free',
+            toPath: '/',
+            navigationType: 'popstate'
+          })
+        ])
+      );
+    } finally {
+      resetClientNavigationContext();
+      globalThis.fetch = originalFetch;
+      console.error = originalConsoleError;
+      Object.defineProperty(globalThis, 'location', {
+        configurable: true,
+        value: originalLocation
+      });
+    }
+  });
+});
+
+describe('client navigation event trace', () => {
+  it('keeps only the latest 16 in-memory events without query values', () => {
+    resetClientNavigationContext();
+
+    for (let index = 0; index < 10; index += 1) {
+      recordClientNavigationStart({
+        fromPath: `/from/${index}?secret=value`,
+        toPath: `/to/${index}?secret=value`,
+        type: 'link'
+      });
+      recordClientNavigationComplete({ path: `/to/${index}` });
+    }
+
+    const trace = getClientEventTrace();
+    expect(trace).toHaveLength(16);
+    expect(JSON.stringify(trace)).not.toContain('secret');
+    expect(trace.at(-1)).toMatchObject({ event: 'navigation-complete', toPath: '/to/9' });
+    resetClientNavigationContext();
   });
 });
 
