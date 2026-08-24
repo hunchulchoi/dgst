@@ -1,5 +1,11 @@
 <script>
-  import { isPdfAttachment, isVideoAttachment } from '$lib/util/attachmentMedia.js';
+  import {
+    attachmentFileNameFromUrl,
+    formatAttachmentFileSize,
+    isPdfAttachment,
+    isVideoAttachment,
+    parseAttachmentFileName
+  } from '$lib/util/attachmentMedia.js';
   import {
     applyAttachmentImageSizing,
     applyTallAttachmentSizing
@@ -9,6 +15,8 @@
    *   src: string;
    *   video?: boolean;
    *   pdf?: boolean;
+   *   fileName?: string;
+   *   fileSize?: number;
    *   alt?: string;
    *   ariaLabel?: string;
    *   tallAttachmentSize?: boolean;
@@ -20,6 +28,8 @@
     src,
     video = false,
     pdf = false,
+    fileName = '',
+    fileSize,
     alt = '',
     ariaLabel = '첨부 동영상',
     tallAttachmentSize = false,
@@ -36,6 +46,42 @@
   }
 
   let videoSrc = $derived(withVideoPreviewTime(src));
+  let displayFileName = $state('PDF 파일');
+  let displayFileSize = $state(/** @type {number | undefined} */ (undefined));
+
+  $effect(() => {
+    const currentSrc = src;
+    const currentFileName = fileName;
+    const currentFileSize = fileSize;
+    const currentIsPdf = pdf || isPdfAttachment(currentSrc);
+
+    if (!currentIsPdf) return;
+
+    displayFileName = currentFileName || attachmentFileNameFromUrl(currentSrc);
+    displayFileSize = currentFileSize;
+
+    if (currentSrc.startsWith('blob:') || (currentFileName && Number.isFinite(currentFileSize))) {
+      return;
+    }
+
+    const controller = new AbortController();
+    void fetch(currentSrc, { method: 'HEAD', signal: controller.signal })
+      .then((response) => {
+        if (!response.ok) return;
+        displayFileName =
+          parseAttachmentFileName(response.headers.get('content-disposition')) || displayFileName;
+        const contentLength = Number(response.headers.get('content-length'));
+        if (Number.isFinite(contentLength) && contentLength >= 0) {
+          displayFileSize = contentLength;
+        }
+      })
+      .catch((error) => {
+        if (error instanceof DOMException && error.name === 'AbortError') return;
+        console.error('PDF 첨부 정보 조회 실패:', error);
+      });
+
+    return () => controller.abort();
+  });
 
   /** @param {Event} event */
   function handleVideoMetadata(event) {
@@ -77,9 +123,21 @@
     onloadedmetadata={handleVideoMetadata}
   ></video>
 {:else if pdf || isPdfAttachment(src)}
-  <a class="attachment-pdf" href={src} download aria-label="PDF 다운로드">
+  <a
+    class="attachment-pdf"
+    href={src}
+    download={displayFileName}
+    aria-label={`${displayFileName} 다운로드`}
+  >
     <span class="attachment-pdf__icon" aria-hidden="true">PDF</span>
-    <span>PDF 다운로드</span>
+    <span class="attachment-pdf__body">
+      <strong class="attachment-pdf__name">{displayFileName}</strong>
+      <span class="attachment-pdf__meta">
+        PDF{#if displayFileSize !== undefined}
+          · {formatAttachmentFileSize(displayFileSize)}{/if}
+      </span>
+    </span>
+    <span class="attachment-pdf__action">PDF 다운로드</span>
   </a>
 {:else}
   <img {src} {alt} style={imageStyle} onload={onimageload} />
@@ -116,5 +174,25 @@
     background: var(--bs-danger);
     color: white;
     font-size: 0.75rem;
+  }
+
+  .attachment-pdf__body {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    flex-direction: column;
+  }
+
+  .attachment-pdf__name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .attachment-pdf__meta,
+  .attachment-pdf__action {
+    color: var(--bs-secondary-color);
+    font-size: 0.8125rem;
+    font-weight: 400;
   }
 </style>

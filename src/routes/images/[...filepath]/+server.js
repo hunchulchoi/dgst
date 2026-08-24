@@ -61,6 +61,39 @@ function contentDisposition(fileName) {
   return `inline; filename="${asciiFileName}"; filename*=UTF-8''${encodeURIComponent(fileName)}`;
 }
 
+/** @param {{ params: { filepath: string } }} event */
+export async function HEAD({ params }) {
+  const objectKey = safeObjectKey(params.filepath);
+  if (!objectKey) throw error(403, '접근이 거부되었습니다.');
+
+  try {
+    const metadata = await statUploadObject(objectKey);
+    const originalFileName = metadata.originalFileName || path.posix.basename(objectKey);
+    const contentType =
+      metadata.contentType || mime.getType(originalFileName) || 'application/octet-stream';
+
+    return new Response(null, {
+      headers: {
+        'Content-Type': contentType,
+        'Content-Length': String(metadata.size),
+        'Content-Disposition': contentDisposition(originalFileName),
+        'Cache-Control': 'public, max-age=31536000',
+        'X-Content-Type-Options': 'nosniff'
+      }
+    });
+  } catch (err) {
+    if (
+      err &&
+      typeof err === 'object' &&
+      'code' in err &&
+      ['NoSuchKey', 'NotFound', 'NoSuchObject'].includes(String(err.code))
+    ) {
+      throw error(404, '파일을 찾을 수 없습니다.');
+    }
+    throw err;
+  }
+}
+
 /**
  * 정적 이미지/비디오 파일 서빙
  * @param {{ params: { filepath: string }, request: Request }} event - 요청 파라미터

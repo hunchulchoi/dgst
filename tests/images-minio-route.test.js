@@ -64,4 +64,22 @@ describe('/images MinIO download route', () => {
     expect(mocks.getUploadObject).not.toHaveBeenCalled();
     expect(mocks.statUploadObject).not.toHaveBeenCalled();
   });
+
+  it('returns original PDF metadata without opening the object stream', async () => {
+    mocks.statUploadObject.mockResolvedValue({
+      size: 1_572_864,
+      contentType: 'application/pdf',
+      originalFileName: '사용 설명서.pdf'
+    });
+    const { HEAD } = await import('../src/routes/images/[...filepath]/+server.js');
+
+    const response = await HEAD({ params: { filepath: 'jjal/manual.pdf' } });
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('content-length')).toBe('1572864');
+    expect(response.headers.get('content-disposition')).toContain(
+      `filename*=UTF-8''${encodeURIComponent('사용 설명서.pdf')}`
+    );
+    expect(mocks.getUploadObject).not.toHaveBeenCalled();
+  });
 });

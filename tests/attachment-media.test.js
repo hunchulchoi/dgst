@@ -2,8 +2,10 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
   createWebpUploadFile,
+  formatAttachmentFileSize,
   isPdfAttachment,
-  isVideoAttachment
+  isVideoAttachment,
+  parseAttachmentFileName
 } from '../src/lib/util/attachmentMedia.js';
 
 const commentRoute = readFileSync(
@@ -42,6 +44,25 @@ describe('attachment media detection', () => {
     expect(attachmentComponent).toContain('{:else if pdf || isPdfAttachment(src)}');
     expect(attachmentComponent).toContain('download');
     expect(attachmentComponent).toContain('PDF 다운로드');
+    expect(attachmentComponent).toContain('{displayFileName}');
+    expect(attachmentComponent).toContain('formatAttachmentFileSize(displayFileSize)');
+  });
+
+  it('reads the original UTF-8 filename from Content-Disposition', () => {
+    expect(
+      parseAttachmentFileName(
+        `inline; filename="manual.pdf"; filename*=UTF-8''${encodeURIComponent('사용 설명서.pdf')}`
+      )
+    ).toBe('사용 설명서.pdf');
+  });
+
+  it.each([
+    [512, '1KB'],
+    [1536, '2KB'],
+    [1024 * 1024, '1.0MB'],
+    [12 * 1024 * 1024, '12MB']
+  ])('formats attachment size %d as %s', (bytes, expected) => {
+    expect(formatAttachmentFileSize(bytes)).toBe(expected);
   });
 
   it('asks the server upload pipeline to normalize comment videos', () => {

@@ -2277,6 +2277,8 @@
                                   editCommentImage ?? editExistingAttachment
                                 )}
                                 pdf={isPdfAttachment(editCommentImage ?? editExistingAttachment)}
+                                fileName={editCommentImage?.name}
+                                fileSize={editCommentImage?.size}
                                 tallAttachmentSize
                                 ariaLabel="댓글 동영상 미리보기"
                                 videoStyle="max-width: 100%"
@@ -2500,6 +2502,8 @@
                       src={reCommentVideoPreviewUrl}
                       video={isVideoAttachment(reCommentImage)}
                       pdf={isPdfAttachment(reCommentImage)}
+                      fileName={reCommentImage?.name}
+                      fileSize={reCommentImage?.size}
                       tallAttachmentSize
                       ariaLabel="리플 동영상 미리보기"
                       videoStyle="max-width: 100%"
@@ -2606,6 +2610,8 @@
                   src={commentVideoPreviewUrl}
                   video={isVideoAttachment(commentImage)}
                   pdf={isPdfAttachment(commentImage)}
+                  fileName={commentImage?.name}
+                  fileSize={commentImage?.size}
                   tallAttachmentSize
                   ariaLabel="댓글 동영상 미리보기"
                   videoStyle="max-width: 100%"
