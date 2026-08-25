@@ -30,12 +30,16 @@ export function handleError({ error, event, status, message }) {
     component,
     operation
   });
-  const clientEventTrace = isInterruptedFetchError(error) ? getClientEventTrace() : undefined;
+  const interruptedFetch = isInterruptedFetchError(error);
+  const clientEventTrace = interruptedFetch ? getClientEventTrace() : undefined;
 
   reportClientError(error, {
-    type: 'sveltekit-client-error',
-    message: 'SvelteKit client navigation/render error',
-    status,
+    type: interruptedFetch ? 'navigation-fetch-interrupted' : 'sveltekit-client-error',
+    message: interruptedFetch
+      ? 'Client navigation fetch interrupted'
+      : 'SvelteKit client navigation/render error',
+    level: interruptedFetch ? 'warn' : 'error',
+    status: interruptedFetch ? undefined : status,
     pathname: event.url?.pathname,
     routeId,
     errorId,
@@ -54,8 +58,13 @@ export function handleError({ error, event, status, message }) {
   });
 
   return {
-    message: status >= 500 ? 'Internal Error' : message,
+    message: interruptedFetch
+      ? '연결이 일시적으로 중단되었습니다. 다시 시도합니다.'
+      : status >= 500
+        ? 'Internal Error'
+        : message,
     errorId,
-    fingerprint
+    fingerprint,
+    ...(interruptedFetch && { interruptedFetch: true })
   };
 }

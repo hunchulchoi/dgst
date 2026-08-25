@@ -25,6 +25,7 @@ declare global {
       message?: string;
       errorId?: string;
       fingerprint?: string;
+      interruptedFetch?: boolean;
     }
     interface Locals {
       getSession: () => Promise<Session | null>;

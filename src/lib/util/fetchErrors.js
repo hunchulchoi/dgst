@@ -10,8 +10,7 @@ export function isInterruptedFetchError(error) {
   if (error.name !== 'TypeError') return false;
 
   return (
-    error.message === 'Failed to fetch' ||
-    error.message === 'Load failed' ||
+    /^(?:Failed to fetch|Load failed|network error)$/i.test(error.message) ||
     /NetworkError when attempting to fetch resource/i.test(error.message)
   );
 }

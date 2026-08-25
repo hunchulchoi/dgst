@@ -143,7 +143,7 @@ describe('hooks.client handleError', () => {
 
     try {
       recordClientNavigationStart({ fromPath: '/board/free', toPath: '/', type: 'popstate' });
-      handleClientError({
+      const appError = handleClientError({
         error: new TypeError('Failed to fetch'),
         status: 500,
         message: 'Internal Error',
@@ -151,6 +151,13 @@ describe('hooks.client handleError', () => {
       });
 
       const body = JSON.parse(String(capturedInit?.body ?? '{}'));
+      expect(appError).toMatchObject({ interruptedFetch: true });
+      expect(body).toMatchObject({
+        level: 'warn',
+        type: 'navigation-fetch-interrupted',
+        errorMessage: 'Failed to fetch'
+      });
+      expect(body).not.toHaveProperty('status');
       expect(body.details.clientEventTrace).toEqual(
         expect.arrayContaining([
           expect.objectContaining({

@@ -355,6 +355,7 @@
     /** @param {PromiseRejectionEvent} event */
     const handleUnhandledRejection = (event) => {
       if (isExternalSerialPortError(event.reason)) return;
+      if (isInterruptedFetchError(event.reason)) return;
 
       const navigation = getClientNavigationContext();
 

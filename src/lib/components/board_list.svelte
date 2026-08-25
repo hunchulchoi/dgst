@@ -128,7 +128,7 @@
     >
       <Col lg="7" md="5" xs="12" class="text-break link-opacity-hover-50 pb-1 position-relative">
         <a
-          data-sveltekit-preload-data="hover"
+          data-sveltekit-preload-data="tap"
           href={resolve(`/board/${boardId}/${currentPageNo}/${article._id}`)}
           class="board-list-link link-underline link-underline-opacity-0 link-offset-2 link-underline-opacity-50-hover stretched-link"
         >
@@ -213,7 +213,7 @@
             first
             href={boardListPath(boardId, 1)}
             onclick={goFirstPage}
-            data-sveltekit-preload-data="hover"
+            data-sveltekit-preload-data="tap"
           /></PaginationItem
         >
         {#each Array(data.endNo - data.startNo + 1) as _, i (i + data.startNo)}
@@ -222,7 +222,7 @@
             <PaginationLink
               href={boardListPath(boardId, targetPage)}
               onclick={createPageClickHandler(targetPage)}
-              data-sveltekit-preload-data="hover"
+              data-sveltekit-preload-data="tap"
             >
               {targetPage}
             </PaginationLink>
@@ -232,7 +232,7 @@
           ><PaginationLink
             href={boardListPath(boardId, data.maxPage)}
             onclick={goLastPage}
-            data-sveltekit-preload-data="hover"
+            data-sveltekit-preload-data="tap"
             last
           /></PaginationItem
         >

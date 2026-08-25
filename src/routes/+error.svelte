@@ -15,7 +15,7 @@
   import { reportClientPageError } from '$lib/util/reportClientPageError.js';
   import { getClientNavigationContext } from '$lib/util/clientNavigationContext.js';
 
-  /** @typedef {Error & { stack?: string; name?: string; cause?: unknown; errorId?: string; fingerprint?: string }} PageError */
+  /** @typedef {Error & { stack?: string; name?: string; cause?: unknown; errorId?: string; fingerprint?: string; interruptedFetch?: boolean }} PageError */
 
   // Svelte 5 Runes - page store 필요 (error page는 예외)
 
@@ -29,28 +29,30 @@
         currentPath: $page.url.pathname,
         routeId: $page.route?.id ?? undefined
       });
-      reportClientPageError({
-        status: $page.status,
-        pathname: $page.url.pathname,
-        search: $page.url.search,
-        href: $page.url.href,
-        routeId: $page.route?.id ?? undefined,
-        referer: document.referrer,
-        message: pageError?.message,
-        stack: pageError?.stack,
-        name: pageError?.name,
-        cause: pageError?.cause,
-        errorId: pageError?.errorId,
-        fingerprint: pageError?.fingerprint,
-        error: pageError,
-        details: {
-          ...navigation,
-          reloadAttempted,
-          pageDataKeys: Object.keys($page.data ?? {})
-            .sort()
-            .slice(0, 30)
-        }
-      });
+      if (!pageError?.interruptedFetch) {
+        reportClientPageError({
+          status: $page.status,
+          pathname: $page.url.pathname,
+          search: $page.url.search,
+          href: $page.url.href,
+          routeId: $page.route?.id ?? undefined,
+          referer: document.referrer,
+          message: pageError?.message,
+          stack: pageError?.stack,
+          name: pageError?.name,
+          cause: pageError?.cause,
+          errorId: pageError?.errorId,
+          fingerprint: pageError?.fingerprint,
+          error: pageError,
+          details: {
+            ...navigation,
+            reloadAttempted,
+            pageDataKeys: Object.keys($page.data ?? {})
+              .sort()
+              .slice(0, 30)
+          }
+        });
+      }
 
       if (!reloadAttempted) {
         sessionStorage.setItem(reloadKey, '1');

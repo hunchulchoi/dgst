@@ -82,8 +82,8 @@ describe('write page video upload', () => {
     const reportClientPageError = readFileSync('src/lib/util/reportClientPageError.js', 'utf8');
     expect(reportClientPageError).toContain('@property {Record<string, unknown>} [details]');
     expect(reportClientPageError).toContain('...(details && { details })');
-    expect(apiLogRoute).toContain('sanitizeClientLogDetails');
-    expect(apiLogRoute).toContain('details: sanitizeClientLogDetails(logData.details)');
+    expect(apiLogRoute).toContain('_sanitizeClientLogDetails');
+    expect(apiLogRoute).toContain('details: _sanitizeClientLogDetails(logData.details)');
   });
 
   it('reports failed image uploads to server logs', () => {

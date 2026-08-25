@@ -6,6 +6,7 @@ describe('isInterruptedFetchError', () => {
   it('matches browser fetch interruption errors', () => {
     expect(isInterruptedFetchError(new TypeError('Failed to fetch'))).toBe(true);
     expect(isInterruptedFetchError(new TypeError('Load failed'))).toBe(true);
+    expect(isInterruptedFetchError(new TypeError('network error'))).toBe(true);
     expect(
       isInterruptedFetchError(new DOMException('The operation was aborted.', 'AbortError'))
     ).toBe(true);

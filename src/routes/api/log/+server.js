@@ -9,20 +9,20 @@ const MAX_BODY_BYTES = 16 * 1024;
  * @param {number} depth
  * @returns {unknown}
  */
-function sanitizeClientLogDetails(value, depth = 0) {
+export function _sanitizeClientLogDetails(value, depth = 0) {
   if (value == null) return value;
   if (typeof value === 'string') return value.slice(0, 500);
   if (typeof value === 'number' || typeof value === 'boolean') return value;
   if (Array.isArray(value)) {
-    if (depth >= 2) return '[Array]';
-    return value.slice(0, 20).map((item) => sanitizeClientLogDetails(item, depth + 1));
+    if (depth >= 3) return '[Array]';
+    return value.slice(0, 20).map((item) => _sanitizeClientLogDetails(item, depth + 1));
   }
   if (typeof value === 'object') {
-    if (depth >= 2) return '[Object]';
+    if (depth >= 3) return '[Object]';
     /** @type {Record<string, unknown>} */
     const out = {};
     for (const [key, nested] of Object.entries(value).slice(0, 40)) {
-      out[key.slice(0, 80)] = sanitizeClientLogDetails(nested, depth + 1);
+      out[key.slice(0, 80)] = _sanitizeClientLogDetails(nested, depth + 1);
     }
     return out;
   }
@@ -101,7 +101,7 @@ export async function POST(event) {
       }),
       ...(logData.details &&
         typeof logData.details === 'object' && {
-          details: sanitizeClientLogDetails(logData.details)
+          details: _sanitizeClientLogDetails(logData.details)
         })
     };
 
