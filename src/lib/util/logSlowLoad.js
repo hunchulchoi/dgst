@@ -10,6 +10,32 @@
 
 /** @type {number} */
 const SLOW_LOAD_THRESHOLD_MS = 2000;
+export const MAX_INITIAL_LOAD_DURATION_MS = 5 * 60 * 1000;
+
+/**
+ * 백그라운드 정지·절전 시간이 포함된 비현실적인 초기 로드 측정을 제외한다.
+ * @param {Pick<PerformanceNavigationTiming, 'loadEventEnd' | 'startTime' | 'name'>} entry
+ * @param {string} fallbackPathname
+ */
+export function getInitialLoadMeasurement(entry, fallbackPathname) {
+  const durationMs = entry.loadEventEnd - entry.startTime;
+  if (
+    !Number.isFinite(durationMs) ||
+    durationMs <= 0 ||
+    durationMs > MAX_INITIAL_LOAD_DURATION_MS
+  ) {
+    return null;
+  }
+
+  let pathname = fallbackPathname;
+  try {
+    pathname = new URL(entry.name).pathname;
+  } catch {
+    // 오래된 브라우저의 불완전한 entry.name은 현재 경로로 대체한다.
+  }
+
+  return { durationMs, pathname };
+}
 
 /**
  * 느린 페이지 로딩·네비게이션을 콘솔 및 서버 로그로 남긴다.
@@ -60,13 +86,12 @@ export function reportSlowInitialLoad(pathname) {
     const [entry] = performance.getEntriesByType('navigation');
     if (!(entry instanceof PerformanceNavigationTiming)) return;
 
-    const durationMs = entry.loadEventEnd - entry.startTime;
-    if (durationMs <= 0) return;
+    const measurement = getInitialLoadMeasurement(entry, pathname);
+    if (!measurement) return;
 
     reportSlowLoad({
       type: 'initial',
-      durationMs,
-      pathname
+      ...measurement
     });
   } catch (error) {
     console.error('[slow-initial-load] 측정 실패:', error);
