@@ -98,6 +98,12 @@ describe('attachment media detection', () => {
     expect(attachmentComponent).toContain('naturalHeight: element.videoHeight');
   });
 
+  it('ignores stale image load callbacks after client-side navigation', () => {
+    expect(attachmentComponent).toContain("if (typeof onimageload === 'function')");
+    expect(attachmentComponent).toContain('onload={handleImageLoad}');
+    expect(attachmentComponent).not.toContain('onload={onimageload}');
+  });
+
   it('renames browser-compressed HEIC files to a matching WebP extension', () => {
     const compressed = new File(['webp'], 'camera.HEIC', { type: 'image/webp' });
     const upload = createWebpUploadFile(compressed, 'camera.HEIC');

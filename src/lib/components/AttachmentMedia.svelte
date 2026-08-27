@@ -107,6 +107,13 @@
       applyTallAttachmentSizing(element.style);
     }
   }
+
+  /** @param {Event} event */
+  function handleImageLoad(event) {
+    if (typeof onimageload === 'function') {
+      onimageload(event);
+    }
+  }
 </script>
 
 {#if video || isVideoAttachment(src)}
@@ -140,7 +147,7 @@
     <span class="attachment-pdf__action">PDF 다운로드</span>
   </a>
 {:else}
-  <img {src} {alt} style={imageStyle} onload={onimageload} />
+  <img {src} {alt} style={imageStyle} onload={handleImageLoad} />
 {/if}
 
 <style>
