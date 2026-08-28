@@ -468,7 +468,7 @@ export async function write(file, email, preservePath = 'jjal', options = {}) {
         uploadMetadata.thumbnailUrl = `/images${dir}/${fileName}.thumb.webp`;
 
         try {
-          await sharp(finalPath, { animated: false })
+          await sharp(finalPath, { animated: true })
             .resize({
               width,
               height,
