@@ -164,7 +164,7 @@
       >
         {#if article.photo}
           <img
-            src={article.photo}
+            src={`${article.photo}.thumb.webp`}
             alt="Profile"
             class="h-6 w-6 max-md:h-7 max-md:w-7 object-cover rounded-[var(--dgst-radius)] me-1"
             width="28"
