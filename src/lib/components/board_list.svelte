@@ -40,6 +40,15 @@
     return String(content ?? '');
   }
 
+  /** 기존 프로필에는 썸네일 객체가 없으므로 원본으로 한 번만 폴백한다. */
+  /** @param {Event} event @param {string} photo */
+  function useProfileImageFallback(event, photo) {
+    const image = /** @type {HTMLImageElement} */ (event.currentTarget);
+    if (image.dataset.profileFallbackApplied === 'true') return;
+    image.dataset.profileFallbackApplied = 'true';
+    image.src = photo;
+  }
+
   // 페이지 네이션 클릭 핸들러 - 중복 클릭 방지
   /**
    * @param {number | string} targetPage
@@ -164,9 +173,15 @@
       >
         {#if article.photo}
           <img
-            src={article.photo}
+            src={`${article.photo}.thumb.webp`}
             alt="Profile"
             class="h-6 w-6 max-md:h-7 max-md:w-7 object-cover rounded-[var(--dgst-radius)] me-1"
+            width="28"
+            height="28"
+            loading="lazy"
+            decoding="async"
+            fetchpriority="low"
+            onerror={(event) => useProfileImageFallback(event, article.photo)}
           />
         {/if}
         {article.nickname}

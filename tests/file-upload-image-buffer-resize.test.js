@@ -180,6 +180,47 @@ describe('fileUpload image resizing', () => {
     vi.useRealTimers();
   });
 
+  it('creates and uploads a static thumbnail when requested', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-08-28T00:00:00.000Z'));
+
+    const { write } = await import('../src/lib/util/fileUpload.js');
+    const image = new File([Buffer.alloc(128 * 1024, 7)], 'profile.gif', { type: 'image/gif' });
+
+    const result = await write(image, 'person@example.com', 'profiles', {
+      returnMetadata: true,
+      thumbnail: { width: 64, height: 64 }
+    });
+
+    expect(result).toEqual({
+      url: '/images/profiles/2026/8/28/persone_profile_1787875200000.gif',
+      thumbnailUrl: '/images/profiles/2026/8/28/persone_profile_1787875200000.gif.thumb.webp'
+    });
+    expect(mocks.sharp).toHaveBeenCalledWith(
+      expect.stringMatching(/^\/tmp\/\.dgst-upload-[\w-]+\.gif$/),
+      { animated: false }
+    );
+    expect(mocks.sharpPipeline.resize).toHaveBeenCalledWith({
+      width: 64,
+      height: 64,
+      fit: 'cover',
+      position: 'centre',
+      withoutEnlargement: false
+    });
+    expect(mocks.sharpPipeline.webp).toHaveBeenCalledWith({ quality: 72, effort: 4 });
+    expect(mocks.sharpPipeline.toFile).toHaveBeenCalledWith(
+      expect.stringMatching(/^\/tmp\/\.dgst-upload-[\w-]+\.gif\.thumb\.webp$/)
+    );
+    expect(mocks.putUploadObject).toHaveBeenCalledWith(
+      expect.objectContaining({
+        key: 'profiles/2026/8/28/persone_profile_1787875200000.gif.thumb.webp',
+        contentType: 'image/webp'
+      })
+    );
+
+    vi.useRealTimers();
+  });
+
   it('trusts an explicit WebP MIME over a stale HEIC filename', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-07-22T00:00:00.000Z'));

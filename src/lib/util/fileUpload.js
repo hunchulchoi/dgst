@@ -120,7 +120,7 @@ function isHeicImage(file) {
  * @param {File} file
  * @param {string | undefined | null} email
  * @param {string} [preservePath='jjal']
- * @param {{ compressVideo?: boolean, removeVideoAudio?: boolean, extractVideoAudio?: boolean, serverCompressVideoContext?: unknown, returnMetadata?: boolean }} [options]
+ * @param {{ compressVideo?: boolean, removeVideoAudio?: boolean, extractVideoAudio?: boolean, serverCompressVideoContext?: unknown, returnMetadata?: boolean, thumbnail?: { width: number, height: number } }} [options]
  */
 export async function write(file, email, preservePath = 'jjal', options = {}) {
   try {
@@ -163,7 +163,9 @@ export async function write(file, email, preservePath = 'jjal', options = {}) {
     let fileWritten = false;
     /** @type {string | null} */
     let previewPath = null;
-    /** @type {{ pageCount: number, previewUrl?: string } | null} */
+    /** @type {string | null} */
+    let thumbnailPath = null;
+    /** @type {{ pageCount?: number, previewUrl?: string, thumbnailUrl?: string } | null} */
     let uploadMetadata = null;
 
     const writeOriginalFile = () => {
@@ -458,6 +460,36 @@ export async function write(file, email, preservePath = 'jjal', options = {}) {
 
     const finalPath = fullPath;
 
+    if (file.type.startsWith('image') && options.thumbnail) {
+      const { width, height } = options.thumbnail;
+      if (Number.isInteger(width) && width > 0 && Number.isInteger(height) && height > 0) {
+        thumbnailPath = `${finalPath}.thumb.webp`;
+        uploadMetadata ||= {};
+        uploadMetadata.thumbnailUrl = `/images${dir}/${fileName}.thumb.webp`;
+
+        try {
+          await sharp(finalPath, { animated: false })
+            .resize({
+              width,
+              height,
+              fit: 'cover',
+              position: 'centre',
+              withoutEnlargement: false
+            })
+            .webp({ quality: 72, effort: 4 })
+            .toFile(thumbnailPath);
+        } catch (thumbnailError) {
+          thumbnailPath = null;
+          delete uploadMetadata.thumbnailUrl;
+          logger.warn({
+            fileName,
+            error: thumbnailError,
+            message: 'Image thumbnail generation failed'
+          });
+        }
+      }
+    }
+
     logger.info({
       finalPath,
       fullPath,
@@ -499,10 +531,31 @@ export async function write(file, email, preservePath = 'jjal', options = {}) {
             });
           }
         }
+
+        if (thumbnailPath && uploadMetadata?.thumbnailUrl && fs.existsSync(thumbnailPath)) {
+          try {
+            await putUploadObject({
+              key: `${objectKey}.thumb.webp`,
+              body: fs.readFileSync(thumbnailPath),
+              contentType: 'image/webp',
+              originalFileName: `${file.name}.thumb.webp`,
+              uploader: email || 'anonymous',
+              uploadedAt: now
+            });
+          } catch (thumbnailUploadError) {
+            delete uploadMetadata.thumbnailUrl;
+            logger.warn({
+              fileName,
+              error: thumbnailUploadError,
+              message: 'Image thumbnail MinIO upload failed'
+            });
+          }
+        }
       } finally {
         try {
           fs.rmSync(finalPath, { force: true });
           if (previewPath) fs.rmSync(previewPath, { force: true });
+          if (thumbnailPath) fs.rmSync(thumbnailPath, { force: true });
         } catch (cleanupError) {
           logger.warn({
             fileName,

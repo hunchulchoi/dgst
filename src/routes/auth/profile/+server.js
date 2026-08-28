@@ -155,12 +155,16 @@ export async function PATCH(event) {
         }
 
         // 타임아웃 처리 (30초)
-        const uploadPromise = write(fileToUpload, email, 'profiles');
+        const uploadPromise = write(fileToUpload, email, 'profiles', {
+          returnMetadata: true,
+          thumbnail: { width: 64, height: 64 }
+        });
         const timeoutPromise = new Promise((_, reject) =>
           setTimeout(() => reject(new Error('파일 업로드 타임아웃')), 30000)
         );
 
-        storeFileName = await Promise.race([uploadPromise, timeoutPromise]);
+        const stored = await Promise.race([uploadPromise, timeoutPromise]);
+        storeFileName = typeof stored === 'string' ? stored : stored?.url;
 
         if (!storeFileName) {
           throw error(500, { message: '파일 저장에 실패 하였습니다.' });
