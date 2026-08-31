@@ -4,8 +4,11 @@
 import { z } from 'zod';
 import { getPrisma } from '$lib/database/prisma.js';
 import { isValidLottoNumbers, normalizeLottoEmail } from '$lib/server/lotto.js';
+import logger from '$lib/util/logger.js';
 
 const DH_ENDPOINT = 'https://www.dhlottery.co.kr/common.do';
+const DH_FETCH_TIMEOUT_MS = 5000;
+const MAX_NEXT_DRAW_PROBES = 1;
 
 const dhDrawResponseSchema = z
   .object({
@@ -210,8 +213,18 @@ export async function fetchOfficialDrawJson(drwNo) {
         'User-Agent':
           'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/131.0.0.0 Safari/537.36 (compatible; dgst)'
       },
-      signal: AbortSignal.timeout(20000)
+      signal: AbortSignal.timeout(DH_FETCH_TIMEOUT_MS)
     });
+    if (!res.ok) {
+      logger.warn({
+        message: '[lotto-official] fetch failed',
+        event: 'lotto.official.fetch.failed',
+        drwNo,
+        reason: 'http-status',
+        status: res.status
+      });
+      return null;
+    }
     const text = await res.text();
     /** @type {unknown} */
     const rawJson = JSON.parse(text);
@@ -243,7 +256,15 @@ export async function fetchOfficialDrawJson(drwNo) {
     if (out.mains.some((n) => !Number.isInteger(n) || n < 1 || n > 45)) return null;
     if (!Number.isInteger(out.bonus) || out.bonus < 1 || out.bonus > 45) return null;
     return out;
-  } catch {
+  } catch (error) {
+    logger.warn({
+      message: '[lotto-official] fetch failed',
+      event: 'lotto.official.fetch.failed',
+      drwNo,
+      reason: error instanceof Error && error.name === 'TimeoutError' ? 'timeout' : 'network',
+      timeoutMs: DH_FETCH_TIMEOUT_MS,
+      error: String(error)
+    });
     return null;
   }
 }
@@ -338,7 +359,8 @@ export async function syncOfficialDrawFromDhlottery() {
   let added = null;
 
   if (lastStored) {
-    for (let n = lastStored.drwNo + 1; n <= lastStored.drwNo + 4; n++) {
+    // 외부 API 장애 시 순차 재시도가 cron 실행을 길게 붙잡지 않게 한다.
+    for (let n = lastStored.drwNo + 1; n <= lastStored.drwNo + MAX_NEXT_DRAW_PROBES; n++) {
       const next = await fetchOfficialDrawJson(n);
       if (next) {
         const ok = await storeOfficialDraw(next);
