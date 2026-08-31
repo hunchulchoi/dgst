@@ -4,6 +4,8 @@ import path from 'node:path';
 import mime from 'mime';
 import { getUploadObject, statUploadObject } from '$lib/server/minioStorage.js';
 
+const THUMBNAIL_SIZES = new Set([40, 64, 80, 96, 128, 160, 200, 256]);
+
 /** @param {string} filepath */
 function safeObjectKey(filepath) {
   if (!filepath || filepath.includes('\0') || filepath.startsWith('/')) return null;
@@ -61,6 +63,26 @@ function contentDisposition(fileName) {
   return `inline; filename="${asciiFileName}"; filename*=UTF-8''${encodeURIComponent(fileName)}`;
 }
 
+/** @param {string} requestUrl */
+function thumbnailSize(requestUrl) {
+  const value = new URL(requestUrl).searchParams.get('thumbnail');
+  if (value === null) return null;
+  const size = Number(value);
+  if (!Number.isInteger(size) || !THUMBNAIL_SIZES.has(size)) {
+    throw error(400, '지원하지 않는 썸네일 크기입니다.');
+  }
+  return size;
+}
+
+/** @param {import('node:stream').Readable} stream */
+async function streamBuffer(stream) {
+  const chunks = [];
+  for await (const chunk of stream) {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+  }
+  return Buffer.concat(chunks);
+}
+
 /** @param {{ params: { filepath: string } }} event */
 export async function HEAD({ params }) {
   const objectKey = safeObjectKey(params.filepath);
@@ -110,7 +132,8 @@ export async function GET({ params, request }) {
 
     const requestedRange = request.headers.get('range');
     const metadata = await statUploadObject(objectKey);
-    const range = parseRange(requestedRange, metadata.size);
+    const requestedThumbnailSize = thumbnailSize(request.url);
+    const range = requestedThumbnailSize ? null : parseRange(requestedRange, metadata.size);
     const object = await getUploadObject(
       objectKey,
       range ? { offset: range.start, length: range.length } : undefined,
@@ -121,6 +144,29 @@ export async function GET({ params, request }) {
       object.contentType ||
       mime.getType(object.originalFileName || objectKey) ||
       'application/octet-stream';
+    if (requestedThumbnailSize) {
+      if (!contentType.startsWith('image/')) {
+        throw error(415, '이미지 파일만 썸네일로 변환할 수 있습니다.');
+      }
+      const sharp = (await import('sharp')).default;
+      const thumbnail = await sharp(await streamBuffer(object.stream))
+        .rotate()
+        .resize(requestedThumbnailSize, requestedThumbnailSize, { fit: 'cover' })
+        .webp({ quality: 80, effort: 3 })
+        .toBuffer();
+      /** @type {Record<string, string>} */
+      const thumbnailHeaders = {
+        'Content-Type': 'image/webp',
+        'Content-Length': String(thumbnail.length),
+        'Cache-Control': 'public, max-age=31536000, immutable',
+        'Content-Disposition': contentDisposition(`${path.posix.parse(objectKey).name}.webp`),
+        'X-Content-Type-Options': 'nosniff'
+      };
+      if (object.etag) {
+        thumbnailHeaders.ETag = `"${String(object.etag).replace(/^"|"$/g, '')}-thumb-${requestedThumbnailSize}"`;
+      }
+      return new Response(thumbnail, { headers: thumbnailHeaders });
+    }
     const responseLength = range?.length ?? object.size;
     const originalFileName = object.originalFileName || path.posix.basename(objectKey);
     /** @type {Record<string, string>} */

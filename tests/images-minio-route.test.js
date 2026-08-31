@@ -3,7 +3,14 @@ import { Readable } from 'node:stream';
 
 const mocks = vi.hoisted(() => ({
   getUploadObject: vi.fn(),
-  statUploadObject: vi.fn()
+  statUploadObject: vi.fn(),
+  sharp: vi.fn(),
+  sharpPipeline: {
+    resize: vi.fn(),
+    rotate: vi.fn(),
+    toBuffer: vi.fn(),
+    webp: vi.fn()
+  }
 }));
 
 vi.mock('../src/lib/server/minioStorage.js', () => ({
@@ -11,8 +18,17 @@ vi.mock('../src/lib/server/minioStorage.js', () => ({
   statUploadObject: mocks.statUploadObject
 }));
 
+vi.mock('sharp', () => ({ default: mocks.sharp }));
+
 describe('/images MinIO download route', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.sharp.mockReturnValue(mocks.sharpPipeline);
+    mocks.sharpPipeline.rotate.mockReturnValue(mocks.sharpPipeline);
+    mocks.sharpPipeline.resize.mockReturnValue(mocks.sharpPipeline);
+    mocks.sharpPipeline.webp.mockReturnValue(mocks.sharpPipeline);
+    mocks.sharpPipeline.toBuffer.mockResolvedValue(Buffer.from('thumbnail'));
+  });
 
   it('streams a ranged video response with the preserved original filename', async () => {
     const object = {
@@ -81,5 +97,32 @@ describe('/images MinIO download route', () => {
       `filename*=UTF-8''${encodeURIComponent('사용 설명서.pdf')}`
     );
     expect(mocks.getUploadObject).not.toHaveBeenCalled();
+  });
+
+  it('returns a cached square WebP thumbnail for an uploaded image', async () => {
+    const object = {
+      size: 10,
+      etag: 'image-etag',
+      contentType: 'image/jpeg',
+      originalFileName: '프로필.jpg'
+    };
+    mocks.statUploadObject.mockResolvedValue(object);
+    mocks.getUploadObject.mockResolvedValue({
+      ...object,
+      stream: Readable.from(Buffer.from('original'))
+    });
+    const { GET } = await import('../src/routes/images/[...filepath]/+server.js');
+
+    const response = await GET({
+      params: { filepath: 'profiles/avatar.jpg' },
+      request: new Request('https://dgst.example/images/profiles/avatar.jpg?thumbnail=80')
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('content-type')).toBe('image/webp');
+    expect(response.headers.get('cache-control')).toContain('immutable');
+    expect(response.headers.get('etag')).toBe('"image-etag-thumb-80"');
+    expect(mocks.sharpPipeline.resize).toHaveBeenCalledWith(80, 80, { fit: 'cover' });
+    expect(Buffer.from(await response.arrayBuffer()).toString()).toBe('thumbnail');
   });
 });

@@ -24,6 +24,7 @@
   import { isOnlyOneEmoji } from '$lib/util/emoji.js';
   import { linkifyPlainUrls } from '$lib/util/linkifyPlainUrls.js';
   import { repairOgCardHtmlEntities } from '$lib/util/ogCardHtmlRepair.js';
+  import { imageThumbnailUrl } from '$lib/util/imageThumbnail.js';
   import {
     createWebpUploadFile,
     isPdfAttachment,
@@ -2175,10 +2176,14 @@
                     <img
                       alt=""
                       class="comment-avatar rounded-circle flex-shrink-0"
-                      src={comment.photo || '/icons/unknown-person-icon-4.jpg'}
+                      src={imageThumbnailUrl(
+                        comment.photo || '/icons/unknown-person-icon-4.jpg',
+                        80
+                      )}
                       width="40"
                       height="40"
                       loading="lazy"
+                      decoding="async"
                     />
                     <div class="comment-meta">
                       <div
