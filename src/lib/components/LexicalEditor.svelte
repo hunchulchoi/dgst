@@ -2429,9 +2429,11 @@
     max-width: 100%;
     min-width: 0;
     min-height: 450px;
-    max-height: 450px;
-    overflow-y: auto;
-    overflow-x: hidden;
+    /*
+     * Do not make the editable area its own vertical scroller. On iOS Safari,
+     * a caret after a non-editable image/iframe can make that nested scroller
+     * jump back to the media while text is being composed.
+     */
     border: 1px solid var(--bs-border-color);
     border-radius: 0 0 10px 10px;
     background: var(--bs-body-bg);
