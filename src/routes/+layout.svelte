@@ -22,9 +22,7 @@
   import { isExternalSerialPortError, reportClientError } from '$lib/util/reportClientPageError.js';
   import { isInterruptedFetchError } from '$lib/util/fetchErrors.js';
   import { isFreeBoardLegacyPath } from '$lib/util/boardPaths.js';
-  import { promptKakaoExternalBrowser } from '$lib/util/kakaoExternalBrowser.js';
   import { alarmCount, boardListReloadKey, boardListReloading } from '$lib/util/store.js';
-  import { isValidTimeZone, serializeTimeZoneCookie } from '$lib/util/formatRelativeTime.js';
   import {
     getClientNavigationContext,
     recordClientNavigationComplete,
@@ -56,6 +54,9 @@
 
   /** @type {number | undefined} */
   let boardDetailScrollResetTimer;
+
+  /** @type {(() => void) | undefined} */
+  let cancelNonCriticalInitialWork;
 
   /** 게시판 목록 → 글 상세 이동 시 blur (beforeNavigate에서 미리 켬 — 첫 클릭부터 적용) */
   let boardListToDetailBlur = $state(false);
@@ -250,6 +251,8 @@
   }
 
   async function syncTimeZoneCookie() {
+    const { isValidTimeZone, serializeTimeZoneCookie } =
+      await import('$lib/util/formatRelativeTime.js');
     let detectedTimeZone = '';
     try {
       detectedTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone ?? '';
@@ -262,6 +265,26 @@
     document.cookie = serializeTimeZoneCookie(detectedTimeZone, location.protocol === 'https:');
 
     if (data.timeZone !== detectedTimeZone) await invalidateAll();
+  }
+
+  /** `load` 이후 idle에만 실행: 초기 HTML·hydration 경로와 경쟁시키지 않는다. */
+  function scheduleNonCriticalInitialWork() {
+    const run = () => {
+      cancelNonCriticalInitialWork = undefined;
+      void import('$lib/util/kakaoExternalBrowser.js').then(({ promptKakaoExternalBrowser }) =>
+        promptKakaoExternalBrowser()
+      );
+      void syncTimeZoneCookie();
+    };
+
+    if (typeof window.requestIdleCallback === 'function') {
+      const id = window.requestIdleCallback(run, { timeout: 3000 });
+      cancelNonCriticalInitialWork = () => window.cancelIdleCallback(id);
+      return;
+    }
+
+    const id = window.setTimeout(run, 0);
+    cancelNonCriticalInitialWork = () => window.clearTimeout(id);
   }
 
   async function refreshUnreadAlarmCount() {
@@ -329,8 +352,6 @@
 
   onMount(() => {
     if (!browser) return;
-    void promptKakaoExternalBrowser();
-    void syncTimeZoneCookie();
 
     /** @param {ErrorEvent} event */
     const handleWindowError = (event) => {
@@ -394,21 +415,23 @@
       history.replaceState(history.state, '', `/${window.location.search}`);
     }
 
-    const measureInitialLoad = () => {
+    const completeInitialLoad = () => {
       reportSlowInitialLoad(window.location.pathname);
+      scheduleNonCriticalInitialWork();
     };
 
     if (document.readyState === 'complete') {
-      measureInitialLoad();
+      completeInitialLoad();
     } else {
-      window.addEventListener('load', measureInitialLoad, { once: true });
+      window.addEventListener('load', completeInitialLoad, { once: true });
     }
 
     return () => {
       window.removeEventListener('error', handleWindowError);
       window.removeEventListener('unhandledrejection', handleUnhandledRejection);
       window.removeEventListener('dgst:normalize-mobile-layout-width', normalizeMobileLayoutWidth);
-      window.removeEventListener('load', measureInitialLoad);
+      window.removeEventListener('load', completeInitialLoad);
+      cancelNonCriticalInitialWork?.();
       if (mobileLayoutNormalizationFrame !== undefined) {
         cancelAnimationFrame(mobileLayoutNormalizationFrame);
       }
