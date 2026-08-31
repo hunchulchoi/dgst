@@ -2,6 +2,7 @@
   import { onDestroy, onMount } from 'svelte';
   import {
     $createParagraphNode as createParagraphNode,
+    $getNodeByKey as getNodeByKey,
     $getRoot as getRoot,
     $getSelection as getSelection,
     $insertNodes as insertNodes,
@@ -481,6 +482,23 @@
       dom.setAttribute('contenteditable', 'false');
       dom.style.maxWidth = '100%';
       dom.innerHTML = this.__html;
+
+      const deleteButton = document.createElement('button');
+      deleteButton.type = 'button';
+      deleteButton.className = 'lexical-html-block__delete';
+      deleteButton.setAttribute('aria-label', '미디어 삭제');
+      deleteButton.textContent = '×';
+      deleteButton.addEventListener('pointerdown', (event) => event.preventDefault());
+      deleteButton.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const nodeKey = this.getKey();
+        editor?.update(() => {
+          const node = getNodeByKey(nodeKey);
+          if (node instanceof HtmlBlockNode) node.remove();
+        });
+      });
+      dom.append(deleteButton);
       return dom;
     }
 
@@ -2477,6 +2495,29 @@
   .lexical-editor__content :global(audio),
   .lexical-editor__content :global(iframe) {
     max-width: 100%;
+  }
+
+  .lexical-editor__content :global([data-lexical-html-block='true']) {
+    position: relative;
+  }
+
+  .lexical-editor__content :global(.lexical-html-block__delete) {
+    position: absolute;
+    z-index: 1;
+    top: 0.4rem;
+    right: 0.4rem;
+    display: grid;
+    width: 2.25rem;
+    height: 2.25rem;
+    place-items: center;
+    border: 0;
+    border-radius: 999px;
+    background: rgba(20, 20, 20, 0.78);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.28);
+    color: #fff;
+    font-size: 1.65rem;
+    line-height: 1;
+    touch-action: manipulation;
   }
 
   @media (max-width: 768px) {
