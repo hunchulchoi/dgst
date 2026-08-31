@@ -2526,7 +2526,6 @@
 
     .lexical-editor__box {
       min-height: 400px;
-      max-height: 400px;
     }
 
     .lexical-editor__content {
@@ -2537,7 +2536,6 @@
   @media (max-width: 768px) and (min-height: 800px) {
     .lexical-editor__box {
       min-height: 600px;
-      max-height: 600px;
     }
 
     .lexical-editor__content {
