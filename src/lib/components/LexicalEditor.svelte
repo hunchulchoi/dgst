@@ -2429,6 +2429,7 @@
     max-width: 100%;
     min-width: 0;
     min-height: 450px;
+    overflow: clip;
     /*
      * Do not make the editable area its own vertical scroller. On iOS Safari,
      * a caret after a non-editable image/iframe can make that nested scroller
