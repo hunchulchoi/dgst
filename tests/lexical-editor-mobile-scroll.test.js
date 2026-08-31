@@ -11,8 +11,8 @@ describe('Lexical editor mobile scrolling', () => {
 
     expect(editorBoxes.length).toBeGreaterThan(0);
     expect(editorBoxes[0]).toContain('min-height: 450px;');
-    expect(editorBoxes[0]).toContain('overflow: clip;');
     for (const editorBox of editorBoxes) {
+      expect(editorBox).not.toMatch(/overflow\s*:\s*clip/);
       expect(editorBox).not.toMatch(/max-height\s*:/);
       expect(editorBox).not.toMatch(/overflow-y\s*:/);
     }
