@@ -259,6 +259,60 @@ describe('reportClientError', () => {
       });
     }
   });
+
+  it('probes a failed same-origin module chunk and records its HTTP status', async () => {
+    const originalFetch = globalThis.fetch;
+    const originalConsoleError = console.error;
+    const originalLocation = globalThis.location;
+    /** @type {Array<Record<string, unknown>>} */
+    const logBodies = [];
+    const chunkUrl = 'https://www.dgst.me/_app/immutable/chunks/missing-module-probe.js';
+
+    globalThis.fetch = /** @type {typeof fetch} */ (
+      /** @type {unknown} */ (
+        vi.fn((url, init) => {
+          if (url === chunkUrl) return Promise.resolve({ status: 404, statusText: 'Not Found' });
+          if (url === '/api/log') {
+            logBodies.push(JSON.parse(String(init?.body ?? '{}')));
+            return { catch: vi.fn() };
+          }
+          throw new Error(`Unexpected fetch: ${String(url)}`);
+        })
+      )
+    );
+    console.error = vi.fn();
+    Object.defineProperty(globalThis, 'location', {
+      configurable: true,
+      value: { origin: 'https://www.dgst.me', pathname: '/', href: 'https://www.dgst.me/' }
+    });
+
+    try {
+      reportClientError(new Error(`Importing a module script failed: ${chunkUrl}`), {
+        type: 'sveltekit-client-error'
+      });
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(logBodies).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ chunkUrl }),
+          expect.objectContaining({
+            type: 'module-chunk-probe',
+            chunkUrl,
+            chunkHttpStatus: 404,
+            chunkHttpStatusText: 'Not Found'
+          })
+        ])
+      );
+    } finally {
+      globalThis.fetch = originalFetch;
+      console.error = originalConsoleError;
+      Object.defineProperty(globalThis, 'location', {
+        configurable: true,
+        value: originalLocation
+      });
+    }
+  });
+
   it('sends structured details in the log payload', () => {
     const originalFetch = globalThis.fetch;
     const originalLocation = globalThis.location;

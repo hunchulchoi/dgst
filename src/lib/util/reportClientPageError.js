@@ -54,6 +54,7 @@ const MAX_LEN = {
   cause: 1000,
   phase: 64
 };
+const probedChunkUrls = new Set();
 
 /** @param {string} value */
 function fnv1a(value) {
@@ -174,6 +175,72 @@ function inferChunkUrl(message) {
   if (!message) return undefined;
   const match = message.match(/(?:https?:\/\/|\/)[^\s"'<>)]*_app\/immutable\/[^\s"'<>)]*/);
   return match?.[0];
+}
+
+/**
+ * 오류 메시지의 URL을 그대로 요청하지 않는다. 현재 origin의 SvelteKit chunk만 진단한다.
+ * @param {string | undefined} chunkUrl
+ */
+function getProbeableChunkUrl(chunkUrl) {
+  if (!chunkUrl || typeof location === 'undefined') return undefined;
+  try {
+    const url = new URL(chunkUrl, location.origin);
+    if (url.origin !== location.origin || !url.pathname.startsWith('/_app/immutable/'))
+      return undefined;
+    return url.href;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * 해시 chunk 실패는 배포 불일치(404)와 네트워크 오류를 구분해야 한다.
+ * 같은 URL은 페이지 수명 동안 한 번만 probe한다.
+ * @param {string | undefined} chunkUrl
+ * @param {{ pathname?: string, routeId?: string, fingerprint?: string, buildVersion?: string }} context
+ */
+async function reportChunkProbe(chunkUrl, context) {
+  const probeUrl = getProbeableChunkUrl(chunkUrl);
+  if (!probeUrl || probedChunkUrls.has(probeUrl) || typeof fetch !== 'function') return;
+  probedChunkUrls.add(probeUrl);
+
+  /** @type {{ chunkHttpStatus?: number, chunkHttpStatusText?: string, chunkProbeError?: string }} */
+  let result;
+  try {
+    const response = await fetch(probeUrl, {
+      method: 'HEAD',
+      cache: 'no-store',
+      credentials: 'same-origin'
+    });
+    result = {
+      chunkHttpStatus: response.status,
+      chunkHttpStatusText: response.statusText.slice(0, 128)
+    };
+  } catch (error) {
+    result = { chunkProbeError: clip(stringifyCause(error), MAX_LEN.cause) };
+  }
+
+  try {
+    void fetch('/api/log', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      keepalive: true,
+      body: JSON.stringify({
+        level: 'warn',
+        message: '[module-chunk-probe] module script load diagnostic',
+        type: 'module-chunk-probe',
+        chunkUrl,
+        pathname: context.pathname,
+        routeId: context.routeId,
+        fingerprint: context.fingerprint,
+        buildVersion: context.buildVersion,
+        clientAt: new Date().toISOString(),
+        ...result
+      })
+    }).catch(() => {});
+  } catch {
+    // 진단 로그 실패가 원래 오류 흐름을 방해하지 않음
+  }
 }
 
 /**
@@ -353,6 +420,12 @@ export function reportClientError(error, context = {}) {
         clientAt
       })
     }).catch(() => {});
+    void reportChunkProbe(chunkUrl, {
+      pathname: safePathname,
+      routeId: safeRouteId,
+      fingerprint,
+      buildVersion: version
+    });
   } catch {
     // 로깅 실패는 사용자 흐름을 방해하지 않음
   }

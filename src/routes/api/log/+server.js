@@ -191,6 +191,15 @@ export async function POST(event) {
       ...(Number.isFinite(logData.lineno) && { lineno: logData.lineno }),
       ...(Number.isFinite(logData.colno) && { colno: logData.colno }),
       ...(typeof logData.chunkUrl === 'string' && { chunkUrl: logData.chunkUrl.slice(0, 512) }),
+      ...(Number.isFinite(logData.chunkHttpStatus) && {
+        chunkHttpStatus: logData.chunkHttpStatus
+      }),
+      ...(typeof logData.chunkHttpStatusText === 'string' && {
+        chunkHttpStatusText: logData.chunkHttpStatusText.slice(0, 128)
+      }),
+      ...(typeof logData.chunkProbeError === 'string' && {
+        chunkProbeError: logData.chunkProbeError.slice(0, 1000)
+      }),
       ...(typeof logData.importTarget === 'string' && {
         importTarget: logData.importTarget.slice(0, 256)
       }),
