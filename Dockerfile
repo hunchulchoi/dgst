@@ -31,6 +31,7 @@ COPY --from=build /app/package.json .
 COPY --from=build /app/package-lock.json .
 COPY --from=build /app/prisma ./prisma
 COPY --from=build /app/prisma.config.ts .
+COPY --from=build /app/scripts/convert-profile-images-to-animated-webp.js ./scripts/
 
 RUN DATABASE_URL=postgresql://localhost/dgst_build npm ci --omit dev
 
