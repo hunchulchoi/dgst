@@ -6,6 +6,7 @@ const articlePage = readFileSync(
   'src/routes/board/[boardId=boardId]/[[pageNo=integer]]/[articleId]/+page.svelte',
   'utf8'
 );
+const boardList = readFileSync('src/lib/components/board_list.svelte', 'utf8');
 
 describe('comment avatar thumbnails', () => {
   it('requests an 80px thumbnail for locally uploaded profile photos', () => {
@@ -29,5 +30,9 @@ describe('comment avatar thumbnails', () => {
   it('uses the thumbnail URL in the board comment list', () => {
     expect(articlePage).toContain('imageThumbnailUrl(');
     expect(articlePage).toContain('decoding="async"');
+  });
+
+  it('uses a 40px thumbnail in the board article list', () => {
+    expect(boardList).toContain('imageThumbnailUrl(article.photo, 40)');
   });
 });

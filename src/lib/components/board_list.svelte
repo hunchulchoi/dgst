@@ -15,6 +15,7 @@
   import { goto, invalidateAll } from '$app/navigation';
   import { resolve } from '$app/paths';
   import { boardListPath } from '$lib/util/boardPaths.js';
+  import { imageThumbnailUrl } from '$lib/util/imageThumbnail.js';
 
   // Svelte 5 Runes - Props
   let { data, write, boardId, session } = $props();
@@ -164,7 +165,7 @@
       >
         {#if article.photo}
           <img
-            src={article.photo}
+            src={imageThumbnailUrl(article.photo, 40)}
             alt="Profile"
             class="h-6 w-6 max-md:h-7 max-md:w-7 object-cover rounded-[var(--dgst-radius)] me-1"
           />
