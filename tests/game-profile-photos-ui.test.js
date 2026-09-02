@@ -16,7 +16,7 @@ const arcadeWallet = readFileSync('src/lib/server/arcadeWallet.js', 'utf8');
 describe('game profile photos', () => {
   it('renders profile photos through the shared ranking row', () => {
     expect(rankingRow).toContain('GameProfilePhoto');
-    expect(rankingRow).toContain('<GameProfilePhoto src={photo} name={nickname} />');
+    expect(rankingRow).toContain('imageThumbnailUrl(photo, 40)');
   });
 
   it.each(rankedGames)('adds profile photos to the %s ranking API and UI', (game) => {
