@@ -1,6 +1,5 @@
 <script lang="ts">
   import GameProfilePhoto from '$lib/components/GameProfilePhoto.svelte';
-  import { imageThumbnailUrl } from '$lib/util/imageThumbnail.js';
 
   let {
     index,
@@ -26,7 +25,7 @@
     {index === 0 ? '👑' : `${index + 1}.`}
   </span>
   <span class="game-ranking-player">
-    <GameProfilePhoto src={imageThumbnailUrl(photo, 40)} name={nickname} />
+    <GameProfilePhoto src={photo} name={nickname} />
     <span class="game-ranking-copy">
       <strong class="game-ranking-name">{nickname}</strong>
       {#if meta}<small>{meta}</small>{/if}

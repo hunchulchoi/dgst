@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { imageThumbnailUrl } from '$lib/util/imageThumbnail.js';
+
   interface Props {
     src?: string | null;
     name?: string;
@@ -17,7 +19,7 @@
 {#if normalizedSrc && !failed}
   <img
     class="game-profile-photo"
-    src={normalizedSrc}
+    src={imageThumbnailUrl(normalizedSrc, 40)}
     alt={name ? `${name} 프로필` : '프로필'}
     width={size}
     height={size}

@@ -11,12 +11,13 @@ const rankedGames = [
   'watermelon'
 ];
 const rankingRow = readFileSync('src/lib/components/GameRankingRow.svelte', 'utf8');
+const profilePhoto = readFileSync('src/lib/components/GameProfilePhoto.svelte', 'utf8');
 const arcadeWallet = readFileSync('src/lib/server/arcadeWallet.js', 'utf8');
 
 describe('game profile photos', () => {
   it('renders profile photos through the shared ranking row', () => {
     expect(rankingRow).toContain('GameProfilePhoto');
-    expect(rankingRow).toContain('imageThumbnailUrl(photo, 40)');
+    expect(profilePhoto).toContain('imageThumbnailUrl(normalizedSrc, 40)');
   });
 
   it.each(rankedGames)('adds profile photos to the %s ranking API and UI', (game) => {
@@ -47,13 +48,13 @@ describe('game profile photos', () => {
     const endpoint = readFileSync('src/routes/games/slot/comment/+server.js', 'utf8');
     expect(endpoint).toContain('attachGameProfilePhotos');
     expect(comments).toContain('formatRelativeTime(value, { locale: ko, addSuffix: true })');
-    expect(comments).toContain('src={comment.photo}');
+    expect(comments).toContain('<GameProfilePhoto src={comment.photo}');
   });
 
   it('shows optional photos in slot and ssamchi replies', () => {
-    for (const game of ['slot', 'ssamchi']) {
-      const page = readFileSync(`src/routes/games/${game}/+page.svelte`, 'utf8');
-      expect(page).toContain('src={comment.photo}');
-    }
+    const slot = readFileSync('src/routes/games/slot/+page.svelte', 'utf8');
+    const ssamchi = readFileSync('src/routes/games/ssamchi/+page.svelte', 'utf8');
+    expect(slot).toContain('<GameProfilePhoto src={comment.photo}');
+    expect(ssamchi).toContain('<GameProfilePhoto src={comment.photo}');
   });
 });

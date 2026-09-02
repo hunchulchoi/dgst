@@ -4,6 +4,7 @@
   import { formatRelativeTime } from '$lib/util/formatRelativeTime.js';
   import { getArcadeGameLabel } from '$lib/util/arcadeGame.js';
   import GameRankingRow from '$lib/components/GameRankingRow.svelte';
+  import GameProfilePhoto from '$lib/components/GameProfilePhoto.svelte';
   import { invalidateAll } from '$app/navigation';
   import { swalFire } from '$lib/util/swal.js';
   import { isOnlyOneEmoji } from '$lib/util/emoji.js';
@@ -1067,14 +1068,7 @@
                       </div>
                     {/if}
                     <div class="d-flex align-items-start gap-2 mb-2">
-                      {#if comment.photo}
-                        <img
-                          src={comment.photo}
-                          alt="프로필"
-                          class="rounded-circle"
-                          style="width: 32px; height: 32px; object-fit: cover;"
-                        />
-                      {/if}
+                      <GameProfilePhoto src={comment.photo} name={comment.nickname} size={32} />
                       <div class="flex-grow-1">
                         <div class="d-flex align-items-center gap-2">
                           <span class="fw-bold">{comment.nickname}</span>
