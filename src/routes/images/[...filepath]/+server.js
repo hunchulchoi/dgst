@@ -149,7 +149,7 @@ export async function GET({ params, request }) {
         throw error(415, '이미지 파일만 썸네일로 변환할 수 있습니다.');
       }
       const sharp = (await import('sharp')).default;
-      const thumbnail = await sharp(await streamBuffer(object.stream))
+      const thumbnail = await sharp(await streamBuffer(object.stream), { animated: true })
         .rotate()
         .resize(requestedThumbnailSize, requestedThumbnailSize, { fit: 'cover' })
         .webp({ quality: 80, effort: 3 })

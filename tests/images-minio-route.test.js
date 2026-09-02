@@ -122,6 +122,7 @@ describe('/images MinIO download route', () => {
     expect(response.headers.get('content-type')).toBe('image/webp');
     expect(response.headers.get('cache-control')).toContain('immutable');
     expect(response.headers.get('etag')).toBe('"image-etag-thumb-80"');
+    expect(mocks.sharp).toHaveBeenCalledWith(expect.any(Buffer), { animated: true });
     expect(mocks.sharpPipeline.resize).toHaveBeenCalledWith(80, 80, { fit: 'cover' });
     expect(Buffer.from(await response.arrayBuffer()).toString()).toBe('thumbnail');
   });

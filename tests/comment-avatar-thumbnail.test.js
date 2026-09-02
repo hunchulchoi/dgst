@@ -10,10 +10,10 @@ const articlePage = readFileSync(
 describe('comment avatar thumbnails', () => {
   it('requests an 80px thumbnail for locally uploaded profile photos', () => {
     expect(imageThumbnailUrl('/images/profiles/avatar.webp', 80)).toBe(
-      '/images/profiles/avatar.webp?thumbnail=80'
+      '/images/profiles/avatar.webp?thumbnail=80&animated=1'
     );
     expect(imageThumbnailUrl('/images/profiles/avatar.webp?v=2', 80)).toBe(
-      '/images/profiles/avatar.webp?v=2&thumbnail=80'
+      '/images/profiles/avatar.webp?v=2&thumbnail=80&animated=1'
     );
   });
 

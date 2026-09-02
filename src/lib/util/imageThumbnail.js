@@ -12,5 +12,6 @@ export function imageThumbnailUrl(source, size = 80) {
 
   const url = new URL(source, 'https://dgst.local');
   url.searchParams.set('thumbnail', String(size));
+  url.searchParams.set('animated', '1');
   return `${url.pathname}${url.search}${url.hash}`;
 }
