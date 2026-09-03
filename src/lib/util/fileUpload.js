@@ -520,7 +520,9 @@ export async function write(file, email, preservePath = 'jjal', options = {}) {
     }
   } catch (err) {
     console.error('File upload error:', err);
-    logger.error({ message: '파일 저장 실패', fileName: file.name, preservePath, error: err });
+    const status = typeof err === 'object' && err ? Number(Reflect.get(err, 'status')) : 0;
+    const log = status >= 400 && status < 500 ? logger.warn : logger.error;
+    log({ message: '파일 저장 실패', fileName: file.name, preservePath, error: err });
     throw err;
   }
 }

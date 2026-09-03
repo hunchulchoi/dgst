@@ -306,6 +306,19 @@
     }
   }
 
+  /** @param {File} file */
+  function hasAttachmentExtension(file) {
+    return /\.[^./\\]+$/.test(file.name);
+  }
+
+  /** @param {File | null} file @param {HTMLInputElement | null} [input] */
+  function rejectAttachmentWithoutExtension(file, input = null) {
+    if (!file || hasAttachmentExtension(file)) return false;
+    if (input) input.value = '';
+    void toast('확장자가 있는 이미지·영상·음성·PDF 파일만 첨부할 수 있습니다.', 'error');
+    return true;
+  }
+
   /** @param {'comment' | 'reply' | 'edit'} target @param {string} url */
   function appendCommentAudio(target, url) {
     const audioHtml = `<audio src="${escapeHtml(url)}" controls style="max-width: 100%; width: 100%; display: block; margin: 0.5em 0;"></audio>`;
@@ -356,26 +369,27 @@
     if (event.type === 'paste') {
       const clipboardData = /** @type {ClipboardEvent} */ (event).clipboardData;
       if (!clipboardData) return;
+      const file = clipboardData.files?.[0] ?? null;
+      if (rejectAttachmentWithoutExtension(file)) return;
       /*console.log('event.clipboardData.files', event.clipboardData.files)
         console.log('event.clipboardData.files[0]', event.clipboardData.files[0])
         console.log('event.clipboardData.files[0].type', event.clipboardData.files[0].type)*/
 
       if (
-        clipboardData.files?.length &&
-        (clipboardData.files[0].type.startsWith('image') ||
-          clipboardData.files[0].type.startsWith('video') ||
-          isPdfAttachment(clipboardData.files[0]))
+        file &&
+        (file.type.startsWith('image') || file.type.startsWith('video') || isPdfAttachment(file))
       ) {
-        setCommentImageTarget(target, clipboardData.files[0]);
+        setCommentImageTarget(target, file);
 
         event.preventDefault();
-      } else if (clipboardData.files?.length && clipboardData.files[0].type.startsWith('audio')) {
+      } else if (file?.type.startsWith('audio')) {
         event.preventDefault();
-        await uploadCommentAudioFile(clipboardData.files[0], target);
+        await uploadCommentAudioFile(file, target);
         return;
       } else return;
     } else {
       const file = /** @type {HTMLInputElement} */ (event.target).files?.[0] ?? null;
+      if (rejectAttachmentWithoutExtension(file, /** @type {HTMLInputElement} */ (event.target))) return;
       if (file?.type.startsWith('audio')) {
         await uploadCommentAudioFile(file, target);
         return;
@@ -855,23 +869,24 @@
     if (event.type === 'paste') {
       const clipboardData = /** @type {ClipboardEvent} */ (event).clipboardData;
       if (!clipboardData) return;
+      const file = clipboardData.files?.[0] ?? null;
+      if (rejectAttachmentWithoutExtension(file)) return;
       if (
-        clipboardData.files?.length &&
-        (clipboardData.files[0].type.startsWith('image') ||
-          clipboardData.files[0].type.startsWith('video') ||
-          isPdfAttachment(clipboardData.files[0]))
+        file &&
+        (file.type.startsWith('image') || file.type.startsWith('video') || isPdfAttachment(file))
       ) {
-        editCommentImage = clipboardData.files[0];
+        editCommentImage = file;
         editCommentRemoveImage = false;
         event.preventDefault();
-      } else if (clipboardData.files?.length && clipboardData.files[0].type.startsWith('audio')) {
+      } else if (file?.type.startsWith('audio')) {
         event.preventDefault();
-        void uploadCommentAudioFile(clipboardData.files[0], 'edit');
+        void uploadCommentAudioFile(file, 'edit');
         return;
       } else return;
     } else {
       const input = /** @type {HTMLInputElement | null} */ (event.target);
       const file = input?.files?.[0] ?? null;
+      if (rejectAttachmentWithoutExtension(file, input)) return;
       if (file?.type.startsWith('audio')) {
         void uploadCommentAudioFile(file, 'edit');
         return;
