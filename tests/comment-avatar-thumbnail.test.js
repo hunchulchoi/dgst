@@ -34,5 +34,7 @@ describe('comment avatar thumbnails', () => {
 
   it('uses a 40px thumbnail in the board article list', () => {
     expect(boardList).toContain('imageThumbnailUrl(article.photo, 40)');
+    expect(boardList).toContain('loading="lazy"');
+    expect(boardList).toContain('decoding="async"');
   });
 });

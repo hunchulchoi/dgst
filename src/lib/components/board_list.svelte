@@ -167,6 +167,8 @@
           <img
             src={imageThumbnailUrl(article.photo, 40)}
             alt="Profile"
+            loading="lazy"
+            decoding="async"
             class="h-6 w-6 max-md:h-7 max-md:w-7 object-cover rounded-[var(--dgst-radius)] me-1"
           />
         {/if}

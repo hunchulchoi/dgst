@@ -99,7 +99,7 @@ export async function HEAD({ params }) {
         'Content-Type': contentType,
         'Content-Length': String(metadata.size),
         'Content-Disposition': contentDisposition(originalFileName),
-        'Cache-Control': 'public, max-age=31536000',
+        'Cache-Control': 'public, max-age=31536000, immutable',
         'X-Content-Type-Options': 'nosniff'
       }
     });
@@ -172,7 +172,7 @@ export async function GET({ params, request }) {
     /** @type {Record<string, string>} */
     const headers = {
       'Content-Type': contentType,
-      'Cache-Control': 'public, max-age=31536000',
+      'Cache-Control': 'public, max-age=31536000, immutable',
       'Content-Length': String(responseLength),
       'Content-Disposition': contentDisposition(originalFileName),
       'Accept-Ranges': 'bytes',

@@ -55,6 +55,7 @@ describe('/images MinIO download route', () => {
     expect(response.status).toBe(206);
     expect(response.headers.get('content-range')).toBe('bytes 10-19/100');
     expect(response.headers.get('content-length')).toBe('10');
+    expect(response.headers.get('cache-control')).toBe('public, max-age=31536000, immutable');
     expect(response.headers.get('content-disposition')).toContain(
       `filename*=UTF-8''${encodeURIComponent('원본 영상.mp4')}`
     );
@@ -93,6 +94,7 @@ describe('/images MinIO download route', () => {
 
     expect(response.status).toBe(200);
     expect(response.headers.get('content-length')).toBe('1572864');
+    expect(response.headers.get('cache-control')).toBe('public, max-age=31536000, immutable');
     expect(response.headers.get('content-disposition')).toContain(
       `filename*=UTF-8''${encodeURIComponent('사용 설명서.pdf')}`
     );
