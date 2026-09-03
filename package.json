@@ -92,6 +92,7 @@
     "cookie": "^0.7.2",
     "tmp": "^0.2.6",
     "deepmerge-ts": "^8.0.0",
+    "fast-uri": "^3.1.6",
     "mysql2": "^3.22.0"
   },
   "allowScripts": {
