@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import {
   getInitialLoadMeasurement,
+  getFirstContentfulPaintMs,
+  getLatestResourceSummaries,
   getNavigationTimingBreakdown,
   getSlowResourceSummaries,
   summarizeLongTasks,
@@ -112,6 +114,8 @@ describe('initial browser performance details', () => {
       name,
       initiatorType,
       duration,
+      startTime: duration * 2,
+      responseEnd: duration * 3,
       transferSize,
       encodedBodySize: transferSize - 100,
       decodedBodySize: transferSize + 100
@@ -124,6 +128,48 @@ describe('initial browser performance details', () => {
       expect.objectContaining({ name: '/images/four.webp', durationMs: 180 }),
       expect.objectContaining({ name: '/images/five.webp', durationMs: 160 })
     ]);
+  });
+
+  it('captures resources that complete latest independently of their duration', () => {
+    expect(
+      getLatestResourceSummaries(
+        [
+          {
+            name: 'https://www.dgst.me/early.js',
+            initiatorType: 'script',
+            duration: 900,
+            startTime: 10,
+            responseEnd: 910,
+            transferSize: 1000,
+            encodedBodySize: 900,
+            decodedBodySize: 1200
+          },
+          {
+            name: 'https://www.dgst.me/late.css',
+            initiatorType: 'link',
+            duration: 20,
+            startTime: 9_900,
+            responseEnd: 9_920,
+            transferSize: 100,
+            encodedBodySize: 90,
+            decodedBodySize: 120
+          }
+        ],
+        'https://www.dgst.me'
+      )
+    ).toEqual([
+      expect.objectContaining({ name: '/late.css', startTimeMs: 9900, responseEndMs: 9920 }),
+      expect.objectContaining({ name: '/early.js', startTimeMs: 10, responseEndMs: 910 })
+    ]);
+  });
+
+  it('reads FCP without retaining paint entry detail', () => {
+    expect(
+      getFirstContentfulPaintMs([
+        { name: 'first-paint', startTime: 81 },
+        { name: 'first-contentful-paint', startTime: 123.7 }
+      ])
+    ).toBe(124);
   });
 
   it('summarizes long tasks without sending task attribution data', () => {

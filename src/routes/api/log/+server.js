@@ -44,7 +44,14 @@ const NAVIGATION_NUMBER_FIELDS = [
   'decodedBodySize',
   'redirectCount'
 ];
-const RESOURCE_NUMBER_FIELDS = ['durationMs', 'transferSize', 'encodedBodySize', 'decodedBodySize'];
+const RESOURCE_NUMBER_FIELDS = [
+  'startTimeMs',
+  'responseEndMs',
+  'durationMs',
+  'transferSize',
+  'encodedBodySize',
+  'decodedBodySize'
+];
 
 /** @param {unknown} value */
 function nonNegativeFinite(value) {
@@ -56,6 +63,29 @@ function sanitizeResourceName(value) {
   if (typeof value !== 'string') return undefined;
   const name = value.split(/[?#]/, 1)[0];
   return name.slice(0, 256);
+}
+
+/** @param {unknown} value */
+function sanitizePerformanceResources(value) {
+  if (!Array.isArray(value)) return undefined;
+  return value
+    .slice(0, 5)
+    .filter((resource) => resource && typeof resource === 'object' && !Array.isArray(resource))
+    .map((resource) => {
+      const resourceInput = /** @type {Record<string, unknown>} */ (resource);
+      /** @type {Record<string, unknown>} */
+      const sanitizedResource = {};
+      const name = sanitizeResourceName(resourceInput.name);
+      if (name) sanitizedResource.name = name;
+      if (typeof resourceInput.initiatorType === 'string') {
+        sanitizedResource.initiatorType = resourceInput.initiatorType.slice(0, 32);
+      }
+      for (const field of RESOURCE_NUMBER_FIELDS) {
+        const sanitized = nonNegativeFinite(resourceInput[field]);
+        if (sanitized !== undefined) sanitizedResource[field] = sanitized;
+      }
+      return sanitizedResource;
+    });
 }
 
 /**
@@ -89,25 +119,14 @@ export function _sanitizeClientPerformanceDetails(value) {
     if (Object.keys(navigation).length > 0) output.navigation = navigation;
   }
 
-  if (Array.isArray(input.resources)) {
-    output.resources = input.resources
-      .slice(0, 5)
-      .filter((resource) => resource && typeof resource === 'object' && !Array.isArray(resource))
-      .map((resource) => {
-        const resourceInput = /** @type {Record<string, unknown>} */ (resource);
-        /** @type {Record<string, unknown>} */
-        const sanitizedResource = {};
-        const name = sanitizeResourceName(resourceInput.name);
-        if (name) sanitizedResource.name = name;
-        if (typeof resourceInput.initiatorType === 'string') {
-          sanitizedResource.initiatorType = resourceInput.initiatorType.slice(0, 32);
-        }
-        for (const field of RESOURCE_NUMBER_FIELDS) {
-          const sanitized = nonNegativeFinite(resourceInput[field]);
-          if (sanitized !== undefined) sanitizedResource[field] = sanitized;
-        }
-        return sanitizedResource;
-      });
+  const resources = sanitizePerformanceResources(input.resources);
+  if (resources) output.resources = resources;
+  const latestResources = sanitizePerformanceResources(input.latestResources);
+  if (latestResources) output.latestResources = latestResources;
+
+  for (const field of ['firstContentfulPaintMs', 'largestContentfulPaintMs']) {
+    const sanitized = nonNegativeFinite(input[field]);
+    if (sanitized !== undefined) output[field] = sanitized;
   }
 
   if (input.longTasks && typeof input.longTasks === 'object' && !Array.isArray(input.longTasks)) {
@@ -174,6 +193,11 @@ export async function POST(event) {
       ...(typeof logData.pathname === 'string' && { pathname: logData.pathname.slice(0, 256) }),
       ...(typeof logData.from === 'string' && { from: logData.from.slice(0, 256) }),
       ...(typeof logData.to === 'string' && { to: logData.to.slice(0, 256) }),
+      ...(logData.initialLoadContext === 'foreground' ||
+      logData.initialLoadContext === 'history' ||
+      logData.initialLoadContext === 'background'
+        ? { initialLoadContext: logData.initialLoadContext }
+        : {}),
       ...(Number.isFinite(logData.durationMs) && { durationMs: logData.durationMs }),
       ...(logData.slowLoad === true && { slowLoad: true }),
       ...(performanceDetails && { performanceDetails }),

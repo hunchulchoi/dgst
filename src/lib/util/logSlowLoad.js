@@ -1,4 +1,5 @@
 /** @typedef {'navigation' | 'initial'} SlowLoadType */
+/** @typedef {'foreground' | 'history' | 'background'} InitialLoadContext */
 
 /** @typedef {Object} SlowLoadPayload
  * @property {SlowLoadType} type
@@ -6,6 +7,7 @@
  * @property {string} [pathname]
  * @property {string} [from]
  * @property {string} [to]
+ * @property {InitialLoadContext} [initialLoadContext]
  */
 
 /** @type {number} */
@@ -18,6 +20,12 @@ const MAX_LONG_TASKS = 3;
 let initialLongTaskEntries = [];
 /** @type {PerformanceObserver | undefined} */
 let initialLongTaskObserver;
+/** @type {PerformanceObserver | undefined} */
+let initialLargestContentfulPaintObserver;
+/** @type {number | undefined} */
+let initialLargestContentfulPaintMs;
+let initialWasHidden = false;
+let initialPageShowPersisted = false;
 
 /** @param {unknown} value */
 function roundedNonNegative(value) {
@@ -76,7 +84,7 @@ function summarizeResourceName(name, pageOrigin) {
 /**
  * @param {Array<Pick<PerformanceResourceTiming,
  *  'name' | 'initiatorType' | 'duration' | 'transferSize' |
- *  'encodedBodySize' | 'decodedBodySize'>>} entries
+ *  'encodedBodySize' | 'decodedBodySize' | 'startTime' | 'responseEnd'>>} entries
  * @param {string} pageOrigin
  */
 export function getSlowResourceSummaries(entries, pageOrigin) {
@@ -87,11 +95,50 @@ export function getSlowResourceSummaries(entries, pageOrigin) {
     .map((entry) => ({
       name: summarizeResourceName(entry.name, pageOrigin),
       initiatorType: String(entry.initiatorType || 'other').slice(0, 32),
+      startTimeMs: roundedNonNegative(entry.startTime),
+      responseEndMs: roundedNonNegative(entry.responseEnd),
       durationMs: roundedNonNegative(entry.duration),
       transferSize: roundedNonNegative(entry.transferSize),
       encodedBodySize: roundedNonNegative(entry.encodedBodySize),
       decodedBodySize: roundedNonNegative(entry.decodedBodySize)
     }));
+}
+
+/**
+ * 마지막에 끝난 리소스도 별도로 남겨 load 이벤트 지연 원인을 찾는다.
+ * @param {Array<Pick<PerformanceResourceTiming,
+ *  'name' | 'initiatorType' | 'duration' | 'transferSize' |
+ *  'encodedBodySize' | 'decodedBodySize' | 'startTime' | 'responseEnd'>>} entries
+ * @param {string} pageOrigin
+ */
+export function getLatestResourceSummaries(entries, pageOrigin) {
+  return entries
+    .filter((entry) => Number.isFinite(entry.responseEnd) && entry.responseEnd > 0)
+    .sort((a, b) => b.responseEnd - a.responseEnd)
+    .slice(0, MAX_SLOW_RESOURCES)
+    .map((entry) => ({
+      name: summarizeResourceName(entry.name, pageOrigin),
+      initiatorType: String(entry.initiatorType || 'other').slice(0, 32),
+      startTimeMs: roundedNonNegative(entry.startTime),
+      responseEndMs: roundedNonNegative(entry.responseEnd),
+      durationMs: roundedNonNegative(entry.duration),
+      transferSize: roundedNonNegative(entry.transferSize),
+      encodedBodySize: roundedNonNegative(entry.encodedBodySize),
+      decodedBodySize: roundedNonNegative(entry.decodedBodySize)
+    }));
+}
+
+/** @param {Array<Pick<PerformanceEntry, 'name' | 'startTime'>>} entries */
+export function getFirstContentfulPaintMs(entries) {
+  const entry = entries.find((candidate) => candidate.name === 'first-contentful-paint');
+  return entry ? roundedNonNegative(entry.startTime) : undefined;
+}
+
+/** @param {Pick<PerformanceNavigationTiming, 'type'>} entry */
+export function getInitialLoadContext(entry) {
+  if (initialWasHidden || document.visibilityState === 'hidden') return 'background';
+  if (initialPageShowPersisted || entry.type === 'back_forward') return 'history';
+  return 'foreground';
 }
 
 /** @param {Array<Pick<PerformanceEntry, 'startTime' | 'duration'>>} entries */
@@ -119,6 +166,22 @@ export function summarizeLongTasks(entries) {
 export function startInitialLoadLongTaskObserver() {
   if (initialLongTaskObserver || typeof PerformanceObserver === 'undefined') return;
 
+  initialWasHidden = document.visibilityState === 'hidden';
+  document.addEventListener(
+    'visibilitychange',
+    () => {
+      if (document.visibilityState === 'hidden') initialWasHidden = true;
+    },
+    { once: false }
+  );
+  window.addEventListener(
+    'pageshow',
+    (event) => {
+      if (event.persisted) initialPageShowPersisted = true;
+    },
+    { once: false }
+  );
+
   try {
     initialLongTaskObserver = new PerformanceObserver((list) => {
       initialLongTaskEntries.push(...list.getEntries());
@@ -126,6 +189,20 @@ export function startInitialLoadLongTaskObserver() {
     initialLongTaskObserver.observe({ type: 'longtask', buffered: true });
   } catch {
     initialLongTaskObserver = undefined;
+  }
+
+  try {
+    initialLargestContentfulPaintObserver = new PerformanceObserver((list) => {
+      const entries = list.getEntries();
+      const entry = entries[entries.length - 1];
+      if (entry) initialLargestContentfulPaintMs = roundedNonNegative(entry.startTime);
+    });
+    initialLargestContentfulPaintObserver.observe({
+      type: 'largest-contentful-paint',
+      buffered: true
+    });
+  } catch {
+    initialLargestContentfulPaintObserver = undefined;
   }
 }
 
@@ -139,6 +216,17 @@ function finishInitialLoadLongTaskObserver() {
   const summary = summarizeLongTasks(initialLongTaskEntries);
   initialLongTaskEntries = [];
   return summary;
+}
+
+function finishInitialLargestContentfulPaintObserver() {
+  if (initialLargestContentfulPaintObserver) {
+    const entries = initialLargestContentfulPaintObserver.takeRecords();
+    const entry = entries[entries.length - 1];
+    if (entry) initialLargestContentfulPaintMs = roundedNonNegative(entry.startTime);
+    initialLargestContentfulPaintObserver.disconnect();
+    initialLargestContentfulPaintObserver = undefined;
+  }
+  return initialLargestContentfulPaintMs;
 }
 
 /**
@@ -171,7 +259,7 @@ export function getInitialLoadMeasurement(entry, fallbackPathname) {
  * @param {SlowLoadPayload & { performanceDetails?: Record<string, unknown> }} payload
  */
 export function reportSlowLoad(payload) {
-  const { type, durationMs, pathname, from, to, performanceDetails } = payload;
+  const { type, durationMs, pathname, from, to, initialLoadContext, performanceDetails } = payload;
 
   if (!Number.isFinite(durationMs) || durationMs < SLOW_LOAD_THRESHOLD_MS) {
     return;
@@ -199,6 +287,7 @@ export function reportSlowLoad(payload) {
         pathname,
         from,
         to,
+        initialLoadContext,
         performanceDetails
       })
     });
@@ -221,20 +310,25 @@ export function reportSlowInitialLoad(pathname) {
 
     const measurement = getInitialLoadMeasurement(entry, pathname);
     const longTasks = finishInitialLoadLongTaskObserver();
+    const largestContentfulPaintMs = finishInitialLargestContentfulPaintObserver();
     if (!measurement) return;
     if (measurement.durationMs < SLOW_LOAD_THRESHOLD_MS) return;
 
-    const resources = getSlowResourceSummaries(
-      /** @type {PerformanceResourceTiming[]} */ (performance.getEntriesByType('resource')),
-      window.location.origin
+    const resourceEntries = /** @type {PerformanceResourceTiming[]} */ (
+      performance.getEntriesByType('resource')
     );
+    const resources = getSlowResourceSummaries(resourceEntries, window.location.origin);
 
     reportSlowLoad({
       type: 'initial',
       ...measurement,
+      initialLoadContext: getInitialLoadContext(entry),
       performanceDetails: {
         navigation: getNavigationTimingBreakdown(entry),
         resources,
+        latestResources: getLatestResourceSummaries(resourceEntries, window.location.origin),
+        firstContentfulPaintMs: getFirstContentfulPaintMs(performance.getEntriesByType('paint')),
+        largestContentfulPaintMs,
         longTasks
       }
     });

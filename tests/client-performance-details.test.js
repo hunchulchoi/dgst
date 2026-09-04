@@ -16,10 +16,23 @@ describe('client performance detail sanitization', () => {
         resources: Array.from({ length: 8 }, (_, index) => ({
           name: `/asset-${index}.js?secret=value`,
           initiatorType: 'script',
+          startTimeMs: 50 + index,
+          responseEndMs: 150 + index,
           durationMs: 100 + index,
           transferSize: 1000,
           ignored: 'drop-me'
         })),
+        latestResources: [
+          {
+            name: '/late.css?secret=value',
+            initiatorType: 'link',
+            startTimeMs: 9800,
+            responseEndMs: 9900,
+            durationMs: 100
+          }
+        ],
+        firstContentfulPaintMs: 321,
+        largestContentfulPaintMs: 654,
         longTasks: {
           count: 4,
           totalDurationMs: 400,
@@ -39,9 +52,22 @@ describe('client performance detail sanitization', () => {
       resources: Array.from({ length: 5 }, (_, index) => ({
         name: `/asset-${index}.js`,
         initiatorType: 'script',
+        startTimeMs: 50 + index,
+        responseEndMs: 150 + index,
         durationMs: 100 + index,
         transferSize: 1000
       })),
+      latestResources: [
+        {
+          name: '/late.css',
+          initiatorType: 'link',
+          startTimeMs: 9800,
+          responseEndMs: 9900,
+          durationMs: 100
+        }
+      ],
+      firstContentfulPaintMs: 321,
+      largestContentfulPaintMs: 654,
       longTasks: {
         count: 4,
         totalDurationMs: 400,
