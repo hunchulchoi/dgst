@@ -12,6 +12,7 @@
 
   import imageCompression from 'browser-image-compression';
   import { swalFire } from '$lib/util/swal.js';
+  import { loadOptionalClientModule } from '$lib/util/loadOptionalClientModule.js';
 
   import { alarmCount } from '$lib/util/store.js';
   import { onDestroy, onMount, tick } from 'svelte';
@@ -389,7 +390,8 @@
       } else return;
     } else {
       const file = /** @type {HTMLInputElement} */ (event.target).files?.[0] ?? null;
-      if (rejectAttachmentWithoutExtension(file, /** @type {HTMLInputElement} */ (event.target))) return;
+      if (rejectAttachmentWithoutExtension(file, /** @type {HTMLInputElement} */ (event.target)))
+        return;
       if (file?.type.startsWith('audio')) {
         await uploadCommentAudioFile(file, target);
         return;
@@ -1333,7 +1335,16 @@
   }
 
   onMount(async () => {
-    embeder = await import('$lib/util/embeder.js');
+    const moduleContext = {
+      pathname: $page.url.pathname,
+      routeId: $page.route.id ?? undefined,
+      component: 'board-article'
+    };
+    embeder = await loadOptionalClientModule(() => import('$lib/util/embeder.js'), {
+      ...moduleContext,
+      importTarget: '$lib/util/embeder.js',
+      operation: 'load-comment-renderer'
+    });
     await tick();
     initialCommentLoading = false;
 
@@ -1376,17 +1387,47 @@
     // Quill ql-syntax 코드 하이라이트 적용 (PrismJS)
     setTimeout(async () => {
       if (typeof document !== 'undefined') {
-        const { default: Prism } = await import('prismjs');
+        if (!document.querySelector('.ql-syntax')) return;
+        const prismModule = await loadOptionalClientModule(() => import('prismjs'), {
+          ...moduleContext,
+          importTarget: 'prismjs',
+          operation: 'load-code-highlighter'
+        });
+        if (!prismModule) return;
+        const { default: Prism } = prismModule;
         /** @type {any} */ (globalThis).Prism = Prism;
         /** @type {any} */ (window).Prism = Prism;
-        // @ts-ignore prism component side-effect imports
-        await import('prismjs/components/prism-clike.js');
-        // @ts-ignore prism component side-effect imports
-        await import('prismjs/components/prism-javascript.js');
-        // @ts-ignore prism component side-effect imports
-        await import('prismjs/components/prism-css.js');
-        // @ts-ignore prism component side-effect imports
-        await import('prismjs/components/prism-markup.js');
+        // Keep dependencies ordered; Vite needs literal import paths.
+        const grammars = [
+          {
+            target: 'prismjs/components/prism-clike.js',
+            // @ts-ignore prism component side-effect imports
+            load: () => import('prismjs/components/prism-clike.js')
+          },
+          {
+            target: 'prismjs/components/prism-javascript.js',
+            // @ts-ignore prism component side-effect imports
+            load: () => import('prismjs/components/prism-javascript.js')
+          },
+          {
+            target: 'prismjs/components/prism-css.js',
+            // @ts-ignore prism component side-effect imports
+            load: () => import('prismjs/components/prism-css.js')
+          },
+          {
+            target: 'prismjs/components/prism-markup.js',
+            // @ts-ignore prism component side-effect imports
+            load: () => import('prismjs/components/prism-markup.js')
+          }
+        ];
+        for (const grammar of grammars) {
+          const loaded = await loadOptionalClientModule(grammar.load, {
+            ...moduleContext,
+            importTarget: grammar.target,
+            operation: 'load-code-highlighter'
+          });
+          if (!loaded) return;
+        }
 
         const qlBlocks = /** @type {NodeListOf<HTMLElement>} */ (
           document.querySelectorAll('.ql-syntax')
@@ -2171,6 +2212,13 @@
       <Row class="comment-section mb-5 mx-0 px-2">
         {#if initialCommentLoading}
           <div class="comment-initial-loading text-muted py-3 px-1">댓글을 준비하고 있습니다</div>
+        {:else if !embeder}
+          <div class="text-muted py-3 px-1" role="status">
+            댓글 서식을 불러오지 못해 원문으로 표시합니다.
+            <button type="button" class="btn btn-link btn-sm" onclick={() => location.reload()}>
+              새로고침
+            </button>
+          </div>
         {/if}
 
         {#each commentData as comment (commentKey(comment))}
