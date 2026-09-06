@@ -415,8 +415,10 @@
       history.replaceState(history.state, '', `/${window.location.search}`);
     }
 
+    /** @type {(() => void) | undefined} */
+    let cancelInitialLoadReport;
     const completeInitialLoad = () => {
-      reportSlowInitialLoad(window.location.pathname);
+      cancelInitialLoadReport = reportSlowInitialLoad(window.location.pathname);
       scheduleNonCriticalInitialWork();
     };
 
@@ -431,6 +433,7 @@
       window.removeEventListener('unhandledrejection', handleUnhandledRejection);
       window.removeEventListener('dgst:normalize-mobile-layout-width', normalizeMobileLayoutWidth);
       window.removeEventListener('load', completeInitialLoad);
+      cancelInitialLoadReport?.();
       cancelNonCriticalInitialWork?.();
       if (mobileLayoutNormalizationFrame !== undefined) {
         cancelAnimationFrame(mobileLayoutNormalizationFrame);

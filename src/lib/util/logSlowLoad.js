@@ -26,6 +26,16 @@ let initialLargestContentfulPaintObserver;
 let initialLargestContentfulPaintMs;
 let initialWasHidden = false;
 let initialPageShowPersisted = false;
+let initialObservationStarted = false;
+
+function recordInitialVisibility() {
+  if (document.visibilityState === 'hidden') initialWasHidden = true;
+}
+
+/** @param {PageTransitionEvent} event */
+function recordInitialPageShow(event) {
+  if (event.persisted) initialPageShowPersisted = true;
+}
 
 /** @param {unknown} value */
 function roundedNonNegative(value) {
@@ -164,23 +174,13 @@ export function summarizeLongTasks(entries) {
 
 /** 초기 hydration을 포함하도록 layout 초기화 시점부터 Long Task를 관찰한다. */
 export function startInitialLoadLongTaskObserver() {
-  if (initialLongTaskObserver || typeof PerformanceObserver === 'undefined') return;
+  if (initialObservationStarted) return;
+  initialObservationStarted = true;
 
   initialWasHidden = document.visibilityState === 'hidden';
-  document.addEventListener(
-    'visibilitychange',
-    () => {
-      if (document.visibilityState === 'hidden') initialWasHidden = true;
-    },
-    { once: false }
-  );
-  window.addEventListener(
-    'pageshow',
-    (event) => {
-      if (event.persisted) initialPageShowPersisted = true;
-    },
-    { once: false }
-  );
+  document.addEventListener('visibilitychange', recordInitialVisibility);
+  window.addEventListener('pageshow', recordInitialPageShow);
+  if (typeof PerformanceObserver === 'undefined') return;
 
   try {
     initialLongTaskObserver = new PerformanceObserver((list) => {
@@ -269,7 +269,12 @@ export function reportSlowLoad(payload) {
   const routeLabel =
     type === 'initial' ? (pathname ?? '(unknown)') : `${from ?? '?'} → ${to ?? pathname ?? '?'}`;
 
-  const summary = `[slow-${type}] ${routeLabel} (${roundedMs}ms)`;
+  // load completion includes subresources/background time; it is not time to usable UI.
+  const timingLabel =
+    type === 'initial'
+      ? `loadEventEnd=${roundedMs}ms, context=${initialLoadContext ?? 'unknown'}, FCP=${performanceDetails?.firstContentfulPaintMs ?? 'unknown'}ms, LCP-at-load=${performanceDetails?.largestContentfulPaintMs ?? 'unknown'}ms`
+      : `${roundedMs}ms`;
+  const summary = `[slow-${type}] ${routeLabel} (${timingLabel})`;
 
   console.warn(summary, payload);
 
@@ -290,17 +295,34 @@ export function reportSlowLoad(payload) {
         initialLoadContext,
         performanceDetails
       })
-    });
+    }).catch(() => {});
   } catch {
     // 로깅 실패는 사용자 흐름을 방해하지 않음
   }
 }
 
 /**
- * 브라우저 Performance API로 초기 페이지 로드 소요 시간을 측정한다.
+ * load 핸들러가 끝난 다음 task에서 읽어 아직 0인 loadEventEnd 누락을 막는다.
+ * 호출 시점의 경로를 보존하고, layout 해제 시 예약을 취소할 수 있게 한다.
  * @param {string} pathname
  */
 export function reportSlowInitialLoad(pathname) {
+  const timer = setTimeout(() => collectSlowInitialLoad(pathname), 0);
+  return () => {
+    clearTimeout(timer);
+    finishInitialLoadLongTaskObserver();
+    finishInitialLargestContentfulPaintObserver();
+    stopInitialLoadContextListeners();
+  };
+}
+
+function stopInitialLoadContextListeners() {
+  document.removeEventListener('visibilitychange', recordInitialVisibility);
+  window.removeEventListener('pageshow', recordInitialPageShow);
+}
+
+/** @param {string} pathname */
+function collectSlowInitialLoad(pathname) {
   try {
     const [entry] = performance.getEntriesByType('navigation');
     if (!(entry instanceof PerformanceNavigationTiming)) {
@@ -333,7 +355,10 @@ export function reportSlowInitialLoad(pathname) {
       }
     });
   } catch (error) {
-    finishInitialLoadLongTaskObserver();
     console.error('[slow-initial-load] 측정 실패:', error);
+  } finally {
+    finishInitialLoadLongTaskObserver();
+    finishInitialLargestContentfulPaintObserver();
+    stopInitialLoadContextListeners();
   }
 }
