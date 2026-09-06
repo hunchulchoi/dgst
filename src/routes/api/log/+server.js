@@ -129,6 +129,14 @@ export function _sanitizeClientPerformanceDetails(value) {
     if (sanitized !== undefined) output[field] = sanitized;
   }
 
+  if (Array.isArray(input.alertReasons)) {
+    const allowedReasons = new Set(['loadEventEnd', 'fcp', 'lcp', 'ttfb']);
+    const alertReasons = input.alertReasons
+      .filter((reason) => typeof reason === 'string' && allowedReasons.has(reason))
+      .slice(0, 4);
+    if (alertReasons.length > 0) output.alertReasons = alertReasons;
+  }
+
   if (input.longTasks && typeof input.longTasks === 'object' && !Array.isArray(input.longTasks)) {
     const longTaskInput = /** @type {Record<string, unknown>} */ (input.longTasks);
     /** @type {Record<string, unknown>} */

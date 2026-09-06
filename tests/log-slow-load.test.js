@@ -4,6 +4,7 @@ import {
   getInitialLoadMeasurement,
   getFirstContentfulPaintMs,
   getLatestResourceSummaries,
+  getInitialLoadAlertReasons,
   getNavigationTimingBreakdown,
   getSlowResourceSummaries,
   summarizeLongTasks,
@@ -58,6 +59,17 @@ describe('initial browser load measurement', () => {
 });
 
 describe('initial browser performance details', () => {
+  it('labels only the metrics that exceed the foreground alert thresholds', () => {
+    expect(
+      getInitialLoadAlertReasons({
+        durationMs: 3100,
+        firstContentfulPaintMs: 1800,
+        largestContentfulPaintMs: 2499,
+        navigation: { ttfbMs: 800 }
+      })
+    ).toEqual(['loadEventEnd', 'fcp', 'ttfb']);
+  });
+
   it('splits navigation time into network, server wait, download, and DOM phases', () => {
     expect(
       getNavigationTimingBreakdown({

@@ -12,6 +12,10 @@
 
 /** @type {number} */
 const SLOW_LOAD_THRESHOLD_MS = 2000;
+const INITIAL_LOAD_EVENT_ALERT_THRESHOLD_MS = 3000;
+const INITIAL_FCP_ALERT_THRESHOLD_MS = 1800;
+const INITIAL_LCP_ALERT_THRESHOLD_MS = 2500;
+const INITIAL_TTFB_ALERT_THRESHOLD_MS = 800;
 export const MAX_INITIAL_LOAD_DURATION_MS = 5 * 60 * 1000;
 const MAX_SLOW_RESOURCES = 5;
 const MAX_LONG_TASKS = 3;
@@ -255,13 +259,31 @@ export function getInitialLoadMeasurement(entry, fallbackPathname) {
 }
 
 /**
+ * foreground 초기 로드에서 운영 경보로 볼 지표만 남긴다.
+ * `loadEventEnd` 단독 값은 비핵심 리소스에 쉽게 늘어나므로 3초로 둔다.
+ * @param {{ durationMs: number, firstContentfulPaintMs?: number, largestContentfulPaintMs?: number, navigation: { ttfbMs: number } }} metrics
+ */
+export function getInitialLoadAlertReasons(metrics) {
+  const reasons = [];
+  if (metrics.durationMs >= INITIAL_LOAD_EVENT_ALERT_THRESHOLD_MS) reasons.push('loadEventEnd');
+  if ((metrics.firstContentfulPaintMs ?? 0) >= INITIAL_FCP_ALERT_THRESHOLD_MS) reasons.push('fcp');
+  if ((metrics.largestContentfulPaintMs ?? 0) >= INITIAL_LCP_ALERT_THRESHOLD_MS) reasons.push('lcp');
+  if (metrics.navigation.ttfbMs >= INITIAL_TTFB_ALERT_THRESHOLD_MS) reasons.push('ttfb');
+  return reasons;
+}
+
+/**
  * 느린 페이지 로딩·네비게이션을 콘솔 및 서버 로그로 남긴다.
  * @param {SlowLoadPayload & { performanceDetails?: Record<string, unknown> }} payload
  */
 export function reportSlowLoad(payload) {
   const { type, durationMs, pathname, from, to, initialLoadContext, performanceDetails } = payload;
 
-  if (!Number.isFinite(durationMs) || durationMs < SLOW_LOAD_THRESHOLD_MS) {
+  const initialMetricAlert =
+    type === 'initial' &&
+    Array.isArray(performanceDetails?.alertReasons) &&
+    performanceDetails.alertReasons.length > 0;
+  if (!Number.isFinite(durationMs) || (!initialMetricAlert && durationMs < SLOW_LOAD_THRESHOLD_MS)) {
     return;
   }
 
@@ -334,7 +356,19 @@ function collectSlowInitialLoad(pathname) {
     const longTasks = finishInitialLoadLongTaskObserver();
     const largestContentfulPaintMs = finishInitialLargestContentfulPaintObserver();
     if (!measurement) return;
-    if (measurement.durationMs < SLOW_LOAD_THRESHOLD_MS) return;
+    const initialLoadContext = getInitialLoadContext(entry);
+    // back/forward cache와 백그라운드 탭 정지는 실제 첫 화면 체감 경보가 아니다.
+    if (initialLoadContext !== 'foreground') return;
+
+    const navigation = getNavigationTimingBreakdown(entry);
+    const firstContentfulPaintMs = getFirstContentfulPaintMs(performance.getEntriesByType('paint'));
+    const alertReasons = getInitialLoadAlertReasons({
+      durationMs: measurement.durationMs,
+      firstContentfulPaintMs,
+      largestContentfulPaintMs,
+      navigation
+    });
+    if (alertReasons.length === 0) return;
 
     const resourceEntries = /** @type {PerformanceResourceTiming[]} */ (
       performance.getEntriesByType('resource')
@@ -344,13 +378,14 @@ function collectSlowInitialLoad(pathname) {
     reportSlowLoad({
       type: 'initial',
       ...measurement,
-      initialLoadContext: getInitialLoadContext(entry),
+      initialLoadContext,
       performanceDetails: {
-        navigation: getNavigationTimingBreakdown(entry),
+        navigation,
         resources,
         latestResources: getLatestResourceSummaries(resourceEntries, window.location.origin),
-        firstContentfulPaintMs: getFirstContentfulPaintMs(performance.getEntriesByType('paint')),
+        firstContentfulPaintMs,
         largestContentfulPaintMs,
+        alertReasons,
         longTasks
       }
     });

@@ -44,7 +44,7 @@ function mockTiming() {
 }
 
 describe('initial load reporting lifecycle', () => {
-  it('waits for loadEventEnd to be populated and distinguishes load completion from paint', async () => {
+  it('does not report history restoration as a user-perceived initial-load alert', async () => {
     const entry = mockTiming();
     const { reportSlowInitialLoad } = await import('../src/lib/util/logSlowLoad.js');
     reportSlowInitialLoad('/current');
@@ -52,21 +52,10 @@ describe('initial load reporting lifecycle', () => {
     entry.loadEventEnd = 149255;
     entry.type = 'back_forward';
     await vi.runAllTimersAsync();
-    expect(fetch).toHaveBeenCalledTimes(1);
-    const payload = JSON.parse(String(vi.mocked(fetch).mock.calls[0][1]?.body));
-    expect(payload).toMatchObject({
-      type: 'initial',
-      durationMs: 149255,
-      pathname: '/original',
-      initialLoadContext: 'history',
-      performanceDetails: { firstContentfulPaintMs: 1200, navigation: { totalMs: 149255 } }
-    });
-    expect(payload.message).toContain('loadEventEnd=149255ms');
-    expect(payload.message).toContain('FCP=1200ms');
-    expect(payload.message).toContain('LCP-at-load=unknownms');
+    expect(fetch).not.toHaveBeenCalled();
   });
 
-  it('records hidden time without PerformanceObserver support, even when visible at reporting', async () => {
+  it('does not report background-tab time without PerformanceObserver support', async () => {
     const entry = mockTiming();
     const { startInitialLoadLongTaskObserver, reportSlowInitialLoad } =
       await import('../src/lib/util/logSlowLoad.js');
@@ -77,8 +66,22 @@ describe('initial load reporting lifecycle', () => {
     entry.loadEventEnd = 3000;
     reportSlowInitialLoad('/');
     await vi.runAllTimersAsync();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('reports foreground loads with the breached metric names', async () => {
+    const entry = mockTiming();
+    const { reportSlowInitialLoad } = await import('../src/lib/util/logSlowLoad.js');
+    entry.loadEventEnd = 3100;
+    reportSlowInitialLoad('/');
+    await vi.runAllTimersAsync();
     const payload = JSON.parse(String(vi.mocked(fetch).mock.calls[0][1]?.body));
-    expect(payload.initialLoadContext).toBe('background');
+    expect(payload).toMatchObject({
+      initialLoadContext: 'foreground',
+      performanceDetails: {
+        alertReasons: ['loadEventEnd']
+      }
+    });
   });
 
   it('cancels pending collection when the layout is destroyed', async () => {
@@ -91,15 +94,15 @@ describe('initial load reporting lifecycle', () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
-  it('keeps the threshold and tolerates logging network failures', async () => {
+  it('keeps the foreground alert threshold and tolerates logging network failures', async () => {
     const entry = mockTiming();
     const { reportSlowInitialLoad } = await import('../src/lib/util/logSlowLoad.js');
-    entry.loadEventEnd = 1999;
+    entry.loadEventEnd = 2999;
     reportSlowInitialLoad('/');
     await vi.runAllTimersAsync();
     expect(fetch).not.toHaveBeenCalled();
     vi.mocked(fetch).mockRejectedValue(new TypeError('Failed to fetch'));
-    entry.loadEventEnd = 2000;
+    entry.loadEventEnd = 3000;
     reportSlowInitialLoad('/');
     await vi.runAllTimersAsync();
     expect(fetch).toHaveBeenCalledTimes(1);
