@@ -225,6 +225,15 @@ describe('write page video upload', () => {
     expect(lexicalEditor).toContain('MB 이하 파일만 업로드할 수 있어요');
   });
 
+  it('rejects an original file over 100MB before conversion or network upload', () => {
+    expect(lexicalEditor).toContain('findOriginalFileOverUploadLimit(files)');
+    expect(lexicalEditor).toContain('showOriginalFileTooLargeAlert(originalFileOverLimit)');
+    expect(lexicalEditor).toContain('업로드 전 파일 크기를 확인했습니다');
+    expect(lexicalEditor.indexOf('findOriginalFileOverUploadLimit(files)')).toBeLessThan(
+      lexicalEditor.indexOf('chooseVideoUploadMode(files)')
+    );
+  });
+
   it('shows the same size warning for server 413 responses', () => {
     expect(lexicalEditor).toContain('response.status === 413');
     expect(lexicalEditor).toContain('파일이 너무 큽니다');

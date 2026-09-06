@@ -395,6 +395,21 @@
     );
   }
 
+  /** @param {File[]} files */
+  function findOriginalFileOverUploadLimit(files) {
+    return files.find((file) => file.size > BOARD_UPLOAD_MAX_BYTES);
+  }
+
+  /** @param {File} file */
+  async function showOriginalFileTooLargeAlert(file) {
+    await swalFire({
+      icon: 'error',
+      title: '파일이 너무 큽니다',
+      text: `${file.name}은(는) ${formatMegabytes(file.size)}입니다. 업로드 전 파일 크기를 확인했습니다. ${BOARD_UPLOAD_MAX_MB}MB 이하 파일만 업로드할 수 있어요.`,
+      confirmButtonText: '확인'
+    });
+  }
+
   /**
    * @param {File | Blob} file
    * @param {string} responseText
@@ -1459,6 +1474,11 @@
   /** @param {File[]} files */
   async function uploadAndInsertFiles(files) {
     if (!editor || files.length === 0) return;
+    const originalFileOverLimit = findOriginalFileOverUploadLimit(files);
+    if (originalFileOverLimit) {
+      await showOriginalFileTooLargeAlert(originalFileOverLimit);
+      return;
+    }
     if (!(await chooseVideoUploadMode(files))) return;
     loading = true;
     /** @type {File | null} */
