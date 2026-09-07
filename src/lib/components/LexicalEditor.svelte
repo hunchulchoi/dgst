@@ -880,15 +880,28 @@
     }
 
     const imageCompression = (await import('browser-image-compression')).default;
-    return imageCompression(file, {
-      maxSizeMB: 10,
-      // Server applies the canonical 1400px width limit. Keeping resolution here prevents a
-      // 539x9597 image from becoming 78x1400 just because its longest edge is vertical.
-      alwaysKeepResolution: true,
+    const compressionOptions = {
+      // Mobile photos can exceed the request-body limit before the server-side Sharp fallback
+      // gets a chance to run. Cap the client payload first; the server still applies its
+      // canonical 1400px width limit to the uploaded WebP.
+      maxSizeMB: 8,
+      maxWidthOrHeight: 2560,
       useWebWorker: true,
-      fileType: 'image/webp',
       initialQuality: options.quality || 0.85
-    });
+    };
+
+    try {
+      const webp = await imageCompression(file, { ...compressionOptions, fileType: 'image/webp' });
+      // Older iOS Safari can return PNG bytes for a requested WebP encode. Do not relabel that
+      // payload as WebP: it both hides the failure and can send a huge original-size image.
+      if (webp.type === 'image/webp') return webp;
+      console.warn('WebP encoding unsupported; retrying upload image as JPEG');
+    } catch (error) {
+      console.warn('WebP encoding failed; retrying upload image as JPEG', error);
+    }
+
+    // JPEG is broadly supported on iOS and is substantially smaller than PNG for camera photos.
+    return imageCompression(file, { ...compressionOptions, fileType: 'image/jpeg' });
   }
 
   /** @param {File} file */
@@ -1279,10 +1292,13 @@
       setUploadStatus('이미지 변환 중...');
       let prepared = await convertHeicToJpeg(file);
       if (prepared.type !== 'image/webp') {
-        const webp = await convertToWebP(prepared, { quality: 0.85 });
-        if (webp !== prepared) {
+        const converted = await convertToWebP(prepared, { quality: 0.85 });
+        if (converted !== prepared) {
           const base = prepared.name.replace(/\.[^.]+$/, '') || 'image';
-          prepared = new File([webp], `${base}.webp`, { type: 'image/webp' });
+          const isWebp = converted.type === 'image/webp';
+          prepared = new File([converted], `${base}.${isWebp ? 'webp' : 'jpg'}`, {
+            type: isWebp ? 'image/webp' : 'image/jpeg'
+          });
         }
       }
       return prepared;

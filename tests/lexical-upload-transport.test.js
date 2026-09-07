@@ -12,8 +12,11 @@ describe('Lexical upload transport', () => {
     expect(lexicalEditor).toContain('await postUploadFormData(formData)');
   });
 
-  it('preserves image resolution until the server applies its width-only resize', () => {
-    expect(lexicalEditor).toContain('alwaysKeepResolution: true');
-    expect(lexicalEditor).not.toContain('maxWidthOrHeight: options.width || 1400');
+  it('downsizes large client images before upload while the server keeps final sizing canonical', () => {
+    expect(lexicalEditor).toContain('maxSizeMB: 8');
+    expect(lexicalEditor).toContain('maxWidthOrHeight: 2560');
+    expect(lexicalEditor).not.toContain('alwaysKeepResolution: true');
+    expect(lexicalEditor).toContain("fileType: 'image/jpeg'");
+    expect(lexicalEditor).toContain('WebP encoding unsupported; retrying upload image as JPEG');
   });
 });
