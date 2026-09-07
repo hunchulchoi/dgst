@@ -82,6 +82,35 @@ export function getNavigationTimingBreakdown(entry) {
 }
 
 /**
+ * @typedef {{ effectiveType?: string, rtt?: number, downlink?: number, saveData?: boolean }} NetworkHint
+ */
+
+/** 브라우저가 제공하는 접속 품질 힌트만 기록한다. 지원하지 않는 브라우저는 생략한다. */
+export function getNetworkInformation() {
+  const networkNavigator =
+    /** @type {Navigator & { connection?: NetworkHint, mozConnection?: NetworkHint, webkitConnection?: NetworkHint }} */ (
+      navigator
+    );
+  const connection =
+    networkNavigator.connection ??
+    networkNavigator.mozConnection ??
+    networkNavigator.webkitConnection;
+  if (!connection) return undefined;
+
+  const rttMs = Number(connection.rtt);
+  const downlinkMbps = Number(connection.downlink);
+
+  return {
+    ...(typeof connection.effectiveType === 'string' && {
+      effectiveType: connection.effectiveType.slice(0, 16)
+    }),
+    ...(Number.isFinite(rttMs) && { rttMs: Math.round(rttMs) }),
+    ...(Number.isFinite(downlinkMbps) && { downlinkMbps }),
+    ...(typeof connection.saveData === 'boolean' && { saveData: connection.saveData })
+  };
+}
+
+/**
  * URL 쿼리·해시는 버리고, 외부 리소스는 호스트명만 남긴다.
  * @param {string} name
  * @param {string} pageOrigin
@@ -267,7 +296,8 @@ export function getInitialLoadAlertReasons(metrics) {
   const reasons = [];
   if (metrics.durationMs >= INITIAL_LOAD_EVENT_ALERT_THRESHOLD_MS) reasons.push('loadEventEnd');
   if ((metrics.firstContentfulPaintMs ?? 0) >= INITIAL_FCP_ALERT_THRESHOLD_MS) reasons.push('fcp');
-  if ((metrics.largestContentfulPaintMs ?? 0) >= INITIAL_LCP_ALERT_THRESHOLD_MS) reasons.push('lcp');
+  if ((metrics.largestContentfulPaintMs ?? 0) >= INITIAL_LCP_ALERT_THRESHOLD_MS)
+    reasons.push('lcp');
   if (metrics.navigation.ttfbMs >= INITIAL_TTFB_ALERT_THRESHOLD_MS) reasons.push('ttfb');
   return reasons;
 }
@@ -283,7 +313,10 @@ export function reportSlowLoad(payload) {
     type === 'initial' &&
     Array.isArray(performanceDetails?.alertReasons) &&
     performanceDetails.alertReasons.length > 0;
-  if (!Number.isFinite(durationMs) || (!initialMetricAlert && durationMs < SLOW_LOAD_THRESHOLD_MS)) {
+  if (
+    !Number.isFinite(durationMs) ||
+    (!initialMetricAlert && durationMs < SLOW_LOAD_THRESHOLD_MS)
+  ) {
     return;
   }
 
@@ -381,6 +414,7 @@ function collectSlowInitialLoad(pathname) {
       initialLoadContext,
       performanceDetails: {
         navigation,
+        network: getNetworkInformation(),
         resources,
         latestResources: getLatestResourceSummaries(resourceEntries, window.location.origin),
         firstContentfulPaintMs,

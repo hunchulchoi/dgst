@@ -131,7 +131,10 @@ const AUTH_SESSION_COOKIE_NAME =
 /** @param {import('@sveltejs/kit').RequestEvent} event */
 const getRequestMeta = (event) => {
   return {
-    method: event.request?.method
+    method: event.request?.method,
+    ...(event.request?.headers.get('cf-ray') && {
+      cfRay: event.request.headers.get('cf-ray')?.slice(0, 64)
+    })
   };
 };
 

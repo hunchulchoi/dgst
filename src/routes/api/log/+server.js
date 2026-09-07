@@ -52,6 +52,7 @@ const RESOURCE_NUMBER_FIELDS = [
   'encodedBodySize',
   'decodedBodySize'
 ];
+const NETWORK_NUMBER_FIELDS = ['rttMs', 'downlinkMbps'];
 
 /** @param {unknown} value */
 function nonNegativeFinite(value) {
@@ -137,6 +138,21 @@ export function _sanitizeClientPerformanceDetails(value) {
     if (alertReasons.length > 0) output.alertReasons = alertReasons;
   }
 
+  if (input.network && typeof input.network === 'object' && !Array.isArray(input.network)) {
+    const networkInput = /** @type {Record<string, unknown>} */ (input.network);
+    /** @type {Record<string, string | number | boolean>} */
+    const network = {};
+    if (typeof networkInput.effectiveType === 'string') {
+      network.effectiveType = networkInput.effectiveType.slice(0, 16);
+    }
+    for (const field of NETWORK_NUMBER_FIELDS) {
+      const sanitized = nonNegativeFinite(networkInput[field]);
+      if (sanitized !== undefined) network[field] = sanitized;
+    }
+    if (typeof networkInput.saveData === 'boolean') network.saveData = networkInput.saveData;
+    if (Object.keys(network).length > 0) output.network = network;
+  }
+
   if (input.longTasks && typeof input.longTasks === 'object' && !Array.isArray(input.longTasks)) {
     const longTaskInput = /** @type {Record<string, unknown>} */ (input.longTasks);
     /** @type {Record<string, unknown>} */
@@ -197,6 +213,7 @@ export async function POST(event) {
       event: 'client.log',
       source: 'browser',
       timestamp: new Date().toISOString(),
+      ...(request.headers.get('cf-ray') && { cfRay: request.headers.get('cf-ray')?.slice(0, 64) }),
       ...(typeof logData.type === 'string' && { type: logData.type.slice(0, 32) }),
       ...(typeof logData.pathname === 'string' && { pathname: logData.pathname.slice(0, 256) }),
       ...(typeof logData.from === 'string' && { from: logData.from.slice(0, 256) }),

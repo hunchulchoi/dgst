@@ -33,6 +33,13 @@ describe('client performance detail sanitization', () => {
         ],
         firstContentfulPaintMs: 321,
         largestContentfulPaintMs: 654,
+        network: {
+          effectiveType: '4g',
+          rttMs: 40,
+          downlinkMbps: 10,
+          saveData: false,
+          ignored: 'drop-me'
+        },
         longTasks: {
           count: 4,
           totalDurationMs: 400,
@@ -68,6 +75,12 @@ describe('client performance detail sanitization', () => {
       ],
       firstContentfulPaintMs: 321,
       largestContentfulPaintMs: 654,
+      network: {
+        effectiveType: '4g',
+        rttMs: 40,
+        downlinkMbps: 10,
+        saveData: false
+      },
       longTasks: {
         count: 4,
         totalDurationMs: 400,
