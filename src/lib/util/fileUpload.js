@@ -12,6 +12,7 @@ import logger from './logger';
 import { execFile } from 'child_process';
 import { randomUUID } from 'crypto';
 import { putUploadObject } from '$lib/server/minioStorage.js';
+import { BOARD_UPLOAD_MAX_BYTES, BOARD_UPLOAD_MAX_MB } from './uploadLimits.js';
 
 const OBJECT_KEY_SAFETY_ROOT = '/minio-uploads';
 
@@ -468,6 +469,12 @@ export async function write(file, email, preservePath = 'jjal', options = {}) {
     });
 
     if (fs.existsSync(finalPath)) {
+      const finalBytes = fs.statSync(finalPath).size;
+      if (finalBytes > BOARD_UPLOAD_MAX_BYTES) {
+        throw error(413, {
+          message: `압축 뒤 파일이 너무 큽니다. ${BOARD_UPLOAD_MAX_MB}MB 이하 파일만 업로드할 수 있어요.`
+        });
+      }
       const url = `/images${dir}/${fileName}`;
       const objectKey = `${dir.slice(1)}/${fileName}`;
       try {

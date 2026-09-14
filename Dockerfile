@@ -14,7 +14,7 @@ RUN DATABASE_URL=postgresql://localhost/dgst_build npm run db:generate \
 FROM node:22-trixie-slim AS production
 
 WORKDIR /app
-ENV BODY_SIZE_LIMIT=100M
+ENV BODY_SIZE_LIMIT=300M
 
 ADD --checksum=sha256:08b62f70db297e91fe67e86a134c5e00256620fca5cb09e181dbf25c01879184 \
   https://github.com/Infisical/cli/releases/download/v0.43.125/infisical_0.43.125_linux_amd64.deb \

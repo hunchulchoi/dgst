@@ -12,7 +12,7 @@ import logger from '$lib/util/logger';
 import { serializeError, traceFromUnknown } from '$lib/util/formatErrorTrace.js';
 import { warmupConnections } from '$lib/server/warmup.js';
 import { isBoardHtmlPath } from '$lib/util/boardPaths.js';
-import { BOARD_UPLOAD_MAX_BYTES } from '$lib/util/uploadLimits.js';
+import { BOARD_UPLOAD_SOURCE_MAX_BYTES } from '$lib/util/uploadLimits.js';
 import { applyHostnameFavicon, faviconRedirectTarget } from '$lib/server/favicon.js';
 
 warmupConnections();
@@ -189,10 +189,10 @@ export async function handle({ event, resolve }) {
     ...getRequestMeta(event)
   });
 
-  // 본문 크기: 업로드 100MB, 글쓰기·댓글 POST 10MB.
+  // 본문 크기: 업로드 원본 300MB(압축 전), 글쓰기·댓글 POST 10MB.
   // adapter-node의 BODY_SIZE_LIMIT 전역 제한도 이 값 이상이어야 여기까지 도달한다.
   const maxBodySize = pathname.includes('/board/upload')
-    ? BOARD_UPLOAD_MAX_BYTES
+    ? BOARD_UPLOAD_SOURCE_MAX_BYTES
     : event.request.method === 'POST' &&
         (pathname.includes('/write') || pathname.endsWith('/comment'))
       ? 10 * 1024 * 1024

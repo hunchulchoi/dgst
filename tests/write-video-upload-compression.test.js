@@ -225,11 +225,12 @@ describe('write page video upload', () => {
     expect(lexicalEditor).toContain('MB 이하 파일만 업로드할 수 있어요');
   });
 
-  it('rejects an original file over 100MB before conversion or network upload', () => {
-    expect(lexicalEditor).toContain('findOriginalFileOverUploadLimit(files)');
+  it('only rejects original files over the source safety limit before compression', () => {
+    expect(uploadLimits).toContain('BOARD_UPLOAD_SOURCE_MAX_BYTES = 300 * 1024 * 1024');
+    expect(lexicalEditor).toContain('findOriginalFileOverSourceLimit(files)');
     expect(lexicalEditor).toContain('showOriginalFileTooLargeAlert(originalFileOverLimit)');
-    expect(lexicalEditor).toContain('업로드 전 파일 크기를 확인했습니다');
-    expect(lexicalEditor.indexOf('findOriginalFileOverUploadLimit(files)')).toBeLessThan(
+    expect(lexicalEditor).toContain('압축 전 원본은');
+    expect(lexicalEditor.indexOf('findOriginalFileOverSourceLimit(files)')).toBeLessThan(
       lexicalEditor.indexOf('chooseVideoUploadMode(files)')
     );
   });
@@ -247,13 +248,13 @@ describe('write page video upload', () => {
     expect(lexicalEditor).toContain('serverLimitExceeded');
   });
 
-  it('sets adapter-node BODY_SIZE_LIMIT to the board upload limit in production', () => {
-    expect(uploadLimits).toContain('BOARD_UPLOAD_BODY_SIZE_LIMIT = `${BOARD_UPLOAD_MAX_MB}M`');
-    expect(dockerfile).toContain('ENV BODY_SIZE_LIMIT=100M');
+  it('sets adapter-node BODY_SIZE_LIMIT to the upload source limit in production', () => {
+    expect(uploadLimits).toContain('BOARD_UPLOAD_BODY_SIZE_LIMIT = `${BOARD_UPLOAD_SOURCE_MAX_MB}M`');
+    expect(dockerfile).toContain('ENV BODY_SIZE_LIMIT=300M');
     expect(dockerfile).toContain('ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]');
     expect(dockerfile).toContain('CMD ["node", "."]');
-    expect(dockerfile.match(/BODY_SIZE_LIMIT=100M/g)).toHaveLength(1);
-    expect(dockerCompose).toContain('BODY_SIZE_LIMIT: 100M');
+    expect(dockerfile.match(/BODY_SIZE_LIMIT=300M/g)).toHaveLength(1);
+    expect(dockerCompose).toContain('BODY_SIZE_LIMIT: 300M');
   });
 
   it('installs ffmpeg in the production container for server-side video compression', () => {

@@ -44,7 +44,12 @@
   import { encodeMultipartFormData } from '$lib/util/multipartFormData.js';
   import { reportClientError } from '$lib/util/reportClientPageError.js';
   import { createLexicalEditorFailureDetails } from '$lib/util/lexicalErrorDetails.js';
-  import { BOARD_UPLOAD_MAX_BYTES, BOARD_UPLOAD_MAX_MB } from '$lib/util/uploadLimits.js';
+  import {
+    BOARD_UPLOAD_MAX_BYTES,
+    BOARD_UPLOAD_MAX_MB,
+    BOARD_UPLOAD_SOURCE_MAX_BYTES,
+    BOARD_UPLOAD_SOURCE_MAX_MB
+  } from '$lib/util/uploadLimits.js';
 
   let {
     uploadPlus,
@@ -396,8 +401,8 @@
   }
 
   /** @param {File[]} files */
-  function findOriginalFileOverUploadLimit(files) {
-    return files.find((file) => file.size > BOARD_UPLOAD_MAX_BYTES);
+  function findOriginalFileOverSourceLimit(files) {
+    return files.find((file) => file.size > BOARD_UPLOAD_SOURCE_MAX_BYTES);
   }
 
   /** @param {File} file */
@@ -405,7 +410,7 @@
     await swalFire({
       icon: 'error',
       title: '파일이 너무 큽니다',
-      text: `${file.name}은(는) ${formatMegabytes(file.size)}입니다. 업로드 전 파일 크기를 확인했습니다. ${BOARD_UPLOAD_MAX_MB}MB 이하 파일만 업로드할 수 있어요.`,
+      text: `${file.name}은(는) ${formatMegabytes(file.size)}입니다. 압축 전 원본은 ${BOARD_UPLOAD_SOURCE_MAX_MB}MB 이하만 처리할 수 있어요. 압축 뒤 파일은 ${BOARD_UPLOAD_MAX_MB}MB 이하여야 합니다.`,
       confirmButtonText: '확인'
     });
   }
@@ -1490,7 +1495,7 @@
   /** @param {File[]} files */
   async function uploadAndInsertFiles(files) {
     if (!editor || files.length === 0) return;
-    const originalFileOverLimit = findOriginalFileOverUploadLimit(files);
+    const originalFileOverLimit = findOriginalFileOverSourceLimit(files);
     if (originalFileOverLimit) {
       await showOriginalFileTooLargeAlert(originalFileOverLimit);
       return;

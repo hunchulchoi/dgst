@@ -280,4 +280,17 @@ describe('fileUpload image resizing', () => {
 
     vi.useRealTimers();
   });
+
+  it('rejects a processed file that remains over the final 100MB limit', async () => {
+    mocks.fs.statSync.mockReturnValue({ size: 100 * 1024 * 1024 + 1 });
+
+    const { write } = await import('../src/lib/util/fileUpload.js');
+    const audio = new File([Buffer.alloc(16, 7)], 'recording.mp3', { type: 'audio/mpeg' });
+
+    await expect(write(audio, 'person@example.com', 'jjal')).rejects.toMatchObject({
+      status: 413,
+      body: expect.objectContaining({ message: expect.stringContaining('압축 뒤 파일이 너무 큽니다') })
+    });
+    expect(mocks.putUploadObject).not.toHaveBeenCalled();
+  });
 });
