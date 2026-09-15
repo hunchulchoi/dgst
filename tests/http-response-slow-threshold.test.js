@@ -6,6 +6,12 @@ const dashboard = readFileSync('monitoring/grafana/dashboards/dgst-overview.json
 const alertRules = readFileSync('monitoring/grafana/provisioning/alerting/rules.yml', 'utf8');
 
 describe('HTTP slow response thresholds', () => {
+  it('logs page 4xx responses as warnings and keeps 5xx responses as errors', () => {
+    expect(hooks).toContain(
+      "const log = status >= 500 ? logger.error.bind(logger) : logger.warn.bind(logger);"
+    );
+  });
+
   it('logs responses from 500ms as warnings and responses from 2s as errors', () => {
     expect(hooks).toContain('const HTTP_SLOW_WARN_THRESHOLD_MS = 500;');
     expect(hooks).toContain('const HTTP_SLOW_CRITICAL_THRESHOLD_MS = 2000;');

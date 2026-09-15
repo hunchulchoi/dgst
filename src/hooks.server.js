@@ -425,7 +425,10 @@ export function handleError({ event, error }) {
     const search = event.url?.search ?? '';
     const trace = traceFromUnknown(error);
 
-    logger.error({
+    // 4xx는 외부 스캐너의 임의 경로 탐색도 흔하므로 경보용 error 집계에서 제외한다.
+    // 서버/애플리케이션 장애(5xx)는 계속 error로 기록한다.
+    const log = status >= 500 ? logger.error.bind(logger) : logger.warn.bind(logger);
+    log({
       loggedAt,
       errorId,
       message: `[server-page-error] ${status} ${pathname}${search} | msg=${message}`,
