@@ -28,15 +28,33 @@ export async function verifyTurnstileToken(token, expectedAction) {
     });
 
     if (!response.ok) {
+      logger.warn({
+        message: 'Turnstile verify rejected HTTP response',
+        responseStatus: response.status,
+        expectedAction
+      });
       return { ok: false, message: '봇 방지 확인에 실패했습니다.' };
     }
 
     const result = await response.json();
     if (!result.success) {
+      logger.warn({
+        message: 'Turnstile token rejected',
+        errorCodes: Array.isArray(result['error-codes']) ? result['error-codes'] : undefined,
+        action: result.action,
+        hostname: result.hostname,
+        expectedAction
+      });
       return { ok: false, message: '봇 방지 확인에 실패했습니다.' };
     }
 
     if (result.action !== expectedAction) {
+      logger.warn({
+        message: 'Turnstile action mismatch',
+        action: result.action,
+        expectedAction,
+        hostname: result.hostname
+      });
       return { ok: false, message: '봇 방지 요청 정보가 일치하지 않습니다.' };
     }
 
