@@ -13,6 +13,10 @@
           alt="dgst logo"
           src="/logo/logo_transparent_100.png"
           class="p-0"
+          width="71"
+          height="24"
+          loading="lazy"
+          decoding="async"
           style="height: 24px"
         />
         <span class="!text-sm">© 2023</span>

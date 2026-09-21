@@ -145,6 +145,9 @@
           alt="remember0416"
           src="/icons/remember0416.png"
           class="p-0"
+          width="40"
+          height="40"
+          decoding="async"
           style="height: 40px; width: auto;"
         />
       {:else}
@@ -152,6 +155,10 @@
           alt="dgst × 리센느 로고"
           src="/logo/dgst-x-rescene-header.png"
           class="site-header-logo p-0"
+          width="119"
+          height="40"
+          decoding="async"
+          fetchpriority="high"
           style="height: 40px; width: auto;"
         />
       {/if}
@@ -164,6 +171,10 @@
               alt="{session.user.nickname} 프로필 사진"
               src={session.user.photo ?? '/icons/unknown-person-icon-4.jpg'}
               class="p-0 rounded shrink-0"
+              width="30"
+              height="30"
+              loading="lazy"
+              decoding="async"
               style="max-height: 30px;max-width: 30px; height: auto; width: auto;"
             />
             <button
@@ -178,6 +189,9 @@
               alt="Google 계정으로 로그인"
               src={loginButton}
               class="p-0"
+              width="191"
+              height="46"
+              decoding="async"
               style="max-width:40vw; width: auto; height: auto;"
             />
           </NavLink>
