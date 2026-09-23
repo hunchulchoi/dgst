@@ -1,6 +1,6 @@
 /**
  * 수도쿠 지옥(Hell) 모드 생성기.
- * WSC 스타일 변형 규칙을 한 판에 중첩한다.
+ * WSC처럼 판마다 변형 규칙 1개(낮은 확률로 2개 하이브리드)를 적용한다.
  *  - 대각선(Diagonal/X): 양 메인 대각선에도 1~9 중복 금지
  *  - 안티나이트(Anti-Knight): 체스 나이트 이동 거리 칸에 같은 숫자 금지
  *  - 킬러(Killer): 케이지 합 표시, 케이지 내 숫자 중복 금지
@@ -93,10 +93,13 @@ for (let i = 0; i < CELL_COUNT; i++) {
 }
 
 /**
- * 비트마스크 기반 증분 솔버. 행/열/박스/대각선/나이트 제약을 O(1)로 검사한다.
+ * 비트마스크 기반 증분 솔버. 행/열/박스는 항상, 대각선/나이트는 옵션으로 검사한다.
  * @param {number[][]} grid
+ * @param {{ diagonal?: boolean; knight?: boolean }} [opts]
  */
-function makeSolver(grid) {
+function makeSolver(grid, opts = {}) {
+  const useDiag = Boolean(opts.diagonal);
+  const useKnight = Boolean(opts.knight);
   const values = new Array(CELL_COUNT).fill(0);
   const rowM = new Array(SIZE).fill(0);
   const colM = new Array(SIZE).fill(0);
@@ -116,10 +119,14 @@ function makeSolver(grid) {
     rowM[CELL_ROW[index]] |= bit;
     colM[CELL_COL[index]] |= bit;
     boxM[CELL_BOX[index]] |= bit;
-    if (CELL_DIAG[index] & 1) diagM[0] |= bit;
-    if (CELL_DIAG[index] & 2) diagM[1] |= bit;
-    for (const peer of CELL_KNIGHTS[index]) {
-      if (++knightC[peer][value] === 1) knightM[peer] |= bit;
+    if (useDiag) {
+      if (CELL_DIAG[index] & 1) diagM[0] |= bit;
+      if (CELL_DIAG[index] & 2) diagM[1] |= bit;
+    }
+    if (useKnight) {
+      for (const peer of CELL_KNIGHTS[index]) {
+        if (++knightC[peer][value] === 1) knightM[peer] |= bit;
+      }
     }
   }
 
@@ -133,10 +140,14 @@ function makeSolver(grid) {
     rowM[CELL_ROW[index]] &= ~bit;
     colM[CELL_COL[index]] &= ~bit;
     boxM[CELL_BOX[index]] &= ~bit;
-    if (CELL_DIAG[index] & 1) diagM[0] &= ~bit;
-    if (CELL_DIAG[index] & 2) diagM[1] &= ~bit;
-    for (const peer of CELL_KNIGHTS[index]) {
-      if (--knightC[peer][value] === 0) knightM[peer] &= ~bit;
+    if (useDiag) {
+      if (CELL_DIAG[index] & 1) diagM[0] &= ~bit;
+      if (CELL_DIAG[index] & 2) diagM[1] &= ~bit;
+    }
+    if (useKnight) {
+      for (const peer of CELL_KNIGHTS[index]) {
+        if (--knightC[peer][value] === 0) knightM[peer] &= ~bit;
+      }
     }
   }
 
@@ -230,13 +241,14 @@ function fillRandom(solver, budget) {
 }
 
 /**
- * 대각선 + 안티나이트를 만족하는 완성 해 생성
+ * 활성 규칙을 만족하는 완성 해 생성
+ * @param {{ diagonal?: boolean; knight?: boolean }} rules
  * @returns {number[][]}
  */
-function generateSolution() {
+function generateSolution(rules) {
   const empty = Array.from({ length: SIZE }, () => Array(SIZE).fill(0));
   for (let attempt = 0; attempt < 32; attempt++) {
-    const solver = makeSolver(empty);
+    const solver = makeSolver(empty, rules);
     const budget = { left: attempt === 31 ? Number.MAX_SAFE_INTEGER : 40_000 };
     if (fillRandom(solver, budget)) {
       const grid = Array.from({ length: SIZE }, () => Array(SIZE).fill(0));
@@ -251,10 +263,11 @@ function generateSolution() {
  * 유일해를 유지하며 숫자를 파낸다.
  * @param {number[][]} solution
  * @param {number} clues
+ * @param {{ diagonal?: boolean; knight?: boolean }} rules
  * @returns {number[][]}
  */
-function digPuzzle(solution, clues) {
-  const solver = makeSolver(solution);
+function digPuzzle(solution, clues, rules) {
+  const solver = makeSolver(solution, rules);
   const positions = shuffle(Array.from({ length: CELL_COUNT }, (_, i) => i));
   let remaining = CELL_COUNT;
 
@@ -441,18 +454,45 @@ export function cageInsetShadow(row, col, of) {
   return parts.join(', ');
 }
 
+/** 지옥 모드 변형 규칙 라벨 */
+export const HELL_RULE_LABELS = {
+  diagonal: '대각선X',
+  knight: '안티나이트',
+  killer: '킬러',
+  thermo: '온도계'
+};
+
+/**
+ * 판마다 적용할 변형 규칙을 고른다. WSC처럼 단일 변형이 기본이고
+ * 낮은 확률로 2개 규칙 하이브리드가 출제된다.
+ * @returns {{ diagonal: boolean; knight: boolean; killer: boolean; thermo: boolean }}
+ */
+function pickRules() {
+  const keys = ['diagonal', 'knight', 'killer', 'thermo'];
+  const count = Math.random() < 0.2 ? 2 : 1;
+  const picked = shuffle(keys).slice(0, count);
+  return {
+    diagonal: picked.includes('diagonal'),
+    knight: picked.includes('knight'),
+    killer: picked.includes('killer'),
+    thermo: picked.includes('thermo')
+  };
+}
+
 /**
  * 지옥 모드 한 판 생성
  * @param {number} [clues]
- * @returns {{ puzzle: number[][]; solution: number[][]; cages: Array<{ cells: number[]; sum: number }>; thermos: number[][] }}
+ * @returns {{ puzzle: number[][]; solution: number[][]; rules: { diagonal: boolean; knight: boolean; killer: boolean; thermo: boolean }; cages: Array<{ cells: number[]; sum: number }>; thermos: number[][] }}
  */
 export function generateHellGame(clues = 24) {
-  const solution = generateSolution();
-  const puzzle = digPuzzle(solution, clues);
+  const rules = pickRules();
+  const solution = generateSolution(rules);
+  const puzzle = digPuzzle(solution, clues, rules);
   return {
     puzzle,
     solution,
-    cages: generateCages(solution),
-    thermos: generateThermos(solution, 3)
+    rules,
+    cages: rules.killer ? generateCages(solution) : [],
+    thermos: rules.thermo ? generateThermos(solution, rules.diagonal || rules.knight ? 3 : 5) : []
   };
 }

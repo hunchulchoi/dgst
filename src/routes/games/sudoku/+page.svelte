@@ -9,6 +9,7 @@
     buildCageMeta,
     cageInsetShadow,
     generateHellGame,
+    HELL_RULE_LABELS,
     isDiagonalCell,
     isKnightPeer
   } from '$lib/sudokuHell.js';
@@ -31,6 +32,7 @@
   type CellPoint = { row: number; col: number };
   type Cage = { cells: number[]; sum: number };
   type CageMeta = { of: number[]; labels: Record<number, number> };
+  type HellRules = { diagonal: boolean; knight: boolean; killer: boolean; thermo: boolean };
   type SudokuRank = {
     _id?: string;
     nickname: string;
@@ -57,6 +59,12 @@
   let cages = $state<Cage[]>([]);
   let thermos = $state<number[][]>([]);
   let cageMeta = $state<CageMeta>({ of: [], labels: {} });
+  let hellRules = $state<HellRules>({
+    diagonal: false,
+    knight: false,
+    killer: false,
+    thermo: false
+  });
   let started = $state(false);
   let canResume = $state(false);
   let submittedWin = $state(false);
@@ -246,6 +254,7 @@
       puzzle = game.puzzle;
       cages = game.cages;
       thermos = game.thermos;
+      hellRules = game.rules;
       cageMeta = buildCageMeta(game.cages);
     } else {
       const nextSolution = generateSolution();
@@ -253,6 +262,7 @@
       puzzle = generatePuzzle(nextSolution, DIFFICULTIES[nextDifficulty].clues);
       cages = [];
       thermos = [];
+      hellRules = { diagonal: false, knight: false, killer: false, thermo: false };
       cageMeta = { of: [], labels: {} };
     }
     userGrid = cloneGrid(puzzle);
@@ -331,6 +341,7 @@
         gameLost,
         cages,
         thermos,
+        hellRules,
         submittedWin,
         started
       })
@@ -363,6 +374,15 @@
       gameLost = Boolean(saved.gameLost);
       cages = Array.isArray(saved.cages) ? saved.cages : [];
       thermos = Array.isArray(saved.thermos) ? saved.thermos : [];
+      hellRules =
+        difficulty === 'hell' && saved.hellRules && typeof saved.hellRules === 'object'
+          ? {
+              diagonal: Boolean(saved.hellRules.diagonal),
+              knight: Boolean(saved.hellRules.knight),
+              killer: Boolean(saved.hellRules.killer),
+              thermo: Boolean(saved.hellRules.thermo)
+            }
+          : { diagonal: false, knight: false, killer: false, thermo: false };
       cageMeta =
         difficulty === 'hell' && cages.length ? buildCageMeta(cages) : { of: [], labels: {} };
       submittedWin = Boolean(saved.submittedWin);
@@ -401,13 +421,21 @@
       return true;
     }
     if (!isHell) return false;
-    if (isKnightPeer(row, col, selected.row, selected.col)) return true;
-    if (selected.row === selected.col && row === col) return true;
-    if (selected.row + selected.col === SIZE - 1 && row + col === SIZE - 1) return true;
-    const of = cageMeta.of;
-    return (
-      of.length === SIZE * SIZE && of[row * SIZE + col] === of[selected.row * SIZE + selected.col]
-    );
+    if (hellRules.knight && isKnightPeer(row, col, selected.row, selected.col)) return true;
+    if (hellRules.diagonal) {
+      if (selected.row === selected.col && row === col) return true;
+      if (selected.row + selected.col === SIZE - 1 && row + col === SIZE - 1) return true;
+    }
+    if (hellRules.killer) {
+      const of = cageMeta.of;
+      if (
+        of.length === SIZE * SIZE &&
+        of[row * SIZE + col] === of[selected.row * SIZE + selected.col]
+      ) {
+        return true;
+      }
+    }
+    return false;
   }
 
   function isWrong(row: number, col: number): boolean {
@@ -478,20 +506,26 @@
       }
     }
     if (isHell) {
-      for (let i = 0; i < SIZE; i++) {
-        if (row === col) next[i][i] &= ~bit;
-        if (row + col === SIZE - 1) next[i][SIZE - 1 - i] &= ~bit;
-      }
-      for (let r = 0; r < SIZE; r++) {
-        for (let c = 0; c < SIZE; c++) {
-          if (isKnightPeer(row, col, r, c)) next[r][c] &= ~bit;
+      if (hellRules.diagonal) {
+        for (let i = 0; i < SIZE; i++) {
+          if (row === col) next[i][i] &= ~bit;
+          if (row + col === SIZE - 1) next[i][SIZE - 1 - i] &= ~bit;
         }
       }
-      const of = cageMeta.of;
-      if (of.length === SIZE * SIZE) {
-        const mine = of[row * SIZE + col];
-        for (let i = 0; i < SIZE * SIZE; i++) {
-          if (of[i] === mine) next[Math.floor(i / SIZE)][i % SIZE] &= ~bit;
+      if (hellRules.knight) {
+        for (let r = 0; r < SIZE; r++) {
+          for (let c = 0; c < SIZE; c++) {
+            if (isKnightPeer(row, col, r, c)) next[r][c] &= ~bit;
+          }
+        }
+      }
+      if (hellRules.killer) {
+        const of = cageMeta.of;
+        if (of.length === SIZE * SIZE) {
+          const mine = of[row * SIZE + col];
+          for (let i = 0; i < SIZE * SIZE; i++) {
+            if (of[i] === mine) next[Math.floor(i / SIZE)][i % SIZE] &= ~bit;
+          }
         }
       }
     }
@@ -586,13 +620,19 @@
   }
 
   function cageShadow(row: number, col: number): string {
-    if (!isHell || cageMeta.of.length !== SIZE * SIZE) return '';
+    if (!isHell || !hellRules.killer || cageMeta.of.length !== SIZE * SIZE) return '';
     return cageInsetShadow(row, col, cageMeta.of);
   }
 
   function cageLabel(row: number, col: number): number | null {
-    if (!isHell) return null;
+    if (!isHell || !hellRules.killer) return null;
     return cageMeta.labels[row * SIZE + col] ?? null;
+  }
+
+  function activeHellRuleEntries(): Array<[keyof HellRules, string]> {
+    return (Object.entries(HELL_RULE_LABELS) as Array<[keyof HellRules, string]>).filter(
+      ([key]) => hellRules[key]
+    );
   }
 
   function thermoPoints(thermo: number[]): string {
@@ -607,11 +647,15 @@
   }
 
   async function showHellRules() {
+    const active = activeHellRuleEntries()
+      .map(([, label]) => `<strong>${label}</strong>`)
+      .join(' + ');
     await swalFire({
       title: '수도쿠 지옥 규칙',
       icon: 'info',
       html: `<div style="text-align:left;line-height:1.7">
-        <p style="margin:0 0 .5rem">WSC(세계 스도쿠 선수권) 스타일 변형 규칙이 한 판에 모두 적용됩니다.</p>
+        <p style="margin:0 0 .5rem">WSC(세계 스도쿠 선수권)처럼 판마다 변형 규칙 1개가 랜덤 적용되고, 가끔 2개가 섞인 하이브리드가 출제됩니다.</p>
+        <p style="margin:0 0 .5rem">이번 판 적용 규칙: ${active || '없음'}</p>
         <ul style="margin:0;padding-left:1.2rem">
           <li><strong>대각선X</strong> — 노란색 두 메인 대각선에도 1~9가 중복 없이 들어갑니다.</li>
           <li><strong>안티나이트</strong> — 체스 나이트(L자) 이동 거리에 있는 두 칸은 같은 숫자가 될 수 없습니다.</li>
@@ -643,7 +687,7 @@
           <h1 class="h3 fw-bold mb-1">수도쿠{isHell ? ' 지옥' : ''}</h1>
           <p class="text-body-secondary mb-0">
             {isHell
-              ? '변형 규칙이 중첩된 WSC 스타일 극한 난이도입니다.'
+              ? 'WSC 스타일 변형 규칙이 판마다 랜덤 적용되는 극한 난이도입니다.'
               : '빈 칸을 1부터 9까지 채우세요.'}
           </p>
         </div>
@@ -656,10 +700,9 @@
 
       {#if isHell}
         <div class="hell-rules" aria-label="지옥 규칙">
-          <span title="두 메인 대각선에도 1~9가 중복 없이 들어갑니다">대각선X</span>
-          <span title="체스 나이트 이동 거리 칸에는 같은 숫자가 올 수 없습니다">안티나이트</span>
-          <span title="영역 합이 표시되며 영역 내 숫자는 중복될 수 없습니다">킬러</span>
-          <span title="전구에서 끝으로 갈수록 숫자가 커집니다">온도계</span>
+          {#each activeHellRuleEntries() as [key, label] (key)}
+            <span>{label}</span>
+          {/each}
           <button
             type="button"
             class="hell-rules-help"
@@ -683,7 +726,9 @@
                 type="button"
                 class="sudoku-cell"
                 class:sudoku-cell-fixed={isFixed(rowIndex, colIndex)}
-                class:sudoku-cell-diag={isHell && isDiagonalCell(rowIndex, colIndex)}
+                class:sudoku-cell-diag={isHell &&
+                  hellRules.diagonal &&
+                  isDiagonalCell(rowIndex, colIndex)}
                 class:sudoku-cell-selected={selected.row === rowIndex && selected.col === colIndex}
                 class:sudoku-cell-note-selected={noteMode &&
                   selected.row === rowIndex &&
@@ -712,7 +757,7 @@
             {/each}
           {/each}
 
-          {#if isHell && thermos.length}
+          {#if isHell && hellRules.thermo && thermos.length}
             <svg class="hell-thermo-layer" viewBox="0 0 9 9" aria-hidden="true">
               {#each thermos as thermo, thermoIndex (thermoIndex)}
                 <polyline class="hell-thermo-line" points={thermoPoints(thermo)} />
@@ -735,7 +780,7 @@
                 {canResume
                   ? '게임재개를 누르면 시간이 다시 흐릅니다.'
                   : isHell
-                    ? '대각선·나이트·케이지·온도계 규칙이 모두 적용됩니다. 실수 5회면 실패합니다.'
+                    ? '판마다 변형 규칙이 랜덤 적용됩니다. 실수 5회면 실패합니다.'
                     : '시작을 누르면 시간이 흐르고 입력할 수 있습니다.'}
               </p>
               <button type="button" class="btn btn-primary sudoku-start-button" onclick={startGame}>
