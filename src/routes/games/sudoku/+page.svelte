@@ -5,21 +5,32 @@
   import { formatRelativeTime } from '$lib/util/formatRelativeTime.js';
   import GameRankingRow from '$lib/components/GameRankingRow.svelte';
   import { swalFire } from '$lib/util/swal.js';
+  import {
+    buildCageMeta,
+    cageInsetShadow,
+    generateHellGame,
+    isDiagonalCell,
+    isKnightPeer
+  } from '$lib/sudokuHell.js';
   import type { PageData } from './$types';
 
   const SIZE = 9;
   const BOX = 3;
   const STORAGE_KEY = 'dgst_sudoku_state';
   const DIGITS = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+  const MAX_HELL_MISTAKES = 5;
   const DIFFICULTIES = {
     easy: { label: '쉬움', clues: 42 },
     normal: { label: '보통', clues: 34 },
-    hard: { label: '어려움', clues: 28 }
+    hard: { label: '어려움', clues: 28 },
+    hell: { label: '지옥', clues: 24 }
   } as const;
 
   type Difficulty = keyof typeof DIFFICULTIES;
   type Grid = number[][];
   type CellPoint = { row: number; col: number };
+  type Cage = { cells: number[]; sum: number };
+  type CageMeta = { of: number[]; labels: Record<number, number> };
   type SudokuRank = {
     _id?: string;
     nickname: string;
@@ -42,6 +53,10 @@
   let mistakes = $state(0);
   let elapsed = $state(0);
   let gameWon = $state(false);
+  let gameLost = $state(false);
+  let cages = $state<Cage[]>([]);
+  let thermos = $state<number[][]>([]);
+  let cageMeta = $state<CageMeta>({ of: [], labels: {} });
   let started = $state(false);
   let canResume = $state(false);
   let submittedWin = $state(false);
@@ -53,6 +68,7 @@
   let timer: ReturnType<typeof setInterval> | null = null;
 
   const isLoggedIn = $derived(!!data.session?.user?.email);
+  const isHell = $derived(difficulty === 'hell');
   const selectedValue = $derived(userGrid[selected.row]?.[selected.col] ?? 0);
   const isComplete = $derived(
     userGrid.every((row, rowIndex) =>
@@ -224,9 +240,21 @@
 
     stopTimer();
     difficulty = nextDifficulty;
-    const nextSolution = generateSolution();
-    solution = nextSolution;
-    puzzle = generatePuzzle(nextSolution, DIFFICULTIES[nextDifficulty].clues);
+    if (nextDifficulty === 'hell') {
+      const game = generateHellGame(DIFFICULTIES.hell.clues);
+      solution = game.solution;
+      puzzle = game.puzzle;
+      cages = game.cages;
+      thermos = game.thermos;
+      cageMeta = buildCageMeta(game.cages);
+    } else {
+      const nextSolution = generateSolution();
+      solution = nextSolution;
+      puzzle = generatePuzzle(nextSolution, DIFFICULTIES[nextDifficulty].clues);
+      cages = [];
+      thermos = [];
+      cageMeta = { of: [], labels: {} };
+    }
     userGrid = cloneGrid(puzzle);
     notesGrid = emptyGrid();
     selected = firstOpenCell(puzzle);
@@ -234,6 +262,7 @@
     mistakes = 0;
     elapsed = 0;
     gameWon = false;
+    gameLost = false;
     canResume = false;
     submittedWin = false;
     started = false;
@@ -242,7 +271,7 @@
   }
 
   function hasGameProgress(): boolean {
-    if (gameWon) return false;
+    if (gameWon || gameLost) return false;
     if (started || canResume || elapsed > 0 || mistakes > 0) return true;
     if (notesGrid.some((row) => row.some((value) => value !== 0))) return true;
     return userGrid.some((row, rowIndex) =>
@@ -256,7 +285,7 @@
   }
 
   function startGame() {
-    if (started || gameWon) return;
+    if (started || gameWon || gameLost) return;
     canResume = false;
     started = true;
     startTimer();
@@ -299,6 +328,9 @@
         mistakes,
         elapsed,
         gameWon,
+        gameLost,
+        cages,
+        thermos,
         submittedWin,
         started
       })
@@ -328,8 +360,13 @@
       mistakes = Number(saved.mistakes ?? 0);
       elapsed = Number(saved.elapsed ?? 0);
       gameWon = Boolean(saved.gameWon);
+      gameLost = Boolean(saved.gameLost);
+      cages = Array.isArray(saved.cages) ? saved.cages : [];
+      thermos = Array.isArray(saved.thermos) ? saved.thermos : [];
+      cageMeta =
+        difficulty === 'hell' && cages.length ? buildCageMeta(cages) : { of: [], labels: {} };
       submittedWin = Boolean(saved.submittedWin);
-      canResume = Boolean(saved.started) && !gameWon;
+      canResume = Boolean(saved.started) && !gameWon && !gameLost;
       started = false;
       return true;
     } catch {
@@ -355,11 +392,21 @@
   }
 
   function isRelated(row: number, col: number): boolean {
-    return (
+    if (
       row === selected.row ||
       col === selected.col ||
       (Math.floor(row / BOX) === Math.floor(selected.row / BOX) &&
         Math.floor(col / BOX) === Math.floor(selected.col / BOX))
+    ) {
+      return true;
+    }
+    if (!isHell) return false;
+    if (isKnightPeer(row, col, selected.row, selected.col)) return true;
+    if (selected.row === selected.col && row === col) return true;
+    if (selected.row + selected.col === SIZE - 1 && row + col === SIZE - 1) return true;
+    const of = cageMeta.of;
+    return (
+      of.length === SIZE * SIZE && of[row * SIZE + col] === of[selected.row * SIZE + selected.col]
     );
   }
 
@@ -374,7 +421,7 @@
 
   function placeValue(value: number) {
     const { row, col } = selected;
-    if (!started || gameWon || isFixed(row, col)) return;
+    if (!started || gameWon || gameLost || isFixed(row, col)) return;
 
     if (noteMode) {
       const bit = 1 << value;
@@ -389,12 +436,19 @@
     next[row][col] = value;
     userGrid = next;
     clearPeerNotes(row, col, value);
-    if (value !== solution[row][col]) mistakes += 1;
+    if (value !== solution[row][col]) {
+      mistakes += 1;
+      if (isHell && mistakes >= MAX_HELL_MISTAKES) {
+        gameLost = true;
+        stopTimer();
+        saveState();
+      }
+    }
   }
 
   function clearCell() {
     const { row, col } = selected;
-    if (!started || gameWon || isFixed(row, col)) return;
+    if (!started || gameWon || gameLost || isFixed(row, col)) return;
     const next = cloneGrid(userGrid);
     next[row][col] = 0;
     userGrid = next;
@@ -404,7 +458,7 @@
   }
 
   function toggleNoteMode(event: MouseEvent) {
-    if (!started || gameWon) return;
+    if (!started || gameWon || gameLost) return;
     noteMode = !noteMode;
     (event.currentTarget as HTMLButtonElement).blur();
   }
@@ -423,12 +477,30 @@
         next[r][c] &= ~bit;
       }
     }
+    if (isHell) {
+      for (let i = 0; i < SIZE; i++) {
+        if (row === col) next[i][i] &= ~bit;
+        if (row + col === SIZE - 1) next[i][SIZE - 1 - i] &= ~bit;
+      }
+      for (let r = 0; r < SIZE; r++) {
+        for (let c = 0; c < SIZE; c++) {
+          if (isKnightPeer(row, col, r, c)) next[r][c] &= ~bit;
+        }
+      }
+      const of = cageMeta.of;
+      if (of.length === SIZE * SIZE) {
+        const mine = of[row * SIZE + col];
+        for (let i = 0; i < SIZE * SIZE; i++) {
+          if (of[i] === mine) next[Math.floor(i / SIZE)][i % SIZE] &= ~bit;
+        }
+      }
+    }
     notesGrid = next;
   }
 
   function hint() {
     const { row, col } = selected;
-    if (!started || gameWon || isFixed(row, col)) return;
+    if (!started || gameWon || gameLost || isFixed(row, col)) return;
     const next = cloneGrid(userGrid);
     next[row][col] = solution[row][col];
     userGrid = next;
@@ -513,6 +585,27 @@
     return DIGITS.map((value) => ((mask & (1 << value)) !== 0 ? value : ''));
   }
 
+  function cageShadow(row: number, col: number): string {
+    if (!isHell || cageMeta.of.length !== SIZE * SIZE) return '';
+    return cageInsetShadow(row, col, cageMeta.of);
+  }
+
+  function cageLabel(row: number, col: number): number | null {
+    if (!isHell) return null;
+    return cageMeta.labels[row * SIZE + col] ?? null;
+  }
+
+  function thermoPoints(thermo: number[]): string {
+    return thermo
+      .map((index) => `${(index % SIZE) + 0.5},${Math.floor(index / SIZE) + 0.5}`)
+      .join(' ');
+  }
+
+  function thermoBulb(thermo: number[]): { x: number; y: number } {
+    const head = thermo[0] ?? 0;
+    return { x: (head % SIZE) + 0.5, y: Math.floor(head / SIZE) + 0.5 };
+  }
+
   function difficultyEntries(): Array<[Difficulty, (typeof DIFFICULTIES)[Difficulty]]> {
     return Object.entries(DIFFICULTIES) as Array<[Difficulty, (typeof DIFFICULTIES)[Difficulty]]>;
   }
@@ -527,21 +620,34 @@
     <section class="sudoku-main" aria-label="수도쿠 보드">
       <div class="sudoku-toolbar">
         <div>
-          <h1 class="h3 fw-bold mb-1">수도쿠</h1>
-          <p class="text-body-secondary mb-0">빈 칸을 1부터 9까지 채우세요.</p>
+          <h1 class="h3 fw-bold mb-1">수도쿠{isHell ? ' 지옥' : ''}</h1>
+          <p class="text-body-secondary mb-0">
+            {isHell
+              ? '변형 규칙이 중첩된 WSC 스타일 극한 난이도입니다.'
+              : '빈 칸을 1부터 9까지 채우세요.'}
+          </p>
         </div>
         <div class="sudoku-stats" aria-label="게임 상태">
           <span>{DIFFICULTIES[difficulty].label}</span>
           <span>{formatTime(elapsed)}</span>
-          <span>실수 {mistakes}</span>
+          <span>실수 {mistakes}{isHell ? `/${MAX_HELL_MISTAKES}` : ''}</span>
         </div>
       </div>
+
+      {#if isHell}
+        <div class="hell-rules" aria-label="지옥 규칙">
+          <span title="두 메인 대각선에도 1~9가 중복 없이 들어갑니다">대각선X</span>
+          <span title="체스 나이트 이동 거리 칸에는 같은 숫자가 올 수 없습니다">안티나이트</span>
+          <span title="영역 합이 표시되며 영역 내 숫자는 중복될 수 없습니다">킬러</span>
+          <span title="전구에서 끝으로 갈수록 숫자가 커집니다">온도계</span>
+        </div>
+      {/if}
 
       <div class="sudoku-board-wrap">
         <div
           class="sudoku-board"
           aria-label="수도쿠 9x9 보드"
-          class:sudoku-board-paused={!started && !gameWon}
+          class:sudoku-board-paused={(!started && !gameWon) || gameLost}
         >
           {#each userGrid as row, rowIndex (rowIndex)}
             {#each row as value, colIndex (colIndex)}
@@ -549,6 +655,7 @@
                 type="button"
                 class="sudoku-cell"
                 class:sudoku-cell-fixed={isFixed(rowIndex, colIndex)}
+                class:sudoku-cell-diag={isHell && isDiagonalCell(rowIndex, colIndex)}
                 class:sudoku-cell-selected={selected.row === rowIndex && selected.col === colIndex}
                 class:sudoku-cell-note-selected={noteMode &&
                   selected.row === rowIndex &&
@@ -556,10 +663,14 @@
                 class:sudoku-cell-related={isRelated(rowIndex, colIndex)}
                 class:sudoku-cell-same={value !== 0 && value === selectedValue}
                 class:sudoku-cell-wrong={isWrong(rowIndex, colIndex)}
+                style={cageShadow(rowIndex, colIndex)}
                 aria-label="{rowIndex + 1}행 {colIndex + 1}열 {value || '빈칸'}"
                 onclick={() => selectCell(rowIndex, colIndex)}
                 onkeydown={handleKeydown}
               >
+                {#if cageLabel(rowIndex, colIndex) !== null}
+                  <span class="hell-cage-sum">{cageLabel(rowIndex, colIndex)}</span>
+                {/if}
                 {#if value}
                   {value}
                 {:else if notesGrid[rowIndex][colIndex]}
@@ -572,19 +683,51 @@
               </button>
             {/each}
           {/each}
+
+          {#if isHell && thermos.length}
+            <svg class="hell-thermo-layer" viewBox="0 0 9 9" aria-hidden="true">
+              {#each thermos as thermo, thermoIndex (thermoIndex)}
+                <polyline class="hell-thermo-line" points={thermoPoints(thermo)} />
+                <circle
+                  class="hell-thermo-bulb"
+                  cx={thermoBulb(thermo).x}
+                  cy={thermoBulb(thermo).y}
+                  r="0.36"
+                />
+              {/each}
+            </svg>
+          {/if}
         </div>
 
-        {#if !started && !gameWon}
+        {#if !started && !gameWon && !gameLost}
           <div class="sudoku-start-layer" role="presentation">
             <div class="sudoku-start-panel">
               <strong>{canResume ? '진행 중인 게임' : '준비 완료'}</strong>
               <p>
                 {canResume
                   ? '게임재개를 누르면 시간이 다시 흐릅니다.'
-                  : '시작을 누르면 시간이 흐르고 입력할 수 있습니다.'}
+                  : isHell
+                    ? '대각선·나이트·케이지·온도계 규칙이 모두 적용됩니다. 실수 5회면 실패합니다.'
+                    : '시작을 누르면 시간이 흐르고 입력할 수 있습니다.'}
               </p>
               <button type="button" class="btn btn-primary sudoku-start-button" onclick={startGame}>
                 {canResume ? '게임재개' : '시작'}
+              </button>
+            </div>
+          </div>
+        {/if}
+
+        {#if gameLost}
+          <div class="sudoku-start-layer" role="presentation">
+            <div class="sudoku-start-panel">
+              <strong>지옥 실패</strong>
+              <p>실수 {MAX_HELL_MISTAKES}회로 탈락했습니다. 새 퍼즐로 다시 도전하세요.</p>
+              <button
+                type="button"
+                class="btn btn-danger sudoku-start-button"
+                onclick={() => resetGame(difficulty, false)}
+              >
+                다시 도전
               </button>
             </div>
           </div>
@@ -644,7 +787,7 @@
         {#each difficultyEntries() as [key, config] (key)}
           <button
             type="button"
-            class="btn btn-outline-primary"
+            class="btn {key === 'hell' ? 'btn-outline-danger' : 'btn-outline-primary'}"
             class:active={difficulty === key}
             onclick={() => changeDifficulty(key)}
             disabled={resetConfirming}
@@ -670,7 +813,7 @@
           class:sudoku-note-toggle-active={noteMode}
           aria-pressed={noteMode}
           onclick={toggleNoteMode}
-          disabled={!started || gameWon}
+          disabled={!started || gameWon || gameLost}
         >
           메모
         </button>
@@ -678,7 +821,7 @@
           type="button"
           class="btn btn-outline-secondary"
           onclick={clearCell}
-          disabled={!started || gameWon}
+          disabled={!started || gameWon || gameLost}
         >
           지우기
         </button>
@@ -686,7 +829,7 @@
           type="button"
           class="btn btn-outline-success"
           onclick={hint}
-          disabled={!started || gameWon}
+          disabled={!started || gameWon || gameLost}
         >
           힌트
         </button>
@@ -698,7 +841,7 @@
             type="button"
             class="btn btn-light"
             onclick={() => placeValue(value)}
-            disabled={!started || gameWon}
+            disabled={!started || gameWon || gameLost}
           >
             {value}
           </button>
@@ -806,6 +949,7 @@
   }
 
   .sudoku-board {
+    position: relative;
     width: 100%;
     height: 100%;
     aspect-ratio: 1;
@@ -815,6 +959,7 @@
     background: var(--bs-emphasis-color);
     user-select: none;
     box-sizing: border-box;
+    --hell-cage-color: color-mix(in srgb, var(--bs-body-color) 68%, transparent);
   }
 
   .sudoku-board-paused {
@@ -900,6 +1045,67 @@
     background: var(--bs-tertiary-bg);
   }
 
+  .sudoku-cell-diag {
+    background: color-mix(in srgb, var(--bs-warning-bg-subtle) 55%, var(--bs-body-bg));
+  }
+
+  .sudoku-cell-diag.sudoku-cell-fixed {
+    background: color-mix(in srgb, var(--bs-warning-bg-subtle) 60%, var(--bs-tertiary-bg));
+  }
+
+  .hell-cage-sum {
+    position: absolute;
+    top: 1px;
+    left: 2px;
+    z-index: 1;
+    font-size: clamp(0.42rem, 1.3vw, 0.62rem);
+    font-weight: 600;
+    line-height: 1;
+    color: var(--bs-secondary-color);
+    pointer-events: none;
+  }
+
+  .hell-thermo-layer {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+  }
+
+  .hell-thermo-line {
+    fill: none;
+    stroke: var(--bs-secondary-color);
+    stroke-width: 0.3;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    opacity: 0.4;
+  }
+
+  .hell-thermo-bulb {
+    fill: var(--bs-secondary-color);
+    opacity: 0.4;
+  }
+
+  .hell-rules {
+    display: flex;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.75rem;
+  }
+
+  .hell-rules span {
+    border: 1px solid var(--bs-danger-border-subtle);
+    border-radius: 999px;
+    padding: 0.2rem 0.6rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--bs-danger-text-emphasis);
+    background: var(--bs-danger-bg-subtle);
+    cursor: help;
+  }
+
   .sudoku-cell-related {
     background: color-mix(in srgb, var(--bs-primary-bg-subtle) 70%, var(--bs-body-bg));
   }
@@ -958,7 +1164,7 @@
   }
 
   .sudoku-difficulty {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
   }
 
   .sudoku-actions {
@@ -1154,7 +1360,7 @@
     }
 
     .sudoku-difficulty {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 0.35rem;
     }
 

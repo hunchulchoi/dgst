@@ -6,7 +6,7 @@ import { getTodaySudokuStats } from '$lib/server/gameSudokuStats.js';
 import { attachGameProfilePhotos } from '$lib/server/gameProfilePhotos.js';
 import { normalizeToIsoString } from '$lib/util/formatRelativeTime.js';
 
-const DIFFICULTIES = new Set(['easy', 'normal', 'hard']);
+const DIFFICULTIES = new Set(['easy', 'normal', 'hard', 'hell']);
 const MAX_SECONDS = 24 * 60 * 60;
 const MAX_MISTAKES = 999;
 
@@ -46,11 +46,11 @@ async function getRankTop10(difficulty) {
 
 /**
  * @param {unknown} value
- * @returns {'easy' | 'normal' | 'hard'}
+ * @returns {'easy' | 'normal' | 'hard' | 'hell'}
  */
 function normalizeDifficulty(value) {
   if (typeof value === 'string' && DIFFICULTIES.has(value)) {
-    return /** @type {'easy' | 'normal' | 'hard'} */ (value);
+    return /** @type {'easy' | 'normal' | 'hard' | 'hell'} */ (value);
   }
   return 'normal';
 }
