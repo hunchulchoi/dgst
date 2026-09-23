@@ -606,6 +606,26 @@
     return { x: (head % SIZE) + 0.5, y: Math.floor(head / SIZE) + 0.5 };
   }
 
+  async function showHellRules() {
+    await swalFire({
+      title: '수도쿠 지옥 규칙',
+      icon: 'info',
+      html: `<div style="text-align:left;line-height:1.7">
+        <p style="margin:0 0 .5rem">WSC(세계 스도쿠 선수권) 스타일 변형 규칙이 한 판에 모두 적용됩니다.</p>
+        <ul style="margin:0;padding-left:1.2rem">
+          <li><strong>대각선X</strong> — 노란색 두 메인 대각선에도 1~9가 중복 없이 들어갑니다.</li>
+          <li><strong>안티나이트</strong> — 체스 나이트(L자) 이동 거리에 있는 두 칸은 같은 숫자가 될 수 없습니다.</li>
+          <li><strong>킬러</strong> — 굵은 경계의 케이지 왼쪽 위 숫자가 그 칸들의 합입니다. 케이지 안에서 숫자는 중복될 수 없습니다.</li>
+          <li><strong>온도계</strong> — 회색 온도계의 둥근 전구에서 끝으로 갈수록 숫자가 커집니다.</li>
+          <li><strong>실수 ${MAX_HELL_MISTAKES}회 탈락</strong> — ${MAX_HELL_MISTAKES}번 틀리면 실패하며 새 퍼즐로 다시 도전해야 합니다.</li>
+        </ul>
+      </div>`,
+      confirmButtonText: '확인',
+      confirmButtonColor: '#dc3545',
+      heightAuto: false
+    });
+  }
+
   function difficultyEntries(): Array<[Difficulty, (typeof DIFFICULTIES)[Difficulty]]> {
     return Object.entries(DIFFICULTIES) as Array<[Difficulty, (typeof DIFFICULTIES)[Difficulty]]>;
   }
@@ -640,6 +660,14 @@
           <span title="체스 나이트 이동 거리 칸에는 같은 숫자가 올 수 없습니다">안티나이트</span>
           <span title="영역 합이 표시되며 영역 내 숫자는 중복될 수 없습니다">킬러</span>
           <span title="전구에서 끝으로 갈수록 숫자가 커집니다">온도계</span>
+          <button
+            type="button"
+            class="hell-rules-help"
+            aria-label="지옥 규칙 설명 보기"
+            onclick={showHellRules}
+          >
+            규칙 설명
+          </button>
         </div>
       {/if}
 
@@ -1104,6 +1132,23 @@
     color: var(--bs-danger-text-emphasis);
     background: var(--bs-danger-bg-subtle);
     cursor: help;
+  }
+
+  .hell-rules-help {
+    border: 1px solid var(--bs-danger);
+    border-radius: 999px;
+    padding: 0.2rem 0.6rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--bs-danger);
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .hell-rules-help:hover,
+  .hell-rules-help:focus-visible {
+    color: var(--bs-white);
+    background: var(--bs-danger);
   }
 
   .sudoku-cell-related {
