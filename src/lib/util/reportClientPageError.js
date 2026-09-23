@@ -55,6 +55,23 @@ const MAX_LEN = {
   phase: 64
 };
 const probedChunkUrls = new Set();
+/** @type {Array<readonly [string, 'chunkCfRay' | 'chunkCfCacheStatus' | 'chunkCfMitigated']>} */
+const CLOUDFLARE_CHUNK_HEADERS = [
+  ['cf-ray', 'chunkCfRay'],
+  ['cf-cache-status', 'chunkCfCacheStatus'],
+  ['cf-mitigated', 'chunkCfMitigated']
+];
+
+/** @param {Pick<Headers, 'get'>} headers */
+export function collectCloudflareChunkHeaders(headers) {
+  /** @type {{ chunkCfRay?: string, chunkCfCacheStatus?: string, chunkCfMitigated?: string }} */
+  const result = {};
+  for (const [headerName, fieldName] of CLOUDFLARE_CHUNK_HEADERS) {
+    const value = headers.get(headerName);
+    if (value) result[fieldName] = value.slice(0, 128);
+  }
+  return result;
+}
 
 /** @param {string} value */
 function fnv1a(value) {
@@ -204,7 +221,14 @@ async function reportChunkProbe(chunkUrl, context) {
   if (!probeUrl || probedChunkUrls.has(probeUrl) || typeof fetch !== 'function') return;
   probedChunkUrls.add(probeUrl);
 
-  /** @type {{ chunkHttpStatus?: number, chunkHttpStatusText?: string, chunkProbeError?: string }} */
+  /** @type {{
+   *   chunkHttpStatus?: number,
+   *   chunkHttpStatusText?: string,
+   *   chunkCfRay?: string,
+   *   chunkCfCacheStatus?: string,
+   *   chunkCfMitigated?: string,
+   *   chunkProbeError?: string
+   * }} */
   let result;
   try {
     const response = await fetch(probeUrl, {
@@ -214,7 +238,8 @@ async function reportChunkProbe(chunkUrl, context) {
     });
     result = {
       chunkHttpStatus: response.status,
-      chunkHttpStatusText: response.statusText.slice(0, 128)
+      chunkHttpStatusText: response.statusText.slice(0, 128),
+      ...collectCloudflareChunkHeaders(response.headers)
     };
   } catch (error) {
     result = { chunkProbeError: clip(stringifyCause(error), MAX_LEN.cause) };

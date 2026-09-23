@@ -246,6 +246,15 @@ export async function POST(event) {
       ...(typeof logData.chunkHttpStatusText === 'string' && {
         chunkHttpStatusText: logData.chunkHttpStatusText.slice(0, 128)
       }),
+      ...(typeof logData.chunkCfRay === 'string' && {
+        chunkCfRay: logData.chunkCfRay.slice(0, 128)
+      }),
+      ...(typeof logData.chunkCfCacheStatus === 'string' && {
+        chunkCfCacheStatus: logData.chunkCfCacheStatus.slice(0, 128)
+      }),
+      ...(typeof logData.chunkCfMitigated === 'string' && {
+        chunkCfMitigated: logData.chunkCfMitigated.slice(0, 128)
+      }),
       ...(typeof logData.chunkProbeError === 'string' && {
         chunkProbeError: logData.chunkProbeError.slice(0, 1000)
       }),
