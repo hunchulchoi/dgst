@@ -942,8 +942,19 @@ function applyDdaengValueToRound(round, winnerId) {
  * @param {() => number} rng
  */
 function restartAfterTie(round, rng, reason = '무승부') {
-  let deck = shuffleDeck(createDeck(), rng);
   const active = round.seats.filter((seat) => !seat.folded);
+  const foldedCards = round.seats.filter((seat) => seat.folded).flatMap((seat) => seat.cards);
+  const replayDeck = createDeck();
+  for (const foldedCard of foldedCards) {
+    const heldIndex = replayDeck.findIndex(
+      (card) =>
+        card.month === foldedCard.month &&
+        card.gwang === foldedCard.gwang &&
+        Boolean(card.animal) === Boolean(foldedCard.animal)
+    );
+    if (heldIndex >= 0) replayDeck.splice(heldIndex, 1);
+  }
+  let deck = shuffleDeck(replayDeck, rng);
   const cardsPerSeat = round.series?.isBoss ? 5 : 2;
 
   for (const seat of round.seats) {

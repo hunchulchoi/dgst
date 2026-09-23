@@ -747,6 +747,37 @@ describe('seotdaRound smoke', () => {
     );
   });
 
+  it('does not redeal a folded players card during a tie replay', () => {
+    const round = createNewRound(1000, () => 0.5);
+    const [user, npc1, npc2, folded] = round.seats;
+    user.cards = [
+      { month: 3, gwang: false },
+      { month: 4, gwang: false }
+    ];
+    npc1.cards = [
+      { month: 9, gwang: false },
+      { month: 8, gwang: false }
+    ];
+    npc2.cards = [
+      { month: 2, gwang: false },
+      { month: 5, gwang: false }
+    ];
+    folded.cards = [
+      { month: 8, gwang: true },
+      { month: 10, gwang: false }
+    ];
+    folded.folded = true;
+
+    // 기존 로직은 이 RNG에서 생존자에게 8광을 다시 배정했다.
+    showdown(round, () => 0.2);
+
+    const activeCards = round.seats
+      .filter((seat) => !seat.folded)
+      .flatMap((seat) => seat.cards);
+    expect(activeCards).not.toContainEqual({ month: 8, gwang: true });
+    expect(folded.cards).toContainEqual({ month: 8, gwang: true });
+  });
+
   it('keeps the original bet in accounting when a tie replay has no new user bet', () => {
     const round = createNewRound(1000, () => 0.5);
     const user = round.seats[0];
