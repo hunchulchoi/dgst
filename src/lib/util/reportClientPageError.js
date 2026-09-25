@@ -211,6 +211,62 @@ function getProbeableChunkUrl(chunkUrl) {
 }
 
 /**
+ * Generic browser module-load errors often omit the failed URL. Keep a small,
+ * same-origin sample of recently requested SvelteKit scripts so the next report
+ * can show whether a chunk request returned an error or stalled in transit.
+ */
+function collectRecentSvelteKitScripts() {
+  if (
+    typeof performance === 'undefined' ||
+    typeof location === 'undefined' ||
+    typeof performance.getEntriesByType !== 'function'
+  ) {
+    return [];
+  }
+
+  const now = performance.now();
+  return performance
+    .getEntriesByType('resource')
+    .filter((entry) => {
+      const resource = /** @type {PerformanceResourceTiming} */ (entry);
+      if (resource.initiatorType !== 'script' || now - resource.startTime > 15_000) return false;
+      try {
+        const url = new URL(resource.name, location.origin);
+        return (
+          url.origin === location.origin &&
+          url.pathname.startsWith('/_app/immutable/') &&
+          /\.m?js$/i.test(url.pathname)
+        );
+      } catch {
+        return false;
+      }
+    })
+    .sort((a, b) => b.startTime - a.startTime)
+    .slice(0, 8)
+    .map((entry) => {
+      const resource = /** @type {PerformanceResourceTiming & { responseStatus?: number }} */ (
+        entry
+      );
+      let name = resource.name;
+      try {
+        name = new URL(resource.name, location.origin).pathname;
+      } catch {
+        // The URL was already validated above; retain its original value if parsing differs.
+      }
+      return {
+        name: name.slice(0, 256),
+        startTimeMs: Math.round(resource.startTime),
+        durationMs: Math.round(resource.duration),
+        transferSize: resource.transferSize,
+        encodedBodySize: resource.encodedBodySize,
+        ...(Number.isFinite(resource.responseStatus)
+          ? { responseStatus: resource.responseStatus }
+          : {})
+      };
+    });
+}
+
+/**
  * 해시 chunk 실패는 배포 불일치(404)와 네트워크 오류를 구분해야 한다.
  * 같은 URL은 페이지 수명 동안 한 번만 probe한다.
  * @param {string | undefined} chunkUrl
@@ -376,6 +432,14 @@ export function reportClientError(error, context = {}) {
     });
   const details =
     context.details && typeof context.details === 'object' ? context.details : undefined;
+  const moduleLoadError =
+    /(?:module script|dynamically imported module|loading chunk \d+ failed)/i.test(errorMessage);
+  const reportDetails = moduleLoadError
+    ? {
+        ...(details ?? {}),
+        recentSvelteKitScripts: collectRecentSvelteKitScripts()
+      }
+    : details;
   const summary = `[${type}] ${context.message ?? errorMessage}`;
   const detailParts = [
     errorName && `name=${errorName}`,
@@ -441,7 +505,7 @@ export function reportClientError(error, context = {}) {
         ...(operation && { operation }),
         ...(currentPath && { currentPath }),
         ...(previousPath && { previousPath }),
-        ...(details && { details }),
+        ...(reportDetails && { details: reportDetails }),
         clientAt
       })
     }).catch(() => {});
