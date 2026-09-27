@@ -14,6 +14,8 @@ vite.config.ts.timestamp-*
 /vitest-report
 /playwright-report
 /test-results
+/.immutable-history/*
+!/.immutable-history/.gitkeep
 /conf
 .antigravitycli/
 pnpm-lock.yaml

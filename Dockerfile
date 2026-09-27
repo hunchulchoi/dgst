@@ -27,6 +27,8 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/*
 
 COPY --from=build /app/build .
+# Keep recently retired hashed client assets available to tabs opened before a deploy.
+COPY .immutable-history/ /app/client/_app/immutable/
 COPY --from=build /app/package.json .
 COPY --from=build /app/package-lock.json .
 COPY --from=build /app/prisma ./prisma
