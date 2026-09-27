@@ -8,7 +8,6 @@
     Icon
   } from '$lib/components/ui/index.js';
 
-  import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
   import { page } from '$app/stores';
   import { onMount } from 'svelte';
@@ -18,6 +17,10 @@
   /** @typedef {Error & { stack?: string; name?: string; cause?: unknown; errorId?: string; fingerprint?: string; interruptedFetch?: boolean }} PageError */
 
   // Svelte 5 Runes - page store 필요 (error page는 예외)
+
+  function goHome() {
+    location.replace(resolve('/'));
+  }
 
   // 404, 502 에러 시 자동으로 홈(자유게시판)으로 리다이렉트
   onMount(() => {
@@ -69,7 +72,7 @@
       }
 
       // 그 외의 경우 홈(자유게시판)으로 리다이렉트
-      goto(resolve('/'));
+      goHome();
     }
   });
 </script>
@@ -91,7 +94,7 @@
         ><Icon name="arrow-repeat" class="pe-1" /> 새로고침</Button
       >
     {/if}
-    <Button onclick={() => goto(resolve('/'))} class="me-2"
+    <Button onclick={goHome} class="me-2"
       ><Icon name="house" class="pe-1" /> Home</Button
     >
   </CardFooter>
