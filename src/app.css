@@ -165,6 +165,14 @@ body {
   border-color: rgba(55, 53, 47, 0.2) !important;
 }
 
+/* 태블릿(md: 768–960px): 게시판 컨테이너 672px cap이 양옆 빈 공간을 과도하게 만듦 → 여백 축소 */
+@media (min-width: 768px) and (max-width: 959.98px) {
+  .container.board-chrome-connect,
+  .container.board-page-inset {
+    max-width: calc(100% - 16px);
+  }
+}
+
 /* 게시판: 탭 바로 아래 패널 붙임 */
 .board-chrome-connect {
   margin-top: 0 !important;
