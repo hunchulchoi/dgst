@@ -1271,16 +1271,27 @@
           'allow',
           'allowfullscreen',
           'style',
-          'position'
+          'position',
+          'loading'
         ],
         video: ['src', 'controls', 'style', 'width', 'height'],
         audio: ['src', 'controls', 'style'],
         a: ['href', 'target', 'rel'],
-        img: ['src', 'alt', 'width', 'height', 'style'],
+        img: ['src', 'alt', 'width', 'height', 'style', 'loading', 'decoding'],
         div: ['class', 'style', 'position'],
         span: ['style', 'class'],
         pre: ['class'],
         code: ['class']
+      },
+      transformTags: {
+        img: (tagName, attribs) => ({
+          tagName,
+          attribs: { loading: 'lazy', decoding: 'async', ...attribs }
+        }),
+        iframe: (tagName, attribs) => ({
+          tagName,
+          attribs: { loading: 'lazy', ...attribs }
+        })
       },
       allowedStyles: {
         '*': {
@@ -2137,6 +2148,8 @@
                   src={data.photo || '/icons/unknown-person-icon-4.jpg'}
                   width="100"
                   height="100"
+                  loading="lazy"
+                  decoding="async"
                 />
               </Col>
               <Col>

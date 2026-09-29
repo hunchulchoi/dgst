@@ -34,6 +34,7 @@ function youtubeEmbeder(url) {
            <div style="position: relative; width: 100%; height: 0; padding-bottom: ${paddingBottom};">
             <iframe${iframeClass} src="https://www.youtube.com/embed/${id}${time ? `?start=${time}` : ''}"
               style="position: absolute; width: 100%; height: 100%; top: 0; left: 0;"
+              loading="lazy"
               frameborder="0" allow="autoplay; encrypted-media" allowfullscreen>
             </iframe>
           </div>
@@ -112,16 +113,27 @@ export function viewComment(comment) {
         'allow',
         'allowfullscreen',
         'style',
-        'position'
+        'position',
+        'loading'
       ],
       div: ['style', 'class'],
       article: ['class'],
       pre: ['class'],
       code: ['class'],
       a: ['href', 'target', 'rel'],
-      img: ['src', 'alt', 'width', 'height', 'style'],
+      img: ['src', 'alt', 'width', 'height', 'style', 'loading', 'decoding'],
       audio: ['src', 'controls', 'style'],
       span: ['style', 'class']
+    },
+    transformTags: {
+      img: (tagName, attribs) => ({
+        tagName,
+        attribs: { loading: 'lazy', decoding: 'async', ...attribs }
+      }),
+      iframe: (tagName, attribs) => ({
+        tagName,
+        attribs: { loading: 'lazy', ...attribs }
+      })
     },
     // XSS 방지를 위한 프로토콜 철저한 차단 (javascript: 스키마 차단 등)
     allowedSchemes: ['http', 'https', 'ftp', 'mailto', 'tel'],
