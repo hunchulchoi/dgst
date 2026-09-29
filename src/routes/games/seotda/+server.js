@@ -17,10 +17,6 @@ import {
   getTodaySeotdaStats,
   isSeotdaOopsBalance,
   resolveSeotdaOops,
-  shouldRequestSparkDecision,
-  shouldForceSparkForRaise,
-  sparkDecisionCooldownMs,
-  sparkInterventionHands,
   writeSeotdaLeaderPromotion,
   writeSeotdaSettlement
 } from './seotdaBalance.js';
@@ -46,97 +42,16 @@ import {
   contributionCapacity,
   createNewRound,
   runNpcTurns,
-  runNpcTurnsWithSpark,
   seotdaAuditLogEntries,
   sparkTauntCooldownAfterRound
 } from './seotdaRound.js';
-import { decideSparkIntervention, decideSparkNpcAction } from './seotdaSparkAppServer.js';
 import { displayHand, normalizeRuleMode } from './seotdaClassic.js';
 
 const SMOKE_BALANCE = 1000;
 
 /** @type {Map<string, number>} */
 const chipsBeforeMap = new Map();
-/** @type {Map<string, { decision: Record<string, unknown> | null; consumed: boolean; remainingHands: number; refreshAfter: number; pending?: Promise<void>; touchedAt: number }>} */
-const sparkDecisionCache = new Map();
-
-/** @param {string} email */
-function consumeSparkDecision(email) {
-  const cached = sparkDecisionCache.get(email);
-  if (!cached?.decision || cached.consumed || cached.remainingHands <= 0) return null;
-  cached.remainingHands -= 1;
-  cached.consumed = cached.remainingHands <= 0;
-  cached.touchedAt = Date.now();
-  return cached.decision;
-}
-
-/** @param {string} email @param {Record<string, unknown>} context */
-function refreshSparkDecisionInBackground(email, context, force = false) {
-  const now = Date.now();
-  const cached = sparkDecisionCache.get(email);
-  if (cached?.pending) return cached.pending;
-  if (!force && cached && now < cached.refreshAfter) return null;
-  if (
-    !force &&
-    !shouldRequestSparkDecision(Number(context.balance ?? 0), /** @type {any} */ (context.history))
-  ) {
-    return null;
-  }
-
-  if (sparkDecisionCache.size > 500) {
-    for (const [key, value] of sparkDecisionCache) {
-      if (now - value.touchedAt > 30 * 60_000) sparkDecisionCache.delete(key);
-    }
-  }
-
-  const pending = decideSparkIntervention(context)
-    .then((decision) => {
-      // 직접 행동 호출은 피하고, 한 번 받은 난이도·성향 정책을 여러 판 재사용한다.
-      decision.directPlay = false;
-      const remainingHands = sparkInterventionHands(
-        Number(context.balance ?? 0),
-        /** @type {any} */ (context.history),
-        decision
-      );
-      sparkDecisionCache.set(email, {
-        decision: remainingHands > 0 ? decision : null,
-        consumed: remainingHands <= 0,
-        remainingHands,
-        refreshAfter:
-          Date.now() +
-          sparkDecisionCooldownMs(
-            Number(context.balance ?? 0),
-            /** @type {any} */ (context.history),
-            decision.active
-          ),
-        touchedAt: Date.now()
-      });
-    })
-    .catch(() => {
-      sparkDecisionCache.set(email, {
-        decision: null,
-        consumed: true,
-        remainingHands: 0,
-        refreshAfter:
-          Date.now() +
-          sparkDecisionCooldownMs(
-            Number(context.balance ?? 0),
-            /** @type {any} */ (context.history),
-            false
-          ),
-        touchedAt: Date.now()
-      });
-    });
-  sparkDecisionCache.set(email, {
-    decision: cached?.decision ?? null,
-    consumed: cached?.consumed ?? true,
-    remainingHands: cached?.remainingHands ?? 0,
-    refreshAfter: cached?.refreshAfter ?? 0,
-    pending,
-    touchedAt: now
-  });
-  return pending;
-}
+// Spark AI 개입 호출은 비활성화 — NPC는 기본 규칙으로만 플레이한다 (2026-09).
 
 /**
  * @param {import('./seotdaState.js').SeotdaRound} round
@@ -303,30 +218,7 @@ export async function POST(event) {
         /** @type {'die'|'call'|'raise'} */ (move),
         Number.isFinite(raisePay) ? raisePay : undefined
       );
-      const appliedRaisePay = Number(userSeat?.lastActionAmount ?? 0);
-      if (shouldForceSparkForRaise(move, appliedRaisePay)) {
-        round.log.push(`Spark: 10억 이상 레이스 판단 요청 (${appliedRaisePay})`);
-        void refreshSparkDecisionInBackground(
-          user.email,
-          {
-            balance: Number(userSeat?.chips ?? 0) + Number(userSeat?.totalContrib ?? 0),
-            npcChips: Object.fromEntries(
-              round.seats.filter((seat) => seat.isNpc).map((seat) => [seat.id, seat.chips])
-            ),
-            openingActorId: round.openingActorId ?? 'user',
-            sparkTauntCooldown: Number(round.sparkTauntCooldown ?? 0),
-            history: round.sparkHistory ?? {},
-            trigger: 'user-high-raise',
-            highRaisePay: appliedRaisePay,
-            pot: round.pot,
-            currentBet: round.currentBet,
-            raiseCount: round.raiseCount ?? 0,
-            userRaiseCount: round.userRaiseCount ?? 0
-          },
-          true
-        );
-      }
-      const npcActions = await runNpcTurnsWithSpark(round, decideSparkNpcAction);
+      const npcActions = runNpcTurns(round);
       setRound(user.email, round);
 
       if (isShowdown(round)) {
@@ -480,22 +372,13 @@ async function beginRound(
     const npcEmotions = getNpcEmotions(email);
     const seriesConfig = getSeotdaSeriesRoundConfig(email);
     const history = await getSeotdaSparkHistory(email);
-    const sparkContext = {
-      balance,
-      npcChips,
-      openingActorId,
-      sparkTauntCooldown,
-      history
-    };
-    const sparkDecision = consumeSparkDecision(email);
-    void refreshSparkDecisionInBackground(email, sparkContext);
     const round = createNewRound(
       balance,
       Math.random,
       npcChips,
       openingActorId,
       sparkTauntCooldown,
-      sparkDecision,
+      null,
       npcEmotions,
       seriesConfig,
       ruleMode,
@@ -503,7 +386,7 @@ async function beginRound(
     );
     round.arcadePlayId = playId;
     round.sparkHistory = history;
-    const npcActions = await runNpcTurnsWithSpark(round, decideSparkNpcAction);
+    const npcActions = runNpcTurns(round);
     chipsBeforeMap.set(email, balance);
     setRound(email, round);
     return { success: true, balance: round.seats[0].chips, round: publicOf(round), npcActions };
