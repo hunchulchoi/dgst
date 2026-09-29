@@ -128,6 +128,15 @@ const LOGIN_LOG_RETENTION_DAYS = 30;
 const AUTH_SESSION_COOKIE_NAME =
   privateEnv.NODE_ENV === 'production' ? '__Secure-authjs.session-token' : 'authjs.session-token';
 
+/**
+ * Cloudflare Rocket Loader는 원본 <script>를 지연 실행으로 재작성해
+ * hydration이 load 이후로 밀리고 post-load long task를 만든다.
+ * data-cfasync="false"를 원본에 심어 모든 스크립트를 즉시 실행 경로로 되돌린다.
+ * @param {string} html
+ */
+const exemptScriptsFromRocketLoader = (html) =>
+  html.replace(/<script\b(?![^>]*\bdata-cfasync=)([^>]*)>/gi, '<script data-cfasync="false"$1>');
+
 /** @param {import('@sveltejs/kit').RequestEvent} event */
 const getRequestMeta = (event) => {
   return {
@@ -209,7 +218,9 @@ export async function handle({ event, resolve }) {
       ...opts,
       transformPageChunk: async (chunk) => {
         const html = upstreamTransform ? await upstreamTransform(chunk) : chunk.html;
-        return applyHostnameFavicon(html ?? chunk.html, resolveEvent.url.hostname);
+        return exemptScriptsFromRocketLoader(
+          applyHostnameFavicon(html ?? chunk.html, resolveEvent.url.hostname)
+        );
       }
     });
   };
