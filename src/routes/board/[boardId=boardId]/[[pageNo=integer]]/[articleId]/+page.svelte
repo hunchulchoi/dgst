@@ -2030,6 +2030,11 @@
       margin: 0.5rem 0;
     }
 
+    .article-content iframe[src*='youtube.com/embed'] {
+      margin-left: 0 !important;
+      margin-right: auto !important;
+    }
+
     @media (max-width: 767.98px) {
       .article-content iframe.youtube-shorts-embed,
       .comment-section :global(iframe.youtube-shorts-embed),
