@@ -370,6 +370,8 @@ export async function handle({ event, resolve }) {
       const headers = new Headers(authResponse.headers);
       headers.set('Cache-Control', 'private, no-store, must-revalidate, max-age=0');
       headers.set('CDN-Cache-Control', 'no-store');
+      // Cloudflare Early Hints: render-blocking CSS를 103으로 선전송 (고RTT 클라이언트)
+      headers.append('Link', '</css/bootstrap.min.css?v=20260522>; rel=preload; as=style');
 
       return new Response(authResponse.body, {
         status: authResponse.status,
