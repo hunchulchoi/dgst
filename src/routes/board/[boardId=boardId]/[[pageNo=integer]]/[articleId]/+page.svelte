@@ -26,7 +26,7 @@
   import { linkifyPlainUrls } from '$lib/util/linkifyPlainUrls.js';
   import { repairOgCardHtmlEntities } from '$lib/util/ogCardHtmlRepair.js';
   import { imageThumbnailUrl } from '$lib/util/imageThumbnail.js';
-  import { readPasteData } from '$lib/util/pasteData.js';
+  import { readClipboardImageFiles, readPasteData } from '$lib/util/pasteData.js';
   import {
     createWebpUploadFile,
     isPdfAttachment,
@@ -362,6 +362,8 @@
     }
   }
 
+  let lastCommentImagePasteTime = 0;
+
   /**
    * @param {ClipboardEvent | InputEvent | Event} event
    * @param {HTMLImageElement} el
@@ -369,19 +371,32 @@
    */
   async function preview(event, el, target = 'comment') {
     if (event.type === 'paste' || event.type === 'beforeinput') {
-      const file =
-        readPasteData(/** @type {ClipboardEvent | InputEvent} */ (event)).files[0] ?? null;
+      const syncData = readPasteData(/** @type {ClipboardEvent | InputEvent} */ (event));
+      let file = syncData.files[0] ?? null;
+
+      if (!file) {
+        if (syncData.text.trim()) return;
+
+        if (Date.now() - lastCommentImagePasteTime < 600) {
+          event.preventDefault();
+          return;
+        }
+        event.preventDefault();
+        lastCommentImagePasteTime = Date.now();
+
+        const clipboardFiles = await readClipboardImageFiles();
+        file = clipboardFiles[0] ?? null;
+      } else {
+        lastCommentImagePasteTime = Date.now();
+        event.preventDefault();
+      }
+
+      if (!file) return;
       if (rejectAttachmentWithoutExtension(file)) return;
 
-      if (
-        file &&
-        (file.type.startsWith('image') || file.type.startsWith('video') || isPdfAttachment(file))
-      ) {
+      if (file.type.startsWith('image') || file.type.startsWith('video') || isPdfAttachment(file)) {
         setCommentImageTarget(target, file);
-
-        event.preventDefault();
-      } else if (file?.type.startsWith('audio')) {
-        event.preventDefault();
+      } else if (file.type.startsWith('audio')) {
         await uploadCommentAudioFile(file, target);
         return;
       } else return;
@@ -859,25 +874,41 @@
     }
   }
 
+  let lastEditCommentImagePasteTime = 0;
+
   // 댓글 이미지 미리보기
   /**
    * @param {ClipboardEvent | InputEvent | Event} event
    * @param {HTMLImageElement} el
    */
-  function previewEditImage(event, el) {
+  async function previewEditImage(event, el) {
     if (event.type === 'paste' || event.type === 'beforeinput') {
-      const file =
-        readPasteData(/** @type {ClipboardEvent | InputEvent} */ (event)).files[0] ?? null;
+      const syncData = readPasteData(/** @type {ClipboardEvent | InputEvent} */ (event));
+      let file = syncData.files[0] ?? null;
+
+      if (!file) {
+        if (syncData.text.trim()) return;
+
+        if (Date.now() - lastEditCommentImagePasteTime < 600) {
+          event.preventDefault();
+          return;
+        }
+        event.preventDefault();
+        lastEditCommentImagePasteTime = Date.now();
+
+        const clipboardFiles = await readClipboardImageFiles();
+        file = clipboardFiles[0] ?? null;
+      } else {
+        lastEditCommentImagePasteTime = Date.now();
+        event.preventDefault();
+      }
+
+      if (!file) return;
       if (rejectAttachmentWithoutExtension(file)) return;
-      if (
-        file &&
-        (file.type.startsWith('image') || file.type.startsWith('video') || isPdfAttachment(file))
-      ) {
+      if (file.type.startsWith('image') || file.type.startsWith('video') || isPdfAttachment(file)) {
         editCommentImage = file;
         editCommentRemoveImage = false;
-        event.preventDefault();
-      } else if (file?.type.startsWith('audio')) {
-        event.preventDefault();
+      } else if (file.type.startsWith('audio')) {
         void uploadCommentAudioFile(file, 'edit');
         return;
       } else return;
@@ -966,7 +997,7 @@
 
   /** @param {ClipboardEvent | InputEvent} evt */
   function handleEditPaste(evt) {
-    if (editPreviewEl) previewEditImage(evt, editPreviewEl);
+    if (editPreviewEl) void previewEditImage(evt, editPreviewEl);
   }
 
   /** @param {string} articleId */
@@ -1280,14 +1311,19 @@
         code: ['class']
       },
       transformTags: {
-        img: (tagName, attribs) => ({
-          tagName,
-          attribs: { loading: 'lazy', decoding: 'async', ...attribs }
-        }),
-        iframe: (tagName, attribs) => ({
-          tagName,
-          attribs: { loading: 'lazy', ...attribs }
-        })
+        img: /** @type {(tagName: string, attribs: Record<string, string>) => { tagName: string, attribs: Record<string, string> }} */ (
+          (tagName, attribs) => ({
+            tagName,
+            attribs: { loading: 'lazy', decoding: 'async', ...attribs }
+          })
+        ),
+        iframe:
+          /** @type {(tagName: string, attribs: Record<string, string>) => { tagName: string, attribs: Record<string, string> }} */ (
+            (tagName, attribs) => ({
+              tagName,
+              attribs: { loading: 'lazy', ...attribs }
+            })
+          )
       },
       allowedStyles: {
         '*': {

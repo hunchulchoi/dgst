@@ -45,7 +45,7 @@
   import { mergeRegister } from '@lexical/utils';
   import { swalFire } from '$lib/util/swal.js';
   import { encodeMultipartFormData } from '$lib/util/multipartFormData.js';
-  import { readPasteData } from '$lib/util/pasteData.js';
+  import { readClipboardImageFiles, readPasteData } from '$lib/util/pasteData.js';
   import { reportClientError } from '$lib/util/reportClientPageError.js';
   import { createLexicalEditorFailureDetails } from '$lib/util/lexicalErrorDetails.js';
   import {
@@ -1842,19 +1842,45 @@
     syncEditorData();
   }
 
+  let lastImagePasteTime = 0;
+
   /** @param {ClipboardEvent | InputEvent | KeyboardEvent} event */
   function handlePaste(event) {
     if (!editor) return false;
 
     const { files, text: pastedText } = readPasteData(event);
     if (files.length > 0) {
+      lastImagePasteTime = Date.now();
       event.preventDefault();
       void uploadAndInsertFiles(files);
       return true;
     }
 
     const text = pastedText.trim();
-    if (!text) return false;
+    if (!text) {
+      // Mobile (e.g. Galaxy) paste: clipboardData/dataTransfer in event has no files synchronously.
+      // Fall back to reading images via async Clipboard API.
+      if (typeof navigator !== 'undefined' && typeof navigator.clipboard?.read === 'function') {
+        if (Date.now() - lastImagePasteTime < 600) {
+          event.preventDefault();
+          return true;
+        }
+        lastImagePasteTime = Date.now();
+        event.preventDefault();
+        void (async () => {
+          try {
+            const clipboardFiles = await readClipboardImageFiles();
+            if (clipboardFiles.length > 0) {
+              await uploadAndInsertFiles(clipboardFiles);
+            }
+          } catch (e) {
+            console.warn('Clipboard image read failed:', e);
+          }
+        })();
+        return true;
+      }
+      return false;
+    }
 
     const isMarkdown =
       /^(#|##|###|- |\* |\d+\. |> |`|\[.*\]\(.*\)|_{1,2}\w+_{1,2}|\*{1,2}\w+\*{1,2})/m.test(text);
@@ -1896,6 +1922,7 @@
     if (event.isComposing) return false;
     if (
       event.inputType.startsWith('insertFromPaste') ||
+      (event.inputType === 'insertReplacementText' && !event.data) ||
       readPasteData(event).files.length > 0 ||
       (event.inputType === 'insertText' && /^https?:\/\/\S+$/i.test(event.data?.trim() || ''))
     ) {
@@ -2040,6 +2067,11 @@
 
   export function focusEditor() {
     editor?.focus();
+  }
+
+  /** @param {File[]} files */
+  export function insertFiles(files) {
+    return uploadAndInsertFiles(files);
   }
 
   $effect(() => {

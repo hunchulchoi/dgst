@@ -299,6 +299,43 @@ test.describe('Android keyboard paste', () => {
     await expect(page.locator('[data-testid="editor-uploads"]')).toHaveText('0');
     expect(uploads).toBe(1);
   });
+
+  test('Lexical editor uploads an image on Galaxy when paste event has empty clipboardData and falls back to navigator.clipboard.read()', async ({
+    page
+  }) => {
+    let uploads = 0;
+    await page.route('**/board/upload', async (route) => {
+      uploads++;
+      await route.fulfill({
+        contentType: 'application/json',
+        body: JSON.stringify({ url: '/uploads/galaxy-paste.png' })
+      });
+    });
+    const editor = await gotoSmokeEditor(page);
+    await editor.click();
+
+    await page.evaluate(() => {
+      // @ts-ignore
+      navigator.clipboard.read = async () => [
+        {
+          types: ['image/png'],
+          getType: async () =>
+            new Blob([new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10])], { type: 'image/png' })
+        }
+      ];
+    });
+
+    await page.evaluate((selector) => {
+      const pasteEvent = new Event('paste', { bubbles: true, cancelable: true });
+      // @ts-ignore
+      pasteEvent.clipboardData = new DataTransfer();
+      document.querySelector(selector)?.dispatchEvent(pasteEvent);
+    }, editorSelector);
+
+    await expect(editor.locator('img[src="/uploads/galaxy-paste.png"]')).toHaveCount(1);
+    await expect(page.locator('[data-testid="editor-uploads"]')).toHaveText('0');
+    expect(uploads).toBe(1);
+  });
 });
 
 test('Lexical editor embeds a clipboard YouTube link without duplicate URL text', async ({

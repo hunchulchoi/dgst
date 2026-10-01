@@ -126,14 +126,18 @@ export function viewComment(comment) {
       span: ['style', 'class']
     },
     transformTags: {
-      img: (tagName, attribs) => ({
-        tagName,
-        attribs: { loading: 'lazy', decoding: 'async', ...attribs }
-      }),
-      iframe: (tagName, attribs) => ({
-        tagName,
-        attribs: { loading: 'lazy', ...attribs }
-      })
+      img: /** @type {(tagName: string, attribs: Record<string, string>) => { tagName: string, attribs: Record<string, string> }} */ (
+        (tagName, attribs) => ({
+          tagName,
+          attribs: { loading: 'lazy', decoding: 'async', ...attribs }
+        })
+      ),
+      iframe: /** @type {(tagName: string, attribs: Record<string, string>) => { tagName: string, attribs: Record<string, string> }} */ (
+        (tagName, attribs) => ({
+          tagName,
+          attribs: { loading: 'lazy', ...attribs }
+        })
+      )
     },
     // XSS 방지를 위한 프로토콜 철저한 차단 (javascript: 스키마 차단 등)
     allowedSchemes: ['http', 'https', 'ftp', 'mailto', 'tel'],

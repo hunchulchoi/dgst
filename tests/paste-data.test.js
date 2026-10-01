@@ -1,5 +1,10 @@
-import { describe, expect, it } from 'vitest';
-import { readPasteData } from '../src/lib/util/pasteData.js';
+import { describe, expect, it, vi } from 'vitest';
+import {
+  dataUrlToFile,
+  readClipboardImageFiles,
+  readPasteData,
+  readPasteDataAsync
+} from '../src/lib/util/pasteData.js';
 
 /** @param {Partial<DataTransfer>} value */
 const transfer = (value) => /** @type {DataTransfer} */ (value);
@@ -64,5 +69,82 @@ describe('mobile paste data', () => {
         })
       }).files[0]
     ).toBe(file);
+  });
+
+  it('converts data:image base64 url from html into a File', async () => {
+    // 1x1 transparent png in base64
+    const base64Png =
+      'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+    const file = dataUrlToFile(base64Png, 'sample');
+    expect(file).not.toBeNull();
+    expect(file?.name).toBe('sample.png');
+    expect(file?.type).toBe('image/png');
+
+    const result = readPasteData({
+      clipboardData: transfer({
+        files: /** @type {FileList} */ (/** @type {unknown} */ ([])),
+        items: /** @type {DataTransferItemList} */ (/** @type {unknown} */ ([])),
+        getData: (format) => (format === 'text/html' ? `<p><img src="${base64Png}" /></p>` : '')
+      })
+    });
+    expect(result.files).toHaveLength(1);
+    expect(result.files[0].type).toBe('image/png');
+  });
+
+  it('reads image asynchronously via navigator.clipboard.read() for mobile/Galaxy fallback', async () => {
+    const mockBlob = new Blob(['sample-bytes'], { type: 'image/jpeg' });
+    try {
+      vi.stubGlobal('navigator', {
+        clipboard: {
+          read: vi.fn().mockResolvedValue([
+            {
+              types: ['image/jpeg'],
+              getType: vi.fn().mockResolvedValue(mockBlob)
+            }
+          ])
+        }
+      });
+
+      const files = await readClipboardImageFiles();
+      expect(files).toHaveLength(1);
+      expect(files[0].type).toBe('image/jpeg');
+      expect(files[0].name).toBe('clipboard-image.jpg');
+
+      const asyncResult = await readPasteDataAsync({
+        clipboardData: transfer({
+          files: /** @type {FileList} */ (/** @type {unknown} */ ([])),
+          items: /** @type {DataTransferItemList} */ (/** @type {unknown} */ ([])),
+          getData: () => ''
+        })
+      });
+      expect(asyncResult.files).toHaveLength(1);
+      expect(asyncResult.files[0].type).toBe('image/jpeg');
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('does not read clipboard API if sync text is present', async () => {
+    const mockRead = vi.fn();
+    try {
+      vi.stubGlobal('navigator', {
+        clipboard: {
+          read: mockRead
+        }
+      });
+
+      const asyncResult = await readPasteDataAsync({
+        clipboardData: transfer({
+          files: /** @type {FileList} */ (/** @type {unknown} */ ([])),
+          items: /** @type {DataTransferItemList} */ (/** @type {unknown} */ ([])),
+          getData: () => 'some copied text'
+        })
+      });
+      expect(mockRead).not.toHaveBeenCalled();
+      expect(asyncResult.text).toBe('some copied text');
+      expect(asyncResult.files).toHaveLength(0);
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });

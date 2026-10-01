@@ -22,6 +22,7 @@
   import { swalFire } from '$lib/util/swal.js';
   import { reportClientError } from '$lib/util/reportClientPageError.js';
   import { validateArticleContent } from '$lib/util/articleContentValidation.js';
+  import { readClipboardImageFiles, readPasteData } from '$lib/util/pasteData.js';
 
   /** @typedef {import('sweetalert2').SweetAlertIcon} SweetAlertIcon */
   /** @typedef {import('sweetalert2').SweetAlertPosition} SweetAlertPosition */
@@ -294,7 +295,7 @@
   let LexicalEditor = $state(null);
   let editorLoadError = $state(false);
 
-  /** @type {{ focusEditor: () => void; getEditorHtml?: () => string } | null} */
+  /** @type {{ focusEditor: () => void; getEditorHtml?: () => string; insertFiles?: (files: File[]) => Promise<void> } | null} */
   let lexicalEditorRef = $state(null);
 
   beforeNavigate(() => {
@@ -356,11 +357,24 @@
    * @param {ClipboardEvent} event - 붙여넣기 이벤트
    */
   async function handleTitlePaste(event) {
-    let pastedText = event.clipboardData?.getData('text');
+    const { files, text } = readPasteData(event);
+    if (files.length > 0) {
+      event.preventDefault();
+      void lexicalEditorRef?.insertFiles?.(files);
+      return;
+    }
+
+    let pastedText = text;
 
     // 안드로이드 일부 브라우저에서 clipboardData가 비어있는 경우
-    if (!pastedText && navigator.clipboard) {
+    if (!pastedText && typeof navigator !== 'undefined' && navigator.clipboard) {
       try {
+        const asyncFiles = await readClipboardImageFiles();
+        if (asyncFiles.length > 0) {
+          event.preventDefault();
+          void lexicalEditorRef?.insertFiles?.(asyncFiles);
+          return;
+        }
         pastedText = await navigator.clipboard.readText();
       } catch (e) {
         console.warn('클립보드 읽기 권한 없음');
