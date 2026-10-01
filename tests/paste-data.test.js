@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   dataUrlToFile,
+  isAttachmentPasteEvent,
   readClipboardImageFiles,
   readPasteData,
   readPasteDataAsync
@@ -10,6 +11,54 @@ import {
 const transfer = (value) => /** @type {DataTransfer} */ (value);
 
 describe('mobile paste data', () => {
+  it.each([
+    'insertText',
+    'insertCompositionText',
+    'insertFromComposition',
+    'deleteCompositionText',
+    'deleteByComposition',
+    'deleteContentBackward',
+    'deleteContentForward',
+    'insertParagraph'
+  ])('leaves %s events to native typing and Korean IME', (inputType) => {
+    expect(isAttachmentPasteEvent({ type: 'beforeinput', inputType })).toBe(false);
+  });
+
+  it('ignores composing events even when they appear to carry a paste', () => {
+    expect(
+      isAttachmentPasteEvent({
+        type: 'beforeinput',
+        inputType: 'insertFromPaste',
+        isComposing: true
+      })
+    ).toBe(false);
+  });
+
+  it('keeps empty mobile paste events eligible for asynchronous image lookup', () => {
+    expect(isAttachmentPasteEvent({ type: 'paste' })).toBe(true);
+    expect(isAttachmentPasteEvent({ type: 'beforeinput', inputType: 'insertFromPaste' })).toBe(
+      true
+    );
+  });
+
+  it('accepts keyboard image insertion only when it carries an actual file', () => {
+    const file = new File(['image bytes'], 'photo.png', { type: 'image/png' });
+    const dataTransfer = transfer({
+      files: /** @type {FileList} */ (/** @type {unknown} */ ([file])),
+      getData: () => ''
+    });
+    expect(
+      isAttachmentPasteEvent({ type: 'beforeinput', inputType: 'insertText', dataTransfer })
+    ).toBe(true);
+    expect(
+      isAttachmentPasteEvent({
+        type: 'beforeinput',
+        inputType: 'deleteContentBackward',
+        dataTransfer
+      })
+    ).toBe(false);
+  });
+
   it('reads beforeinput text without a clipboard event, preserving whitespace', () => {
     expect(readPasteData({ data: ' first\nsecond ' })).toEqual({
       files: [],

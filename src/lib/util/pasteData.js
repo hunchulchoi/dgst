@@ -71,6 +71,20 @@ export function readPasteData(event) {
 }
 
 /**
+ * Leave typing, deletion and IME composition to the browser. Only a real paste
+ * or a keyboard event carrying a file should enter the attachment handler.
+ * @param {{ type?: string, inputType?: string, isComposing?: boolean, dataTransfer?: DataTransfer | null }} event
+ */
+export function isAttachmentPasteEvent(event) {
+  if (event.type === 'paste') return true;
+  if (event.type !== 'beforeinput' || event.isComposing) return false;
+  if (event.inputType?.startsWith('insertFromPaste')) return true;
+  if (!event.inputType?.startsWith('insert') || event.inputType.includes('Composition'))
+    return false;
+  return readPasteData(event).files.length > 0;
+}
+
+/**
  * Read image files asynchronously from the Async Clipboard API (navigator.clipboard.read()).
  * Critical for mobile browsers (e.g. Samsung Galaxy / Android Chrome) where ClipboardEvent.clipboardData
  * or InputEvent.dataTransfer contains no files synchronously.

@@ -26,7 +26,11 @@
   import { linkifyPlainUrls } from '$lib/util/linkifyPlainUrls.js';
   import { repairOgCardHtmlEntities } from '$lib/util/ogCardHtmlRepair.js';
   import { imageThumbnailUrl } from '$lib/util/imageThumbnail.js';
-  import { readClipboardImageFiles, readPasteData } from '$lib/util/pasteData.js';
+  import {
+    isAttachmentPasteEvent,
+    readClipboardImageFiles,
+    readPasteData
+  } from '$lib/util/pasteData.js';
   import {
     createWebpUploadFile,
     isPdfAttachment,
@@ -371,6 +375,7 @@
    */
   async function preview(event, el, target = 'comment') {
     if (event.type === 'paste' || event.type === 'beforeinput') {
+      if (!isAttachmentPasteEvent(/** @type {ClipboardEvent | InputEvent} */ (event))) return;
       const syncData = readPasteData(/** @type {ClipboardEvent | InputEvent} */ (event));
       let file = syncData.files[0] ?? null;
 
@@ -883,6 +888,7 @@
    */
   async function previewEditImage(event, el) {
     if (event.type === 'paste' || event.type === 'beforeinput') {
+      if (!isAttachmentPasteEvent(/** @type {ClipboardEvent | InputEvent} */ (event))) return;
       const syncData = readPasteData(/** @type {ClipboardEvent | InputEvent} */ (event));
       let file = syncData.files[0] ?? null;
 
