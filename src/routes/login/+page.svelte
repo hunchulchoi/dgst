@@ -1,5 +1,5 @@
 <script>
-  import { signIn } from '@auth/sveltekit/client';
+  import { signInPending, startSignIn } from '$lib/util/signIn';
   import { resolve } from '$app/paths';
   import { swalFire } from '$lib/util/swal.js';
 
@@ -79,7 +79,9 @@
               <button
                 type="button"
                 class="login-btn-kakao"
-                onclick={() => signIn('kakao', { callbackUrl: '/' })}
+                onclick={() => startSignIn('kakao')}
+                disabled={$signInPending}
+                aria-busy={$signInPending}
                 title="카카오 계정으로 로그인"
               >
                 <span class="login-btn-kakao-symbol" aria-hidden="true">
@@ -97,17 +99,25 @@
                     />
                   </svg>
                 </span>
-                <span class="login-btn-kakao-label">카카오 로그인</span>
+                <span class="login-btn-kakao-label">
+                  {$signInPending ? '로그인 이동 중…' : '카카오 로그인'}
+                </span>
               </button>
 
               <!-- 구글: 공식 규격 - Light Fill #FFFFFF, Stroke #747775, 텍스트 "Sign in with Google" / 구글 G 로고 -->
               <button
                 type="button"
                 class="login-btn-google"
-                onclick={() => signIn('google', { callbackUrl: '/' })}
+                onclick={() => startSignIn('google')}
+                disabled={$signInPending}
+                aria-busy={$signInPending}
                 title="구글 계정으로 로그인"
               >
-                <img src={googleBtnSrc} alt="구글 로그인" width="220" height="44" />
+                {#if $signInPending}
+                  <span role="status">로그인 이동 중…</span>
+                {:else}
+                  <img src={googleBtnSrc} alt="구글 로그인" width="220" height="44" />
+                {/if}
               </button>
             </div>
           </div>
@@ -140,6 +150,15 @@
     width: 220px;
     max-width: 100%;
     object-fit: contain;
+  }
+
+  .login-btn-google span {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 220px;
+    min-height: 44px;
+    line-height: 1.5;
   }
 
   /* 카카오: 공식 규격 - 컨테이너 #FEE500, radius 12px, 레이블 #000 85% */

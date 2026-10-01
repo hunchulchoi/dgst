@@ -1,5 +1,5 @@
 <script>
-  import { signIn } from '@auth/sveltekit/client';
+  import { signInPending, startSignIn } from '$lib/util/signIn';
   import { resolve } from '$app/paths';
 
   let { data } = $props();
@@ -30,17 +30,21 @@
               type="button"
               class="btn btn-outline-secondary rounded px-4 py-2 fw-medium"
               style="min-width: 220px;"
-              onclick={() => signIn('google', { callbackUrl: '/' })}
+              onclick={() => startSignIn('google')}
+              disabled={$signInPending}
+              aria-busy={$signInPending}
             >
-              구글 로그인
+              {$signInPending ? '로그인 이동 중…' : '구글 로그인'}
             </button>
             <button
               type="button"
               class="btn border-0 rounded px-4 py-2 fw-medium"
               style="background: #FEE500; color: #191919; min-width: 220px;"
-              onclick={() => signIn('kakao', { callbackUrl: '/' })}
+              onclick={() => startSignIn('kakao')}
+              disabled={$signInPending}
+              aria-busy={$signInPending}
             >
-              카카오 로그인
+              {$signInPending ? '로그인 이동 중…' : '카카오 로그인'}
             </button>
           </div>
         </div>

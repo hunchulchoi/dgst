@@ -15,7 +15,8 @@
 
   import theme from '$lib/shared/stores/theme.js';
 
-  import { signIn, signOut } from '@auth/sveltekit/client';
+  import { signOut } from '@auth/sveltekit/client';
+  import { signInPending, startSignIn } from '$lib/util/signIn';
   import { goto, invalidate } from '$app/navigation';
   import { resolve } from '$app/paths';
   import { navigating } from '$app/stores';
@@ -45,7 +46,7 @@
   const showSpinner = $derived(navigatingSpinner || $boardListReloading);
 
   const handleGoogleSignIn = () => {
-    signIn('google', { callbackUrl: '/' });
+    void startSignIn('google');
   };
 
   /** 알림 뱃지 — SSR layout load에서 조회한 값을 사용 */
@@ -184,16 +185,25 @@
             >
           </div>
         {:else}
-          <NavLink onclick={handleGoogleSignIn} class="p-0 m-0">
-            <img
-              alt="Google 계정으로 로그인"
-              src={loginButton}
-              class="p-0"
-              width="191"
-              height="46"
-              decoding="async"
-              style="max-width:40vw; width: auto; height: auto;"
-            />
+          <NavLink
+            onclick={handleGoogleSignIn}
+            disabled={$signInPending}
+            aria-busy={$signInPending}
+            class="p-0 m-0"
+          >
+            {#if $signInPending}
+              <span role="status">로그인 이동 중…</span>
+            {:else}
+              <img
+                alt="Google 계정으로 로그인"
+                src={loginButton}
+                class="p-0"
+                width="191"
+                height="46"
+                decoding="async"
+                style="max-width:40vw; width: auto; height: auto;"
+              />
+            {/if}
           </NavLink>
         {/if}
       </NavItem>

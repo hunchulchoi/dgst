@@ -14,6 +14,7 @@
   } from '$app/navigation';
   import { browser } from '$app/environment';
   import { onMount } from 'svelte';
+  import { resetSignInOnPageShow } from '$lib/util/signIn';
   import {
     reportSlowInitialLoad,
     reportSlowLoad,
@@ -446,6 +447,8 @@
     };
   });
 </script>
+
+<svelte:window onpageshow={resetSignInOnPageShow} />
 
 <svelte:head>
   <title>{$page.data.ogTitle || 'dgst.me'}</title>
