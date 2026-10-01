@@ -26,6 +26,7 @@
   import { linkifyPlainUrls } from '$lib/util/linkifyPlainUrls.js';
   import { repairOgCardHtmlEntities } from '$lib/util/ogCardHtmlRepair.js';
   import { imageThumbnailUrl } from '$lib/util/imageThumbnail.js';
+  import { readPasteData } from '$lib/util/pasteData.js';
   import {
     createWebpUploadFile,
     isPdfAttachment,
@@ -362,19 +363,15 @@
   }
 
   /**
-   * @param {ClipboardEvent | Event} event
+   * @param {ClipboardEvent | InputEvent | Event} event
    * @param {HTMLImageElement} el
    * @param {'reply' | 'comment'} [target='comment']
    */
   async function preview(event, el, target = 'comment') {
-    if (event.type === 'paste') {
-      const clipboardData = /** @type {ClipboardEvent} */ (event).clipboardData;
-      if (!clipboardData) return;
-      const file = clipboardData.files?.[0] ?? null;
+    if (event.type === 'paste' || event.type === 'beforeinput') {
+      const file =
+        readPasteData(/** @type {ClipboardEvent | InputEvent} */ (event)).files[0] ?? null;
       if (rejectAttachmentWithoutExtension(file)) return;
-      /*console.log('event.clipboardData.files', event.clipboardData.files)
-        console.log('event.clipboardData.files[0]', event.clipboardData.files[0])
-        console.log('event.clipboardData.files[0].type', event.clipboardData.files[0].type)*/
 
       if (
         file &&
@@ -474,7 +471,7 @@
     if (previewEl) void preview(evt, previewEl);
   }
 
-  /** @param {ClipboardEvent} evt */
+  /** @param {ClipboardEvent | InputEvent} evt */
   function handleCommentPaste(evt) {
     if (previewEl) void preview(evt, previewEl);
   }
@@ -484,7 +481,7 @@
     if (rePreviewEl) void preview(evt, rePreviewEl, 'reply');
   }
 
-  /** @param {ClipboardEvent} evt */
+  /** @param {ClipboardEvent | InputEvent} evt */
   function handleReplyPaste(evt) {
     if (rePreviewEl) void preview(evt, rePreviewEl, 'reply');
   }
@@ -864,14 +861,13 @@
 
   // 댓글 이미지 미리보기
   /**
-   * @param {ClipboardEvent | Event} event
+   * @param {ClipboardEvent | InputEvent | Event} event
    * @param {HTMLImageElement} el
    */
   function previewEditImage(event, el) {
-    if (event.type === 'paste') {
-      const clipboardData = /** @type {ClipboardEvent} */ (event).clipboardData;
-      if (!clipboardData) return;
-      const file = clipboardData.files?.[0] ?? null;
+    if (event.type === 'paste' || event.type === 'beforeinput') {
+      const file =
+        readPasteData(/** @type {ClipboardEvent | InputEvent} */ (event)).files[0] ?? null;
       if (rejectAttachmentWithoutExtension(file)) return;
       if (
         file &&
@@ -968,7 +964,7 @@
     if (editPreviewEl) previewEditImage(evt, editPreviewEl);
   }
 
-  /** @param {ClipboardEvent} evt */
+  /** @param {ClipboardEvent | InputEvent} evt */
   function handleEditPaste(evt) {
     if (editPreviewEl) previewEditImage(evt, editPreviewEl);
   }
@@ -2377,6 +2373,7 @@
                             <textarea
                               bind:value={editCommentContent}
                               onpaste={handleEditPaste}
+                              onbeforeinput={handleEditPaste}
                               class="form-control border border-gray rounded-start-3"
                               rows="3"
                               placeholder="댓글 내용을 입력하세요"
@@ -2602,6 +2599,7 @@
                     bind:value={reCommentContent}
                     bind:this={reCommentTextareaEl}
                     onpaste={handleReplyPaste}
+                    onbeforeinput={handleReplyPaste}
                     class="form-control border border-gray rounded-start-3"
                     rows="3"
                   ></textarea>
@@ -2708,6 +2706,7 @@
               <textarea
                 bind:value={commentContent}
                 onpaste={handleCommentPaste}
+                onbeforeinput={handleCommentPaste}
                 class="form-control border border-gray rounded-start-3"
                 rows="3"
               ></textarea>

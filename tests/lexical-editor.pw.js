@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { devices, expect, test } from '@playwright/test';
 
 const editorSelector = '.lexical-editor__content[contenteditable="true"]';
 
@@ -210,6 +210,105 @@ test('Lexical editor uploads pasted images and inserts image html', async ({ pag
 
   await expectSyncedEditorHtmlToContain(page, ['<img', '/uploads/smoke-pasted-image.png']);
   await expect(page.locator('[data-testid="editor-uploads"]')).toHaveText('0');
+});
+
+test.describe('Android keyboard paste', () => {
+  const galaxy = devices['Galaxy S9+'];
+  test.use({
+    userAgent: galaxy.userAgent,
+    viewport: galaxy.viewport,
+    deviceScaleFactor: galaxy.deviceScaleFactor,
+    isMobile: galaxy.isMobile,
+    hasTouch: galaxy.hasTouch
+  });
+
+  for (const inputType of ['insertFromPaste', 'insertText']) {
+    test(`Lexical editor embeds a mobile YouTube link from ${inputType}`, async ({ page }) => {
+      await mockOG(page);
+      const editor = await gotoSmokeEditor(page);
+      await editor.click();
+      await page.evaluate(
+        ({ selector, inputType }) => {
+          document.querySelector(selector)?.dispatchEvent(
+            new InputEvent('beforeinput', {
+              bubbles: true,
+              cancelable: true,
+              inputType,
+              data: 'https://youtu.be/dQw4w9WgXc'
+            })
+          );
+        },
+        { selector: editorSelector, inputType }
+      );
+      await expect(editor.locator('iframe')).toHaveCount(1);
+      await expectSyncedEditorHtmlToContain(page, ['https://www.youtube.com/embed/dQw4w9WgXc']);
+      await expect(editor).not.toContainText('https://youtu.be/dQw4w9WgXc');
+    });
+  }
+
+  test('Lexical editor handles beforeinput plain text without losing its content', async ({
+    page
+  }) => {
+    const editor = await gotoSmokeEditor(page);
+    await editor.click();
+    await page.evaluate((selector) => {
+      const data = new DataTransfer();
+      data.setData('text/plain', 'mobile paste first\nsecond');
+      document.querySelector(selector)?.dispatchEvent(
+        new InputEvent('beforeinput', {
+          bubbles: true,
+          cancelable: true,
+          inputType: 'insertFromPaste',
+          dataTransfer: data
+        })
+      );
+    }, editorSelector);
+    await expectSyncedEditorHtmlToContain(page, ['mobile paste first', 'second']);
+  });
+
+  test('Lexical editor uploads an extensionless mobile clipboard image exactly once', async ({
+    page
+  }) => {
+    let uploads = 0;
+    await page.route('**/board/upload', async (route) => {
+      uploads++;
+      await route.fulfill({
+        contentType: 'application/json',
+        body: JSON.stringify({ url: '/uploads/mobile-paste.png' })
+      });
+    });
+    const editor = await gotoSmokeEditor(page);
+    await editor.click();
+    await page.evaluate((selector) => {
+      const data = new DataTransfer();
+      data.items.add(
+        new File([new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10])], 'image', {
+          type: 'image/png'
+        })
+      );
+      document.querySelector(selector)?.dispatchEvent(
+        new InputEvent('beforeinput', {
+          bubbles: true,
+          cancelable: true,
+          inputType: 'insertFromPaste',
+          dataTransfer: data
+        })
+      );
+    }, editorSelector);
+    await expect(editor.locator('img[src="/uploads/mobile-paste.png"]')).toHaveCount(1);
+    await expect(page.locator('[data-testid="editor-uploads"]')).toHaveText('0');
+    expect(uploads).toBe(1);
+  });
+});
+
+test('Lexical editor embeds a clipboard YouTube link without duplicate URL text', async ({
+  page
+}) => {
+  await mockOG(page);
+  const editor = await gotoSmokeEditor(page);
+  await pasteText(page, 'https://youtu.be/dQw4w9WgXc');
+  await expect(editor.locator('iframe')).toHaveCount(1);
+  await expect(editor).not.toContainText('https://youtu.be/dQw4w9WgXc');
 });
 
 test('Lexical editor preserves initial image html when syncing loaded content', async ({

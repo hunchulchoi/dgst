@@ -9,10 +9,13 @@
     $isDecoratorNode as isDecoratorNode,
     $isElementNode as isElementNode,
     $isRangeSelection as isRangeSelection,
+    BEFORE_INPUT_COMMAND,
+    COMMAND_PRIORITY_HIGH,
     COMMAND_PRIORITY_LOW,
     DecoratorNode,
     FORMAT_ELEMENT_COMMAND,
     FORMAT_TEXT_COMMAND,
+    PASTE_COMMAND,
     createEditor
   } from 'lexical';
   import {
@@ -42,6 +45,7 @@
   import { mergeRegister } from '@lexical/utils';
   import { swalFire } from '$lib/util/swal.js';
   import { encodeMultipartFormData } from '$lib/util/multipartFormData.js';
+  import { readPasteData } from '$lib/util/pasteData.js';
   import { reportClientError } from '$lib/util/reportClientPageError.js';
   import { createLexicalEditorFailureDetails } from '$lib/util/lexicalErrorDetails.js';
   import {
@@ -1838,40 +1842,66 @@
     syncEditorData();
   }
 
-  /** @param {ClipboardEvent} event */
-  async function handlePaste(event) {
-    if (!editor) return;
+  /** @param {ClipboardEvent | InputEvent | KeyboardEvent} event */
+  function handlePaste(event) {
+    if (!editor) return false;
 
-    const files = Array.from(event.clipboardData?.files || []);
+    const { files, text: pastedText } = readPasteData(event);
     if (files.length > 0) {
       event.preventDefault();
-      await uploadAndInsertFiles(files);
-      return;
+      void uploadAndInsertFiles(files);
+      return true;
     }
 
-    const text = event.clipboardData?.getData('text')?.trim();
-    if (!text) return;
+    const text = pastedText.trim();
+    if (!text) return false;
 
     const isMarkdown =
       /^(#|##|###|- |\* |\d+\. |> |`|\[.*\]\(.*\)|_{1,2}\w+_{1,2}|\*{1,2}\w+\*{1,2})/m.test(text);
 
     if (isMarkdown && text.includes('\n')) {
       event.preventDefault();
-      const { marked } = await import('marked');
-      const html = await marked.parse(text);
-      insertHtmlBlock(html);
-      syncEditorData();
-      return;
+      void insertPastedMarkdown(text);
+      return true;
     }
 
-    if (!/^https?:\/\/\S+$/i.test(text)) return;
+    if (!/^https?:\/\/\S+$/i.test(text)) {
+      // Lexical's default rich-text paste ignores InputEvent.dataTransfer/data.
+      if (event.type !== 'beforeinput') return false;
+      event.preventDefault();
+      const selection = getSelection();
+      if (isRangeSelection(selection)) selection.insertRawText(pastedText);
+      return true;
+    }
 
     event.preventDefault();
     if (isMediaUrl(text)) {
-      await insertMediaUrl(text);
+      void insertMediaUrl(text);
     } else {
-      await createOGCard(text);
+      void createOGCard(text);
     }
+    return true;
+  }
+
+  /** @param {string} text */
+  async function insertPastedMarkdown(text) {
+    const { marked } = await import('marked');
+    const html = await marked.parse(text);
+    insertHtmlBlock(html);
+    syncEditorData();
+  }
+
+  /** @param {InputEvent} event */
+  function handleBeforeInput(event) {
+    if (event.isComposing) return false;
+    if (
+      event.inputType.startsWith('insertFromPaste') ||
+      readPasteData(event).files.length > 0 ||
+      (event.inputType === 'insertText' && /^https?:\/\/\S+$/i.test(event.data?.trim() || ''))
+    ) {
+      return handlePaste(event);
+    }
+    return false;
   }
 
   /** @param {DragEvent} event */
@@ -1952,6 +1982,8 @@
         registerRichText(editor),
         registerList(editor),
         registerHistory(editor, createEmptyHistoryState(), 300),
+        editor.registerCommand(PASTE_COMMAND, handlePaste, COMMAND_PRIORITY_HIGH),
+        editor.registerCommand(BEFORE_INPUT_COMMAND, handleBeforeInput, COMMAND_PRIORITY_HIGH),
         editor.registerUpdateListener(() => {
           if (isComposing) return;
           syncEditorData();
@@ -1966,7 +1998,6 @@
         )
       );
 
-      editorElement.addEventListener('paste', handlePaste);
       editorElement.addEventListener('dragover', handleDragOver);
       editorElement.addEventListener('drop', handleDrop);
       editorElement.addEventListener('compositionstart', () => {
@@ -1993,7 +2024,6 @@
     unregister?.();
     unregister = null;
     if (editorElement) {
-      editorElement.removeEventListener('paste', handlePaste);
       editorElement.removeEventListener('dragover', handleDragOver);
       editorElement.removeEventListener('drop', handleDrop);
     }
