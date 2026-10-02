@@ -375,6 +375,15 @@
           </NavItem>
           <NavItem>
             <NavLink
+              href="/games/block-blast"
+              active={pathname?.startsWith('/games/block-blast')}
+              class="px-3 text-center"
+            >
+              <span>🟦</span><span class="d-none d-sm-inline ms-1">블록퍼즐</span>
+            </NavLink>
+          </NavItem>
+          <NavItem>
+            <NavLink
               href="/games/breakout"
               active={pathname?.startsWith('/games/breakout')}
               class="px-3 text-center"
