@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { emptyBoard, drawHand, canPlace, hasMove, placePiece } from './gameUtils';
+import { emptyBoard, drawHand, canPlace, hasMove, placePiece, rotatePiece } from './gameUtils';
 
 const single = { cells: [[1]], color: 1 };
 const square = {
@@ -11,6 +11,41 @@ const square = {
 };
 
 describe('Block Blast', () => {
+  it('rotates an asymmetric rectangular shape clockwise and restores it after four turns', () => {
+    const original = {
+      cells: [
+        [1, 0],
+        [1, 0],
+        [1, 1]
+      ],
+      color: 3
+    };
+    let rotated = rotatePiece(original);
+    expect(rotated).toEqual({
+      cells: [
+        [1, 1, 1],
+        [1, 0, 0]
+      ],
+      color: 3
+    });
+    expect(original.cells).toEqual([
+      [1, 0],
+      [1, 0],
+      [1, 1]
+    ]);
+    for (let turn = 1; turn < 4; turn++) rotated = rotatePiece(rotated);
+    expect(rotated).toEqual(original);
+  });
+
+  it('keeps the game alive when a remaining piece fits only after rotation', () => {
+    const board = Array(64).fill(1);
+    board[0] = board[8] = board[16] = 0;
+    const horizontal = { cells: [[1, 1, 1]], color: 2 };
+    expect(canPlace(board, horizontal, 0, 0)).toBe(false);
+    expect(hasMove(board, [horizontal])).toBe(true);
+    expect(canPlace(board, rotatePiece(horizontal), 0, 0)).toBe(true);
+  });
+
   it('rejects overlap, out-of-bounds and fractional positions without modifying the board', () => {
     const board = emptyBoard();
     board[0] = 3;

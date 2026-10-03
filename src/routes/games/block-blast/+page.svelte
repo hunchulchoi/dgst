@@ -1,7 +1,16 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { swalFire } from '$lib/util/swal.js';
-  import { SIZE, COLORS, emptyBoard, drawHand, canPlace, hasMove, placePiece } from './gameUtils';
+  import {
+    SIZE,
+    COLORS,
+    emptyBoard,
+    drawHand,
+    canPlace,
+    hasMove,
+    placePiece,
+    rotatePiece
+  } from './gameUtils';
   import type { Piece } from './gameUtils';
 
   const BEST_KEY = 'dgst_block_blast_best';
@@ -93,6 +102,13 @@
         /* Keep playing. */
       }
     }
+  }
+
+  function rotateSelected() {
+    if (!piece || selected === null || over || resetting || drag) return;
+    hand = hand.map((p, i) => (i === selected && p ? rotatePiece(p) : p));
+    hover = null;
+    message = '블록을 시계 방향으로 회전했어요. 원하는 칸에 놓아 보세요.';
   }
 
   async function restart() {
@@ -291,6 +307,16 @@
           </button>
         {/each}
       </div>
+      <div class="rotation-controls">
+        <button
+          class="rotate-button"
+          onclick={rotateSelected}
+          disabled={!piece || over || resetting || !!drag}
+        >
+          ↻ 회전
+        </button>
+        <span>블록 선택 후 90°씩 회전</span>
+      </div>
       <p class="control-help">끌어서 놓기 · 블록 선택 후 빈칸 클릭도 가능</p>
     </section>
     <aside class="instructions">
@@ -300,7 +326,7 @@
       <ol>
         <li>
           <strong>블록 놓기</strong><span
-            >아래 블록을 보드의 빈 공간에 놓으세요. 블록은 회전할 수 없어요.</span
+            >아래 블록을 보드의 빈 공간에 놓으세요. 선택한 블록을 회전 버튼으로 돌릴 수 있어요.</span
           >
         </li>
         <li>
@@ -315,7 +341,7 @@
         </li>
       </ol>
       <div class="note">
-        블록 3개를 모두 쓰면 새 블록이 나와요. 남은 블록을 하나도 놓을 수 없으면 게임 종료.
+        블록 3개를 모두 쓰면 새 블록이 나와요. 남은 블록을 회전해도 하나도 놓을 수 없으면 게임 종료.
       </div>
       <p class="save-note">최고점은 이 브라우저에 저장돼요.</p>
     </aside>
@@ -513,6 +539,30 @@
   .used {
     color: #567092;
     font-size: 1.8rem !important;
+  }
+  .rotation-controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+    margin-top: 14px;
+  }
+  .rotate-button {
+    background: #ffb84d;
+    color: #17243e;
+    border: 0;
+    border-radius: 10px !important;
+    padding: 10px 20px;
+    font-size: 0.85rem !important;
+    font-weight: 800 !important;
+    touch-action: manipulation;
+  }
+  .rotate-button:disabled {
+    opacity: 0.4;
+  }
+  .rotation-controls span {
+    color: #91a7ce;
+    font-size: 0.7rem !important;
   }
   .control-help {
     color: #91a7ce;

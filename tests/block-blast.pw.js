@@ -92,6 +92,23 @@ test('shows game over when no remaining block fits and starts a fresh game', asy
 
 test.describe('mobile', () => {
   test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  test('rotates a selected block and places the rotated shape', async ({ page }) => {
+    const rotate = page.getByRole('button', { name: '↻ 회전', exact: true });
+    await expect(rotate).toBeDisabled();
+    await page.evaluate(() => {
+      Math.random = () => 0.1;
+    });
+    await page.getByRole('button', { name: '새 게임', exact: true }).tap();
+    await page.getByRole('button', { name: '블록 1', exact: true }).tap();
+    await rotate.tap();
+    await page.getByRole('button', { name: '7행 2열 빈칸', exact: true }).tap();
+    await expect(page.getByRole('button', { name: '7행 2열 채워짐' })).toBeVisible();
+    await expect(page.getByRole('button', { name: '8행 2열 채워짐' })).toBeVisible();
+    await expect(page.getByRole('button', { name: '7행 3열 빈칸' })).toBeVisible();
+    await expect(page.getByTestId('score')).toHaveText('20');
+    await expect(rotate).toBeDisabled();
+  });
+
   test('touch placement fits the viewport', async ({ page }) => {
     await page.getByRole('button', { name: '블록 1', exact: true }).tap();
     await page.getByRole('button', { name: '1행 1열 빈칸' }).tap();

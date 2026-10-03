@@ -87,10 +87,27 @@ export function canPlace(board: Board, piece: Piece, row: number, col: number): 
   );
 }
 
+export function rotatePiece(piece: Piece): Piece {
+  return {
+    color: piece.color,
+    cells: Array.from({ length: piece.cells[0].length }, (_, col) =>
+      piece.cells.map((_, row) => piece.cells[piece.cells.length - 1 - row][col])
+    )
+  };
+}
+
 export function hasMove(board: Board, hand: (Piece | null)[]): boolean {
-  return hand.some(
-    (piece) => piece && board.some((_, i) => canPlace(board, piece, Math.floor(i / SIZE), i % SIZE))
-  );
+  return hand.some((piece) => {
+    if (!piece) return false;
+    let rotated = piece;
+    for (let turn = 0; turn < 4; turn++) {
+      if (board.some((_, i) => canPlace(board, rotated, Math.floor(i / SIZE), i % SIZE))) {
+        return true;
+      }
+      rotated = rotatePiece(rotated);
+    }
+    return false;
+  });
 }
 
 export function placePiece(board: Board, piece: Piece, row: number, col: number, combo = 0) {
