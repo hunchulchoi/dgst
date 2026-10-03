@@ -119,4 +119,36 @@ test.describe('mobile', () => {
     await expect(page.getByTestId('score')).toHaveText('10');
     await expect(page.locator('.cell.filled')).toHaveCount(1);
   });
+
+  test('touch drag crosses bottom row boundaries smoothly and drops on the last row', async ({
+    page,
+    context
+  }) => {
+    await page.locator('.piece-slot').first().scrollIntoViewIfNeeded();
+    const shape = await page.locator('.shape').first().boundingBox();
+    const first = await page.locator('.cell').first().boundingBox();
+    const last = await page.locator('.cell').last().boundingBox();
+    const step = (last.x - first.x) / 7;
+    const x = first.x + step * 2 + first.width / 2;
+    const client = await context.newCDPSession(page);
+    await client.send('Input.dispatchTouchEvent', {
+      type: 'touchStart',
+      touchPoints: [{ x: shape.x + shape.width / 2, y: shape.y + shape.height / 2 }]
+    });
+    for (let row = 4; row <= 7; row++) {
+      for (const delta of [-2, 2]) {
+        await client.send('Input.dispatchTouchEvent', {
+          type: 'touchMove',
+          touchPoints: [{ x, y: first.y + step * row + 64 + delta }]
+        });
+        await expect(page.locator('.cell.preview')).toHaveAttribute(
+          'aria-label',
+          `${row + (delta > 0 ? 1 : 0)}행 3열 빈칸`
+        );
+      }
+    }
+    await client.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await expect(page.getByRole('button', { name: '8행 3열 채워짐' })).toBeVisible();
+    await expect(page.getByTestId('score')).toHaveText('10');
+  });
 });

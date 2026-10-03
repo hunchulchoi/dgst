@@ -29,6 +29,7 @@
     startY: number;
     anchorX: number;
     anchorY: number;
+    pointerType: string;
     moved: boolean;
   } | null>(null);
   const piece = $derived(selected === null ? null : hand[selected]);
@@ -140,6 +141,7 @@
       y: event.clientY,
       startX: event.clientX,
       startY: event.clientY,
+      pointerType: event.pointerType,
       moved: false,
       anchorX: Math.max(
         0,
@@ -168,11 +170,16 @@
     const first = boardElement.querySelector('button')!.getBoundingClientRect();
     const last = boardElement.querySelector('button:last-child')!.getBoundingClientRect();
     const step = (last.left - first.left) / (SIZE - 1);
-    const row = Math.floor((event.clientY - first.top) / step);
+    // Offset the target before checking board bounds so bottom rows remain reachable
+    // with the finger below the board, without snapping at the bottom edge.
+    const lift = drag.pointerType === 'touch' ? 64 : 0;
+    const row = Math.floor((event.clientY - first.top - lift) / step);
     const col = Math.floor((event.clientX - first.left) / step);
+    const maxRow = piece ? SIZE - piece.cells.length : SIZE - 1;
+    const rowOffset = piece ? Math.max(0, Math.min(maxRow, row - drag.anchorY)) : 0;
     hover =
       row >= 0 && row < SIZE && col >= 0 && col < SIZE
-        ? { row: row - drag.anchorY, col: col - drag.anchorX }
+        ? { row: rowOffset, col: col - drag.anchorX }
         : null;
   }
 
@@ -318,9 +325,10 @@
 {#if drag?.moved && piece}
   <div
     class="drag-shape shape"
+    class:touch-drag={drag.pointerType === 'touch'}
     aria-hidden="true"
-    style:left={`${drag.x + 18}px`}
-    style:top={`${drag.y - 75}px`}
+    style:left={`${drag.pointerType === 'touch' ? drag.x - (drag.anchorX + 0.5) * 25 : drag.x + 18}px`}
+    style:top={`${drag.pointerType === 'touch' ? drag.y - piece.cells.length * 25 - 52 : drag.y - 75}px`}
     style:grid-template-columns={`repeat(${piece.cells[0].length}, 1fr)`}
     style:--block-color={COLORS[piece.color - 1]}
   >
@@ -607,6 +615,10 @@
     z-index: 1050;
     opacity: 0.85;
     pointer-events: none;
+  }
+  .drag-shape.touch-drag {
+    opacity: 1;
+    filter: drop-shadow(0 4px 10px #071126aa);
   }
   @keyframes clear-flash {
     0% {
