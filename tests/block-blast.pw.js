@@ -66,6 +66,69 @@ test('keyboard selection and placement work', async ({ page }) => {
   await expect(page.getByTestId('score')).toHaveText('10');
 });
 
+test('shows ranking, retries a failed save and celebrates first place once', async ({ page }) => {
+  const smokeRank = await page.request.get('/games/block-blast?rank=1');
+  expect(await smokeRank.json()).toMatchObject({ rank: [], smoke: true });
+  let storedScore = 0;
+  const submissions = [];
+  await page.route('**/games/block-blast*', async (route) => {
+    const request = route.request();
+    if (request.method() === 'POST') {
+      const body = request.postDataJSON();
+      submissions.push(body.score);
+      if (submissions.length === 1) {
+        await route.fulfill({ status: 503, json: { message: 'temporary failure' } });
+      } else {
+        storedScore = body.score;
+        await route.fulfill({ json: { success: true, score: storedScore } });
+      }
+    } else if (new URL(request.url()).searchParams.has('rank')) {
+      const rival = { _id: 'rival@example.test', nickname: '라이벌', score: 100 };
+      await route.fulfill({
+        json: {
+          rank: storedScore
+            ? [
+                { _id: 'local-game-smoke@dgst.local', nickname: '로컬스모크', score: storedScore },
+                rival
+              ]
+            : [rival],
+          myBest: storedScore ? { score: storedScore } : null
+        }
+      });
+    } else {
+      await route.continue();
+    }
+  });
+  await page.reload();
+  await expect(page.locator('.ranking')).toContainText('라이벌');
+  await page.evaluate(() => {
+    Math.random = () => 0.6;
+  });
+  await page.getByRole('button', { name: '새 게임', exact: true }).click();
+  for (const [i, [row, col]] of [
+    [1, 1],
+    [1, 4],
+    [4, 1],
+    [4, 4]
+  ].entries()) {
+    await page.getByRole('button', { name: `블록 ${(i % 3) + 1}`, exact: true }).click();
+    await page.getByRole('button', { name: `${row}행 ${col}열 빈칸`, exact: true }).click();
+  }
+  await expect(page.getByRole('alert')).toContainText('점수를 저장하지 못했어요');
+  await expect(page.locator('.champion')).toHaveCount(0);
+  await page.getByRole('button', { name: '저장 재시도' }).click();
+  await expect(page.locator('.champion')).toContainText('블록퍼즐 1등');
+  await expect(page.locator('.champion-fireworks')).toBeVisible();
+  await expect(page.locator('.ranking .game-ranking-row').first()).toContainText('로컬스모크');
+  await expect(page.locator('.ranking')).toContainText('내 최고점: 360');
+  await page.getByRole('button', { name: '1등 축하 닫기' }).click();
+  await page.getByRole('button', { name: '새로고침', exact: true }).click();
+  await expect(page.locator('.champion')).toHaveCount(0);
+  await page.getByRole('button', { name: '다시 도전' }).click();
+  await expect(page.getByTestId('score')).toHaveText('0');
+  expect(submissions).toEqual([360, 360]);
+});
+
 test('shows game over when no remaining block fits and starts a fresh game', async ({ page }) => {
   await page.evaluate(() => {
     Math.random = () => 0.6;

@@ -1,5 +1,9 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { resolve } from '$app/paths';
+  import GameRankingRow from '$lib/components/GameRankingRow.svelte';
+  import { Confetti } from 'svelte-confetti';
+  import type { PageData } from './$types';
   import { swalFire } from '$lib/util/swal.js';
   import {
     SIZE,
@@ -13,6 +17,21 @@
   } from './gameUtils';
   import type { Piece } from './gameUtils';
 
+  let { data }: { data: PageData } = $props();
+  const isLoggedIn = $derived(!!data.session?.user?.email);
+  type Ranking = { _id: string; nickname: string; score: number; photo?: string };
+  let rank = $state<Ranking[]>([]);
+  let myBest = $state<number | null>(null);
+  let rankLoading = $state(false);
+  let rankError = $state('');
+  let saving = $state(false);
+  let saveError = $state('');
+  let savedScore = 0;
+  let pendingSave: Promise<boolean> | null = null;
+  let rankRequest = 0;
+  let celebrationScore = $state<number | null>(null);
+  let celebrationTimer: ReturnType<typeof setTimeout> | undefined;
+  let reduceMotion = $state(false);
   const BEST_KEY = 'dgst_block_blast_best';
   let board = $state(emptyBoard());
   let hand = $state<(Piece | null)[]>([]);
@@ -64,8 +83,77 @@
     }
     hand = drawHand();
     ready = true;
-    return () => clearTimeout(flashTimer);
+    reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (isLoggedIn) void loadRank();
+    return () => {
+      clearTimeout(flashTimer);
+      clearTimeout(celebrationTimer);
+    };
   });
+
+  async function loadRank(newScore?: number) {
+    if (!isLoggedIn) return;
+    const requestId = ++rankRequest;
+    const previousLeader = rank[0];
+    rankLoading = true;
+    rankError = '';
+    try {
+      const response = await fetch(resolve('/games/block-blast') + '?rank=1', {
+        cache: 'no-store'
+      });
+      if (!response.ok) throw new Error('순위 조회 실패');
+      const result = await response.json();
+      if (requestId !== rankRequest) return;
+      rank = result.rank;
+      myBest = result.myBest?.score ?? null;
+      const leader = rank[0];
+      if (
+        newScore &&
+        leader?._id === data.session?.user?.email &&
+        leader.score === newScore &&
+        (previousLeader?._id !== leader._id || newScore > previousLeader.score)
+      ) {
+        celebrationScore = newScore;
+        clearTimeout(celebrationTimer);
+        celebrationTimer = setTimeout(() => {
+          celebrationScore = null;
+        }, 6500);
+      }
+    } catch {
+      if (requestId === rankRequest)
+        rankError = '순위를 불러오지 못했어요. 새로고침으로 다시 시도해 주세요.';
+    } finally {
+      if (requestId === rankRequest) rankLoading = false;
+    }
+  }
+
+  function submitScore(finalScore: number): Promise<boolean> {
+    if (!isLoggedIn || finalScore <= savedScore) return Promise.resolve(true);
+    if (pendingSave)
+      return pendingSave.then((success) => (success ? submitScore(finalScore) : false));
+    saving = true;
+    saveError = '';
+    pendingSave = (async () => {
+      try {
+        const response = await fetch(resolve('/games/block-blast'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ score: finalScore })
+        });
+        if (!response.ok) throw new Error('점수 저장 실패');
+        savedScore = finalScore;
+        await loadRank(finalScore);
+        return true;
+      } catch {
+        saveError = '점수를 저장하지 못했어요. 다시 시도해 주세요.';
+        return false;
+      } finally {
+        saving = false;
+        pendingSave = null;
+      }
+    })();
+    return pendingSave;
+  }
 
   function place(row: number, col: number) {
     if (!piece || selected === null || over || resetting) return;
@@ -93,7 +181,10 @@
     selected = null;
     hover = null;
     over = !hasMove(board, hand);
-    if (over) message = '놓을 수 있는 블록이 없어요. 다시 도전해 보세요!';
+    if (over) {
+      message = '놓을 수 있는 블록이 없어요. 다시 도전해 보세요!';
+      void submitScore(score);
+    }
     if (score > best) {
       best = score;
       try {
@@ -126,6 +217,9 @@
         });
         if (!result.isConfirmed) return;
       }
+      if (!(await submitScore(score))) return;
+      savedScore = 0;
+      saveError = '';
       board = emptyBoard();
       hand = drawHand();
       score = 0;
@@ -237,7 +331,9 @@
       </header>
       <div class="scores">
         <div><span>점수</span><strong data-testid="score">{score.toLocaleString()}</strong></div>
-        <div><span>최고점</span><strong class="best">{best.toLocaleString()}</strong></div>
+        <div>
+          <span>이 브라우저 최고점</span><strong class="best">{best.toLocaleString()}</strong>
+        </div>
         <div><span>제거한 줄</span><strong>{totalLines}</strong></div>
       </div>
       <div class="board-wrap">
@@ -280,6 +376,13 @@
         {/if}
       </div>
       <p class="feedback" class:celebrate={combo > 0} role="status">{message}</p>
+      {#if saving}<p class="save-status" role="status">점수 저장 중…</p>{/if}
+      {#if saveError}
+        <p class="save-status" role="alert">
+          {saveError}
+          <button onclick={() => submitScore(score)} disabled={saving}>저장 재시도</button>
+        </p>
+      {/if}
       <div class="hand" aria-label="사용할 블록">
         {#each hand as p, i (i)}
           <button
@@ -320,6 +423,35 @@
       <p class="control-help">끌어서 놓기 · 블록 선택 후 빈칸 클릭도 가능</p>
     </section>
     <aside class="instructions">
+      <section class="ranking" aria-label="Block Blast 순위">
+        <div class="ranking-heading">
+          <h2>순위 Top 10</h2>
+          {#if isLoggedIn}<button onclick={() => loadRank()} disabled={rankLoading}>새로고침</button
+            >{/if}
+        </div>
+        <p>전체 기간 · 1인 1최고점</p>
+        {#if isLoggedIn}
+          <p>내 최고점: <strong>{myBest?.toLocaleString() ?? '—'}</strong></p>
+          {#if rankError}<p role="alert">{rankError}</p>
+          {:else if rankLoading && !rank.length}<p role="status">순위 불러오는 중…</p>
+          {:else if !rank.length}<p>아직 기록이 없어요. 첫 기록에 도전해 보세요!</p>{/if}
+          <ol class="ranking-list">
+            {#each rank as player, index (player._id)}
+              <GameRankingRow
+                {index}
+                nickname={player.nickname}
+                photo={player.photo}
+                score={player.score.toLocaleString()}
+                current={player._id === data.session?.user?.email}
+              />
+            {/each}
+          </ol>
+          <p>게임 종료 또는 새 게임 시작 시 점수가 저장돼요.</p>
+        {:else}
+          <p>로그인하면 순위와 내 최고점을 볼 수 있어요.</p>
+          <a href={resolve('/login')}>로그인</a>
+        {/if}
+      </section>
       <span class="eyebrow">HOW TO PLAY</span>
       <h2>채우고, 지우고,<br />한 번 더.</h2>
       <p>시간 제한 없이 즐기는 블록 퍼즐.<br />다음 블록을 위한 공간을 남겨 보세요.</p>
@@ -343,10 +475,37 @@
       <div class="note">
         블록 3개를 모두 쓰면 새 블록이 나와요. 남은 블록을 회전해도 하나도 놓을 수 없으면 게임 종료.
       </div>
-      <p class="save-note">최고점은 이 브라우저에 저장돼요.</p>
+      <p class="save-note">
+        로그인한 게임 기록은 순위에 저장돼요. 브라우저 최고점은 별도로 유지돼요.
+      </p>
     </aside>
   </div>
 </div>
+
+{#if celebrationScore !== null}
+  <div class="champion" role="status">
+    <strong>🏆 블록퍼즐 1등!</strong>
+    <span>{celebrationScore.toLocaleString()}점 · 축하해요!</span>
+    <button
+      onclick={() => {
+        celebrationScore = null;
+      }}
+      aria-label="1등 축하 닫기">×</button
+    >
+  </div>
+  {#if !reduceMotion}
+    <div class="champion-fireworks" aria-hidden="true">
+      <Confetti
+        x={[-5, 5]}
+        y={[0, 0.1]}
+        amount={180}
+        duration={4000}
+        delay={[0, 1800]}
+        fallDistance="100vh"
+      />
+    </div>
+  {/if}
+{/if}
 
 {#if drag?.moved && piece}
   <div
@@ -613,19 +772,19 @@
     line-height: 1.8;
     color: #61708a;
   }
-  .instructions ol {
+  .instructions > ol {
     list-style: none;
     counter-reset: steps;
     padding: 0;
     margin: 24px 0;
   }
-  .instructions li {
+  .instructions > ol > li {
     counter-increment: steps;
     position: relative;
     padding-left: 38px;
     margin-bottom: 22px;
   }
-  .instructions li::before {
+  .instructions > ol > li::before {
     content: counter(steps);
     position: absolute;
     left: 0;
@@ -639,12 +798,12 @@
     font-weight: 800 !important;
     font-size: 0.75rem !important;
   }
-  .instructions li strong {
+  .instructions > ol > li strong {
     display: block;
     font-size: 0.9rem !important;
     margin-bottom: 4px;
   }
-  .instructions li span {
+  .instructions > ol > li span {
     font-size: 0.8rem !important;
     line-height: 1.7;
     color: #61708a;
@@ -659,6 +818,94 @@
   .instructions .save-note {
     font-size: 0.7rem !important;
     margin-top: 14px;
+  }
+  .ranking {
+    margin-bottom: 32px;
+    padding: 18px;
+    background: #edf2f9;
+    border-radius: 14px !important;
+  }
+  .ranking-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .ranking .ranking-heading h2 {
+    font-size: 1.15rem !important;
+    margin: 0;
+  }
+  .ranking button,
+  .ranking a {
+    font-size: 0.75rem !important;
+  }
+  .ranking button {
+    border: 1px solid #91a7ce;
+    background: white;
+    border-radius: 8px !important;
+    padding: 6px 10px;
+    color: #31415d;
+  }
+  .ranking .ranking-list {
+    list-style: none;
+    padding: 0;
+    margin: 12px 0;
+  }
+  .ranking p {
+    font-size: 0.75rem !important;
+    margin: 10px 0;
+  }
+  .save-status {
+    color: #ffca73;
+    font-size: 0.8rem !important;
+    text-align: center;
+  }
+  .save-status button {
+    border: 1px solid #ffca73;
+    background: transparent;
+    color: inherit;
+    border-radius: 8px !important;
+    padding: 6px 10px;
+    font-size: 0.8rem !important;
+  }
+  .champion {
+    position: fixed;
+    top: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1081;
+    max-width: calc(100% - 32px);
+    padding: 16px 48px 16px 24px;
+    background: #ffca73;
+    color: #17243e;
+    border-radius: 16px !important;
+    box-shadow: 0 8px 32px #07112655 !important;
+    text-align: center;
+  }
+  .champion strong {
+    display: block;
+    font-size: 1.25rem !important;
+    font-weight: 900 !important;
+  }
+  .champion span {
+    font-size: 0.85rem !important;
+  }
+  .champion button {
+    position: absolute;
+    top: 8px;
+    right: 12px;
+    background: transparent;
+    border: 0;
+    font-size: 1.5rem !important;
+  }
+  .champion-fireworks {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    justify-content: center;
+    pointer-events: none;
+    overflow: hidden;
+    z-index: 1080;
   }
   .drag-shape {
     position: fixed;

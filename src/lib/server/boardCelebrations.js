@@ -385,6 +385,7 @@ export async function getBoardCelebrations() {
   const tasks = [
     rank1FromGameLogs('breakout', '블록깨기 1등'),
     rank1FromGameLogs('tetris', '테트리스 1등'),
+    rank1FromGameLogs('block-blast', '블록퍼즐 1등'),
     rank1FromScoreTable('game_score_2048', '2048', '2048 1등'),
     rank1FromScoreTable('game_score_watermelon', 'watermelon', '수박게임 1등'),
     rank1Minesweeper(),
