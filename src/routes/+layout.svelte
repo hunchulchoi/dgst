@@ -2,6 +2,7 @@
   import { ThemeSync } from '$lib/components/ui/index.js';
   import Header from '$lib/components/header.svelte';
   import Footer from '$lib/components/footer.svelte';
+  import Banner from '$lib/components/banner.svelte';
   import Memo from '$lib/components/memo.svelte';
   import { blur } from 'svelte/transition';
   import { page } from '$app/stores';
@@ -497,6 +498,7 @@
     unreadAlarmCount={data.unreadAlarmCount}
   />
   <Memo />
+  <Banner />
 
   {#key `${layoutPageKey(data.pathname)}-${$boardListReloadKey}`}
     <div

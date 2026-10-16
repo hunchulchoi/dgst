@@ -1,80 +1,59 @@
 <script>
-  import { Offcanvas } from '$lib/components/ui/index.js';
-  import { Confetti } from 'svelte-confetti';
-
-  import ccd from '$lib/shared/stores/ccd.js';
-
-  ccd.set(false);
-
-  const header_ = '만수무강';
+  let visible = $state(true);
 </script>
 
-<Offcanvas
-  isOpen={$ccd}
-  header={header_}
-  toggle={() => ccd.set(false)}
-  fade={true}
-  class="text-center text-dark rounded-bottom-4"
-  style="background: linear-gradient(90deg, rgba(211,209,247,1) 0%, rgba(150,150,146,1) 70%,rgba(111,112,101,1) 100%);"
-  placement="top"
->
-  <div class="neon">
-    🌸<span class="text-danger">경)</span> 🎉광명의 자랑 🧓️시골으르신 🎊퇴원 🌼똥칠할때까지
-    <span class="text-danger">(축</span>🌼
-  </div>
-  <div
-    style="
- position: fixed;
- top: -50px;
- left: 0;
- height: 100vh;
- width: 100vw;
- display: flex;
- justify-content: center;
- overflow: hidden;
- pointer-events: none;"
-  >
-    <Confetti
-      x={[-5, 5]}
-      y={[0, 0.1]}
-      delay={[500, 2000]}
-      infinite
-      duration={5000}
-      amount={200}
-      fallDistance="100vh"
-    />
-  </div>
-</Offcanvas>
+{#if visible}
+  <aside class="celebration-banner" aria-label="진급 축하">
+    <p>
+      <span class="congratulation">경)</span> 🌸 진천의 2번 아들 <strong>8급 진급</strong>🎊🎉
+      <span class="congratulation">(축</span>
+    </p>
+    <button type="button" aria-label="축하 배너 닫기" onclick={() => (visible = false)}>×</button>
+  </aside>
+{/if}
 
 <style>
-  .neon {
-    font-family: 'ChosunGs', serif;
-    font-size: 2.2em;
-    /*font-weight: 700;*/
-    color: #fff;
-    text-shadow: 0 0 0.1em rgba(0, 255, 255, 0.7);
-    animation: neon-flicker 0.1s infinite alternate;
-  }
-  @keyframes neon-flicker {
-    0% {
-      text-shadow:
-        0 0 10px rgba(0, 255, 255, 0.7),
-        0 0 20px rgba(0, 255, 255, 0.7),
-        0 0 30px rgba(0, 255, 255, 0.7);
-    }
-    100% {
-      text-shadow:
-        0 0 20px rgba(0, 255, 255, 0.7),
-        0 0 30px rgba(0, 255, 255, 0.7),
-        0 0 40px rgba(0, 255, 255, 0.7);
-    }
+  .celebration-banner {
+    position: relative;
+    margin: 0.75rem;
+    padding: 1rem 2.75rem;
+    border: 1px solid #f9a8c5;
+    border-radius: 0.75rem;
+    background: linear-gradient(110deg, #fff1f5, #ffe4ef 50%, #fff5d6);
+    color: #831843;
+    text-align: center;
+    box-shadow: 0 3px 12px rgb(190 24 93 / 10%);
   }
 
-  @font-face {
-    font-family: 'ChosunGs';
-    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_20-04@1.0/ChosunGs.woff')
-      format('woff');
-    font-weight: normal;
-    font-style: normal;
+  p {
+    margin: 0;
+    font-size: clamp(1rem, 3vw, 1.75rem);
+    font-weight: 700;
+    line-height: 1.6;
+    overflow-wrap: anywhere;
+  }
+
+  strong,
+  .congratulation {
+    color: #be123c;
+  }
+
+  button {
+    position: absolute;
+    top: 0.25rem;
+    right: 0.25rem;
+    width: 2.5rem;
+    height: 2.5rem;
+    border: 0;
+    border-radius: 0.5rem;
+    background: transparent;
+    color: #831843;
+    font-size: 1.5rem;
+    cursor: pointer;
+  }
+
+  button:hover,
+  button:focus-visible {
+    background: #fbcfe8;
   }
 </style>
