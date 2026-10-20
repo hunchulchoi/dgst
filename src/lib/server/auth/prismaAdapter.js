@@ -27,6 +27,17 @@ export function getPrismaAdapter() {
       PrismaAdapter(getPrisma())
     );
 
+  /** @param {string} sessionToken */
+  async function deleteSessionIfExists(sessionToken) {
+    try {
+      await base.deleteSession(sessionToken);
+    } catch (err) {
+      // Concurrent expiry cleanup or sign-out may already have removed this row.
+      if (err && typeof err === 'object' && 'code' in err && err.code === 'P2025') return;
+      throw err;
+    }
+  }
+
   cachedAdapter = {
     ...base,
     async getUser(id) {
@@ -71,7 +82,7 @@ export function getPrismaAdapter() {
             isSessionAbsolutelyExpired(/** @type {{ createdAt?: unknown }} */ (cached.session))
           ) {
             await sessionCache.invalidateSession(sessionToken);
-            await base.deleteSession(sessionToken);
+            await deleteSessionIfExists(sessionToken);
             return null;
           } else {
             return cached;
@@ -87,17 +98,19 @@ export function getPrismaAdapter() {
             isSessionAbsolutelyExpired(/** @type {{ createdAt?: unknown }} */ (result.session)))
         ) {
           await sessionCache.invalidateSession(sessionToken);
-          await base.deleteSession(sessionToken);
+          await deleteSessionIfExists(sessionToken);
           return null;
         }
         if (result) await sessionCache.setCachedSessionAndUser(sessionToken, result);
         return result;
       } catch (err) {
         logger.warn({
-          message: '[auth] getSessionAndUser failed — treating as logged out',
+          message: '[auth] session lookup unavailable',
+          event: 'auth.session.lookup_failed',
           errorMessage: err instanceof Error ? err.message : String(err)
         });
-        return null;
+        // Auth.js preserves the cookie on an adapter exception; null deletes it.
+        throw err;
       }
     },
     async updateSession(session) {
@@ -109,7 +122,7 @@ export function getPrismaAdapter() {
 
       if (isSessionAbsolutelyExpired(stored)) {
         await sessionCache.invalidateSession(session.sessionToken);
-        await base.deleteSession(session.sessionToken);
+        await deleteSessionIfExists(session.sessionToken);
         return null;
       }
 
@@ -123,7 +136,7 @@ export function getPrismaAdapter() {
     },
     async deleteSession(sessionToken) {
       await sessionCache.invalidateSession(sessionToken);
-      await base.deleteSession(sessionToken);
+      await deleteSessionIfExists(sessionToken);
     }
   };
 

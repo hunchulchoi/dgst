@@ -253,6 +253,7 @@ export async function handle({ event, resolve }) {
         : undefined;
       logger.error({
         message: '로그인 실패: Auth 리다이렉트',
+        event: 'auth.signin.failed',
         pathname,
         provider,
         ...getRequestMeta(event),

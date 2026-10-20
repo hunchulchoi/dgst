@@ -12,6 +12,9 @@
     let errorMessage = '로그인 중 오류가 발생했습니다.';
 
     switch (errorCode) {
+      case 'Configuration':
+        errorMessage = '로그인 확인을 완료하지 못했습니다. 로그인 버튼을 눌러 다시 시도해주세요.';
+        break;
       case 'OAuthSignin':
       case 'OAuthCallback':
       case 'OAuthCreateAccount':

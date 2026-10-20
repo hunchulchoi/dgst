@@ -35,7 +35,7 @@ vi.mock('$lib/util/logger.js', () => ({ default: { warn: vi.fn() } }));
 
 describe('Prisma auth adapter absolute session expiry', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
     mocks.sessionCache.getCachedSessionAndUser.mockResolvedValue(null);
   });
 
@@ -77,5 +77,110 @@ describe('Prisma auth adapter absolute session expiry', () => {
       })
     );
     expect(mocks.sessionCache.invalidateSession).toHaveBeenCalledWith('active-token');
+  });
+
+  it('treats concurrent expiry cleanup as an absent session', async () => {
+    const { getPrismaAdapter } = await import('../src/lib/server/auth/prismaAdapter.js');
+    mocks.base.getSessionAndUser.mockResolvedValue({
+      session: { createdAt: new Date('2020-01-01'), expires: new Date('2099-01-01') },
+      user: { id: 'user-1', state: 'registered' }
+    });
+    mocks.base.deleteSession.mockRejectedValue({ code: 'P2025' });
+
+    await expect(getPrismaAdapter().getSessionAndUser?.('expired-token')).resolves.toBeNull();
+  });
+
+  it('allows repeated sign-out after the session row has disappeared', async () => {
+    const { getPrismaAdapter } = await import('../src/lib/server/auth/prismaAdapter.js');
+    mocks.base.deleteSession
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce({ code: 'P2025' });
+
+    await getPrismaAdapter().deleteSession?.('same-token');
+    await expect(getPrismaAdapter().deleteSession?.('same-token')).resolves.toBeUndefined();
+    expect(mocks.sessionCache.invalidateSession).toHaveBeenCalledTimes(2);
+  });
+
+  it('handles concurrent removal of a cached expired session', async () => {
+    const { getPrismaAdapter } = await import('../src/lib/server/auth/prismaAdapter.js');
+    mocks.sessionCache.getCachedSessionAndUser.mockResolvedValue({
+      session: { createdAt: new Date('2020-01-01'), expires: new Date('2099-01-01') },
+      user: { id: 'user-1', state: 'registered' }
+    });
+    mocks.base.deleteSession.mockRejectedValue({ code: 'P2025' });
+
+    await expect(getPrismaAdapter().getSessionAndUser?.('expired-token')).resolves.toBeNull();
+    expect(mocks.sessionCache.invalidateSession).toHaveBeenCalledWith('expired-token');
+    expect(mocks.base.getSessionAndUser).not.toHaveBeenCalled();
+  });
+
+  it('does not suppress database failures during sign-out', async () => {
+    const { getPrismaAdapter } = await import('../src/lib/server/auth/prismaAdapter.js');
+    const failure = Object.assign(new Error('Database unavailable'), { code: 'P1001' });
+    mocks.base.deleteSession.mockRejectedValue(failure);
+
+    await expect(getPrismaAdapter().deleteSession?.('active-token')).rejects.toBe(failure);
+  });
+
+  it('propagates lookup outages instead of declaring a session invalid', async () => {
+    const { getPrismaAdapter } = await import('../src/lib/server/auth/prismaAdapter.js');
+    const failure = new Error('Database unavailable');
+    mocks.base.getSessionAndUser.mockRejectedValue(failure);
+
+    await expect(getPrismaAdapter().getSessionAndUser?.('active-token')).rejects.toBe(failure);
+  });
+
+  it('preserves the browser cookie through Auth.js on an outage, then recovers', async () => {
+    const { getPrismaAdapter } = await import('../src/lib/server/auth/prismaAdapter.js');
+    const { session } = await import('../node_modules/@auth/core/lib/actions/session.js');
+    const { SessionStore, defaultCookies } =
+      await import('../node_modules/@auth/core/lib/utils/cookie.js');
+    const cookies = defaultCookies(false);
+    const logger = { error: vi.fn(), warn: vi.fn(), debug: vi.fn() };
+    const sessionStore = new SessionStore(
+      cookies.sessionToken,
+      { 'authjs.session-token': 'active-token' },
+      logger
+    );
+    const clean = vi.spyOn(sessionStore, 'clean');
+    const options = /** @type {Parameters<typeof session>[0]} */ (
+      /** @type {unknown} */ ({
+        adapter: getPrismaAdapter(),
+        session: { strategy: 'database', maxAge: 2592000, updateAge: 86400 },
+        logger,
+        callbacks: {
+          /** @param {{ session: import('@auth/core/types').Session }} params */
+          session: async (params) => params.session
+        },
+        events: {},
+        cookies
+      })
+    );
+    mocks.base.getSessionAndUser.mockRejectedValueOnce(new Error('Database unavailable'));
+
+    const unavailable = await session(options, sessionStore, []);
+    expect(unavailable.body).toBeNull();
+    expect(unavailable.cookies).toEqual([]);
+    expect(clean).not.toHaveBeenCalled();
+
+    mocks.base.getSessionAndUser.mockResolvedValue({
+      session: { createdAt: new Date(), expires: new Date(Date.now() + 2592000000) },
+      user: { id: 'user-1', state: 'registered' }
+    });
+    const recovered = await session(options, sessionStore, []);
+    expect(recovered.body).toMatchObject({ user: { id: 'user-1' } });
+    expect(recovered.cookies).toEqual([expect.objectContaining({ value: 'active-token' })]);
+
+    mocks.base.getSessionAndUser.mockResolvedValue(null);
+    const missing = await session(options, sessionStore, []);
+    expect(missing.body).toBeNull();
+    expect(clean).toHaveBeenCalledTimes(1);
+    expect(missing.cookies).toEqual([
+      expect.objectContaining({
+        name: 'authjs.session-token',
+        value: '',
+        options: expect.objectContaining({ maxAge: 0 })
+      })
+    ]);
   });
 });
