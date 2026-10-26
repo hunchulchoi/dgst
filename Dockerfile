@@ -1,4 +1,4 @@
-FROM node:22-trixie AS build
+FROM node:22.23.4-trixie AS build
 
 WORKDIR /app
 
@@ -11,7 +11,7 @@ ENV SKIP_DB_CONNECT=true
 RUN DATABASE_URL=postgresql://localhost/dgst_build npm run db:generate \
   && npm run build
 
-FROM node:22-trixie-slim AS production
+FROM node:22.23.4-trixie-slim AS production
 
 WORKDIR /app
 ENV BODY_SIZE_LIMIT=300M
