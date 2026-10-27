@@ -1210,7 +1210,13 @@
   $effect(() => {
     if (!browser || !imageViewerOpen) return;
 
+    const scrollY = window.scrollY;
+    const root = document.documentElement;
+    const previousRootOverflow = root.style.overflow;
     const previousOverflow = document.body.style.overflow;
+    const previousPosition = document.body.style.position;
+    const previousTop = document.body.style.top;
+    const previousWidth = document.body.style.width;
 
     /** @param {KeyboardEvent} event */
     const handleKeydown = (event) => {
@@ -1232,12 +1238,21 @@
       imageViewerScale = clampViewerScale(imageViewerScale, nextMinScale, VIEWER_MAX_SCALE);
     };
 
+    root.style.overflow = 'hidden';
     document.body.style.overflow = 'hidden';
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.width = '100%';
     window.addEventListener('keydown', handleKeydown);
     window.addEventListener('resize', handleResize);
 
     return () => {
+      root.style.overflow = previousRootOverflow;
       document.body.style.overflow = previousOverflow;
+      document.body.style.position = previousPosition;
+      document.body.style.top = previousTop;
+      document.body.style.width = previousWidth;
+      window.scrollTo(0, scrollY);
       window.removeEventListener('keydown', handleKeydown);
       window.removeEventListener('resize', handleResize);
     };
