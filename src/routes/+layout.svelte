@@ -2,7 +2,6 @@
   import { ThemeSync } from '$lib/components/ui/index.js';
   import Header from '$lib/components/header.svelte';
   import Footer from '$lib/components/footer.svelte';
-  import Banner from '$lib/components/banner.svelte';
   import Memo from '$lib/components/memo.svelte';
   import { blur } from 'svelte/transition';
   import { page } from '$app/stores';
@@ -498,7 +497,7 @@
     unreadAlarmCount={data.unreadAlarmCount}
   />
   <Memo />
-  <Banner />
+  <!-- 진급 축하 배너는 필요할 때 다시 연결할 수 있도록 컴포넌트를 보존합니다. -->
 
   {#key `${layoutPageKey(data.pathname)}-${$boardListReloadKey}`}
     <div
