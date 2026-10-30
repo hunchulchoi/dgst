@@ -1,4 +1,5 @@
 import { SvelteKitAuth } from '@auth/sveltekit';
+import { getRequestEvent } from '$app/server';
 import { env as privateEnv } from '$env/dynamic/private';
 import { getPrisma } from '$lib/database/prisma.js';
 import { getPrismaAdapter } from '$lib/server/auth/prismaAdapter.js';
@@ -6,6 +7,7 @@ import { createAuthProviders } from '$lib/server/auth/providers.js';
 import { checkAuthRateLimit } from '$lib/server/auth/rateLimit.js';
 import { shouldRejectCrossOriginRequest } from '$lib/server/auth/requestOrigin.js';
 import { evaluateAuthSignIn, resolveSafeAuthRedirect } from '$lib/server/auth/authPolicy.js';
+import { createAuthDiagnostics } from '$lib/server/auth/diagnostics.js';
 import crypto from 'crypto';
 import { redirect, json } from '@sveltejs/kit';
 import logger from '$lib/util/logger';
@@ -21,6 +23,7 @@ warmupConnections();
 const cache = new Map();
 const HTTP_SLOW_WARN_THRESHOLD_MS = 500;
 const HTTP_SLOW_CRITICAL_THRESHOLD_MS = 2000;
+const authDiagnostics = createAuthDiagnostics(logger);
 
 /** @param {string} key */
 export function depends(key) {
@@ -121,6 +124,17 @@ export const {
   },
   secret: privateEnv.NEXTAUTH_SECRET,
   trustHost: true,
+  logger: {
+    error(error) {
+      let event;
+      try {
+        event = getRequestEvent();
+      } catch {
+        // Auth.js may also log outside a request context.
+      }
+      authDiagnostics.logError(error, event);
+    }
+  },
   debug: false
 });
 
@@ -228,6 +242,7 @@ export async function handle({ event, resolve }) {
   // 카카오 콜백 해킹 제거 (표준 KakaoProvider 사용)
 
   // Auth 핸들러를 먼저 실행
+  authDiagnostics.begin(event);
   let authResponse;
   try {
     authResponse = await authHandle({ event, resolve: customResolve });
@@ -251,13 +266,26 @@ export async function handle({ event, resolve }) {
       const provider = pathname.startsWith('/auth/callback/')
         ? pathname.split('/').pop()
         : undefined;
-      logger.error({
+      const diagnostic = authDiagnostics.failure(event);
+      const log =
+        diagnostic.classification === 'replayed'
+          ? logger.info.bind(logger)
+          : diagnostic.classification === 'denied'
+            ? logger.warn.bind(logger)
+            : logger.error.bind(logger);
+      log({
         message: '로그인 실패: Auth 리다이렉트',
-        event: 'auth.signin.failed',
+        event:
+          diagnostic.classification === 'replayed'
+            ? 'auth.callback.replayed.response'
+            : diagnostic.classification === 'denied'
+              ? 'auth.signin.denied.response'
+              : 'auth.signin.failed',
         pathname,
         provider,
         ...getRequestMeta(event),
         errorType,
+        ...diagnostic,
         callbackPath: pathname.startsWith('/auth/callback/') ? pathname : undefined
       });
     }
@@ -296,6 +324,7 @@ export async function handle({ event, resolve }) {
         }
 
         if (userId) {
+          authDiagnostics.success(event);
           const prisma = getPrisma();
           await prisma.loginLog.create({ data: { at: new Date(), userId } });
           await prisma.loginLog.deleteMany({
