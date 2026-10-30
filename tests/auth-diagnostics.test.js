@@ -108,6 +108,26 @@ describe('auth diagnostics', () => {
     expect(logger.error).toHaveBeenCalledOnce();
   });
 
+  it('redirects completed codes to the session gate without issuing cookies or accepting new codes', () => {
+    const { diagnostics, advance } = fixture();
+    const original = request();
+    diagnostics.begin(original);
+    expect(diagnostics.completedCallback(original)).toBeNull();
+    diagnostics.success(original);
+    const replay = request();
+    diagnostics.begin(replay);
+    const response = diagnostics.completedCallback(replay);
+    expect(response?.status).toBe(303);
+    expect(response?.headers.get('location')).toBe('/login');
+    expect(response?.headers.get('set-cookie')).toBeNull();
+    expect(response?.headers.get('cache-control')).toBe('no-store');
+    const otherCode = request('code=other');
+    diagnostics.begin(otherCode);
+    expect(diagnostics.completedCallback(otherCode)).toBeNull();
+    advance();
+    expect(diagnostics.completedCallback(replay)).toBeNull();
+  });
+
   it('isolates origins and request contexts and bounds retained successes', () => {
     const { diagnostics } = fixture();
     const first = request('code=0');

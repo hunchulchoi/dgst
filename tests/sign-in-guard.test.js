@@ -9,7 +9,23 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@auth/sveltekit/client', () => ({ signIn: mocks.signIn }));
 vi.mock('$lib/util/swal.js', () => ({ swalFire: mocks.swalFire }));
 
-import { resetSignInOnPageShow, signInPending, startSignIn } from '../src/lib/util/signIn';
+import {
+  resetSignInOnPageShow,
+  signInPending,
+  startSignIn,
+  canRetrySignIn,
+  cancelSignInRetry
+} from '../src/lib/util/signIn';
+
+function enableAttemptStorage() {
+  const values = new Map();
+  vi.stubGlobal('window', {
+    sessionStorage: {
+      getItem: (/** @type {string} */ key) => values.get(key) ?? null,
+      setItem: (/** @type {string} */ key, /** @type {string} */ value) => values.set(key, value)
+    }
+  });
+}
 
 describe('shared OAuth sign-in guard', () => {
   beforeEach(() => {
@@ -20,6 +36,7 @@ describe('shared OAuth sign-in guard', () => {
 
   afterEach(() => {
     vi.unstubAllGlobals();
+    vi.useRealTimers();
   });
 
   it('blocks simultaneous sign-ins from different buttons and providers', async () => {
@@ -78,5 +95,51 @@ describe('shared OAuth sign-in guard', () => {
 
     expect(mocks.signIn).not.toHaveBeenCalled();
     expect(get(signInPending)).toBe(false);
+  });
+
+  it('allows exactly one automatic restart per deliberate sign-in, including after a failed restart', async () => {
+    enableAttemptStorage();
+    expect(canRetrySignIn('google')).toBe(false);
+    await startSignIn('google', { automaticRetry: true });
+    expect(mocks.signIn).not.toHaveBeenCalled();
+    await startSignIn('google');
+    expect(canRetrySignIn('google')).toBe(true);
+    expect(canRetrySignIn('kakao')).toBe(false);
+    resetSignInOnPageShow({ persisted: true });
+    mocks.signIn.mockRejectedValueOnce(new Error('network failure'));
+    await startSignIn('google', { automaticRetry: true });
+    expect(canRetrySignIn('google')).toBe(false);
+    await startSignIn('google', { automaticRetry: true });
+    expect(mocks.signIn).toHaveBeenCalledTimes(2);
+    await startSignIn('google');
+    expect(mocks.signIn).toHaveBeenCalledTimes(3);
+  });
+
+  it('cancels automatic retry without blocking a deliberate sign-in', async () => {
+    enableAttemptStorage();
+    await startSignIn('google');
+    resetSignInOnPageShow({ persisted: true });
+    cancelSignInRetry();
+    await startSignIn('google', { automaticRetry: true });
+    expect(mocks.signIn).toHaveBeenCalledTimes(1);
+    await startSignIn('kakao');
+    expect(mocks.signIn).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not auto-start with blocked storage, a mismatched provider or a stale attempt', async () => {
+    await startSignIn('google');
+    resetSignInOnPageShow({ persisted: true });
+    await startSignIn('google', { automaticRetry: true });
+    expect(mocks.signIn).toHaveBeenCalledTimes(1);
+    enableAttemptStorage();
+    await startSignIn('google');
+    resetSignInOnPageShow({ persisted: true });
+    await startSignIn('kakao', { automaticRetry: true });
+    expect(mocks.signIn).toHaveBeenCalledTimes(2);
+    vi.useFakeTimers();
+    vi.setSystemTime(Date.now() + 31 * 60 * 1000);
+    expect(canRetrySignIn('google')).toBe(false);
+    await startSignIn('google', { automaticRetry: true });
+    expect(mocks.signIn).toHaveBeenCalledTimes(2);
   });
 });

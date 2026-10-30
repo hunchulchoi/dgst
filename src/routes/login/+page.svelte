@@ -1,9 +1,23 @@
 <script>
-  import { signInPending, startSignIn } from '$lib/util/signIn';
+  import { signInPending, startSignIn, canRetrySignIn, cancelSignInRetry } from '$lib/util/signIn';
   import { resolve } from '$app/paths';
   import { swalFire } from '$lib/util/swal.js';
 
   let { data } = $props();
+  let retryIn = $state(/** @type {number | null} */ (null));
+  let stopRetry = () => {};
+
+  function cancelAutomaticRetry() {
+    stopRetry();
+    cancelSignInRetry();
+    retryIn = null;
+  }
+
+  /** @param {'google' | 'kakao'} provider */
+  function login(provider) {
+    cancelAutomaticRetry();
+    void startSignIn(provider);
+  }
 
   const googleBtnSrc = '/oauth/btn_google_signin_light_normal_web.png';
 
@@ -48,10 +62,34 @@
   }
 
   $effect(() => {
-    // OAuth 등으로 리다이렉트되어 파라미터로 에러가 넘어온 경우 보여줌
-    if (data.error) {
-      showErrorAlert(data.error);
+    const { error, recovery } = data;
+    if (!error) return;
+    if (!recovery) {
+      void showErrorAlert(error);
+      return;
     }
+    if (!canRetrySignIn(recovery.provider) || document.visibilityState !== 'visible') return;
+
+    retryIn = 3;
+    const onVisibilityChange = () => {
+      if (document.visibilityState !== 'visible') cancelAutomaticRetry();
+    };
+    const timer = setInterval(() => {
+      if (retryIn === null) return;
+      if (retryIn > 1) {
+        retryIn -= 1;
+        return;
+      }
+      stopRetry();
+      retryIn = null;
+      void startSignIn(recovery.provider, { automaticRetry: true });
+    }, 1000);
+    stopRetry = () => {
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return stopRetry;
   });
 </script>
 
@@ -77,12 +115,28 @@
           </div>
 
           <div class="text-center">
+            {#if data.recovery}
+              <div class="alert alert-warning" role="status" aria-live="polite">
+                {#if retryIn !== null}
+                  <p class="mb-2">로그인 연결이 끊겼습니다. {retryIn}초 뒤 다시 연결합니다.</p>
+                  <button
+                    type="button"
+                    class="btn btn-sm btn-outline-secondary"
+                    onclick={cancelAutomaticRetry}
+                  >
+                    자동 재시도 취소
+                  </button>
+                {:else}
+                  로그인 연결을 완료하지 못했습니다. 로그인 버튼을 눌러 다시 연결해주세요.
+                {/if}
+              </div>
+            {/if}
             <div class="d-flex flex-column gap-3 align-items-center">
               <!-- 카카오: 공식 규격 - 컨테이너 #FEE500, radius 12px, 심볼(말풍선) #000, 레이블 "카카오 로그인" #000 85% -->
               <button
                 type="button"
                 class="login-btn-kakao"
-                onclick={() => startSignIn('kakao')}
+                onclick={() => login('kakao')}
                 disabled={$signInPending}
                 aria-busy={$signInPending}
                 title="카카오 계정으로 로그인"
@@ -111,7 +165,7 @@
               <button
                 type="button"
                 class="login-btn-google"
-                onclick={() => startSignIn('google')}
+                onclick={() => login('google')}
                 disabled={$signInPending}
                 aria-busy={$signInPending}
                 title="구글 계정으로 로그인"

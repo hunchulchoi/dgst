@@ -8,6 +8,7 @@ import { checkAuthRateLimit } from '$lib/server/auth/rateLimit.js';
 import { shouldRejectCrossOriginRequest } from '$lib/server/auth/requestOrigin.js';
 import { evaluateAuthSignIn, resolveSafeAuthRedirect } from '$lib/server/auth/authPolicy.js';
 import { createAuthDiagnostics } from '$lib/server/auth/diagnostics.js';
+import { offerSignInRecovery } from '$lib/server/auth/recovery.js';
 import crypto from 'crypto';
 import { redirect, json } from '@sveltejs/kit';
 import logger from '$lib/util/logger';
@@ -245,7 +246,9 @@ export async function handle({ event, resolve }) {
   authDiagnostics.begin(event);
   let authResponse;
   try {
-    authResponse = await authHandle({ event, resolve: customResolve });
+    authResponse =
+      authDiagnostics.completedCallback(event) ??
+      (await authHandle({ event, resolve: customResolve }));
   } catch (authErr) {
     logger.error({
       message: 'Auth 처리 중 에러',
@@ -267,6 +270,7 @@ export async function handle({ event, resolve }) {
         ? pathname.split('/').pop()
         : undefined;
       const diagnostic = authDiagnostics.failure(event);
+      authResponse = offerSignInRecovery(event, diagnostic, authResponse);
       const log =
         diagnostic.classification === 'replayed'
           ? logger.info.bind(logger)

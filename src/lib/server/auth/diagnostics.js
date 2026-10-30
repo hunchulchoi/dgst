@@ -65,7 +65,7 @@ export function createAuthDiagnostics(logger, now = Date.now) {
   const secret = randomBytes(32);
   /** @type {Map<string, number>} */
   const successes = new Map();
-  /** @type {WeakMap<object, { provider: string, pathname: string, hasPkceCookie: boolean, fingerprint?: string, errorType?: string, reason?: string, classification?: string }>} */
+  /** @type {WeakMap<object, { provider: string, pathname: string, hasPkceCookie: boolean, fingerprint?: string, errorType?: string, reason?: string, check?: string, classification?: string }>} */
   const requests = new WeakMap();
 
   /** @param {import('@sveltejs/kit').RequestEvent} event */
@@ -154,8 +154,27 @@ export function createAuthDiagnostics(logger, now = Date.now) {
       classification: context?.classification ?? 'failed',
       authErrorType: context?.errorType,
       reason: context?.reason,
+      check: context?.check,
       hasPkceCookie: context?.hasPkceCookie
     };
   }
-  return { begin, logError, success, failure };
+
+  /** A completed code can only lead to the login/session gate, never issue another session.
+   * @param {import('@sveltejs/kit').RequestEvent} event
+   */
+  function completedCallback(event) {
+    const context = requests.get(event);
+    if (!context?.fingerprint || (successes.get(context.fingerprint) ?? 0) <= now()) return null;
+    logger.info({
+      message: 'Completed OAuth callback redirected to session check',
+      event: 'auth.callback.replayed',
+      provider: context.provider,
+      pathname: context.pathname
+    });
+    return new Response(null, {
+      status: 303,
+      headers: { location: '/login', 'cache-control': 'no-store', 'referrer-policy': 'no-referrer' }
+    });
+  }
+  return { begin, logError, success, failure, completedCallback };
 }
