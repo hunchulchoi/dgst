@@ -1335,7 +1335,8 @@
         img: /** @type {(tagName: string, attribs: Record<string, string>) => { tagName: string, attribs: Record<string, string> }} */ (
           (tagName, attribs) => ({
             tagName,
-            attribs: { loading: 'lazy', decoding: 'async', ...attribs }
+            // 본문 이미지는 above-fold가 많아 lazy 강제하지 않음. decoding만 비동기.
+            attribs: { decoding: 'async', ...attribs }
           })
         ),
         iframe:
