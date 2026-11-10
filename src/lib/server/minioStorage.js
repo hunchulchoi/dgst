@@ -88,17 +88,22 @@ function metadataValue(metadata, key) {
  *   contentType: string,
  *   originalFileName: string,
  *   uploader: string,
- *   uploadedAt: Date
+ *   uploadedAt: Date,
+ *   sourceEtag?: string
  * }} upload
  */
 export async function putUploadObject(upload) {
   const { bucket } = getConfig();
+  /** @type {Record<string, string>} */
   const metadata = {
     'Content-Type': upload.contentType,
     'X-Amz-Meta-Original-Filename': encodeMetadata(upload.originalFileName),
     'X-Amz-Meta-Uploader': encodeMetadata(upload.uploader),
     'X-Amz-Meta-Uploaded-At': upload.uploadedAt.toISOString()
   };
+  if (upload.sourceEtag) {
+    metadata['X-Amz-Meta-Source-Etag'] = encodeMetadata(upload.sourceEtag);
+  }
 
   return getClient().putObject(
     bucket,
@@ -142,6 +147,7 @@ export async function statUploadObject(key) {
     contentType: metadataValue(metadata, 'content-type') || 'application/octet-stream',
     originalFileName: decodeMetadata(metadataValue(metadata, 'original-filename')),
     uploader: decodeMetadata(metadataValue(metadata, 'uploader')),
-    uploadedAt: metadataValue(metadata, 'uploaded-at')
+    uploadedAt: metadataValue(metadata, 'uploaded-at'),
+    sourceEtag: decodeMetadata(metadataValue(metadata, 'source-etag'))
   };
 }

@@ -4,6 +4,7 @@ import { Readable } from 'node:stream';
 const mocks = vi.hoisted(() => ({
   getUploadObject: vi.fn(),
   statUploadObject: vi.fn(),
+  putUploadObject: vi.fn(),
   sharp: vi.fn(),
   sharpPipeline: {
     resize: vi.fn(),
@@ -15,7 +16,8 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('../src/lib/server/minioStorage.js', () => ({
   getUploadObject: mocks.getUploadObject,
-  statUploadObject: mocks.statUploadObject
+  statUploadObject: mocks.statUploadObject,
+  putUploadObject: mocks.putUploadObject
 }));
 
 vi.mock('sharp', () => ({ default: mocks.sharp }));
@@ -101,18 +103,23 @@ describe('/images MinIO download route', () => {
     expect(mocks.getUploadObject).not.toHaveBeenCalled();
   });
 
-  it('returns a cached square WebP thumbnail for an uploaded image', async () => {
+  it('generates a square WebP thumbnail and stores it in MinIO on miss', async () => {
     const object = {
       size: 10,
       etag: 'image-etag',
       contentType: 'image/jpeg',
       originalFileName: '프로필.jpg'
     };
-    mocks.statUploadObject.mockResolvedValue(object);
+    const notFound = Object.assign(new Error('NotFound'), { code: 'NotFound' });
+    mocks.statUploadObject.mockImplementation(async (key) => {
+      if (key === 'profiles/avatar.jpg.thumb80.webp') throw notFound;
+      return object;
+    });
     mocks.getUploadObject.mockResolvedValue({
       ...object,
       stream: Readable.from(Buffer.from('original'))
     });
+    mocks.putUploadObject.mockResolvedValue({ etag: 'thumb-put' });
     const { GET } = await import('../src/routes/images/[...filepath]/+server.js');
 
     const response = await GET({
@@ -126,6 +133,54 @@ describe('/images MinIO download route', () => {
     expect(response.headers.get('etag')).toBe('"image-etag-thumb-80"');
     expect(mocks.sharp).toHaveBeenCalledWith(expect.any(Buffer), { animated: true });
     expect(mocks.sharpPipeline.resize).toHaveBeenCalledWith(80, 80, { fit: 'cover' });
+    expect(mocks.putUploadObject).toHaveBeenCalledWith(
+      expect.objectContaining({
+        key: 'profiles/avatar.jpg.thumb80.webp',
+        contentType: 'image/webp',
+        body: expect.any(Buffer)
+      })
+    );
     expect(Buffer.from(await response.arrayBuffer()).toString()).toBe('thumbnail');
+  });
+
+  it('serves a MinIO-cached thumbnail without regenerating', async () => {
+    const original = {
+      size: 10,
+      etag: 'image-etag',
+      contentType: 'image/jpeg',
+      originalFileName: '프로필.jpg'
+    };
+    const cached = {
+      size: 9,
+      etag: 'cached-thumb-etag',
+      contentType: 'image/webp',
+      originalFileName: 'avatar.webp',
+      sourceEtag: 'image-etag'
+    };
+    mocks.statUploadObject.mockImplementation(async (key) => {
+      if (key === 'profiles/avatar.jpg.thumb80.webp') return cached;
+      return original;
+    });
+    mocks.getUploadObject.mockResolvedValue({
+      ...cached,
+      stream: Readable.from(Buffer.from('cached-thumb'))
+    });
+    const { GET } = await import('../src/routes/images/[...filepath]/+server.js');
+
+    const response = await GET({
+      params: { filepath: 'profiles/avatar.jpg' },
+      request: new Request('https://dgst.example/images/profiles/avatar.jpg?thumbnail=80')
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('content-type')).toBe('image/webp');
+    expect(Buffer.from(await response.arrayBuffer()).toString()).toBe('cached-thumb');
+    expect(mocks.sharp).not.toHaveBeenCalled();
+    expect(mocks.putUploadObject).not.toHaveBeenCalled();
+    expect(mocks.getUploadObject).toHaveBeenCalledWith(
+      'profiles/avatar.jpg.thumb80.webp',
+      undefined,
+      cached
+    );
   });
 });

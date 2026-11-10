@@ -32,9 +32,15 @@ describe('comment avatar thumbnails', () => {
     expect(articlePage).toContain('decoding="async"');
   });
 
+  it('prioritizes the first two article body images', () => {
+    expect(articlePage).toContain("fetchpriority: 'high'");
+    expect(articlePage).toContain("loading: 'eager'");
+    expect(articlePage).toMatch(/articleImgIndex\s*<\s*2|index\s*<\s*2/);
+  });
+
   it('uses a 40px thumbnail in the board article list', () => {
     expect(boardList).toContain('imageThumbnailUrl(article.photo, 40)');
-    expect(boardList).toContain('loading="lazy"');
+    expect(boardList).toContain("index < 8 ? 'eager' : 'lazy'");
     expect(boardList).toContain('decoding="async"');
   });
 });

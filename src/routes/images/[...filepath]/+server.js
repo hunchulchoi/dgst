@@ -2,7 +2,11 @@ import { error } from '@sveltejs/kit';
 import { Readable } from 'node:stream';
 import path from 'node:path';
 import mime from 'mime';
-import { getUploadObject, statUploadObject } from '$lib/server/minioStorage.js';
+import {
+  getUploadObject,
+  putUploadObject,
+  statUploadObject
+} from '$lib/server/minioStorage.js';
 
 const THUMBNAIL_SIZES = new Set([40, 64, 80, 96, 128, 160, 200, 256]);
 
@@ -74,6 +78,51 @@ function thumbnailSize(requestUrl) {
   return size;
 }
 
+/** @param {string | null | undefined} etag */
+function normalizeEtag(etag) {
+  if (!etag) return '';
+  return String(etag).replace(/^"|"$/g, '');
+}
+
+/**
+ * @param {string} objectKey
+ * @param {number} size
+ */
+function thumbnailObjectKey(objectKey, size) {
+  return `${objectKey}.thumb${size}.webp`;
+}
+
+/** @param {unknown} err */
+function isMissingObject(err) {
+  return (
+    !!err &&
+    typeof err === 'object' &&
+    'code' in err &&
+    ['NoSuchKey', 'NotFound', 'NoSuchObject'].includes(String(err.code))
+  );
+}
+
+/**
+ * @param {string} objectKey
+ * @param {number} size
+ * @param {number} length
+ * @param {string} sourceEtag
+ */
+function thumbnailHeaders(objectKey, size, length, sourceEtag) {
+  /** @type {Record<string, string>} */
+  const headers = {
+    'Content-Type': 'image/webp',
+    'Content-Length': String(length),
+    'Cache-Control': 'public, max-age=31536000, immutable',
+    'Content-Disposition': contentDisposition(`${path.posix.parse(objectKey).name}.webp`),
+    'X-Content-Type-Options': 'nosniff'
+  };
+  if (sourceEtag) {
+    headers.ETag = `"${sourceEtag}-thumb-${size}"`;
+  }
+  return headers;
+}
+
 /** @param {import('node:stream').Readable} stream */
 async function streamBuffer(stream) {
   const chunks = [];
@@ -104,12 +153,7 @@ export async function HEAD({ params }) {
       }
     });
   } catch (err) {
-    if (
-      err &&
-      typeof err === 'object' &&
-      'code' in err &&
-      ['NoSuchKey', 'NotFound', 'NoSuchObject'].includes(String(err.code))
-    ) {
+    if (isMissingObject(err)) {
       throw error(404, '파일을 찾을 수 없습니다.');
     }
     throw err;
@@ -133,7 +177,69 @@ export async function GET({ params, request }) {
     const requestedRange = request.headers.get('range');
     const metadata = await statUploadObject(objectKey);
     const requestedThumbnailSize = thumbnailSize(request.url);
-    const range = requestedThumbnailSize ? null : parseRange(requestedRange, metadata.size);
+    const sourceEtag = normalizeEtag(metadata.etag);
+
+    if (requestedThumbnailSize) {
+      const contentType =
+        metadata.contentType ||
+        mime.getType(metadata.originalFileName || objectKey) ||
+        'application/octet-stream';
+      if (!contentType.startsWith('image/')) {
+        throw error(415, '이미지 파일만 썸네일로 변환할 수 있습니다.');
+      }
+
+      const thumbKey = thumbnailObjectKey(objectKey, requestedThumbnailSize);
+      try {
+        const cachedMeta = await statUploadObject(thumbKey);
+        if (normalizeEtag(cachedMeta.sourceEtag) === sourceEtag && sourceEtag) {
+          const cached = await getUploadObject(thumbKey, undefined, cachedMeta);
+          const cachedBody = await streamBuffer(cached.stream);
+          return new Response(cachedBody, {
+            headers: thumbnailHeaders(
+              objectKey,
+              requestedThumbnailSize,
+              cachedBody.length,
+              sourceEtag
+            )
+          });
+        }
+      } catch (err) {
+        if (!isMissingObject(err)) throw err;
+      }
+
+      const object = await getUploadObject(objectKey, undefined, metadata);
+      const sharp = (await import('sharp')).default;
+      const thumbnail = await sharp(await streamBuffer(object.stream), { animated: true })
+        .rotate()
+        .resize(requestedThumbnailSize, requestedThumbnailSize, { fit: 'cover' })
+        .webp({ quality: 80, effort: 3 })
+        .toBuffer();
+
+      try {
+        await putUploadObject({
+          key: thumbKey,
+          body: thumbnail,
+          contentType: 'image/webp',
+          originalFileName: `${path.posix.parse(objectKey).name}.webp`,
+          uploader: 'system:thumbnail',
+          uploadedAt: new Date(),
+          sourceEtag
+        });
+      } catch (err) {
+        console.error('Failed to persist thumbnail cache:', err);
+      }
+
+      return new Response(thumbnail, {
+        headers: thumbnailHeaders(
+          objectKey,
+          requestedThumbnailSize,
+          thumbnail.length,
+          sourceEtag
+        )
+      });
+    }
+
+    const range = parseRange(requestedRange, metadata.size);
     const object = await getUploadObject(
       objectKey,
       range ? { offset: range.start, length: range.length } : undefined,
@@ -144,29 +250,6 @@ export async function GET({ params, request }) {
       object.contentType ||
       mime.getType(object.originalFileName || objectKey) ||
       'application/octet-stream';
-    if (requestedThumbnailSize) {
-      if (!contentType.startsWith('image/')) {
-        throw error(415, '이미지 파일만 썸네일로 변환할 수 있습니다.');
-      }
-      const sharp = (await import('sharp')).default;
-      const thumbnail = await sharp(await streamBuffer(object.stream), { animated: true })
-        .rotate()
-        .resize(requestedThumbnailSize, requestedThumbnailSize, { fit: 'cover' })
-        .webp({ quality: 80, effort: 3 })
-        .toBuffer();
-      /** @type {Record<string, string>} */
-      const thumbnailHeaders = {
-        'Content-Type': 'image/webp',
-        'Content-Length': String(thumbnail.length),
-        'Cache-Control': 'public, max-age=31536000, immutable',
-        'Content-Disposition': contentDisposition(`${path.posix.parse(objectKey).name}.webp`),
-        'X-Content-Type-Options': 'nosniff'
-      };
-      if (object.etag) {
-        thumbnailHeaders.ETag = `"${String(object.etag).replace(/^"|"$/g, '')}-thumb-${requestedThumbnailSize}"`;
-      }
-      return new Response(thumbnail, { headers: thumbnailHeaders });
-    }
     const responseLength = range?.length ?? object.size;
     const originalFileName = object.originalFileName || path.posix.basename(objectKey);
     /** @type {Record<string, string>} */
@@ -178,7 +261,7 @@ export async function GET({ params, request }) {
       'Accept-Ranges': 'bytes',
       'X-Content-Type-Options': 'nosniff'
     };
-    if (object.etag) headers.ETag = `"${String(object.etag).replace(/^"|"$/g, '')}"`;
+    if (object.etag) headers.ETag = `"${normalizeEtag(object.etag)}"`;
     if (object.lastModified) headers['Last-Modified'] = new Date(object.lastModified).toUTCString();
     if (range) headers['Content-Range'] = `bytes ${range.start}-${range.end}/${object.size}`;
 
@@ -193,12 +276,7 @@ export async function GET({ params, request }) {
     });
   } catch (err) {
     console.error('Error serving file:', err);
-    if (
-      err &&
-      typeof err === 'object' &&
-      'code' in err &&
-      ['NoSuchKey', 'NotFound', 'NoSuchObject'].includes(String(err.code))
-    ) {
+    if (isMissingObject(err)) {
       throw error(404, '파일을 찾을 수 없습니다.');
     }
     throw err;
