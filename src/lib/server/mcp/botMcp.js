@@ -19,7 +19,7 @@ import logger from '$lib/util/logger.js';
 
 /**
  * 봇 계정용 MCP 서버 (Streamable HTTP, stateless, JSON 응답만).
- * 토큰 → 봇 닉네임 매핑은 BOT_MCP_TOKENS 환경변수({"<sha256 hex>": "닉네임"})에 둔다.
+ * 토큰 → 봇 닉네임 매핑은 BOT_MCP_TOKENS 환경변수({"<토큰 sha256 hex 또는 토큰 원문>": "닉네임"})에 둔다.
  * grade가 'bot'인 계정만 쓸 수 있다.
  */
 
@@ -61,8 +61,9 @@ export function resolveBotNickname(authorization, tokensJson) {
   if (!map || typeof map !== 'object') return null;
 
   const given = Buffer.from(hashToken(match[1]), 'hex');
-  for (const [hash, nickname] of Object.entries(map)) {
-    const expected = Buffer.from(hash, 'hex');
+  for (const [key, nickname] of Object.entries(map)) {
+    // 키는 토큰의 sha256 hex 또는 토큰 원문
+    const expected = Buffer.from(/^[0-9a-f]{64}$/.test(key) ? key : hashToken(key), 'hex');
     if (expected.length === given.length && crypto.timingSafeEqual(expected, given)) {
       return typeof nickname === 'string' ? nickname : null;
     }

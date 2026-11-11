@@ -45,6 +45,9 @@ describe('bot MCP', () => {
     expect(mcp.resolveBotNickname('Bearer wrong', tokens)).toBeNull();
     expect(mcp.resolveBotNickname(null, tokens)).toBeNull();
     expect(mcp.resolveBotNickname('Bearer secret-1', 'not json')).toBeNull();
+    const raw = JSON.stringify({ 'raw-Token-2': '해노죵봇🤖' });
+    expect(mcp.resolveBotNickname('Bearer raw-Token-2', raw)).toBe('해노죵봇🤖');
+    expect(mcp.resolveBotNickname('Bearer raw-token-2', raw)).toBeNull();
   });
 
   it('converts plain text to escaped paragraphs and back', () => {
