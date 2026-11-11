@@ -228,7 +228,7 @@ const OUTPUT_SCHEMA = {
   additionalProperties: false
 };
 
-function buildUserPrompt(type, material, recentTitles) {
+function buildUserPrompt(type, material, recentTitles, topic) {
   const avoid = recentTitles.length
     ? `\n\n최근에 이미 쓴 글 제목들(같은 주제/비슷한 제목 피하기):\n${recentTitles.map((t) => `- ${t}`).join('\n')}`
     : '';
@@ -251,10 +251,11 @@ function buildUserPrompt(type, material, recentTitles) {
       .join('\n');
     return `${when}\n지금 한국 실시간 검색 화제 키워드 목록이다. 하나를 골라 "이거 왜 화제냐" 느낌으로 관련 기사 제목을 바탕으로 소개하는 글을 써라. 기사 제목 이상의 내용은 추측하지 마라.\n\n${list}${avoid}`;
   }
+  if (topic) return `${when}\n다음 주제로 글을 하나 써라: ${topic}${avoid}`;
   return `${when}\n아무 뉴스 없이 쓰는 뻘글을 하나 써라. 시간대/요일/계절에 어울리는 일상 잡담, 소소한 고민, 밸런스 게임, 음식 얘기, 쓸데없는 궁금증 같은 것. 매번 다른 소재로.${avoid}`;
 }
 
-async function generatePost(client, type, material, recentTitles) {
+async function generatePost(client, type, material, recentTitles, topic) {
   const response = await client.messages.create({
     model: MODEL,
     max_tokens: 4000,
@@ -263,7 +264,7 @@ async function generatePost(client, type, material, recentTitles) {
       effort: 'low',
       format: { type: 'json_schema', schema: OUTPUT_SCHEMA }
     },
-    messages: [{ role: 'user', content: buildUserPrompt(type, material, recentTitles) }]
+    messages: [{ role: 'user', content: buildUserPrompt(type, material, recentTitles, topic) }]
   });
 
   if (response.stop_reason === 'refusal') {
@@ -807,10 +808,10 @@ async function bustBoardListCache(prisma, boardId = BOARD_ID) {
   }
 }
 
-async function doPost(prisma, bot, { type, dryRun }) {
+async function doPost(prisma, bot, { type, topic, dryRun }) {
   const client = getClient();
 
-  let postType = type || pickType();
+  let postType = topic ? 'chat' : type || pickType();
   let material = [];
   try {
     if (postType === 'news') material = await fetchNews();
@@ -833,7 +834,8 @@ async function doPost(prisma, bot, { type, dryRun }) {
     client,
     postType,
     material,
-    recent.map((r) => r.title)
+    recent.map((r) => r.title),
+    topic
   );
   const title = String(post.title).trim().slice(0, 80);
   const content = buildHtml(postType, post, material);
@@ -945,6 +947,7 @@ function printHelp() {
 commands:
   status                 오늘 슬롯/올린 글 보기
   post [--type T]        지금 바로 1개 작성 (T: chat | news | trend, 생략 시 랜덤)
+  post --topic "..."     주제를 정해서 1개 작성
   comment [--article ID] 지금 바로 다른 회원 글 하나에 댓글 (ID 생략 시 랜덤)
   reply                  봇 글/댓글에 달린 새 댓글에 필요하면 답글
   tick                   크론용: 예정된 글 + 답글 + 2~3시간 간격 댓글
@@ -973,7 +976,12 @@ async function main() {
   try {
     const bot = await findBot(prisma);
     if (command === 'status') await cmdStatus(prisma, bot);
-    if (command === 'post') await doPost(prisma, bot, { type, dryRun });
+    if (command === 'post')
+      await doPost(prisma, bot, {
+        type,
+        topic: typeof flags.topic === 'string' ? flags.topic : undefined,
+        dryRun
+      });
     if (command === 'comment')
       await doVisitComment(prisma, bot, {
         articleId: typeof flags.article === 'string' ? flags.article : undefined,
