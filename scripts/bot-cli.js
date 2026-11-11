@@ -728,6 +728,19 @@ async function loadThread(prisma, articleId) {
   });
 }
 
+async function recentBotCommentsBlock(prisma, bot) {
+  const recent = await prisma.comment.findMany({
+    where: { email: bot.email },
+    orderBy: { createdAt: 'desc' },
+    take: 12,
+    select: { content: true }
+  });
+  if (!recent.length) return '';
+  return `\n\n<최근에 내가 단 댓글 — 같은 말을 연달아 쓰지 말고 글에 더 맞는 단어를 고른다>\n${recent
+    .map((c) => `- ${stripHtml(c.content, 60)}`)
+    .join('\n')}\n</최근에 내가 단 댓글>`;
+}
+
 function nowLine() {
   const kstNow = new Date(Date.now() + KST_OFFSET_MS);
   return `지금은 한국시간 ${kstNow.toISOString().slice(0, 10)} ${fmtKst(new Date())}이다.`;
@@ -740,6 +753,7 @@ async function doVisitComment(prisma, bot, { articleId, text, dryRun }) {
   const memories = loadMemories();
   const rules = loadRules();
   const botEmails = await botEmailList(prisma);
+  const recentBlock = await recentBotCommentsBlock(prisma, bot);
 
   let candidates;
   if (articleId) {
@@ -815,7 +829,7 @@ ${stripHtml(article.content)}
 ${thread.length ? formatThread(thread) : '(없음)'}
 </기존 댓글>
 
-${memoryBlock(memories, [article.nickname, ...thread.map((c) => c.nickname)])}${rulesBlock(rules, [article.nickname])}`;
+${memoryBlock(memories, [article.nickname, ...thread.map((c) => c.nickname)])}${rulesBlock(rules, [article.nickname])}${recentBlock}`;
 
     const out = await generateComment(client, prompt);
     log(`visit comment generated`, {
@@ -920,6 +934,7 @@ async function doReplies(prisma, bot, { dryRun, limit = REPLIES_PER_TICK }) {
   const client = getClient();
   const memories = loadMemories();
   const rules = loadRules();
+  const recentBlock = await recentBotCommentsBlock(prisma, bot);
   const touched = new Set();
   let count = 0;
   for (const target of pending) {
@@ -942,7 +957,7 @@ ${formatThread(thread)}
 ${stripHtml(target.content, 500) || '[이미지]'}
 </답할 댓글>
 
-${memoryBlock(memories, [target.nickname, article.nickname, ...thread.map((c) => c.nickname)])}${rulesBlock(rules, [target.nickname])}`;
+${memoryBlock(memories, [target.nickname, article.nickname, ...thread.map((c) => c.nickname)])}${rulesBlock(rules, [target.nickname])}${recentBlock}`;
 
     const out = await generateComment(client, prompt);
     log('reply generated', {
