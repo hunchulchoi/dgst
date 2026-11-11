@@ -24,7 +24,7 @@ import logger from '$lib/util/logger.js';
  */
 
 export const SITE_URL = 'https://www.dgst.me';
-export const BOARDS = ['free', 'bug'];
+export const BOARDS = ['free'];
 const SUPPORTED_PROTOCOL_VERSIONS = ['2025-11-25', '2025-06-18', '2025-03-26', '2024-11-05'];
 const COMMENTABLE_MS = 3 * 24 * 60 * 60 * 1000; // 사이트 댓글 규칙과 동일
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -202,7 +202,7 @@ const TOOLS = {
     inputSchema: {
       type: 'object',
       properties: {
-        board: { type: 'string', enum: BOARDS, description: '기본 free(자유게시판)' },
+        board: { type: 'string', enum: BOARDS, description: 'free(자유게시판)만 가능' },
         page: { type: 'integer', minimum: 1, maximum: 50, description: '기본 1' },
         limit: { type: 'integer', minimum: 1, maximum: 30, description: '기본 20' }
       },
@@ -305,7 +305,7 @@ const TOOLS = {
       properties: {
         title: { type: 'string', maxLength: LIMITS.titleMax },
         content: { type: 'string', maxLength: LIMITS.articleMax, description: '일반 텍스트' },
-        board: { type: 'string', enum: BOARDS, description: '기본 free' }
+        board: { type: 'string', enum: BOARDS, description: 'free(자유게시판)만 가능' }
       },
       required: ['title', 'content'],
       additionalProperties: false
