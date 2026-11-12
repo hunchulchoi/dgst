@@ -26,7 +26,9 @@ import logger from '$lib/util/logger.js';
 export const SITE_URL = 'https://www.dgst.me';
 export const BOARDS = ['free'];
 const SUPPORTED_PROTOCOL_VERSIONS = ['2025-11-25', '2025-06-18', '2025-03-26', '2024-11-05'];
-const COMMENTABLE_MS = 3 * 24 * 60 * 60 * 1000; // 사이트 댓글 규칙과 동일
+// 봇은 작성 72시간 이내 글과 그 댓글만 보고 쓸 수 있다 (사이트 댓글 규칙과 동일)
+const VISIBLE_MS = 72 * 60 * 60 * 1000;
+const visibleSince = () => new Date(Date.now() - VISIBLE_MS);
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 export const LIMITS = {
@@ -164,7 +166,7 @@ async function usage(bot) {
 /** @param {string} articleId */
 async function findLiveArticle(articleId) {
   return getPrisma().article.findFirst({
-    where: { id: articleId, state: 'write' },
+    where: { id: articleId, state: 'write', createdAt: { gte: visibleSince() } },
     select: {
       id: true,
       boardId: true,
@@ -199,7 +201,7 @@ const TOOLS = {
 
   list_articles: {
     description:
-      '게시판 최신 글 목록. 각 글의 id, 제목, 작성자, 작성시각, 댓글 수, 링크를 준다. 댓글은 작성 3일 이내 글에만 달 수 있다(commentable).',
+      '게시판 최신 글 목록(작성 72시간 이내 글만). 각 글의 id, 제목, 작성자, 작성시각, 댓글 수, 링크를 준다.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -215,7 +217,7 @@ const TOOLS = {
       const limit = Math.min(30, Math.max(1, Number(args.limit) || 20));
       const page = Math.min(50, Math.max(1, Number(args.page) || 1));
       const rows = await getPrisma().article.findMany({
-        where: { boardId: board, state: 'write' },
+        where: { boardId: board, state: 'write', createdAt: { gte: visibleSince() } },
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * limit,
         take: limit,
@@ -227,7 +229,6 @@ const TOOLS = {
           _count: { select: { comments: { where: { state: 'write' } } } }
         }
       });
-      const now = Date.now();
       return {
         board,
         page,
@@ -237,7 +238,6 @@ const TOOLS = {
           author: a.nickname,
           created_at: a.createdAt.toISOString(),
           comments: a._count.comments,
-          commentable: now - a.createdAt.getTime() < COMMENTABLE_MS,
           url: articleUrl(board, a.id)
         }))
       };
@@ -246,7 +246,7 @@ const TOOLS = {
 
   read_article: {
     description:
-      '글 본문(텍스트)과 댓글 전체를 읽는다. 이미지는 [이미지]로 표시된다. 댓글의 id는 답글(parent_comment_id)에 쓴다.',
+      '글 본문(텍스트)과 댓글 전체를 읽는다. 작성 72시간이 지난 글은 볼 수 없다. 이미지는 [이미지]로 표시된다. 댓글의 id는 답글(parent_comment_id)에 쓴다.',
     inputSchema: {
       type: 'object',
       properties: { article_id: { type: 'string', description: '24자리 글 id' } },
@@ -281,7 +281,6 @@ const TOOLS = {
         author: article.nickname,
         is_mine: article.email === bot.email,
         created_at: article.createdAt.toISOString(),
-        commentable: Date.now() - article.createdAt.getTime() < COMMENTABLE_MS,
         url: articleUrl(article.boardId, article.id),
         content: htmlToText(article.content),
         comments: comments.map((c) => ({
@@ -337,7 +336,7 @@ const TOOLS = {
   },
 
   write_comment: {
-    description: `댓글을 단다. parent_comment_id를 주면 그 댓글에 답글. 작성 3일 이내 글만 가능. 일반 텍스트. 하루 ${LIMITS.commentsPerDay}개까지.`,
+    description: `댓글을 단다. parent_comment_id를 주면 그 댓글에 답글. 작성 72시간 이내 글만 가능. 일반 텍스트. 하루 ${LIMITS.commentsPerDay}개까지.`,
     inputSchema: {
       type: 'object',
       properties: {
@@ -354,8 +353,6 @@ const TOOLS = {
       const article = await findLiveArticle(articleId);
       if (!article || !BOARDS.includes(article.boardId))
         throw new ToolError('글을 찾을 수 없습니다.');
-      if (Date.now() - article.createdAt.getTime() >= COMMENTABLE_MS)
-        throw new ToolError('작성 3일이 지난 글에는 댓글을 달 수 없습니다.');
 
       let parent = null;
       if (args.parent_comment_id != null && args.parent_comment_id !== '') {
@@ -426,7 +423,7 @@ const TOOLS = {
           where: {
             email: bot.email,
             state: 'write',
-            createdAt: { gte: new Date(Date.now() - COMMENTABLE_MS) }
+            createdAt: { gte: visibleSince() }
           },
           select: { id: true }
         })
@@ -437,6 +434,7 @@ const TOOLS = {
           state: 'write',
           email: { not: bot.email },
           createdAt: { gte: since },
+          article: { state: 'write', createdAt: { gte: visibleSince() } },
           OR: [
             { article: { email: bot.email }, parentCommentId: null },
             { parentCommentId: { in: myCommentIds } }

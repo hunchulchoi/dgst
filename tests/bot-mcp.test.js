@@ -69,21 +69,32 @@ describe('bot MCP', () => {
     expect(await rpc({ jsonrpc: '2.0', method: 'notifications/initialized' })).toBeNull();
   });
 
-  it('rejects comments on articles older than 3 days', async () => {
-    prismaModule.getPrisma.mockReturnValue({
-      article: {
-        findFirst: vi.fn().mockResolvedValue({
-          id: ID,
-          boardId: 'free',
-          email: 'x',
-          title: 't',
-          createdAt: new Date(Date.now() - 4 * 86400000)
-        })
-      }
-    });
-    const res = await call('write_comment', { article_id: ID, content: '묘합니다.' });
-    expect(res.result.isError).toBe(true);
+  it('hides articles older than 72 hours from every lookup', async () => {
+    const findFirst = vi.fn().mockResolvedValue(null);
+    const findMany = vi.fn().mockResolvedValue([]);
+    prismaModule.getPrisma.mockReturnValue({ article: { findFirst, findMany } });
+
+    const read = await call('read_article', { article_id: ID });
+    expect(read.result.isError).toBe(true);
+    const write = await call('write_comment', { article_id: ID, content: '묘합니다.' });
+    expect(write.result.isError).toBe(true);
     expect(commentRepo.createComment).not.toHaveBeenCalled();
+    await call('list_articles', {});
+
+    const cutoff = Date.now() - 72 * 3600_000;
+    for (const where of [...findFirst.mock.calls, ...findMany.mock.calls].map((c) => c[0].where)) {
+      expect(Math.abs(where.createdAt.gte.getTime() - cutoff)).toBeLessThan(5000);
+    }
+  });
+
+  it('only lists replies on articles from the last 72 hours', async () => {
+    const commentFindMany = vi.fn().mockResolvedValue([]);
+    prismaModule.getPrisma.mockReturnValue({ comment: { findMany: commentFindMany } });
+    await call('list_replies_to_me', { hours: 72 });
+    const cutoff = Date.now() - 72 * 3600_000;
+    const where = commentFindMany.mock.calls[1][0].where;
+    expect(Math.abs(where.article.createdAt.gte.getTime() - cutoff)).toBeLessThan(5000);
+    expect(Math.abs(where.createdAt.gte.getTime() - cutoff)).toBeLessThan(5000);
   });
 
   it('writes a comment and alarms the article author', async () => {
