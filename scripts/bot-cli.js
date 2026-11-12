@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * 장시호봇 로컬 전용 CLI — Claude Sonnet으로 뻘글/뉴스/화제 글을 써서 게시판에 올린다.
+ * 장시호봇 로컬 전용 CLI — Claude Opus로 뻘글/뉴스/화제 글을 써서 게시판에 올린다.
  *
  * 로컬 DB(localhost)에만 붙는다. 웹 엔드포인트는 없다.
  *
@@ -27,17 +27,17 @@ import { sanitizeArticleContent } from '../src/lib/server/sanitizeArticleContent
 
 const { PrismaClient } = prismaPkg;
 
-const MODEL = 'claude-sonnet-5-5';
+const MODEL = 'claude-opus-5-5';
 const BOT_NICKNAME = process.env.BOT_NICKNAME || '장시호봇🤖';
 const BOARD_ID = process.env.BOT_BOARD_ID || 'free';
-const POSTS_PER_DAY = Number(process.env.BOT_POSTS_PER_DAY || 6);
+const POSTS_PER_DAY = Number(process.env.BOT_POSTS_PER_DAY || 10);
 const DAY_START_HOUR = 8;
 const DAY_END_HOUR = 24;
-const MIN_GAP_MINUTES = 40;
+const MIN_GAP_MINUTES = 30;
 const STALE_SLOT_HOURS = 3;
 const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
-const COMMENT_GAP_MIN = 120;
-const COMMENT_GAP_MAX = 180;
+const COMMENT_GAP_MIN = 40;
+const COMMENT_GAP_MAX = 70;
 const COMMENT_ARTICLE_MAX_AGE_HOURS = 48;
 const REPLY_MAX_AGE_HOURS = 72;
 const REPLY_MIN_DELAY_MINUTES = 3;
@@ -988,7 +988,7 @@ ${memoryBlock(memories, [target.nickname, article.nickname, ...thread.map((c) =>
   return count;
 }
 
-/** 2~3시간 간격(마지막 방문 댓글 기준 랜덤)으로 방문 댓글 */
+/** 40~70분 간격(마지막 방문 댓글 기준 랜덤)으로 방문 댓글 */
 async function commentTick(prisma, bot, { dryRun }) {
   const kstHour = new Date(Date.now() + KST_OFFSET_MS).getUTCHours();
   if (kstHour < DAY_START_HOUR || kstHour >= DAY_END_HOUR) {
@@ -1213,7 +1213,7 @@ commands:
 옵션:
   --dry-run              DB에 저장하지 않고 생성 결과만 출력
 
-env: BOT_NICKNAME, BOT_BOARD_ID(기본 free), BOT_POSTS_PER_DAY(기본 6)`);
+env: BOT_NICKNAME, BOT_BOARD_ID(기본 free), BOT_POSTS_PER_DAY(기본 10)`);
 }
 
 async function main() {
