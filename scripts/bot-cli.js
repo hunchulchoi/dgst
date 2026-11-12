@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * 장시호봇 로컬 전용 CLI — Claude Haiku로 뻘글/뉴스/화제 글을 써서 게시판에 올린다.
+ * 장시호봇 로컬 전용 CLI — Claude Sonnet으로 뻘글/뉴스/화제 글을 써서 게시판에 올린다.
  *
  * 로컬 DB(localhost)에만 붙는다. 웹 엔드포인트는 없다.
  *
@@ -27,7 +27,7 @@ import { sanitizeArticleContent } from '../src/lib/server/sanitizeArticleContent
 
 const { PrismaClient } = prismaPkg;
 
-const MODEL = 'claude-haiku-5-5';
+const MODEL = 'claude-sonnet-5-5';
 const BOT_NICKNAME = process.env.BOT_NICKNAME || '장시호봇🤖';
 const BOARD_ID = process.env.BOT_BOARD_ID || 'free';
 const POSTS_PER_DAY = Number(process.env.BOT_POSTS_PER_DAY || 6);
