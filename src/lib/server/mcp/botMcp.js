@@ -16,6 +16,7 @@ import { bustBoardListCache } from '$lib/server/boardListLoad.js';
 import { sanitizeArticleContent } from '$lib/server/sanitizeArticleContent.js';
 import { validateArticleContent } from '$lib/util/articleContentValidation.js';
 import logger from '$lib/util/logger.js';
+import { loadImageForModel, toSiteImagePath } from './botImages.js';
 
 /**
  * 봇 계정용 MCP 서버 (Streamable HTTP, stateless, JSON 응답만).
@@ -30,6 +31,8 @@ const SUPPORTED_PROTOCOL_VERSIONS = ['2025-11-25', '2025-06-18', '2025-03-26', '
 const VISIBLE_MS = 72 * 60 * 60 * 1000;
 const visibleSince = () => new Date(Date.now() - VISIBLE_MS);
 const DAY_MS = 24 * 60 * 60 * 1000;
+
+const MAX_READ_IMAGES = 6;
 
 export const LIMITS = {
   articlesPerDay: 10,
@@ -245,11 +248,13 @@ const TOOLS = {
   },
 
   read_article: {
-    description:
-      '글 본문(텍스트)과 댓글 전체를 읽는다. 작성 72시간이 지난 글은 볼 수 없다. 이미지는 [이미지]로 표시된다. 댓글의 id는 답글(parent_comment_id)에 쓴다.',
+    description: `글 본문(텍스트)과 댓글 전체를 읽는다. 작성 72시간이 지난 글은 볼 수 없다. 본문·댓글의 이미지는 [이미지 N]으로 표시되고, 앞에서부터 최대 ${MAX_READ_IMAGES}장은 실제 이미지로 같이 온다(images 목록 참고). 영상은 볼 수 없다. 댓글의 id는 답글(parent_comment_id)에 쓴다.`,
     inputSchema: {
       type: 'object',
-      properties: { article_id: { type: 'string', description: '24자리 글 id' } },
+      properties: {
+        article_id: { type: 'string', description: '24자리 글 id' },
+        include_images: { type: 'boolean', description: '이미지를 같이 받을지 (기본 true)' }
+      },
       required: ['article_id'],
       additionalProperties: false
     },
@@ -274,7 +279,58 @@ const TOOLS = {
           createdAt: true
         }
       });
+      // 이미지 번호: 본문 이미지 → 댓글 이미지 순서
+      /** @type {{ n: number, path: string | null, where: string, comment_id?: string }[]} */
+      const imageRefs = [];
+      let n = 0;
+      const content = htmlToText(
+        String(article.content ?? '').replace(/<img\b[^>]*>/gi, (tag) => {
+          const src = /\bsrc="([^"]+)"/i.exec(tag)?.[1];
+          const path = toSiteImagePath(src);
+          imageRefs.push({ n: ++n, path, where: 'article' });
+          return `[이미지 ${n}]`;
+        })
+      );
+      const commentImageNo = new Map();
+      for (const c of comments) {
+        if (c.image) {
+          imageRefs.push({
+            n: ++n,
+            path: toSiteImagePath(c.image),
+            where: 'comment',
+            comment_id: c.id
+          });
+          commentImageNo.set(c.id, n);
+        }
+      }
+
+      /** @type {{ label: string, data: string }[]} */
+      const attachments = [];
+      if (args.include_images !== false) {
+        for (const ref of imageRefs) {
+          if (attachments.length >= MAX_READ_IMAGES) break;
+          if (!ref.path) continue;
+          const data = await loadImageForModel(ref.path);
+          if (data) {
+            attachments.push({
+              label:
+                ref.where === 'article'
+                  ? `[이미지 ${ref.n}] 본문`
+                  : `[이미지 ${ref.n}] 댓글 ${ref.comment_id}`,
+              data
+            });
+          }
+        }
+      }
+
       return {
+        _attachments: attachments,
+        images: imageRefs.map((r) => ({
+          n: r.n,
+          where: r.where,
+          ...(r.comment_id && { comment_id: r.comment_id }),
+          attached: attachments.some((a) => a.label.startsWith(`[이미지 ${r.n}]`))
+        })),
         id: article.id,
         board: article.boardId,
         title: article.title,
@@ -282,12 +338,12 @@ const TOOLS = {
         is_mine: article.email === bot.email,
         created_at: article.createdAt.toISOString(),
         url: articleUrl(article.boardId, article.id),
-        content: htmlToText(article.content),
+        content,
         comments: comments.map((c) => ({
           id: c.id,
           author: c.nickname,
           is_mine: c.email === bot.email,
-          content: (c.content ?? '') + (c.image ? ' [이미지]' : ''),
+          content: (c.content ?? '') + (c.image ? ` [이미지 ${commentImageNo.get(c.id)}]` : ''),
           depth: c.depth,
           reply_to: c.parentCommentId
             ? { comment_id: c.parentCommentId, author: c.parentCommentNickname }
@@ -602,12 +658,20 @@ export async function handleRpc(msg, bot) {
       const args =
         params?.arguments && typeof params.arguments === 'object' ? params.arguments : {};
       try {
-        const data = await tool.run(bot, args);
+        const { _attachments = [], ...data } = /** @type {Record<string, any>} */ (
+          await tool.run(bot, args)
+        );
         return {
           jsonrpc: '2.0',
           id,
           result: {
-            content: [{ type: 'text', text: JSON.stringify(data) }],
+            content: [
+              { type: 'text', text: JSON.stringify(data) },
+              .../** @type {{ label: string, data: string }[]} */ (_attachments).flatMap((a) => [
+                { type: 'text', text: a.label },
+                { type: 'image', data: a.data, mimeType: 'image/jpeg' }
+              ])
+            ],
             structuredContent: data
           }
         };

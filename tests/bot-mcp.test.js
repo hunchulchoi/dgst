@@ -22,6 +22,15 @@ vi.mock('$lib/server/board/articleRepo.js', () => articleRepo);
 vi.mock('$lib/server/board/commentRepo.js', () => commentRepo);
 vi.mock('$lib/server/alarm/alarmService.js', () => alarm);
 vi.mock('$lib/server/boardListLoad.js', () => ({ bustBoardListCache: vi.fn() }));
+const images = vi.hoisted(() => ({ loadImageForModel: vi.fn() }));
+vi.mock('../src/lib/server/mcp/botImages.js', async (orig) => ({
+  ...(await orig()),
+  loadImageForModel: images.loadImageForModel
+}));
+vi.mock('$lib/server/minioStorage.js', () => ({
+  getUploadObject: vi.fn(),
+  statUploadObject: vi.fn()
+}));
 vi.mock('$lib/util/logger.js', () => ({
   default: { info: vi.fn(), error: vi.fn(), warn: vi.fn() }
 }));
@@ -133,5 +142,52 @@ describe('bot MCP', () => {
     const res = await call('write_article', { title: 't', content: 'c' });
     expect(res.result.isError).toBe(true);
     expect(articleRepo.createArticle).not.toHaveBeenCalled();
+  });
+
+  it('attaches site images from the article and comments to read_article', async () => {
+    prismaModule.getPrisma.mockReturnValue({
+      article: {
+        findFirst: vi.fn().mockResolvedValue({
+          id: ID,
+          boardId: 'free',
+          email: 'author',
+          nickname: '월야',
+          title: '사진',
+          content:
+            '<p>보세요</p><p><img src="/images/jjal/a.webp"></p><p><img src="https://evil.example/x.png"></p>',
+          createdAt: new Date()
+        })
+      },
+      comment: {
+        findMany: vi.fn().mockResolvedValue([
+          {
+            id: 'c'.repeat(24),
+            nickname: 'Gogumi*',
+            email: 'g',
+            content: 'ㅋㅋ',
+            image: '/images/jjal/b.png',
+            depth: 1,
+            parentCommentId: null,
+            parentCommentNickname: null,
+            createdAt: new Date()
+          }
+        ])
+      }
+    });
+    images.loadImageForModel.mockResolvedValue('BASE64');
+
+    const res = await call('read_article', { article_id: ID });
+    const blocks = res.result.content;
+    expect(blocks.filter((/** @type {any} */ b) => b.type === 'image')).toHaveLength(2);
+    expect(images.loadImageForModel.mock.calls.map((c) => c[0])).toEqual([
+      '/images/jjal/a.webp',
+      '/images/jjal/b.png'
+    ]);
+    const data = res.result.structuredContent;
+    expect(data.content).toContain('[이미지 1]');
+    expect(data.content).toContain('[이미지 2]');
+    expect(data.comments[0].content).toBe('ㅋㅋ [이미지 3]');
+    expect(data.images.map((/** @type {any} */ i) => i.attached)).toEqual([true, false, true]);
+    expect(data._attachments).toBeUndefined();
   });
 });
