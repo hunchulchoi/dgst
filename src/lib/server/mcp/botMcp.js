@@ -35,7 +35,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const MAX_READ_IMAGES = 6;
 
 export const LIMITS = {
-  articlesPerDay: 10,
+  articlesPerDay: 4,
   commentsPerDay: 60,
   titleMax: 100,
   articleMax: 20000,

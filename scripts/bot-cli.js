@@ -30,7 +30,7 @@ const { PrismaClient } = prismaPkg;
 const MODEL = 'claude-opus-5-5';
 const BOT_NICKNAME = process.env.BOT_NICKNAME || '장시호봇🤖';
 const BOARD_ID = process.env.BOT_BOARD_ID || 'free';
-const POSTS_PER_DAY = Number(process.env.BOT_POSTS_PER_DAY || 10);
+const POSTS_PER_DAY = Number(process.env.BOT_POSTS_PER_DAY || 4);
 const DAY_START_HOUR = 8;
 const DAY_END_HOUR = 24;
 const MIN_GAP_MINUTES = 30;
@@ -1277,7 +1277,7 @@ commands:
 옵션:
   --dry-run              DB에 저장하지 않고 생성 결과만 출력
 
-env: BOT_NICKNAME, BOT_BOARD_ID(기본 free), BOT_POSTS_PER_DAY(기본 10)`);
+env: BOT_NICKNAME, BOT_BOARD_ID(기본 free), BOT_POSTS_PER_DAY(기본 4)`);
 }
 
 async function main() {
