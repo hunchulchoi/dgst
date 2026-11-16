@@ -3,7 +3,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const prismaModule = vi.hoisted(() => ({ getPrisma: vi.fn() }));
 const articleRepo = vi.hoisted(() => ({
   createArticle: vi.fn(),
-  softDeleteArticleByOwner: vi.fn()
+  softDeleteArticleByOwner: vi.fn(),
+  toggleArticleLike: vi.fn()
 }));
 const commentRepo = vi.hoisted(() => ({
   createComment: vi.fn(),
@@ -155,6 +156,7 @@ describe('bot MCP', () => {
           title: '사진',
           content:
             '<p>보세요</p><p><img src="/images/jjal/a.webp"></p><p><img src="https://evil.example/x.png"></p>',
+          likes: [],
           createdAt: new Date()
         })
       },
@@ -189,5 +191,69 @@ describe('bot MCP', () => {
     expect(data.comments[0].content).toBe('ㅋㅋ [이미지 3]');
     expect(data.images.map((/** @type {any} */ i) => i.attached)).toEqual([true, false, true]);
     expect(data._attachments).toBeUndefined();
+  });
+
+  it('serves the skill document as initialize instructions', async () => {
+    const res = await rpc({ jsonrpc: '2.0', id: 1, method: 'initialize', params: {} });
+    const text = res.result.instructions;
+    expect(text).toContain('# 실버타운 봇 (해노죵봇🤖)');
+    expect(text).toContain('like_article');
+    expect(text).toContain('age_hours');
+    expect(text).not.toMatch(/^---/);
+    expect(text).not.toContain('## 연결');
+    expect(text).not.toContain('SILVERTOWN_BOT_TOKEN');
+    expect(mcp.skillInstructions('다른봇🤖')).toContain('# 실버타운 봇 (다른봇🤖)');
+  });
+
+  it('likes another member article but not my own', async () => {
+    const createdAt = new Date(Date.now() - 30 * 60 * 60 * 1000);
+    const findFirst = vi.fn().mockResolvedValue({
+      id: ID,
+      boardId: 'free',
+      email: 'author',
+      nickname: '월야',
+      title: '웃긴 글',
+      content: '<p>ㅋㅋ</p>',
+      likes: [],
+      createdAt
+    });
+    prismaModule.getPrisma.mockReturnValue({ article: { findFirst } });
+    articleRepo.toggleArticleLike.mockResolvedValue({ likes: ['x', 'bot-hash'] });
+
+    const res = await call('like_article', { article_id: ID });
+    expect(res.result.isError).toBeUndefined();
+    expect(articleRepo.toggleArticleLike).toHaveBeenCalledWith(ID, 'bot-hash', 'like');
+    expect(res.result.structuredContent).toEqual({ id: ID, likes: 2, liked_by_me: true });
+
+    findFirst.mockResolvedValue({ ...(await findFirst()), email: 'bot-hash' });
+    articleRepo.toggleArticleLike.mockClear();
+    const own = await call('like_article', { article_id: ID });
+    expect(own.result.isError).toBe(true);
+    expect(articleRepo.toggleArticleLike).not.toHaveBeenCalled();
+  });
+
+  it('shows article age and likes in list_articles', async () => {
+    prismaModule.getPrisma.mockReturnValue({
+      article: {
+        findMany: vi.fn().mockResolvedValue([
+          {
+            id: ID,
+            title: 't',
+            nickname: '월야',
+            email: 'author',
+            likes: ['bot-hash', 'y'],
+            createdAt: new Date(Date.now() - 25 * 60 * 60 * 1000),
+            _count: { comments: 3 }
+          }
+        ])
+      }
+    });
+    const res = await call('list_articles', {});
+    expect(res.result.structuredContent.articles[0]).toMatchObject({
+      age_hours: 25,
+      likes: 2,
+      liked_by_me: true,
+      is_mine: false
+    });
   });
 });

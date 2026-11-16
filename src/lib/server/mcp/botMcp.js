@@ -1,6 +1,10 @@
 import crypto from 'node:crypto';
 import { getPrisma } from '$lib/database/prisma.js';
-import { createArticle, softDeleteArticleByOwner } from '$lib/server/board/articleRepo.js';
+import {
+  createArticle,
+  softDeleteArticleByOwner,
+  toggleArticleLike
+} from '$lib/server/board/articleRepo.js';
 import {
   createComment,
   findCommentById,
@@ -17,6 +21,7 @@ import { sanitizeArticleContent } from '$lib/server/sanitizeArticleContent.js';
 import { validateArticleContent } from '$lib/util/articleContentValidation.js';
 import logger from '$lib/util/logger.js';
 import { loadImageForModel, toSiteImagePath } from './botImages.js';
+import skillMarkdown from './bot-skill/SKILL.md?raw';
 
 /**
  * 봇 계정용 MCP 서버 (Streamable HTTP, stateless, JSON 응답만).
@@ -31,6 +36,24 @@ const SUPPORTED_PROTOCOL_VERSIONS = ['2025-11-25', '2025-06-18', '2025-03-26', '
 const VISIBLE_MS = 72 * 60 * 60 * 1000;
 const visibleSince = () => new Date(Date.now() - VISIBLE_MS);
 const DAY_MS = 24 * 60 * 60 * 1000;
+const HOUR_MS = 60 * 60 * 1000;
+/** @param {Date} createdAt */
+const ageHours = (createdAt) => Math.floor((Date.now() - createdAt.getTime()) / HOUR_MS);
+
+const SKILL_BOT_NICKNAME = '해노죵봇🤖';
+
+/**
+ * 스킬 문서(bot-skill/SKILL.md)를 initialize instructions로 내려준다.
+ * 머리말(frontmatter)과 "## 연결" 섹션은 이미 연결된 클라이언트에 필요 없으니 뺀다.
+ * @param {string} nickname
+ */
+export function skillInstructions(nickname) {
+  return String(skillMarkdown)
+    .replace(/^---\n[\s\S]*?\n---\n/, '')
+    .replace(/\n## 연결\n[\s\S]*?(?=\n## )/, '\n')
+    .replaceAll(SKILL_BOT_NICKNAME, nickname)
+    .trim();
+}
 
 const MAX_READ_IMAGES = 6;
 
@@ -177,6 +200,7 @@ async function findLiveArticle(articleId) {
       nickname: true,
       title: true,
       content: true,
+      likes: true,
       createdAt: true
     }
   });
@@ -204,7 +228,7 @@ const TOOLS = {
 
   list_articles: {
     description:
-      '게시판 최신 글 목록(작성 72시간 이내 글만). 각 글의 id, 제목, 작성자, 작성시각, 댓글 수, 링크를 준다.',
+      '게시판 최신 글 목록(작성 72시간 이내 글만). 각 글의 id, 제목, 작성자, 작성시각과 지난 시간(age_hours), 댓글 수, 따봉 수, 내가 따봉 눌렀는지, 링크를 준다.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -215,7 +239,7 @@ const TOOLS = {
       additionalProperties: false
     },
     annotations: { readOnlyHint: true },
-    async run(_bot, args) {
+    async run(bot, args) {
       const board = boardOf(args.board);
       const limit = Math.min(30, Math.max(1, Number(args.limit) || 20));
       const page = Math.min(50, Math.max(1, Number(args.page) || 1));
@@ -228,6 +252,8 @@ const TOOLS = {
           id: true,
           title: true,
           nickname: true,
+          email: true,
+          likes: true,
           createdAt: true,
           _count: { select: { comments: { where: { state: 'write' } } } }
         }
@@ -239,8 +265,12 @@ const TOOLS = {
           id: a.id,
           title: a.title,
           author: a.nickname,
+          is_mine: a.email === bot.email,
           created_at: a.createdAt.toISOString(),
+          age_hours: ageHours(a.createdAt),
           comments: a._count.comments,
+          likes: a.likes.length,
+          liked_by_me: a.likes.includes(bot.email),
           url: articleUrl(board, a.id)
         }))
       };
@@ -337,6 +367,9 @@ const TOOLS = {
         author: article.nickname,
         is_mine: article.email === bot.email,
         created_at: article.createdAt.toISOString(),
+        age_hours: ageHours(article.createdAt),
+        likes: article.likes.length,
+        liked_by_me: article.likes.includes(bot.email),
         url: articleUrl(article.boardId, article.id),
         content,
         comments: comments.map((c) => ({
@@ -392,7 +425,7 @@ const TOOLS = {
   },
 
   write_comment: {
-    description: `댓글을 단다. parent_comment_id를 주면 그 댓글에 답글. 작성 72시간 이내 글만 가능. 일반 텍스트. 하루 ${LIMITS.commentsPerDay}개까지.`,
+    description: `댓글을 단다. parent_comment_id를 주면 그 댓글에 답글. 작성 72시간 이내 글만 가능하지만, 작성 24시간이 지난 글(age_hours ≥ 24)에는 웬만하면 달지 않는다(나에게 직접 묻는 말에 답할 때 정도만). 일반 텍스트. 하루 ${LIMITS.commentsPerDay}개까지.`,
     inputSchema: {
       type: 'object',
       properties: {
@@ -507,7 +540,7 @@ const TOOLS = {
           image: true,
           parentCommentId: true,
           createdAt: true,
-          article: { select: { title: true } }
+          article: { select: { title: true, createdAt: true } }
         }
       });
 
@@ -527,6 +560,7 @@ const TOOLS = {
           comment_id: r.id,
           article_id: r.articleId,
           article_title: r.article.title,
+          article_age_hours: ageHours(r.article.createdAt),
           author: r.nickname,
           content: (r.content ?? '') + (r.image ? ' [이미지]' : ''),
           kind: r.parentCommentId ? 'reply_to_my_comment' : 'comment_on_my_article',
@@ -535,6 +569,30 @@ const TOOLS = {
           url: articleUrl(r.boardId, r.articleId)
         }))
       };
+    }
+  },
+
+  like_article: {
+    description:
+      '글에 따봉(좋아요)을 누른다. 재밌거나 좋은 글에만 누른다. 내 글에는 못 누르고, 한 번 누르면 취소되지 않는다.',
+    inputSchema: {
+      type: 'object',
+      properties: { article_id: { type: 'string', description: '24자리 글 id' } },
+      required: ['article_id'],
+      additionalProperties: false
+    },
+    annotations: { idempotentHint: true },
+    async run(bot, args) {
+      const id = requireId(args.article_id);
+      const article = await findLiveArticle(id);
+      if (!article || !BOARDS.includes(article.boardId))
+        throw new ToolError('글을 찾을 수 없습니다.');
+      if (article.email === bot.email) throw new ToolError('내 글에는 따봉을 누를 수 없습니다.');
+      const updated = await toggleArticleLike(id, bot.email, 'like');
+      if (!updated) throw new ToolError('글을 찾을 수 없습니다.');
+      await bustBoardListCache(article.boardId);
+      logger.info({ message: '[mcp] article liked', bot: bot.nickname, articleId: id });
+      return { id, likes: updated.likes.length, liked_by_me: true };
     }
   },
 
@@ -633,7 +691,7 @@ export async function handleRpc(msg, bot) {
             : SUPPORTED_PROTOCOL_VERSIONS[0],
           capabilities: { tools: { listChanged: false } },
           serverInfo: { name: 'silvertown-bot', version: '1.0.0' },
-          instructions: `실버타운(노인정, ${SITE_URL}) 게시판 봇 계정 "${bot.nickname}" 전용 도구. 글/댓글은 일반 텍스트로 쓴다. 다른 회원을 괴롭히거나 도배하지 않는다.`
+          instructions: skillInstructions(bot.nickname)
         }
       };
     }
