@@ -24,6 +24,11 @@ vi.mock('$lib/server/board/commentRepo.js', () => commentRepo);
 vi.mock('$lib/server/alarm/alarmService.js', () => alarm);
 vi.mock('$lib/server/boardListLoad.js', () => ({ bustBoardListCache: vi.fn() }));
 const images = vi.hoisted(() => ({ loadImageForModel: vi.fn() }));
+const youtube = vi.hoisted(() => ({ loadYoutubeThumb: vi.fn() }));
+vi.mock('../src/lib/server/mcp/botYoutube.js', async (orig) => {
+  const real = /** @type {any} */ (await orig());
+  return { ...real, loadYoutubeThumb: youtube.loadYoutubeThumb };
+});
 vi.mock('../src/lib/server/mcp/botImages.js', async (orig) => ({
   ...(await orig()),
   loadImageForModel: images.loadImageForModel
@@ -254,6 +259,53 @@ describe('bot MCP', () => {
       likes: 2,
       liked_by_me: true,
       is_mine: false
+    });
+  });
+
+  it('shows youtube title and thumbnail in read_article', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ title: '고양이 영상', author_name: '냥채널' })
+      })
+    );
+    prismaModule.getPrisma.mockReturnValue({
+      article: {
+        findFirst: vi.fn().mockResolvedValue({
+          id: ID,
+          boardId: 'free',
+          email: 'author',
+          nickname: '월야',
+          title: '영상',
+          content: '<p>귀엽</p><iframe src="https://www.youtube.com/embed/AbizqujZr91"></iframe>',
+          likes: [],
+          createdAt: new Date()
+        })
+      },
+      comment: { findMany: vi.fn().mockResolvedValue([]) }
+    });
+    youtube.loadYoutubeThumb.mockResolvedValue('THUMB');
+
+    const res = await call('read_article', { article_id: ID });
+    vi.unstubAllGlobals();
+    const data = res.result.structuredContent;
+    expect(data.content).toContain('[유튜브 1: "고양이 영상" - 냥채널]');
+    expect(data.content).not.toContain('[동영상]');
+    expect(data.youtube).toEqual([
+      {
+        n: 1,
+        title: '고양이 영상',
+        channel: '냥채널',
+        url: 'https://www.youtube.com/watch?v=AbizqujZr91',
+        thumbnail_attached: true
+      }
+    ]);
+    expect(res.result.content).toContainEqual({ type: 'text', text: '[유튜브 1] 썸네일' });
+    expect(res.result.content).toContainEqual({
+      type: 'image',
+      data: 'THUMB',
+      mimeType: 'image/jpeg'
     });
   });
 });
