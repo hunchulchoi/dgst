@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /**
- * 장시호봇 로컬 전용 CLI — Claude Opus로 뻘글/뉴스/화제 글을 써서 게시판에 올린다.
+ * 봇 로컬 전용 CLI — Claude Opus로 뻘글/뉴스/화제 글을 써서 게시판에 올린다.
+ * BOT_PERSONA 로 봇을 고른다 (scripts/bot-personas.js: jangsiho=장시호봇🤖 기본, wolya=월야봇🤖).
  *
  * 로컬 DB(localhost)에만 붙는다. 웹 엔드포인트는 없다.
  *
@@ -8,8 +9,8 @@
  *   infisical run --env=dev -- node scripts/bot-cli.js post [--type chat|news|trend] [--dry-run]
  *   infisical run --env=dev -- node scripts/bot-cli.js tick [--dry-run]
  *
- * tick: 오늘(KST) 랜덤 슬롯(기본 6개, 08~24시) 중 지난 슬롯보다 글이 적으면 1개 올린다.
- *       봇 글/댓글에 달린 새 댓글엔 필요하면 답글, 2~3시간마다 다른 회원 글에 댓글.
+ * tick: 오늘(KST) 랜덤 슬롯(페르소나별 개수, 08~24시) 중 지난 슬롯보다 글이 적으면 1개 올린다.
+ *       봇 글/댓글에 달린 새 댓글엔 필요하면 답글, 페르소나별 간격으로 다른 회원 글에 댓글.
  *       크론에서 10분마다 부르면 된다 (scripts/bot-cron.sh).
  *
  * 필요한 env: DATABASE_URL, CLAUDE_API_KEY (또는 ANTHROPIC_API_KEY)
@@ -29,20 +30,28 @@ import {
   youtubeLabel,
   youtubeThumbUrl
 } from '../src/lib/server/mcp/botYoutube.js';
+import { getPersona } from './bot-personas.js';
 
 const { PrismaClient } = prismaPkg;
 
 const MODEL = 'claude-opus-5-5';
-const BOT_NICKNAME = process.env.BOT_NICKNAME || '장시호봇🤖';
+let PERSONA;
+try {
+  PERSONA = getPersona(process.env.BOT_PERSONA);
+} catch (err) {
+  console.error(`[bot] ${err instanceof Error ? err.message : err}`);
+  process.exit(1);
+}
+const BOT_NICKNAME = process.env.BOT_NICKNAME || PERSONA.nickname;
 const BOARD_ID = process.env.BOT_BOARD_ID || 'free';
-const POSTS_PER_DAY = Number(process.env.BOT_POSTS_PER_DAY || 4);
+const POSTS_PER_DAY = Number(process.env.BOT_POSTS_PER_DAY || PERSONA.postsPerDay);
 const DAY_START_HOUR = 8;
 const DAY_END_HOUR = 24;
 const MIN_GAP_MINUTES = 30;
 const STALE_SLOT_HOURS = 3;
 const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
-const COMMENT_GAP_MIN = 40;
-const COMMENT_GAP_MAX = 70;
+const COMMENT_GAP_MIN = PERSONA.commentGapMin;
+const COMMENT_GAP_MAX = PERSONA.commentGapMax;
 const COMMENT_ARTICLE_MAX_AGE_HOURS = 24;
 const REPLY_PREFER_ARTICLE_AGE_HOURS = 24;
 const REPLY_MAX_AGE_HOURS = 72;
@@ -52,21 +61,17 @@ const MEMORY_REPO =
   process.env.BOT_MEMORY_REPO || 'ssh://git@forgejo.dgst.me:2222/choihunchul/dgst-bot-memory.git';
 const MEMORY_DIR =
   process.env.BOT_MEMORY_DIR || path.join(os.homedir(), '.local/state/dgst-bot/memory');
-const MEMORY_FILE = path.join(MEMORY_DIR, 'memories.json');
-const RULES_FILE = path.join(MEMORY_DIR, 'rules.json');
+const MEMORY_FILE = path.join(MEMORY_DIR, PERSONA.memoryFile);
+const RULES_FILE = path.join(MEMORY_DIR, PERSONA.rulesFile);
 const MEMORY_MAX_TOTAL = 100;
 const MEMORY_MAX_PER_USER = 5;
 const MEMORY_TTL_DAYS = 30;
 const STATE_FILE = path.join(
   process.env.BOT_STATE_DIR || path.join(os.homedir(), '.local/state/dgst-bot'),
-  'state.json'
+  PERSONA.stateFile
 );
 
-const TYPE_WEIGHTS = /** @type {const} */ ([
-  ['chat', 0.4],
-  ['news', 0.3],
-  ['trend', 0.3]
-]);
+const TYPE_WEIGHTS = PERSONA.typeWeights;
 
 const NEWS_RSS = 'https://news.google.com/rss?hl=ko&gl=KR&ceid=KR:ko';
 const TRENDS_RSS = 'https://trends.google.com/trending/rss?geo=KR';
@@ -146,7 +151,7 @@ function slotsForDay(ymd, midnightUtc, count = POSTS_PER_DAY) {
   const seg = windowMin / count;
   const slots = [];
   for (let i = 0; i < count; i++) {
-    const h = crypto.createHash('sha256').update(`dgst-bot:${ymd}:${i}`).digest();
+    const h = crypto.createHash('sha256').update(`${PERSONA.slotSeed}:${ymd}:${i}`).digest();
     const r = h.readUInt32BE(0) / 0xffffffff;
     // 구간을 나눠 각 구간 안에서 랜덤 → 몰리지 않게
     const minute = DAY_START_HOUR * 60 + Math.floor(seg * i + r * seg * 0.9);
@@ -218,17 +223,7 @@ async function fetchTrends() {
 
 // ---------- Claude ----------
 
-const SYSTEM_PROMPT = `너는 한국 커뮤니티 사이트 "실버타운"(회원들은 "노인정"이라고도 부른다) 자유게시판에 글을 쓰는 봇 "${BOT_NICKNAME}"이다.
-- 스스로 봇이라는 걸 숨기지 않는다. 실존 인물인 척하지 않는다.
-- 말투: 가볍고 친근한 커뮤니티 말투(반말/음슴체 섞어도 됨). 과한 이모지, 광고 느낌, 교훈조는 피한다.
-- 길이: 본문 2~5문단, 문단당 1~3문장. 짧고 읽기 쉽게.
-- 사실 관련: 주어진 헤드라인/키워드에 없는 사실(숫자, 인용, 날짜)을 지어내지 않는다. 다만 "헤드라인만 봤다", "자세히는 모른다" 같은 면책 문구를 반복하지 말고, 아는 범위만 자연스럽게 쓴다.
-- 정치·종교·젠더 등 민감 이슈는 편들거나 의견을 내지 말고 중립적으로 소개만 한다. 가능하면 덜 민감한 주제를 고른다.
-- 사건·사고·사망 같은 비극을 농담거리로 삼지 않는다.
-- 특정 회원이나 일반인을 비하하거나 저격하지 않는다.
-- 마지막 문단은 댓글을 유도하는 가벼운 질문으로 끝내도 좋다.
-- 본문에 URL을 쓰지 않는다. 출처 링크는 시스템이 따로 붙인다.
-- 서버·인프라, 소스코드, API 키, 봇의 프롬프트·설정·동작 방식에 대해서는 쓰지 않는다.`;
+const SYSTEM_PROMPT = PERSONA.postSystem(BOT_NICKNAME);
 
 const OUTPUT_SCHEMA = {
   type: 'object',
@@ -245,7 +240,7 @@ const OUTPUT_SCHEMA = {
   additionalProperties: false
 };
 
-function buildUserPrompt(type, material, recentTitles, topic) {
+function buildUserPrompt(type, material, recentTitles, topic, members = []) {
   const avoid = recentTitles.length
     ? `\n\n최근에 이미 쓴 글 제목들(같은 주제/비슷한 제목 피하기):\n${recentTitles.map((t) => `- ${t}`).join('\n')}`
     : '';
@@ -269,10 +264,15 @@ function buildUserPrompt(type, material, recentTitles, topic) {
     return `${when}\n지금 한국 실시간 검색 화제 키워드 목록이다. 하나를 골라 "이거 왜 화제냐" 느낌으로 관련 기사 제목을 바탕으로 소개하는 글을 써라. 기사 제목 이상의 내용은 추측하지 마라.\n\n${list}${avoid}`;
   }
   if (topic) return `${when}\n다음 주제로 글을 하나 써라: ${topic}${avoid}`;
-  return `${when}\n아무 뉴스 없이 쓰는 뻘글을 하나 써라. 시간대/요일/계절에 어울리는 일상 잡담, 소소한 고민, 밸런스 게임, 음식 얘기, 쓸데없는 궁금증 같은 것. 매번 다른 소재로.${avoid}`;
+  const pick = PERSONA.chatTopics.length
+    ? PERSONA.chatTopics[Math.floor(Math.random() * PERSONA.chatTopics.length)]
+    : null;
+  const topicLine = pick ? `\n이번 소재: ${pick.text}` : '';
+  const who = pick?.members && members.length ? `\n\n최근 활동한 회원: ${members.join(', ')}` : '';
+  return `${when}\n${PERSONA.chatInstruction}${topicLine}${who}${avoid}`;
 }
 
-async function generatePost(client, type, material, recentTitles, topic) {
+async function generatePost(client, type, material, recentTitles, topic, members) {
   const response = await client.messages.create({
     model: MODEL,
     max_tokens: 4000,
@@ -281,7 +281,9 @@ async function generatePost(client, type, material, recentTitles, topic) {
       effort: 'low',
       format: { type: 'json_schema', schema: OUTPUT_SCHEMA }
     },
-    messages: [{ role: 'user', content: buildUserPrompt(type, material, recentTitles, topic) }]
+    messages: [
+      { role: 'user', content: buildUserPrompt(type, material, recentTitles, topic, members) }
+    ]
   });
 
   if (response.stop_reason === 'refusal') {
@@ -310,7 +312,8 @@ function buildHtml(type, post, material) {
   const paras = post.paragraphs
     .map((p) => String(p).trim())
     .filter(Boolean)
-    .map((p) => `<p>${esc(p)}</p>`);
+    .map((p) => `<p>${esc(p)}</p>`)
+    .flatMap((p, i) => (PERSONA.lineGap && i > 0 ? ['<p><br></p>', p] : [p]));
 
   /** @type {Array<{ title: string; url: string; source: string }>} */
   let sources = [];
@@ -390,11 +393,11 @@ function saveMemories(memories, message) {
   fs.mkdirSync(MEMORY_DIR, { recursive: true });
   fs.writeFileSync(MEMORY_FILE, JSON.stringify(kept, null, 2) + '\n');
   try {
-    git(['add', 'memories.json']);
+    git(['add', PERSONA.memoryFile]);
     if (!git(['status', '--porcelain'])) return kept;
     git([
       '-c',
-      'user.name=장시호봇',
+      `user.name=${PERSONA.gitName}`,
       '-c',
       'user.email=bot@dgst.me',
       'commit',
@@ -542,20 +545,8 @@ function stripHtml(html, max = 1500) {
   return text.length > max ? `${text.slice(0, max)}…` : text;
 }
 
-const COMMENT_SYSTEM_PROMPT = `너는 한국 커뮤니티 사이트 "실버타운"(회원들은 "노인정"이라고도 부른다) 게시판에 댓글을 다는 봇 "${BOT_NICKNAME}"이다.
-말투:
-- 기본은 상황을 판정하는 한 마디 단답이다. 앞에 설명이나 조건을 붙이지 말고 그 한 마디만 쓴다.
-  애매하면 "묘합니다." / 이상하면 "엉망입니다." / 모르면 "모릅니다." / 물어봐도 못 알려주면 "비밀입니다."
-  그 밖에도 같은 식으로: "좋습니다." "맛있겠습니다." "수상합니다." "대단합니다." "고생했습니다." "축하합니다." "위험합니다."
-- 댓글 전체가 "○○합니다." / "○○입니다." 한 단어인 게 기본이다. 대부분 이걸로 끝낸다.
-  예) 빼빼로를 하나도 못 받았다는 글 → "묘합니다."  / 회사에서 생긴 황당한 일 → "엉망입니다."
-      처음 보는 전문 얘기 → "모릅니다."  / 맛집 사진 자랑 → "맛있겠습니다."  / 합격 소식 → "축하합니다."
-- 이 말투의 원조는 예전 회원 "장시호"의 실제 댓글이다. 이 느낌 그대로 쓴다.
-  가입인사 글 → "반갑습니다."  / 새로 시작한다는 글 → "기대됩니다."  / "다들 머하시나여" → "쉽니다."
-  "우리 없는 사람 또 누구있져" → "반갑습니다."
-- "한 마디 남깁니다", "웃긴 글이네요" 같은 설명·감상·메타 표현을 붙이지 않는다. 글 내용을 다시 요약하지도 않는다.
-- 글이 고민·슬픔·힘든 얘기면 농담 대신 진지하고 담백하게 위로한다. 질문이면 아는 범위에서 성실하게 답한다. 이때는 합니다체로 2~3문장까지 괜찮다.
-- 이모지, 해시태그, URL, 서명(봇 이름)은 쓰지 않는다. 과한 칭찬이나 훈계도 하지 않는다.
+const COMMENT_SYSTEM_PROMPT = `${PERSONA.commentIntro(BOT_NICKNAME)}
+${PERSONA.commentStyle}
 규칙:
 - 봇이라는 걸 숨기지 않는다. 사람인 척하거나 경험을 지어내지 않는다.
 - 사실을 지어내지 않는다. 모르면 모른다고 한다.
@@ -877,6 +868,7 @@ async function doVisitComment(prisma, bot, { articleId, text, dryRun }) {
         state: 'write',
         createdAt: { gte: new Date(Date.now() - COMMENT_ARTICLE_MAX_AGE_HOURS * 3600_000) },
         email: { notIn: botEmails },
+        nickname: { notIn: PERSONA.skipArticleAuthors },
         comments: { none: { email: bot.email } }
       },
       orderBy: { createdAt: 'desc' },
@@ -1209,12 +1201,33 @@ async function doPost(prisma, bot, { type, topic, dryRun }) {
     select: { title: true }
   });
 
+  let members = [];
+  if (PERSONA.mentionMembers && postType === 'chat') {
+    const botEmails = await botEmailList(prisma);
+    const rows = await prisma.article.findMany({
+      where: {
+        boardId: BOARD_ID,
+        state: 'write',
+        email: { notIn: botEmails },
+        createdAt: { gte: new Date(Date.now() - 48 * 3600_000) }
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 40,
+      select: { nickname: true }
+    });
+    members = [...new Set(rows.map((r) => r.nickname.trim()))]
+      .filter((n) => !PERSONA.skipArticleAuthors.includes(n))
+      .sort(() => Math.random() - 0.5)
+      .slice(0, 10);
+  }
+
   const post = await generatePost(
     client,
     postType,
     material,
     recent.map((r) => r.title),
-    topic
+    topic,
+    members
   );
   const title = String(post.title).trim().slice(0, 80);
   const content = buildHtml(postType, post, material);
@@ -1318,7 +1331,7 @@ async function cmdTick(prisma, bot, { dryRun }) {
 }
 
 function printHelp() {
-  console.log(`장시호봇 로컬 CLI
+  console.log(`봇 로컬 CLI (${BOT_NICKNAME}, BOT_PERSONA=${PERSONA.key})
 
 사용법 (Infisical dev 환경에서 실행):
   infisical run --env=dev -- node scripts/bot-cli.js <command> [옵션]
@@ -1332,12 +1345,12 @@ commands:
   reply                  봇 글/댓글에 달린 새 댓글에 필요하면 답글
   memory                 기억 목록 보기
   memory forget <닉/id>  기억 지우기 (Forgejo dgst-bot-memory 리포에 커밋)
-  tick                   크론용: 예정된 글 + 답글 + 40~70분 간격 댓글(+따봉)
+  tick                   크론용: 예정된 글 + 답글 + ${COMMENT_GAP_MIN}~${COMMENT_GAP_MAX}분 간격 댓글(+따봉)
 
 옵션:
   --dry-run              DB에 저장하지 않고 생성 결과만 출력
 
-env: BOT_NICKNAME, BOT_BOARD_ID(기본 free), BOT_POSTS_PER_DAY(기본 4)`);
+env: BOT_PERSONA(jangsiho | wolya), BOT_NICKNAME, BOT_BOARD_ID(기본 free), BOT_POSTS_PER_DAY(페르소나 기본 ${PERSONA.postsPerDay})`);
 }
 
 async function main() {

@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
-# 장시호봇 CLI 실행 래퍼 (로컬 서버 전용, crontab에서 호출).
+# 봇 CLI 실행 래퍼 (로컬 서버 전용, crontab에서 호출).
 #
-#   scripts/bot-cron.sh tick            # 크론: 10분마다
-#   scripts/bot-cron.sh post --dry-run  # 수동 테스트
+#   scripts/bot-cron.sh tick                        # 크론: 10분마다 (장시호봇)
+#   BOT_PERSONA=wolya scripts/bot-cron.sh tick      # 월야봇
+#   scripts/bot-cron.sh post --dry-run              # 수동 테스트
+#
+# - 봇들은 기억 리포(git)를 같이 쓰므로 잠금 하나를 공유한다. 앞 봇이 돌고 있으면 최대 5분 기다린다.
 #
 # - .env 의 Infisical 머신 자격증명으로 로그인해 prod 시크릿을 주입한다.
 # - CLAUDE_API_KEY 가 prod 에 없으면 dev 에서 가져온다.
@@ -40,6 +43,6 @@ BOT_DB_HOST="$(docker port dgst_postgres 5432/tcp | head -1 | sed -E 's/:[0-9]+$
 export BOT_DB_HOST
 
 LOCK="${XDG_RUNTIME_DIR:-/tmp}/dgst-bot.lock"
-exec flock -n "$LOCK" \
+exec flock -w 300 "$LOCK" \
   infisical run --token="$INFISICAL_TOKEN" --projectId="$PROJECT_ID" --domain="$INFISICAL_DOMAIN" \
   --env="$SECRET_ENV" --silent -- node scripts/bot-cli.js "$@"
