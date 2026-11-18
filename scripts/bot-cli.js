@@ -192,8 +192,12 @@ async function fetchText(url) {
 }
 
 /** @returns {Promise<Array<{ title: string; url: string; source: string }>>} */
-async function fetchNews() {
-  const xml = await fetchText(NEWS_RSS);
+/** @param {string} query 구글 뉴스 검색어 (예: "제주 when:2d") */
+const newsSearchUrl = (query) =>
+  `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=ko&gl=KR&ceid=KR:ko`;
+
+async function fetchNews(url = NEWS_RSS) {
+  const xml = await fetchText(url);
   const items = [...xml.matchAll(/<item>([\s\S]*?)<\/item>/g)].map((m) => {
     const b = m[1];
     const source = tag(b, 'source');
@@ -247,6 +251,11 @@ function buildUserPrompt(type, material, recentTitles, topic, members = []) {
   const kstNow = new Date(Date.now() + KST_OFFSET_MS);
   const when = `지금은 한국시간 ${kstNow.toISOString().slice(0, 10)} ${fmtKst(new Date())} (${['일', '월', '화', '수', '목', '금', '토'][kstNow.getUTCDay()]}요일)이다.`;
 
+  const feed = PERSONA.feeds?.[type];
+  if (feed) {
+    const list = material.map((n, i) => `[${i}] ${n.title} (${n.source})`).join('\n');
+    return `${when}\n${feed.instruction} 헤드라인 이상의 내용은 추측하지 마라.\n\n${list}${avoid}`;
+  }
   if (type === 'news') {
     const list = material.map((n, i) => `[${i}] ${n.title} (${n.source})`).join('\n');
     return `${when}\n오늘 주요 뉴스 헤드라인 목록이다. 이 중 커뮤니티에서 얘기하기 좋은 것 1~2개를 골라, 무슨 뉴스인지 짧게 소개하고 가벼운 감상을 붙인 글을 써라. 헤드라인 이상의 내용은 추측하지 마라.\n\n${list}${avoid}`;
@@ -320,7 +329,7 @@ function buildHtml(type, post, material) {
   const idx = (post.used_indexes || []).filter(
     (i) => Number.isInteger(i) && i >= 0 && i < material.length
   );
-  if (type === 'news') sources = idx.map((i) => material[i]);
+  if (type === 'news' || PERSONA.feeds?.[type]) sources = idx.map((i) => material[i]);
   if (type === 'trend') sources = idx.flatMap((i) => material[i].news.slice(0, 2));
   sources = sources.filter((s) => s?.url && /^https?:\/\//.test(s.url)).slice(0, 3);
 
@@ -1186,6 +1195,8 @@ async function doPost(prisma, bot, { type, topic, dryRun }) {
   let material = [];
   try {
     if (postType === 'news') material = await fetchNews();
+    if (PERSONA.feeds?.[postType])
+      material = await fetchNews(newsSearchUrl(PERSONA.feeds[postType].query));
     if (postType === 'trend') material = await fetchTrends();
     if (postType !== 'chat' && material.length === 0) throw new Error('empty feed');
   } catch (err) {
@@ -1364,7 +1375,8 @@ async function main() {
     process.exit(command === 'help' || command === '--help' ? 0 : 1);
   }
   const type = typeof flags.type === 'string' ? flags.type : undefined;
-  if (type && !['chat', 'news', 'trend'].includes(type)) fail(`알 수 없는 --type: ${type}`);
+  const types = ['chat', 'news', 'trend', ...Object.keys(PERSONA.feeds ?? {})];
+  if (type && !types.includes(type)) fail(`알 수 없는 --type: ${type} (${types.join(', ')})`);
   const dryRun = Boolean(flags['dry-run']);
 
   const databaseUrl = resolveLocalDatabaseUrl();
