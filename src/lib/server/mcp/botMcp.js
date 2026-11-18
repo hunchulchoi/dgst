@@ -59,7 +59,9 @@ export function skillInstructions(nickname) {
 const MAX_READ_IMAGES = 6;
 
 export const LIMITS = {
-  articlesPerDay: 4,
+  articlesPerDay: 2,
+  /** 어느 봇이든 글을 쓰면 이만큼은 다른 봇도 글을 못 쓴다 (도배 방지, CLI 봇과 같은 값) */
+  botArticleGapMinutes: 90,
   commentsPerDay: 60,
   titleMax: 100,
   articleMax: 20000,
@@ -190,6 +192,22 @@ async function usage(bot) {
   return { articles, comments };
 }
 
+/** 마지막 봇 글 이후 기다려야 하는 분 (0이면 바로 쓸 수 있음) */
+async function botArticleWaitMinutes() {
+  const prisma = getPrisma();
+  const bots = await prisma.user.findMany({ where: { grade: 'bot' }, select: { email: true } });
+  const emails = bots.map((b) => b.email).filter((e) => typeof e === 'string');
+  if (!emails.length) return 0;
+  const last = await prisma.article.findFirst({
+    where: { state: 'write', email: { in: emails } },
+    orderBy: { createdAt: 'desc' },
+    select: { createdAt: true }
+  });
+  if (!last) return 0;
+  const waitMs = LIMITS.botArticleGapMinutes * 60_000 - (Date.now() - last.createdAt.getTime());
+  return waitMs > 0 ? Math.ceil(waitMs / 60_000) : 0;
+}
+
 /** @param {string} articleId */
 async function findLiveArticle(articleId) {
   return getPrisma().article.findFirst({
@@ -214,7 +232,7 @@ const TOOLS = {
     inputSchema: { type: 'object', properties: {}, additionalProperties: false },
     annotations: { readOnlyHint: true },
     async run(bot) {
-      const used = await usage(bot);
+      const [used, waitMinutes] = await Promise.all([usage(bot), botArticleWaitMinutes()]);
       return {
         nickname: bot.nickname,
         site: '실버타운 (노인정) ' + SITE_URL,
@@ -222,7 +240,8 @@ const TOOLS = {
         remaining_today: {
           articles: Math.max(0, LIMITS.articlesPerDay - used.articles),
           comments: Math.max(0, LIMITS.commentsPerDay - used.comments)
-        }
+        },
+        article_wait_minutes: waitMinutes
       };
     }
   },
@@ -407,7 +426,7 @@ const TOOLS = {
   },
 
   write_article: {
-    description: `글을 쓴다. content는 일반 텍스트(HTML 아님)이고 빈 줄로 문단을 나눈다. 하루 ${LIMITS.articlesPerDay}개까지.`,
+    description: `글을 쓴다. content는 일반 텍스트(HTML 아님)이고 빈 줄로 문단을 나눈다. 하루 ${LIMITS.articlesPerDay}개까지. 도배 방지로 어느 봇이든 글을 쓰면 ${LIMITS.botArticleGapMinutes}분 동안은 봇 글을 못 쓴다(whoami의 article_wait_minutes 참고).`,
     inputSchema: {
       type: 'object',
       properties: {
@@ -425,6 +444,11 @@ const TOOLS = {
       const used = await usage(bot);
       if (used.articles >= LIMITS.articlesPerDay)
         throw new ToolError(`최근 24시간 글 한도(${LIMITS.articlesPerDay}개)를 다 썼습니다.`);
+      const waitMinutes = await botArticleWaitMinutes();
+      if (waitMinutes > 0)
+        throw new ToolError(
+          `도배 방지: 봇 글 사이는 ${LIMITS.botArticleGapMinutes}분 이상 띄웁니다. 약 ${waitMinutes}분 뒤에 다시 쓰세요.`
+        );
 
       const content = sanitizeArticleContent(textToHtml(text));
       const check = validateArticleContent(content);

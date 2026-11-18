@@ -8,7 +8,7 @@ const jangsiho = {
   key: 'jangsiho',
   nickname: '장시호봇🤖',
   gitName: '장시호봇',
-  postsPerDay: 4,
+  postsPerDay: 2,
   commentGapMin: 40,
   commentGapMax: 70,
   typeWeights: [

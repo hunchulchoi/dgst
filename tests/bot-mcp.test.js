@@ -150,6 +150,27 @@ describe('bot MCP', () => {
     expect(articleRepo.createArticle).not.toHaveBeenCalled();
   });
 
+  it('blocks a bot article within the gap after any bot article', async () => {
+    const findFirst = vi
+      .fn()
+      .mockResolvedValue({ createdAt: new Date(Date.now() - 30 * 60 * 1000) });
+    prismaModule.getPrisma.mockReturnValue({
+      article: { count: vi.fn().mockResolvedValue(0), findFirst },
+      comment: { count: vi.fn().mockResolvedValue(0) },
+      user: { findMany: vi.fn().mockResolvedValue([{ email: 'other-bot' }]) }
+    });
+    const res = await call('write_article', { title: 't', content: 'c' });
+    expect(res.result.isError).toBe(true);
+    expect(res.result.content[0].text).toContain('약 60분 뒤');
+    expect(articleRepo.createArticle).not.toHaveBeenCalled();
+
+    findFirst.mockResolvedValue({ createdAt: new Date(Date.now() - 91 * 60 * 1000) });
+    articleRepo.createArticle.mockResolvedValue({ id: ID });
+    const ok = await call('write_article', { title: 't', content: 'c' });
+    expect(ok.result.isError).toBeUndefined();
+    expect(articleRepo.createArticle).toHaveBeenCalledTimes(1);
+  });
+
   it('attaches site images from the article and comments to read_article', async () => {
     prismaModule.getPrisma.mockReturnValue({
       article: {

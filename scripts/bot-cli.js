@@ -48,6 +48,8 @@ const POSTS_PER_DAY = Number(process.env.BOT_POSTS_PER_DAY || PERSONA.postsPerDa
 const DAY_START_HOUR = 8;
 const DAY_END_HOUR = 24;
 const MIN_GAP_MINUTES = 30;
+/** 어느 봇이든 글을 쓰면 이만큼은 다른 봇도 글을 안 쓴다 (도배 방지, MCP 봇과 같은 값) */
+const BOT_POST_GAP_MINUTES = 90;
 const STALE_SLOT_HOURS = 3;
 const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
 const COMMENT_GAP_MIN = PERSONA.commentGapMin;
@@ -1317,6 +1319,18 @@ async function postTick(prisma, bot, { dryRun }) {
   }
   if (lastAt && now - lastAt.getTime() < MIN_GAP_MINUTES * 60_000) {
     log('skip: 직전 글과 간격이 너무 짧음', { lastAt: lastAt.toISOString() });
+    return;
+  }
+  const lastBotPost = await prisma.article.findFirst({
+    where: { state: 'write', email: { in: await botEmailList(prisma) } },
+    orderBy: { createdAt: 'desc' },
+    select: { nickname: true, createdAt: true }
+  });
+  if (lastBotPost && now - lastBotPost.createdAt.getTime() < BOT_POST_GAP_MINUTES * 60_000) {
+    log('skip: 다른 봇 글과 간격이 너무 짧음', {
+      bot: lastBotPost.nickname,
+      at: fmtKst(lastBotPost.createdAt)
+    });
     return;
   }
   await doPost(prisma, bot, { dryRun });
