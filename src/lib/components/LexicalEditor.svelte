@@ -809,7 +809,10 @@
   function insertHtmlBlock(html) {
     if (!editor) return;
     editor.update(() => {
-      insertNodes([createHtmlBlockNode(html), createParagraphNode()]);
+      insertNodes([
+        createHtmlBlockNode(html.replace(/>\s+</g, '><').trim()),
+        createParagraphNode()
+      ]);
     });
   }
 
@@ -2601,6 +2604,7 @@
 
   .lexical-editor__content :global([data-lexical-html-block='true']) {
     position: relative;
+    white-space: normal;
   }
 
   .lexical-editor__content :global(.lexical-html-block__delete) {
