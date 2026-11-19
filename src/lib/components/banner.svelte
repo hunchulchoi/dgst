@@ -3,7 +3,7 @@
   import { Confetti } from 'svelte-confetti';
   import ccd from '$lib/shared/stores/ccd.js';
 
-  const header_ = '진급 축하';
+  const header_ = '수능 대박 기원';
 </script>
 
 <Offcanvas
@@ -16,8 +16,8 @@
   placement="top"
 >
   <div class="neon">
-    🌸<span class="text-danger">경)</span> 진천의 2번 아들 <strong>8급 진급</strong>🎊🎉
-    <span class="text-danger">(축</span>🌸
+    📚 용인의 둘째아들 <strong>수능 대박</strong>🎊🎉
+    <div class="from">- 실버타운 노인일동 -</div>
   </div>
   <div
     style="
@@ -54,6 +54,11 @@
 
   strong {
     color: #dc3545;
+  }
+
+  .from {
+    font-size: 0.6em;
+    margin-top: 0.3rem;
   }
 
   @keyframes neon-flicker {
