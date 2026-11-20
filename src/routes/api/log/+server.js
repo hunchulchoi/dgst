@@ -207,12 +207,23 @@ export async function POST(event) {
         ? logData.level
         : 'warn';
     const performanceDetails = _sanitizeClientPerformanceDetails(logData.performanceDetails);
+    /** @type {string | undefined} */
+    let nickname;
+    if (logLevel !== 'info') {
+      try {
+        const session = await event.locals.auth();
+        if (typeof session?.user?.nickname === 'string') nickname = session.user.nickname;
+      } catch {
+        /* 로그는 사용자 확인 없이도 남긴다 */
+      }
+    }
     const logMessage = {
       message:
         typeof logData.message === 'string' ? logData.message.slice(0, 1000) : 'Client error',
       event: 'client.log',
       source: 'browser',
       timestamp: new Date().toISOString(),
+      ...(nickname && { nickname: nickname.slice(0, 64) }),
       ...(request.headers.get('cf-ray') && { cfRay: request.headers.get('cf-ray')?.slice(0, 64) }),
       ...(typeof logData.type === 'string' && { type: logData.type.slice(0, 32) }),
       ...(typeof logData.pathname === 'string' && { pathname: logData.pathname.slice(0, 256) }),

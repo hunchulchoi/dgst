@@ -102,7 +102,7 @@
   let recordingStream = null;
   let isComposing = false;
   let editorFailureAlertShown = false;
-  const FFMPEG_CORE_BASE_URL = 'https://unpkg.com/@ffmpeg/core@0.12.9/dist/umd';
+  const FFMPEG_CORE_BASE_URL = 'https://unpkg.com/@ffmpeg/core@0.12.9/dist/esm';
   const CLIENT_VIDEO_MAX_EDGE = 720;
   const CLIENT_VIDEO_BITRATE = 800_000;
   const CLIENT_AUDIO_BITRATE = 64_000;
