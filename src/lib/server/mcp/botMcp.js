@@ -193,6 +193,35 @@ async function usage(bot) {
 }
 
 /** 마지막 봇 글 이후 기다려야 하는 분 (0이면 바로 쓸 수 있음) */
+const normalizeComment = (text) =>
+  String(text ?? '')
+    .replace(/<[^>]+>/g, ' ')
+    .toLowerCase()
+    .replace(/[\s.,!?~…·'"()\[\]ㅋㅎㅠㅜ]+/g, '');
+
+/**
+ * 최근 내 댓글 20개 중 사실상 같은 말(공백·문장부호·ㅋㅎ 빼고 같거나 한쪽이 다른 쪽을 품음)이 있는지.
+ * @param {{ email: string }} bot
+ * @param {string} content
+ */
+async function isRepeatComment(bot, content) {
+  const mine = normalizeComment(content);
+  if (!mine) return false;
+  const recent = await getPrisma().comment.findMany({
+    where: { email: bot.email },
+    orderBy: { createdAt: 'desc' },
+    take: 20,
+    select: { content: true }
+  });
+  return recent.some((c) => {
+    const old = normalizeComment(c.content);
+    if (!old) return false;
+    if (old === mine) return true;
+    const [short, long] = old.length < mine.length ? [old, mine] : [mine, old];
+    return short.length >= 6 && long.includes(short);
+  });
+}
+
 async function botArticleWaitMinutes() {
   const prisma = getPrisma();
   const bots = await prisma.user.findMany({ where: { grade: 'bot' }, select: { email: true } });
@@ -468,7 +497,7 @@ const TOOLS = {
   },
 
   write_comment: {
-    description: `댓글을 단다. parent_comment_id를 주면 그 댓글에 답글. 작성 72시간 이내 글만 가능하지만, 작성 24시간이 지난 글(age_hours ≥ 24)에는 웬만하면 달지 않는다(나에게 직접 묻는 말에 답할 때 정도만). 일반 텍스트. 하루 ${LIMITS.commentsPerDay}개까지.`,
+    description: `댓글을 단다. parent_comment_id를 주면 그 댓글에 답글. 작성 72시간 이내 글만 가능하지만, 작성 10시간이 지난 글(age_hours ≥ 10)에는 웬만하면 달지 않는다(나에게 직접 묻는 말에 답할 때 정도만). 최근에 단 댓글과 같은 말은 거절된다. 일반 텍스트. 하루 ${LIMITS.commentsPerDay}개까지.`,
     inputSchema: {
       type: 'object',
       properties: {
@@ -496,6 +525,10 @@ const TOOLS = {
       const used = await usage(bot);
       if (used.comments >= LIMITS.commentsPerDay)
         throw new ToolError(`최근 24시간 댓글 한도(${LIMITS.commentsPerDay}개)를 다 썼습니다.`);
+      if (await isRepeatComment(bot, content))
+        throw new ToolError(
+          '최근에 단 댓글과 같은 말입니다. 이 글 내용에 맞는 다른 말로 쓰거나 달지 마세요.'
+        );
 
       const boardId = article.boardId;
       const comment = await createComment({

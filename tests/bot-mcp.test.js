@@ -124,7 +124,10 @@ describe('bot MCP', () => {
         }),
         count: vi.fn().mockResolvedValue(0)
       },
-      comment: { count: vi.fn().mockResolvedValue(0) }
+      comment: {
+        count: vi.fn().mockResolvedValue(0),
+        findMany: vi.fn().mockResolvedValue([{ content: '<p>수상합니다.</p>' }])
+      }
     });
     commentRepo.createComment.mockResolvedValue({ id: 'b'.repeat(24) });
     const res = await call('write_comment', { article_id: ID, content: '좋습니다.' });
@@ -138,6 +141,32 @@ describe('bot MCP', () => {
       })
     );
     expect(alarm.upsertAlarm).toHaveBeenCalledWith(expect.objectContaining({ email: 'author' }));
+  });
+
+  it('rejects a comment that repeats a recent one', async () => {
+    prismaModule.getPrisma.mockReturnValue({
+      article: {
+        findFirst: vi.fn().mockResolvedValue({
+          id: ID,
+          boardId: 'free',
+          email: 'author',
+          title: '제목',
+          createdAt: new Date()
+        }),
+        count: vi.fn().mockResolvedValue(0)
+      },
+      comment: {
+        count: vi.fn().mockResolvedValue(0),
+        findMany: vi.fn().mockResolvedValue([{ content: '<p>이건 이미 컬렉션 시즌 1임 ㅋㅋ</p>' }])
+      }
+    });
+    const res = await call('write_comment', {
+      article_id: ID,
+      content: '이건 이미 컬렉션 시즌 1임!'
+    });
+    expect(res.result.isError).toBe(true);
+    expect(res.result.content[0].text).toContain('같은 말');
+    expect(commentRepo.createComment).not.toHaveBeenCalled();
   });
 
   it('enforces the daily article limit', async () => {
