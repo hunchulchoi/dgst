@@ -939,6 +939,7 @@
   function getReportFrames(replay: ShotReplay) {
     const maxFrames = 80;
     if (replay.frames.length <= maxFrames) return replay.frames;
+
     return Array.from(
       { length: maxFrames },
       (_, index) =>
@@ -994,7 +995,7 @@
         throw new Error(result?.message || 'share failed');
       }
       shareOpen = false;
-      await goto(resolve(`/board/${result.boardId}/${result.articleId}`));
+      await goto(resolve(`board/${result.boardId}/${result.articleId}`));
     } catch {
       reportMessage = '게시판 공유 실패. 다시 눌러주세요.';
     } finally {
@@ -1456,10 +1457,7 @@
       }
     }
     for (let index = 0; index < 18; index += 1) {
-      candidates.push({
-        angle: (index / 18) * Math.PI * 2,
-        power: 55 + (index % 3) * 15
-      });
+      candidates.push({ angle: (index / 18) * Math.PI * 2, power: 55 + (index % 3) * 15 });
     }
 
     const selectedCandidates =
@@ -1469,6 +1467,7 @@
             { length: candidateBudget },
             (_, index) => candidates[Math.floor((index * candidates.length) / candidateBudget)]
           );
+
     let best: NpcShotPlan = {
       angle: selectedCandidates[0].angle,
       power: selectedCandidates[0].power,

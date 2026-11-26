@@ -1424,6 +1424,7 @@
         const seqLabel = vaultSequence
           .map((n, i) => (i < vaultSequenceIndex ? `✓${n}` : String(n)))
           .join('→');
+
         ctx.fillText(`순서 ${seqLabel} · ${timeLeft}s`, CANVAS_WIDTH / 2, 46);
       }
       ctx.fillStyle = '#c8e6c9';
@@ -2183,7 +2184,8 @@
         <div class="card shadow rounded-4 mt-3 mt-md-0">
           <div class="card-body p-3 text-center">
             <p class="text-muted small mb-2">랭킹에 기록하려면 로그인이 필요합니다.</p>
-            <a href={resolve('/login')} class="btn btn-sm btn-outline-primary">로그인</a>
+
+            <a href={resolve('login')} class="btn btn-sm btn-outline-primary">로그인</a>
           </div>
         </div>
       {/if}

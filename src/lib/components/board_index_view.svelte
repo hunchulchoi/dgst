@@ -45,7 +45,7 @@
   });
 
   function write() {
-    goto(resolve(`/board/${boardId}/write`));
+    goto(resolve(`board/${boardId}/write`));
   }
 </script>
 

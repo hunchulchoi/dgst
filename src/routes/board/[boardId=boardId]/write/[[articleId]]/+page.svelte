@@ -420,10 +420,12 @@
         // 타이핑이 아닌 한 번에 5글자 이상 들어온 경우(붙여넣기) 또는 명시적 붙여넣기 이벤트인 경우
         if (
           diff > 5 ||
-          /** @type {InputEvent} */ (/** @type {unknown} */ (event)).inputType ===
-            'insertFromPaste' ||
-          /** @type {InputEvent} */ (/** @type {unknown} */ (event)).inputType ===
-            'insertReplacementText'
+          /** @type {InputEvent} */ (
+            /** @type {unknown} */ (event).inputType === 'insertFromPaste'
+          ) ||
+          /** @type {InputEvent} */ (
+            /** @type {unknown} */ (event).inputType === 'insertReplacementText'
+          )
         ) {
           insertUrlFromTitle = trimmed;
           setTimeout(() => {
@@ -447,7 +449,7 @@
       method="POST"
       use:enhance={({ formElement, formData, action, cancel, submitter }) => {
         /* 취소 등 type="button"만 클릭한 경우 — Enter 제출(submitter null)은 허용 */
-        if (submitter && /** @type {HTMLButtonElement} */ (submitter).type !== 'submit') {
+        if (submitter && /** @type {HTMLButtonElement} */ (submitter.type !== 'submit')) {
           return cancel();
         }
 
@@ -552,7 +554,7 @@
 
               const savedArticleId = actionData.articleId || articleId;
               if (savedArticleId) {
-                await goto(resolve(`/board/${boardId}/${savedArticleId}`));
+                await goto(resolve(`board/${boardId}/${savedArticleId}`));
               } else {
                 await list();
               }

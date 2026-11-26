@@ -21,7 +21,8 @@
         />
         <span class="!text-sm">© 2023</span>
         <span aria-hidden="true">·</span>
-        <a class="!text-sm text-muted" href={resolve('/privacy')}>개인정보처리방침</a>
+
+        <a class="!text-sm text-muted" href={resolve('privacy')}>개인정보처리방침</a>
       </div>
     </Col>
   </Row>

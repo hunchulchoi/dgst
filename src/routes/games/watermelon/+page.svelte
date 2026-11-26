@@ -71,7 +71,7 @@
     const fruit = FRUITS[index];
     const body = Bodies.circle(x, y, fruit.radius, {
       label: `fruit_${index}`,
-      isStatic: isStatic,
+      isStatic,
       restitution: 0.2, // Bouncy
       render: {
         fillStyle: fruit.color
@@ -95,7 +95,7 @@
 
     render = Render.create({
       canvas: canvasEl,
-      engine: engine,
+      engine,
       options: {
         width: GAME_WIDTH,
         height: GAME_HEIGHT,
@@ -115,6 +115,7 @@
       WALL_THICKNESS,
       { isStatic: true, render: { fillStyle: '#bbada0' } }
     );
+
     const leftWall = Bodies.rectangle(
       0 - WALL_THICKNESS / 2,
       GAME_HEIGHT / 2,
@@ -129,8 +130,8 @@
       GAME_HEIGHT * 2,
       { isStatic: true, render: { fillStyle: '#bbada0' } }
     );
-    // Top "Game Over" Line Sensor (optional, or check y position in loop)
 
+    // Top "Game Over" Line Sensor (optional, or check y position in loop)
     Composite.add(world, [ground, leftWall, rightWall]);
 
     // 3. Collision Logic (Merge)
@@ -536,6 +537,7 @@
       WALL_THICKNESS,
       { isStatic: true, render: { fillStyle: '#bbada0' } }
     );
+
     const leftWall = Bodies.rectangle(
       0 - WALL_THICKNESS / 2,
       GAME_HEIGHT / 2,
@@ -550,8 +552,8 @@
       GAME_HEIGHT * 2,
       { isStatic: true, render: { fillStyle: '#bbada0' } }
     );
-    Composite.add(engine.world, [ground, leftWall, rightWall]);
 
+    Composite.add(engine.world, [ground, leftWall, rightWall]);
     score = 0;
     gameOver = false;
     hasReached2048 = false;
@@ -644,7 +646,8 @@
           >
             <h3 class="fw-bold mb-3">로그인 후 이용 가능합니다</h3>
             <p class="mb-4">점수를 기록하고 랭킹에 도전해보세요!</p>
-            <a href={resolve('/login')} class="btn btn-primary btn-lg px-5 shadow-sm">로그인하기</a>
+
+            <a href={resolve('login')} class="btn btn-primary btn-lg px-5 shadow-sm">로그인하기</a>
           </div>
         {:else if !gameStarted}
           <div
@@ -657,12 +660,13 @@
               <p class="mb-2">
                 🖱️ <strong>조작</strong>: 마우스 이동/클릭 또는 방향키를 사용하세요.
               </p>
+
               <p class="mb-2">
-                💾 <strong>저장</strong>: 10초간 조작이 없거나 창을 닫으면 자동 저장됩니다.
+                💾
+                <strong>저장</strong>: 10초간 조작이 없거나 창을 닫으면 자동 저장됩니다.
               </p>
-              <p class="mb-0">
-                🚫 <strong>종료</strong>: 과일이 빨간 점선 위로 쌓이면 게임 오버!
-              </p>
+
+              <p class="mb-0">🚫 <strong>종료</strong>: 과일이 빨간 점선 위로 쌓이면 게임 오버!</p>
             </div>
             <button class="btn btn-success btn-lg px-5 shadow-sm fw-bold" onclick={startGame}>
               게임 시작!
@@ -706,7 +710,7 @@
                 🔄
               </button>
             {:else}
-              <a href={resolve('/login')} class="btn btn-sm btn-outline-primary">로그인</a>
+              <a href={resolve('login')} class="btn btn-sm btn-outline-primary">로그인</a>
             {/if}
           </div>
           <div class="mb-3">

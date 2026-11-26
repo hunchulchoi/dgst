@@ -132,7 +132,7 @@
       <Col lg="7" md="5" xs="12" class="text-break link-opacity-hover-50 pb-1 position-relative">
         <a
           data-sveltekit-preload-data="tap"
-          href={resolve(`/board/${boardId}/${currentPageNo}/${article._id}`)}
+          href={resolve(`board/${boardId}/${currentPageNo}/${article._id}`)}
           class="board-list-link link-underline link-underline-opacity-0 link-offset-2 link-underline-opacity-50-hover stretched-link"
         >
           {#if article.hasBilliardsReplay || article.title?.startsWith('[당구 리플레이]')}
@@ -197,11 +197,9 @@
         md="2"
         xs="4"
         class="!text-[1.05rem] !leading-[1.35] max-md:pt-1 text-muted text-end"
-        >{formatRelativeTime(article.createdAt, {
-          locale: ko,
-          addSuffix: true
-        })}</Col
       >
+        {formatRelativeTime(article.createdAt, { locale: ko, addSuffix: true })}
+      </Col>
     </Row>
   {/each}
 {/if}
@@ -223,6 +221,7 @@
         >
         {#each Array(data.endNo - data.startNo + 1) as _, i (i + data.startNo)}
           {@const targetPage = i + data.startNo}
+
           <PaginationItem active={(!data.pageNo && targetPage === 1) || targetPage == data.pageNo}>
             <PaginationLink
               href={boardListPath(boardId, targetPage)}

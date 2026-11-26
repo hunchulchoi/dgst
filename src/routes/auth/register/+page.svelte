@@ -296,7 +296,8 @@
     </CardBody>
     <CardFooter class="mb-3">
       <strong>
-        계정 및 프로필 정보는 <a href={resolve('/privacy')}>개인정보처리방침</a>에 따라 처리됩니다.
+        계정 및 프로필 정보는
+        <a href={resolve('privacy')}>개인정보처리방침</a>에 따라 처리됩니다.
       </strong>
       <div class="turnstile-notice text-muted mt-2">
         이 페이지는 Cloudflare Turnstile로 보호되며 Cloudflare

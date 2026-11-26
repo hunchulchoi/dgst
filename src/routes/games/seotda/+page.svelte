@@ -142,6 +142,7 @@
       photo?: string | null;
     }>
   >(initialData.rank ?? []);
+
   let todayStats = $state<{ hands: number; users: number }>(
     initialData.todayStats ?? { hands: 0, users: 0 }
   );
@@ -590,6 +591,7 @@
       (peelMode === 'boss-last' && bossUserLastCardRevealed)
     )
       return;
+
     peelDragging = true;
     peelStartY = clientY - peelPull * PEEL_MAX_PX;
   }
@@ -604,6 +606,7 @@
       (peelMode === 'boss-last' && bossUserLastCardRevealed)
     )
       return;
+
     const dy = Math.max(0, clientY - peelStartY);
     peelPull = Math.min(1, dy / PEEL_MAX_PX);
   }
@@ -866,7 +869,7 @@
         throw new Error(result?.message || '게시판 공유 실패');
       }
       shareOpen = false;
-      await goto(resolve(`/board/${result.boardId}/${result.articleId}`));
+      await goto(resolve(`board/${result.boardId}/${result.articleId}`));
     } catch (err) {
       message = err instanceof Error ? err.message : '게시판 공유 실패';
     } finally {
@@ -928,10 +931,9 @@
               type="button"
               class="btn btn-sm btn-outline-secondary"
               aria-expanded={guideOpen}
-              onclick={() => (guideOpen = !guideOpen)}
+              onclick={() => (guideOpen = !guideOpen)}>족보 보기 {guideOpen ? '▲' : '▼'}</button
             >
-              족보 보기 {guideOpen ? '▲' : '▼'}
-            </button>
+
             {#if guideOpen}
               <div class="guide-panel mt-2 rounded-3 border p-3">
                 <div class="small text-muted mb-2">
@@ -999,10 +1001,9 @@
                     class:active={selectedRuleMode === 'basic'}
                     aria-pressed={selectedRuleMode === 'basic'}
                     onclick={() => (selectedRuleMode = 'basic')}
+                    ><strong>기본방</strong> <span>빠르고 간단하게</span></button
                   >
-                    <strong>기본방</strong>
-                    <span>빠르고 간단하게</span>
-                  </button>
+
                   <button
                     type="button"
                     class="room-option classic"
@@ -1094,13 +1095,14 @@
                     {/if}
                     {#if npc.tell && !npc.folded && !isShowdown}
                       <div class="npc-tell" class:strong={npc.tell.signal === 'strong'}>
-                        <span
-                          >{npc.tell.signal === 'strong'
+                        <span>
+                          {npc.tell.signal === 'strong'
                             ? '👁'
                             : npc.tell.signal === 'weak'
                               ? '💧'
-                              : '◆'}</span
-                        >
+                              : '◆'}
+                        </span>
+
                         <span>
                           <strong>{npc.tell.label}</strong>
                           <small>“{npc.tell.text}”</small>
@@ -1122,6 +1124,7 @@
                             round.series?.bossNpcId === npc.id &&
                             bossDoriPosition >= 0 &&
                             bossDoriPosition < bossDoriRevealCount)}
+
                         <span
                           class="hwatu-flip"
                           class:flipped={open}
@@ -1131,7 +1134,11 @@
                         >
                           <span class="hwatu-face back">?</span>
                           <span class="hwatu-face front">
-                            {#if open}<HwatuCardFace {card} />{:else}?{/if}
+                            {#if open}
+                              <HwatuCardFace {card} />
+                            {:else}
+                              ?
+                            {/if}
                           </span>
                         </span>
                       {/each}
@@ -1363,10 +1370,12 @@
                       >
                     </div>
                   </div>
+
                   <div class="d-flex gap-2 justify-content-center flex-wrap">
                     <button class="btn btn-light" disabled={busy} onclick={() => act('die')}
                       >다이</button
                     >
+
                     <button class="btn btn-primary" disabled={busy} onclick={() => act('call')}>
                       {toCall === 0 ? '체크' : `콜 ${formatNumber(toCall)}`}
                     </button>
@@ -1547,20 +1556,17 @@
                           class:active={selectedRuleMode === 'basic'}
                           aria-pressed={selectedRuleMode === 'basic'}
                           onclick={() => (selectedRuleMode = 'basic')}
+                          >기본방 <small>빠른 기본 족보</small></button
                         >
-                          기본방
-                          <small>빠른 기본 족보</small>
-                        </button>
+
                         <button
                           type="button"
                           class:active={selectedRuleMode === 'classic'}
                           class:classic={selectedRuleMode === 'classic'}
                           aria-pressed={selectedRuleMode === 'classic'}
                           onclick={() => (selectedRuleMode = 'classic')}
+                          >정통방 <small>암행어사·땡잡이·구사·멍텅구리 구사</small></button
                         >
-                          정통방
-                          <small>암행어사·땡잡이·구사·멍텅구리 구사</small>
-                        </button>
                       </div>
                     </div>
                   {/if}

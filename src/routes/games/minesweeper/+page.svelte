@@ -637,7 +637,7 @@
                   🔄
                 </button>
               {:else}
-                <a href={resolve('/login')} class="btn btn-sm btn-outline-primary">로그인</a>
+                <a href={resolve('login')} class="btn btn-sm btn-outline-primary">로그인</a>
               {/if}
             </div>
             <p class="small text-muted mb-1">전체 기간 1인 1최단기록</p>

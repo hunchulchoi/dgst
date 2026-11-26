@@ -1046,7 +1046,7 @@
 
   /** @param {string} articleId */
   function edit(articleId) {
-    goto(resolve(`/board/${boardId}/write/${articleId}`));
+    goto(resolve(`board/${boardId}/write/${articleId}`));
   }
 
   /** @param {Event} e */
@@ -1056,7 +1056,7 @@
   }
 
   function write() {
-    goto(resolve(`/board/${boardId}/write`));
+    goto(resolve(`board/${boardId}/write`));
   }
 
   /**
@@ -1064,7 +1064,7 @@
    * @param pageNo {number}
    */
   function gopage(pageNo) {
-    goto(resolve(`/board/${boardId}/${pageNo}?v=${new Date().getSeconds()}`), {
+    goto(resolve(`board/${boardId}/${pageNo}?v=${new Date().getSeconds()}`), {
       invalidateAll: true
     });
   }

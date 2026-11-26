@@ -947,6 +947,7 @@
   function isValidActivePiece(value: unknown): value is ActivePiece {
     if (!value || typeof value !== 'object') return false;
     const piece = value as ActivePiece;
+
     return (
       isValidPieceType(piece.type) &&
       Number.isInteger(piece.rotation) &&
@@ -1497,7 +1498,7 @@
                 🔄
               </button>
             {:else}
-              <a href={resolve('/login')} class="btn btn-sm btn-outline-primary">로그인</a>
+              <a href={resolve('login')} class="btn btn-sm btn-outline-primary">로그인</a>
             {/if}
           </div>
           <p class="small text-muted mb-1">전체 기간 1인 1최고점</p>

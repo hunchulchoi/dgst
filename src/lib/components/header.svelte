@@ -62,6 +62,7 @@
   let colorModeIcon = $derived(
     $theme === 'light' ? 'sun-fill' : $theme === 'dark' ? 'moon-stars-fill' : 'circle-half'
   );
+
   let loginButton = $derived(
     `/oauth/btn_google_signin_${$theme === 'light' ? 'light' : 'dark'}_normal_web.png`
   );
@@ -181,7 +182,7 @@
             <button
               type="button"
               class="btn btn-link text-secondary p-0 text-nowrap leading-none"
-              onclick={() => goto(resolve('/auth/profile'))}>{session.user.nickname}</button
+              onclick={() => goto(resolve('auth/profile'))}>{session.user.nickname}</button
             >
           </div>
         {:else}
