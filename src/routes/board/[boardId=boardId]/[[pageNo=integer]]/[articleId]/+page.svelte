@@ -274,8 +274,8 @@
     // The root layout preserves the current vertical position through navigation, animates
     // to the top after the list renders, and applies a hard fallback for older browsers.
     await goto(resolve(/** @type {any} */ (boardListPath(boardId, currentPageNo))), {
-      replaceState: true,
-      noScroll: true
+      replace: true,
+      reset: false
     });
     if (browser) {
       window.dispatchEvent(new CustomEvent('dgst:normalize-mobile-layout-width'));
@@ -1065,7 +1065,7 @@
    */
   function gopage(pageNo) {
     goto(resolve(`board/${boardId}/${pageNo}?v=${new Date().getSeconds()}`), {
-      invalidateAll: true
+      refreshAll: true
     });
   }
 

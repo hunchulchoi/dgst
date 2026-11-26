@@ -12,7 +12,7 @@
 
   import { ko } from 'date-fns/locale';
   import { formatRelativeTime } from '#lib/util/formatRelativeTime.js';
-  import { goto, invalidateAll } from '$app/navigation';
+  import { goto, refreshAll } from '$app/navigation';
   import { resolve } from '$app/paths';
   import { boardListPath } from '#lib/util/boardPaths.js';
   import { imageThumbnailUrl } from '#lib/util/imageThumbnail.js';
@@ -26,7 +26,7 @@
     if (retrying) return;
     retrying = true;
     try {
-      await invalidateAll();
+      await refreshAll();
     } finally {
       retrying = false;
     }

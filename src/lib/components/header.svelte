@@ -125,7 +125,7 @@
 
     try {
       if (!onHome) {
-        await goto(resolve('/'), { invalidateAll: false, replaceState: true });
+        await goto(resolve('/'), { replace: true });
       } else {
         boardListReloadKey.update((n) => n + 1);
         await invalidate('board-list');

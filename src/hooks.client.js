@@ -14,7 +14,12 @@ import {
 installClientNavigationDiagnostics();
 
 /** @type {import('@sveltejs/kit/hooks').HandleClientError} */
-export function handleError({ error, event, status, message }) {
+export function handleError({ kind, error, event }) {
+  // SvelteKit 3 also routes errors thrown with `error()` here; keep Kit 2 behavior
+  // (they already carry a safe body) and only report framework/unknown errors.
+  if (kind === 'app') return;
+  const status = kind === 'framework' ? error.status : 500;
+  const message = kind === 'framework' ? error.message : 'Internal Error';
   const routeId = event.route?.id ?? undefined;
   const navigation = getClientNavigationContext({
     currentPath: typeof location !== 'undefined' ? location.pathname : undefined,

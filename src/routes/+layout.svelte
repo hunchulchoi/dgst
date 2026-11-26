@@ -10,7 +10,7 @@
     afterNavigate,
     beforeNavigate,
     disableScrollHandling,
-    invalidateAll
+    refreshAll
   } from '$app/navigation';
   import { browser } from '$app/env';
   import { onMount } from 'svelte';
@@ -268,7 +268,7 @@
 
     document.cookie = serializeTimeZoneCookie(detectedTimeZone, location.protocol === 'https:');
 
-    if (data.timeZone !== detectedTimeZone) await invalidateAll();
+    if (data.timeZone !== detectedTimeZone) await refreshAll();
   }
 
   /** @param {unknown} err */

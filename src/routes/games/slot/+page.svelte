@@ -5,7 +5,7 @@
   import { getArcadeGameLabel } from '#lib/util/arcadeGame.js';
   import GameRankingRow from '#lib/components/GameRankingRow.svelte';
   import GameProfilePhoto from '#lib/components/GameProfilePhoto.svelte';
-  import { invalidateAll } from '$app/navigation';
+  import { refreshAll as refreshPageData } from '$app/navigation';
   import { swalFire } from '#lib/util/swal.js';
   import { isOnlyOneEmoji } from '#lib/util/emoji.js';
   import type { PageData } from './$types';
@@ -522,7 +522,7 @@
 
         if (!append) {
           // 알람이 읽음 처리되었으므로 레이아웃의 알람 카운트 갱신
-          await invalidateAll();
+          await refreshPageData();
 
           // 댓글 로드 후 URL에 댓글 ID가 있으면 스크롤
           const urlParams = new URLSearchParams(window.location.search);
@@ -587,7 +587,7 @@
         }
 
         // 알람 카운트 갱신
-        await invalidateAll();
+        await refreshPageData();
       } else {
         const err = await res.json();
         await swalFire({

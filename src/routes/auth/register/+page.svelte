@@ -35,7 +35,7 @@
 
   $effect(() => {
     if (!data.session || data.session.user?.nickname) {
-      if (browser) goto(resolve('/'), { replaceState: true });
+      if (browser) goto(resolve('/'), { replace: true });
     }
   });
 

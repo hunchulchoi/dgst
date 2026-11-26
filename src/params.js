@@ -9,6 +9,11 @@ function matchBoardId(param) {
   return ['free', 'bug'].includes(param);
 }
 
+/**
+ * 숫자 경로 파라미터 검사
+ * @param {string} param
+ * @returns {boolean}
+ */
 function matchInteger(param) {
   return /^\d+$/.test(param);
 }

@@ -430,7 +430,10 @@ export async function handle({ event, resolve }) {
 
 // 전역 에러 로깅
 /** @type {import('@sveltejs/kit/hooks').HandleServerError} */
-export function handleError({ event, error }) {
+export function handleError({ kind, event, error }) {
+  // SvelteKit 3 also routes errors thrown with `error()` here. They are expected
+  // responses with their own body, so keep Kit 2 behavior and skip logging them.
+  if (kind === 'app') return;
   /** @type {{ status?: number; message?: string; name?: string; cause?: unknown; body?: { message?: string; errorId?: string } }} */
   const serverError =
     typeof error === 'object' && error !== null

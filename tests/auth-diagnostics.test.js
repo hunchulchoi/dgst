@@ -15,10 +15,15 @@ function fixture() {
 }
 
 /** @param {string} [query] @param {boolean} [cookie] @param {string} [provider] */
-function request(query = 'code=private-code', cookie = false, provider = 'google') {
+function request(
+  query = 'code=private-code',
+  cookie = false,
+  provider = 'google',
+  origin = 'https://www.dgst.me'
+) {
   return /** @type {import('@sveltejs/kit').RequestEvent} */ (
     /** @type {unknown} */ ({
-      url: new URL(`https://www.dgst.me/auth/callback/${provider}?${query}`),
+      url: new URL(`${origin}/auth/callback/${provider}?${query}`),
       cookies: { get: () => (cookie ? 'private-cookie' : undefined) }
     })
   );
@@ -133,8 +138,7 @@ describe('auth diagnostics', () => {
     const first = request('code=0');
     diagnostics.begin(first);
     diagnostics.success(first);
-    const otherOrigin = request('code=0');
-    otherOrigin.url = new URL('https://next.dgst.me/auth/callback/google?code=0');
+    const otherOrigin = request('code=0', false, 'google', 'https://next.dgst.me');
     diagnostics.begin(otherOrigin);
     diagnostics.logError(pkceError(), otherOrigin);
     expect(diagnostics.failure(otherOrigin).classification).toBe('failed');

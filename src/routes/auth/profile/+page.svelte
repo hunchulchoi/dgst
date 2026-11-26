@@ -45,7 +45,7 @@
   // 클라이언트에서만 세션 체크 및 리다이렉트
   $effect(() => {
     if (browser && !data.session) {
-      goto(resolve('/'), { replaceState: true });
+      goto(resolve('/'), { replace: true });
     }
   });
 
@@ -268,7 +268,7 @@
           text: data.message || '프로필이 성공적으로 변경되었습니다.',
           confirmButtonText: '확인'
         }).then(() => {
-          goto(resolve('/'), { invalidateAll: true });
+          goto(resolve('/'), { refreshAll: true });
         });
       } else {
         resetTurnstile();

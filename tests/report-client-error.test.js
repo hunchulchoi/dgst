@@ -68,9 +68,8 @@ describe('hooks.client handleError', () => {
       const error = new Error('root render failed', { cause });
       const appError = /** @type {{ message?: string, errorId?: string, fingerprint?: string }} */ (
         handleClientError({
+          kind: 'unknown',
           error,
-          status: 500,
-          message: 'Internal Error',
           event: {
             url: new URL('https://www.dgst.me/?alarm=private-alarm-id'),
             params: {},
@@ -144,9 +143,8 @@ describe('hooks.client handleError', () => {
     try {
       recordClientNavigationStart({ fromPath: '/board/free', toPath: '/', type: 'popstate' });
       const appError = handleClientError({
+        kind: 'unknown',
         error: new TypeError('Failed to fetch'),
-        status: 500,
-        message: 'Internal Error',
         event: { url: new URL('https://www.dgst.me/'), params: {}, route: { id: '/' } }
       });
 

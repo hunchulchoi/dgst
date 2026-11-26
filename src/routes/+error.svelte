@@ -14,7 +14,7 @@
   import { reportClientPageError } from '#lib/util/reportClientPageError.js';
   import { getClientNavigationContext } from '#lib/util/clientNavigationContext.js';
 
-  /** @typedef {Error & { stack?: string; name?: string; cause?: unknown; errorId?: string; fingerprint?: string; interruptedFetch?: boolean }} PageError */
+  /** @typedef {App.Error & { stack?: string; name?: string; cause?: unknown }} PageError */
 
   // Svelte 5 Runes - page store 필요 (error page는 예외)
 
@@ -25,7 +25,7 @@
   // 404, 502 에러 시 자동으로 홈(자유게시판)으로 리다이렉트
   onMount(() => {
     if (page.status >= 500) {
-      const pageError = /** @type {PageError | undefined} */ (page.error);
+      const pageError = /** @type {PageError | null} */ (page.error);
       const reloadKey = `dgst:error-reload:${page.url.pathname}${page.url.search}`;
       const reloadAttempted = sessionStorage.getItem(reloadKey) === '1';
       const navigation = getClientNavigationContext({
