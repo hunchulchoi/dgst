@@ -10,7 +10,7 @@ export async function PATCH({ request, locals }) {
   const email = typeof user?.email === 'string' ? user.email : '';
 
   if (!email) {
-    throw error(401, { message: '로그인 해 주세요' });
+    throw error(401, '로그인 해 주세요');
   }
 
   const formData = await request.formData();
@@ -20,7 +20,7 @@ export async function PATCH({ request, locals }) {
     'register'
   );
   if (!captcha.ok) {
-    throw error(400, { message: captcha.message });
+    throw error(400, captcha.message);
   }
 
   //파일 저장
@@ -36,7 +36,7 @@ export async function PATCH({ request, locals }) {
 
   const nicknameRaw = String(formData.get('nickname') ?? '');
   if (!isNicknameAllowed(nicknameRaw)) {
-    throw error(400, { message: NICKNAME_BOT_ONLY_MESSAGE });
+    throw error(400, NICKNAME_BOT_ONLY_MESSAGE);
   }
 
   /** @type {import('@prisma/client').Prisma.UserUpdateInput} */

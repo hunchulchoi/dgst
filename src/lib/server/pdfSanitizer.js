@@ -73,14 +73,12 @@ function stripActiveContent(document) {
 export async function sanitizePdf(input) {
   const bytes = Buffer.from(input);
   if (bytes.length > PDF_UPLOAD_MAX_BYTES) {
-    throw error(413, {
-      message: `PDF는 ${PDF_UPLOAD_MAX_BYTES / 1024 / 1024}MB 이하만 업로드할 수 있습니다.`
-    });
+    throw error(413, `PDF는 ${PDF_UPLOAD_MAX_BYTES / 1024 / 1024}MB 이하만 업로드할 수 있습니다.`);
   }
 
   const header = bytes.subarray(0, 1024).toString('latin1');
   if (!/%PDF-1\.[0-9]/.test(header)) {
-    throw error(415, { message: '올바른 PDF 파일이 아닙니다.' });
+    throw error(415, '올바른 PDF 파일이 아닙니다.');
   }
 
   /** @type {PDFDocument} */
@@ -91,16 +89,12 @@ export async function sanitizePdf(input) {
       updateMetadata: false
     });
   } catch {
-    throw error(415, {
-      message: '손상되었거나 암호화된 PDF는 업로드할 수 없습니다.'
-    });
+    throw error(415, '손상되었거나 암호화된 PDF는 업로드할 수 없습니다.');
   }
 
   const pageCount = source.getPageCount();
   if (pageCount < 1 || pageCount > PDF_UPLOAD_MAX_PAGES) {
-    throw error(413, {
-      message: `PDF는 1~${PDF_UPLOAD_MAX_PAGES}페이지만 업로드할 수 있습니다.`
-    });
+    throw error(413, `PDF는 1~${PDF_UPLOAD_MAX_PAGES}페이지만 업로드할 수 있습니다.`);
   }
 
   const sanitized = await PDFDocument.create();

@@ -108,7 +108,7 @@ export async function GET(event) {
   const session = await getGameSession(event);
   const user = session?.user;
   const email = typeof user?.email === 'string' ? user.email : '';
-  if (!email) throw error(401, { message: '로그인이 필요합니다.' });
+  if (!email) throw error(401, '로그인이 필요합니다.');
 
   if (url.searchParams.get('rank')) {
     const [rank, myBest, todayStats] = await Promise.all([
@@ -129,18 +129,18 @@ export async function POST(event) {
   const session = await getGameSession(event);
   const user = session?.user;
   const email = typeof user?.email === 'string' ? user.email : '';
-  if (!email) throw error(401, { message: '로그인이 필요합니다.' });
+  if (!email) throw error(401, '로그인이 필요합니다.');
 
   let rawBody;
   try {
     rawBody = await request.json();
   } catch {
-    throw error(400, { message: 'Invalid JSON' });
+    throw error(400, 'Invalid JSON');
   }
 
   const parsed = scoreBodySchema.safeParse(rawBody);
   if (!parsed.success) {
-    throw error(400, { message: '유효하지 않은 요청입니다.' });
+    throw error(400, '유효하지 않은 요청입니다.');
   }
 
   const nickname =
@@ -163,7 +163,7 @@ export async function POST(event) {
 
   const score = parsed.data.score;
   if (score == null) {
-    throw error(400, { message: '유효한 점수를 보내 주세요.' });
+    throw error(400, '유효한 점수를 보내 주세요.');
   }
   if (isLocalGameSmokeSession(session)) {
     return json({

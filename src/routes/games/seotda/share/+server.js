@@ -196,7 +196,7 @@ function buildShareContent(round, note) {
 export async function POST(event) {
   const session = await event.locals.auth();
   if (!session?.user?.email || !session.user.nickname) {
-    throw error(401, { message: '로그인 후 섯다 결과를 공유할 수 있습니다.' });
+    throw error(401, '로그인 후 섯다 결과를 공유할 수 있습니다.');
   }
 
   const rate = await checkRateLimit(event, {
@@ -205,24 +205,24 @@ export async function POST(event) {
     windowSeconds: 60
   });
   if (!rate.allowed) {
-    throw error(429, { message: '공유가 너무 많습니다. 잠시 후 다시 시도하세요.' });
+    throw error(429, '공유가 너무 많습니다. 잠시 후 다시 시도하세요.');
   }
 
   const rawBody = await event.request.text();
   if (new TextEncoder().encode(rawBody).byteLength > MAX_BODY_BYTES) {
-    throw error(413, { message: '공유 내용이 너무 큽니다.' });
+    throw error(413, '공유 내용이 너무 큽니다.');
   }
 
   let body;
   try {
     body = JSON.parse(rawBody);
   } catch {
-    throw error(400, { message: '공유 데이터가 올바르지 않습니다.' });
+    throw error(400, '공유 데이터가 올바르지 않습니다.');
   }
 
   const round = getRound(session.user.email);
   if (!round || round.phase !== 'showdown' || !round.showdown) {
-    throw error(400, { message: '끝난 섯다 판만 공유할 수 있습니다.' });
+    throw error(400, '끝난 섯다 판만 공유할 수 있습니다.');
   }
 
   const boardId = ALLOWED_BOARDS.has(body?.boardId) ? body.boardId : 'free';

@@ -5,7 +5,7 @@ export const load = async ({ locals }) => {
   const session = await locals.auth();
 
   if (!session?.user?.nickname) {
-    throw error(401, { message: '로그인 해 주세요' });
+    throw error(401, '로그인 해 주세요');
   }
 
   try {
@@ -15,7 +15,7 @@ export const load = async ({ locals }) => {
     });
 
     if (!profile) {
-      throw error(410, { message: `회원 정보를 찾을 수 없습니다.` });
+      throw error(410, `회원 정보를 찾을 수 없습니다.`);
     }
 
     return {
@@ -28,6 +28,6 @@ export const load = async ({ locals }) => {
     };
   } catch (err) {
     if (err && typeof err === 'object' && 'status' in err) throw err;
-    throw error(500, { message: '프로필 조회 중 오류가 발생했습니다.' });
+    throw error(500, '프로필 조회 중 오류가 발생했습니다.');
   }
 };

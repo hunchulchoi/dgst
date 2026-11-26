@@ -137,7 +137,7 @@ export async function write(file, email, preservePath = 'jjal', options = {}) {
     const now = new Date();
 
     if (!safeString(file.name, preservePath)) {
-      throw error(400, { message: '잘못된 요청입니다.' });
+      throw error(400, '잘못된 요청입니다.');
     }
 
     // date-fns v4: format 사용
@@ -325,10 +325,10 @@ export async function write(file, email, preservePath = 'jjal', options = {}) {
         } catch (err) {
           logger.error({ message: 'Image to WebP conversion failed', error: err });
           if (isHeic) {
-            throw error(415, {
-              message:
-                'HEIC 이미지를 변환하지 못했습니다. JPEG 또는 PNG로 변경한 뒤 다시 업로드해 주세요.'
-            });
+            throw error(
+              415,
+              'HEIC 이미지를 변환하지 못했습니다. JPEG 또는 PNG로 변경한 뒤 다시 업로드해 주세요.'
+            );
           }
           // 일반 이미지 변환 실패 시 기존 동작처럼 원본 파일 유지
           if (!fileWritten) writeOriginalFile();
@@ -471,9 +471,10 @@ export async function write(file, email, preservePath = 'jjal', options = {}) {
     if (fs.existsSync(finalPath)) {
       const finalBytes = fs.statSync(finalPath).size;
       if (finalBytes > BOARD_UPLOAD_MAX_BYTES) {
-        throw error(413, {
-          message: `압축 뒤 파일이 너무 큽니다. ${BOARD_UPLOAD_MAX_MB}MB 이하 파일만 업로드할 수 있어요.`
-        });
+        throw error(
+          413,
+          `압축 뒤 파일이 너무 큽니다. ${BOARD_UPLOAD_MAX_MB}MB 이하 파일만 업로드할 수 있어요.`
+        );
       }
       const url = `/images${dir}/${fileName}`;
       const objectKey = `${dir.slice(1)}/${fileName}`;
@@ -541,6 +542,6 @@ export async function write(file, email, preservePath = 'jjal', options = {}) {
 export async function read(file, preservePath) {
   if (!safeString(file.name, preservePath)) {
     logger.error({ fileName: file.name, preservePath, message: 'read safeString failed' });
-    throw error(400, { message: '잘못된 요청입니다.' });
+    throw error(400, '잘못된 요청입니다.');
   }
 }

@@ -1,6 +1,7 @@
 import { defineEnvVars } from '@sveltejs/kit/env';
 
-// @migration-task Review dynamic environment variables. They accept missing values (`undefined`), add stricter validation where a value is required.
+// Runtime (non-static) variables accept missing values like `$env/dynamic` did; callers
+// validate what they require (e.g. minioStorage, turnstile).
 export const variables = defineEnvVars({
   MINIO_ACCESS_KEY: { schema: (input) => input },
   MINIO_BUCKET: { schema: (input) => input },

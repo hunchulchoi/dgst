@@ -13,7 +13,7 @@ export async function POST({ locals, request }) {
   try {
     const session = await locals.auth();
     if (!session?.user?.email) {
-      throw error(401, { message: '로그인이 필요합니다.' });
+      throw error(401, '로그인이 필요합니다.');
     }
 
     let body;
@@ -26,7 +26,7 @@ export async function POST({ locals, request }) {
     const parsed = await lottoPostBodySchema.safeParseAsync(body);
 
     if (!parsed.success) {
-      throw error(400, { message: '유효하지 않은 요청 형식입니다.' });
+      throw error(400, '유효하지 않은 요청 형식입니다.');
     }
 
     const email = session.user.email;
@@ -53,6 +53,6 @@ export async function POST({ locals, request }) {
   } catch (err) {
     if (isHttpError(err)) throw err;
     logger.error({ message: 'lotto POST failed', err });
-    throw error(500, { message: '번호 생성 중 오류가 발생했습니다.' });
+    throw error(500, '번호 생성 중 오류가 발생했습니다.');
   }
 }

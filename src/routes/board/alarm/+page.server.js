@@ -10,7 +10,7 @@ export const load = async ({ locals, depends }) => {
     const session = await locals.auth();
 
     if (!session?.user?.email) {
-      throw error(401, { message: '로그인이 필요합니다.' });
+      throw error(401, '로그인이 필요합니다.');
     }
 
     const alarms = await getAlarmList(session.user.email, 30);

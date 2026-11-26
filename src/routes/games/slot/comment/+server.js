@@ -197,7 +197,7 @@ export async function GET(event) {
     });
   } catch (err) {
     console.error('댓글 목록 실패', err);
-    throw error(500, { message: '데이터를 가져오는 중에 오류가 발생하였습니다.' });
+    throw error(500, '데이터를 가져오는 중에 오류가 발생하였습니다.');
   }
 }
 
@@ -207,7 +207,7 @@ export async function POST(event) {
   const user = session?.user;
   const email = typeof user?.email === 'string' ? user.email : '';
   if (!email) {
-    throw error(401, { message: '로그인이 필요합니다.' });
+    throw error(401, '로그인이 필요합니다.');
   }
 
   await checkAndLogSessionDevice(event, { action: 'games.slot.comment' });
@@ -223,15 +223,15 @@ export async function POST(event) {
         : 'slot';
     const gameArticle = getGameArticle(rewardGame);
     if (!content || content.length === 0) {
-      throw error(400, { message: '댓글 내용을 입력해주세요.' });
+      throw error(400, '댓글 내용을 입력해주세요.');
     }
 
     if (content.length < 2) {
-      throw error(400, { message: '댓글은 2자 이상 입력해주세요.' });
+      throw error(400, '댓글은 2자 이상 입력해주세요.');
     }
 
     if (content.length > 1000) {
-      throw error(400, { message: '댓글은 1000자 이하여야 합니다.' });
+      throw error(400, '댓글은 1000자 이하여야 합니다.');
     }
     if (isLocalGameSmokeSession(session)) {
       return json({
@@ -312,7 +312,7 @@ export async function POST(event) {
         parentComment.boardId !== gameArticle.boardId ||
         parentComment.articleId !== gameArticle.articleId
       ) {
-        throw error(400, { message: '부모 댓글을 찾을 수 없습니다.' });
+        throw error(400, '부모 댓글을 찾을 수 없습니다.');
       }
     }
 
@@ -370,6 +370,6 @@ export async function POST(event) {
   } catch (err) {
     if (err && typeof err === 'object' && 'status' in err) throw err;
     console.error('댓글 저장 실패', err);
-    throw error(500, { message: '댓글 저장 중 오류가 발생하였습니다.' });
+    throw error(500, '댓글 저장 중 오류가 발생하였습니다.');
   }
 }

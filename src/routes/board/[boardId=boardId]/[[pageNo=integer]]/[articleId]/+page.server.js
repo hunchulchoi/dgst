@@ -36,7 +36,7 @@ const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
 export const load = async ({ params, locals }) => {
   const { articleId, boardId } = params;
   if (!articleId || !boardId) {
-    throw error(400, { message: '잘못된 접근입니다.' });
+    throw error(400, '잘못된 접근입니다.');
   }
 
   try {
@@ -46,13 +46,13 @@ export const load = async ({ params, locals }) => {
 
     let article = await findArticleById(articleId, boardId, 'write');
     if (!article) {
-      throw error(404, { message: '삭제되었거나 존재하지 않는 게시물입니다.' });
+      throw error(404, '삭제되었거나 존재하지 않는 게시물입니다.');
     }
 
     const createdAtMs = new Date(article.createdAt).getTime();
     const createdAfterMs = Date.now() - THREE_DAYS_MS;
     if (Number.isFinite(createdAtMs) && createdAtMs <= createdAfterMs) {
-      throw error(404, { message: '삭제되었거나 존재하지 않는 게시물입니다.' });
+      throw error(404, '삭제되었거나 존재하지 않는 게시물입니다.');
     }
 
     const readReceipt = viewerId ? await recordArticleRead(articleId, viewerId) : null;
@@ -136,6 +136,6 @@ export const load = async ({ params, locals }) => {
     };
   } catch (err) {
     if (err && typeof err === 'object' && 'status' in err) throw err;
-    throw error(500, { message: '게시물을 불러오지 못했습니다.' });
+    throw error(500, '게시물을 불러오지 못했습니다.');
   }
 };

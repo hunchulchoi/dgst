@@ -23,7 +23,7 @@ function escapeHtml(value) {
 export async function POST(event) {
   const session = await event.locals.auth();
   if (!session?.user?.email || !session.user.nickname) {
-    throw error(401, { message: '로그인 후 리플레이를 공유할 수 있습니다.' });
+    throw error(401, '로그인 후 리플레이를 공유할 수 있습니다.');
   }
 
   const rate = await checkRateLimit(event, {
@@ -31,23 +31,22 @@ export async function POST(event) {
     limit: 5,
     windowSeconds: 60
   });
-  if (!rate.allowed)
-    throw error(429, { message: '공유가 너무 많습니다. 잠시 후 다시 시도하세요.' });
+  if (!rate.allowed) throw error(429, '공유가 너무 많습니다. 잠시 후 다시 시도하세요.');
 
   const rawBody = await event.request.text();
   if (new TextEncoder().encode(rawBody).byteLength > MAX_BODY_BYTES) {
-    throw error(413, { message: '리플레이 데이터가 너무 큽니다.' });
+    throw error(413, '리플레이 데이터가 너무 큽니다.');
   }
 
   let body;
   try {
     body = JSON.parse(rawBody);
   } catch {
-    throw error(400, { message: '공유 데이터가 올바르지 않습니다.' });
+    throw error(400, '공유 데이터가 올바르지 않습니다.');
   }
 
   const replay = sanitizeBilliardsReplay(body?.replay);
-  if (!replay) throw error(400, { message: '리플레이 데이터가 올바르지 않습니다.' });
+  if (!replay) throw error(400, '리플레이 데이터가 올바르지 않습니다.');
 
   const boardId = ALLOWED_BOARDS.has(body?.boardId) ? body.boardId : 'free';
   const defaultTitle = `[당구 리플레이] ${replay.outcome || '내 샷'}`;

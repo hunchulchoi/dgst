@@ -266,7 +266,7 @@ describe('write page video upload', () => {
 
   it('returns a 413 upload response when request.formData hits the body limit', () => {
     expect(uploadRoute).toContain('isBodySizeLimitError');
-    expect(uploadRoute).toContain('throw error(413');
+    expect(uploadRoute).toMatch(/throw error\(\s*413,/);
     expect(uploadRoute).toContain('Content-length of');
     expect(uploadRoute).toContain('request body size exceeded');
   });

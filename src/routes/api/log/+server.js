@@ -199,12 +199,12 @@ export async function POST(event) {
     windowSeconds: 60
   });
   if (!rate.allowed) {
-    throw error(429, { message: '요청이 너무 많습니다.' });
+    throw error(429, '요청이 너무 많습니다.');
   }
 
   const contentLength = Number(request.headers.get('content-length') ?? 0);
   if (contentLength > MAX_BODY_BYTES) {
-    throw error(413, { message: '요청 본문이 너무 큽니다.' });
+    throw error(413, '요청 본문이 너무 큽니다.');
   }
 
   try {

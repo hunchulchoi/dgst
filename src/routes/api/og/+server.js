@@ -14,7 +14,7 @@ import logger from '#lib/util/logger.js';
 export async function GET({ url, locals }) {
   const session = await locals.auth();
   if (!session?.user?.nickname) {
-    throw error(401, { message: '로그인이 필요합니다.' });
+    throw error(401, '로그인이 필요합니다.');
   }
 
   const targetUrl = url.searchParams.get('url');
@@ -34,7 +34,7 @@ export async function GET({ url, locals }) {
 export async function POST({ request, locals }) {
   const session = await locals.auth();
   if (!session?.user?.nickname) {
-    throw error(401, { message: '로그인이 필요합니다.' });
+    throw error(401, '로그인이 필요합니다.');
   }
 
   try {

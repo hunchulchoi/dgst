@@ -48,13 +48,13 @@ const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
 async function requireRecentArticle(articleId, boardId) {
   const article = await findArticleById(articleId, boardId, 'write');
   if (!article) {
-    throw error(404, { message: '삭제되었거나 존재하지 않는 게시물입니다.' });
+    throw error(404, '삭제되었거나 존재하지 않는 게시물입니다.');
   }
 
   const createdAtMs = new Date(article.createdAt).getTime();
   const createdAfterMs = Date.now() - THREE_DAYS_MS;
   if (Number.isFinite(createdAtMs) && createdAtMs <= createdAfterMs) {
-    throw error(404, { message: '삭제되었거나 존재하지 않는 게시물입니다.' });
+    throw error(404, '삭제되었거나 존재하지 않는 게시물입니다.');
   }
 
   return article;
@@ -92,7 +92,7 @@ export async function GET({ params, locals }) {
       message: '[board.comment] invalid params',
       params
     });
-    throw error(400, { message: '잘못된 접근입니다.' });
+    throw error(400, '잘못된 접근입니다.');
   }
 
   const session = await locals.auth();
@@ -132,7 +132,7 @@ export async function GET({ params, locals }) {
       articleId,
       email: session?.user?.email ?? null
     });
-    throw error(500, { message: '데이터를 가져오는 중에 오류가 발생하였습니다.ㅜㅜ' });
+    throw error(500, '데이터를 가져오는 중에 오류가 발생하였습니다.ㅜㅜ');
   }
 }
 
@@ -147,13 +147,13 @@ export async function POST(event) {
       message: '[board.comment] invalid params',
       params
     });
-    throw error(400, { message: '잘못된 접근입니다.' });
+    throw error(400, '잘못된 접근입니다.');
   }
 
   const session = await locals.auth();
 
   if (!session?.user?.nickname || !session.user.email) {
-    throw error(401, { message: '권한이 없습니다. 로그인 해주세요' });
+    throw error(401, '권한이 없습니다. 로그인 해주세요');
   }
   const userEmail = session.user.email;
 
@@ -245,7 +245,7 @@ export async function POST(event) {
       email: userEmail,
       parentCommentId: parentKey || null
     });
-    throw error(500, { message: '댓글 저장 중 오류가 발생하였습니다.ㅜㅜ' });
+    throw error(500, '댓글 저장 중 오류가 발생하였습니다.ㅜㅜ');
   }
 }
 
@@ -259,13 +259,13 @@ export async function PUT({ request, params, locals }) {
       message: '[board.comment] invalid params',
       params
     });
-    throw error(400, { message: '잘못된 접근입니다.' });
+    throw error(400, '잘못된 접근입니다.');
   }
 
   const session = await locals.auth();
 
   if (!session?.user?.nickname || !session.user.email) {
-    throw error(401, { message: '권한이 없습니다. 로그인 해주세요' });
+    throw error(401, '권한이 없습니다. 로그인 해주세요');
   }
   const userEmail = session.user.email;
 
@@ -275,7 +275,7 @@ export async function PUT({ request, params, locals }) {
   const removeImage = data.get('removeImage') === 'true';
 
   if (!commentId || !content) {
-    throw error(400, { message: '댓글 ID와 내용이 필요합니다.' });
+    throw error(400, '댓글 ID와 내용이 필요합니다.');
   }
 
   try {
@@ -298,9 +298,7 @@ export async function PUT({ request, params, locals }) {
     });
 
     if (!existing) {
-      throw error(401, {
-        message: '수정되지 않았습니다. 이미 삭제되었거나 권한이 없는 것 같습니다.'
-      });
+      throw error(401, '수정되지 않았습니다. 이미 삭제되었거나 권한이 없는 것 같습니다.');
     }
 
     /** @type {{ content: string, modifiedEmail: string, image?: string | null }} */
@@ -326,7 +324,7 @@ export async function PUT({ request, params, locals }) {
       commentId: String(commentId),
       email: userEmail
     });
-    throw error(500, { message: '댓글 수정 중 오류가 발생하였습니다.' });
+    throw error(500, '댓글 수정 중 오류가 발생하였습니다.');
   }
 }
 
@@ -340,13 +338,13 @@ export async function DELETE({ request, params, locals }) {
       message: '[board.comment] invalid params',
       params
     });
-    throw error(400, { message: '잘못된 접근입니다.' });
+    throw error(400, '잘못된 접근입니다.');
   }
 
   const session = await locals.auth();
 
   if (!session?.user?.nickname || !session.user.email) {
-    throw error(401, { message: '권한이 없습니다. 로그인 해주세요' });
+    throw error(401, '권한이 없습니다. 로그인 해주세요');
   }
   const userEmail = session.user.email;
 
@@ -362,9 +360,7 @@ export async function DELETE({ request, params, locals }) {
     });
 
     if (!existing) {
-      throw error(401, {
-        message: '삭제 되지 않았습니다. 이미 삭제되었거나 권한이 없는 것 같습니다.'
-      });
+      throw error(401, '삭제 되지 않았습니다. 이미 삭제되었거나 권한이 없는 것 같습니다.');
     }
 
     const update = await softDeleteComment(String(data.commentId), userEmail);
@@ -382,7 +378,7 @@ export async function DELETE({ request, params, locals }) {
       commentId: String(data.commentId),
       email: userEmail
     });
-    throw error(500, { message: '삭제 중에 오류가 발생하였습니다.' });
+    throw error(500, '삭제 중에 오류가 발생하였습니다.');
   }
 
   return new Response('삭제했습니다.', { status: 200 });

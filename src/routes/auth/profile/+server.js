@@ -94,7 +94,7 @@ export async function PATCH(event) {
     email = typeof session?.user?.email === 'string' ? session.user.email : '';
 
     if (!email) {
-      throw error(401, { message: '로그인 해 주세요' });
+      throw error(401, '로그인 해 주세요');
     }
 
     stage = 'parse-form';
@@ -106,7 +106,7 @@ export async function PATCH(event) {
       'profile'
     );
     if (!captcha.ok) {
-      throw error(400, { message: captcha.message });
+      throw error(400, captcha.message);
     }
 
     //파일 저장
@@ -119,7 +119,7 @@ export async function PATCH(event) {
       // 파일 크기 제한 (10MB)
       const maxSize = 10 * 1024 * 1024;
       if (photoFile.size > maxSize) {
-        throw error(400, { message: '파일 크기는 10MB 이하여야 합니다.' });
+        throw error(400, '파일 크기는 10MB 이하여야 합니다.');
       }
 
       try {
@@ -163,7 +163,7 @@ export async function PATCH(event) {
         storeFileName = await Promise.race([uploadPromise, timeoutPromise]);
 
         if (!storeFileName) {
-          throw error(500, { message: '파일 저장에 실패 하였습니다.' });
+          throw error(500, '파일 저장에 실패 하였습니다.');
         }
       } catch (uploadErr) {
         console.error('파일 업로드 오류:', uploadErr);
@@ -175,9 +175,7 @@ export async function PATCH(event) {
         profileFailureLogged = true;
 
         if (uploadErr instanceof Error && uploadErr.message === '파일 업로드 타임아웃') {
-          throw error(408, {
-            message: '파일 업로드 시간이 초과되었습니다. 파일 크기를 줄여주세요.'
-          });
+          throw error(408, '파일 업로드 시간이 초과되었습니다. 파일 크기를 줄여주세요.');
         }
 
         // SvelteKit error는 그대로 throw
@@ -185,7 +183,7 @@ export async function PATCH(event) {
           throw uploadErr;
         }
 
-        throw error(500, { message: '파일 저장 중 오류가 발생했습니다.' });
+        throw error(500, '파일 저장 중 오류가 발생했습니다.');
       }
     }
 
@@ -193,7 +191,7 @@ export async function PATCH(event) {
     const nicknameRaw = String(formData.get('nickname') || '');
     nicknameLength = nicknameRaw.length;
     if (!isNicknameAllowed(nicknameRaw)) {
-      throw error(400, { message: NICKNAME_BOT_ONLY_MESSAGE });
+      throw error(400, NICKNAME_BOT_ONLY_MESSAGE);
     }
 
     introductionLength = String(formData.get('introduction') || '').length;
@@ -216,7 +214,7 @@ export async function PATCH(event) {
       });
 
       if (!existing) {
-        throw error(404, { message: '사용자를 찾을 수 없습니다.' });
+        throw error(404, '사용자를 찾을 수 없습니다.');
       }
 
       const registeredUser = await getPrisma().user.update({
@@ -257,7 +255,7 @@ export async function PATCH(event) {
         throw err;
       }
 
-      throw error(500, { message: '저장에 실패했습니다.' });
+      throw error(500, '저장에 실패했습니다.');
     }
   } catch (topLevelErr) {
     console.error('프로필 업데이트 전체 프로세스 실패:', topLevelErr);
@@ -277,6 +275,6 @@ export async function PATCH(event) {
       throw topLevelErr;
     }
 
-    throw error(500, { message: '프로필 업데이트 중 오류가 발생했습니다.' });
+    throw error(500, '프로필 업데이트 중 오류가 발생했습니다.');
   }
 }
