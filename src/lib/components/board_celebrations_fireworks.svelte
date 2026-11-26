@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { browser } from '$app/environment';
+  import { browser } from '$app/env';
   import { Confetti } from 'svelte-confetti';
   import { Offcanvas } from '$lib/components/ui/index.js';
   import { onMount } from 'svelte';

@@ -12,7 +12,7 @@
     disableScrollHandling,
     invalidateAll
   } from '$app/navigation';
-  import { browser } from '$app/environment';
+  import { browser } from '$app/env';
   import { onMount } from 'svelte';
   import { resetSignInOnPageShow } from '$lib/util/signIn';
   import {
@@ -117,6 +117,7 @@
   /** @param {unknown} value */
   function isStaleBuildError(value) {
     const message = getErrorMessage(value);
+
     return (
       message.includes('_app/immutable/') ||
       /Failed to fetch dynamically imported module/i.test(message) ||
@@ -465,11 +466,14 @@
   />
 
   <meta property="og:type" content={$page.data.ogType || 'website'} />
+
   <meta
     property="og:url"
     content={$page.data.ogUrl || `https://www.dgst.me${$page.url.pathname}`}
   />
+
   <meta property="og:title" content={$page.data.ogTitle || 'dgst.me'} />
+
   <meta
     property="og:description"
     content={$page.data.ogDescription || '으르신들의 안식처 데게 실버타운입니다.'}
@@ -485,7 +489,9 @@
     name="twitter:url"
     content={$page.data.ogUrl || `https://www.dgst.me${$page.url.pathname}`}
   />
+
   <meta name="twitter:title" content={$page.data.ogTitle || 'dgst.me'} />
+
   <meta
     name="twitter:description"
     content={$page.data.ogDescription || '으르신들의 안식처 데게 실버타운입니다.'}

@@ -1,5 +1,5 @@
 import { captureClientCallTrace, serializeError } from '$lib/util/formatErrorTrace.js';
-import { version } from '$app/environment';
+import { version } from '$app/env';
 
 /** @typedef {Object} ClientPageErrorPayload
  * @property {number} status
@@ -232,6 +232,7 @@ function collectRecentSvelteKitScripts() {
       if (resource.initiatorType !== 'script' || now - resource.startTime > 15_000) return false;
       try {
         const url = new URL(resource.name, location.origin);
+
         return (
           url.origin === location.origin &&
           url.pathname.startsWith('/_app/immutable/') &&
@@ -342,7 +343,7 @@ function collectPageErrorDiagnostics(pageError) {
   const connection =
     typeof navigator !== 'undefined'
       ? /** @type {{ effectiveType?: string; rtt?: number; downlink?: number; saveData?: boolean } | undefined} */ (
-          /** @type {Navigator & { connection?: unknown }} */ (navigator).connection
+          /** @type {Navigator & { connection?: unknown }} */ (navigator.connection)
         )
       : undefined;
   const browserNavigator =
@@ -430,10 +431,12 @@ export function reportClientError(error, context = {}) {
       component,
       operation
     });
+
   const details =
     context.details && typeof context.details === 'object' ? context.details : undefined;
   const moduleLoadError =
     /(?:module script|dynamically imported module|loading chunk \d+ failed)/i.test(errorMessage);
+
   const reportDetails = moduleLoadError
     ? {
         ...(details ?? {}),

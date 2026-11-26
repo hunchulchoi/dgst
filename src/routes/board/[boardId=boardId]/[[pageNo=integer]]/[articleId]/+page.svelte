@@ -4,7 +4,7 @@
   import { resolve } from '$app/paths';
   import { boardListPath } from '$lib/util/boardPaths.js';
   import { page } from '$app/stores';
-  import { browser } from '$app/environment';
+  import { browser } from '$app/env';
   import { scale } from 'svelte/transition';
 
   import { ko } from 'date-fns/locale';
@@ -31,6 +31,7 @@
     readClipboardImageFiles,
     readPasteData
   } from '$lib/util/pasteData.js';
+
   import {
     createWebpUploadFile,
     isPdfAttachment,
@@ -40,6 +41,7 @@
     applyAttachmentImageSizing,
     shouldApplyAttachmentImageSizing
   } from '$lib/util/attachmentImageSizing.js';
+
   import {
     clampViewerScale,
     computeFitScale,
@@ -54,7 +56,7 @@
   /** @typedef {{ Embeds?: { process: () => void } }} InstagramEmbed */
   /** @type {InstagramEmbed | undefined} */
   const instgrm = browser
-    ? /** @type {Window & { instgrm?: InstagramEmbed }} */ (window).instgrm
+    ? /** @type {Window & { instgrm?: InstagramEmbed }} */ (window.instgrm)
     : undefined;
 
   // Svelte 5 Runes - Props
@@ -406,9 +408,11 @@
         return;
       } else return;
     } else {
-      const file = /** @type {HTMLInputElement} */ (event.target).files?.[0] ?? null;
-      if (rejectAttachmentWithoutExtension(file, /** @type {HTMLInputElement} */ (event.target)))
+      const file = /** @type {HTMLInputElement} */ (event.target.files?.[0] ?? null);
+
+      if (rejectAttachmentWithoutExtension(file, /** @type {HTMLInputElement} */ event.target))
         return;
+
       if (file?.type.startsWith('audio')) {
         await uploadCommentAudioFile(file, target);
         return;
@@ -1133,7 +1137,7 @@
     } else {
       // 그 외 타입은 toast로 표시
       return await swalFire({
-        icon: icon,
+        icon,
         title: message,
         toast: true,
         timer: 1000,
@@ -1469,8 +1473,8 @@
         });
         if (!prismModule) return;
         const { default: Prism } = prismModule;
-        /** @type {any} */ (globalThis).Prism = Prism;
-        /** @type {any} */ (window).Prism = Prism;
+        /** @type {any} */ globalThis.Prism = Prism;
+        /** @type {any} */ window.Prism = Prism;
         // Keep dependencies ordered; Vite needs literal import paths.
         const grammars = [
           {
@@ -2309,7 +2313,7 @@
           >
             {#if comment.parentCommentNickname}
               <Col xs="auto" class="m-0 pe-1">
-                <Icon name="arrow-return-right" class="text-success"></Icon>
+                <Icon name="arrow-return-right" class="text-success" />
               </Col>
             {/if}
 
@@ -2335,11 +2339,9 @@
                       >
                         {comment.nickname}
                       </div>
+
                       <div class="comment-time-line !text-[0.9375rem] !leading-snug text-muted">
-                        {formatRelativeTime(comment.createdAt, {
-                          locale: ko,
-                          addSuffix: true
-                        })}
+                        {formatRelativeTime(comment.createdAt, { locale: ko, addSuffix: true })}
                       </div>
                     </div>
                   </div>
@@ -2485,10 +2487,9 @@
                           <div class="comment-content-wrap dgst-rich-text">
                             <div class="comment-body-line">
                               {#if comment.parentCommentNickname}
-                                <span class="comment-mention text-bg-secondary rounded-2"
-                                  ><span class="text-warning">@</span
-                                  >{comment.parentCommentNickname}</span
-                                >
+                                <span class="comment-mention text-bg-secondary rounded-2">
+                                  <span class="text-warning">@</span>{comment.parentCommentNickname}
+                                </span>
                               {/if}
                               <span class="comment-single-emoji">{comment.content}</span>
                             </div>

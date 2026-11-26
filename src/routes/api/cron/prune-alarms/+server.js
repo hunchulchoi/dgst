@@ -1,5 +1,5 @@
 import { json } from '@sveltejs/kit';
-import { env as dynamicEnv } from '$env/dynamic/private';
+import { CRON_SECRET } from '$app/env/private';
 import { pruneExpiredAlarms } from '$lib/server/alarm/alarmService.js';
 
 /**
@@ -8,7 +8,7 @@ import { pruneExpiredAlarms } from '$lib/server/alarm/alarmService.js';
  * 예: curl -H "x-cron-secret: YOUR_CRON_SECRET" "https://your-domain/api/cron/prune-alarms"
  */
 export async function GET({ request }) {
-  const secret = dynamicEnv.CRON_SECRET;
+  const secret = CRON_SECRET;
   const given = request.headers.get('x-cron-secret');
 
   if (!secret || given !== secret) {

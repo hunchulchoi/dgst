@@ -1,4 +1,4 @@
-import { env as privateEnv } from '$env/dynamic/private';
+import { CLOUDFLARE_TURNSTILE_SECRET_KEY } from '$app/env/private';
 import logger from '$lib/util/logger.js';
 
 /**
@@ -8,7 +8,7 @@ import logger from '$lib/util/logger.js';
  * @returns {Promise<{ ok: true } | { ok: false, message: string }>}
  */
 export async function verifyTurnstileToken(token, expectedAction) {
-  const secret = privateEnv.CLOUDFLARE_TURNSTILE_SECRET_KEY;
+  const secret = CLOUDFLARE_TURNSTILE_SECRET_KEY;
   if (!secret) {
     logger.error({ message: 'CLOUDFLARE_TURNSTILE_SECRET_KEY not set' });
     return { ok: false, message: '봇 방지 설정이 완료되지 않았습니다.' };

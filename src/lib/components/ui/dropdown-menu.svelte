@@ -1,5 +1,5 @@
 <script>
-  import { browser } from '$app/environment';
+  import { browser } from '$app/env';
   import { tick } from 'svelte';
   import { getContext } from 'svelte';
   import { portal } from '$lib/util/portal.js';

@@ -19,16 +19,16 @@
     Row
   } from '$lib/components/ui/index.js';
 
-  import { env as publicEnv } from '$env/dynamic/public';
+  import { PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY } from '$app/env/public';
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
-  import { browser } from '$app/environment';
+  import { browser } from '$app/env';
   import imageCompression from 'browser-image-compression';
   import { swalFire } from '$lib/util/swal.js';
   import { getNicknameError } from '$lib/util/nickname.js';
   import TurnstileWidget from '$lib/components/TurnstileWidget.svelte';
 
-  const PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY = publicEnv.PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY ?? '';
+  const PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY = PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY ?? '';
 
   // Svelte 5 Runes
   let { data } = $props();
@@ -83,7 +83,7 @@
 
     const formData = new FormData();
 
-    const files = /** @type {HTMLInputElement | null} */ (document.querySelector('#photo'))?.files;
+    const files = /** @type {HTMLInputElement | null} */ (document.querySelector('#photo')?.files);
 
     if (files) {
       // 움짤(GIF)·WebP는 압축 없이 원본 전송 (프로필 움짤 지원)
@@ -178,7 +178,7 @@
 
         break;
       case 'fight':
-        if (/** @type {HTMLInputElement} */ (target).checked) doValidate();
+        if (/** @type {HTMLInputElement} */ (target.checked)) doValidate();
     }
   };
 

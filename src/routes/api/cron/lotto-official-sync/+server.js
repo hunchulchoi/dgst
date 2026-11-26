@@ -1,5 +1,5 @@
 import { json } from '@sveltejs/kit';
-import { env as dynamicEnv } from '$env/dynamic/private';
+import { CRON_SECRET } from '$app/env/private';
 import {
   fetchOfficialDrawJson,
   storeOfficialDraw,
@@ -17,7 +17,7 @@ import {
  * curl -s -H "x-cron-secret: $CRON_SECRET" "https://호스트/api/cron/lotto-official-sync"
  */
 export async function GET({ request, url }) {
-  const secret = dynamicEnv.CRON_SECRET;
+  const secret = CRON_SECRET;
   const given = request.headers.get('x-cron-secret');
 
   if (!secret || given !== secret) {

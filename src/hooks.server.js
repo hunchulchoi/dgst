@@ -1,6 +1,15 @@
 import { SvelteKitAuth } from '@auth/sveltekit';
 import { getRequestEvent } from '$app/server';
-import { env as privateEnv } from '$env/dynamic/private';
+
+import {
+  GOOGLE_CLIENT_ID,
+  GOOGLE_CLIENT_SECRET,
+  KAKAO_CLIENT_ID,
+  KAKAO_CLIENT_SECRET,
+  NODE_ENV,
+  NEXTAUTH_SECRET
+} from '$app/env/private';
+
 import { getPrisma } from '$lib/database/prisma.js';
 import { getPrismaAdapter } from '$lib/server/auth/prismaAdapter.js';
 import { createAuthProviders } from '$lib/server/auth/providers.js';
@@ -33,10 +42,10 @@ export function depends(key) {
 
 // SvelteKit 2 + @auth/sveltekit v1.x 호환
 const providers = createAuthProviders({
-  googleClientId: privateEnv.GOOGLE_CLIENT_ID ?? '',
-  googleClientSecret: privateEnv.GOOGLE_CLIENT_SECRET ?? '',
-  kakaoClientId: privateEnv.KAKAO_CLIENT_ID ?? '',
-  kakaoClientSecret: privateEnv.KAKAO_CLIENT_SECRET ?? ''
+  googleClientId: GOOGLE_CLIENT_ID ?? '',
+  googleClientSecret: GOOGLE_CLIENT_SECRET ?? '',
+  kakaoClientId: KAKAO_CLIENT_ID ?? '',
+  kakaoClientSecret: KAKAO_CLIENT_SECRET ?? ''
 });
 
 export const {
@@ -110,20 +119,17 @@ export const {
   },
   cookies: {
     sessionToken: {
-      name:
-        privateEnv.NODE_ENV === 'production'
-          ? '__Secure-authjs.session-token'
-          : 'authjs.session-token',
+      name: NODE_ENV === 'production' ? '__Secure-authjs.session-token' : 'authjs.session-token',
       options: {
         httpOnly: true,
         sameSite: 'lax',
         path: '/',
-        secure: privateEnv.NODE_ENV === 'production',
+        secure: NODE_ENV === 'production',
         maxAge: 30 * 24 * 60 * 60
       }
     }
   },
-  secret: privateEnv.NEXTAUTH_SECRET,
+  secret: NEXTAUTH_SECRET,
   trustHost: true,
   logger: {
     error(error) {
@@ -140,8 +146,9 @@ export const {
 });
 
 const LOGIN_LOG_RETENTION_DAYS = 30;
+
 const AUTH_SESSION_COOKIE_NAME =
-  privateEnv.NODE_ENV === 'production' ? '__Secure-authjs.session-token' : 'authjs.session-token';
+  NODE_ENV === 'production' ? '__Secure-authjs.session-token' : 'authjs.session-token';
 
 /**
  * Cloudflare Rocket Loader는 원본 <script>를 지연 실행으로 재작성해
@@ -305,7 +312,6 @@ export async function handle({ event, resolve }) {
         (authResponse?.headers?.get?.('set-cookie')
           ? [authResponse.headers.get('set-cookie')]
           : []);
-
       const didSetSessionCookie = Array.from(setCookies).some((c) =>
         typeof c === 'string' ? c.includes(`${AUTH_SESSION_COOKIE_NAME}=`) : false
       );

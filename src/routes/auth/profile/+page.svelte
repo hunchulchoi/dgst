@@ -23,10 +23,10 @@
     ModalHeader
   } from '$lib/components/ui/index.js';
 
-  import { env as publicEnv } from '$env/dynamic/public';
+  import { PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY } from '$app/env/public';
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
-  import { browser } from '$app/environment';
+  import { browser } from '$app/env';
   import imageCompression from 'browser-image-compression';
   import { swalFire } from '$lib/util/swal.js';
   import { getNicknameError } from '$lib/util/nickname.js';
@@ -34,7 +34,7 @@
   import { getProfileValidationMessage } from '$lib/util/profileValidation.js';
   import TurnstileWidget from '$lib/components/TurnstileWidget.svelte';
 
-  const PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY = publicEnv.PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY ?? '';
+  const PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY = PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY ?? '';
 
   /** @typedef {{ x: number; y: number; width: number; height: number }} CropData */
   /** @typedef {import('cropperjs').default} CropperInstance */
@@ -141,9 +141,9 @@
           previewSrc = window.URL.createObjectURL(blob);
         }
         cropperOpen = false;
-        /** @type {HTMLInputElement | HTMLTextAreaElement | null} */ (
-          document.querySelector('#introduction')
-        )?.focus();
+        /** @type {HTMLInputElement | HTMLTextAreaElement | null} */ document
+          .querySelector('#introduction')
+          ?.focus();
       });
     } else {
       // 일반 자르기는 브라우저에서 캔버스로 잘라버림
@@ -154,9 +154,9 @@
           serverCropData = null;
         }
         cropperOpen = false;
-        /** @type {HTMLInputElement | HTMLTextAreaElement | null} */ (
-          document.querySelector('#introduction')
-        )?.focus();
+        /** @type {HTMLInputElement | HTMLTextAreaElement | null} */ document
+          .querySelector('#introduction')
+          ?.focus();
       }, 'image/png');
     }
   }

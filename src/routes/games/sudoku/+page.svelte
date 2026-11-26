@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { browser } from '$app/environment';
+  import { browser } from '$app/env';
   import { onMount } from 'svelte';
   import { ko } from 'date-fns/locale';
   import { formatRelativeTime } from '$lib/util/formatRelativeTime.js';
@@ -760,13 +760,14 @@
           {#if isHell && hellRules.thermo && thermos.length}
             <svg class="hell-thermo-layer" viewBox="0 0 9 9" aria-hidden="true">
               {#each thermos as thermo, thermoIndex (thermoIndex)}
-                <polyline class="hell-thermo-line" points={thermoPoints(thermo)} />
+                <polyline class="hell-thermo-line" points={thermoPoints(thermo)}></polyline>
+
                 <circle
                   class="hell-thermo-bulb"
                   cx={thermoBulb(thermo).x}
                   cy={thermoBulb(thermo).y}
                   r="0.36"
-                />
+                ></circle>
               {/each}
             </svg>
           {/if}

@@ -1,4 +1,4 @@
-import { env } from '$env/dynamic/private';
+import { DGST_LOCAL_GAME_SMOKE, NODE_ENV } from '$app/env/private';
 
 const SMOKE_USER = {
   email: 'local-game-smoke@dgst.local',
@@ -30,9 +30,9 @@ function isLocalHostname(hostname) {
  * @param {import('@sveltejs/kit').RequestEvent} event
  */
 export function isLocalGameSmokeSessionEnabled(event) {
-  const flag = String(env.DGST_LOCAL_GAME_SMOKE ?? '').toLowerCase();
-  const nodeEnv =
-    env.NODE_ENV ?? (typeof process !== 'undefined' ? process.env.NODE_ENV : undefined);
+  const flag = String(DGST_LOCAL_GAME_SMOKE ?? '').toLowerCase();
+  const nodeEnv = NODE_ENV ?? (typeof process !== 'undefined' ? process.env.NODE_ENV : undefined);
+
   if (!['1', 'true', 'yes', 'on'].includes(flag)) return false;
   if (nodeEnv === 'production') return false;
 
@@ -68,5 +68,5 @@ export async function getGameSession(event) {
  */
 export function isLocalGameSmokeSession(session) {
   if (!session || typeof session !== 'object' || !('user' in session)) return false;
-  return /** @type {{ user?: { email?: unknown } }} */ (session).user?.email === SMOKE_USER.email;
+  return /** @type {{ user?: { email?: unknown } }} */ (session.user?.email === SMOKE_USER.email);
 }
