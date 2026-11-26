@@ -96,7 +96,8 @@ const wolya = {
   rulesFile: 'wolya-rules.json',
   stateFile: 'state-wolya.json',
   slotSeed: 'dgst-bot-wolya',
-  skipArticleAuthors: ['월야'],
+  /** 월야 본인 글에도 댓글을 단다 (운영자 요청). 월야한테는 wolya-rules.json 의 제주 사투리 규칙 */
+  skipArticleAuthors: [],
   lineGap: true,
   mentionMembers: true,
   postSystem: (
