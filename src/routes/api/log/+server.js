@@ -30,15 +30,23 @@ export function _sanitizeClientLogDetails(value, depth = 0) {
 }
 
 const NAVIGATION_NUMBER_FIELDS = [
+  'beforeFetchMs',
+  'redirectMs',
+  'cacheLookupMs',
   'dnsMs',
   'tcpMs',
   'tlsMs',
+  'requestQueueMs',
   'ttfbMs',
   'downloadMs',
   'domInteractiveMs',
   'domContentLoadedMs',
   'postDomLoadMs',
   'totalMs',
+  'unaccountedMs',
+  'serverMs',
+  'cdnOriginMs',
+  'networkTtfbMs',
   'transferSize',
   'encodedBodySize',
   'decodedBodySize',

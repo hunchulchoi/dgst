@@ -398,21 +398,25 @@ export async function handle({ event, resolve }) {
     });
   }
 
-  if (authResponse instanceof Response && isBoardHtmlPath(pathname)) {
-    const contentType = authResponse.headers.get('content-type') ?? '';
-    if (contentType.includes('text/html')) {
-      const headers = new Headers(authResponse.headers);
+  if (
+    authResponse instanceof Response &&
+    (authResponse.headers.get('content-type') ?? '').includes('text/html')
+  ) {
+    const headers = new Headers(authResponse.headers);
+    // 브라우저 느린 로드 보고(navigation.serverTiming)에서 서버 처리 시간을 구분하려고 보낸다.
+    headers.append('Server-Timing', `app;dur=${executionTime}`);
+    if (isBoardHtmlPath(pathname)) {
       headers.set('Cache-Control', 'private, no-store, must-revalidate, max-age=0');
       headers.set('CDN-Cache-Control', 'no-store');
       // Cloudflare Early Hints: render-blocking CSS를 103으로 선전송 (고RTT 클라이언트)
       headers.append('Link', '</css/bootstrap.min.css?v=20260522>; rel=preload; as=style');
-
-      return new Response(authResponse.body, {
-        status: authResponse.status,
-        statusText: authResponse.statusText,
-        headers
-      });
     }
+
+    return new Response(authResponse.body, {
+      status: authResponse.status,
+      statusText: authResponse.statusText,
+      headers
+    });
   }
 
   return authResponse;

@@ -23,6 +23,10 @@ describe('HTTP slow response thresholds', () => {
     );
   });
 
+  it('sends the server processing time to browsers on HTML responses', () => {
+    expect(hooks).toContain("headers.append('Server-Timing', `app;dur=${executionTime}`);");
+  });
+
   it('shows the same thresholds in Grafana', () => {
     expect(dashboard).toContain('"legendFormat": "slow ≥500ms"');
     expect(dashboard).toContain('"legendFormat": "slow ≥2s"');

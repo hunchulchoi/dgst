@@ -48,30 +48,90 @@ function roundedNonNegative(value) {
 }
 
 /**
+ * 서버가 `Server-Timing: app;dur=<ms>` 로 보낸 처리 시간 (Cloudflare가 붙이는 cfOrigin도 함께).
+ * @param {ReadonlyArray<Pick<PerformanceServerTiming, 'name' | 'duration'>> | undefined} serverTiming
+ */
+export function getServerTimingMs(serverTiming) {
+  if (!Array.isArray(serverTiming)) return {};
+  /** @param {string} name */
+  const find = (name) => {
+    const entry = serverTiming.find((candidate) => candidate?.name === name);
+    const duration = Number(entry?.duration);
+    return entry && Number.isFinite(duration) && duration >= 0 ? Math.round(duration) : undefined;
+  };
+  const serverMs = find('app');
+  const cdnOriginMs = find('cfOrigin');
+  return {
+    ...(serverMs !== undefined && { serverMs }),
+    ...(cdnOriginMs !== undefined && { cdnOriginMs })
+  };
+}
+
+/**
  * @param {Pick<PerformanceNavigationTiming,
  *  'startTime' | 'domainLookupStart' | 'domainLookupEnd' | 'connectStart' |
  *  'secureConnectionStart' | 'connectEnd' | 'requestStart' | 'responseStart' |
  *  'responseEnd' | 'domInteractive' | 'domContentLoadedEventEnd' | 'loadEventEnd' |
  *  'transferSize' | 'encodedBodySize' | 'decodedBodySize' | 'nextHopProtocol' |
- *  'type' | 'redirectCount'>} entry
+ *  'type' | 'redirectCount'> &
+ *  Partial<Pick<PerformanceNavigationTiming, 'fetchStart' | 'redirectStart' | 'redirectEnd'>> &
+ *  { serverTiming?: ReadonlyArray<Pick<PerformanceServerTiming, 'name' | 'duration'>> }} entry
  */
 export function getNavigationTimingBreakdown(entry) {
   /** @param {unknown} end @param {unknown} start */
   const phase = (end, start) => roundedNonNegative(Number(end) - Number(start));
+  const fetchStart = Number(entry.fetchStart);
+  const hasFetchStart = Number.isFinite(fetchStart) && fetchStart > 0;
+  // 연결을 재사용하면 DNS·연결 값이 fetchStart와 같거나 0이다.
+  const connectEnd = Number(entry.connectEnd) > 0 ? entry.connectEnd : entry.fetchStart;
 
-  return {
+  const phases = {
+    /** 이전 페이지 unload, 리다이렉트, 브라우저 대기 등 요청 시작 전 시간 */
+    beforeFetchMs: hasFetchStart ? phase(fetchStart, entry.startTime) : 0,
+    /** 같은 출처 리다이렉트만 값이 있다 (다른 출처면 0) */
+    redirectMs: phase(entry.redirectEnd, entry.redirectStart),
+    /** HTTP 캐시 조회 등 fetchStart → DNS 시작 */
+    cacheLookupMs:
+      hasFetchStart && Number(entry.domainLookupStart) > 0
+        ? phase(entry.domainLookupStart, fetchStart)
+        : 0,
     dnsMs: phase(entry.domainLookupEnd, entry.domainLookupStart),
     tcpMs: phase(entry.connectEnd, entry.connectStart),
     tlsMs:
       Number(entry.secureConnectionStart) > 0
         ? phase(entry.connectEnd, entry.secureConnectionStart)
         : 0,
+    /** 연결이 끝난 뒤 요청을 실제로 보내기까지 (브라우저 요청 대기열) */
+    requestQueueMs: Number(entry.requestStart) > 0 ? phase(entry.requestStart, connectEnd) : 0,
     ttfbMs: phase(entry.responseStart, entry.requestStart),
     downloadMs: phase(entry.responseEnd, entry.responseStart),
-    domInteractiveMs: phase(entry.domInteractive, entry.responseEnd),
     domContentLoadedMs: phase(entry.domContentLoadedEventEnd, entry.responseEnd),
-    postDomLoadMs: phase(entry.loadEventEnd, entry.domContentLoadedEventEnd),
-    totalMs: phase(entry.loadEventEnd, entry.startTime),
+    postDomLoadMs: phase(entry.loadEventEnd, entry.domContentLoadedEventEnd)
+  };
+  const totalMs = phase(entry.loadEventEnd, entry.startTime);
+  const accountedMs =
+    phases.beforeFetchMs +
+    phases.cacheLookupMs +
+    phases.dnsMs +
+    phases.tcpMs +
+    phases.requestQueueMs +
+    phases.ttfbMs +
+    phases.downloadMs +
+    phases.domContentLoadedMs +
+    phases.postDomLoadMs;
+  const serverTiming = getServerTimingMs(entry.serverTiming);
+
+  return {
+    ...phases,
+    domInteractiveMs: phase(entry.domInteractive, entry.responseEnd),
+    totalMs,
+    /** 브라우저가 타이밍을 가려(다른 출처 리다이렉트 등) 어느 구간에도 안 들어간 시간 */
+    unaccountedMs: roundedNonNegative(totalMs - accountedMs),
+    ...serverTiming,
+    /** 첫 바이트 대기 중 서버 처리를 뺀 나머지 (망·CDN) */
+    ...(serverTiming.serverMs !== undefined && {
+      networkTtfbMs: roundedNonNegative(phases.ttfbMs - serverTiming.serverMs)
+    }),
     transferSize: roundedNonNegative(entry.transferSize),
     encodedBodySize: roundedNonNegative(entry.encodedBodySize),
     decodedBodySize: roundedNonNegative(entry.decodedBodySize),

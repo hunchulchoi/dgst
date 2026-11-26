@@ -10,6 +10,11 @@ describe('client performance detail sanitization', () => {
           dnsMs: 10.4,
           ttfbMs: 62.2,
           totalMs: 7469,
+          beforeFetchMs: 4400,
+          requestQueueMs: 2,
+          unaccountedMs: 0,
+          serverMs: 70,
+          networkTtfbMs: 8,
           protocol: 'h2',
           ignored: 'drop-me'
         },
@@ -54,6 +59,11 @@ describe('client performance detail sanitization', () => {
         dnsMs: 10.4,
         ttfbMs: 62.2,
         totalMs: 7469,
+        beforeFetchMs: 4400,
+        requestQueueMs: 2,
+        unaccountedMs: 0,
+        serverMs: 70,
+        networkTtfbMs: 8,
         protocol: 'h2'
       },
       resources: Array.from({ length: 5 }, (_, index) => ({

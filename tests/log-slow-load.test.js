@@ -6,6 +6,7 @@ import {
   getLatestResourceSummaries,
   getInitialLoadAlertReasons,
   getNavigationTimingBreakdown,
+  getServerTimingMs,
   getSlowResourceSummaries,
   summarizeLongTasks,
   MAX_INITIAL_LOAD_DURATION_MS
@@ -93,15 +94,20 @@ describe('initial browser performance details', () => {
         redirectCount: 0
       })
     ).toEqual({
+      beforeFetchMs: 0,
+      redirectMs: 0,
+      cacheLookupMs: 0,
       dnsMs: 10,
       tcpMs: 25,
       tlsMs: 20,
+      requestQueueMs: 5,
       ttfbMs: 60,
       downloadMs: 30,
       domInteractiveMs: 260,
       domContentLoadedMs: 360,
       postDomLoadMs: 400,
       totalMs: 900,
+      unaccountedMs: 10,
       transferSize: 12000,
       encodedBodySize: 10000,
       decodedBodySize: 50000,
@@ -109,6 +115,59 @@ describe('initial browser performance details', () => {
       navigationType: 'navigate',
       redirectCount: 0
     });
+  });
+
+  it('explains time spent before the request and splits server time out of TTFB', () => {
+    // 새로고침 직전 페이지 정리로 요청이 4.4초 늦게 나간 경우 (실제 5,105ms 보고와 같은 모양)
+    const breakdown = getNavigationTimingBreakdown({
+      startTime: 0,
+      fetchStart: 4400,
+      redirectStart: 0,
+      redirectEnd: 0,
+      domainLookupStart: 4402,
+      domainLookupEnd: 4404,
+      connectStart: 4404,
+      secureConnectionStart: 4466,
+      connectEnd: 4548,
+      requestStart: 4550,
+      responseStart: 4628,
+      responseEnd: 4942,
+      domInteractive: 4978,
+      domContentLoadedEventEnd: 4978,
+      loadEventEnd: 5105,
+      transferSize: 10747,
+      encodedBodySize: 10447,
+      decodedBodySize: 79418,
+      nextHopProtocol: 'h2',
+      type: 'reload',
+      redirectCount: 0,
+      serverTiming: [
+        { name: 'cfCacheStatus', duration: 0 },
+        { name: 'app', duration: 70.4 }
+      ]
+    });
+
+    expect(breakdown).toMatchObject({
+      beforeFetchMs: 4400,
+      cacheLookupMs: 2,
+      requestQueueMs: 2,
+      ttfbMs: 78,
+      serverMs: 70,
+      networkTtfbMs: 8,
+      totalMs: 5105
+    });
+    expect(breakdown.unaccountedMs).toBe(0);
+  });
+
+  it('reads app and Cloudflare origin durations from Server-Timing', () => {
+    expect(
+      getServerTimingMs([
+        { name: 'cfOrigin', duration: 81 },
+        { name: 'app', duration: 48.6 }
+      ])
+    ).toEqual({ serverMs: 49, cdnOriginMs: 81 });
+    expect(getServerTimingMs(undefined)).toEqual({});
+    expect(getServerTimingMs([{ name: 'app', duration: Number.NaN }])).toEqual({});
   });
 
   it('keeps only the five slowest resources and removes query strings and external paths', () => {
