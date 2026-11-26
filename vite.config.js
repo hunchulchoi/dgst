@@ -1,3 +1,5 @@
+import adapter from '@sveltejs/adapter-node';
+import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
 import { sveltekit } from '@sveltejs/kit/vite';
 import tailwindcss from '@tailwindcss/vite';
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -47,8 +49,20 @@ function rootRelativeSvelteKitPreloadDeps() {
 }
 
 export default defineConfig({
-  plugins: [tailwindcss(), sveltekit(), rootRelativeSvelteKitPreloadDeps()],
-
+  plugins: [
+    tailwindcss(),
+    sveltekit({
+      compilerOptions: { compatibility: { componentApi: 4 } },
+      preprocess: vitePreprocess(),
+      // getClientAddress()가 실제 클라이언트 IP를 쓰려면 실행 시 환경변수 필요:
+      // ADDRESS_HEADER=x-forwarded-for, (프록시 1대면) XFF_DEPTH=2
+      adapter: adapter(),
+      paths: { assets: '', relative: false },
+      version: { pollInterval: 60_000 },
+      prerender: { entries: ['/index'] }
+    }),
+    rootRelativeSvelteKitPreloadDeps()
+  ],
   // SSR 외부화
   ssr: {
     external: ['@ffmpeg/ffmpeg', '@ffmpeg/util']
