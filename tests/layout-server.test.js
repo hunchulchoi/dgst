@@ -14,9 +14,19 @@ const envModule = vi.hoisted(() => ({
   env: /** @type {Record<string, string | undefined>} */ ({})
 }));
 
-vi.mock('$env/dynamic/private', () => envModule);
-vi.mock('$lib/server/alarm/alarmService.js', () => alarmService);
-vi.mock('$lib/util/logger.js', () => loggerModule);
+vi.mock('$app/env/private', () => ({
+  get KAKAO_CLIENT_ID() {
+    return envModule.env.KAKAO_CLIENT_ID;
+  },
+  get KAKAO_CLIENT_SECRET() {
+    return envModule.env.KAKAO_CLIENT_SECRET;
+  },
+  get BLUE_DGST_HOST() {
+    return envModule.env.BLUE_DGST_HOST;
+  }
+}));
+vi.mock('#lib/server/alarm/alarmService.js', () => alarmService);
+vi.mock('#lib/util/logger.js', () => loggerModule);
 
 describe('+layout.server load', () => {
   it('includes the unread alarm count for the authenticated user', async () => {

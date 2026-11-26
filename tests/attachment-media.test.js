@@ -91,7 +91,7 @@ describe('attachment media detection', () => {
   });
 
   it('applies the same responsive sizing calculation to videos and images', () => {
-    expect(attachmentComponent).toContain("from '$lib/util/attachmentImageSizing.js'");
+    expect(attachmentComponent).toContain("from '#lib/util/attachmentImageSizing.js'");
     expect(attachmentComponent).toContain('applyAttachmentImageSizing(element.style');
     expect(attachmentComponent).toContain('onloadedmetadata={handleVideoMetadata}');
     expect(attachmentComponent).toContain('naturalWidth: element.videoWidth');

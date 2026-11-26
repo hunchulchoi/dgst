@@ -7,7 +7,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('@auth/sveltekit/client', () => ({ signIn: mocks.signIn }));
-vi.mock('$lib/util/swal.js', () => ({ swalFire: mocks.swalFire }));
+vi.mock('#lib/util/swal.js', () => ({ swalFire: mocks.swalFire }));
 
 import {
   resetSignInOnPageShow,

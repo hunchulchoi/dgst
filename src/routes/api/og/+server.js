@@ -1,10 +1,10 @@
 import { error, json } from '@sveltejs/kit';
-import { assertSafeFetchUrl } from '$lib/server/fetchUrlSafety.js';
-import { getJson, setJson } from '$lib/server/cache/pgCache.js';
-import { decodeOgTextFields, parseOpenGraphData } from '$lib/server/ogMetadata.js';
+import { assertSafeFetchUrl } from '#lib/server/fetchUrlSafety.js';
+import { getJson, setJson } from '#lib/server/cache/pgCache.js';
+import { decodeOgTextFields, parseOpenGraphData } from '#lib/server/ogMetadata.js';
 
 const OG_NS = 'og';
-import logger from '$lib/util/logger.js';
+import logger from '#lib/util/logger.js';
 
 /**
  * Open Graph 데이터를 가져오는 API
@@ -14,7 +14,7 @@ import logger from '$lib/util/logger.js';
 export async function GET({ url, locals }) {
   const session = await locals.auth();
   if (!session?.user?.nickname) {
-    throw error(401, { message: '로그인이 필요합니다.' });
+    throw error(401, '로그인이 필요합니다.');
   }
 
   const targetUrl = url.searchParams.get('url');
@@ -34,7 +34,7 @@ export async function GET({ url, locals }) {
 export async function POST({ request, locals }) {
   const session = await locals.auth();
   if (!session?.user?.nickname) {
-    throw error(401, { message: '로그인이 필요합니다.' });
+    throw error(401, '로그인이 필요합니다.');
   }
 
   try {

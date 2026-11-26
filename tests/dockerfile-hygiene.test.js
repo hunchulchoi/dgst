@@ -50,10 +50,21 @@ describe('production container hygiene', () => {
   });
 
   it('reads deployment secrets and public runtime configuration dynamically', () => {
-    expect(minioStorage).toContain("from '$env/dynamic/private'");
-    expect(minioStorage).not.toContain("from '$env/static/private'");
-    expect(profilePage).toContain("from '$env/dynamic/public'");
-    expect(registerPage).toContain("from '$env/dynamic/public'");
+    // SvelteKit 3: variables declared in src/env.js without `static: true` are read at runtime.
+    const envConfig = readFileSync('src/env.js', 'utf8');
+    for (const name of [
+      'MINIO_ACCESS_KEY',
+      'MINIO_BUCKET',
+      'MINIO_ENDPOINT',
+      'MINIO_REGION',
+      'MINIO_SECRET_KEY',
+      'PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY'
+    ]) {
+      expect(envConfig).toMatch(new RegExp(`^\\s*${name}: \\{(?![^}]*static: true)`, 'm'));
+    }
+    expect(minioStorage).toContain("from '$app/env/private'");
+    expect(profilePage).toContain("from '$app/env/public'");
+    expect(registerPage).toContain("from '$app/env/public'");
   });
 
   it('fetches runtime secrets from Infisical with universal auth', () => {

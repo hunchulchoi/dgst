@@ -1,12 +1,12 @@
 import { error, json } from '@sveltejs/kit';
-import { checkRateLimit } from '$lib/server/apiRateLimit.js';
-import { getGameSession, isLocalGameSmokeSession } from '$lib/server/localGameSmokeSession.js';
+import { checkRateLimit } from '#lib/server/apiRateLimit.js';
+import { getGameSession, isLocalGameSmokeSession } from '#lib/server/localGameSmokeSession.js';
 import {
   ARCADE_ROUND_PLAY_TTL_MS,
   ArcadePlayConflictError,
   beginArcadePlay,
   releaseArcadePlay
-} from '$lib/server/arcadeWallet.js';
+} from '#lib/server/arcadeWallet.js';
 import {
   ensureSeotdaBalance,
   didSeotdaTakeLead,
@@ -83,7 +83,7 @@ async function requireUser(event) {
     };
   }
   if (typeof sessionEmail !== 'string' || !sessionEmail) {
-    throw error(401, { message: '로그인이 필요합니다.' });
+    throw error(401, '로그인이 필요합니다.');
   }
   const email = sessionEmail;
   const nickname =
@@ -127,7 +127,7 @@ export async function GET(event) {
   } catch (err) {
     if (err && typeof err === 'object' && 'status' in err) throw err;
     console.error('[seotda GET]', err);
-    throw error(500, { message: '섯다 상태 조회 실패' });
+    throw error(500, '섯다 상태 조회 실패');
   }
 }
 
@@ -140,7 +140,7 @@ export async function POST(event) {
       bucket: 'seotda-post'
     });
     if (!rateLimit.allowed) {
-      throw error(429, { message: '요청이 너무 빠릅니다. 잠시 후 다시 시도해 주세요.' });
+      throw error(429, '요청이 너무 빠릅니다. 잠시 후 다시 시도해 주세요.');
     }
     const user = await requireUser(event);
     const body = await event.request.json().catch(() => ({}));
@@ -152,7 +152,7 @@ export async function POST(event) {
 
     if (action === 'start') {
       if (getRound(user.email)) {
-        throw error(400, { message: '진행 중이거나 확인하지 않은 판이 있습니다.' });
+        throw error(400, '진행 중이거나 확인하지 않은 판이 있습니다.');
       }
       // 새 테이블: NPC 칩 초기화
       const prev = getRound(user.email);
@@ -177,12 +177,12 @@ export async function POST(event) {
     if (action === 'arrange') {
       const round = getRound(user.email);
       if (!round || round.phase !== 'betting' || !round.series?.isBoss) {
-        throw error(400, { message: '진행 중인 보스전이 없습니다.' });
+        throw error(400, '진행 중인 보스전이 없습니다.');
       }
       try {
         arrangeBossHand(round, 'user', Array.isArray(body?.indices) ? body.indices : []);
       } catch (cause) {
-        throw error(400, { message: cause instanceof Error ? cause.message : '도리 선택 실패' });
+        throw error(400, cause instanceof Error ? cause.message : '도리 선택 실패');
       }
       setRound(user.email, round);
       return json({
@@ -196,11 +196,11 @@ export async function POST(event) {
     if (action === 'act') {
       const round = getRound(user.email);
       if (!round || round.phase !== 'betting') {
-        throw error(400, { message: '진행 중인 베팅이 없습니다.' });
+        throw error(400, '진행 중인 베팅이 없습니다.');
       }
       const move = String(body?.move ?? '');
       if (!['die', 'call', 'raise'].includes(move)) {
-        throw error(400, { message: 'die | call | raise 만 가능' });
+        throw error(400, 'die | call | raise 만 가능');
       }
       const raisePay = body?.amount != null ? Number(body.amount) : undefined;
       const userSeat = round.seats.find((seat) => seat.id === 'user');
@@ -288,7 +288,7 @@ export async function POST(event) {
       // 쇼다운 확인 후 NPC 칩 유지한 채 다음 판
       const round = getRound(user.email);
       if (!round || round.phase !== 'showdown') {
-        throw error(400, { message: '끝난 판에서 다음 판을 눌러야 새 패를 돌릴 수 있습니다.' });
+        throw error(400, '끝난 판에서 다음 판을 눌러야 새 패를 돌릴 수 있습니다.');
       }
       const openingActorId = round?.winnerId ?? 'user';
       const sparkTauntCooldown = sparkTauntCooldownAfterRound(round);
@@ -314,7 +314,7 @@ export async function POST(event) {
       );
     }
 
-    throw error(400, { message: 'action: start | arrange | act | ack' });
+    throw error(400, 'action: start | arrange | act | ack');
   } catch (err) {
     if (err && typeof err === 'object' && 'status' in err) throw err;
     if (err instanceof ArcadePlayConflictError) {
@@ -324,10 +324,10 @@ export async function POST(event) {
         await releaseArcadePlay(conflictUser.email, round.arcadePlayId);
         clearRound(conflictUser.email);
       }
-      throw error(409, { message: err.message });
+      throw error(409, err.message);
     }
     console.error('[seotda POST]', err);
-    throw error(500, { message: err instanceof Error ? err.message : '섯다 요청 실패' });
+    throw error(500, err instanceof Error ? err.message : '섯다 요청 실패');
   }
 }
 
@@ -352,7 +352,7 @@ async function beginRound(
     balance = (await resolveSeotdaOops(email, nickname, balance)).balance;
   }
   if (balance < 10) {
-    throw error(400, { message: '보유 점수가 부족합니다. 오링 후 잠시 기다려 주세요.' });
+    throw error(400, '보유 점수가 부족합니다. 오링 후 잠시 기다려 주세요.');
   }
   let playId = '';
   try {
@@ -361,11 +361,9 @@ async function beginRound(
     balance = play.balance;
   } catch (cause) {
     if (cause instanceof ArcadePlayConflictError) {
-      throw error(409, { message: cause.message });
+      throw error(409, cause.message);
     }
-    throw error(400, {
-      message: cause instanceof Error ? cause.message : '게임을 시작할 수 없습니다.'
-    });
+    throw error(400, cause instanceof Error ? cause.message : '게임을 시작할 수 없습니다.');
   }
   try {
     const npcChips = getNpcStacks(email);
@@ -404,7 +402,7 @@ async function beginRound(
 function handleSmoke(email, action, body) {
   if (action === 'start') {
     if (getRound(email)) {
-      throw error(400, { message: '진행 중이거나 확인하지 않은 판이 있습니다.' });
+      throw error(400, '진행 중이거나 확인하지 않은 판이 있습니다.');
     }
     clearRound(email);
     resetNpcStacks(email);
@@ -436,7 +434,7 @@ function handleSmoke(email, action, body) {
   if (action === 'ack') {
     const prev = getRound(email);
     if (!prev || prev.phase !== 'showdown') {
-      throw error(400, { message: '끝난 판에서 다음 판을 눌러야 새 패를 돌릴 수 있습니다.' });
+      throw error(400, '끝난 판에서 다음 판을 눌러야 새 패를 돌릴 수 있습니다.');
     }
     const openingActorId = prev?.winnerId ?? 'user';
     const sparkTauntCooldown = sparkTauntCooldownAfterRound(prev);
@@ -471,12 +469,12 @@ function handleSmoke(email, action, body) {
   if (action === 'arrange') {
     const round = getRound(email);
     if (!round || round.phase !== 'betting' || !round.series?.isBoss) {
-      throw error(400, { message: '진행 중인 보스전이 없습니다.' });
+      throw error(400, '진행 중인 보스전이 없습니다.');
     }
     try {
       arrangeBossHand(round, 'user', Array.isArray(body?.indices) ? body.indices : []);
     } catch (cause) {
-      throw error(400, { message: cause instanceof Error ? cause.message : '도리 선택 실패' });
+      throw error(400, cause instanceof Error ? cause.message : '도리 선택 실패');
     }
     setRound(email, round);
     return json({
@@ -489,7 +487,7 @@ function handleSmoke(email, action, body) {
   if (action === 'act') {
     const round = getRound(email);
     if (!round || round.phase !== 'betting') {
-      throw error(400, { message: '진행 중인 베팅이 없습니다.' });
+      throw error(400, '진행 중인 베팅이 없습니다.');
     }
     const move = String(body?.move ?? '');
     const raisePay = body?.amount != null ? Number(body.amount) : undefined;
@@ -508,5 +506,5 @@ function handleSmoke(email, action, body) {
     const userChips = round.seats.find((s) => s.id === 'user')?.chips ?? 0;
     return json({ success: true, balance: userChips, round: publicOf(round), npcActions });
   }
-  throw error(400, { message: 'action: start | arrange | act | ack' });
+  throw error(400, 'action: start | arrange | act | ack');
 }

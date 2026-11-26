@@ -3,35 +3,35 @@ import {
   createArticle,
   findOwnedArticle,
   updateArticleByOwner
-} from '$lib/server/board/articleRepo.js';
-import { checkAndLogSessionDevice } from '$lib/server/auth/checkSessionDevice.js';
-import { sanitizeArticleContent } from '$lib/server/sanitizeArticleContent.js';
-import { bustBoardListCache } from '$lib/server/boardListLoad.js';
-import logger from '$lib/util/logger.js';
-import { traceFromUnknown } from '$lib/util/formatErrorTrace.js';
+} from '#lib/server/board/articleRepo.js';
+import { checkAndLogSessionDevice } from '#lib/server/auth/checkSessionDevice.js';
+import { sanitizeArticleContent } from '#lib/server/sanitizeArticleContent.js';
+import { bustBoardListCache } from '#lib/server/boardListLoad.js';
+import logger from '#lib/util/logger.js';
+import { traceFromUnknown } from '#lib/util/formatErrorTrace.js';
 import {
   buildSubmitFingerprint,
   findRecentDuplicateArticle,
   tryAcquireSubmitDedup
-} from '$lib/server/submitDedup.js';
-import { validateArticleContent } from '$lib/util/articleContentValidation.js';
+} from '#lib/server/submitDedup.js';
+import { validateArticleContent } from '#lib/util/articleContentValidation.js';
 
 export const actions = {
   default: async (event) => {
     const { request, params, locals } = event;
     const { articleId, boardId } = params;
     if (!boardId) {
-      throw error(400, { message: '잘못된 접근입니다.' });
+      throw error(400, '잘못된 접근입니다.');
     }
 
     const session = await locals.auth();
 
     if (!session?.user?.nickname) {
-      throw error(401, { message: '권한이 없습니다. 로그인 해 주세요' });
+      throw error(401, '권한이 없습니다. 로그인 해 주세요');
     }
 
     if (!session.user.email) {
-      throw error(401, { message: '계정 정보가 올바르지 않습니다. 다시 로그인해 주세요.' });
+      throw error(401, '계정 정보가 올바르지 않습니다. 다시 로그인해 주세요.');
     }
 
     await checkAndLogSessionDevice(event, { action: 'board.write' });
@@ -40,7 +40,7 @@ export const actions = {
 
     const rawTitle = data.get('title');
     if (!rawTitle || String(rawTitle).trim().length === 0) {
-      throw error(400, { message: '제목을 입력해주세요.' });
+      throw error(400, '제목을 입력해주세요.');
     }
 
     const rawContent = data.get('content');
@@ -52,7 +52,7 @@ export const actions = {
 
     const contentCheck = validateArticleContent(processedContent);
     if (!contentCheck.ok) {
-      throw error(400, { message: contentCheck.message });
+      throw error(400, contentCheck.message);
     }
 
     const titleTrim = String(rawTitle).trim();
@@ -66,9 +66,7 @@ export const actions = {
         });
 
         if (!update) {
-          throw error(401, {
-            message: '업데이트 되지 않았습니다. 이미 삭제되었거나 권한이 없는 것 같습니다.'
-          });
+          throw error(401, '업데이트 되지 않았습니다. 이미 삭제되었거나 권한이 없는 것 같습니다.');
         }
 
         await bustBoardListCache(boardId);
@@ -111,7 +109,7 @@ export const actions = {
         errorMessage: err instanceof Error ? err.message : String(err),
         trace: traceFromUnknown(err)
       });
-      throw error(500, { message: '저장 중 오류가 발생하였습니다. 잠시 후 다시 시도해 주세요.' });
+      throw error(500, '저장 중 오류가 발생하였습니다. 잠시 후 다시 시도해 주세요.');
     }
   }
 };
@@ -122,7 +120,7 @@ export const load = async ({ params, locals }) => {
   const { articleId, boardId } = params;
 
   if (!session?.user?.nickname || !session.user.email) {
-    throw error(401, { message: '권한이 없습니다. 로그인 해 주세요' });
+    throw error(401, '권한이 없습니다. 로그인 해 주세요');
   }
 
   if (!articleId) {
@@ -130,7 +128,7 @@ export const load = async ({ params, locals }) => {
   }
 
   if (!boardId) {
-    throw error(400, { message: '잘못된 접근입니다.' });
+    throw error(400, '잘못된 접근입니다.');
   }
 
   try {
@@ -153,7 +151,7 @@ export const load = async ({ params, locals }) => {
     });
 
     if (!article) {
-      throw error(404, { message: '글을 찾을 수 없습니다.' });
+      throw error(404, '글을 찾을 수 없습니다.');
     }
 
     return {
@@ -176,6 +174,6 @@ export const load = async ({ params, locals }) => {
       errorMessage: err instanceof Error ? err.message : String(err),
       trace: traceFromUnknown(err)
     });
-    throw error(500, { message: '글을 불러오지 못했습니다.' });
+    throw error(500, '글을 불러오지 못했습니다.');
   }
 };

@@ -1,9 +1,9 @@
 import { error, json } from '@sveltejs/kit';
-import { getPrisma } from '$lib/database/prisma.js';
-import { getTodayMinesweeperStats } from '$lib/server/gameMinesweeperStats.js';
-import { attachGameProfilePhotos } from '$lib/server/gameProfilePhotos.js';
-import { getGameSession, isLocalGameSmokeSession } from '$lib/server/localGameSmokeSession.js';
-import { normalizeToIsoString } from '$lib/util/formatRelativeTime.js';
+import { getPrisma } from '#lib/database/prisma.js';
+import { getTodayMinesweeperStats } from '#lib/server/gameMinesweeperStats.js';
+import { attachGameProfilePhotos } from '#lib/server/gameProfilePhotos.js';
+import { getGameSession, isLocalGameSmokeSession } from '#lib/server/localGameSmokeSession.js';
+import { normalizeToIsoString } from '#lib/util/formatRelativeTime.js';
 
 /**
  * 전체 기간 email별 최고 기록 모드별 Top10. 시간(초) 기준이므로 낮을수록 좋음.
@@ -39,7 +39,7 @@ export async function GET(event) {
   const session = await getGameSession(event);
   const user = session?.user;
   const email = typeof user?.email === 'string' ? user.email : '';
-  if (!email) throw error(401, { message: '로그인이 필요합니다.' });
+  if (!email) throw error(401, '로그인이 필요합니다.');
 
   if (url.searchParams.get('rank')) {
     const mode = url.searchParams.get('mode') || 'beginner';
@@ -70,13 +70,13 @@ export async function POST(event) {
   const session = await getGameSession(event);
   const user = session?.user;
   const email = typeof user?.email === 'string' ? user.email : '';
-  if (!email) throw error(401, { message: '로그인이 필요합니다.' });
+  if (!email) throw error(401, '로그인이 필요합니다.');
 
   let body;
   try {
     body = await request.json();
   } catch {
-    throw error(400, { message: 'Invalid JSON' });
+    throw error(400, 'Invalid JSON');
   }
 
   const time = Number(body?.time);
@@ -87,7 +87,7 @@ export async function POST(event) {
     time < 0 ||
     !['beginner', 'intermediate', 'expert'].includes(mode)
   ) {
-    throw error(400, { message: '유효한 모드와 점수(시간)를 보내 주세요.' });
+    throw error(400, '유효한 모드와 점수(시간)를 보내 주세요.');
   }
   if (isLocalGameSmokeSession(session)) return json({ success: true, time, mode, smoke: true });
 

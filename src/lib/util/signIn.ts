@@ -1,6 +1,6 @@
 import { signIn } from '@auth/sveltekit/client';
 import { get, readonly, writable } from 'svelte/store';
-import { swalFire } from '$lib/util/swal.js';
+import { swalFire } from '#lib/util/swal.js';
 
 const pending = writable(false);
 const ATTEMPT_KEY = 'dgst:sign-in-attempt';

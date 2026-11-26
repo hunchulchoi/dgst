@@ -1,10 +1,10 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { resolve } from '$app/paths';
-  import GameRankingRow from '$lib/components/GameRankingRow.svelte';
+  import GameRankingRow from '#lib/components/GameRankingRow.svelte';
   import { Confetti } from 'svelte-confetti';
   import type { PageData } from './$types';
-  import { swalFire } from '$lib/util/swal.js';
+  import { swalFire } from '#lib/util/swal.js';
   import {
     SIZE,
     COLORS,
@@ -98,9 +98,8 @@
     rankLoading = true;
     rankError = '';
     try {
-      const response = await fetch(resolve('/games/block-blast') + '?rank=1', {
-        cache: 'no-store'
-      });
+      const response = await fetch(resolve('games/block-blast') + '?rank=1', { cache: 'no-store' });
+
       if (!response.ok) throw new Error('순위 조회 실패');
       const result = await response.json();
       if (requestId !== rankRequest) return;
@@ -131,11 +130,12 @@
     if (!isLoggedIn || finalScore <= savedScore) return Promise.resolve(true);
     if (pendingSave)
       return pendingSave.then((success) => (success ? submitScore(finalScore) : false));
+
     saving = true;
     saveError = '';
     pendingSave = (async () => {
       try {
-        const response = await fetch(resolve('/games/block-blast'), {
+        const response = await fetch(resolve('games/block-blast'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ score: finalScore })
@@ -330,7 +330,10 @@
         <button class="restart" onclick={restart} disabled={!ready || resetting}>새 게임</button>
       </header>
       <div class="scores">
-        <div><span>점수</span><strong data-testid="score">{score.toLocaleString()}</strong></div>
+        <div>
+          <span>점수</span><strong data-testid="score">{score.toLocaleString()}</strong>
+        </div>
+
         <div>
           <span>이 브라우저 최고점</span><strong class="best">{best.toLocaleString()}</strong>
         </div>
@@ -449,7 +452,7 @@
           <p>게임 종료 또는 새 게임 시작 시 점수가 저장돼요.</p>
         {:else}
           <p>로그인하면 순위와 내 최고점을 볼 수 있어요.</p>
-          <a href={resolve('/login')}>로그인</a>
+          <a href={resolve('login')}>로그인</a>
         {/if}
       </section>
       <span class="eyebrow">HOW TO PLAY</span>

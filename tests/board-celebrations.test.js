@@ -6,7 +6,7 @@ const prismaModule = vi.hoisted(() => ({
   getPrisma: vi.fn()
 }));
 
-vi.mock('$lib/database/prisma.js', () => prismaModule);
+vi.mock('#lib/database/prisma.js', () => prismaModule);
 
 describe('board celebrations', () => {
   it('uses only shared-medal leader changes for medal-game fireworks', () => {

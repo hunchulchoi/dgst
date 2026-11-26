@@ -1,9 +1,9 @@
 import { json } from '@sveltejs/kit';
 import { error } from '@sveltejs/kit';
 
-import { write } from '$lib/util/fileUpload.js';
-import logger from '$lib/util/logger.js';
-import { BOARD_UPLOAD_MAX_MB } from '$lib/util/uploadLimits.js';
+import { write } from '#lib/util/fileUpload.js';
+import logger from '#lib/util/logger.js';
+import { BOARD_UPLOAD_MAX_MB } from '#lib/util/uploadLimits.js';
 
 /** @param {unknown} err */
 function getErrorMessage(err) {
@@ -39,7 +39,7 @@ export async function POST({ request, locals }) {
       pathname: request.url,
       user: email || 'anonymous'
     });
-    throw error(401, { message: '로그인 해 주세요' });
+    throw error(401, '로그인 해 주세요');
   }
 
   /** @type {File | null} */
@@ -48,7 +48,7 @@ export async function POST({ request, locals }) {
     const data = await request.formData();
     const upload = data.get('upload');
     if (!(upload instanceof File)) {
-      throw error(400, { message: '업로드할 파일이 없습니다.' });
+      throw error(400, '업로드할 파일이 없습니다.');
     }
     uploadFile = upload;
     const serverCompressVideo = data.get('serverCompressVideo') === 'true';
@@ -132,9 +132,10 @@ export async function POST({ request, locals }) {
     });
 
     if (isBodySizeLimitError(err)) {
-      throw error(413, {
-        message: `파일이 너무 큽니다. ${BOARD_UPLOAD_MAX_MB}MB 이하 파일만 업로드할 수 있어요.`
-      });
+      throw error(
+        413,
+        `파일이 너무 큽니다. ${BOARD_UPLOAD_MAX_MB}MB 이하 파일만 업로드할 수 있어요.`
+      );
     }
 
     throw err;

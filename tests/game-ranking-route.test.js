@@ -43,16 +43,16 @@ const arcadeWallet = vi.hoisted(() => ({
   resolveArcadeOops: vi.fn()
 }));
 
-vi.mock('$lib/database/prisma.js', () => prismaModule);
-vi.mock('$lib/server/game2048Stats.js', () => stats2048);
-vi.mock('$lib/server/gameWatermelonStats.js', () => statsWatermelon);
-vi.mock('$lib/server/gameMinesweeperStats.js', () => statsMinesweeper);
-vi.mock('$lib/server/gameTetrisStats.js', () => statsTetris);
-vi.mock('$lib/server/gameBreakoutStats.js', () => statsBreakout);
-vi.mock('$lib/server/gameSudokuStats.js', () => statsSudoku);
-vi.mock('$lib/server/gameBilliardsStats.js', () => statsBilliards);
-vi.mock('$lib/server/slotStats.js', () => slotStats);
-vi.mock('$lib/server/arcadeWallet.js', () => arcadeWallet);
+vi.mock('#lib/database/prisma.js', () => prismaModule);
+vi.mock('#lib/server/game2048Stats.js', () => stats2048);
+vi.mock('#lib/server/gameWatermelonStats.js', () => statsWatermelon);
+vi.mock('#lib/server/gameMinesweeperStats.js', () => statsMinesweeper);
+vi.mock('#lib/server/gameTetrisStats.js', () => statsTetris);
+vi.mock('#lib/server/gameBreakoutStats.js', () => statsBreakout);
+vi.mock('#lib/server/gameSudokuStats.js', () => statsSudoku);
+vi.mock('#lib/server/gameBilliardsStats.js', () => statsBilliards);
+vi.mock('#lib/server/slotStats.js', () => slotStats);
+vi.mock('#lib/server/arcadeWallet.js', () => arcadeWallet);
 
 describe('game ranking routes', () => {
   beforeEach(() => {

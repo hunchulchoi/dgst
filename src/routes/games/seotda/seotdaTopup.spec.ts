@@ -5,7 +5,7 @@ const arcadeWallet = vi.hoisted(() => ({
   applyArcadeEntries: vi.fn()
 }));
 
-vi.mock('$lib/server/arcadeWallet.js', () => ({
+vi.mock('#lib/server/arcadeWallet.js', () => ({
   resolveArcadeOops: arcadeWallet.resolveArcadeOops,
   applyArcadeEntries: arcadeWallet.applyArcadeEntries,
   applyArcadeEntry: vi.fn(),

@@ -11,8 +11,8 @@ const loggerModule = vi.hoisted(() => ({
   }
 }));
 
-vi.mock('$lib/database/prisma.js', () => prismaModule);
-vi.mock('$lib/util/logger.js', () => loggerModule);
+vi.mock('#lib/database/prisma.js', () => prismaModule);
+vi.mock('#lib/util/logger.js', () => loggerModule);
 
 describe('alarmService', () => {
   beforeEach(() => {

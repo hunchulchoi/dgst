@@ -1,12 +1,12 @@
 import { error, json } from '@sveltejs/kit';
-import { checkRateLimit } from '$lib/server/apiRateLimit.js';
-import { getGameSession, isLocalGameSmokeSession } from '$lib/server/localGameSmokeSession.js';
+import { checkRateLimit } from '#lib/server/apiRateLimit.js';
+import { getGameSession, isLocalGameSmokeSession } from '#lib/server/localGameSmokeSession.js';
 import {
   ArcadePlayConflictError,
   beginArcadePlay,
   getArcadePlay,
   releaseArcadePlay
-} from '$lib/server/arcadeWallet.js';
+} from '#lib/server/arcadeWallet.js';
 import { randomInt } from 'node:crypto';
 import {
   ensureMedalJankenBalance,
@@ -37,7 +37,7 @@ function outcomeFor(player, cpu) {
 async function requireUser(event) {
   const session = await getGameSession(event);
   const email = session?.user?.email;
-  if (!email) throw error(401, { message: '로그인이 필요합니다.' });
+  if (!email) throw error(401, '로그인이 필요합니다.');
   return {
     email,
     nickname: session?.user?.nickname || session?.user?.name || 'anonymous',
@@ -70,22 +70,22 @@ export async function PUT(event) {
     windowSeconds: 10,
     bucket: 'medal-janken-start'
   });
-  if (!rate.allowed) throw error(429, { message: '너무 빠릅니다. 잠시 쉬었다가 해 주세요.' });
+  if (!rate.allowed) throw error(429, '너무 빠릅니다. 잠시 쉬었다가 해 주세요.');
   const user = await requireUser(event);
   const body = await event.request.json().catch(() => ({}));
   const bet = Number(body?.bet);
   const playerChoice = String(body?.playerChoice ?? '');
   if (!Number.isSafeInteger(bet) || bet < MIN_BET || bet > MAX_BET) {
-    throw error(400, { message: '베팅은 10개부터 10,000개까지만 가능합니다.' });
+    throw error(400, '베팅은 10개부터 10,000개까지만 가능합니다.');
   }
-  if (!HANDS.has(playerChoice)) throw error(400, { message: '잘못된 손 선택입니다.' });
+  if (!HANDS.has(playerChoice)) throw error(400, '잘못된 손 선택입니다.');
   const cpuChoice = HAND_LIST[randomInt(HAND_LIST.length)];
   const requestedMultiplier = MULTIPLIER_LIST[randomInt(MULTIPLIER_LIST.length)];
   const outcome = outcomeFor(playerChoice, cpuChoice);
   const multiplier = outcome === 'win' ? requestedMultiplier : 0;
   if (user.smoke) {
     const currentBalance = smokeBalances.get(user.email) ?? INITIAL_MEDALS;
-    if (bet > currentBalance) throw error(400, { message: '보유 메달이 부족합니다.' });
+    if (bet > currentBalance) throw error(400, '보유 메달이 부족합니다.');
     const payout = outcome === 'draw' ? bet : outcome === 'win' ? bet * multiplier : 0;
     const delta = payout - bet;
     const balance = currentBalance + delta;
@@ -145,11 +145,9 @@ export async function PUT(event) {
   } catch (cause) {
     if (playId) await releaseArcadePlay(user.email, playId);
     if (cause instanceof ArcadePlayConflictError) {
-      throw error(409, { message: cause.message });
+      throw error(409, cause.message);
     }
-    throw error(400, {
-      message: cause instanceof Error ? cause.message : '게임을 시작할 수 없습니다.'
-    });
+    throw error(400, cause instanceof Error ? cause.message : '게임을 시작할 수 없습니다.');
   }
 }
 
@@ -160,10 +158,10 @@ export async function POST(event) {
     windowSeconds: 10,
     bucket: 'medal-janken-post'
   });
-  if (!rate.allowed) throw error(429, { message: '너무 빠릅니다. 잠시 후 다시 해 주세요.' });
+  if (!rate.allowed) throw error(429, '너무 빠릅니다. 잠시 후 다시 해 주세요.');
 
   const user = await requireUser(event);
-  if (settlingUsers.has(user.email)) throw error(409, { message: '이전 판을 정산 중입니다.' });
+  if (settlingUsers.has(user.email)) throw error(409, '이전 판을 정산 중입니다.');
   settlingUsers.add(user.email);
   let playId = '';
 
@@ -173,16 +171,16 @@ export async function POST(event) {
     const playerChoice = String(body?.playerChoice ?? '');
 
     if (!Number.isSafeInteger(bet) || bet < MIN_BET || bet > MAX_BET) {
-      throw error(400, { message: '베팅은 10개부터 10,000개까지만 가능합니다.' });
+      throw error(400, '베팅은 10개부터 10,000개까지만 가능합니다.');
     }
     if (!HANDS.has(playerChoice)) {
-      throw error(400, { message: '잘못된 손 선택입니다.' });
+      throw error(400, '잘못된 손 선택입니다.');
     }
 
     let currentBalance = user.smoke
       ? (smokeBalances.get(user.email) ?? INITIAL_MEDALS)
       : await ensureMedalJankenBalance(user.email, user.nickname);
-    if (bet > currentBalance) throw error(400, { message: '보유 메달이 부족합니다.' });
+    if (bet > currentBalance) throw error(400, '보유 메달이 부족합니다.');
     let cpuChoice = String(body?.cpuChoice ?? '');
     let requestedMultiplier = Number(body?.multiplier ?? 0);
     if (!user.smoke) {
@@ -214,7 +212,7 @@ export async function POST(event) {
     const multiplier =
       outcome === 'win' && MULTIPLIERS.has(requestedMultiplier) ? requestedMultiplier : 0;
     if (outcome === 'win' && !MULTIPLIERS.has(requestedMultiplier)) {
-      throw error(400, { message: '잘못된 룰렛 결과입니다.' });
+      throw error(400, '잘못된 룰렛 결과입니다.');
     }
 
     const payout = outcome === 'draw' ? bet : outcome === 'win' ? bet * multiplier : 0;
@@ -250,10 +248,10 @@ export async function POST(event) {
     });
   } catch (cause) {
     if (cause instanceof ArcadePlayConflictError) {
-      throw error(409, { message: cause.message });
+      throw error(409, cause.message);
     }
     if (cause instanceof Error && cause.message === '보유 메달이 부족합니다.') {
-      throw error(400, { message: cause.message });
+      throw error(400, cause.message);
     }
     throw cause;
   } finally {

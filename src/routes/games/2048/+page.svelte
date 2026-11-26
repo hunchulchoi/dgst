@@ -2,8 +2,8 @@
   import { resolve } from '$app/paths';
   import { onMount, tick } from 'svelte';
   import { ko } from 'date-fns/locale';
-  import { formatRelativeTime } from '$lib/util/formatRelativeTime.js';
-  import GameRankingRow from '$lib/components/GameRankingRow.svelte';
+  import { formatRelativeTime } from '#lib/util/formatRelativeTime.js';
+  import GameRankingRow from '#lib/components/GameRankingRow.svelte';
   import type { PageData } from './$types';
 
   interface Game2048Props {
@@ -789,7 +789,8 @@
                 </p>
                 {#if !isLoggedIn}
                   <p class="small text-muted mb-2">로그인하면 점수를 랭킹에 올릴 수 있어요.</p>
-                  <a href={resolve('/login')} class="btn btn-outline-primary mb-2">로그인</a>
+
+                  <a href={resolve('login')} class="btn btn-outline-primary mb-2">로그인</a>
                 {/if}
                 <button class="btn btn-outline-secondary ms-2" onclick={initGrid}>
                   다시 하기
@@ -814,7 +815,7 @@
                 🔄
               </button>
             {:else}
-              <a href={resolve('/login')} class="btn btn-sm btn-outline-primary">로그인</a>
+              <a href={resolve('login')} class="btn btn-sm btn-outline-primary">로그인</a>
             {/if}
           </div>
           <p class="small text-muted mb-1">전체 기간 1인 1최고점 (뺑뺑이 점수와 별개)</p>

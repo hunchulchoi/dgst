@@ -1,10 +1,10 @@
 import { json } from '@sveltejs/kit';
-import { env as dynamicEnv } from '$env/dynamic/private';
+import { CRON_SECRET } from '$app/env/private';
 import {
   fetchOfficialDrawJson,
   storeOfficialDraw,
   syncOfficialDrawFromDhlottery
-} from '$lib/server/lottoOfficial.js';
+} from '#lib/server/lottoOfficial.js';
 
 /**
  * 동행복권 최신(또는 갱신 필요) 회차 당첨번호를 받아 GameLog에 저장합니다.
@@ -17,7 +17,7 @@ import {
  * curl -s -H "x-cron-secret: $CRON_SECRET" "https://호스트/api/cron/lotto-official-sync"
  */
 export async function GET({ request, url }) {
-  const secret = dynamicEnv.CRON_SECRET;
+  const secret = CRON_SECRET;
   const given = request.headers.get('x-cron-secret');
 
   if (!secret || given !== secret) {

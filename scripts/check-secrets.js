@@ -56,6 +56,8 @@ function isPlaceholderValue(value) {
     lower.includes('>') ||
     lower.startsWith('${') ||
     lower.startsWith('$') ||
+    // Object literal, e.g. SvelteKit 3 `src/env.js`: `NAME: { schema: (input) => input }`.
+    lower.startsWith('{') ||
     lower.includes('env(')
   );
 }

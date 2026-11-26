@@ -93,7 +93,7 @@ or
 
 ```svelte
 <script>
-  import { sanitizeArticleContent } from '$lib/server/sanitizeArticleContent.js';
+  import { sanitizeArticleContent } from '#lib/server/sanitizeArticleContent.js';
   let safeContent = $derived(sanitizeArticleContent(content));
 </script>
 

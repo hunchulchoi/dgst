@@ -1,6 +1,6 @@
 import { error, json } from '@sveltejs/kit';
-import { getGameSession, isLocalGameSmokeSession } from '$lib/server/localGameSmokeSession.js';
-import { getTodaySlotStats } from '$lib/server/slotStats.js';
+import { getGameSession, isLocalGameSmokeSession } from '#lib/server/localGameSmokeSession.js';
+import { getTodaySlotStats } from '#lib/server/slotStats.js';
 import {
   applyArcadeEntry,
   ArcadePlayConflictError,
@@ -9,8 +9,8 @@ import {
   getArcadeRank,
   releaseArcadePlay,
   resolveArcadeOops
-} from '$lib/server/arcadeWallet.js';
-import { normalizeToIsoString } from '$lib/util/formatRelativeTime.js';
+} from '#lib/server/arcadeWallet.js';
+import { normalizeToIsoString } from '#lib/util/formatRelativeTime.js';
 
 const BASE_SYMBOLS = ['🍒', '🍋', '🔔', '⭐', '7️⃣'];
 const MEDIUM_BALANCE_THRESHOLD = 100_000;
@@ -48,12 +48,12 @@ function getNickname(user) {
 
 export async function POST(event) {
   const session = await getGameSession(event);
-  if (!session?.user?.email) throw error(401, { message: '로그인이 필요합니다.' });
+  if (!session?.user?.email) throw error(401, '로그인이 필요합니다.');
 
   const body = await event.request.json().catch(() => ({}));
   const bet = Number(body?.bet ?? 0);
   if (!Number.isSafeInteger(bet) || bet <= 0) {
-    throw error(400, { message: '잘못된 베팅 금액입니다.' });
+    throw error(400, '잘못된 베팅 금액입니다.');
   }
 
   if (isLocalGameSmokeSession(session)) {
@@ -79,9 +79,7 @@ export async function POST(event) {
     balanceBefore = resolved.balance;
   }
   if (balanceBefore < bet) {
-    throw error(400, {
-      message: balanceBefore < 10 ? '오링 😵' : '보유 메달이 부족합니다.'
-    });
+    throw error(400, balanceBefore < 10 ? '오링 😵' : '보유 메달이 부족합니다.');
   }
 
   let play;
@@ -90,11 +88,9 @@ export async function POST(event) {
     balanceBefore = play.balance;
   } catch (cause) {
     if (cause instanceof ArcadePlayConflictError) {
-      throw error(409, { message: cause.message });
+      throw error(409, cause.message);
     }
-    throw error(400, {
-      message: cause instanceof Error ? cause.message : '게임을 시작할 수 없습니다.'
-    });
+    throw error(400, cause instanceof Error ? cause.message : '게임을 시작할 수 없습니다.');
   }
 
   const reels = spinReels(balanceBefore);
@@ -127,7 +123,7 @@ export async function POST(event) {
       cause instanceof ArcadePlayConflictError ||
       (cause instanceof Error && cause.message === '보유 메달이 부족합니다.')
     ) {
-      throw error(409, { message: cause.message });
+      throw error(409, cause.message);
     }
     throw cause;
   }
@@ -135,7 +131,7 @@ export async function POST(event) {
 
 export async function GET(event) {
   const session = await getGameSession(event);
-  if (!session?.user?.email) throw error(401, { message: '로그인이 필요합니다.' });
+  if (!session?.user?.email) throw error(401, '로그인이 필요합니다.');
 
   const todayStats = await getTodaySlotStats();
   if (isLocalGameSmokeSession(session)) {

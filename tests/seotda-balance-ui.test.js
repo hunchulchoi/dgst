@@ -108,7 +108,7 @@ describe('seotda betting UI', () => {
     );
     expect(pageSource).toContain('onclick={nextRound}');
     expect(serverSource).toContain(
-      "throw error(400, { message: '끝난 판에서 다음 판을 눌러야 새 패를 돌릴 수 있습니다.' })"
+      "throw error(400, '끝난 판에서 다음 판을 눌러야 새 패를 돌릴 수 있습니다.')"
     );
     expect(serverSource).toContain('applyGaepyeongIfOops');
     expect(serverSource).toContain('writeSeotdaSettlement');

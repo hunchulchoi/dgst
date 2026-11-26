@@ -1,5 +1,5 @@
 <script>
-  import { signInPending, startSignIn } from '$lib/util/signIn';
+  import { signInPending, startSignIn } from '#lib/util/signIn.ts';
   import { resolve } from '$app/paths';
 
   let { data } = $props();

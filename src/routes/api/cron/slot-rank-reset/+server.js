@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
-import { env as dynamicEnv } from '$env/dynamic/private';
-import { resetSlotUserBalance } from '$lib/server/slotUserBalance.js';
+import { CRON_SECRET } from '$app/env/private';
+import { resetSlotUserBalance } from '#lib/server/slotUserBalance.js';
 
 /**
  * slot_user_balance 테이블 전체 삭제. 다음 랭킹 조회 시 game_scores 기준으로 자동 백필됨.
@@ -9,7 +9,7 @@ import { resetSlotUserBalance } from '$lib/server/slotUserBalance.js';
  * 예: curl -H "x-cron-secret: YOUR_CRON_SECRET" "https://your-domain/api/cron/slot-rank-reset"
  */
 export async function GET({ request }) {
-  const secret = dynamicEnv.CRON_SECRET;
+  const secret = CRON_SECRET;
   const given = request.headers.get('x-cron-secret');
 
   if (!secret || given !== secret) {

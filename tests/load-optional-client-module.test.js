@@ -8,7 +8,7 @@ const context = {
   pathname: '/board/free/1/article',
   component: 'board-article',
   operation: 'load-comment-renderer',
-  importTarget: '$lib/util/embeder.js'
+  importTarget: '#lib/util/embeder.js'
 };
 
 describe('optional client module loading', () => {

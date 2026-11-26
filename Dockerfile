@@ -3,6 +3,8 @@ FROM node:22.23.4-trixie AS build
 WORKDIR /app
 
 COPY package.json package-lock.json ./
+COPY patches ./patches
+COPY scripts/apply-patches.js ./scripts/
 RUN npm ci
 
 COPY . .
@@ -34,6 +36,7 @@ COPY --from=build /app/package-lock.json .
 COPY --from=build /app/prisma ./prisma
 COPY --from=build /app/prisma.config.ts .
 COPY --from=build /app/scripts/convert-profile-images-to-animated-webp.js ./scripts/
+COPY --from=build /app/scripts/apply-patches.js ./scripts/
 
 RUN DATABASE_URL=postgresql://localhost/dgst_build npm ci --omit dev
 

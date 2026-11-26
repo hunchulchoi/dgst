@@ -11,7 +11,7 @@ describe('seotda replay deal UI', () => {
   });
 
   it('announces a replay before restarting the deal animation', () => {
-    expect(page).toContain("import { swalFire } from '$lib/util/swal.js';");
+    expect(page).toContain("import { swalFire } from '#lib/util/swal.js';");
     expect(page).toContain('const isReplayDeal =');
     expect(page).toContain('팟을 유지하고 패를 다시 나눕니다.');
     expect(page).toMatch(

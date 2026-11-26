@@ -21,20 +21,20 @@
     ModalBody,
     ModalFooter,
     ModalHeader
-  } from '$lib/components/ui/index.js';
+  } from '#lib/components/ui/index.js';
 
-  import { env as publicEnv } from '$env/dynamic/public';
+  import { PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY as turnstileSiteKey } from '$app/env/public';
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
-  import { browser } from '$app/environment';
+  import { browser } from '$app/env';
   import imageCompression from 'browser-image-compression';
-  import { swalFire } from '$lib/util/swal.js';
-  import { getNicknameError } from '$lib/util/nickname.js';
-  import { getProfileSaveErrorMessage } from '$lib/util/profileSubmit.js';
-  import { getProfileValidationMessage } from '$lib/util/profileValidation.js';
-  import TurnstileWidget from '$lib/components/TurnstileWidget.svelte';
+  import { swalFire } from '#lib/util/swal.js';
+  import { getNicknameError } from '#lib/util/nickname.js';
+  import { getProfileSaveErrorMessage } from '#lib/util/profileSubmit.js';
+  import { getProfileValidationMessage } from '#lib/util/profileValidation.js';
+  import TurnstileWidget from '#lib/components/TurnstileWidget.svelte';
 
-  const PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY = publicEnv.PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY ?? '';
+  const PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY = turnstileSiteKey ?? '';
 
   /** @typedef {{ x: number; y: number; width: number; height: number }} CropData */
   /** @typedef {import('cropperjs').default} CropperInstance */
@@ -45,7 +45,7 @@
   // 클라이언트에서만 세션 체크 및 리다이렉트
   $effect(() => {
     if (browser && !data.session) {
-      goto(resolve('/'), { replaceState: true });
+      goto(resolve('/'), { replace: true });
     }
   });
 
@@ -268,7 +268,7 @@
           text: data.message || '프로필이 성공적으로 변경되었습니다.',
           confirmButtonText: '확인'
         }).then(() => {
-          goto(resolve('/'), { invalidateAll: true });
+          goto(resolve('/'), { refreshAll: true });
         });
       } else {
         resetTurnstile();
@@ -431,7 +431,8 @@
     </CardBody>
     <CardFooter class="mb-3">
       <strong>
-        계정 및 프로필 정보는 <a href={resolve('/privacy')}>개인정보처리방침</a>에 따라 처리됩니다.
+        계정 및 프로필 정보는
+        <a href={resolve('privacy')}>개인정보처리방침</a>에 따라 처리됩니다.
       </strong>
       <div class="turnstile-notice text-muted mt-2">
         이 페이지는 Cloudflare Turnstile로 보호되며 Cloudflare

@@ -1,4 +1,4 @@
-import { getPrisma } from '$lib/database/prisma.js';
+import { getPrisma } from '#lib/database/prisma.js';
 
 const KST_OFFSET_MINUTES = 9 * 60;
 

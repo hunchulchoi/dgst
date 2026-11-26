@@ -2,11 +2,11 @@
   import { onMount, untrack } from 'svelte';
   import { Confetti } from 'svelte-confetti';
   import { ko } from 'date-fns/locale';
-  import { swalFire } from '$lib/util/swal.js';
-  import GameProfilePhoto from '$lib/components/GameProfilePhoto.svelte';
-  import GameRankingRow from '$lib/components/GameRankingRow.svelte';
-  import { getArcadeGameLabel } from '$lib/util/arcadeGame.js';
-  import { formatRelativeTime } from '$lib/util/formatRelativeTime.js';
+  import { swalFire } from '#lib/util/swal.js';
+  import GameProfilePhoto from '#lib/components/GameProfilePhoto.svelte';
+  import GameRankingRow from '#lib/components/GameRankingRow.svelte';
+  import { getArcadeGameLabel } from '#lib/util/arcadeGame.js';
+  import { formatRelativeTime } from '#lib/util/formatRelativeTime.js';
   import { MIN_BET } from './ssamchiEngine.js';
 
   type Mode = 'odd-even' | 'ssamchi';

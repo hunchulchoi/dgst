@@ -8,7 +8,8 @@ const articlePage = readFileSync(
 
 describe('article list navigation scroll reset', () => {
   it('preserves the current position so the root layout can animate to the top', () => {
-    expect(articlePage).toMatch(/replaceState: true,[\s\S]*?noScroll: true/);
+    // SvelteKit 3: `replace` replaces `replaceState`; `reset: false` keeps scroll like `noScroll`.
+    expect(articlePage).toMatch(/replace: true,[\s\S]*?reset: false/);
     expect(articlePage).not.toContain('function resetViewportScroll()');
     expect(articlePage).not.toContain('resetListPageScrollAfterNavigation');
     expect(articlePage).not.toContain("await invalidate('board-list')");

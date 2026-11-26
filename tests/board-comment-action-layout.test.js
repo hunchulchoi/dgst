@@ -54,7 +54,7 @@ describe('board comment action layout', () => {
       articlePage.match(/accept="image\/\*,video\/\*,audio\/\*,application\/pdf,\.pdf"/g)
     ).toHaveLength(3);
     expect(articlePage).toContain(
-      "import AttachmentMedia from '$lib/components/AttachmentMedia.svelte'"
+      "import AttachmentMedia from '#lib/components/AttachmentMedia.svelte'"
     );
     expect(articlePage).toContain('<AttachmentMedia');
     expect(articlePage).toContain('ariaLabel="리플 동영상"');

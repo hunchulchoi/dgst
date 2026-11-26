@@ -1,34 +1,34 @@
 <script>
-  import { ThemeSync } from '$lib/components/ui/index.js';
-  import Header from '$lib/components/header.svelte';
-  import Footer from '$lib/components/footer.svelte';
-  import Memo from '$lib/components/memo.svelte';
+  import { ThemeSync } from '#lib/components/ui/index.js';
+  import Header from '#lib/components/header.svelte';
+  import Footer from '#lib/components/footer.svelte';
+  import Memo from '#lib/components/memo.svelte';
   import { blur } from 'svelte/transition';
-  import { page } from '$app/stores';
+  import { page } from '$app/state';
   import { updated } from '$app/state';
   import {
     afterNavigate,
     beforeNavigate,
     disableScrollHandling,
-    invalidateAll
+    refreshAll
   } from '$app/navigation';
-  import { browser } from '$app/environment';
+  import { browser } from '$app/env';
   import { onMount } from 'svelte';
-  import { resetSignInOnPageShow } from '$lib/util/signIn';
+  import { resetSignInOnPageShow } from '#lib/util/signIn.ts';
   import {
     reportSlowInitialLoad,
     reportSlowLoad,
     startInitialLoadLongTaskObserver
-  } from '$lib/util/logSlowLoad.js';
-  import { isExternalSerialPortError, reportClientError } from '$lib/util/reportClientPageError.js';
-  import { isInterruptedFetchError } from '$lib/util/fetchErrors.js';
-  import { isFreeBoardLegacyPath } from '$lib/util/boardPaths.js';
-  import { alarmCount, boardListReloadKey, boardListReloading } from '$lib/util/store.js';
+  } from '#lib/util/logSlowLoad.js';
+  import { isExternalSerialPortError, reportClientError } from '#lib/util/reportClientPageError.js';
+  import { isInterruptedFetchError } from '#lib/util/fetchErrors.js';
+  import { isFreeBoardLegacyPath } from '#lib/util/boardPaths.js';
+  import { alarmCount, boardListReloadKey, boardListReloading } from '#lib/util/store.js';
   import {
     getClientNavigationContext,
     recordClientNavigationComplete,
     recordClientNavigationStart
-  } from '$lib/util/clientNavigationContext.js';
+  } from '#lib/util/clientNavigationContext.js';
   import '../app.css';
 
   let { data, children } = $props();
@@ -117,6 +117,7 @@
   /** @param {unknown} value */
   function isStaleBuildError(value) {
     const message = getErrorMessage(value);
+
     return (
       message.includes('_app/immutable/') ||
       /Failed to fetch dynamically imported module/i.test(message) ||
@@ -140,7 +141,9 @@
     $boardListReloading || boardListToDetailBlur ? blurTransition : undefined
   );
 
-  beforeNavigate(({ from, to, type, willUnload, cancel }) => {
+  beforeNavigate(({ from, to, type, willUnload, cancel, shallow }) => {
+    if (shallow && type === 'goto') return;
+
     if (browser && updated.current && !willUnload && to?.url) {
       cancel();
       location.href = to.url.href;
@@ -253,7 +256,7 @@
 
   async function syncTimeZoneCookie() {
     const { isValidTimeZone, serializeTimeZoneCookie } =
-      await import('$lib/util/formatRelativeTime.js');
+      await import('#lib/util/formatRelativeTime.js');
     let detectedTimeZone = '';
     try {
       detectedTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone ?? '';
@@ -265,7 +268,7 @@
 
     document.cookie = serializeTimeZoneCookie(detectedTimeZone, location.protocol === 'https:');
 
-    if (data.timeZone !== detectedTimeZone) await invalidateAll();
+    if (data.timeZone !== detectedTimeZone) await refreshAll();
   }
 
   /** @param {unknown} err */
@@ -279,7 +282,7 @@
       cancelNonCriticalInitialWork = undefined;
       // 비필수 작업: 페이지 이동·새로고침으로 모듈 fetch가 끊기면 Safari가
       // "Importing a module script failed"로 reject한다. 다음 로드 때 다시 하므로 조용히 넘긴다.
-      import('$lib/util/kakaoExternalBrowser.js')
+      import('#lib/util/kakaoExternalBrowser.js')
         .then(({ promptKakaoExternalBrowser }) => promptKakaoExternalBrowser())
         .catch(ignoreNonCriticalInitialWorkError);
       syncTimeZoneCookie().catch(ignoreNonCriticalInitialWorkError);
@@ -315,17 +318,20 @@
         type: 'alarm-unread-count-refresh-error',
         pathname: window.location.pathname,
         href: window.location.href,
-        routeId: $page.route.id ?? undefined,
+        routeId: page.route.id ?? undefined,
         phase: 'after-navigate'
       });
     }
   }
 
-  afterNavigate(({ to }) => {
+  afterNavigate(({ to, shallow, type }) => {
+    if (shallow && type === 'goto') return;
+
     recordClientNavigationComplete({
       path: to?.url?.pathname,
       routeId: to?.route?.id ?? undefined
     });
+
     if (
       navigationFromPath &&
       to &&
@@ -370,7 +376,7 @@
         pathname: window.location.pathname,
         href: window.location.href,
         search: window.location.search,
-        routeId: $page.route.id ?? undefined,
+        routeId: page.route.id ?? undefined,
         filename: event.filename,
         lineno: event.lineno,
         colno: event.colno,
@@ -398,7 +404,7 @@
         type: 'unhandled-rejection',
         message: 'Unhandled promise rejection',
         pathname: window.location.pathname,
-        routeId: $page.route.id ?? undefined,
+        routeId: page.route.id ?? undefined,
         phase: 'unhandledrejection',
         component: 'window',
         operation: navigation.operation ?? 'unhandled-promise-rejection',
@@ -458,41 +464,40 @@
 <svelte:window onpageshow={resetSignInOnPageShow} />
 
 <svelte:head>
-  <title>{$page.data.ogTitle || 'dgst.me'}</title>
+  <title>{page.data.ogTitle || 'dgst.me'}</title>
   <meta
     name="description"
-    content={$page.data.ogDescription || '으르신들의 안식처 데게 실버타운입니다.'}
+    content={page.data.ogDescription || '으르신들의 안식처 데게 실버타운입니다.'}
   />
 
-  <meta property="og:type" content={$page.data.ogType || 'website'} />
-  <meta
-    property="og:url"
-    content={$page.data.ogUrl || `https://www.dgst.me${$page.url.pathname}`}
-  />
-  <meta property="og:title" content={$page.data.ogTitle || 'dgst.me'} />
+  <meta property="og:type" content={page.data.ogType || 'website'} />
+
+  <meta property="og:url" content={page.data.ogUrl || `https://www.dgst.me${page.url.pathname}`} />
+
+  <meta property="og:title" content={page.data.ogTitle || 'dgst.me'} />
+
   <meta
     property="og:description"
-    content={$page.data.ogDescription || '으르신들의 안식처 데게 실버타운입니다.'}
+    content={page.data.ogDescription || '으르신들의 안식처 데게 실버타운입니다.'}
   />
   <meta
     property="og:image"
-    content={$page.data.ogImage || 'https://www.dgst.me/logo/twitter_header_photo_2.png'}
+    content={page.data.ogImage || 'https://www.dgst.me/logo/twitter_header_photo_2.png'}
   />
   <meta property="og:site_name" content="dgst.me" />
 
   <meta name="twitter:card" content="summary_large_image" />
-  <meta
-    name="twitter:url"
-    content={$page.data.ogUrl || `https://www.dgst.me${$page.url.pathname}`}
-  />
-  <meta name="twitter:title" content={$page.data.ogTitle || 'dgst.me'} />
+  <meta name="twitter:url" content={page.data.ogUrl || `https://www.dgst.me${page.url.pathname}`} />
+
+  <meta name="twitter:title" content={page.data.ogTitle || 'dgst.me'} />
+
   <meta
     name="twitter:description"
-    content={$page.data.ogDescription || '으르신들의 안식처 데게 실버타운입니다.'}
+    content={page.data.ogDescription || '으르신들의 안식처 데게 실버타운입니다.'}
   />
   <meta
     name="twitter:image"
-    content={$page.data.ogImage || 'https://www.dgst.me/logo/twitter_header_photo_2.png'}
+    content={page.data.ogImage || 'https://www.dgst.me/logo/twitter_header_photo_2.png'}
   />
 </svelte:head>
 

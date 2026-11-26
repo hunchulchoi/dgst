@@ -1,5 +1,5 @@
 import { redirect } from '@sveltejs/kit';
-import { takeSignInRecovery } from '$lib/server/auth/recovery.js';
+import { takeSignInRecovery } from '#lib/server/auth/recovery.js';
 
 export async function load(event) {
   const errorParam = event.url.searchParams.get('error');

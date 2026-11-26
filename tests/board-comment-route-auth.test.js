@@ -49,15 +49,15 @@ const submitDedup = vi.hoisted(() => ({
   tryAcquireSubmitDedup: vi.fn()
 }));
 
-vi.mock('$lib/server/board/commentRepo.js', () => commentRepo);
-vi.mock('$lib/server/board/articleRepo.js', () => articleRepo);
-vi.mock('$lib/server/alarm/alarmService.js', () => alarmService);
-vi.mock('$lib/util/fileUpload.js', () => fileUpload);
-vi.mock('$lib/util/tree.js', () => treeModule);
-vi.mock('$lib/server/auth/checkSessionDevice.js', () => authCheck);
-vi.mock('$lib/util/logger.js', () => ({ default: logger }));
-vi.mock('$lib/util/formatErrorTrace.js', () => formatErrorTrace);
-vi.mock('$lib/server/submitDedup.js', () => submitDedup);
+vi.mock('#lib/server/board/commentRepo.js', () => commentRepo);
+vi.mock('#lib/server/board/articleRepo.js', () => articleRepo);
+vi.mock('#lib/server/alarm/alarmService.js', () => alarmService);
+vi.mock('#lib/util/fileUpload.js', () => fileUpload);
+vi.mock('#lib/util/tree.js', () => treeModule);
+vi.mock('#lib/server/auth/checkSessionDevice.js', () => authCheck);
+vi.mock('#lib/util/logger.js', () => ({ default: logger }));
+vi.mock('#lib/util/formatErrorTrace.js', () => formatErrorTrace);
+vi.mock('#lib/server/submitDedup.js', () => submitDedup);
 
 describe('board comment route auth', () => {
   beforeEach(() => {

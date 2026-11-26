@@ -18,11 +18,11 @@ const alarm = vi.hoisted(() => ({
   removeCommentFromAlarm: vi.fn()
 }));
 
-vi.mock('$lib/database/prisma.js', () => prismaModule);
-vi.mock('$lib/server/board/articleRepo.js', () => articleRepo);
-vi.mock('$lib/server/board/commentRepo.js', () => commentRepo);
-vi.mock('$lib/server/alarm/alarmService.js', () => alarm);
-vi.mock('$lib/server/boardListLoad.js', () => ({ bustBoardListCache: vi.fn() }));
+vi.mock('#lib/database/prisma.js', () => prismaModule);
+vi.mock('#lib/server/board/articleRepo.js', () => articleRepo);
+vi.mock('#lib/server/board/commentRepo.js', () => commentRepo);
+vi.mock('#lib/server/alarm/alarmService.js', () => alarm);
+vi.mock('#lib/server/boardListLoad.js', () => ({ bustBoardListCache: vi.fn() }));
 const images = vi.hoisted(() => ({ loadImageForModel: vi.fn() }));
 const youtube = vi.hoisted(() => ({ loadYoutubeThumb: vi.fn() }));
 vi.mock('../src/lib/server/mcp/botYoutube.js', async (orig) => {
@@ -33,11 +33,11 @@ vi.mock('../src/lib/server/mcp/botImages.js', async (orig) => ({
   ...(await orig()),
   loadImageForModel: images.loadImageForModel
 }));
-vi.mock('$lib/server/minioStorage.js', () => ({
+vi.mock('#lib/server/minioStorage.js', () => ({
   getUploadObject: vi.fn(),
   statUploadObject: vi.fn()
 }));
-vi.mock('$lib/util/logger.js', () => ({
+vi.mock('#lib/util/logger.js', () => ({
   default: { info: vi.fn(), error: vi.fn(), warn: vi.fn() }
 }));
 

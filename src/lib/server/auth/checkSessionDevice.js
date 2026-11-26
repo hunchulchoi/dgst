@@ -2,9 +2,9 @@
  * 글쓰기/댓글 등 요청 시 세션의 UA 계열을 pgCache에 저장된 값과 비교.
  * 불일치 시 error 로그만 남기고 추이 관찰용(요청은 그대로 진행).
  */
-import { NODE_ENV } from '$env/static/private';
-import * as pgCache from '$lib/server/cache/pgCache.js';
-import logger from '$lib/util/logger.js';
+import { NODE_ENV } from '$app/env/private';
+import * as pgCache from '#lib/server/cache/pgCache.js';
+import logger from '#lib/util/logger.js';
 
 const SESSION_DEVICE_PREFIX = 'session_device:';
 const SESSION_DEVICE_TTL = 30 * 24 * 60 * 60; // 30일

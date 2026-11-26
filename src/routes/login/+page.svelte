@@ -1,7 +1,12 @@
 <script>
-  import { signInPending, startSignIn, canRetrySignIn, cancelSignInRetry } from '$lib/util/signIn';
+  import {
+    signInPending,
+    startSignIn,
+    canRetrySignIn,
+    cancelSignInRetry
+  } from '#lib/util/signIn.ts';
   import { resolve } from '$app/paths';
-  import { swalFire } from '$lib/util/swal.js';
+  import { swalFire } from '#lib/util/swal.js';
 
   let { data } = $props();
   let retryIn = $state(/** @type {number | null} */ (null));

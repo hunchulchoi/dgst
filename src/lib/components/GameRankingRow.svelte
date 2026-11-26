@@ -1,5 +1,5 @@
 <script lang="ts">
-  import GameProfilePhoto from '$lib/components/GameProfilePhoto.svelte';
+  import GameProfilePhoto from '#lib/components/GameProfilePhoto.svelte';
 
   let {
     index,

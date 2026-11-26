@@ -1,16 +1,16 @@
-import card01Gwang from '$lib/assets/hwatu/01-gwang.png';
-import card01 from '$lib/assets/hwatu/01.png';
-import card02 from '$lib/assets/hwatu/02.png';
-import card03Gwang from '$lib/assets/hwatu/03-gwang.png';
-import card03 from '$lib/assets/hwatu/03.png';
-import card04 from '$lib/assets/hwatu/04.png';
-import card05 from '$lib/assets/hwatu/05.png';
-import card06 from '$lib/assets/hwatu/06.png';
-import card07 from '$lib/assets/hwatu/07.png';
-import card08Gwang from '$lib/assets/hwatu/08-gwang.png';
-import card08 from '$lib/assets/hwatu/08.png';
-import card09 from '$lib/assets/hwatu/09.png';
-import card10 from '$lib/assets/hwatu/10.png';
+import card01Gwang from '#lib/assets/hwatu/01-gwang.png';
+import card01 from '#lib/assets/hwatu/01.png';
+import card02 from '#lib/assets/hwatu/02.png';
+import card03Gwang from '#lib/assets/hwatu/03-gwang.png';
+import card03 from '#lib/assets/hwatu/03.png';
+import card04 from '#lib/assets/hwatu/04.png';
+import card05 from '#lib/assets/hwatu/05.png';
+import card06 from '#lib/assets/hwatu/06.png';
+import card07 from '#lib/assets/hwatu/07.png';
+import card08Gwang from '#lib/assets/hwatu/08-gwang.png';
+import card08 from '#lib/assets/hwatu/08.png';
+import card09 from '#lib/assets/hwatu/09.png';
+import card10 from '#lib/assets/hwatu/10.png';
 
 export const HWATU_CARD_IMAGES: Record<string, string> = {
   '01-gwang': card01Gwang,

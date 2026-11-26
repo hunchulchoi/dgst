@@ -3,9 +3,9 @@
   import { beforeNavigate } from '$app/navigation';
   import { onMount, tick } from 'svelte';
   import { ko } from 'date-fns/locale';
-  import { formatRelativeTime } from '$lib/util/formatRelativeTime.js';
-  import GameRankingRow from '$lib/components/GameRankingRow.svelte';
-  import { swalFire } from '$lib/util/swal.js';
+  import { formatRelativeTime } from '#lib/util/formatRelativeTime.js';
+  import GameRankingRow from '#lib/components/GameRankingRow.svelte';
+  import { swalFire } from '#lib/util/swal.js';
   import type { PageData } from './$types';
   import {
     calculateHardDropScore,
@@ -947,6 +947,7 @@
   function isValidActivePiece(value: unknown): value is ActivePiece {
     if (!value || typeof value !== 'object') return false;
     const piece = value as ActivePiece;
+
     return (
       isValidPieceType(piece.type) &&
       Number.isInteger(piece.rotation) &&
@@ -1144,7 +1145,9 @@
     };
   });
 
-  beforeNavigate(() => {
+  beforeNavigate(({ shallow, type }) => {
+    if (shallow && type === 'goto') return;
+
     saveState();
   });
 
@@ -1497,7 +1500,7 @@
                 🔄
               </button>
             {:else}
-              <a href={resolve('/login')} class="btn btn-sm btn-outline-primary">로그인</a>
+              <a href={resolve('login')} class="btn btn-sm btn-outline-primary">로그인</a>
             {/if}
           </div>
           <p class="small text-muted mb-1">전체 기간 1인 1최고점</p>

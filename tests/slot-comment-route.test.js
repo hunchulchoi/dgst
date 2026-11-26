@@ -20,12 +20,12 @@ const submitDedup = vi.hoisted(() => ({
   tryAcquireSubmitDedup: vi.fn()
 }));
 
-vi.mock('$lib/database/prisma.js', () => prismaModule);
-vi.mock('$lib/server/alarm/alarmService.js', () => alarmService);
-vi.mock('$lib/server/board/commentRepo.js', () => commentRepo);
-vi.mock('$lib/server/auth/checkSessionDevice.js', () => authCheck);
-vi.mock('$lib/server/arcadeWallet.js', () => arcadeWallet);
-vi.mock('$lib/server/submitDedup.js', () => submitDedup);
+vi.mock('#lib/database/prisma.js', () => prismaModule);
+vi.mock('#lib/server/alarm/alarmService.js', () => alarmService);
+vi.mock('#lib/server/board/commentRepo.js', () => commentRepo);
+vi.mock('#lib/server/auth/checkSessionDevice.js', () => authCheck);
+vi.mock('#lib/server/arcadeWallet.js', () => arcadeWallet);
+vi.mock('#lib/server/submitDedup.js', () => submitDedup);
 
 describe('slot comment route', () => {
   beforeEach(() => {

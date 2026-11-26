@@ -1,10 +1,10 @@
 <script>
-  import { Badge, Col, Icon, Row } from '$lib/components/ui/index.js';
+  import { Badge, Col, Icon, Row } from '#lib/components/ui/index.js';
   import { resolve } from '$app/paths';
   import { ko } from 'date-fns/locale';
-  import { formatRelativeTime } from '$lib/util/formatRelativeTime.js';
-  import { formatAlarmCommentPreview } from '$lib/util/alarmPreview.js';
-  import { alarmCount } from '$lib/util/store.js';
+  import { formatRelativeTime } from '#lib/util/formatRelativeTime.js';
+  import { formatAlarmCommentPreview } from '#lib/util/alarmPreview.js';
+  import { alarmCount } from '#lib/util/store.js';
 
   // Svelte 5 Runes
   let { data } = $props();
@@ -64,9 +64,9 @@
                 href={resolve(
                   alarm.boardId === 'slot'
                     ? commentId
-                      ? `/games/slot?cmt=${commentId}&alarm=${alarm.id}`
-                      : `/games/slot?alarm=${alarm.id}`
-                    : `/board/${alarm.boardId}/${alarm.articleId}?a=cmt${commentId}&alarm=${alarm.id}`
+                      ? `games/slot?cmt=${commentId}&alarm=${alarm.id}`
+                      : `games/slot?alarm=${alarm.id}`
+                    : `board/${alarm.boardId}/${alarm.articleId}?a=cmt${commentId}&alarm=${alarm.id}`
                 )}
                 class="alarm-list-link link-underline link-underline-opacity-0 link-offset-2 link-underline-opacity-50-hover stretched-link"
               >
@@ -117,9 +117,9 @@
                 href={resolve(
                   alarm.boardId === 'slot'
                     ? commentIdForGeneral
-                      ? `/games/slot?cmt=${commentIdForGeneral}&alarm=${alarm.id}`
-                      : `/games/slot?alarm=${alarm.id}`
-                    : `/board/${alarm.boardId}/${alarm.articleId}?alarm=${alarm.id}`
+                      ? `games/slot?cmt=${commentIdForGeneral}&alarm=${alarm.id}`
+                      : `games/slot?alarm=${alarm.id}`
+                    : `board/${alarm.boardId}/${alarm.articleId}?alarm=${alarm.id}`
                 )}
                 class="alarm-list-link link-underline link-underline-opacity-0 link-offset-2 link-underline-opacity-50-hover stretched-link"
               >

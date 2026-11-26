@@ -1,5 +1,5 @@
 <script>
-  import SeotdaReplayPlayer from '$lib/components/SeotdaReplayPlayer.svelte';
+  import SeotdaReplayPlayer from '#lib/components/SeotdaReplayPlayer.svelte';
 
   const replay = {
     version: 1,

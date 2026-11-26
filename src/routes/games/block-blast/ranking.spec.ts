@@ -7,14 +7,14 @@ const mocks = vi.hoisted(() => ({
   query: vi.fn(),
   create: vi.fn()
 }));
-vi.mock('$lib/server/localGameSmokeSession.js', () => ({
+vi.mock('#lib/server/localGameSmokeSession.js', () => ({
   getGameSession: mocks.session,
   isLocalGameSmokeSession: mocks.smoke
 }));
-vi.mock('$lib/database/prisma.js', () => ({
+vi.mock('#lib/database/prisma.js', () => ({
   getPrisma: () => ({ $queryRaw: mocks.query, gameLog: { create: mocks.create } })
 }));
-vi.mock('$lib/server/gameProfilePhotos.js', () => ({
+vi.mock('#lib/server/gameProfilePhotos.js', () => ({
   attachGameProfilePhotos: async (rows: unknown[]) => rows
 }));
 import { GET, POST } from './+server.js';

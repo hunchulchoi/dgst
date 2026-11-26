@@ -1,6 +1,6 @@
-import { getPrisma } from '$lib/database/prisma.js';
-import { contentIconsFromFlags } from '$lib/server/board/articleRepo.js';
-import { summarizeCommentsByArticles } from '$lib/server/board/commentRepo.js';
+import { getPrisma } from '#lib/database/prisma.js';
+import { contentIconsFromFlags } from '#lib/server/board/articleRepo.js';
+import { summarizeCommentsByArticles } from '#lib/server/board/commentRepo.js';
 
 const ONE_HOUR_MS = 60 * 60 * 1000;
 

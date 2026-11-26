@@ -7,12 +7,12 @@ const mocks = vi.hoisted(() => ({
   warn: vi.fn()
 }));
 
-vi.mock('$lib/server/cache/pgCache.js', () => ({
+vi.mock('#lib/server/cache/pgCache.js', () => ({
   getJson: mocks.getJson,
   setJson: mocks.setJson
 }));
 
-vi.mock('$lib/util/logger.js', () => ({
+vi.mock('#lib/util/logger.js', () => ({
   default: { error: mocks.error, warn: mocks.warn }
 }));
 

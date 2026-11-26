@@ -1,6 +1,6 @@
 import { error } from '@sveltejs/kit';
-import { getAlarmList } from '$lib/server/alarm/alarmService.js';
-import logger from '$lib/util/logger.js';
+import { getAlarmList } from '#lib/server/alarm/alarmService.js';
+import logger from '#lib/util/logger.js';
 
 // 캐시 방지 - 항상 최신 데이터 로드
 export const load = async ({ locals, depends }) => {
@@ -10,7 +10,7 @@ export const load = async ({ locals, depends }) => {
     const session = await locals.auth();
 
     if (!session?.user?.email) {
-      throw error(401, { message: '로그인이 필요합니다.' });
+      throw error(401, '로그인이 필요합니다.');
     }
 
     const alarms = await getAlarmList(session.user.email, 30);

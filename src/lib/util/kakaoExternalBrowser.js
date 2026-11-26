@@ -1,4 +1,4 @@
-import { swalFire } from '$lib/util/swal.js';
+import { swalFire } from '#lib/util/swal.js';
 
 const KAKAO_EXTERNAL_BROWSER_PROMPT_KEY = 'dgst:kakao-external-browser-prompt:v1';
 

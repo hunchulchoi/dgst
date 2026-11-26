@@ -7,11 +7,11 @@ const pgCache = vi.hoisted(() => ({
   del: vi.fn()
 }));
 
-vi.mock('$lib/server/cache/pgCache.js', () => pgCache);
-vi.mock('$lib/database/prisma.js', () => ({
+vi.mock('#lib/server/cache/pgCache.js', () => pgCache);
+vi.mock('#lib/database/prisma.js', () => ({
   getPrisma: vi.fn()
 }));
-vi.mock('$lib/util/logger.js', () => ({
+vi.mock('#lib/util/logger.js', () => ({
   default: {
     warn: vi.fn()
   }

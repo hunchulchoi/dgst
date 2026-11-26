@@ -1,6 +1,6 @@
 import sharp from 'sharp';
-import { getUploadObject, statUploadObject } from '$lib/server/minioStorage.js';
-import logger from '$lib/util/logger.js';
+import { getUploadObject, statUploadObject } from '#lib/server/minioStorage.js';
+import logger from '#lib/util/logger.js';
 
 /** 봇에게 보여줄 이미지: 사이트에 올라간 이미지(/images/...)만, 긴 변 1024px JPEG로 줄여서. */
 

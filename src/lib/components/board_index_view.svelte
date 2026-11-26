@@ -1,13 +1,13 @@
 <script>
-  import { Button, Col, Icon, Row } from '$lib/components/ui/index.js';
+  import { Button, Col, Icon, Row } from '#lib/components/ui/index.js';
 
-  import BoardList from '$lib/components/board_list.svelte';
-  import LottoFreeBanner from '$lib/components/lotto_free_banner.svelte';
-  import BoardCelebrationsFireworks from '$lib/components/board_celebrations_fireworks.svelte';
+  import BoardList from '#lib/components/board_list.svelte';
+  import LottoFreeBanner from '#lib/components/lotto_free_banner.svelte';
+  import BoardCelebrationsFireworks from '#lib/components/board_celebrations_fireworks.svelte';
 
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
-  import { swalFire } from '$lib/util/swal.js';
+  import { swalFire } from '#lib/util/swal.js';
   import { onMount } from 'svelte';
 
   /** @type {{ data: Record<string, unknown>; boardId: string; pageNo?: string | number; session?: import('@auth/sveltekit').Session | null }} */
@@ -45,7 +45,7 @@
   });
 
   function write() {
-    goto(resolve(`/board/${boardId}/write`));
+    goto(resolve(`board/${boardId}/write`));
   }
 </script>
 

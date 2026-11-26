@@ -1,9 +1,9 @@
 import { error, json } from '@sveltejs/kit';
-import { getPrisma } from '$lib/database/prisma.js';
-import { getTodayWatermelonStats } from '$lib/server/gameWatermelonStats.js';
-import { attachGameProfilePhotos } from '$lib/server/gameProfilePhotos.js';
-import { getGameSession, isLocalGameSmokeSession } from '$lib/server/localGameSmokeSession.js';
-import { normalizeToIsoString } from '$lib/util/formatRelativeTime.js';
+import { getPrisma } from '#lib/database/prisma.js';
+import { getTodayWatermelonStats } from '#lib/server/gameWatermelonStats.js';
+import { attachGameProfilePhotos } from '#lib/server/gameProfilePhotos.js';
+import { getGameSession, isLocalGameSmokeSession } from '#lib/server/localGameSmokeSession.js';
+import { normalizeToIsoString } from '#lib/util/formatRelativeTime.js';
 
 /**
  * Get Top 10 scores (all-time highest score per user ID).
@@ -38,7 +38,7 @@ export async function GET(event) {
   const email = typeof user?.email === 'string' ? user.email : '';
 
   if (!email) {
-    throw error(401, { message: 'Login required' });
+    throw error(401, 'Login required');
   }
 
   if (url.searchParams.get('rank')) {
@@ -70,13 +70,13 @@ export async function POST(event) {
   const session = await getGameSession(event);
   const user = session?.user;
   const email = typeof user?.email === 'string' ? user.email : '';
-  if (!email) throw error(401, { message: 'Login required' });
+  if (!email) throw error(401, 'Login required');
 
   let body;
   try {
     body = await request.json();
   } catch {
-    throw error(400, { message: 'Invalid JSON' });
+    throw error(400, 'Invalid JSON');
   }
 
   const nickname =
@@ -100,7 +100,7 @@ export async function POST(event) {
 
   const score = Number(body?.score);
   if (!Number.isFinite(score) || score < 0) {
-    throw error(400, { message: 'Invalid score' });
+    throw error(400, 'Invalid score');
   }
   if (isLocalGameSmokeSession(session)) return json({ success: true, score, smoke: true });
 

@@ -2,9 +2,9 @@
  * 한국 로또 645 공식 결과(동행복권) 조회 및 직전 주 사이트 뽑기와의 등수 비교 — GameLog 활용(DB 스키마 변경 없음)
  */
 import { z } from 'zod';
-import { getPrisma } from '$lib/database/prisma.js';
-import { isValidLottoNumbers, normalizeLottoEmail } from '$lib/server/lotto.js';
-import logger from '$lib/util/logger.js';
+import { getPrisma } from '#lib/database/prisma.js';
+import { isValidLottoNumbers, normalizeLottoEmail } from '#lib/server/lotto.js';
+import logger from '#lib/util/logger.js';
 
 const DH_ENDPOINT = 'https://www.dhlottery.co.kr/common.do';
 const DH_FETCH_TIMEOUT_MS = 5000;

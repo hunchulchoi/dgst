@@ -2,11 +2,11 @@
   import { onMount, tick } from 'svelte';
   import { beforeNavigate } from '$app/navigation';
   import { resolve } from '$app/paths';
-  import { browser } from '$app/environment';
+  import { browser } from '$app/env';
   import { ko } from 'date-fns/locale';
-  import { formatRelativeTime } from '$lib/util/formatRelativeTime.js';
-  import GameRankingRow from '$lib/components/GameRankingRow.svelte';
-  import { swalFire } from '$lib/util/swal.js';
+  import { formatRelativeTime } from '#lib/util/formatRelativeTime.js';
+  import GameRankingRow from '#lib/components/GameRankingRow.svelte';
+  import { swalFire } from '#lib/util/swal.js';
   let { data } = $props();
 
   /** @typedef {'beginner' | 'intermediate' | 'expert'} Difficulty */
@@ -504,7 +504,9 @@
     };
   });
 
-  beforeNavigate(() => {
+  beforeNavigate(({ shallow, type }) => {
+    if (shallow && type === 'goto') return;
+
     saveGame();
   });
 
@@ -591,7 +593,12 @@
               <li class="mb-2">
                 👆 <strong>보드가 크면:</strong> 페이지를 스크롤해서 이동할 수 있어요
               </li>
-              <li>🔍 <strong>전체 보기:</strong> 두 손가락으로 핀치해서 축소·확대할 수 있어요</li>
+
+              <li>
+                🔍
+                <strong>전체 보기:</strong>
+                두 손가락으로 핀치해서 축소·확대할 수 있어요
+              </li>
             </ul>
           </div>
           <div class="alert alert-info small mb-0 py-2">
@@ -599,10 +606,11 @@
             <strong>🙂 스마일 버튼</strong>을 누르면 언제든 다시 시작할 수 있습니다.
           </div>
         </div>
+
         <div class="instructions-overlay-footer card-footer bg-white border-top-0 pt-0 pb-3 px-4">
-          <button class="btn btn-primary w-100 py-2 fw-bold" onclick={() => (showHelp = false)}>
-            알겠어요! 게임 시작하기
-          </button>
+          <button class="btn btn-primary w-100 py-2 fw-bold" onclick={() => (showHelp = false)}
+            >알겠어요! 게임 시작하기</button
+          >
         </div>
       </div>
     </div>
@@ -631,7 +639,7 @@
                   🔄
                 </button>
               {:else}
-                <a href={resolve('/login')} class="btn btn-sm btn-outline-primary">로그인</a>
+                <a href={resolve('login')} class="btn btn-sm btn-outline-primary">로그인</a>
               {/if}
             </div>
             <p class="small text-muted mb-1">전체 기간 1인 1최단기록</p>
@@ -1227,7 +1235,9 @@
   } /* 검정 */
   .c8 {
     color: #808080;
-  } /* 회색 */
+  }
+
+  /* 회색 */
 
   .grid-cell.neighbor-highlight {
     background-color: #e8e8e8 !important;

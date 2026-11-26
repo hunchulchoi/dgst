@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
-import { fetchLottoHistory, countAllLottoPicks24h } from '$lib/server/lotto.js';
-import { computeLottoWeekMatchSummary } from '$lib/server/lottoOfficial.js';
+import { fetchLottoHistory, countAllLottoPicks24h } from '#lib/server/lotto.js';
+import { computeLottoWeekMatchSummary } from '#lib/server/lottoOfficial.js';
 
 /** 자유게시판 로또 배너 데이터 (목록 load와 분리) */
 export async function GET({ locals }) {

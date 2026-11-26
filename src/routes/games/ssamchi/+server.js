@@ -1,11 +1,11 @@
 import { error, json } from '@sveltejs/kit';
-import { checkRateLimit } from '$lib/server/apiRateLimit.js';
-import { getGameSession, isLocalGameSmokeSession } from '$lib/server/localGameSmokeSession.js';
+import { checkRateLimit } from '#lib/server/apiRateLimit.js';
+import { getGameSession, isLocalGameSmokeSession } from '#lib/server/localGameSmokeSession.js';
 import {
   ArcadePlayConflictError,
   beginArcadePlay,
   releaseArcadePlay
-} from '$lib/server/arcadeWallet.js';
+} from '#lib/server/arcadeWallet.js';
 import {
   ensureSsamchiBalance,
   getSsamchiHost,
@@ -26,7 +26,7 @@ const smokeHosts = new Map();
 async function requireUser(event) {
   const session = await getGameSession(event);
   const email = session?.user?.email;
-  if (!email) throw error(401, { message: '로그인이 필요합니다.' });
+  if (!email) throw error(401, '로그인이 필요합니다.');
   return {
     email,
     nickname: session?.user?.nickname || session?.user?.name || 'anonymous',
@@ -57,10 +57,10 @@ export async function GET(event) {
 /** @param {import('@sveltejs/kit').RequestEvent} event */
 export async function POST(event) {
   const rate = await checkRateLimit(event, { limit: 8, windowSeconds: 10, bucket: 'ssamchi-post' });
-  if (!rate.allowed) throw error(429, { message: '너무 빠릅니다. 잠시 후 다시 해 주세요.' });
+  if (!rate.allowed) throw error(429, '너무 빠릅니다. 잠시 후 다시 해 주세요.');
 
   const user = await requireUser(event);
-  if (settlingUsers.has(user.email)) throw error(409, { message: '이전 판을 정산 중입니다.' });
+  if (settlingUsers.has(user.email)) throw error(409, '이전 판을 정산 중입니다.');
   settlingUsers.add(user.email);
   let playId = '';
   try {
@@ -72,15 +72,14 @@ export async function POST(event) {
       : await ensureSsamchiBalance(user.email, user.nickname).then((state) =>
           resolveSsamchiOops(user.email, user.nickname, state.balance)
         );
-    if (current.oopsInfo) throw error(400, { message: '오링! 5분 후 700개가 충전됩니다.' });
+    if (current.oopsInfo) throw error(400, '오링! 5분 후 700개가 충전됩니다.');
     const host = user.smoke
       ? (smokeHosts.get(user.email) ?? 'npc')
       : await getSsamchiHost(user.email);
     const userIsHost = host === 'user';
     const bet = userIsHost ? chooseNpcBet(current.balance) : Number(body?.bet);
-    if (!Number.isSafeInteger(bet) || bet < MIN_BET)
-      throw error(400, { message: '판돈은 10점 이상입니다.' });
-    if (bet > current.balance) throw error(400, { message: '보유 점수가 부족합니다.' });
+    if (!Number.isSafeInteger(bet) || bet < MIN_BET) throw error(400, '판돈은 10점 이상입니다.');
+    if (bet > current.balance) throw error(400, '보유 점수가 부족합니다.');
     if (!user.smoke) {
       const play = await beginArcadePlay(user.email, user.nickname, 'ssamchi', bet);
       playId = play.playId;
@@ -116,9 +115,7 @@ export async function POST(event) {
         throw new Error('홀짝 또는 쌈치기를 골라 주세요.');
       }
     } catch (cause) {
-      throw error(400, {
-        message: cause instanceof Error ? cause.message : '잘못된 게임 요청입니다.'
-      });
+      throw error(400, cause instanceof Error ? cause.message : '잘못된 게임 요청입니다.');
     }
     let balance = current.balance + result.delta;
     const nextHost = result.outcome === 'draw' ? host : result.outcome === 'win' ? 'user' : 'npc';
@@ -144,10 +141,10 @@ export async function POST(event) {
     return json({ success: true, balance, result, host: nextHost });
   } catch (cause) {
     if (cause instanceof ArcadePlayConflictError) {
-      throw error(409, { message: cause.message });
+      throw error(409, cause.message);
     }
     if (cause instanceof Error && cause.message === '보유 메달이 부족합니다.') {
-      throw error(400, { message: cause.message });
+      throw error(400, cause.message);
     }
     throw cause;
   } finally {

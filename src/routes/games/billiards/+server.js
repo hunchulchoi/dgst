@@ -1,9 +1,9 @@
 import { error, json } from '@sveltejs/kit';
-import { getPrisma } from '$lib/database/prisma.js';
-import { getGameSession, isLocalGameSmokeSession } from '$lib/server/localGameSmokeSession.js';
-import { getTodayBilliardsStats } from '$lib/server/gameBilliardsStats.js';
-import { attachGameProfilePhotos } from '$lib/server/gameProfilePhotos.js';
-import { normalizeToIsoString } from '$lib/util/formatRelativeTime.js';
+import { getPrisma } from '#lib/database/prisma.js';
+import { getGameSession, isLocalGameSmokeSession } from '#lib/server/localGameSmokeSession.js';
+import { getTodayBilliardsStats } from '#lib/server/gameBilliardsStats.js';
+import { attachGameProfilePhotos } from '#lib/server/gameProfilePhotos.js';
+import { normalizeToIsoString } from '#lib/util/formatRelativeTime.js';
 import { BILLIARDS_MODES, isBilliardsRankingMode, isValidScore } from './gameUtils';
 
 /**
@@ -42,11 +42,10 @@ export async function GET(event) {
   const session = await getGameSession(event);
   const user = session?.user;
   const email = typeof user?.email === 'string' ? user.email : '';
-  if (!email) throw error(401, { message: '로그인이 필요합니다.' });
+  if (!email) throw error(401, '로그인이 필요합니다.');
 
   const mode = url.searchParams.get('mode') ?? BILLIARDS_MODES.FOUR_BALL;
-  if (!isBilliardsRankingMode(mode))
-    throw error(400, { message: '지원하지 않는 당구 모드입니다.' });
+  if (!isBilliardsRankingMode(mode)) throw error(400, '지원하지 않는 당구 모드입니다.');
 
   if (url.searchParams.get('rank')) {
     if (isLocalGameSmokeSession(session)) {
@@ -92,15 +91,14 @@ export async function POST(event) {
   const user = session?.user;
   const email = typeof user?.email === 'string' ? user.email : '';
   const nickname = typeof user?.nickname === 'string' ? user.nickname : '';
-  if (!email || !nickname) throw error(401, { message: '로그인이 필요합니다.' });
+  if (!email || !nickname) throw error(401, '로그인이 필요합니다.');
 
   const body = await request.json().catch(() => null);
   const mode = body?.mode ?? BILLIARDS_MODES.FOUR_BALL;
   const score = Number(body?.score);
 
-  if (!isBilliardsRankingMode(mode))
-    throw error(400, { message: '지원하지 않는 당구 모드입니다.' });
-  if (!isValidScore(score)) throw error(400, { message: '점수가 올바르지 않습니다.' });
+  if (!isBilliardsRankingMode(mode)) throw error(400, '지원하지 않는 당구 모드입니다.');
+  if (!isValidScore(score)) throw error(400, '점수가 올바르지 않습니다.');
   if (isLocalGameSmokeSession(session)) return json({ success: true, mode, score, smoke: true });
 
   await getPrisma().gameScoreBilliards.create({

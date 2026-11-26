@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { waitForTurnstile } from '$lib/util/turnstileClient.js';
+  import { waitForTurnstile } from '#lib/util/turnstileClient.js';
 
   type Props = {
     siteKey: string;

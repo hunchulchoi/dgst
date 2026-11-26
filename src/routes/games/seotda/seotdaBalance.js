@@ -1,4 +1,4 @@
-import { getPrisma } from '$lib/database/prisma.js';
+import { getPrisma } from '#lib/database/prisma.js';
 import {
   applyArcadeEntries,
   applyArcadeEntry,
@@ -7,7 +7,7 @@ import {
   getArcadeLeader,
   getArcadeRank,
   resolveArcadeOops
-} from '$lib/server/arcadeWallet.js';
+} from '#lib/server/arcadeWallet.js';
 import { ANTE, SEOTDA_GAME } from './seotdaEngine.js';
 
 export const SPARK_HIGH_RAISE_TRIGGER = 1_000_000_000;

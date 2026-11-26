@@ -6,10 +6,10 @@ const sessionDevice = vi.hoisted(() => ({ checkAndLogSessionDevice: vi.fn() }));
 const replayRepo = vi.hoisted(() => ({ createBilliardsReplayArticle: vi.fn() }));
 const boardCache = vi.hoisted(() => ({ bustBoardListCache: vi.fn() }));
 
-vi.mock('$lib/server/apiRateLimit.js', () => rateLimit);
-vi.mock('$lib/server/auth/checkSessionDevice.js', () => sessionDevice);
-vi.mock('$lib/server/billiardsReplayRepo.js', () => replayRepo);
-vi.mock('$lib/server/boardListLoad.js', () => boardCache);
+vi.mock('#lib/server/apiRateLimit.js', () => rateLimit);
+vi.mock('#lib/server/auth/checkSessionDevice.js', () => sessionDevice);
+vi.mock('#lib/server/billiardsReplayRepo.js', () => replayRepo);
+vi.mock('#lib/server/boardListLoad.js', () => boardCache);
 
 function makeReplay() {
   const balls = [

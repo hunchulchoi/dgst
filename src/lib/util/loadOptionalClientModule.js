@@ -1,4 +1,4 @@
-import { reportClientError } from '$lib/util/reportClientPageError.js';
+import { reportClientError } from '#lib/util/reportClientPageError.js';
 
 /**
  * Keep optional UI features usable when a lazy module cannot load.

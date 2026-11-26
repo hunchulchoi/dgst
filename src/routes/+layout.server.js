@@ -1,13 +1,13 @@
-import { env as dynamicEnv } from '$env/dynamic/private';
-import { getUnreadAlarmCount } from '$lib/server/alarm/alarmService.js';
-import { isBoardHtmlPath } from '$lib/util/boardPaths.js';
-import logger from '$lib/util/logger.js';
-import { traceFromUnknown } from '$lib/util/formatErrorTrace.js';
+import { KAKAO_CLIENT_ID, KAKAO_CLIENT_SECRET, BLUE_DGST_HOST } from '$app/env/private';
+import { getUnreadAlarmCount } from '#lib/server/alarm/alarmService.js';
+import { isBoardHtmlPath } from '#lib/util/boardPaths.js';
+import logger from '#lib/util/logger.js';
+import { traceFromUnknown } from '#lib/util/formatErrorTrace.js';
 import {
   DISPLAY_TIME_ZONE,
   isValidTimeZone,
   TIME_ZONE_COOKIE_NAME
-} from '$lib/util/formatRelativeTime.js';
+} from '#lib/util/formatRelativeTime.js';
 
 /** @param {string | null | undefined} host */
 function normalizeHost(host) {
@@ -57,15 +57,13 @@ export const load = async (event) => {
   }
 
   const kakaoId =
-    dynamicEnv.KAKAO_CLIENT_ID ??
-    (typeof process !== 'undefined' ? process.env?.KAKAO_CLIENT_ID : undefined);
+    KAKAO_CLIENT_ID ?? (typeof process !== 'undefined' ? process.env?.KAKAO_CLIENT_ID : undefined);
   const kakaoSecret =
-    dynamicEnv.KAKAO_CLIENT_SECRET ??
+    KAKAO_CLIENT_SECRET ??
     (typeof process !== 'undefined' ? process.env?.KAKAO_CLIENT_SECRET : undefined);
   const kakaoEnabled = !!(kakaoId && kakaoSecret);
   const blueDgstHost =
-    dynamicEnv.BLUE_DGST_HOST ??
-    (typeof process !== 'undefined' ? process.env?.BLUE_DGST_HOST : undefined);
+    BLUE_DGST_HOST ?? (typeof process !== 'undefined' ? process.env?.BLUE_DGST_HOST : undefined);
   const blueDgstHostName = normalizeHost(blueDgstHost);
   const requestHostName = normalizeHost(event.request?.headers.get('host'));
   const forwardedHostName = normalizeHost(event.request?.headers.get('x-forwarded-host'));

@@ -2,7 +2,7 @@
  * Auth 관련 Postgres rate-limit.
  * /auth/* POST 요청에 대해 IP당 분당 최대 요청 수 제한.
  */
-import { incrementRateLimit } from '$lib/server/cache/pgRateLimit.js';
+import { incrementRateLimit } from '#lib/server/cache/pgRateLimit.js';
 
 const AUTH_RATE_LIMIT_KEY_PREFIX = 'ratelimit:auth:';
 const AUTH_RATE_LIMIT_WINDOW_SEC = 60;

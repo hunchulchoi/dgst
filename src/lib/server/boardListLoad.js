@@ -1,11 +1,11 @@
 import crypto from 'crypto';
-import { countArticles } from '$lib/server/board/articleRepo.js';
-import { fetchBoardArticleList } from '$lib/server/boardArticleList.js';
-import * as pgCache from '$lib/server/cache/pgCache.js';
+import { countArticles } from '#lib/server/board/articleRepo.js';
+import { fetchBoardArticleList } from '#lib/server/boardArticleList.js';
+import * as pgCache from '#lib/server/cache/pgCache.js';
 
 const BOARDLIST_NS = 'boardlist';
-import logger from '$lib/util/logger.js';
-import { traceFromUnknown } from '$lib/util/formatErrorTrace.js';
+import logger from '#lib/util/logger.js';
+import { traceFromUnknown } from '#lib/util/formatErrorTrace.js';
 
 const PAGE_UNIT = 30;
 const THREE_DAYS_MS = 1000 * 60 * 60 * 24 * 3;

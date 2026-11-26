@@ -1,6 +1,6 @@
-import { getPrisma } from '$lib/database/prisma.js';
-import { normalizeToIsoString } from '$lib/util/formatRelativeTime.js';
-import { getBreakoutStage50Celebration } from '$lib/server/breakoutCelebration.js';
+import { getPrisma } from '#lib/database/prisma.js';
+import { normalizeToIsoString } from '#lib/util/formatRelativeTime.js';
+import { getBreakoutStage50Celebration } from '#lib/server/breakoutCelebration.js';
 
 /** 폭죽 유지 시간 (1등 교체·50클리어 공통) */
 export const BOARD_CELEBRATION_MS = 12 * 60 * 60 * 1000;

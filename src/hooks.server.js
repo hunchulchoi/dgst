@@ -1,22 +1,31 @@
 import { SvelteKitAuth } from '@auth/sveltekit';
 import { getRequestEvent } from '$app/server';
-import { env as privateEnv } from '$env/dynamic/private';
-import { getPrisma } from '$lib/database/prisma.js';
-import { getPrismaAdapter } from '$lib/server/auth/prismaAdapter.js';
-import { createAuthProviders } from '$lib/server/auth/providers.js';
-import { checkAuthRateLimit } from '$lib/server/auth/rateLimit.js';
-import { shouldRejectCrossOriginRequest } from '$lib/server/auth/requestOrigin.js';
-import { evaluateAuthSignIn, resolveSafeAuthRedirect } from '$lib/server/auth/authPolicy.js';
-import { createAuthDiagnostics } from '$lib/server/auth/diagnostics.js';
-import { offerSignInRecovery } from '$lib/server/auth/recovery.js';
+
+import {
+  GOOGLE_CLIENT_ID,
+  GOOGLE_CLIENT_SECRET,
+  KAKAO_CLIENT_ID,
+  KAKAO_CLIENT_SECRET,
+  NODE_ENV,
+  NEXTAUTH_SECRET
+} from '$app/env/private';
+
+import { getPrisma } from '#lib/database/prisma.js';
+import { getPrismaAdapter } from '#lib/server/auth/prismaAdapter.js';
+import { createAuthProviders } from '#lib/server/auth/providers.js';
+import { checkAuthRateLimit } from '#lib/server/auth/rateLimit.js';
+import { shouldRejectCrossOriginRequest } from '#lib/server/auth/requestOrigin.js';
+import { evaluateAuthSignIn, resolveSafeAuthRedirect } from '#lib/server/auth/authPolicy.js';
+import { createAuthDiagnostics } from '#lib/server/auth/diagnostics.js';
+import { offerSignInRecovery } from '#lib/server/auth/recovery.js';
 import crypto from 'crypto';
 import { redirect, json } from '@sveltejs/kit';
-import logger from '$lib/util/logger';
-import { serializeError, traceFromUnknown } from '$lib/util/formatErrorTrace.js';
-import { warmupConnections } from '$lib/server/warmup.js';
-import { isBoardHtmlPath } from '$lib/util/boardPaths.js';
-import { BOARD_UPLOAD_SOURCE_MAX_BYTES } from '$lib/util/uploadLimits.js';
-import { applyHostnameFavicon, faviconRedirectTarget } from '$lib/server/favicon.js';
+import logger from '#lib/util/logger.js';
+import { serializeError, traceFromUnknown } from '#lib/util/formatErrorTrace.js';
+import { warmupConnections } from '#lib/server/warmup.js';
+import { isBoardHtmlPath } from '#lib/util/boardPaths.js';
+import { BOARD_UPLOAD_SOURCE_MAX_BYTES } from '#lib/util/uploadLimits.js';
+import { applyHostnameFavicon, faviconRedirectTarget } from '#lib/server/favicon.js';
 
 warmupConnections();
 
@@ -33,10 +42,10 @@ export function depends(key) {
 
 // SvelteKit 2 + @auth/sveltekit v1.x 호환
 const providers = createAuthProviders({
-  googleClientId: privateEnv.GOOGLE_CLIENT_ID ?? '',
-  googleClientSecret: privateEnv.GOOGLE_CLIENT_SECRET ?? '',
-  kakaoClientId: privateEnv.KAKAO_CLIENT_ID ?? '',
-  kakaoClientSecret: privateEnv.KAKAO_CLIENT_SECRET ?? ''
+  googleClientId: GOOGLE_CLIENT_ID ?? '',
+  googleClientSecret: GOOGLE_CLIENT_SECRET ?? '',
+  kakaoClientId: KAKAO_CLIENT_ID ?? '',
+  kakaoClientSecret: KAKAO_CLIENT_SECRET ?? ''
 });
 
 export const {
@@ -110,20 +119,17 @@ export const {
   },
   cookies: {
     sessionToken: {
-      name:
-        privateEnv.NODE_ENV === 'production'
-          ? '__Secure-authjs.session-token'
-          : 'authjs.session-token',
+      name: NODE_ENV === 'production' ? '__Secure-authjs.session-token' : 'authjs.session-token',
       options: {
         httpOnly: true,
         sameSite: 'lax',
         path: '/',
-        secure: privateEnv.NODE_ENV === 'production',
+        secure: NODE_ENV === 'production',
         maxAge: 30 * 24 * 60 * 60
       }
     }
   },
-  secret: privateEnv.NEXTAUTH_SECRET,
+  secret: NEXTAUTH_SECRET,
   trustHost: true,
   logger: {
     error(error) {
@@ -140,8 +146,9 @@ export const {
 });
 
 const LOGIN_LOG_RETENTION_DAYS = 30;
+
 const AUTH_SESSION_COOKIE_NAME =
-  privateEnv.NODE_ENV === 'production' ? '__Secure-authjs.session-token' : 'authjs.session-token';
+  NODE_ENV === 'production' ? '__Secure-authjs.session-token' : 'authjs.session-token';
 
 /**
  * Cloudflare Rocket Loader는 원본 <script>를 지연 실행으로 재작성해
@@ -163,7 +170,7 @@ const getRequestMeta = (event) => {
 };
 
 // 우리의 handle 함수 (Auth 핸들러와 함께 사용)
-/** @type {import('@sveltejs/kit').Handle} */
+/** @type {import('@sveltejs/kit/hooks').Handle} */
 export async function handle({ event, resolve }) {
   const startTime = Date.now();
   const { pathname } = event.url;
@@ -223,7 +230,7 @@ export async function handle({ event, resolve }) {
       : undefined;
 
   // 커스텀 resolve 함수 생성
-  /** @type {Parameters<import('@sveltejs/kit').Handle>[0]['resolve']} */
+  /** @type {Parameters<import('@sveltejs/kit/hooks').Handle>[0]['resolve']} */
   const customResolve = async (resolveEvent, opts = {}) => {
     const upstreamTransform = opts.transformPageChunk;
 
@@ -305,7 +312,6 @@ export async function handle({ event, resolve }) {
         (authResponse?.headers?.get?.('set-cookie')
           ? [authResponse.headers.get('set-cookie')]
           : []);
-
       const didSetSessionCookie = Array.from(setCookies).some((c) =>
         typeof c === 'string' ? c.includes(`${AUTH_SESSION_COOKIE_NAME}=`) : false
       );
@@ -423,8 +429,11 @@ export async function handle({ event, resolve }) {
 }
 
 // 전역 에러 로깅
-/** @type {import('@sveltejs/kit').HandleServerError} */
-export function handleError({ event, error }) {
+/** @type {import('@sveltejs/kit/hooks').HandleServerError} */
+export function handleError({ kind, event, error }) {
+  // SvelteKit 3 also routes errors thrown with `error()` here. They are expected
+  // responses with their own body, so keep Kit 2 behavior and skip logging them.
+  if (kind === 'app') return;
   /** @type {{ status?: number; message?: string; name?: string; cause?: unknown; body?: { message?: string; errorId?: string } }} */
   const serverError =
     typeof error === 'object' && error !== null

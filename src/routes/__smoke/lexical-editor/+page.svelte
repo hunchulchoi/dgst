@@ -1,5 +1,5 @@
 <script>
-  import LexicalEditor from '$lib/components/LexicalEditor.svelte';
+  import LexicalEditor from '#lib/components/LexicalEditor.svelte';
 
   let { data } = $props();
 

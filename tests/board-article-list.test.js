@@ -8,8 +8,8 @@ const commentRepo = vi.hoisted(() => ({
   summarizeCommentsByArticles: vi.fn()
 }));
 
-vi.mock('$lib/database/prisma.js', () => prismaModule);
-vi.mock('$lib/server/board/commentRepo.js', () => commentRepo);
+vi.mock('#lib/database/prisma.js', () => prismaModule);
+vi.mock('#lib/server/board/commentRepo.js', () => commentRepo);
 
 describe('fetchBoardArticleList', () => {
   beforeEach(() => {

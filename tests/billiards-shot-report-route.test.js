@@ -8,8 +8,8 @@ const logger = vi.hoisted(() => ({
   warn: vi.fn()
 }));
 
-vi.mock('$lib/server/apiRateLimit.js', () => rateLimit);
-vi.mock('$lib/util/logger.js', () => ({ default: logger }));
+vi.mock('#lib/server/apiRateLimit.js', () => rateLimit);
+vi.mock('#lib/util/logger.js', () => ({ default: logger }));
 
 function makeReplay() {
   const balls = [

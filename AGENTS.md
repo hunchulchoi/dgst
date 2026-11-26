@@ -12,5 +12,5 @@ Use `$smoke-test-local-games` from `.agents/skills/smoke-test-local-games/SKILL.
 ## Browser dialogs
 
 - Never use native `alert()`, `window.alert()`, `confirm()`, or `window.confirm()`.
-- Use `swalFire` from `$lib/util/swal.js` for alerts and confirmation dialogs.
+- Use `swalFire` from `#lib/util/swal.js` for alerts and confirmation dialogs.
 - Confirmation flows must be asynchronous and continue only when `result.isConfirmed` is true.

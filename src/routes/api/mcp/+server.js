@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
-import { env as dynamicEnv } from '$env/dynamic/private';
-import { checkRateLimit } from '$lib/server/apiRateLimit.js';
-import { findBotUser, handleRpc, resolveBotNickname } from '$lib/server/mcp/botMcp.js';
+import { BOT_MCP_TOKENS } from '$app/env/private';
+import { checkRateLimit } from '#lib/server/apiRateLimit.js';
+import { findBotUser, handleRpc, resolveBotNickname } from '#lib/server/mcp/botMcp.js';
 
 /**
  * 봇 계정용 MCP 엔드포인트 (Streamable HTTP, stateless).
@@ -24,10 +24,8 @@ export async function POST(event) {
     );
   }
 
-  const nickname = resolveBotNickname(
-    event.request.headers.get('authorization'),
-    dynamicEnv.BOT_MCP_TOKENS
-  );
+  const nickname = resolveBotNickname(event.request.headers.get('authorization'), BOT_MCP_TOKENS);
+
   if (!nickname) return unauthorized();
 
   const bot = await findBotUser(nickname);

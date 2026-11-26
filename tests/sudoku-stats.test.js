@@ -5,7 +5,7 @@ const prismaModule = vi.hoisted(() => ({
   getPrisma: vi.fn()
 }));
 
-vi.mock('$lib/database/prisma.js', () => prismaModule);
+vi.mock('#lib/database/prisma.js', () => prismaModule);
 
 describe('sudoku today stats', () => {
   afterEach(() => {

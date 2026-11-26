@@ -1,45 +1,47 @@
 <script>
-  import { Badge, Button, Col, Icon, InputGroup, Row } from '$lib/components/ui/index.js';
+  import { Badge, Button, Col, Icon, InputGroup, Row } from '#lib/components/ui/index.js';
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
-  import { boardListPath } from '$lib/util/boardPaths.js';
-  import { page } from '$app/stores';
-  import { browser } from '$app/environment';
+  import { boardListPath } from '#lib/util/boardPaths.js';
+  import { page } from '$app/state';
+  import { browser } from '$app/env';
   import { scale } from 'svelte/transition';
 
   import { ko } from 'date-fns/locale';
-  import { formatIso9075Safe, formatRelativeTime } from '$lib/util/formatRelativeTime.js';
+  import { formatIso9075Safe, formatRelativeTime } from '#lib/util/formatRelativeTime.js';
 
   import imageCompression from 'browser-image-compression';
-  import { swalFire } from '$lib/util/swal.js';
-  import { loadOptionalClientModule } from '$lib/util/loadOptionalClientModule.js';
+  import { swalFire } from '#lib/util/swal.js';
+  import { loadOptionalClientModule } from '#lib/util/loadOptionalClientModule.js';
 
-  import { alarmCount } from '$lib/util/store.js';
+  import { alarmCount } from '#lib/util/store.js';
   import { onDestroy, onMount, tick } from 'svelte';
-  import BoardList from '$lib/components/board_list.svelte';
-  import BilliardsReplayPlayer from '$lib/components/BilliardsReplayPlayer.svelte';
-  import SeotdaReplayPlayer from '$lib/components/SeotdaReplayPlayer.svelte';
-  import AttachmentMedia from '$lib/components/AttachmentMedia.svelte';
-  import OGPreview from '$lib/components/OGPreview.svelte';
+  import BoardList from '#lib/components/board_list.svelte';
+  import BilliardsReplayPlayer from '#lib/components/BilliardsReplayPlayer.svelte';
+  import SeotdaReplayPlayer from '#lib/components/SeotdaReplayPlayer.svelte';
+  import AttachmentMedia from '#lib/components/AttachmentMedia.svelte';
+  import OGPreview from '#lib/components/OGPreview.svelte';
   import sanitizeHtml from 'sanitize-html';
-  import { isOnlyOneEmoji } from '$lib/util/emoji.js';
-  import { linkifyPlainUrls } from '$lib/util/linkifyPlainUrls.js';
-  import { repairOgCardHtmlEntities } from '$lib/util/ogCardHtmlRepair.js';
-  import { imageThumbnailUrl } from '$lib/util/imageThumbnail.js';
+  import { isOnlyOneEmoji } from '#lib/util/emoji.js';
+  import { linkifyPlainUrls } from '#lib/util/linkifyPlainUrls.js';
+  import { repairOgCardHtmlEntities } from '#lib/util/ogCardHtmlRepair.js';
+  import { imageThumbnailUrl } from '#lib/util/imageThumbnail.js';
   import {
     isAttachmentPasteEvent,
     readClipboardImageFiles,
     readPasteData
-  } from '$lib/util/pasteData.js';
+  } from '#lib/util/pasteData.js';
+
   import {
     createWebpUploadFile,
     isPdfAttachment,
     isVideoAttachment
-  } from '$lib/util/attachmentMedia.js';
+  } from '#lib/util/attachmentMedia.js';
   import {
     applyAttachmentImageSizing,
     shouldApplyAttachmentImageSizing
-  } from '$lib/util/attachmentImageSizing.js';
+  } from '#lib/util/attachmentImageSizing.js';
+
   import {
     clampViewerScale,
     computeFitScale,
@@ -47,9 +49,9 @@
     shouldHandleViewerZoomWheel,
     shouldOpenAttachmentImageViewer,
     VIEWER_MAX_SCALE
-  } from '$lib/util/attachmentImageViewer.js';
+  } from '#lib/util/attachmentImageViewer.js';
 
-  /** @type {typeof import('$lib/util/embeder.js') | null} */
+  /** @type {typeof import('#lib/util/embeder.js') | null} */
   let embeder = $state(null);
   /** @typedef {{ Embeds?: { process: () => void } }} InstagramEmbed */
   /** @type {InstagramEmbed | undefined} */
@@ -62,10 +64,10 @@
   const article = $derived(data.article ?? null);
   const sessionUser = $derived(data.session?.user ?? null);
 
-  const boardId = $derived($page.params.boardId ?? 'free');
-  const articleId = $derived($page.params.articleId ?? '');
-  const pageNo = $derived($page.params.pageNo ?? '1');
-  const alarmId = $derived($page.url.searchParams.get('alarm') ?? '');
+  const boardId = $derived(page.params.boardId ?? 'free');
+  const articleId = $derived(page.params.articleId ?? '');
+  const pageNo = $derived(page.params.pageNo ?? '1');
+  const alarmId = $derived(page.url.searchParams.get('alarm') ?? '');
 
   // 애니메이션 관련 상태
   let likeAnimation = $state(false);
@@ -272,8 +274,8 @@
     // The root layout preserves the current vertical position through navigation, animates
     // to the top after the list renders, and applies a hard fallback for older browsers.
     await goto(resolve(/** @type {any} */ (boardListPath(boardId, currentPageNo))), {
-      replaceState: true,
-      noScroll: true
+      replace: true,
+      reset: false
     });
     if (browser) {
       window.dispatchEvent(new CustomEvent('dgst:normalize-mobile-layout-width'));
@@ -407,8 +409,10 @@
       } else return;
     } else {
       const file = /** @type {HTMLInputElement} */ (event.target).files?.[0] ?? null;
+
       if (rejectAttachmentWithoutExtension(file, /** @type {HTMLInputElement} */ (event.target)))
         return;
+
       if (file?.type.startsWith('audio')) {
         await uploadCommentAudioFile(file, target);
         return;
@@ -1042,7 +1046,7 @@
 
   /** @param {string} articleId */
   function edit(articleId) {
-    goto(resolve(`/board/${boardId}/write/${articleId}`));
+    goto(resolve(`board/${boardId}/write/${articleId}`));
   }
 
   /** @param {Event} e */
@@ -1052,7 +1056,7 @@
   }
 
   function write() {
-    goto(resolve(`/board/${boardId}/write`));
+    goto(resolve(`board/${boardId}/write`));
   }
 
   /**
@@ -1060,8 +1064,8 @@
    * @param pageNo {number}
    */
   function gopage(pageNo) {
-    goto(resolve(`/board/${boardId}/${pageNo}?v=${new Date().getSeconds()}`), {
-      invalidateAll: true
+    goto(resolve(`board/${boardId}/${pageNo}?v=${new Date().getSeconds()}`), {
+      refreshAll: true
     });
   }
 
@@ -1133,7 +1137,7 @@
     } else {
       // 그 외 타입은 toast로 표시
       return await swalFire({
-        icon: icon,
+        icon,
         title: message,
         toast: true,
         timer: 1000,
@@ -1410,13 +1414,13 @@
 
   onMount(async () => {
     const moduleContext = {
-      pathname: $page.url.pathname,
-      routeId: $page.route.id ?? undefined,
+      pathname: page.url.pathname,
+      routeId: page.route.id ?? undefined,
       component: 'board-article'
     };
-    embeder = await loadOptionalClientModule(() => import('$lib/util/embeder.js'), {
+    embeder = await loadOptionalClientModule(() => import('#lib/util/embeder.js'), {
       ...moduleContext,
-      importTarget: '$lib/util/embeder.js',
+      importTarget: '#lib/util/embeder.js',
       operation: 'load-comment-renderer'
     });
     await tick();
@@ -1446,9 +1450,9 @@
       }
     }, 3000);
 
-    console.log('url', $page.url);
+    console.log('url', page.url);
 
-    const hash = $page.url.searchParams.get('a');
+    const hash = page.url.searchParams.get('a');
 
     if (hash) {
       const el = document.querySelector(`#${hash}`);
@@ -2175,9 +2179,9 @@
         </Col>
         <Col md="6" xs="8" class="px-0 article-meta text-secondary">
           <span class="article-author">{article.nickname}</span>
-          <span class="article-date text-muted"
-            >{formatIso9075Safe(article.createdAt, { timeZone: $page.data.timeZone })}</span
-          >
+          <span class="article-date text-muted">
+            {formatIso9075Safe(article.createdAt, { timeZone: page.data.timeZone })}
+          </span>
         </Col>
         <Col class="text-end text-muted article-stats" md="6" xs="4">
           <span class="article-stat"><Icon class="pe-1" name="eye" />{article.read}</span>
@@ -2309,7 +2313,7 @@
           >
             {#if comment.parentCommentNickname}
               <Col xs="auto" class="m-0 pe-1">
-                <Icon name="arrow-return-right" class="text-success"></Icon>
+                <Icon name="arrow-return-right" class="text-success" />
               </Col>
             {/if}
 
@@ -2335,11 +2339,9 @@
                       >
                         {comment.nickname}
                       </div>
+
                       <div class="comment-time-line !text-[0.9375rem] !leading-snug text-muted">
-                        {formatRelativeTime(comment.createdAt, {
-                          locale: ko,
-                          addSuffix: true
-                        })}
+                        {formatRelativeTime(comment.createdAt, { locale: ko, addSuffix: true })}
                       </div>
                     </div>
                   </div>
@@ -2485,10 +2487,9 @@
                           <div class="comment-content-wrap dgst-rich-text">
                             <div class="comment-body-line">
                               {#if comment.parentCommentNickname}
-                                <span class="comment-mention text-bg-secondary rounded-2"
-                                  ><span class="text-warning">@</span
-                                  >{comment.parentCommentNickname}</span
-                                >
+                                <span class="comment-mention text-bg-secondary rounded-2">
+                                  <span class="text-warning">@</span>{comment.parentCommentNickname}
+                                </span>
                               {/if}
                               <span class="comment-single-emoji">{comment.content}</span>
                             </div>

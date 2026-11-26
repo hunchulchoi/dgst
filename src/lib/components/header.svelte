@@ -11,19 +11,19 @@
     NavbarBrand,
     NavItem,
     NavLink
-  } from '$lib/components/ui/index.js';
+  } from '#lib/components/ui/index.js';
 
-  import theme from '$lib/shared/stores/theme.js';
+  import theme from '#lib/shared/stores/theme.js';
 
   import { signOut } from '@auth/sveltekit/client';
-  import { signInPending, startSignIn } from '$lib/util/signIn';
+  import { signInPending, startSignIn } from '#lib/util/signIn.ts';
   import { goto, invalidate } from '$app/navigation';
   import { resolve } from '$app/paths';
-  import { navigating } from '$app/stores';
+  import { navigating } from '$app/state';
 
-  import { alarmCount, boardListReloading, boardListReloadKey } from '$lib/util/store.js';
-  import { isFreeBoardHomePath } from '$lib/util/boardPaths.js';
-  import { setClientNavigationOperation } from '$lib/util/clientNavigationContext.js';
+  import { alarmCount, boardListReloading, boardListReloadKey } from '#lib/util/store.js';
+  import { isFreeBoardHomePath } from '#lib/util/boardPaths.js';
+  import { setClientNavigationOperation } from '#lib/util/clientNavigationContext.js';
 
   // Svelte 5 Runes - Props
   let { session, pathname, unreadAlarmCount = 0 } = $props();
@@ -33,7 +33,7 @@
   let freeBoardNavigationInFlight = $state(false);
 
   $effect(() => {
-    if ($navigating) {
+    if (navigating.to) {
       navigatingSpinner = true;
     } else {
       const timer = setTimeout(() => {
@@ -62,6 +62,7 @@
   let colorModeIcon = $derived(
     $theme === 'light' ? 'sun-fill' : $theme === 'dark' ? 'moon-stars-fill' : 'circle-half'
   );
+
   let loginButton = $derived(
     `/oauth/btn_google_signin_${$theme === 'light' ? 'light' : 'dark'}_normal_web.png`
   );
@@ -124,7 +125,7 @@
 
     try {
       if (!onHome) {
-        await goto(resolve('/'), { invalidateAll: false, replaceState: true });
+        await goto(resolve('/'), { replace: true });
       } else {
         boardListReloadKey.update((n) => n + 1);
         await invalidate('board-list');
@@ -181,7 +182,7 @@
             <button
               type="button"
               class="btn btn-link text-secondary p-0 text-nowrap leading-none"
-              onclick={() => goto(resolve('/auth/profile'))}>{session.user.nickname}</button
+              onclick={() => goto(resolve('auth/profile'))}>{session.user.nickname}</button
             >
           </div>
         {:else}

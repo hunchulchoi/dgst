@@ -1,4 +1,4 @@
-import { getPrisma } from '$lib/database/prisma.js';
+import { getPrisma } from '#lib/database/prisma.js';
 
 /** @type {Promise<number> | null} */
 let backfillPromise = null;

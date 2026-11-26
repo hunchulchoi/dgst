@@ -1,7 +1,7 @@
 <script>
-  import { Offcanvas } from '$lib/components/ui/index.js';
+  import { Offcanvas } from '#lib/components/ui/index.js';
   import { Confetti } from 'svelte-confetti';
-  import ccd from '$lib/shared/stores/ccd.js';
+  import ccd from '#lib/shared/stores/ccd.js';
 
   const header_ = '수능 대박 기원';
 </script>

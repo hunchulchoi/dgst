@@ -1,12 +1,16 @@
 import { Client } from 'minio';
-import { env } from '$env/dynamic/private';
+import {
+  MINIO_ACCESS_KEY,
+  MINIO_BUCKET,
+  MINIO_ENDPOINT,
+  MINIO_REGION,
+  MINIO_SECRET_KEY
+} from '$app/env/private';
 
 /** @type {Client | undefined} */
 let client;
 
 function getConfig() {
-  const { MINIO_ACCESS_KEY, MINIO_BUCKET, MINIO_ENDPOINT, MINIO_REGION, MINIO_SECRET_KEY } = env;
-
   if (!MINIO_ENDPOINT || !MINIO_ACCESS_KEY || !MINIO_SECRET_KEY || !MINIO_BUCKET) {
     throw new Error(
       'MINIO_ENDPOINT, MINIO_ACCESS_KEY, MINIO_SECRET_KEY, MINIO_BUCKET 환경변수가 필요합니다.'

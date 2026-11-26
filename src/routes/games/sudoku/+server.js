@@ -1,10 +1,10 @@
 import { randomUUID } from 'crypto';
 import { error, json } from '@sveltejs/kit';
-import { getPrisma } from '$lib/database/prisma.js';
-import { getGameSession, isLocalGameSmokeSession } from '$lib/server/localGameSmokeSession.js';
-import { getTodaySudokuStats } from '$lib/server/gameSudokuStats.js';
-import { attachGameProfilePhotos } from '$lib/server/gameProfilePhotos.js';
-import { normalizeToIsoString } from '$lib/util/formatRelativeTime.js';
+import { getPrisma } from '#lib/database/prisma.js';
+import { getGameSession, isLocalGameSmokeSession } from '#lib/server/localGameSmokeSession.js';
+import { getTodaySudokuStats } from '#lib/server/gameSudokuStats.js';
+import { attachGameProfilePhotos } from '#lib/server/gameProfilePhotos.js';
+import { normalizeToIsoString } from '#lib/util/formatRelativeTime.js';
 
 const DIFFICULTIES = new Set(['easy', 'normal', 'hard', 'hell']);
 const MAX_SECONDS = 24 * 60 * 60;
@@ -60,7 +60,7 @@ export async function GET(event) {
   const session = await getGameSession(event);
   const user = session?.user;
   const email = typeof user?.email === 'string' ? user.email : '';
-  if (!email) throw error(401, { message: '로그인이 필요합니다.' });
+  if (!email) throw error(401, '로그인이 필요합니다.');
 
   const difficulty = normalizeDifficulty(url.searchParams.get('difficulty') ?? 'normal');
 
@@ -102,7 +102,7 @@ export async function POST(event) {
   const session = await getGameSession(event);
   const user = session?.user;
   const email = typeof user?.email === 'string' ? user.email : '';
-  if (!email) throw error(401, { message: '로그인이 필요합니다.' });
+  if (!email) throw error(401, '로그인이 필요합니다.');
 
   const body = await request.json().catch(() => null);
   const difficulty = normalizeDifficulty(body?.difficulty ?? 'normal');
@@ -110,11 +110,11 @@ export async function POST(event) {
   const mistakes = Number(body?.mistakes ?? 0);
 
   if (!Number.isInteger(seconds) || seconds < 1 || seconds > MAX_SECONDS) {
-    throw error(400, { message: '유효한 기록을 보내 주세요.' });
+    throw error(400, '유효한 기록을 보내 주세요.');
   }
 
   if (!Number.isInteger(mistakes) || mistakes < 0 || mistakes > MAX_MISTAKES) {
-    throw error(400, { message: '유효한 실수 횟수를 보내 주세요.' });
+    throw error(400, '유효한 실수 횟수를 보내 주세요.');
   }
   if (isLocalGameSmokeSession(session)) {
     return json({ success: true, difficulty, seconds, mistakes, smoke: true });

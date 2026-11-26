@@ -10,8 +10,8 @@ const commentRepo = vi.hoisted(() => ({
   toggleCommentLike: vi.fn()
 }));
 
-vi.mock('$lib/server/board/articleRepo.js', () => articleRepo);
-vi.mock('$lib/server/board/commentRepo.js', () => commentRepo);
+vi.mock('#lib/server/board/articleRepo.js', () => articleRepo);
+vi.mock('#lib/server/board/commentRepo.js', () => commentRepo);
 
 describe('board like route responses', () => {
   beforeEach(() => {

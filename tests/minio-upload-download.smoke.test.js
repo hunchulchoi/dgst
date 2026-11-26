@@ -7,7 +7,7 @@ import {
   MINIO_ENDPOINT,
   MINIO_REGION,
   MINIO_SECRET_KEY
-} from '$env/static/private';
+} from '$app/env/private';
 
 const smoke = process.env.RUN_MINIO_SMOKE === 'true' ? it : it.skip;
 

@@ -1,7 +1,7 @@
 import crypto from 'crypto';
-import { tryAcquire } from '$lib/server/cache/pgDedup.js';
-import { findRecentDuplicateArticle } from '$lib/server/board/articleRepo.js';
-import { findRecentDuplicateComment } from '$lib/server/board/commentRepo.js';
+import { tryAcquire } from '#lib/server/cache/pgDedup.js';
+import { findRecentDuplicateArticle } from '#lib/server/board/articleRepo.js';
+import { findRecentDuplicateComment } from '#lib/server/board/commentRepo.js';
 
 const DEDUP_PREFIX = 'submit:dedup:';
 

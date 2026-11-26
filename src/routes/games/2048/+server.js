@@ -1,9 +1,9 @@
 import { error, json } from '@sveltejs/kit';
-import { getPrisma } from '$lib/database/prisma.js';
-import { getToday2048Stats } from '$lib/server/game2048Stats.js';
-import { attachGameProfilePhotos } from '$lib/server/gameProfilePhotos.js';
-import { getGameSession, isLocalGameSmokeSession } from '$lib/server/localGameSmokeSession.js';
-import { normalizeToIsoString } from '$lib/util/formatRelativeTime.js';
+import { getPrisma } from '#lib/database/prisma.js';
+import { getToday2048Stats } from '#lib/server/game2048Stats.js';
+import { attachGameProfilePhotos } from '#lib/server/gameProfilePhotos.js';
+import { getGameSession, isLocalGameSmokeSession } from '#lib/server/localGameSmokeSession.js';
+import { normalizeToIsoString } from '#lib/util/formatRelativeTime.js';
 
 /**
  * 전체 기간 email별 최고점 Top10. 게임오버/레벨 통과 시점 점수만 인정(누적 아님).
@@ -36,7 +36,7 @@ export async function GET(event) {
   const session = await getGameSession(event);
   const user = session?.user;
   const email = typeof user?.email === 'string' ? user.email : '';
-  if (!email) throw error(401, { message: '로그인이 필요합니다.' });
+  if (!email) throw error(401, '로그인이 필요합니다.');
 
   if (url.searchParams.get('rank')) {
     const [rank, myDocResult, todayStats] = await Promise.all([
@@ -66,17 +66,17 @@ export async function POST(event) {
   const session = await getGameSession(event);
   const user = session?.user;
   const email = typeof user?.email === 'string' ? user.email : '';
-  if (!email) throw error(401, { message: '로그인이 필요합니다.' });
+  if (!email) throw error(401, '로그인이 필요합니다.');
 
   let body;
   try {
     body = await request.json();
   } catch {
-    throw error(400, { message: 'Invalid JSON' });
+    throw error(400, 'Invalid JSON');
   }
   const score = Number(body?.score);
   if (!Number.isFinite(score) || score < 0) {
-    throw error(400, { message: '유효한 점수를 보내 주세요.' });
+    throw error(400, '유효한 점수를 보내 주세요.');
   }
   if (isLocalGameSmokeSession(session)) return json({ success: true, score, smoke: true });
 

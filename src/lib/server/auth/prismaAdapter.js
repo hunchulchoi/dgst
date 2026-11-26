@@ -2,16 +2,16 @@
  * Prisma Adapter: 인증 데이터는 PostgreSQL, 회원/세션 조회는 pgCache 우선.
  */
 import { PrismaAdapter } from '@auth/prisma-adapter';
-import { getPrisma } from '$lib/database/prisma.js';
-import * as userCache from '$lib/server/auth/userCache.js';
-import * as sessionCache from '$lib/server/auth/sessionCache.js';
-import { isDeniedAuthUser } from '$lib/server/auth/authPolicy.js';
+import { getPrisma } from '#lib/database/prisma.js';
+import * as userCache from '#lib/server/auth/userCache.js';
+import * as sessionCache from '#lib/server/auth/sessionCache.js';
+import { isDeniedAuthUser } from '#lib/server/auth/authPolicy.js';
 import {
   capSessionExpiry,
   getSessionAbsoluteExpiry,
   isSessionAbsolutelyExpired
-} from '$lib/server/auth/sessionPolicy.js';
-import logger from '$lib/util/logger.js';
+} from '#lib/server/auth/sessionPolicy.js';
+import logger from '#lib/util/logger.js';
 
 /** @type {import('@auth/core/adapters').Adapter | null} */
 let cachedAdapter = null;

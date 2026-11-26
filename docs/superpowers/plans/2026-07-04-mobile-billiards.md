@@ -214,8 +214,8 @@ Create `src/routes/games/billiards/+server.js`:
 
 ```js
 import { error, json } from '@sveltejs/kit';
-import { getPrisma } from '$lib/database/prisma.js';
-import { normalizeToIsoString } from '$lib/util/formatRelativeTime.js';
+import { getPrisma } from '#lib/database/prisma.js';
+import { normalizeToIsoString } from '#lib/util/formatRelativeTime.js';
 import { BILLIARDS_MODES, isActiveBilliardsMode, isValidScore } from './gameUtils';
 
 async function getRankTop10(mode) {

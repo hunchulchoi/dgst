@@ -248,7 +248,7 @@
       {#if data.contactEmail}
         <a href={`mailto:${data.contactEmail}`}>{data.contactEmail}</a>
       {:else}
-        <a href={resolve('/board/free/write')}>자유게시판에서 운영자에게 문의</a>
+        <a href={resolve('board/free/write')}>자유게시판에서 운영자에게 문의</a>
       {/if}를 통해 접수할 수 있습니다. 공개 게시판에는 이메일, IP 주소 등 개인정보를 작성하지
       마세요. 본인 확인과 다른 이용자의 권리 보호를 위해 필요한 정보를 요청할 수 있습니다.
     </p>
@@ -282,7 +282,7 @@
       {#if data.contactEmail}
         <a href={`mailto:${data.contactEmail}`}>{data.contactEmail}</a>
       {:else}
-        <a href={resolve('/board/free/write')}>자유게시판에서 운영자에게 문의</a>
+        <a href={resolve('board/free/write')}>자유게시판에서 운영자에게 문의</a>
       {/if}
     </p>
   </section>

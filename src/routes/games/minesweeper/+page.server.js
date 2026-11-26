@@ -1,5 +1,5 @@
-import { getTodayMinesweeperStats } from '$lib/server/gameMinesweeperStats.js';
-import { getGameSession } from '$lib/server/localGameSmokeSession.js';
+import { getTodayMinesweeperStats } from '#lib/server/gameMinesweeperStats.js';
+import { getGameSession } from '#lib/server/localGameSmokeSession.js';
 
 export async function load(event) {
   const session = await getGameSession(event);

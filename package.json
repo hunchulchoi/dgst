@@ -26,14 +26,16 @@
     "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
-    "migrate:uploads:minio": "node --env-file=.env scripts/migrate-uploads-to-minio.js"
+    "migrate:uploads:minio": "node --env-file=.env scripts/migrate-uploads-to-minio.js",
+    "postinstall": "node scripts/apply-patches.js"
   },
   "devDependencies": {
     "@anthropic-ai/sdk": "^1.8.0",
     "@eslint/js": "^9.39.5",
     "@playwright/test": "1.61.1",
-    "@sveltejs/adapter-node": "^5.5.4",
-    "@sveltejs/kit": "^2.70.3",
+    "@sveltejs/adapter-node": "^6.0.6",
+    "@sveltejs/kit": "^3.4.1",
+    "@sveltejs/load-config": "^0.2.2",
     "@sveltejs/vite-plugin-svelte": "^7.1.2",
     "@tailwindcss/vite": "^4.3.1",
     "@types/matter-js": "^0.20.2",
@@ -42,13 +44,14 @@
     "eslint-plugin-svelte": "^3.19.0",
     "globals": "^14.0.0",
     "ioredis": "^5.11.1",
+    "patch-package": "^8.0.1",
     "prettier": "^3.8.4",
     "prettier-plugin-svelte": "^3.3.3",
-    "svelte": "^5.56.3",
-    "svelte-check": "^4.6.0",
+    "svelte": "^5.57.2",
+    "svelte-check": "^4.7.5",
     "svelte-confetti": "^2.0.2",
     "tailwindcss": "^4.3.1",
-    "typescript": "^5.9.3",
+    "typescript": "^6.0.3",
     "typescript-eslint": "^8.61.0",
     "vite": "^8.3.8",
     "vitest": "^4.1.12"
@@ -90,17 +93,23 @@
     "zod": "^4.6.7"
   },
   "overrides": {
-    "cookie": "^0.7.2",
     "tmp": "^0.2.6",
     "deepmerge-ts": "^8.0.0",
     "fast-uri": "^3.1.6",
     "mysql2": "^3.22.0",
-    "effect": "^3.22.5"
+    "effect": "^3.22.5",
+    "@auth/sveltekit": {
+      "@sveltejs/kit": "$@sveltejs/kit"
+    }
   },
   "allowScripts": {
     "prisma@7.10.1": true,
     "@prisma/engines@7.10.1": true,
     "fsevents@2.3.2": true,
     "fsevents@2.3.3": true
+  },
+  "imports": {
+    "#lib": "./src/lib/index.js",
+    "#lib/*": "./src/lib/*"
   }
 }

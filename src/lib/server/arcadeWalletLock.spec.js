@@ -6,7 +6,7 @@ const mocks = vi.hoisted(() => ({
   updateMany: vi.fn()
 }));
 
-vi.mock('$lib/database/prisma.js', () => ({
+vi.mock('#lib/database/prisma.js', () => ({
   getPrisma: () => ({
     arcadeWallet: {
       findUnique: mocks.findUnique,
