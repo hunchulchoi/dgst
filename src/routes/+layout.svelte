@@ -268,14 +268,21 @@
     if (data.timeZone !== detectedTimeZone) await invalidateAll();
   }
 
+  /** @param {unknown} err */
+  function ignoreNonCriticalInitialWorkError(err) {
+    console.warn('[layout] non-critical initial work skipped:', err);
+  }
+
   /** `load` 이후 idle에만 실행: 초기 HTML·hydration 경로와 경쟁시키지 않는다. */
   function scheduleNonCriticalInitialWork() {
     const run = () => {
       cancelNonCriticalInitialWork = undefined;
-      void import('$lib/util/kakaoExternalBrowser.js').then(({ promptKakaoExternalBrowser }) =>
-        promptKakaoExternalBrowser()
-      );
-      void syncTimeZoneCookie();
+      // 비필수 작업: 페이지 이동·새로고침으로 모듈 fetch가 끊기면 Safari가
+      // "Importing a module script failed"로 reject한다. 다음 로드 때 다시 하므로 조용히 넘긴다.
+      import('$lib/util/kakaoExternalBrowser.js')
+        .then(({ promptKakaoExternalBrowser }) => promptKakaoExternalBrowser())
+        .catch(ignoreNonCriticalInitialWorkError);
+      syncTimeZoneCookie().catch(ignoreNonCriticalInitialWorkError);
     };
 
     if (typeof window.requestIdleCallback === 'function') {
