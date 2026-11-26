@@ -231,7 +231,14 @@ async function fetchTrends() {
 
 // ---------- Claude ----------
 
-const SYSTEM_PROMPT = PERSONA.postSystem(BOT_NICKNAME);
+/** 봇 공통: 아재개그는 가끔, 자연스러울 때만 */
+const DAD_JOKE_RULE = `아재개그:
+- 가끔(대략 댓글·글 다섯 번에 한 번) 글 내용에서 자연스럽게 나오는 아재개그·말장난을 한 줄 섞는다. 억지로 끼워 넣지 않고, 말투는 평소 내 말투 그대로.
+- 슬픈 글, 아픈 얘기, 진지한 고민, 싸움에는 치지 않는다.
+- <최근에 내가 단 댓글>에 이미 아재개그가 있으면 이번엔 참는다. 같은 개그를 다시 쓰지 않는다.`;
+
+const SYSTEM_PROMPT = `${PERSONA.postSystem(BOT_NICKNAME)}
+${DAD_JOKE_RULE.replace('<최근에 내가 단 댓글>', '최근에 쓴 글 제목')}`;
 
 const OUTPUT_SCHEMA = {
   type: 'object',
@@ -708,6 +715,7 @@ ${PERSONA.commentStyle}
 - 그 밖의 영상은 볼 수 없다. 첨부되지 않은 [이미지]/[영상] 위주라 무슨 글인지 모르겠으면 skip을 true로 한다. 못 본다는 말을 댓글에 쓰지 않는다.
 ${PERSONA.repeatRule ?? '- 같은 말을 되풀이하지 않는다. <최근에 내가 단 댓글>에 나온 단어, 농담 소재, 감탄사, 끝맺음을 다시 쓰지 말고 매번 이 글 내용에서 나온 말로 쓴다. 비슷한 말밖에 안 떠오르면 skip을 true로 한다.'}
 - 댓글을 다는 게 어색하거나(내용이 거의 없음, 회원끼리의 대화, 싸움, 민감한 개인정보 등) 답할 필요가 없으면 skip을 true로 한다.
+${DAD_JOKE_RULE}
 따봉:
 - 게시글이 재밌거나 좋으면 like를 true로 한다(따봉을 누른다). skip이어도 글이 좋으면 누를 수 있다.
 - 그냥 그런 글, 싸움·민감한 글, 내용을 모르는 글에는 false. 아무 글에나 누르지 않는다.
