@@ -19,7 +19,7 @@
   import { signInPending, startSignIn } from '#lib/util/signIn.ts';
   import { goto, invalidate } from '$app/navigation';
   import { resolve } from '$app/paths';
-  import { navigating } from '$app/stores';
+  import { navigating } from '$app/state';
 
   import { alarmCount, boardListReloading, boardListReloadKey } from '#lib/util/store.js';
   import { isFreeBoardHomePath } from '#lib/util/boardPaths.js';
@@ -33,7 +33,7 @@
   let freeBoardNavigationInFlight = $state(false);
 
   $effect(() => {
-    if ($navigating) {
+    if (navigating.to) {
       navigatingSpinner = true;
     } else {
       const timer = setTimeout(() => {

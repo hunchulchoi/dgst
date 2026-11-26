@@ -4,7 +4,7 @@
   import Footer from '#lib/components/footer.svelte';
   import Memo from '#lib/components/memo.svelte';
   import { blur } from 'svelte/transition';
-  import { page } from '$app/stores';
+  import { page } from '$app/state';
   import { updated } from '$app/state';
   import {
     afterNavigate,
@@ -318,7 +318,7 @@
         type: 'alarm-unread-count-refresh-error',
         pathname: window.location.pathname,
         href: window.location.href,
-        routeId: $page.route.id ?? undefined,
+        routeId: page.route.id ?? undefined,
         phase: 'after-navigate'
       });
     }
@@ -376,7 +376,7 @@
         pathname: window.location.pathname,
         href: window.location.href,
         search: window.location.search,
-        routeId: $page.route.id ?? undefined,
+        routeId: page.route.id ?? undefined,
         filename: event.filename,
         lineno: event.lineno,
         colno: event.colno,
@@ -404,7 +404,7 @@
         type: 'unhandled-rejection',
         message: 'Unhandled promise rejection',
         pathname: window.location.pathname,
-        routeId: $page.route.id ?? undefined,
+        routeId: page.route.id ?? undefined,
         phase: 'unhandledrejection',
         component: 'window',
         operation: navigation.operation ?? 'unhandled-promise-rejection',
@@ -464,46 +464,40 @@
 <svelte:window onpageshow={resetSignInOnPageShow} />
 
 <svelte:head>
-  <title>{$page.data.ogTitle || 'dgst.me'}</title>
+  <title>{page.data.ogTitle || 'dgst.me'}</title>
   <meta
     name="description"
-    content={$page.data.ogDescription || '으르신들의 안식처 데게 실버타운입니다.'}
+    content={page.data.ogDescription || '으르신들의 안식처 데게 실버타운입니다.'}
   />
 
-  <meta property="og:type" content={$page.data.ogType || 'website'} />
+  <meta property="og:type" content={page.data.ogType || 'website'} />
 
-  <meta
-    property="og:url"
-    content={$page.data.ogUrl || `https://www.dgst.me${$page.url.pathname}`}
-  />
+  <meta property="og:url" content={page.data.ogUrl || `https://www.dgst.me${page.url.pathname}`} />
 
-  <meta property="og:title" content={$page.data.ogTitle || 'dgst.me'} />
+  <meta property="og:title" content={page.data.ogTitle || 'dgst.me'} />
 
   <meta
     property="og:description"
-    content={$page.data.ogDescription || '으르신들의 안식처 데게 실버타운입니다.'}
+    content={page.data.ogDescription || '으르신들의 안식처 데게 실버타운입니다.'}
   />
   <meta
     property="og:image"
-    content={$page.data.ogImage || 'https://www.dgst.me/logo/twitter_header_photo_2.png'}
+    content={page.data.ogImage || 'https://www.dgst.me/logo/twitter_header_photo_2.png'}
   />
   <meta property="og:site_name" content="dgst.me" />
 
   <meta name="twitter:card" content="summary_large_image" />
-  <meta
-    name="twitter:url"
-    content={$page.data.ogUrl || `https://www.dgst.me${$page.url.pathname}`}
-  />
+  <meta name="twitter:url" content={page.data.ogUrl || `https://www.dgst.me${page.url.pathname}`} />
 
-  <meta name="twitter:title" content={$page.data.ogTitle || 'dgst.me'} />
+  <meta name="twitter:title" content={page.data.ogTitle || 'dgst.me'} />
 
   <meta
     name="twitter:description"
-    content={$page.data.ogDescription || '으르신들의 안식처 데게 실버타운입니다.'}
+    content={page.data.ogDescription || '으르신들의 안식처 데게 실버타운입니다.'}
   />
   <meta
     name="twitter:image"
-    content={$page.data.ogImage || 'https://www.dgst.me/logo/twitter_header_photo_2.png'}
+    content={page.data.ogImage || 'https://www.dgst.me/logo/twitter_header_photo_2.png'}
   />
 </svelte:head>
 

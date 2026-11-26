@@ -3,7 +3,7 @@
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
   import { boardListPath } from '#lib/util/boardPaths.js';
-  import { page } from '$app/stores';
+  import { page } from '$app/state';
   import { browser } from '$app/env';
   import { scale } from 'svelte/transition';
 
@@ -64,10 +64,10 @@
   const article = $derived(data.article ?? null);
   const sessionUser = $derived(data.session?.user ?? null);
 
-  const boardId = $derived($page.params.boardId ?? 'free');
-  const articleId = $derived($page.params.articleId ?? '');
-  const pageNo = $derived($page.params.pageNo ?? '1');
-  const alarmId = $derived($page.url.searchParams.get('alarm') ?? '');
+  const boardId = $derived(page.params.boardId ?? 'free');
+  const articleId = $derived(page.params.articleId ?? '');
+  const pageNo = $derived(page.params.pageNo ?? '1');
+  const alarmId = $derived(page.url.searchParams.get('alarm') ?? '');
 
   // 애니메이션 관련 상태
   let likeAnimation = $state(false);
@@ -1414,8 +1414,8 @@
 
   onMount(async () => {
     const moduleContext = {
-      pathname: $page.url.pathname,
-      routeId: $page.route.id ?? undefined,
+      pathname: page.url.pathname,
+      routeId: page.route.id ?? undefined,
       component: 'board-article'
     };
     embeder = await loadOptionalClientModule(() => import('#lib/util/embeder.js'), {
@@ -1450,9 +1450,9 @@
       }
     }, 3000);
 
-    console.log('url', $page.url);
+    console.log('url', page.url);
 
-    const hash = $page.url.searchParams.get('a');
+    const hash = page.url.searchParams.get('a');
 
     if (hash) {
       const el = document.querySelector(`#${hash}`);
@@ -2179,9 +2179,9 @@
         </Col>
         <Col md="6" xs="8" class="px-0 article-meta text-secondary">
           <span class="article-author">{article.nickname}</span>
-          <span class="article-date text-muted"
-            >{formatIso9075Safe(article.createdAt, { timeZone: $page.data.timeZone })}</span
-          >
+          <span class="article-date text-muted">
+            {formatIso9075Safe(article.createdAt, { timeZone: page.data.timeZone })}
+          </span>
         </Col>
         <Col class="text-end text-muted article-stats" md="6" xs="4">
           <span class="article-stat"><Icon class="pe-1" name="eye" />{article.read}</span>

@@ -1,11 +1,11 @@
 <script>
   import BoardIndexView from '#lib/components/board_index_view.svelte';
-  import { page } from '$app/stores';
+  import { page } from '$app/state';
 
   let { data } = $props();
 
-  const boardId = $derived($page.params.boardId ?? '');
-  const pageNo = $derived($page.params.pageNo ?? '');
+  const boardId = $derived(page.params.boardId ?? '');
+  const pageNo = $derived(page.params.pageNo ?? '');
   const session = $derived(data.session);
 </script>
 

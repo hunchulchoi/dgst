@@ -17,7 +17,7 @@
    * SvelteKit page store import for accessing current route info
    * @see https://kit.svelte.dev/docs/modules#$app-stores
    */
-  import { page } from '$app/stores';
+  import { page } from '$app/state';
   import { enhance } from '$app/forms';
   import { swalFire } from '#lib/util/swal.js';
   import { reportClientError } from '#lib/util/reportClientPageError.js';
@@ -63,7 +63,7 @@
     }
   }
 
-  const { boardId, articleId } = $page.params;
+  const { boardId, articleId } = page.params;
 
   const BOARD_DRAFT_STORAGE_PREFIX = 'dgst:board-write-draft:v1';
   const DRAFT_SAVE_DELAY = 500;
@@ -105,7 +105,7 @@
   function getDraftStorageKey() {
     if (!boardId || articleId || typeof localStorage === 'undefined') return null;
 
-    const email = $page.data.session?.user?.email || 'anonymous';
+    const email = page.data.session?.user?.email || 'anonymous';
     return `${BOARD_DRAFT_STORAGE_PREFIX}:${encodeURIComponent(boardId)}:${encodeURIComponent(email)}`;
   }
 
@@ -235,7 +235,7 @@
         pathname: typeof location !== 'undefined' ? location.pathname : undefined,
         href: typeof location !== 'undefined' ? location.href : undefined,
         search: typeof location !== 'undefined' ? location.search : undefined,
-        routeId: $page.route.id ?? undefined,
+        routeId: page.route.id ?? undefined,
         importTarget: '#lib/components/LexicalEditor.svelte',
         phase: 'write-page-onMount'
       });
@@ -472,7 +472,7 @@
           console.error('에디터 본문 동기화 실패:', e);
           reportClientError(e, {
             type: 'write-submit-editor-sync-error',
-            pathname: $page.url.pathname,
+            pathname: page.url.pathname,
             phase: 'write-page-submit'
           });
           toast('저장 준비 중 오류가 발생했습니다. 페이지를 새로고침해주세요.', {

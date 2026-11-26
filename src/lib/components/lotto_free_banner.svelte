@@ -2,7 +2,7 @@
   import { Badge, Button, Col, Icon, Row } from '#lib/components/ui/index.js';
   import { formatAbsoluteTime, parseSafeDate } from '#lib/util/formatRelativeTime.js';
   import { onMount } from 'svelte';
-  import { page } from '$app/stores';
+  import { page } from '$app/state';
   import { swalFire } from '#lib/util/swal.js';
 
   interface LottoHistoryEntry {
@@ -87,9 +87,9 @@
     const at = parseSafeDate(iso);
     if (!at) return '';
     if (Date.now() - at.getTime() > LOTTO_HISTORY_MS) {
-      return formatAbsoluteTime(at, 'M/d HH:mm', { timeZone: $page.data.timeZone });
+      return formatAbsoluteTime(at, 'M/d HH:mm', { timeZone: page.data.timeZone });
     }
-    return formatAbsoluteTime(at, 'HH:mm', { timeZone: $page.data.timeZone });
+    return formatAbsoluteTime(at, 'HH:mm', { timeZone: page.data.timeZone });
   }
 
   function formatSyncNotes(notes: string): string {
@@ -247,9 +247,9 @@
       {/if}
     </Button>
 
-    <Button color="primary" outline onclick={() => (expanded = !expanded)} type="button">
-      {expanded ? '접기' : '펼치기'}
-    </Button>
+    <Button color="primary" outline onclick={() => (expanded = !expanded)} type="button"
+      >{expanded ? '접기' : '펼치기'}</Button
+    >
 
     <Button
       color="primary"
@@ -338,11 +338,13 @@
                     />
                   {/if}
                   <span class="fw-medium">{w.nickname}</span>
-                  <span class="text-muted"
-                    >[{formatAbsoluteTime(w.createdAt, 'M/d HH:mm', {
-                      timeZone: $page.data.timeZone
-                    })}]</span
-                  >
+
+                  <span class="text-muted">
+                    [{formatAbsoluteTime(w.createdAt, 'M/d HH:mm', {
+                      timeZone: page.data.timeZone
+                    })}]
+                  </span>
+
                   <span class="d-inline-flex flex-wrap gap-1 align-middle mt-1 d-block ms-0 ps-0">
                     {#each w.numbers as n (n)}
                       <span
