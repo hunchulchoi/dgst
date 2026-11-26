@@ -1,4 +1,4 @@
-import { captureClientCallTrace, serializeError } from '$lib/util/formatErrorTrace.js';
+import { captureClientCallTrace, serializeError } from '#lib/util/formatErrorTrace.js';
 import { version } from '$app/env';
 
 /** @typedef {Object} ClientPageErrorPayload

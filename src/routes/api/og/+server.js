@@ -1,10 +1,10 @@
 import { error, json } from '@sveltejs/kit';
-import { assertSafeFetchUrl } from '$lib/server/fetchUrlSafety.js';
-import { getJson, setJson } from '$lib/server/cache/pgCache.js';
-import { decodeOgTextFields, parseOpenGraphData } from '$lib/server/ogMetadata.js';
+import { assertSafeFetchUrl } from '#lib/server/fetchUrlSafety.js';
+import { getJson, setJson } from '#lib/server/cache/pgCache.js';
+import { decodeOgTextFields, parseOpenGraphData } from '#lib/server/ogMetadata.js';
 
 const OG_NS = 'og';
-import logger from '$lib/util/logger.js';
+import logger from '#lib/util/logger.js';
 
 /**
  * Open Graph 데이터를 가져오는 API

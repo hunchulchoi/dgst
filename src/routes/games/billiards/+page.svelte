@@ -4,8 +4,8 @@
   import { resolve } from '$app/paths';
   import Matter from 'matter-js';
   import { ko } from 'date-fns/locale';
-  import { formatRelativeTime } from '$lib/util/formatRelativeTime.js';
-  import GameRankingRow from '$lib/components/GameRankingRow.svelte';
+  import { formatRelativeTime } from '#lib/util/formatRelativeTime.js';
+  import GameRankingRow from '#lib/components/GameRankingRow.svelte';
   import {
     BALL_RADIUS,
     BILLIARDS_MODES,

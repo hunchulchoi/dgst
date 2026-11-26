@@ -3,15 +3,15 @@ import mime from 'mime';
 import { format } from 'date-fns';
 import { tmpdir } from 'os';
 
-import { sanitizePdf } from '$lib/server/pdfSanitizer.js';
-import { isPathUnderRoot } from '$lib/server/pathSafety.js';
+import { sanitizePdf } from '#lib/server/pdfSanitizer.js';
+import { isPathUnderRoot } from '#lib/server/pathSafety.js';
 import { error } from '@sveltejs/kit';
 import path from 'path';
 import sharp from 'sharp';
 import logger from './logger';
 import { execFile } from 'child_process';
 import { randomUUID } from 'crypto';
-import { putUploadObject } from '$lib/server/minioStorage.js';
+import { putUploadObject } from '#lib/server/minioStorage.js';
 import { BOARD_UPLOAD_MAX_BYTES, BOARD_UPLOAD_MAX_MB } from './uploadLimits.js';
 
 const OBJECT_KEY_SAFETY_ROOT = '/minio-uploads';

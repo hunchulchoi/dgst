@@ -1,5 +1,5 @@
-import { getPrisma } from '$lib/database/prisma.js';
-import logger from '$lib/util/logger.js';
+import { getPrisma } from '#lib/database/prisma.js';
+import logger from '#lib/util/logger.js';
 
 const DEFAULT_TTL_SECONDS = 1800;
 

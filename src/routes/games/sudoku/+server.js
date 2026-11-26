@@ -1,10 +1,10 @@
 import { randomUUID } from 'crypto';
 import { error, json } from '@sveltejs/kit';
-import { getPrisma } from '$lib/database/prisma.js';
-import { getGameSession, isLocalGameSmokeSession } from '$lib/server/localGameSmokeSession.js';
-import { getTodaySudokuStats } from '$lib/server/gameSudokuStats.js';
-import { attachGameProfilePhotos } from '$lib/server/gameProfilePhotos.js';
-import { normalizeToIsoString } from '$lib/util/formatRelativeTime.js';
+import { getPrisma } from '#lib/database/prisma.js';
+import { getGameSession, isLocalGameSmokeSession } from '#lib/server/localGameSmokeSession.js';
+import { getTodaySudokuStats } from '#lib/server/gameSudokuStats.js';
+import { attachGameProfilePhotos } from '#lib/server/gameProfilePhotos.js';
+import { normalizeToIsoString } from '#lib/util/formatRelativeTime.js';
 
 const DIFFICULTIES = new Set(['easy', 'normal', 'hard', 'hell']);
 const MAX_SECONDS = 24 * 60 * 60;

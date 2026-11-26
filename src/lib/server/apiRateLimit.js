@@ -1,4 +1,4 @@
-import { incrementRateLimit } from '$lib/server/cache/pgRateLimit.js';
+import { incrementRateLimit } from '#lib/server/cache/pgRateLimit.js';
 
 /** @type {Map<string, { count: number, resetAt: number }>} */
 const memoryBuckets = new Map();

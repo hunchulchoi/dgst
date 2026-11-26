@@ -175,7 +175,7 @@ git commit -m "feat: add UNLOGGED cache tables to initial migration"
 ```javascript
 import { PrismaClient } from '@prisma/client';
 import { DATABASE_URL } from '$env/static/private';
-import logger from '$lib/util/logger.js';
+import logger from '#lib/util/logger.js';
 
 /** @type {PrismaClient | undefined} */
 let prisma;
@@ -274,8 +274,8 @@ Expected: FAIL — module not found
 - [ ] **Step 3: pgCache.js 구현**
 
 ```javascript
-import getPrisma from '$lib/database/prisma.js';
-import logger from '$lib/util/logger.js';
+import getPrisma from '#lib/database/prisma.js';
+import logger from '#lib/util/logger.js';
 
 const DEFAULT_TTL_SECONDS = 1800;
 
@@ -446,8 +446,8 @@ git commit -m "feat: add pgCache UNLOGGED cache module with tests"
 - [ ] **Step 1: userCache.js — redis import를 pgCache로 교체**
 
 ```javascript
-// 변경: import * as redis from '$lib/server/redis/client.js';
-import * as pgCache from '$lib/server/cache/pgCache.js';
+// 변경: import * as redis from '#lib/server/redis/client.js';
+import * as pgCache from '#lib/server/cache/pgCache.js';
 const NAMESPACE = 'user';
 // redis.getJson(USER_ID_PREFIX + id) → pgCache.getJson(USER_ID_PREFIX + id, NAMESPACE)
 // redis.setJson(...) → pgCache.setJson(..., USER_CACHE_TTL, NAMESPACE)
@@ -460,10 +460,10 @@ const NAMESPACE = 'user';
 
 ```javascript
 import { PrismaAdapter } from '@auth/prisma-adapter';
-import getPrisma from '$lib/database/prisma.js';
-import * as userCache from '$lib/server/auth/userCache.js';
-import * as sessionCache from '$lib/server/auth/sessionCache.js';
-import logger from '$lib/util/logger.js';
+import getPrisma from '#lib/database/prisma.js';
+import * as userCache from '#lib/server/auth/userCache.js';
+import * as sessionCache from '#lib/server/auth/sessionCache.js';
+import logger from '#lib/util/logger.js';
 
 /** @type {import('@auth/core/adapters').Adapter | null} */
 let cachedAdapter = null;
@@ -519,10 +519,10 @@ export function getPrismaAdapter() {
 - [ ] **Step 4: hooks.server.js 교체**
 
 ```javascript
-// 제거: import clientPromise from '$lib/database/clientPromise.js';
-// 제거: import { getHybridAdapter } from '$lib/server/auth/hybridAdapter.js';
-import { getPrismaAdapter } from '$lib/server/auth/prismaAdapter.js';
-import getPrisma from '$lib/database/prisma.js';
+// 제거: import clientPromise from '#lib/database/clientPromise.js';
+// 제거: import { getHybridAdapter } from '#lib/server/auth/hybridAdapter.js';
+import { getPrismaAdapter } from '#lib/server/auth/prismaAdapter.js';
+import getPrisma from '#lib/database/prisma.js';
 
 // SvelteKitAuth adapter:
 adapter: (getPrismaAdapter(),
@@ -616,7 +616,7 @@ git commit -m "feat: migrate board articles and comments to Prisma"
 - [ ] **Step 1: alarmService.js 핵심 함수**
 
 ```javascript
-import getPrisma from '$lib/database/prisma.js';
+import getPrisma from '#lib/database/prisma.js';
 
 export async function getUnreadAlarmCount(email, hours = 24) {
   const since = new Date(Date.now() - hours * 3600 * 1000);
@@ -713,11 +713,11 @@ git commit -m "feat: migrate alarms from Redis to Postgres Alarm table"
 
 ```javascript
 // Before
-import { GameScore } from '$lib/models/gameScore.js';
+import { GameScore } from '#lib/models/gameScore.js';
 await GameScore.create({ ... });
 
 // After
-import getPrisma from '$lib/database/prisma.js';
+import getPrisma from '#lib/database/prisma.js';
 await getPrisma().gameScore.create({ data: { ... } });
 ```
 
@@ -756,7 +756,7 @@ git commit -m "feat: migrate game scores and user balance to Prisma"
 - [ ] **Step 1: pgRateLimit.js**
 
 ```javascript
-import getPrisma from '$lib/database/prisma.js';
+import getPrisma from '#lib/database/prisma.js';
 
 export async function incrementRateLimit(bucket, windowSeconds, limit) {
   const rows = await getPrisma().$queryRaw`
@@ -791,8 +791,8 @@ export async function tryAcquire(key, ttlSeconds) {
 - [ ] **Step 4: warmup.js 수정**
 
 ```javascript
-import { connectPrisma } from '$lib/database/prisma.js';
-import { isAvailable, purgeExpired } from '$lib/server/cache/pgCache.js';
+import { connectPrisma } from '#lib/database/prisma.js';
+import { isAvailable, purgeExpired } from '#lib/server/cache/pgCache.js';
 
 export function warmupConnections() {
   void connectPrisma().catch(...);

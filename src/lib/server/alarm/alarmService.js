@@ -1,6 +1,6 @@
-import { getPrisma } from '$lib/database/prisma.js';
-import logger from '$lib/util/logger.js';
-import { normalizeToIsoString } from '$lib/util/formatRelativeTime.js';
+import { getPrisma } from '#lib/database/prisma.js';
+import logger from '#lib/util/logger.js';
+import { normalizeToIsoString } from '#lib/util/formatRelativeTime.js';
 
 const ALARM_TTL_DAYS = 3;
 

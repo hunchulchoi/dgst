@@ -3,18 +3,18 @@ import {
   createArticle,
   findOwnedArticle,
   updateArticleByOwner
-} from '$lib/server/board/articleRepo.js';
-import { checkAndLogSessionDevice } from '$lib/server/auth/checkSessionDevice.js';
-import { sanitizeArticleContent } from '$lib/server/sanitizeArticleContent.js';
-import { bustBoardListCache } from '$lib/server/boardListLoad.js';
-import logger from '$lib/util/logger.js';
-import { traceFromUnknown } from '$lib/util/formatErrorTrace.js';
+} from '#lib/server/board/articleRepo.js';
+import { checkAndLogSessionDevice } from '#lib/server/auth/checkSessionDevice.js';
+import { sanitizeArticleContent } from '#lib/server/sanitizeArticleContent.js';
+import { bustBoardListCache } from '#lib/server/boardListLoad.js';
+import logger from '#lib/util/logger.js';
+import { traceFromUnknown } from '#lib/util/formatErrorTrace.js';
 import {
   buildSubmitFingerprint,
   findRecentDuplicateArticle,
   tryAcquireSubmitDedup
-} from '$lib/server/submitDedup.js';
-import { validateArticleContent } from '$lib/util/articleContentValidation.js';
+} from '#lib/server/submitDedup.js';
+import { validateArticleContent } from '#lib/util/articleContentValidation.js';
 
 export const actions = {
   default: async (event) => {

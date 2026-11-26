@@ -1,5 +1,5 @@
 import { json } from '@sveltejs/kit';
-import { getBoardCelebrations } from '$lib/server/boardCelebrations.js';
+import { getBoardCelebrations } from '#lib/server/boardCelebrations.js';
 
 /** 자유게시판 폭죽용 — 로그인 불필요 */
 export async function GET() {

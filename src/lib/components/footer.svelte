@@ -1,5 +1,5 @@
 <script>
-  import { Col, Row } from '$lib/components/ui/index.js';
+  import { Col, Row } from '#lib/components/ui/index.js';
   import { resolve } from '$app/paths';
 </script>
 

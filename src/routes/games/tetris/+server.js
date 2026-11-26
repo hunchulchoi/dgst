@@ -1,10 +1,10 @@
 import { error, json } from '@sveltejs/kit';
 import { z } from 'zod';
-import { getPrisma } from '$lib/database/prisma.js';
-import { getTodayTetrisStats } from '$lib/server/gameTetrisStats.js';
-import { attachGameProfilePhotos } from '$lib/server/gameProfilePhotos.js';
-import { getGameSession, isLocalGameSmokeSession } from '$lib/server/localGameSmokeSession.js';
-import { normalizeToIsoString } from '$lib/util/formatRelativeTime.js';
+import { getPrisma } from '#lib/database/prisma.js';
+import { getTodayTetrisStats } from '#lib/server/gameTetrisStats.js';
+import { attachGameProfilePhotos } from '#lib/server/gameProfilePhotos.js';
+import { getGameSession, isLocalGameSmokeSession } from '#lib/server/localGameSmokeSession.js';
+import { normalizeToIsoString } from '#lib/util/formatRelativeTime.js';
 
 const TETRIS_GAME = 'tetris';
 

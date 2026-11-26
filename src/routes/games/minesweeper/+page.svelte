@@ -4,9 +4,9 @@
   import { resolve } from '$app/paths';
   import { browser } from '$app/env';
   import { ko } from 'date-fns/locale';
-  import { formatRelativeTime } from '$lib/util/formatRelativeTime.js';
-  import GameRankingRow from '$lib/components/GameRankingRow.svelte';
-  import { swalFire } from '$lib/util/swal.js';
+  import { formatRelativeTime } from '#lib/util/formatRelativeTime.js';
+  import GameRankingRow from '#lib/components/GameRankingRow.svelte';
+  import { swalFire } from '#lib/util/swal.js';
   let { data } = $props();
 
   /** @typedef {'beginner' | 'intermediate' | 'expert'} Difficulty */

@@ -15,11 +15,11 @@ const state = vi.hoisted(() => ({ getRound: vi.fn() }));
 const articleRepo = vi.hoisted(() => ({ createArticle: vi.fn() }));
 const boardCache = vi.hoisted(() => ({ bustBoardListCache: vi.fn() }));
 
-vi.mock('$lib/server/apiRateLimit.js', () => rateLimit);
-vi.mock('$lib/server/auth/checkSessionDevice.js', () => sessionDevice);
+vi.mock('#lib/server/apiRateLimit.js', () => rateLimit);
+vi.mock('#lib/server/auth/checkSessionDevice.js', () => sessionDevice);
 vi.mock('../src/routes/games/seotda/seotdaState.js', () => state);
-vi.mock('$lib/server/board/articleRepo.js', () => articleRepo);
-vi.mock('$lib/server/boardListLoad.js', () => boardCache);
+vi.mock('#lib/server/board/articleRepo.js', () => articleRepo);
+vi.mock('#lib/server/boardListLoad.js', () => boardCache);
 
 function completedRound() {
   return {

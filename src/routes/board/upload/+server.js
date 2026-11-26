@@ -1,9 +1,9 @@
 import { json } from '@sveltejs/kit';
 import { error } from '@sveltejs/kit';
 
-import { write } from '$lib/util/fileUpload.js';
-import logger from '$lib/util/logger.js';
-import { BOARD_UPLOAD_MAX_MB } from '$lib/util/uploadLimits.js';
+import { write } from '#lib/util/fileUpload.js';
+import logger from '#lib/util/logger.js';
+import { BOARD_UPLOAD_MAX_MB } from '#lib/util/uploadLimits.js';
 
 /** @param {unknown} err */
 function getErrorMessage(err) {

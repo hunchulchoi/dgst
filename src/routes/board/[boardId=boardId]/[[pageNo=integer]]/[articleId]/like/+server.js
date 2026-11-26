@@ -1,5 +1,5 @@
 import { error } from '@sveltejs/kit';
-import { findArticleById, toggleArticleLike } from '$lib/server/board/articleRepo.js';
+import { findArticleById, toggleArticleLike } from '#lib/server/board/articleRepo.js';
 
 const THREE_DAYS_MS = 1000 * 60 * 60 * 24 * 3;
 

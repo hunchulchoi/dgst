@@ -1,10 +1,10 @@
 import { error, json } from '@sveltejs/kit';
-import { checkRateLimit } from '$lib/server/apiRateLimit.js';
-import { checkAndLogSessionDevice } from '$lib/server/auth/checkSessionDevice.js';
-import { createArticle } from '$lib/server/board/articleRepo.js';
-import { bustBoardListCache } from '$lib/server/boardListLoad.js';
-import { sanitizeArticleContent } from '$lib/server/sanitizeArticleContent.js';
-import { embedSeotdaReplay } from '$lib/server/seotdaReplay.js';
+import { checkRateLimit } from '#lib/server/apiRateLimit.js';
+import { checkAndLogSessionDevice } from '#lib/server/auth/checkSessionDevice.js';
+import { createArticle } from '#lib/server/board/articleRepo.js';
+import { bustBoardListCache } from '#lib/server/boardListLoad.js';
+import { sanitizeArticleContent } from '#lib/server/sanitizeArticleContent.js';
+import { embedSeotdaReplay } from '#lib/server/seotdaReplay.js';
 import { displayHand } from '../seotdaClassic.js';
 import { getRound } from '../seotdaState.js';
 import { publicSeries } from '../seotdaSeries.js';

@@ -1,5 +1,5 @@
 import { error, isHttpError, json } from '@sveltejs/kit';
-import { addRead, findArticleAlarmTarget, findArticleById } from '$lib/server/board/articleRepo.js';
+import { addRead, findArticleAlarmTarget, findArticleById } from '#lib/server/board/articleRepo.js';
 import {
   createComment,
   findCommentById,
@@ -9,15 +9,15 @@ import {
   softDeleteComment,
   toCommentJson,
   updateComment
-} from '$lib/server/board/commentRepo.js';
-import { write } from '$lib/util/fileUpload.js';
-import { isVideoAttachment } from '$lib/util/attachmentMedia.js';
-import { upsertAlarm, markAsRead, removeCommentFromAlarm } from '$lib/server/alarm/alarmService.js';
-import convertToTree from '$lib/util/tree.js';
-import { checkAndLogSessionDevice } from '$lib/server/auth/checkSessionDevice.js';
-import { buildSubmitFingerprint, tryAcquireSubmitDedup } from '$lib/server/submitDedup.js';
-import logger from '$lib/util/logger.js';
-import { traceFromUnknown } from '$lib/util/formatErrorTrace.js';
+} from '#lib/server/board/commentRepo.js';
+import { write } from '#lib/util/fileUpload.js';
+import { isVideoAttachment } from '#lib/util/attachmentMedia.js';
+import { upsertAlarm, markAsRead, removeCommentFromAlarm } from '#lib/server/alarm/alarmService.js';
+import convertToTree from '#lib/util/tree.js';
+import { checkAndLogSessionDevice } from '#lib/server/auth/checkSessionDevice.js';
+import { buildSubmitFingerprint, tryAcquireSubmitDedup } from '#lib/server/submitDedup.js';
+import logger from '#lib/util/logger.js';
+import { traceFromUnknown } from '#lib/util/formatErrorTrace.js';
 
 const BOARD_COMMENT_SELECT = {
   id: true,

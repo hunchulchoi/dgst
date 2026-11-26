@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { imageThumbnailUrl } from '$lib/util/imageThumbnail.js';
+  import { imageThumbnailUrl } from '#lib/util/imageThumbnail.js';
 
   interface Props {
     src?: string | null;

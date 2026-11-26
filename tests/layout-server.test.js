@@ -15,8 +15,8 @@ const envModule = vi.hoisted(() => ({
 }));
 
 vi.mock('$env/dynamic/private', () => envModule);
-vi.mock('$lib/server/alarm/alarmService.js', () => alarmService);
-vi.mock('$lib/util/logger.js', () => loggerModule);
+vi.mock('#lib/server/alarm/alarmService.js', () => alarmService);
+vi.mock('#lib/util/logger.js', () => loggerModule);
 
 describe('+layout.server load', () => {
   it('includes the unread alarm count for the authenticated user', async () => {

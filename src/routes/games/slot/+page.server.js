@@ -1,8 +1,8 @@
-import { ensureArcadeWallet } from '$lib/server/arcadeWallet.js';
-import { getTodaySlotStats } from '$lib/server/slotStats.js';
-import { getUnreadAlarmCount } from '$lib/server/alarm/alarmService.js';
-import { normalizeToIsoString } from '$lib/util/formatRelativeTime.js';
-import { getGameSession, isLocalGameSmokeSession } from '$lib/server/localGameSmokeSession.js';
+import { ensureArcadeWallet } from '#lib/server/arcadeWallet.js';
+import { getTodaySlotStats } from '#lib/server/slotStats.js';
+import { getUnreadAlarmCount } from '#lib/server/alarm/alarmService.js';
+import { normalizeToIsoString } from '#lib/util/formatRelativeTime.js';
+import { getGameSession, isLocalGameSmokeSession } from '#lib/server/localGameSmokeSession.js';
 
 const SMOKE_SLOT_BALANCE = 1000;
 

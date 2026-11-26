@@ -1,9 +1,9 @@
 import { error, json } from '@sveltejs/kit';
-import { getPrisma } from '$lib/database/prisma.js';
-import { getToday2048Stats } from '$lib/server/game2048Stats.js';
-import { attachGameProfilePhotos } from '$lib/server/gameProfilePhotos.js';
-import { getGameSession, isLocalGameSmokeSession } from '$lib/server/localGameSmokeSession.js';
-import { normalizeToIsoString } from '$lib/util/formatRelativeTime.js';
+import { getPrisma } from '#lib/database/prisma.js';
+import { getToday2048Stats } from '#lib/server/game2048Stats.js';
+import { attachGameProfilePhotos } from '#lib/server/gameProfilePhotos.js';
+import { getGameSession, isLocalGameSmokeSession } from '#lib/server/localGameSmokeSession.js';
+import { normalizeToIsoString } from '#lib/util/formatRelativeTime.js';
 
 /**
  * 전체 기간 email별 최고점 Top10. 게임오버/레벨 통과 시점 점수만 인정(누적 아님).

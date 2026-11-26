@@ -1,10 +1,10 @@
-import { getPrisma } from '$lib/database/prisma.js';
+import { getPrisma } from '#lib/database/prisma.js';
 import {
   applyArcadeEntry,
   ARCADE_INITIAL_BALANCE,
   ensureArcadeWallet,
   getArcadeRank
-} from '$lib/server/arcadeWallet.js';
+} from '#lib/server/arcadeWallet.js';
 
 export const MEDAL_JANKEN_GAME = 'medal-janken';
 export const INITIAL_MEDALS = ARCADE_INITIAL_BALANCE;

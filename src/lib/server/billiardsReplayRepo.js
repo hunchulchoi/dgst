@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import { getPrisma } from '$lib/database/prisma.js';
+import { getPrisma } from '#lib/database/prisma.js';
 
 /**
  * @param {{ email: string, nickname: string, boardId: string, title: string, content: string, replay: object }} data

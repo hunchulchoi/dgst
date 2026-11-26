@@ -1,9 +1,9 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { ko } from 'date-fns/locale';
-  import GameProfilePhoto from '$lib/components/GameProfilePhoto.svelte';
-  import { swalFire } from '$lib/util/swal.js';
-  import { formatRelativeTime } from '$lib/util/formatRelativeTime.js';
+  import GameProfilePhoto from '#lib/components/GameProfilePhoto.svelte';
+  import { swalFire } from '#lib/util/swal.js';
+  import { formatRelativeTime } from '#lib/util/formatRelativeTime.js';
 
   type GameComment = {
     id?: string;

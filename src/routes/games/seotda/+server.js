@@ -1,12 +1,12 @@
 import { error, json } from '@sveltejs/kit';
-import { checkRateLimit } from '$lib/server/apiRateLimit.js';
-import { getGameSession, isLocalGameSmokeSession } from '$lib/server/localGameSmokeSession.js';
+import { checkRateLimit } from '#lib/server/apiRateLimit.js';
+import { getGameSession, isLocalGameSmokeSession } from '#lib/server/localGameSmokeSession.js';
 import {
   ARCADE_ROUND_PLAY_TTL_MS,
   ArcadePlayConflictError,
   beginArcadePlay,
   releaseArcadePlay
-} from '$lib/server/arcadeWallet.js';
+} from '#lib/server/arcadeWallet.js';
 import {
   ensureSeotdaBalance,
   didSeotdaTakeLead,

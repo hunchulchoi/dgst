@@ -1,7 +1,7 @@
 import { error, json } from '@sveltejs/kit';
-import { checkRateLimit } from '$lib/server/apiRateLimit.js';
-import { cleanReplayText, sanitizeBilliardsReplay } from '$lib/server/billiardsReplay.js';
-import logger from '$lib/util/logger.js';
+import { checkRateLimit } from '#lib/server/apiRateLimit.js';
+import { cleanReplayText, sanitizeBilliardsReplay } from '#lib/server/billiardsReplay.js';
+import logger from '#lib/util/logger.js';
 
 const MAX_BODY_BYTES = 64 * 1024;
 const MAX_NOTE_LENGTH = 500;

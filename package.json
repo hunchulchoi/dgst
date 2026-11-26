@@ -106,5 +106,9 @@
     "@prisma/engines@7.10.1": true,
     "fsevents@2.3.2": true,
     "fsevents@2.3.3": true
+  },
+  "imports": {
+    "#lib": "./src/lib/index.js",
+    "#lib/*": "./src/lib/*"
   }
 }

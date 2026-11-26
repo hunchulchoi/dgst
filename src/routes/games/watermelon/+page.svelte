@@ -3,8 +3,8 @@
   import { resolve } from '$app/paths';
   import { ko } from 'date-fns/locale';
   import Matter from 'matter-js';
-  import { formatRelativeTime } from '$lib/util/formatRelativeTime.js';
-  import GameRankingRow from '$lib/components/GameRankingRow.svelte';
+  import { formatRelativeTime } from '#lib/util/formatRelativeTime.js';
+  import GameRankingRow from '#lib/components/GameRankingRow.svelte';
   import { FRUITS, GAME_WIDTH, GAME_HEIGHT, WALL_THICKNESS, type FruitType } from './gameUtils';
 
   import type { PageData } from './$types';

@@ -8,14 +8,14 @@
     PaginationItem,
     PaginationLink,
     Row
-  } from '$lib/components/ui/index.js';
+  } from '#lib/components/ui/index.js';
 
   import { ko } from 'date-fns/locale';
-  import { formatRelativeTime } from '$lib/util/formatRelativeTime.js';
+  import { formatRelativeTime } from '#lib/util/formatRelativeTime.js';
   import { goto, invalidateAll } from '$app/navigation';
   import { resolve } from '$app/paths';
-  import { boardListPath } from '$lib/util/boardPaths.js';
-  import { imageThumbnailUrl } from '$lib/util/imageThumbnail.js';
+  import { boardListPath } from '#lib/util/boardPaths.js';
+  import { imageThumbnailUrl } from '#lib/util/imageThumbnail.js';
 
   // Svelte 5 Runes - Props
   let { data, write, boardId, session } = $props();

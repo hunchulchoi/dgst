@@ -1,10 +1,10 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { resolve } from '$app/paths';
-  import GameRankingRow from '$lib/components/GameRankingRow.svelte';
+  import GameRankingRow from '#lib/components/GameRankingRow.svelte';
   import { Confetti } from 'svelte-confetti';
   import type { PageData } from './$types';
-  import { swalFire } from '$lib/util/swal.js';
+  import { swalFire } from '#lib/util/swal.js';
   import {
     SIZE,
     COLORS,

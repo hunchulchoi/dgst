@@ -5,11 +5,11 @@
     isPdfAttachment,
     isVideoAttachment,
     parseAttachmentFileName
-  } from '$lib/util/attachmentMedia.js';
+  } from '#lib/util/attachmentMedia.js';
   import {
     applyAttachmentImageSizing,
     applyTallAttachmentSizing
-  } from '$lib/util/attachmentImageSizing.js';
+  } from '#lib/util/attachmentImageSizing.js';
 
   /** @type {{
    *   src: string;

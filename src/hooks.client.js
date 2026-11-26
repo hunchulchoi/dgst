@@ -3,13 +3,13 @@ import {
   createClientErrorFingerprint,
   createClientErrorId,
   reportClientError
-} from '$lib/util/reportClientPageError.js';
-import { isInterruptedFetchError } from '$lib/util/fetchErrors.js';
+} from '#lib/util/reportClientPageError.js';
+import { isInterruptedFetchError } from '#lib/util/fetchErrors.js';
 import {
   getClientEventTrace,
   getClientNavigationContext,
   installClientNavigationDiagnostics
-} from '$lib/util/clientNavigationContext.js';
+} from '#lib/util/clientNavigationContext.js';
 
 installClientNavigationDiagnostics();
 

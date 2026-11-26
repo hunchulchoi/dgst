@@ -44,15 +44,15 @@ const traceModule = vi.hoisted(() => ({
   traceFromUnknown: vi.fn()
 }));
 
-vi.mock('$lib/server/board/articleRepo.js', () => articleRepo);
-vi.mock('$lib/server/boardListLoad.js', () => boardListLoad);
-vi.mock('$lib/server/alarm/alarmService.js', () => alarmService);
-vi.mock('$lib/server/auth/checkSessionDevice.js', () => authCheck);
-vi.mock('$lib/server/sanitizeArticleContent.js', () => sanitizeModule);
-vi.mock('$lib/util/articleContentValidation.js', () => validationModule);
-vi.mock('$lib/server/submitDedup.js', () => submitDedup);
-vi.mock('$lib/util/logger.js', () => loggerModule);
-vi.mock('$lib/util/formatErrorTrace.js', () => traceModule);
+vi.mock('#lib/server/board/articleRepo.js', () => articleRepo);
+vi.mock('#lib/server/boardListLoad.js', () => boardListLoad);
+vi.mock('#lib/server/alarm/alarmService.js', () => alarmService);
+vi.mock('#lib/server/auth/checkSessionDevice.js', () => authCheck);
+vi.mock('#lib/server/sanitizeArticleContent.js', () => sanitizeModule);
+vi.mock('#lib/util/articleContentValidation.js', () => validationModule);
+vi.mock('#lib/server/submitDedup.js', () => submitDedup);
+vi.mock('#lib/util/logger.js', () => loggerModule);
+vi.mock('#lib/util/formatErrorTrace.js', () => traceModule);
 
 describe('board article route auth', () => {
   beforeEach(() => {

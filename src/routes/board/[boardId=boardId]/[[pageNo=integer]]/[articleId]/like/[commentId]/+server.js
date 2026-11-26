@@ -1,5 +1,5 @@
 import { error } from '@sveltejs/kit';
-import { toggleCommentLike } from '$lib/server/board/commentRepo.js';
+import { toggleCommentLike } from '#lib/server/board/commentRepo.js';
 
 /** @param {import('@sveltejs/kit').RequestEvent} event */
 export async function POST({ params, locals }) {

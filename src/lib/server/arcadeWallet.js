@@ -1,6 +1,6 @@
-import { getPrisma } from '$lib/database/prisma.js';
-import { normalizeToIsoString } from '$lib/util/formatRelativeTime.js';
-import { attachGameProfilePhotos } from '$lib/server/gameProfilePhotos.js';
+import { getPrisma } from '#lib/database/prisma.js';
+import { normalizeToIsoString } from '#lib/util/formatRelativeTime.js';
+import { attachGameProfilePhotos } from '#lib/server/gameProfilePhotos.js';
 import { randomUUID } from 'node:crypto';
 import { Prisma } from '@prisma/client';
 

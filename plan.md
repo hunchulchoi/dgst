@@ -306,7 +306,7 @@ export default defineConfig({
 ```svelte
 <script>
   import { onMount, onDestroy } from 'svelte';
-  import DgstUploadAdapter from '$lib/util/DgstUploadAdapter.js';
+  import DgstUploadAdapter from '#lib/util/DgstUploadAdapter.js';
 
   let { uploadPlus, uploadMinus, editorData = $bindable('') } = $props();
 

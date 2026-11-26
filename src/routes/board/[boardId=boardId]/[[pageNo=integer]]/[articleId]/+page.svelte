@@ -1,46 +1,46 @@
 <script>
-  import { Badge, Button, Col, Icon, InputGroup, Row } from '$lib/components/ui/index.js';
+  import { Badge, Button, Col, Icon, InputGroup, Row } from '#lib/components/ui/index.js';
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
-  import { boardListPath } from '$lib/util/boardPaths.js';
+  import { boardListPath } from '#lib/util/boardPaths.js';
   import { page } from '$app/stores';
   import { browser } from '$app/env';
   import { scale } from 'svelte/transition';
 
   import { ko } from 'date-fns/locale';
-  import { formatIso9075Safe, formatRelativeTime } from '$lib/util/formatRelativeTime.js';
+  import { formatIso9075Safe, formatRelativeTime } from '#lib/util/formatRelativeTime.js';
 
   import imageCompression from 'browser-image-compression';
-  import { swalFire } from '$lib/util/swal.js';
-  import { loadOptionalClientModule } from '$lib/util/loadOptionalClientModule.js';
+  import { swalFire } from '#lib/util/swal.js';
+  import { loadOptionalClientModule } from '#lib/util/loadOptionalClientModule.js';
 
-  import { alarmCount } from '$lib/util/store.js';
+  import { alarmCount } from '#lib/util/store.js';
   import { onDestroy, onMount, tick } from 'svelte';
-  import BoardList from '$lib/components/board_list.svelte';
-  import BilliardsReplayPlayer from '$lib/components/BilliardsReplayPlayer.svelte';
-  import SeotdaReplayPlayer from '$lib/components/SeotdaReplayPlayer.svelte';
-  import AttachmentMedia from '$lib/components/AttachmentMedia.svelte';
-  import OGPreview from '$lib/components/OGPreview.svelte';
+  import BoardList from '#lib/components/board_list.svelte';
+  import BilliardsReplayPlayer from '#lib/components/BilliardsReplayPlayer.svelte';
+  import SeotdaReplayPlayer from '#lib/components/SeotdaReplayPlayer.svelte';
+  import AttachmentMedia from '#lib/components/AttachmentMedia.svelte';
+  import OGPreview from '#lib/components/OGPreview.svelte';
   import sanitizeHtml from 'sanitize-html';
-  import { isOnlyOneEmoji } from '$lib/util/emoji.js';
-  import { linkifyPlainUrls } from '$lib/util/linkifyPlainUrls.js';
-  import { repairOgCardHtmlEntities } from '$lib/util/ogCardHtmlRepair.js';
-  import { imageThumbnailUrl } from '$lib/util/imageThumbnail.js';
+  import { isOnlyOneEmoji } from '#lib/util/emoji.js';
+  import { linkifyPlainUrls } from '#lib/util/linkifyPlainUrls.js';
+  import { repairOgCardHtmlEntities } from '#lib/util/ogCardHtmlRepair.js';
+  import { imageThumbnailUrl } from '#lib/util/imageThumbnail.js';
   import {
     isAttachmentPasteEvent,
     readClipboardImageFiles,
     readPasteData
-  } from '$lib/util/pasteData.js';
+  } from '#lib/util/pasteData.js';
 
   import {
     createWebpUploadFile,
     isPdfAttachment,
     isVideoAttachment
-  } from '$lib/util/attachmentMedia.js';
+  } from '#lib/util/attachmentMedia.js';
   import {
     applyAttachmentImageSizing,
     shouldApplyAttachmentImageSizing
-  } from '$lib/util/attachmentImageSizing.js';
+  } from '#lib/util/attachmentImageSizing.js';
 
   import {
     clampViewerScale,
@@ -49,9 +49,9 @@
     shouldHandleViewerZoomWheel,
     shouldOpenAttachmentImageViewer,
     VIEWER_MAX_SCALE
-  } from '$lib/util/attachmentImageViewer.js';
+  } from '#lib/util/attachmentImageViewer.js';
 
-  /** @type {typeof import('$lib/util/embeder.js') | null} */
+  /** @type {typeof import('#lib/util/embeder.js') | null} */
   let embeder = $state(null);
   /** @typedef {{ Embeds?: { process: () => void } }} InstagramEmbed */
   /** @type {InstagramEmbed | undefined} */
@@ -1418,9 +1418,9 @@
       routeId: $page.route.id ?? undefined,
       component: 'board-article'
     };
-    embeder = await loadOptionalClientModule(() => import('$lib/util/embeder.js'), {
+    embeder = await loadOptionalClientModule(() => import('#lib/util/embeder.js'), {
       ...moduleContext,
-      importTarget: '$lib/util/embeder.js',
+      importTarget: '#lib/util/embeder.js',
       operation: 'load-comment-renderer'
     });
     await tick();

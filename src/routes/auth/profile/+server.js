@@ -1,13 +1,13 @@
 import { error, json } from '@sveltejs/kit';
-import { getPrisma } from '$lib/database/prisma.js';
-import { verifyTurnstileToken } from '$lib/server/turnstile.js';
-import { write } from '$lib/util/fileUpload.js';
-import { invalidateUser } from '$lib/server/auth/userCache.js';
-import { isNicknameAllowed, NICKNAME_BOT_ONLY_MESSAGE } from '$lib/util/nickname.js';
-import logger from '$lib/util/logger.js';
-import { serializeError } from '$lib/util/formatErrorTrace.js';
+import { getPrisma } from '#lib/database/prisma.js';
+import { verifyTurnstileToken } from '#lib/server/turnstile.js';
+import { write } from '#lib/util/fileUpload.js';
+import { invalidateUser } from '#lib/server/auth/userCache.js';
+import { isNicknameAllowed, NICKNAME_BOT_ONLY_MESSAGE } from '#lib/util/nickname.js';
+import logger from '#lib/util/logger.js';
+import { serializeError } from '#lib/util/formatErrorTrace.js';
 
-import { invalidateSession } from '$lib/server/auth/sessionCache.js';
+import { invalidateSession } from '#lib/server/auth/sessionCache.js';
 
 const loggedProfileSaveErrors = new WeakSet();
 

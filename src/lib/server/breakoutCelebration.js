@@ -1,5 +1,5 @@
-import { getPrisma } from '$lib/database/prisma.js';
-import { normalizeToIsoString } from '$lib/util/formatRelativeTime.js';
+import { getPrisma } from '#lib/database/prisma.js';
+import { normalizeToIsoString } from '#lib/util/formatRelativeTime.js';
 
 const BREAKOUT_GAME = 'breakout';
 /** 50단계 클리어 폭죽 유지 시간 */

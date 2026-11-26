@@ -1,25 +1,25 @@
 import crypto from 'node:crypto';
-import { getPrisma } from '$lib/database/prisma.js';
+import { getPrisma } from '#lib/database/prisma.js';
 import {
   createArticle,
   softDeleteArticleByOwner,
   toggleArticleLike
-} from '$lib/server/board/articleRepo.js';
+} from '#lib/server/board/articleRepo.js';
 import {
   createComment,
   findCommentById,
   findOwnedActiveComment,
   softDeleteComment
-} from '$lib/server/board/commentRepo.js';
+} from '#lib/server/board/commentRepo.js';
 import {
   deleteAlarmsByArticle,
   removeCommentFromAlarm,
   upsertAlarm
-} from '$lib/server/alarm/alarmService.js';
-import { bustBoardListCache } from '$lib/server/boardListLoad.js';
-import { sanitizeArticleContent } from '$lib/server/sanitizeArticleContent.js';
-import { validateArticleContent } from '$lib/util/articleContentValidation.js';
-import logger from '$lib/util/logger.js';
+} from '#lib/server/alarm/alarmService.js';
+import { bustBoardListCache } from '#lib/server/boardListLoad.js';
+import { sanitizeArticleContent } from '#lib/server/sanitizeArticleContent.js';
+import { validateArticleContent } from '#lib/util/articleContentValidation.js';
+import logger from '#lib/util/logger.js';
 import { loadImageForModel, toSiteImagePath } from './botImages.js';
 import { describeYoutube, loadYoutubeThumb } from './botYoutube.js';
 import skillMarkdown from './bot-skill/SKILL.md?raw';

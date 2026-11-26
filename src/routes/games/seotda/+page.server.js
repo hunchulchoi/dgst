@@ -1,4 +1,4 @@
-import { getGameSession, isLocalGameSmokeSession } from '$lib/server/localGameSmokeSession.js';
+import { getGameSession, isLocalGameSmokeSession } from '#lib/server/localGameSmokeSession.js';
 import {
   ensureSeotdaBalance,
   getSeotdaRank,

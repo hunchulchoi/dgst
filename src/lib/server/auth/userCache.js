@@ -2,7 +2,7 @@
  * 회원정보(User) pgCache: 조회 시 캐시 우선, 미스 시 DB 조회 후 캐시.
  * 무효화: updateUser 시 user:id 삭제.
  */
-import * as pgCache from '$lib/server/cache/pgCache.js';
+import * as pgCache from '#lib/server/cache/pgCache.js';
 
 const NAMESPACE = 'user';
 const USER_ID_PREFIX = 'user:id:';

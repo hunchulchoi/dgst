@@ -3,9 +3,9 @@
   import { beforeNavigate } from '$app/navigation';
   import { onMount, tick } from 'svelte';
   import { ko } from 'date-fns/locale';
-  import { formatRelativeTime } from '$lib/util/formatRelativeTime.js';
-  import GameRankingRow from '$lib/components/GameRankingRow.svelte';
-  import { swalFire } from '$lib/util/swal.js';
+  import { formatRelativeTime } from '#lib/util/formatRelativeTime.js';
+  import GameRankingRow from '#lib/components/GameRankingRow.svelte';
+  import { swalFire } from '#lib/util/swal.js';
   import type { PageData } from './$types';
   import {
     calculateHardDropScore,

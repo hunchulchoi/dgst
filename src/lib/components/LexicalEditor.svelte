@@ -43,17 +43,17 @@
     $setBlocksType as setBlocksType
   } from '@lexical/selection';
   import { mergeRegister } from '@lexical/utils';
-  import { swalFire } from '$lib/util/swal.js';
-  import { encodeMultipartFormData } from '$lib/util/multipartFormData.js';
-  import { readClipboardImageFiles, readPasteData } from '$lib/util/pasteData.js';
-  import { reportClientError } from '$lib/util/reportClientPageError.js';
-  import { createLexicalEditorFailureDetails } from '$lib/util/lexicalErrorDetails.js';
+  import { swalFire } from '#lib/util/swal.js';
+  import { encodeMultipartFormData } from '#lib/util/multipartFormData.js';
+  import { readClipboardImageFiles, readPasteData } from '#lib/util/pasteData.js';
+  import { reportClientError } from '#lib/util/reportClientPageError.js';
+  import { createLexicalEditorFailureDetails } from '#lib/util/lexicalErrorDetails.js';
   import {
     BOARD_UPLOAD_MAX_BYTES,
     BOARD_UPLOAD_MAX_MB,
     BOARD_UPLOAD_SOURCE_MAX_BYTES,
     BOARD_UPLOAD_SOURCE_MAX_MB
-  } from '$lib/util/uploadLimits.js';
+  } from '#lib/util/uploadLimits.js';
 
   let {
     uploadPlus,
@@ -346,7 +346,7 @@
       pathname: typeof location !== 'undefined' ? location.pathname : undefined,
       href: typeof location !== 'undefined' ? location.href : undefined,
       search: typeof location !== 'undefined' ? location.search : undefined,
-      importTarget: '$lib/components/LexicalEditor.svelte',
+      importTarget: '#lib/components/LexicalEditor.svelte',
       phase: 'video-compression-preflight',
       details
     });
@@ -715,7 +715,7 @@
       pathname: typeof location !== 'undefined' ? location.pathname : undefined,
       href: typeof location !== 'undefined' ? location.href : undefined,
       search: typeof location !== 'undefined' ? location.search : undefined,
-      importTarget: '$lib/components/LexicalEditor.svelte',
+      importTarget: '#lib/components/LexicalEditor.svelte',
       phase,
       details
     });
@@ -1006,7 +1006,7 @@
             pathname: typeof location !== 'undefined' ? location.pathname : undefined,
             href: typeof location !== 'undefined' ? location.href : undefined,
             search: typeof location !== 'undefined' ? location.search : undefined,
-            importTarget: '$lib/components/LexicalEditor.svelte',
+            importTarget: '#lib/components/LexicalEditor.svelte',
             phase: 'video-webcodecs-preflight',
             details: {
               reason: 'mediabunny-conversion-invalid',
@@ -1063,7 +1063,7 @@
           pathname: typeof location !== 'undefined' ? location.pathname : undefined,
           href: typeof location !== 'undefined' ? location.href : undefined,
           search: typeof location !== 'undefined' ? location.search : undefined,
-          importTarget: '$lib/components/LexicalEditor.svelte',
+          importTarget: '#lib/components/LexicalEditor.svelte',
           phase: 'video-webcodecs-compression',
           details: {
             originalBytes: file.size,
@@ -1092,7 +1092,7 @@
         pathname: typeof location !== 'undefined' ? location.pathname : undefined,
         href: typeof location !== 'undefined' ? location.href : undefined,
         search: typeof location !== 'undefined' ? location.search : undefined,
-        importTarget: '$lib/components/LexicalEditor.svelte',
+        importTarget: '#lib/components/LexicalEditor.svelte',
         phase: 'video-webcodecs-compression',
         details: {
           fileName: file.name,
@@ -1189,7 +1189,7 @@
         pathname: typeof location !== 'undefined' ? location.pathname : undefined,
         href: typeof location !== 'undefined' ? location.href : undefined,
         search: typeof location !== 'undefined' ? location.search : undefined,
-        importTarget: '$lib/components/LexicalEditor.svelte',
+        importTarget: '#lib/components/LexicalEditor.svelte',
         phase: 'video-compression',
         details: {
           fileName: file.name,
@@ -1272,7 +1272,7 @@
         pathname: typeof location !== 'undefined' ? location.pathname : undefined,
         href: typeof location !== 'undefined' ? location.href : undefined,
         search: typeof location !== 'undefined' ? location.search : undefined,
-        importTarget: '$lib/components/LexicalEditor.svelte',
+        importTarget: '#lib/components/LexicalEditor.svelte',
         phase: 'video-audio-extraction',
         details: {
           fileName: file.name,
@@ -1624,7 +1624,7 @@
         pathname: typeof location !== 'undefined' ? location.pathname : undefined,
         href: typeof location !== 'undefined' ? location.href : undefined,
         search: typeof location !== 'undefined' ? location.search : undefined,
-        importTarget: '$lib/components/LexicalEditor.svelte',
+        importTarget: '#lib/components/LexicalEditor.svelte',
         phase: 'file-upload',
         details:
           error && typeof error === 'object' && 'serverLimitExceeded' in error

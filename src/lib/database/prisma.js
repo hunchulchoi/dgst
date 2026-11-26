@@ -1,6 +1,6 @@
 import prismaPkg from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
-import logger from '$lib/util/logger.js';
+import logger from '#lib/util/logger.js';
 
 const { PrismaClient } = prismaPkg;
 

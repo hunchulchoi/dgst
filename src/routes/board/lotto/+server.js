@@ -1,8 +1,8 @@
 import { json, error, isHttpError } from '@sveltejs/kit';
 import { z } from 'zod';
-import logger from '$lib/util/logger.js';
-import { getPrisma } from '$lib/database/prisma.js';
-import { generateLottoNumbers } from '$lib/server/lotto.js';
+import logger from '#lib/util/logger.js';
+import { getPrisma } from '#lib/database/prisma.js';
+import { generateLottoNumbers } from '#lib/server/lotto.js';
 
 const lottoPostBodySchema = z.object({}).strict();
 

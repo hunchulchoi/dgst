@@ -23,15 +23,15 @@ const mocks = vi.hoisted(() => {
 });
 
 vi.mock('@auth/prisma-adapter', () => ({ PrismaAdapter: () => mocks.base }));
-vi.mock('$lib/database/prisma.js', () => ({ getPrisma: () => mocks.prisma }));
-vi.mock('$lib/server/auth/userCache.js', () => ({
+vi.mock('#lib/database/prisma.js', () => ({ getPrisma: () => mocks.prisma }));
+vi.mock('#lib/server/auth/userCache.js', () => ({
   getCachedUserById: vi.fn(),
   getCachedUserByEmail: vi.fn(),
   setCachedUser: vi.fn(),
   invalidateUser: vi.fn()
 }));
-vi.mock('$lib/server/auth/sessionCache.js', () => mocks.sessionCache);
-vi.mock('$lib/util/logger.js', () => ({ default: { warn: vi.fn() } }));
+vi.mock('#lib/server/auth/sessionCache.js', () => mocks.sessionCache);
+vi.mock('#lib/util/logger.js', () => ({ default: { warn: vi.fn() } }));
 
 describe('Prisma auth adapter absolute session expiry', () => {
   beforeEach(() => {

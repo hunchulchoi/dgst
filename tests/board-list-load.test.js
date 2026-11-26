@@ -25,10 +25,10 @@ const loggerModule = vi.hoisted(() => ({
   }
 }));
 
-vi.mock('$lib/server/board/articleRepo.js', () => articleRepo);
-vi.mock('$lib/server/boardArticleList.js', () => boardArticleList);
-vi.mock('$lib/server/cache/pgCache.js', () => pgCache);
-vi.mock('$lib/util/logger.js', () => loggerModule);
+vi.mock('#lib/server/board/articleRepo.js', () => articleRepo);
+vi.mock('#lib/server/boardArticleList.js', () => boardArticleList);
+vi.mock('#lib/server/cache/pgCache.js', () => pgCache);
+vi.mock('#lib/util/logger.js', () => loggerModule);
 
 describe('loadBoardList', () => {
   beforeEach(() => {

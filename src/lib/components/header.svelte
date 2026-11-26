@@ -11,19 +11,19 @@
     NavbarBrand,
     NavItem,
     NavLink
-  } from '$lib/components/ui/index.js';
+  } from '#lib/components/ui/index.js';
 
-  import theme from '$lib/shared/stores/theme.js';
+  import theme from '#lib/shared/stores/theme.js';
 
   import { signOut } from '@auth/sveltekit/client';
-  import { signInPending, startSignIn } from '$lib/util/signIn';
+  import { signInPending, startSignIn } from '#lib/util/signIn.ts';
   import { goto, invalidate } from '$app/navigation';
   import { resolve } from '$app/paths';
   import { navigating } from '$app/stores';
 
-  import { alarmCount, boardListReloading, boardListReloadKey } from '$lib/util/store.js';
-  import { isFreeBoardHomePath } from '$lib/util/boardPaths.js';
-  import { setClientNavigationOperation } from '$lib/util/clientNavigationContext.js';
+  import { alarmCount, boardListReloading, boardListReloadKey } from '#lib/util/store.js';
+  import { isFreeBoardHomePath } from '#lib/util/boardPaths.js';
+  import { setClientNavigationOperation } from '#lib/util/clientNavigationContext.js';
 
   // Svelte 5 Runes - Props
   let { session, pathname, unreadAlarmCount = 0 } = $props();

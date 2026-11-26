@@ -1,10 +1,10 @@
-import { getPrisma } from '$lib/database/prisma.js';
+import { getPrisma } from '#lib/database/prisma.js';
 import {
   applyArcadeEntry,
   ensureArcadeWallet,
   getArcadeRank,
   resolveArcadeOops
-} from '$lib/server/arcadeWallet.js';
+} from '#lib/server/arcadeWallet.js';
 import { MIN_BET, SSAMCHI_GAME } from './ssamchiEngine.js';
 
 export const OOPS_TOPUP = 700;

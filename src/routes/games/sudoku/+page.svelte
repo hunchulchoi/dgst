@@ -2,9 +2,9 @@
   import { browser } from '$app/env';
   import { onMount } from 'svelte';
   import { ko } from 'date-fns/locale';
-  import { formatRelativeTime } from '$lib/util/formatRelativeTime.js';
-  import GameRankingRow from '$lib/components/GameRankingRow.svelte';
-  import { swalFire } from '$lib/util/swal.js';
+  import { formatRelativeTime } from '#lib/util/formatRelativeTime.js';
+  import GameRankingRow from '#lib/components/GameRankingRow.svelte';
+  import { swalFire } from '#lib/util/swal.js';
   import {
     buildCageMeta,
     cageInsetShadow,
@@ -12,7 +12,7 @@
     HELL_RULE_LABELS,
     isDiagonalCell,
     isKnightPeer
-  } from '$lib/sudokuHell.js';
+  } from '#lib/sudokuHell.js';
   import type { PageData } from './$types';
 
   const SIZE = 9;

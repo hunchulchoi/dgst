@@ -7,7 +7,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('$env/dynamic/private', () => ({ env: mocks.env }));
-vi.mock('$lib/util/logger.js', () => ({ default: { error: mocks.error, warn: mocks.warn } }));
+vi.mock('#lib/util/logger.js', () => ({ default: { error: mocks.error, warn: mocks.warn } }));
 
 const { verifyTurnstileToken } = await import('./turnstile.js');
 

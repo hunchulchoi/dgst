@@ -1,4 +1,4 @@
-import { getPrisma } from '$lib/database/prisma.js';
+import { getPrisma } from '#lib/database/prisma.js';
 
 /**
  * 가입시에 닉네임 중복 검사를 한다.

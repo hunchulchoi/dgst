@@ -9,20 +9,20 @@
     Row,
     Spinner,
     Tooltip
-  } from '$lib/components/ui/index.js';
+  } from '#lib/components/ui/index.js';
   import { beforeNavigate, goto, invalidate } from '$app/navigation';
   import { resolve } from '$app/paths';
-  import { boardListPath } from '$lib/util/boardPaths.js';
+  import { boardListPath } from '#lib/util/boardPaths.js';
   /**
    * SvelteKit page store import for accessing current route info
    * @see https://kit.svelte.dev/docs/modules#$app-stores
    */
   import { page } from '$app/stores';
   import { enhance } from '$app/forms';
-  import { swalFire } from '$lib/util/swal.js';
-  import { reportClientError } from '$lib/util/reportClientPageError.js';
-  import { validateArticleContent } from '$lib/util/articleContentValidation.js';
-  import { readClipboardImageFiles, readPasteData } from '$lib/util/pasteData.js';
+  import { swalFire } from '#lib/util/swal.js';
+  import { reportClientError } from '#lib/util/reportClientPageError.js';
+  import { validateArticleContent } from '#lib/util/articleContentValidation.js';
+  import { readClipboardImageFiles, readPasteData } from '#lib/util/pasteData.js';
 
   /** @typedef {import('sweetalert2').SweetAlertIcon} SweetAlertIcon */
   /** @typedef {import('sweetalert2').SweetAlertPosition} SweetAlertPosition */
@@ -226,7 +226,7 @@
     draftReady = true;
 
     try {
-      LexicalEditor = (await import('$lib/components/LexicalEditor.svelte')).default;
+      LexicalEditor = (await import('#lib/components/LexicalEditor.svelte')).default;
     } catch (error) {
       console.error('Lexical 에디터 로드 실패:', error);
       reportClientError(error, {
@@ -236,7 +236,7 @@
         href: typeof location !== 'undefined' ? location.href : undefined,
         search: typeof location !== 'undefined' ? location.search : undefined,
         routeId: $page.route.id ?? undefined,
-        importTarget: '$lib/components/LexicalEditor.svelte',
+        importTarget: '#lib/components/LexicalEditor.svelte',
         phase: 'write-page-onMount'
       });
       editorLoadError = true;

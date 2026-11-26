@@ -4,12 +4,12 @@ import {
   findArticleById,
   recordArticleRead,
   toArticleJson
-} from '$lib/server/board/articleRepo.js';
-import { findCommentsByArticle, toCommentJson } from '$lib/server/board/commentRepo.js';
-import { getBoardListPayload } from '$lib/server/boardListLoad.js';
-import { findBilliardsReplayByArticleId } from '$lib/server/billiardsReplayRepo.js';
-import { extractSeotdaReplay } from '$lib/server/seotdaReplay.js';
-import convertToTree from '$lib/util/tree.js';
+} from '#lib/server/board/articleRepo.js';
+import { findCommentsByArticle, toCommentJson } from '#lib/server/board/commentRepo.js';
+import { getBoardListPayload } from '#lib/server/boardListLoad.js';
+import { findBilliardsReplayByArticleId } from '#lib/server/billiardsReplayRepo.js';
+import { extractSeotdaReplay } from '#lib/server/seotdaReplay.js';
+import convertToTree from '#lib/util/tree.js';
 
 const BOARD_COMMENT_SELECT = {
   id: true,

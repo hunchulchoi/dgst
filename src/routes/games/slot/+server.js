@@ -1,6 +1,6 @@
 import { error, json } from '@sveltejs/kit';
-import { getGameSession, isLocalGameSmokeSession } from '$lib/server/localGameSmokeSession.js';
-import { getTodaySlotStats } from '$lib/server/slotStats.js';
+import { getGameSession, isLocalGameSmokeSession } from '#lib/server/localGameSmokeSession.js';
+import { getTodaySlotStats } from '#lib/server/slotStats.js';
 import {
   applyArcadeEntry,
   ArcadePlayConflictError,
@@ -9,8 +9,8 @@ import {
   getArcadeRank,
   releaseArcadePlay,
   resolveArcadeOops
-} from '$lib/server/arcadeWallet.js';
-import { normalizeToIsoString } from '$lib/util/formatRelativeTime.js';
+} from '#lib/server/arcadeWallet.js';
+import { normalizeToIsoString } from '#lib/util/formatRelativeTime.js';
 
 const BASE_SYMBOLS = ['🍒', '🍋', '🔔', '⭐', '7️⃣'];
 const MEDIUM_BALANCE_THRESHOLD = 100_000;

@@ -3,8 +3,8 @@
   import { resolve } from '$app/paths';
   import { onMount, tick } from 'svelte';
   import { ko } from 'date-fns/locale';
-  import { formatRelativeTime } from '$lib/util/formatRelativeTime.js';
-  import GameRankingRow from '$lib/components/GameRankingRow.svelte';
+  import { formatRelativeTime } from '#lib/util/formatRelativeTime.js';
+  import GameRankingRow from '#lib/components/GameRankingRow.svelte';
   import type { PageData } from './$types';
   import {
     AIM_ANGLE_STEP,

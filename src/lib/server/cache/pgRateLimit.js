@@ -1,4 +1,4 @@
-import getPrisma from '$lib/database/prisma.js';
+import getPrisma from '#lib/database/prisma.js';
 
 /**
  * Sliding-window rate limit counter in UNLOGGED `rate_limit` table.

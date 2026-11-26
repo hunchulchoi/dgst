@@ -1,5 +1,5 @@
 import { error } from '@sveltejs/kit';
-import { getPrisma } from '$lib/database/prisma.js';
+import { getPrisma } from '#lib/database/prisma.js';
 
 export const load = async ({ locals }) => {
   const session = await locals.auth();

@@ -1,9 +1,9 @@
 import { error, json } from '@sveltejs/kit';
-import { getPrisma } from '$lib/database/prisma.js';
-import { getTodayMinesweeperStats } from '$lib/server/gameMinesweeperStats.js';
-import { attachGameProfilePhotos } from '$lib/server/gameProfilePhotos.js';
-import { getGameSession, isLocalGameSmokeSession } from '$lib/server/localGameSmokeSession.js';
-import { normalizeToIsoString } from '$lib/util/formatRelativeTime.js';
+import { getPrisma } from '#lib/database/prisma.js';
+import { getTodayMinesweeperStats } from '#lib/server/gameMinesweeperStats.js';
+import { attachGameProfilePhotos } from '#lib/server/gameProfilePhotos.js';
+import { getGameSession, isLocalGameSmokeSession } from '#lib/server/localGameSmokeSession.js';
+import { normalizeToIsoString } from '#lib/util/formatRelativeTime.js';
 
 /**
  * 전체 기간 email별 최고 기록 모드별 Top10. 시간(초) 기준이므로 낮을수록 좋음.

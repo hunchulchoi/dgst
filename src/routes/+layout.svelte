@@ -1,8 +1,8 @@
 <script>
-  import { ThemeSync } from '$lib/components/ui/index.js';
-  import Header from '$lib/components/header.svelte';
-  import Footer from '$lib/components/footer.svelte';
-  import Memo from '$lib/components/memo.svelte';
+  import { ThemeSync } from '#lib/components/ui/index.js';
+  import Header from '#lib/components/header.svelte';
+  import Footer from '#lib/components/footer.svelte';
+  import Memo from '#lib/components/memo.svelte';
   import { blur } from 'svelte/transition';
   import { page } from '$app/stores';
   import { updated } from '$app/state';
@@ -14,21 +14,21 @@
   } from '$app/navigation';
   import { browser } from '$app/env';
   import { onMount } from 'svelte';
-  import { resetSignInOnPageShow } from '$lib/util/signIn';
+  import { resetSignInOnPageShow } from '#lib/util/signIn.ts';
   import {
     reportSlowInitialLoad,
     reportSlowLoad,
     startInitialLoadLongTaskObserver
-  } from '$lib/util/logSlowLoad.js';
-  import { isExternalSerialPortError, reportClientError } from '$lib/util/reportClientPageError.js';
-  import { isInterruptedFetchError } from '$lib/util/fetchErrors.js';
-  import { isFreeBoardLegacyPath } from '$lib/util/boardPaths.js';
-  import { alarmCount, boardListReloadKey, boardListReloading } from '$lib/util/store.js';
+  } from '#lib/util/logSlowLoad.js';
+  import { isExternalSerialPortError, reportClientError } from '#lib/util/reportClientPageError.js';
+  import { isInterruptedFetchError } from '#lib/util/fetchErrors.js';
+  import { isFreeBoardLegacyPath } from '#lib/util/boardPaths.js';
+  import { alarmCount, boardListReloadKey, boardListReloading } from '#lib/util/store.js';
   import {
     getClientNavigationContext,
     recordClientNavigationComplete,
     recordClientNavigationStart
-  } from '$lib/util/clientNavigationContext.js';
+  } from '#lib/util/clientNavigationContext.js';
   import '../app.css';
 
   let { data, children } = $props();
@@ -256,7 +256,7 @@
 
   async function syncTimeZoneCookie() {
     const { isValidTimeZone, serializeTimeZoneCookie } =
-      await import('$lib/util/formatRelativeTime.js');
+      await import('#lib/util/formatRelativeTime.js');
     let detectedTimeZone = '';
     try {
       detectedTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone ?? '';
@@ -282,7 +282,7 @@
       cancelNonCriticalInitialWork = undefined;
       // 비필수 작업: 페이지 이동·새로고침으로 모듈 fetch가 끊기면 Safari가
       // "Importing a module script failed"로 reject한다. 다음 로드 때 다시 하므로 조용히 넘긴다.
-      import('$lib/util/kakaoExternalBrowser.js')
+      import('#lib/util/kakaoExternalBrowser.js')
         .then(({ promptKakaoExternalBrowser }) => promptKakaoExternalBrowser())
         .catch(ignoreNonCriticalInitialWorkError);
       syncTimeZoneCookie().catch(ignoreNonCriticalInitialWorkError);

@@ -4,7 +4,7 @@ import {
   fetchOfficialDrawJson,
   storeOfficialDraw,
   syncOfficialDrawFromDhlottery
-} from '$lib/server/lottoOfficial.js';
+} from '#lib/server/lottoOfficial.js';
 
 /**
  * 동행복권 최신(또는 갱신 필요) 회차 당첨번호를 받아 GameLog에 저장합니다.

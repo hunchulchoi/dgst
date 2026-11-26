@@ -1,10 +1,10 @@
 import { error, json } from '@sveltejs/kit';
-import { checkRateLimit } from '$lib/server/apiRateLimit.js';
-import { checkAndLogSessionDevice } from '$lib/server/auth/checkSessionDevice.js';
-import { bustBoardListCache } from '$lib/server/boardListLoad.js';
-import { cleanReplayText, sanitizeBilliardsReplay } from '$lib/server/billiardsReplay.js';
-import { createBilliardsReplayArticle } from '$lib/server/billiardsReplayRepo.js';
-import { sanitizeArticleContent } from '$lib/server/sanitizeArticleContent.js';
+import { checkRateLimit } from '#lib/server/apiRateLimit.js';
+import { checkAndLogSessionDevice } from '#lib/server/auth/checkSessionDevice.js';
+import { bustBoardListCache } from '#lib/server/boardListLoad.js';
+import { cleanReplayText, sanitizeBilliardsReplay } from '#lib/server/billiardsReplay.js';
+import { createBilliardsReplayArticle } from '#lib/server/billiardsReplayRepo.js';
+import { sanitizeArticleContent } from '#lib/server/sanitizeArticleContent.js';
 
 const MAX_BODY_BYTES = 96 * 1024;
 const ALLOWED_BOARDS = new Set(['free', 'bug']);

@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import { BOT_MCP_TOKENS } from '$app/env/private';
-import { checkRateLimit } from '$lib/server/apiRateLimit.js';
-import { findBotUser, handleRpc, resolveBotNickname } from '$lib/server/mcp/botMcp.js';
+import { checkRateLimit } from '#lib/server/apiRateLimit.js';
+import { findBotUser, handleRpc, resolveBotNickname } from '#lib/server/mcp/botMcp.js';
 
 /**
  * 봇 계정용 MCP 엔드포인트 (Streamable HTTP, stateless).

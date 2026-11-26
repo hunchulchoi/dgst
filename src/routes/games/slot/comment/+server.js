@@ -1,17 +1,17 @@
 import { error, json } from '@sveltejs/kit';
-import { getPrisma } from '$lib/database/prisma.js';
-import { markAsRead, upsertAlarm } from '$lib/server/alarm/alarmService.js';
-import { createComment, findCommentById, toCommentJson } from '$lib/server/board/commentRepo.js';
-import convertToTree from '$lib/util/tree.js';
-import { checkAndLogSessionDevice } from '$lib/server/auth/checkSessionDevice.js';
-import { getGameSession, isLocalGameSmokeSession } from '$lib/server/localGameSmokeSession.js';
-import { attachGameProfilePhotos } from '$lib/server/gameProfilePhotos.js';
-import { applyArcadeEntry } from '$lib/server/arcadeWallet.js';
+import { getPrisma } from '#lib/database/prisma.js';
+import { markAsRead, upsertAlarm } from '#lib/server/alarm/alarmService.js';
+import { createComment, findCommentById, toCommentJson } from '#lib/server/board/commentRepo.js';
+import convertToTree from '#lib/util/tree.js';
+import { checkAndLogSessionDevice } from '#lib/server/auth/checkSessionDevice.js';
+import { getGameSession, isLocalGameSmokeSession } from '#lib/server/localGameSmokeSession.js';
+import { attachGameProfilePhotos } from '#lib/server/gameProfilePhotos.js';
+import { applyArcadeEntry } from '#lib/server/arcadeWallet.js';
 import {
   buildSubmitFingerprint,
   findRecentDuplicateComment,
   tryAcquireSubmitDedup
-} from '$lib/server/submitDedup.js';
+} from '#lib/server/submitDedup.js';
 
 const GAME_ARTICLES = {
   slot: { boardId: 'slot', articleId: 'slot', title: '뺑뺑이' },

@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import { CRON_SECRET } from '$app/env/private';
-import { pruneExpiredAlarms } from '$lib/server/alarm/alarmService.js';
+import { pruneExpiredAlarms } from '#lib/server/alarm/alarmService.js';
 
 /**
  * 3일(ALARM_TTL)보다 오래된 알람 삭제.

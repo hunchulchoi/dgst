@@ -1,7 +1,7 @@
 import { error } from '@sveltejs/kit';
-import { softDeleteArticleByOwner } from '$lib/server/board/articleRepo.js';
-import { deleteAlarmsByArticle } from '$lib/server/alarm/alarmService.js';
-import { bustBoardListCache } from '$lib/server/boardListLoad.js';
+import { softDeleteArticleByOwner } from '#lib/server/board/articleRepo.js';
+import { deleteAlarmsByArticle } from '#lib/server/alarm/alarmService.js';
+import { bustBoardListCache } from '#lib/server/boardListLoad.js';
 
 /** @param {import('@sveltejs/kit').RequestEvent} event */
 export async function DELETE({ params, locals }) {

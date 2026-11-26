@@ -1,4 +1,4 @@
-import getPrisma from '$lib/database/prisma.js';
+import getPrisma from '#lib/database/prisma.js';
 
 /**
  * SET-NX style lock in UNLOGGED `dedup_lock` table.

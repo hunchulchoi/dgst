@@ -2,10 +2,10 @@
  * 세션+유저 pgCache: getSessionAndUser 호출 시 캐시 우선, 미스 시 DB 조회 후 캐시.
  * TTL로만 만료 (프로필 수정 시 userCache.invalidateUser로 유저 캐시는 무효화되나, 세션 캐시는 TTL로 갱신).
  */
-import * as pgCache from '$lib/server/cache/pgCache.js';
-import { USER_DATE_KEYS, reviveDates } from '$lib/server/auth/userCache.js';
-import { getPrisma } from '$lib/database/prisma.js';
-import logger from '$lib/util/logger.js';
+import * as pgCache from '#lib/server/cache/pgCache.js';
+import { USER_DATE_KEYS, reviveDates } from '#lib/server/auth/userCache.js';
+import { getPrisma } from '#lib/database/prisma.js';
+import logger from '#lib/util/logger.js';
 
 const NAMESPACE = 'session';
 const SESSION_PREFIX = 'session:';

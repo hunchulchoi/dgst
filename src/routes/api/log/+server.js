@@ -1,6 +1,6 @@
 import { error, json } from '@sveltejs/kit';
-import { checkRateLimit } from '$lib/server/apiRateLimit.js';
-import logger from '$lib/util/logger.js';
+import { checkRateLimit } from '#lib/server/apiRateLimit.js';
+import logger from '#lib/util/logger.js';
 
 const MAX_BODY_BYTES = 16 * 1024;
 

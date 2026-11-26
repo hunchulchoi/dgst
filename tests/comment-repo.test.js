@@ -4,7 +4,7 @@ const prismaModule = vi.hoisted(() => ({
   getPrisma: vi.fn()
 }));
 
-vi.mock('$lib/database/prisma.js', () => prismaModule);
+vi.mock('#lib/database/prisma.js', () => prismaModule);
 
 describe('commentRepo', () => {
   beforeEach(() => {

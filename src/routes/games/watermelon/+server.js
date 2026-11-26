@@ -1,9 +1,9 @@
 import { error, json } from '@sveltejs/kit';
-import { getPrisma } from '$lib/database/prisma.js';
-import { getTodayWatermelonStats } from '$lib/server/gameWatermelonStats.js';
-import { attachGameProfilePhotos } from '$lib/server/gameProfilePhotos.js';
-import { getGameSession, isLocalGameSmokeSession } from '$lib/server/localGameSmokeSession.js';
-import { normalizeToIsoString } from '$lib/util/formatRelativeTime.js';
+import { getPrisma } from '#lib/database/prisma.js';
+import { getTodayWatermelonStats } from '#lib/server/gameWatermelonStats.js';
+import { attachGameProfilePhotos } from '#lib/server/gameProfilePhotos.js';
+import { getGameSession, isLocalGameSmokeSession } from '#lib/server/localGameSmokeSession.js';
+import { normalizeToIsoString } from '#lib/util/formatRelativeTime.js';
 
 /**
  * Get Top 10 scores (all-time highest score per user ID).

@@ -1,6 +1,6 @@
 import { error } from '@sveltejs/kit';
-import { getAlarmList } from '$lib/server/alarm/alarmService.js';
-import logger from '$lib/util/logger.js';
+import { getAlarmList } from '#lib/server/alarm/alarmService.js';
+import logger from '#lib/util/logger.js';
 
 // 캐시 방지 - 항상 최신 데이터 로드
 export const load = async ({ locals, depends }) => {

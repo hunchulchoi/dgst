@@ -1,10 +1,10 @@
 import { error, json } from '@sveltejs/kit';
 import { z } from 'zod';
-import { getPrisma } from '$lib/database/prisma.js';
-import { getTodayBreakoutStats } from '$lib/server/gameBreakoutStats.js';
-import { attachGameProfilePhotos } from '$lib/server/gameProfilePhotos.js';
-import { getGameSession, isLocalGameSmokeSession } from '$lib/server/localGameSmokeSession.js';
-import { normalizeToIsoString } from '$lib/util/formatRelativeTime.js';
+import { getPrisma } from '#lib/database/prisma.js';
+import { getTodayBreakoutStats } from '#lib/server/gameBreakoutStats.js';
+import { attachGameProfilePhotos } from '#lib/server/gameProfilePhotos.js';
+import { getGameSession, isLocalGameSmokeSession } from '#lib/server/localGameSmokeSession.js';
+import { normalizeToIsoString } from '#lib/util/formatRelativeTime.js';
 
 const BREAKOUT_GAME = 'breakout';
 
@@ -86,7 +86,7 @@ export async function GET(event) {
 
   if (url.searchParams.get('celebrate')) {
     // 하위호환 — 통합 API로 리다이렉트 성격의 응답
-    const { getBoardCelebrations } = await import('$lib/server/boardCelebrations.js');
+    const { getBoardCelebrations } = await import('#lib/server/boardCelebrations.js');
     const celebrations = await getBoardCelebrations();
     const stage50 = celebrations.find((c) => c.kind === 'breakout50');
     return json(

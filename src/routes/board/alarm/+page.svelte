@@ -1,10 +1,10 @@
 <script>
-  import { Badge, Col, Icon, Row } from '$lib/components/ui/index.js';
+  import { Badge, Col, Icon, Row } from '#lib/components/ui/index.js';
   import { resolve } from '$app/paths';
   import { ko } from 'date-fns/locale';
-  import { formatRelativeTime } from '$lib/util/formatRelativeTime.js';
-  import { formatAlarmCommentPreview } from '$lib/util/alarmPreview.js';
-  import { alarmCount } from '$lib/util/store.js';
+  import { formatRelativeTime } from '#lib/util/formatRelativeTime.js';
+  import { formatAlarmCommentPreview } from '#lib/util/alarmPreview.js';
+  import { alarmCount } from '#lib/util/store.js';
 
   // Svelte 5 Runes
   let { data } = $props();

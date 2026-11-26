@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { getPrisma } from '$lib/database/prisma.js';
+import { getPrisma } from '#lib/database/prisma.js';
 
 /**
  * @param {string} content

@@ -1,11 +1,11 @@
 <script lang="ts">
   import { onMount, untrack } from 'svelte';
   import { ko } from 'date-fns/locale';
-  import GameRankingRow from '$lib/components/GameRankingRow.svelte';
-  import SharedGameComments from '$lib/components/SharedGameComments.svelte';
-  import { getArcadeGameLabel } from '$lib/util/arcadeGame.js';
-  import { formatRelativeTime } from '$lib/util/formatRelativeTime.js';
-  import { swalFire } from '$lib/util/swal.js';
+  import GameRankingRow from '#lib/components/GameRankingRow.svelte';
+  import SharedGameComments from '#lib/components/SharedGameComments.svelte';
+  import { getArcadeGameLabel } from '#lib/util/arcadeGame.js';
+  import { formatRelativeTime } from '#lib/util/formatRelativeTime.js';
+  import { swalFire } from '#lib/util/swal.js';
   import type { PageData } from './$types';
   import { buildMedalJankenResultComment } from './medalJankenComments.js';
 

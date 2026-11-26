@@ -6,13 +6,13 @@
     CardFooter,
     CardHeader,
     Icon
-  } from '$lib/components/ui/index.js';
+  } from '#lib/components/ui/index.js';
 
   import { resolve } from '$app/paths';
   import { page } from '$app/stores';
   import { onMount } from 'svelte';
-  import { reportClientPageError } from '$lib/util/reportClientPageError.js';
-  import { getClientNavigationContext } from '$lib/util/clientNavigationContext.js';
+  import { reportClientPageError } from '#lib/util/reportClientPageError.js';
+  import { getClientNavigationContext } from '#lib/util/clientNavigationContext.js';
 
   /** @typedef {Error & { stack?: string; name?: string; cause?: unknown; errorId?: string; fingerprint?: string; interruptedFetch?: boolean }} PageError */
 

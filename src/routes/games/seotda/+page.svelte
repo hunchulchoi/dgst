@@ -4,13 +4,13 @@
   import { resolve } from '$app/paths';
   import { ko } from 'date-fns/locale';
   import type { PageData } from './$types';
-  import { formatRelativeTime } from '$lib/util/formatRelativeTime.js';
-  import { getArcadeGameLabel } from '$lib/util/arcadeGame.js';
-  import { swalFire } from '$lib/util/swal.js';
+  import { formatRelativeTime } from '#lib/util/formatRelativeTime.js';
+  import { getArcadeGameLabel } from '#lib/util/arcadeGame.js';
+  import { swalFire } from '#lib/util/swal.js';
   import { ANTE, dynamicAnte, minRaisePay } from './seotdaEngine.js';
   import { contributionCapacity } from './seotdaRound.js';
-  import SharedGameComments from '$lib/components/SharedGameComments.svelte';
-  import GameRankingRow from '$lib/components/GameRankingRow.svelte';
+  import SharedGameComments from '#lib/components/SharedGameComments.svelte';
+  import GameRankingRow from '#lib/components/GameRankingRow.svelte';
   import HwatuCardFace from './HwatuCardFace.svelte';
   import { HWATU_CARD_URLS } from './hwatuCardAssets';
 

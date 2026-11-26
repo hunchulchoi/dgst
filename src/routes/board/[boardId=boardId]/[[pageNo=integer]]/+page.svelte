@@ -1,5 +1,5 @@
 <script>
-  import BoardIndexView from '$lib/components/board_index_view.svelte';
+  import BoardIndexView from '#lib/components/board_index_view.svelte';
   import { page } from '$app/stores';
 
   let { data } = $props();

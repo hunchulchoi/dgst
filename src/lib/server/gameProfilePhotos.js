@@ -1,4 +1,4 @@
-import { getPrisma } from '$lib/database/prisma.js';
+import { getPrisma } from '#lib/database/prisma.js';
 
 /** @param {{ photo?: unknown } | null | undefined} user */
 export function profilePhotoFromUser(user) {

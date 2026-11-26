@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import { CRON_SECRET } from '$app/env/private';
-import { resetSlotUserBalance } from '$lib/server/slotUserBalance.js';
+import { resetSlotUserBalance } from '#lib/server/slotUserBalance.js';
 
 /**
  * slot_user_balance 테이블 전체 삭제. 다음 랭킹 조회 시 game_scores 기준으로 자동 백필됨.

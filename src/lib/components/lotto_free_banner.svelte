@@ -1,9 +1,9 @@
 <script lang="ts">
-  import { Badge, Button, Col, Icon, Row } from '$lib/components/ui/index.js';
-  import { formatAbsoluteTime, parseSafeDate } from '$lib/util/formatRelativeTime.js';
+  import { Badge, Button, Col, Icon, Row } from '#lib/components/ui/index.js';
+  import { formatAbsoluteTime, parseSafeDate } from '#lib/util/formatRelativeTime.js';
   import { onMount } from 'svelte';
   import { page } from '$app/stores';
-  import { swalFire } from '$lib/util/swal.js';
+  import { swalFire } from '#lib/util/swal.js';
 
   interface LottoHistoryEntry {
     id: string;

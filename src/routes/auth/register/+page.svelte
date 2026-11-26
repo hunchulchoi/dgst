@@ -17,16 +17,16 @@
     InputGroupText,
     Label,
     Row
-  } from '$lib/components/ui/index.js';
+  } from '#lib/components/ui/index.js';
 
   import { PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY as turnstileSiteKey } from '$app/env/public';
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
   import { browser } from '$app/env';
   import imageCompression from 'browser-image-compression';
-  import { swalFire } from '$lib/util/swal.js';
-  import { getNicknameError } from '$lib/util/nickname.js';
-  import TurnstileWidget from '$lib/components/TurnstileWidget.svelte';
+  import { swalFire } from '#lib/util/swal.js';
+  import { getNicknameError } from '#lib/util/nickname.js';
+  import TurnstileWidget from '#lib/components/TurnstileWidget.svelte';
 
   const PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY = turnstileSiteKey ?? '';
 

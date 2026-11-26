@@ -2,7 +2,7 @@
   import { browser } from '$app/env';
   import { tick } from 'svelte';
   import { getContext } from 'svelte';
-  import { portal } from '$lib/util/portal.js';
+  import { portal } from '#lib/util/portal.js';
   import { DROPDOWN_CTX } from './dropdown-context.js';
 
   /** @type {{ end?: boolean; class?: string; children: import('svelte').Snippet }} */

@@ -1,15 +1,15 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { ko } from 'date-fns/locale';
-  import { formatRelativeTime } from '$lib/util/formatRelativeTime.js';
-  import { getArcadeGameLabel } from '$lib/util/arcadeGame.js';
-  import GameRankingRow from '$lib/components/GameRankingRow.svelte';
-  import GameProfilePhoto from '$lib/components/GameProfilePhoto.svelte';
+  import { formatRelativeTime } from '#lib/util/formatRelativeTime.js';
+  import { getArcadeGameLabel } from '#lib/util/arcadeGame.js';
+  import GameRankingRow from '#lib/components/GameRankingRow.svelte';
+  import GameProfilePhoto from '#lib/components/GameProfilePhoto.svelte';
   import { invalidateAll } from '$app/navigation';
-  import { swalFire } from '$lib/util/swal.js';
-  import { isOnlyOneEmoji } from '$lib/util/emoji.js';
+  import { swalFire } from '#lib/util/swal.js';
+  import { isOnlyOneEmoji } from '#lib/util/emoji.js';
   import type { PageData } from './$types';
-  import dgstData from '$lib/data/dgst_data.json';
+  import dgstData from '#lib/data/dgst_data.json';
 
   interface SlotTodayStats {
     spins: number;

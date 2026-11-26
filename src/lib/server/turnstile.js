@@ -1,5 +1,5 @@
 import { CLOUDFLARE_TURNSTILE_SECRET_KEY } from '$app/env/private';
-import logger from '$lib/util/logger.js';
+import logger from '#lib/util/logger.js';
 
 /**
  * Cloudflare Turnstile 토큰 검증.

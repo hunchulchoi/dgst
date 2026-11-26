@@ -1,13 +1,13 @@
 import { KAKAO_CLIENT_ID, KAKAO_CLIENT_SECRET, BLUE_DGST_HOST } from '$app/env/private';
-import { getUnreadAlarmCount } from '$lib/server/alarm/alarmService.js';
-import { isBoardHtmlPath } from '$lib/util/boardPaths.js';
-import logger from '$lib/util/logger.js';
-import { traceFromUnknown } from '$lib/util/formatErrorTrace.js';
+import { getUnreadAlarmCount } from '#lib/server/alarm/alarmService.js';
+import { isBoardHtmlPath } from '#lib/util/boardPaths.js';
+import logger from '#lib/util/logger.js';
+import { traceFromUnknown } from '#lib/util/formatErrorTrace.js';
 import {
   DISPLAY_TIME_ZONE,
   isValidTimeZone,
   TIME_ZONE_COOKIE_NAME
-} from '$lib/util/formatRelativeTime.js';
+} from '#lib/util/formatRelativeTime.js';
 
 /** @param {string | null | undefined} host */
 function normalizeHost(host) {

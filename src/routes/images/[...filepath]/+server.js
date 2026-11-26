@@ -2,7 +2,7 @@ import { error } from '@sveltejs/kit';
 import { Readable } from 'node:stream';
 import path from 'node:path';
 import mime from 'mime';
-import { getUploadObject, putUploadObject, statUploadObject } from '$lib/server/minioStorage.js';
+import { getUploadObject, putUploadObject, statUploadObject } from '#lib/server/minioStorage.js';
 
 const THUMBNAIL_SIZES = new Set([40, 64, 80, 96, 128, 160, 200, 256]);
 

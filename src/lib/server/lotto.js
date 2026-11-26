@@ -1,5 +1,5 @@
-import { getPrisma } from '$lib/database/prisma.js';
-import { currentSeoulWeekSunSatRangeUtc } from '$lib/server/lottoOfficial.js';
+import { getPrisma } from '#lib/database/prisma.js';
+import { currentSeoulWeekSunSatRangeUtc } from '#lib/server/lottoOfficial.js';
 
 export const LOTTO_HISTORY_MS = 24 * 60 * 60 * 1000;
 export const LOTTO_HISTORY_LIMIT = 300;

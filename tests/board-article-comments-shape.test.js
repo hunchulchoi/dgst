@@ -27,11 +27,11 @@ const prismaModule = vi.hoisted(() => ({
   getPrisma: vi.fn()
 }));
 
-vi.mock('$lib/server/board/articleRepo.js', () => articleRepo);
-vi.mock('$lib/server/board/commentRepo.js', () => commentRepo);
-vi.mock('$lib/server/boardArticleList.js', () => boardArticleList);
-vi.mock('$lib/server/boardListLoad.js', () => boardListLoad);
-vi.mock('$lib/database/prisma.js', () => prismaModule);
+vi.mock('#lib/server/board/articleRepo.js', () => articleRepo);
+vi.mock('#lib/server/board/commentRepo.js', () => commentRepo);
+vi.mock('#lib/server/boardArticleList.js', () => boardArticleList);
+vi.mock('#lib/server/boardListLoad.js', () => boardListLoad);
+vi.mock('#lib/database/prisma.js', () => prismaModule);
 
 describe('board article load comment shape', () => {
   beforeEach(() => {

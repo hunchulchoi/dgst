@@ -10,22 +10,22 @@ import {
   NEXTAUTH_SECRET
 } from '$app/env/private';
 
-import { getPrisma } from '$lib/database/prisma.js';
-import { getPrismaAdapter } from '$lib/server/auth/prismaAdapter.js';
-import { createAuthProviders } from '$lib/server/auth/providers.js';
-import { checkAuthRateLimit } from '$lib/server/auth/rateLimit.js';
-import { shouldRejectCrossOriginRequest } from '$lib/server/auth/requestOrigin.js';
-import { evaluateAuthSignIn, resolveSafeAuthRedirect } from '$lib/server/auth/authPolicy.js';
-import { createAuthDiagnostics } from '$lib/server/auth/diagnostics.js';
-import { offerSignInRecovery } from '$lib/server/auth/recovery.js';
+import { getPrisma } from '#lib/database/prisma.js';
+import { getPrismaAdapter } from '#lib/server/auth/prismaAdapter.js';
+import { createAuthProviders } from '#lib/server/auth/providers.js';
+import { checkAuthRateLimit } from '#lib/server/auth/rateLimit.js';
+import { shouldRejectCrossOriginRequest } from '#lib/server/auth/requestOrigin.js';
+import { evaluateAuthSignIn, resolveSafeAuthRedirect } from '#lib/server/auth/authPolicy.js';
+import { createAuthDiagnostics } from '#lib/server/auth/diagnostics.js';
+import { offerSignInRecovery } from '#lib/server/auth/recovery.js';
 import crypto from 'crypto';
 import { redirect, json } from '@sveltejs/kit';
-import logger from '$lib/util/logger';
-import { serializeError, traceFromUnknown } from '$lib/util/formatErrorTrace.js';
-import { warmupConnections } from '$lib/server/warmup.js';
-import { isBoardHtmlPath } from '$lib/util/boardPaths.js';
-import { BOARD_UPLOAD_SOURCE_MAX_BYTES } from '$lib/util/uploadLimits.js';
-import { applyHostnameFavicon, faviconRedirectTarget } from '$lib/server/favicon.js';
+import logger from '#lib/util/logger.js';
+import { serializeError, traceFromUnknown } from '#lib/util/formatErrorTrace.js';
+import { warmupConnections } from '#lib/server/warmup.js';
+import { isBoardHtmlPath } from '#lib/util/boardPaths.js';
+import { BOARD_UPLOAD_SOURCE_MAX_BYTES } from '#lib/util/uploadLimits.js';
+import { applyHostnameFavicon, faviconRedirectTarget } from '#lib/server/favicon.js';
 
 warmupConnections();
 

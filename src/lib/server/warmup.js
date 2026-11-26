@@ -1,7 +1,7 @@
-import { connectPrisma } from '$lib/database/prisma.js';
-import { isAvailable, purgeExpired } from '$lib/server/cache/pgCache.js';
-import logger from '$lib/util/logger.js';
-import { traceFromUnknown } from '$lib/util/formatErrorTrace.js';
+import { connectPrisma } from '#lib/database/prisma.js';
+import { isAvailable, purgeExpired } from '#lib/server/cache/pgCache.js';
+import logger from '#lib/util/logger.js';
+import { traceFromUnknown } from '#lib/util/formatErrorTrace.js';
 
 let started = false;
 
