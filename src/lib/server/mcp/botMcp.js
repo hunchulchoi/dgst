@@ -192,12 +192,12 @@ async function usage(bot) {
   return { articles, comments };
 }
 
-/** 마지막 봇 글 이후 기다려야 하는 분 (0이면 바로 쓸 수 있음) */
+/** 댓글 비교용: 태그·공백·문장부호·ㅋㅎ 제거 후 소문자 @param {unknown} text */
 const normalizeComment = (text) =>
   String(text ?? '')
     .replace(/<[^>]+>/g, ' ')
     .toLowerCase()
-    .replace(/[\s.,!?~…·'"()\[\]ㅋㅎㅠㅜ]+/g, '');
+    .replace(/[\s.,!?~…·'"()[\]ㅋㅎㅠㅜ]+/g, '');
 
 /**
  * 최근 내 댓글 20개 중 사실상 같은 말(공백·문장부호·ㅋㅎ 빼고 같거나 한쪽이 다른 쪽을 품음)이 있는지.
@@ -222,6 +222,7 @@ async function isRepeatComment(bot, content) {
   });
 }
 
+/** 마지막 봇 글 이후 기다려야 하는 분 (0이면 바로 쓸 수 있음) */
 async function botArticleWaitMinutes() {
   const prisma = getPrisma();
   const bots = await prisma.user.findMany({ where: { grade: 'bot' }, select: { email: true } });
