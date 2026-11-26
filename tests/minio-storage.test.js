@@ -9,14 +9,12 @@ const mocks = vi.hoisted(() => ({
   Client: vi.fn()
 }));
 
-vi.mock('$env/dynamic/private', () => ({
-  env: {
-    MINIO_ENDPOINT: 'https://minio.example.com:9443',
-    MINIO_ACCESS_KEY: 'access',
-    MINIO_SECRET_KEY: 'secret',
-    MINIO_BUCKET: 'local/dgst',
-    MINIO_REGION: 'ap-northeast-2'
-  }
+vi.mock('$app/env/private', () => ({
+  MINIO_ENDPOINT: 'https://minio.example.com:9443',
+  MINIO_ACCESS_KEY: 'access',
+  MINIO_SECRET_KEY: 'secret',
+  MINIO_BUCKET: 'local/dgst',
+  MINIO_REGION: 'ap-northeast-2'
 }));
 
 vi.mock('minio', () => ({

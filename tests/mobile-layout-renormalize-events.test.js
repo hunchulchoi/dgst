@@ -31,7 +31,7 @@ describe('mobile layout width renormalization events', () => {
   });
 
   it('relies on the global afterNavigate normalization after a successful article write', () => {
-    expect(writePage).toContain('await goto(resolve(`/board/${boardId}/${savedArticleId}`));');
+    expect(writePage).toContain('await goto(resolve(`board/${boardId}/${savedArticleId}`));');
     expect(writePage).not.toContain('requestMobileLayoutWidthNormalization');
   });
 

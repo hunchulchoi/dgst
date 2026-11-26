@@ -6,7 +6,11 @@ const mocks = vi.hoisted(() => ({
   warn: vi.fn()
 }));
 
-vi.mock('$env/dynamic/private', () => ({ env: mocks.env }));
+vi.mock('$app/env/private', () => ({
+  get CLOUDFLARE_TURNSTILE_SECRET_KEY() {
+    return mocks.env.CLOUDFLARE_TURNSTILE_SECRET_KEY;
+  }
+}));
 vi.mock('#lib/util/logger.js', () => ({ default: { error: mocks.error, warn: mocks.warn } }));
 
 const { verifyTurnstileToken } = await import('./turnstile.js');
