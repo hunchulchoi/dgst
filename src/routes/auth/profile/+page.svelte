@@ -23,7 +23,7 @@
     ModalHeader
   } from '$lib/components/ui/index.js';
 
-  import { PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY } from '$app/env/public';
+  import { PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY as turnstileSiteKey } from '$app/env/public';
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
   import { browser } from '$app/env';
@@ -34,7 +34,7 @@
   import { getProfileValidationMessage } from '$lib/util/profileValidation.js';
   import TurnstileWidget from '$lib/components/TurnstileWidget.svelte';
 
-  const PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY = PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY ?? '';
+  const PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY = turnstileSiteKey ?? '';
 
   /** @typedef {{ x: number; y: number; width: number; height: number }} CropData */
   /** @typedef {import('cropperjs').default} CropperInstance */
