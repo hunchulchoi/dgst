@@ -1,0 +1,25 @@
+diff --git a/node_modules/@auth/sveltekit/dist/client.js b/node_modules/@auth/sveltekit/dist/client.js
+index 011c78a..c2731f3 100644
+--- a/node_modules/@auth/sveltekit/dist/client.js
++++ b/node_modules/@auth/sveltekit/dist/client.js
+@@ -1,4 +1,5 @@
+-import { base } from "$app/paths";
++// SvelteKit 3 removed `base` from $app/paths; this app does not use a base path.
++const base = "";
+ export async function signIn(provider, options, authorizationParams) {
+     const { callbackUrl, ...rest } = options ?? {};
+     const { redirect = true, redirectTo = callbackUrl ?? window.location.href, ...signInParams } = rest;
+diff --git a/node_modules/@auth/sveltekit/dist/env.js b/node_modules/@auth/sveltekit/dist/env.js
+index a1a26c8..20b9988 100644
+--- a/node_modules/@auth/sveltekit/dist/env.js
++++ b/node_modules/@auth/sveltekit/dist/env.js
+@@ -1,6 +1,7 @@
+ import { setEnvDefaults as coreSetEnvDefaults, skipCSRFCheck } from "@auth/core";
+-import { dev, building } from "$app/environment";
+-import { base } from "$app/paths";
++import { dev, building } from "$app/env";
++// SvelteKit 3 removed `base` from $app/paths; this app does not use a base path.
++const base = "";
+ export function setEnvDefaults(envObject, config) {
+     config.trustHost ??= dev;
+     config.basePath = `${base}/auth`;

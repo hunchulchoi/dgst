@@ -26,7 +26,8 @@
     "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
-    "migrate:uploads:minio": "node --env-file=.env scripts/migrate-uploads-to-minio.js"
+    "migrate:uploads:minio": "node --env-file=.env scripts/migrate-uploads-to-minio.js",
+    "postinstall": "node scripts/apply-patches.js"
   },
   "devDependencies": {
     "@anthropic-ai/sdk": "^1.8.0",
@@ -43,6 +44,7 @@
     "eslint-plugin-svelte": "^3.19.0",
     "globals": "^14.0.0",
     "ioredis": "^5.11.1",
+    "patch-package": "^8.0.1",
     "prettier": "^3.8.4",
     "prettier-plugin-svelte": "^3.3.3",
     "svelte": "^5.57.2",
