@@ -141,9 +141,9 @@
           previewSrc = window.URL.createObjectURL(blob);
         }
         cropperOpen = false;
-        /** @type {HTMLInputElement | HTMLTextAreaElement | null} */ document
-          .querySelector('#introduction')
-          ?.focus();
+        /** @type {HTMLInputElement | HTMLTextAreaElement | null} */ (
+          document.querySelector('#introduction')
+        )?.focus();
       });
     } else {
       // 일반 자르기는 브라우저에서 캔버스로 잘라버림
@@ -154,9 +154,9 @@
           serverCropData = null;
         }
         cropperOpen = false;
-        /** @type {HTMLInputElement | HTMLTextAreaElement | null} */ document
-          .querySelector('#introduction')
-          ?.focus();
+        /** @type {HTMLInputElement | HTMLTextAreaElement | null} */ (
+          document.querySelector('#introduction')
+        )?.focus();
       }, 'image/png');
     }
   }

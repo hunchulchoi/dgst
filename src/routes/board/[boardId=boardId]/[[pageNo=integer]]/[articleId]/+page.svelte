@@ -56,7 +56,7 @@
   /** @typedef {{ Embeds?: { process: () => void } }} InstagramEmbed */
   /** @type {InstagramEmbed | undefined} */
   const instgrm = browser
-    ? /** @type {Window & { instgrm?: InstagramEmbed }} */ (window.instgrm)
+    ? /** @type {Window & { instgrm?: InstagramEmbed }} */ (window).instgrm
     : undefined;
 
   // Svelte 5 Runes - Props
@@ -408,9 +408,9 @@
         return;
       } else return;
     } else {
-      const file = /** @type {HTMLInputElement} */ (event.target.files?.[0] ?? null);
+      const file = /** @type {HTMLInputElement} */ (event.target).files?.[0] ?? null;
 
-      if (rejectAttachmentWithoutExtension(file, /** @type {HTMLInputElement} */ event.target))
+      if (rejectAttachmentWithoutExtension(file, /** @type {HTMLInputElement} */ (event.target)))
         return;
 
       if (file?.type.startsWith('audio')) {
@@ -1473,8 +1473,8 @@
         });
         if (!prismModule) return;
         const { default: Prism } = prismModule;
-        /** @type {any} */ globalThis.Prism = Prism;
-        /** @type {any} */ window.Prism = Prism;
+        /** @type {any} */ (globalThis).Prism = Prism;
+        /** @type {any} */ (window).Prism = Prism;
         // Keep dependencies ordered; Vite needs literal import paths.
         const grammars = [
           {

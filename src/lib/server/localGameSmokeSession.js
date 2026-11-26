@@ -68,5 +68,5 @@ export async function getGameSession(event) {
  */
 export function isLocalGameSmokeSession(session) {
   if (!session || typeof session !== 'object' || !('user' in session)) return false;
-  return /** @type {{ user?: { email?: unknown } }} */ (session.user?.email === SMOKE_USER.email);
+  return /** @type {{ user?: { email?: unknown } }} */ (session).user?.email === SMOKE_USER.email;
 }

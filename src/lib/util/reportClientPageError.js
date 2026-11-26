@@ -343,7 +343,7 @@ function collectPageErrorDiagnostics(pageError) {
   const connection =
     typeof navigator !== 'undefined'
       ? /** @type {{ effectiveType?: string; rtt?: number; downlink?: number; saveData?: boolean } | undefined} */ (
-          /** @type {Navigator & { connection?: unknown }} */ (navigator.connection)
+          /** @type {Navigator & { connection?: unknown }} */ (navigator).connection
         )
       : undefined;
   const browserNavigator =

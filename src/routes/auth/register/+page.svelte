@@ -83,7 +83,7 @@
 
     const formData = new FormData();
 
-    const files = /** @type {HTMLInputElement | null} */ (document.querySelector('#photo')?.files);
+    const files = /** @type {HTMLInputElement | null} */ (document.querySelector('#photo'))?.files;
 
     if (files) {
       // 움짤(GIF)·WebP는 압축 없이 원본 전송 (프로필 움짤 지원)
@@ -178,7 +178,7 @@
 
         break;
       case 'fight':
-        if (/** @type {HTMLInputElement} */ (target.checked)) doValidate();
+        if (/** @type {HTMLInputElement} */ (target).checked) doValidate();
     }
   };
 
