@@ -60,7 +60,7 @@ describe('game ranking UI', () => {
     expect(sudokuPage).toContain('class:sudoku-cell-note-selected={noteMode');
     expect(sudokuPage).toContain('aria-pressed={noteMode}');
     expect(sudokuPage).toContain('.blur()');
-    expect(sudokuPage).toContain('disabled={!started || gameWon}');
+    expect(sudokuPage).toContain('disabled={!started || gameWon || gameLost}');
   });
 
   it('keeps sudoku timer stopped until the start button is pressed', () => {
@@ -74,11 +74,11 @@ describe('game ranking UI', () => {
     expect(sudokuPage).toContain('onclick={() => changeDifficulty(key)}');
     expect(sudokuPage).toContain('started = false;');
     expect(sudokuPage).toContain('function startGame()');
-    expect(sudokuPage).toContain('canResume = Boolean(saved.started) && !gameWon;');
+    expect(sudokuPage).toContain('canResume = Boolean(saved.started) && !gameWon && !gameLost;');
     expect(sudokuPage).toContain("{canResume ? '게임재개' : '시작'}");
     expect(sudokuPage).toContain('게임재개를 누르면 시간이 다시 흐릅니다.');
     expect(sudokuPage).toContain('sudoku-start-layer');
-    expect(sudokuPage).toContain('class:sudoku-board-paused={!started && !gameWon}');
+    expect(sudokuPage).toContain('class:sudoku-board-paused={(!started && !gameWon) || gameLost}');
     expect(sudokuPage).not.toContain('if (started && !gameWon) startTimer();');
   });
 

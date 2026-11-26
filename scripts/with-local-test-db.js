@@ -9,6 +9,9 @@ const FARM_COMPOSE_FILE =
   process.env.LOCAL_TEST_FARM_COMPOSE_FILE ||
   fileURLToPath(new URL('../conf/docker-compose.yml', import.meta.url));
 const DATABASE_URL_KEY = 'DATABASE' + '_URL';
+// Auth.js throws MissingSecret without one; production values come from Infisical, not .env.
+const AUTH_SECRET_KEYS = ['AUTH' + '_SECRET', 'NEXTAUTH' + '_SECRET'];
+const LOCAL_TEST_AUTH_PLACEHOLDER = 'local-test-only-placeholder';
 
 function parseEnvFile(path) {
   const env = {};
@@ -134,10 +137,17 @@ try {
   process.exit(1);
 }
 
+/** @type {Record<string, string>} */
+const authSecretDefaults = {};
+for (const key of AUTH_SECRET_KEYS) {
+  if (!process.env[key] && !fileEnv[key]) authSecretDefaults[key] = LOCAL_TEST_AUTH_PLACEHOLDER;
+}
+
 const child = spawn(command, args, {
   stdio: 'inherit',
   shell: process.platform === 'win32',
   env: {
+    ...authSecretDefaults,
     ...process.env,
     ...fileEnv,
     [DATABASE_URL_KEY]: useFarmPostgres(databaseUrl)

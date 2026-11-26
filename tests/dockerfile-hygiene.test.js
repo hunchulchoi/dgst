@@ -10,7 +10,9 @@ const registerPage = readFileSync('src/routes/auth/register/+page.svelte', 'utf8
 
 describe('production container hygiene', () => {
   it('uses reproducible installs and a slim runtime image', () => {
-    expect(dockerfile).toContain('FROM node:22-trixie-slim AS production');
+    // Node is pinned to an exact patched release; the runtime stage must stay on the slim variant.
+    expect(dockerfile).toMatch(/^FROM node:22\.\d+\.\d+-trixie AS build$/m);
+    expect(dockerfile).toMatch(/^FROM node:22\.\d+\.\d+-trixie-slim AS production$/m);
     expect(dockerfile).toContain('RUN npm ci');
     expect(dockerfile).not.toContain('RUN npm install');
   });
@@ -55,7 +57,14 @@ describe('production container hygiene', () => {
   });
 
   it('fetches runtime secrets from Infisical with universal auth', () => {
-    expect(dockerfile).toContain("apt-get install -y --no-install-recommends infisical");
+    // The Infisical CLI .deb is pinned by version and checksum instead of an apt repository.
+    expect(dockerfile).toMatch(
+      /ADD --checksum=sha256:[0-9a-f]{64} \\\n\s+https:\/\/github\.com\/Infisical\/cli\/releases\/download\/v[\d.]+\/infisical_[\d.]+_linux_amd64\.deb/
+    );
+    expect(dockerfile).toContain(
+      'apt-get install -y --no-install-recommends ca-certificates /tmp/infisical.deb'
+    );
+    expect(dockerfile).toContain('rm -f /tmp/infisical.deb');
     expect(dockerfile).toContain('ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]');
     expect(dockerfile).toContain('CMD ["node", "."]');
     expect(dockerEntrypoint).toContain('infisical login');

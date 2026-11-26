@@ -62,7 +62,7 @@ describe('write page video upload', () => {
     expect(lexicalEditor).toContain('lastFfmpegLoadDetails');
     expect(lexicalEditor).toContain('getClientCapabilityDetails');
     expect(lexicalEditor).toContain(
-      "FFMPEG_CORE_BASE_URL = 'https://unpkg.com/@ffmpeg/core@0.12.9/dist/umd'"
+      "FFMPEG_CORE_BASE_URL = 'https://unpkg.com/@ffmpeg/core@0.12.9/dist/esm'"
     );
     expect(lexicalEditor).toContain('loadFfmpegCoreBlobUrl');
     expect(lexicalEditor).toContain("loadDetails.phase = 'downloading-core-assets'");
@@ -81,7 +81,7 @@ describe('write page video upload', () => {
   it('sends client log detail payloads to the server', () => {
     const reportClientPageError = readFileSync('src/lib/util/reportClientPageError.js', 'utf8');
     expect(reportClientPageError).toContain('@property {Record<string, unknown>} [details]');
-    expect(reportClientPageError).toContain('...(details && { details })');
+    expect(reportClientPageError).toContain('...(reportDetails && { details: reportDetails })');
     expect(apiLogRoute).toContain('_sanitizeClientLogDetails');
     expect(apiLogRoute).toContain('details: _sanitizeClientLogDetails(logData.details)');
   });
@@ -249,7 +249,9 @@ describe('write page video upload', () => {
   });
 
   it('sets adapter-node BODY_SIZE_LIMIT to the upload source limit in production', () => {
-    expect(uploadLimits).toContain('BOARD_UPLOAD_BODY_SIZE_LIMIT = `${BOARD_UPLOAD_SOURCE_MAX_MB}M`');
+    expect(uploadLimits).toContain(
+      'BOARD_UPLOAD_BODY_SIZE_LIMIT = `${BOARD_UPLOAD_SOURCE_MAX_MB}M`'
+    );
     expect(dockerfile).toContain('ENV BODY_SIZE_LIMIT=300M');
     expect(dockerfile).toContain('ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]');
     expect(dockerfile).toContain('CMD ["node", "."]');

@@ -271,7 +271,13 @@ describe('reportClientError', () => {
     globalThis.fetch = /** @type {typeof fetch} */ (
       /** @type {unknown} */ (
         vi.fn((url, init) => {
-          if (url === chunkUrl) return Promise.resolve({ status: 404, statusText: 'Not Found' });
+          if (url === chunkUrl) {
+            return Promise.resolve({
+              status: 404,
+              statusText: 'Not Found',
+              headers: new Headers({ 'cf-ray': '8f00example-ICN', 'cf-cache-status': 'MISS' })
+            });
+          }
           if (url === '/api/log') {
             logBodies.push(JSON.parse(String(init?.body ?? '{}')));
             return { catch: vi.fn() };
@@ -299,7 +305,9 @@ describe('reportClientError', () => {
             type: 'module-chunk-probe',
             chunkUrl,
             chunkHttpStatus: 404,
-            chunkHttpStatusText: 'Not Found'
+            chunkHttpStatusText: 'Not Found',
+            chunkCfRay: '8f00example-ICN',
+            chunkCfCacheStatus: 'MISS'
           })
         ])
       );

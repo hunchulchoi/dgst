@@ -30,24 +30,17 @@ describe('seotda betting UI', () => {
   it('carries the previous winner into the next round as the opening actor', () => {
     expect(serverSource).toContain("const openingActorId = round?.winnerId ?? 'user'");
     expect(serverSource).toMatch(
-      /createNewRound\(\s*balance,\s*Math\.random,\s*npcChips,\s*openingActorId,\s*sparkTauntCooldown,\s*sparkDecision,/s
+      /createNewRound\(\s*balance,\s*Math\.random,\s*npcChips,\s*openingActorId,\s*sparkTauntCooldown,\s*null,/s
     );
   });
 
-  it('asks Codex app-server asynchronously to decide Spark intervention without a random chance', () => {
-    expect(serverSource).toContain('const pending = decideSparkIntervention(context)');
-    expect(serverSource).toContain('refreshSparkDecisionInBackground(email, sparkContext)');
-    expect(serverSource).not.toContain('await sparkPending');
-    expect(serverSource).toContain('sparkInterventionHands');
-    expect(serverSource).toContain('getSeotdaSparkHistory');
-    expect(serverSource).toContain('sparkDecision');
-  });
-
-  it('forces an asynchronous Spark request after a one-billion-point raise', () => {
-    expect(serverSource).toContain('shouldForceSparkForRaise(move, appliedRaisePay)');
-    expect(serverSource).toContain("trigger: 'user-high-raise'");
-    expect(serverSource).toContain('highRaisePay: appliedRaisePay');
-    expect(serverSource).toContain('Spark: 10억 이상 레이스 판단 요청');
+  it('keeps Spark AI intervention disabled so NPCs use the rule-based engine', () => {
+    // Spark app-server calls were turned off in 8a7a3ec; round spark fields stay inert.
+    expect(serverSource).not.toContain('seotdaSparkAppServer');
+    expect(serverSource).not.toContain('decideSparkIntervention');
+    expect(serverSource).not.toContain('runNpcTurnsWithSpark');
+    expect(serverSource).not.toContain('shouldForceSparkForRaise');
+    expect(serverSource).toContain('Spark AI 개입 호출은 비활성화');
   });
 
   it('covers current-hand Spark inference with a deal animation', () => {
