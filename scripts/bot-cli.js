@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * 봇 로컬 전용 CLI — Claude Opus로 뻘글/뉴스/화제 글을 써서 게시판에 올린다.
+ * 봇 로컬 전용 CLI — LLM(페르소나별: Claude Opus 또는 Gemini)으로 뻘글/뉴스/화제 글을 써서 게시판에 올린다.
  * BOT_PERSONA 로 봇을 고른다 (scripts/bot-personas.js: jangsiho=장시호봇🤖 기본, wolya=월야봇🤖).
  *
  * 로컬 DB(localhost)에만 붙는다. 웹 엔드포인트는 없다.
@@ -13,7 +13,8 @@
  *       봇 글/댓글에 달린 새 댓글엔 필요하면 답글, 페르소나별 간격으로 다른 회원 글에 댓글.
  *       크론에서 10분마다 부르면 된다 (scripts/bot-cron.sh).
  *
- * 필요한 env: DATABASE_URL, CLAUDE_API_KEY (또는 ANTHROPIC_API_KEY)
+ * 필요한 env: DATABASE_URL, CLAUDE_API_KEY (또는 ANTHROPIC_API_KEY) / provider가 gemini인 페르소나는 GEMINI_API_KEY
+ * (모델은 GEMINI_MODEL 로 바꿀 수 있다, 기본 gemini-flash-latest)
  * DB가 localhost가 아닌 로컬 IP에 바인딩돼 있으면 BOT_DB_HOST 로 호스트만 바꾼다.
  */
 import crypto from 'crypto';
@@ -35,6 +36,7 @@ import { getPersona } from './bot-personas.js';
 const { PrismaClient } = prismaPkg;
 
 const MODEL = 'claude-opus-5-5';
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-flash-latest';
 let PERSONA;
 try {
   PERSONA = getPersona(process.env.BOT_PERSONA);
@@ -284,28 +286,21 @@ function buildUserPrompt(type, material, recentTitles, topic, members = []) {
 }
 
 async function generatePost(client, type, material, recentTitles, topic, members) {
-  const response = await client.messages.create({
-    model: MODEL,
-    max_tokens: 4000,
+  const response = await client.generate({
+    maxTokens: 4000,
     system: SYSTEM_PROMPT,
-    output_config: {
-      effort: 'low',
-      format: { type: 'json_schema', schema: OUTPUT_SCHEMA }
-    },
-    messages: [
-      { role: 'user', content: buildUserPrompt(type, material, recentTitles, topic, members) }
-    ]
+    schema: OUTPUT_SCHEMA,
+    text: buildUserPrompt(type, material, recentTitles, topic, members)
   });
 
-  if (response.stop_reason === 'refusal') {
-    throw new Error(`model refused: ${response.stop_details?.category ?? 'unknown'}`);
+  if (response.stop === 'refusal') {
+    throw new Error(`model refused: ${response.refusalReason ?? 'unknown'}`);
   }
-  if (response.stop_reason === 'max_tokens') {
+  if (response.stop === 'max_tokens') {
     throw new Error('model output truncated (max_tokens)');
   }
-  const text = response.content.find((b) => b.type === 'text')?.text;
-  if (!text) throw new Error('no text in model response');
-  const parsed = JSON.parse(text);
+  if (!response.text) throw new Error('no text in model response');
+  const parsed = JSON.parse(response.text);
   return { ...parsed, usage: response.usage };
 }
 
@@ -447,13 +442,30 @@ function rulesBlock(rules, nicknames) {
 /** 프롬프트에 넣을 기억 블록 (등장한 닉네임만) */
 function memoryBlock(memories, nicknames) {
   const names = new Set(nicknames.filter(Boolean));
-  const rel = memories.filter((m) => names.has(m.nickname));
+  const rel = memories.filter((m) => names.has(m.nickname) && !isSensitiveFact(m.fact));
   if (!rel.length) return '<기억>\n(없음)\n</기억>';
   return `<기억>\n${rel.map((m) => `- [${m.id}] ${m.nickname}: ${m.fact}`).join('\n')}\n</기억>`;
 }
 
 /**
- * 모델이 준 remember 항목 반영. 등장한 닉네임만 허용.
+ * 모델이 프롬프트 규칙을 어겨도 민감한 기억은 저장·사용하지 않는다 (안전망).
+ * 건강·시술·몸, 직업·직장, 돈·재산, 연애·가족, 심리, 사는 곳·연락처, 정치·종교, 사건·법.
+ */
+const SENSITIVE_MEMORY_RE = new RegExp(
+  [
+    '병원|진료|수술|시술|입원|퇴원|통원|처방|약 ?먹|복용|질환|질병|진단|암 |암$|당뇨|혈압|디스크|임신|출산|생리|헌혈|보톡스|필러|미백|성형|다이어트|체중|몸무게|키 ?\\d|탈모|우울|공황|불면|상담|정신과|치료',
+    '직장|회사|근무|출근|퇴근|야근|직업|직급|연봉|월급|알바|사업|공무원|운행|학교|대학|전공',
+    '재산|빚|대출|부채|파산|투자금|수익률|손실|주식 ?보유|비트코인|코인 ?투자|집값|전세|월세',
+    '여친|남친|여자친구|남자친구|연애|결혼|이혼|별거|소개팅|썸 ?타|썸녀|썸남|아내|남편|와이프|부인|자녀|아들|딸이|딸내미|딸래미|부모|아버지|어머니|엄마|아빠|장인어른|장모|시댁|처가',
+    '사는 곳|거주|이사 ?[갔가했]|동네|주소|사는 ?동|아파트|전화번호|폰번호|카톡 ?아이디|이메일|실명|나이가|나이는|\\d+ ?살|\\d+ ?세(?!대)|생일|생년',
+    '정치|진보|보수|민주당|국민의힘|투표|지지하|지지자|종교|교회|성당|절에|기독|불교|천주교|이슬람',
+    '교통사고|사고 ?[나났당]|경찰|소송|고소|재판|벌금|범죄|체포'
+  ].join('|')
+);
+const isSensitiveFact = (fact) => SENSITIVE_MEMORY_RE.test(String(fact ?? ''));
+
+/**
+ * 모델이 준 remember 항목 반영. 등장한 닉네임만 허용, 민감한 건 버린다.
  * @returns {boolean} 변경 여부
  */
 function applyRemember(memories, items, allowedNicknames, source) {
@@ -466,6 +478,10 @@ function applyRemember(memories, items, allowedNicknames, source) {
       .trim()
       .slice(0, 80);
     if (!allowed.has(nickname) || !fact) continue;
+    if (isSensitiveFact(fact)) {
+      log('remember skip (sensitive)', { nickname, fact });
+      continue;
+    }
     const existing =
       it.replace_id && memories.find((m) => m.id === it.replace_id && m.nickname === nickname);
     if (existing) {
@@ -513,10 +529,134 @@ function cmdMemory(args) {
 
 // ---------- comments ----------
 
+class GeminiAPIError extends Error {
+  /** @param {number} status @param {string} message */
+  constructor(status, message) {
+    super(message);
+    this.status = status;
+  }
+}
+
+const isApiError = (err) => err instanceof Anthropic.APIError || err instanceof GeminiAPIError;
+
+/**
+ * 페르소나 provider에 맞는 LLM 클라이언트.
+ * generate({ system, schema, text, images, maxTokens }) →
+ *   { stop: 'end'|'refusal'|'max_tokens', refusalReason?, text, usage: { input_tokens, output_tokens } }
+ */
 function getClient() {
+  return PERSONA.provider === 'gemini' ? getGeminiClient() : getClaudeClient();
+}
+
+function getClaudeClient() {
   const apiKey = process.env.CLAUDE_API_KEY || process.env.ANTHROPIC_API_KEY;
   if (!apiKey) fail('CLAUDE_API_KEY 가 없습니다.');
-  return new Anthropic({ apiKey });
+  const client = new Anthropic({ apiKey });
+  return {
+    async generate({ system, schema, text, images = [], maxTokens }) {
+      const response = await client.messages.create({
+        model: MODEL,
+        max_tokens: maxTokens,
+        system,
+        output_config: { effort: 'low', format: { type: 'json_schema', schema } },
+        messages: [
+          {
+            role: 'user',
+            content: [
+              ...images.flatMap((im, i) => [
+                { type: 'text', text: `첨부 이미지 ${i + 1}: ${im.label}` },
+                {
+                  type: 'image',
+                  source: { type: 'base64', media_type: 'image/jpeg', data: im.data }
+                }
+              ]),
+              { type: 'text', text }
+            ]
+          }
+        ]
+      });
+      return {
+        stop:
+          response.stop_reason === 'refusal'
+            ? 'refusal'
+            : response.stop_reason === 'max_tokens'
+              ? 'max_tokens'
+              : 'end',
+        refusalReason: response.stop_details?.category,
+        text: response.content.find((b) => b.type === 'text')?.text,
+        usage: response.usage
+      };
+    }
+  };
+}
+
+const GEMINI_BLOCK_REASONS = new Set([
+  'SAFETY',
+  'RECITATION',
+  'BLOCKLIST',
+  'PROHIBITED_CONTENT',
+  'SPII',
+  'IMAGE_SAFETY',
+  'LANGUAGE',
+  'OTHER'
+]);
+
+function getGeminiClient() {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) fail('GEMINI_API_KEY 가 없습니다.');
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(GEMINI_MODEL)}:generateContent`;
+  return {
+    async generate({ system, schema, text, images = [], maxTokens }) {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-goog-api-key': apiKey },
+        signal: AbortSignal.timeout(120_000),
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: system }] },
+          contents: [
+            {
+              role: 'user',
+              parts: [
+                ...images.flatMap((im, i) => [
+                  { text: `첨부 이미지 ${i + 1}: ${im.label}` },
+                  { inlineData: { mimeType: 'image/jpeg', data: im.data } }
+                ]),
+                { text }
+              ]
+            }
+          ],
+          generationConfig: {
+            responseMimeType: 'application/json',
+            responseJsonSchema: schema,
+            // 생각 토큰도 출력 한도를 먹으므로 Claude보다 넉넉히
+            maxOutputTokens: maxTokens * 4,
+            thinkingConfig: { thinkingLevel: 'low' }
+          }
+        })
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new GeminiAPIError(res.status, body?.error?.message || `HTTP ${res.status}`);
+      }
+      const blockReason = body.promptFeedback?.blockReason;
+      const cand = body.candidates?.[0];
+      const finish = cand?.finishReason;
+      const usage = {
+        input_tokens: body.usageMetadata?.promptTokenCount,
+        output_tokens:
+          (body.usageMetadata?.candidatesTokenCount ?? 0) +
+          (body.usageMetadata?.thoughtsTokenCount ?? 0)
+      };
+      if (blockReason || GEMINI_BLOCK_REASONS.has(finish)) {
+        return { stop: 'refusal', refusalReason: blockReason || finish, text: undefined, usage };
+      }
+      const out = (cand?.content?.parts ?? [])
+        .filter((p) => !p.thought && typeof p.text === 'string')
+        .map((p) => p.text)
+        .join('');
+      return { stop: finish === 'MAX_TOKENS' ? 'max_tokens' : 'end', text: out, usage };
+    }
+  };
 }
 
 function loadState() {
@@ -579,8 +719,13 @@ ${PERSONA.repeatRule ?? '- 같은 말을 되풀이하지 않는다. <최근에 �
 - <운영자 말투 규칙>은 회원이 아니라 운영자가 정한 것이다. 그 회원에게 댓글을 달 때는 기본 말투보다 이 규칙을 우선한다.
 기억:
 - <기억>에는 예전에 회원에 대해 기억해 둔 것이 있다. 자연스럽게 이어질 때만 가끔 쓰고, 매번 아는 척하지 않는다.
-- remember에는 그 회원과 다음에 얘기할 때 쓸 만한 취향·관심사·자주 하는 드립·근황만 짧게 적는다. 대부분은 빈 배열이 맞다.
-- 실명, 나이, 사는 곳, 직장·학교, 건강, 가족 문제, 연락처, 정치·종교 성향 같은 개인정보는 절대 기억하지 않는다.
+- 기억은 드립 소재로 쓰면 좋다. 단골 손님 알아보는 동네 친구처럼 가볍게 툭 던지고(예: 장비 또 샀냐는 놀림, 늘 하던 드립 받아치기), 정색하거나 "기억하고 있습니다" 식으로 티 내지 않는다. 놀려도 그 회원이 같이 웃을 정도까지만.
+- 회원마다 특성을 잘 관찰한다: 취미·덕질, 좋아하고 싫어하는 것(음식·음악·게임·장비 등), 자주 쓰는 글 종류, 말투·말버릇, 즐겨 하는 드립, 성격·분위기(진지함, 장난기, 츤데레 등), 다른 회원과의 단골 티키타카.
+- remember에는 그런 특성 중 그 회원과 다음에 가볍게 얘기할 때 쓸 만한 것만 짧게 적는다. 한 번 지나가는 말보다 그 사람다운 것, 나중에 드립 치기 좋은 것(못 끊는 지름신, 맨날 하는 투정, 웃긴 집착)이 좋다. 새로 알게 된 특성이 없으면 빈 배열.
+- 민감한 건 절대 기억하지 않는다. 본인이 직접 쓴 내용이라도 마찬가지다:
+  실명·나이·생일·연락처·사는 곳·동선·일정, 직장·직업·학교·근무 내용, 건강·병원·약·시술·몸무게·외모·몸매, 돈·월급·재산·빚·투자 금액, 연애·결혼·이혼·성생활, 가족·지인 사정, 우울·고민·심리 상태, 사건사고·법적 문제, 정치·종교 성향, 남이 대신 말해준 그 회원 얘기.
+- 헷갈리면 "봇이 다른 회원들 앞에서 이걸 꺼내면 이 회원이 민망하거나 불편할까?"를 생각하고, 조금이라도 그렇다면 적지 않는다.
+- 이 민감 목록은 remember에 적는 것만 막는다. 댓글은 지금 글 내용에 맞춰 평소처럼 재밌게 단다. 몸 사리느라 밋밋해지지 않게 한다.
 - 이미 기억한 것과 같으면 적지 않는다. 바뀐 내용이면 replace_id에 기존 id를 넣는다.`;
 
 const COMMENT_SCHEMA = {
@@ -591,7 +736,8 @@ const COMMENT_SCHEMA = {
     comment: { type: 'string', description: '댓글 내용 (skip이면 빈 문자열)' },
     remember: {
       type: 'array',
-      description: '나중에 이 회원과 얘기할 때 기억해 둘 만한 것 (없으면 빈 배열, 최대 2개)',
+      description:
+        '나중에 이 회원과 얘기할 때 기억해 둘 만한 그 사람다운 특성 (민감한 개인정보 제외, 없으면 빈 배열, 최대 2개)',
       items: {
         type: 'object',
         properties: {
@@ -654,30 +800,18 @@ async function loadPromptImages(items) {
 }
 
 async function generateComment(client, prompt, images = []) {
-  const response = await client.messages.create({
-    model: MODEL,
-    max_tokens: 2000,
+  const response = await client.generate({
+    maxTokens: 2000,
     system: COMMENT_SYSTEM_PROMPT,
-    output_config: { effort: 'low', format: { type: 'json_schema', schema: COMMENT_SCHEMA } },
-    messages: [
-      {
-        role: 'user',
-        content: [
-          ...images.flatMap((im, i) => [
-            { type: 'text', text: `첨부 이미지 ${i + 1}: ${im.label}` },
-            { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: im.data } }
-          ]),
-          { type: 'text', text: prompt }
-        ]
-      }
-    ]
+    schema: COMMENT_SCHEMA,
+    images,
+    text: prompt
   });
-  if (response.stop_reason === 'refusal')
+  if (response.stop === 'refusal')
     return { skip: true, like: false, comment: '', reason: 'refusal' };
-  if (response.stop_reason === 'max_tokens') throw new Error('comment truncated (max_tokens)');
-  const text = response.content.find((b) => b.type === 'text')?.text;
-  if (!text) throw new Error('no text in model response');
-  const parsed = JSON.parse(text);
+  if (response.stop === 'max_tokens') throw new Error('comment truncated (max_tokens)');
+  if (!response.text) throw new Error('no text in model response');
+  const parsed = JSON.parse(response.text);
   const comment = String(parsed.comment ?? '')
     .replaceAll(BOT_NICKNAME, '')
     .trim()
@@ -1383,7 +1517,7 @@ async function cmdTick(prisma, bot, { dryRun }) {
     } catch (err) {
       process.exitCode = 1;
       log(`${name} tick failed`, {
-        status: err instanceof Anthropic.APIError ? err.status : undefined,
+        status: isApiError(err) ? err.status : undefined,
         message: err instanceof Error ? err.message : String(err)
       });
     }
@@ -1451,8 +1585,10 @@ async function main() {
     if (command === 'reply') await doReplies(prisma, bot, { dryRun });
     if (command === 'tick') await cmdTick(prisma, bot, { dryRun });
   } catch (err) {
-    if (err instanceof Anthropic.APIError) {
-      log(`Claude API error ${err.status}`, { message: err.message });
+    if (isApiError(err)) {
+      log(`${PERSONA.provider === 'gemini' ? 'Gemini' : 'Claude'} API error ${err.status}`, {
+        message: err.message
+      });
     } else {
       log('error', { message: err instanceof Error ? err.message : String(err) });
     }

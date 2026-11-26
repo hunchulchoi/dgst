@@ -8,7 +8,7 @@
 # - 봇들은 기억 리포(git)를 같이 쓰므로 잠금 하나를 공유한다. 앞 봇이 돌고 있으면 최대 5분 기다린다.
 #
 # - .env 의 Infisical 머신 자격증명으로 로그인해 prod 시크릿을 주입한다.
-# - CLAUDE_API_KEY 가 prod 에 없으면 dev 에서 가져온다.
+# - CLAUDE_API_KEY / GEMINI_API_KEY 가 prod 에 없으면 dev 에서 가져온다.
 # - DB는 docker 로 매핑된 dgst_postgres 포트 주소(이 머신)로 붙는다.
 set -euo pipefail
 
@@ -36,6 +36,10 @@ inf() { infisical "$@" --token="$INFISICAL_TOKEN" --projectId="$PROJECT_ID" --do
 if [ -z "$(inf secrets get CLAUDE_API_KEY --env="$SECRET_ENV" --plain 2>/dev/null || true)" ]; then
   CLAUDE_API_KEY="$(inf secrets get CLAUDE_API_KEY --env=dev --plain)"
   export CLAUDE_API_KEY
+fi
+if [ -z "$(inf secrets get GEMINI_API_KEY --env="$SECRET_ENV" --plain 2>/dev/null || true)" ]; then
+  GEMINI_API_KEY="$(inf secrets get GEMINI_API_KEY --env=dev --plain 2>/dev/null || true)"
+  export GEMINI_API_KEY
 fi
 
 # 예: 100.74.208.69:5432 → 100.74.208.69

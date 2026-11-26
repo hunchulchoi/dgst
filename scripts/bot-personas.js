@@ -68,6 +68,8 @@ const wolya = {
   key: 'wolya',
   nickname: '월야봇🤖',
   gitName: '월야봇',
+  /** 월야봇은 Gemini API(GEMINI_API_KEY)로 글·댓글을 만든다. 없으면 Claude. */
+  provider: 'gemini',
   postsPerDay: 2,
   commentGapMin: 60,
   commentGapMax: 120,
