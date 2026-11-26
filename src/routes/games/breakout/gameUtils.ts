@@ -21,14 +21,7 @@ export const INITIAL_LIVES = 3;
 export const MAX_LIVES = 5;
 
 export type BreakoutScreen =
-  | 'menu'
-  | 'playing'
-  | 'paused'
-  | 'stageClear'
-  | 'gameOver'
-  | 'gameWin'
-  | 'ready'
-  | 'bonusIntro';
+  'menu' | 'playing' | 'paused' | 'stageClear' | 'gameOver' | 'gameWin' | 'ready' | 'bonusIntro';
 
 export interface LifeLossResult {
   lives: number;
@@ -300,14 +293,7 @@ const BONUS_LABELS: Record<number, string> = {
 };
 
 export type BonusChallengeType =
-  | 'billiard'
-  | 'stars'
-  | 'gems'
-  | 'golden'
-  | 'vault'
-  | 'spin'
-  | 'movers'
-  | 'flies';
+  'billiard' | 'stars' | 'gems' | 'golden' | 'vault' | 'spin' | 'movers' | 'flies';
 
 const BONUS_CHALLENGE_BY_STAGE: Record<number, BonusChallengeType> = {
   5: 'billiard',

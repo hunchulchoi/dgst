@@ -130,6 +130,7 @@
     onloadedmetadata={handleVideoMetadata}
   ></video>
 {:else if pdf || isPdfAttachment(src)}
+  <!-- eslint-disable svelte/no-navigation-without-resolve -- file download URL, not an app route -->
   <a
     class="attachment-pdf"
     href={src}
@@ -146,6 +147,7 @@
     </span>
     <span class="attachment-pdf__action">PDF 다운로드</span>
   </a>
+  <!-- eslint-enable svelte/no-navigation-without-resolve -->
 {:else}
   <img {src} {alt} style={imageStyle} onload={handleImageLoad} />
 {/if}

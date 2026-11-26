@@ -17,6 +17,7 @@ export default defineConfig(
       'playwright-report/**',
       'test-results/**',
       'output/**',
+      '.immutable-history/**',
       '.env',
       '.env.*',
       'pnpm-lock.yaml',

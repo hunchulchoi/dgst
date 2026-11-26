@@ -94,8 +94,6 @@
         ><Icon name="arrow-repeat" class="pe-1" /> 새로고침</Button
       >
     {/if}
-    <Button onclick={goHome} class="me-2"
-      ><Icon name="house" class="pe-1" /> Home</Button
-    >
+    <Button onclick={goHome} class="me-2"><Icon name="house" class="pe-1" /> Home</Button>
   </CardFooter>
 </Card>

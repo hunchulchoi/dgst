@@ -197,11 +197,7 @@
                 {/if}
                 {#if seat.tell}
                   <span class:strong={seat.tell.signal === 'strong'} title={seat.tell.text}>
-                    {seat.tell.signal === 'strong'
-                      ? '👁'
-                      : seat.tell.signal === 'weak'
-                        ? '💧'
-                        : '◆'}
+                    {seat.tell.signal === 'strong' ? '👁' : seat.tell.signal === 'weak' ? '💧' : '◆'}
                     {seat.tell.label}
                   </span>
                 {/if}

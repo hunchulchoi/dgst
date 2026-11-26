@@ -8,7 +8,7 @@ const alertRules = readFileSync('monitoring/grafana/provisioning/alerting/rules.
 describe('HTTP slow response thresholds', () => {
   it('logs page 4xx responses as warnings and keeps 5xx responses as errors', () => {
     expect(hooks).toContain(
-      "const log = status >= 500 ? logger.error.bind(logger) : logger.warn.bind(logger);"
+      'const log = status >= 500 ? logger.error.bind(logger) : logger.warn.bind(logger);'
     );
   });
 

@@ -146,14 +146,7 @@
   let { data }: BreakoutPageProps = $props();
 
   type Screen =
-    | 'menu'
-    | 'playing'
-    | 'paused'
-    | 'stageClear'
-    | 'gameOver'
-    | 'gameWin'
-    | 'ready'
-    | 'bonusIntro';
+    'menu' | 'playing' | 'paused' | 'stageClear' | 'gameOver' | 'gameWin' | 'ready' | 'bonusIntro';
 
   let screen = $state<Screen>('menu');
   let canvasEl = $state<HTMLCanvasElement | null>(null);

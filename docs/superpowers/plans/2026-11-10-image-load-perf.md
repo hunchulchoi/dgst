@@ -11,18 +11,21 @@
 ### Task 1: Article first-2 priority
 
 **Files:**
+
 - Modify: `src/routes/board/.../[articleId]/+page.svelte`
 - Test: `tests/comment-avatar-thumbnail.test.js` (source asserts)
 
 ### Task 2: Board list top avatars eager
 
 **Files:**
+
 - Modify: `src/lib/components/board_list.svelte`
 - Test: `tests/comment-avatar-thumbnail.test.js`
 
 ### Task 3: MinIO thumbnail cache
 
 **Files:**
+
 - Modify: `src/routes/images/[...filepath]/+server.js`
 - Modify: `src/lib/server/minioStorage.js` only if helpers needed
 - Test: `tests/images-minio-route.test.js`

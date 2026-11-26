@@ -771,9 +771,7 @@ describe('seotdaRound smoke', () => {
     // 기존 로직은 이 RNG에서 생존자에게 8광을 다시 배정했다.
     showdown(round, () => 0.2);
 
-    const activeCards = round.seats
-      .filter((seat) => !seat.folded)
-      .flatMap((seat) => seat.cards);
+    const activeCards = round.seats.filter((seat) => !seat.folded).flatMap((seat) => seat.cards);
     expect(activeCards).not.toContainEqual({ month: 8, gwang: true });
     expect(folded.cards).toContainEqual({ month: 8, gwang: true });
   });

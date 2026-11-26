@@ -7,8 +7,7 @@ export const BILLIARDS_MODES = {
 
 export type BilliardsMode = (typeof BILLIARDS_MODES)[keyof typeof BILLIARDS_MODES];
 export type ActiveBilliardsMode =
-  | typeof BILLIARDS_MODES.FOUR_BALL
-  | typeof BILLIARDS_MODES.POCKET_BALL;
+  typeof BILLIARDS_MODES.FOUR_BALL | typeof BILLIARDS_MODES.POCKET_BALL;
 export type BilliardsRankingMode = ActiveBilliardsMode | typeof BILLIARDS_MODES.ART_PUZZLE;
 export type BallRole = 'cue' | 'red' | 'opponent';
 export type ShotSetupStep = 'angle' | 'spin' | 'power';

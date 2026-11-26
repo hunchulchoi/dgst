@@ -52,14 +52,7 @@
   let { data }: TetrisPageProps = $props();
 
   type Screen =
-    | 'menu'
-    | 'playing'
-    | 'bonus'
-    | 'paused'
-    | 'stageClear'
-    | 'bonusClear'
-    | 'gameOver'
-    | 'gameWin';
+    'menu' | 'playing' | 'bonus' | 'paused' | 'stageClear' | 'bonusClear' | 'gameOver' | 'gameWin';
 
   let screen = $state<Screen>('menu');
   let board = $state<Board>(createEmptyBoard());

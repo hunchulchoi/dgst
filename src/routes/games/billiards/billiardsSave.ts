@@ -13,12 +13,7 @@ export const BILLIARDS_SAVE_VERSION = 3;
 export const BILLIARDS_SAVE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 
 export type BilliardsSaveStatus =
-  | 'aiming'
-  | 'charging'
-  | 'rolling'
-  | 'scored'
-  | 'miss'
-  | 'game-over';
+  'aiming' | 'charging' | 'rolling' | 'scored' | 'miss' | 'game-over';
 
 export type SavedBilliardsBall = {
   id: string;

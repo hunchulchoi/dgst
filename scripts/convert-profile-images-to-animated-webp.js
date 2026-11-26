@@ -30,12 +30,15 @@ const minio = new Client({
   secretKey: process.env.MINIO_SECRET_KEY,
   ...(process.env.MINIO_REGION ? { region: process.env.MINIO_REGION } : {})
 });
-const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }) });
+const prisma = new PrismaClient({
+  adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL })
+});
 
 /** @param {import('node:stream').Readable} stream */
 async function streamBuffer(stream) {
   const chunks = [];
-  for await (const chunk of stream) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+  for await (const chunk of stream)
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
   return Buffer.concat(chunks);
 }
 
@@ -71,7 +74,14 @@ for (const user of users) {
 
   try {
     if (!apply) {
-      console.log(JSON.stringify({ action: 'would-convert', userId: user.id, from: user.photo, to: destinationPhoto }));
+      console.log(
+        JSON.stringify({
+          action: 'would-convert',
+          userId: user.id,
+          from: user.photo,
+          to: destinationPhoto
+        })
+      );
       converted += 1;
       continue;
     }
@@ -92,15 +102,35 @@ for (const user of users) {
       'X-Amz-Meta-Uploader': 'profile-animation-migration',
       'X-Amz-Meta-Uploaded-At': new Date().toISOString()
     });
-    await prisma.user.updateMany({ where: { id: user.id, photo: user.photo }, data: { photo: destinationPhoto } });
+    await prisma.user.updateMany({
+      where: { id: user.id, photo: user.photo },
+      data: { photo: destinationPhoto }
+    });
     converted += 1;
-    console.log(JSON.stringify({ action: 'converted', userId: user.id, from: user.photo, to: destinationPhoto }));
+    console.log(
+      JSON.stringify({
+        action: 'converted',
+        userId: user.id,
+        from: user.photo,
+        to: destinationPhoto
+      })
+    );
   } catch (error) {
     failed += 1;
-    console.error(JSON.stringify({ action: 'failed', userId: user.id, photo: user.photo, error: String(error) }));
+    console.error(
+      JSON.stringify({ action: 'failed', userId: user.id, photo: user.photo, error: String(error) })
+    );
   }
 }
 
 await prisma.$disconnect();
-console.log(JSON.stringify({ status: failed ? 'completed-with-failures' : 'complete', apply, converted, skipped, failed }));
+console.log(
+  JSON.stringify({
+    status: failed ? 'completed-with-failures' : 'complete',
+    apply,
+    converted,
+    skipped,
+    failed
+  })
+);
 process.exitCode = failed ? 1 : 0;

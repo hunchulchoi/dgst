@@ -752,7 +752,7 @@ async function upsertAlarm(
 const normalizeComment = (text) =>
   stripHtml(text, 1000)
     .toLowerCase()
-    .replace(/[\s.,!?~…·'"()\[\]ㅋㅎㅠㅜ]+/g, '');
+    .replace(/[\s.,!?~…·'"()[\]ㅋㅎㅠㅜ]+/g, '');
 
 /** 최근 내 댓글 20개 중 사실상 같은 말(공백·문장부호·ㅋㅎ 빼고 같거나 한쪽이 다른 쪽을 품음)이 있으면 true */
 async function isRepeatComment(prisma, bot, content) {

@@ -289,7 +289,9 @@ describe('fileUpload image resizing', () => {
 
     await expect(write(audio, 'person@example.com', 'jjal')).rejects.toMatchObject({
       status: 413,
-      body: expect.objectContaining({ message: expect.stringContaining('압축 뒤 파일이 너무 큽니다') })
+      body: expect.objectContaining({
+        message: expect.stringContaining('압축 뒤 파일이 너무 큽니다')
+      })
     });
     expect(mocks.putUploadObject).not.toHaveBeenCalled();
   });
