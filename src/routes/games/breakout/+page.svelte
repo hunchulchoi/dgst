@@ -1878,7 +1878,9 @@
     };
   });
 
-  beforeNavigate(() => {
+  beforeNavigate(({ shallow, type }) => {
+    if (shallow && type === 'goto') return;
+
     submitScoreOnLeave();
   });
 

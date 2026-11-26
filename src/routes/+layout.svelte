@@ -141,7 +141,9 @@
     $boardListReloading || boardListToDetailBlur ? blurTransition : undefined
   );
 
-  beforeNavigate(({ from, to, type, willUnload, cancel }) => {
+  beforeNavigate(({ from, to, type, willUnload, cancel, shallow }) => {
+    if (shallow && type === 'goto') return;
+
     if (browser && updated.current && !willUnload && to?.url) {
       cancel();
       location.href = to.url.href;
@@ -322,11 +324,14 @@
     }
   }
 
-  afterNavigate(({ to }) => {
+  afterNavigate(({ to, shallow, type }) => {
+    if (shallow && type === 'goto') return;
+
     recordClientNavigationComplete({
       path: to?.url?.pathname,
       routeId: to?.route?.id ?? undefined
     });
+
     if (
       navigationFromPath &&
       to &&

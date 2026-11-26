@@ -298,7 +298,8 @@
   /** @type {{ focusEditor: () => void; getEditorHtml?: () => string; insertFiles?: (files: File[]) => Promise<void> } | null} */
   let lexicalEditorRef = $state(null);
 
-  beforeNavigate(() => {
+  beforeNavigate(({ shallow, type }) => {
+    if (shallow && type === 'goto') return;
     if (!formSubmitting) saveDraft();
   });
 
@@ -421,10 +422,10 @@
         if (
           diff > 5 ||
           /** @type {InputEvent} */ (
-            /** @type {unknown} */ (event).inputType === 'insertFromPaste'
+            /** @type {unknown} */ (event.inputType === 'insertFromPaste')
           ) ||
           /** @type {InputEvent} */ (
-            /** @type {unknown} */ (event).inputType === 'insertReplacementText'
+            /** @type {unknown} */ (event.inputType === 'insertReplacementText')
           )
         ) {
           insertUrlFromTitle = trimmed;
