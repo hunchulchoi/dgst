@@ -56,4 +56,24 @@ describe('secret scanner', () => {
 
     expect(findings).toEqual([]);
   });
+
+  test('allows env var declarations whose value is a config object', () => {
+    const findings = scanTextForSecrets(
+      'src/env.js',
+      [
+        'export const variables = defineEnvVars({',
+        '  GOOGLE_CLIENT_SECRET: { schema: (input) => input },',
+        '  MINIO_SECRET_KEY: { static: true }',
+        '});'
+      ].join('\n')
+    );
+
+    expect(findings).toEqual([]);
+  });
+
+  test('still flags a literal secret value next to config declarations', () => {
+    const findings = scanTextForSecrets('src/env.js', 'GOOGLE_CLIENT_SECRET: abcdef123456');
+
+    expect(findings).toEqual([expect.objectContaining({ rule: 'hardcoded-secret-env' })]);
+  });
 });
