@@ -2,7 +2,7 @@ import { error, json } from '@sveltejs/kit';
 import { getPrisma } from '$lib/database/prisma.js';
 import { verifyTurnstileToken } from '$lib/server/turnstile.js';
 import { write } from '$lib/util/fileUpload.js';
-import { isNicknameAllowed } from '$lib/util/nickname.js';
+import { isNicknameAllowed, NICKNAME_BOT_ONLY_MESSAGE } from '$lib/util/nickname.js';
 
 export async function PATCH({ request, locals }) {
   const session = await locals.auth();
@@ -36,7 +36,7 @@ export async function PATCH({ request, locals }) {
 
   const nicknameRaw = String(formData.get('nickname') ?? '');
   if (!isNicknameAllowed(nicknameRaw)) {
-    throw error(400, { message: '닉네임에 사용할 수 없는 문자가 포함되어 있습니다.' });
+    throw error(400, { message: NICKNAME_BOT_ONLY_MESSAGE });
   }
 
   /** @type {import('@prisma/client').Prisma.UserUpdateInput} */

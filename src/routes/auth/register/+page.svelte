@@ -25,7 +25,7 @@
   import { browser } from '$app/environment';
   import imageCompression from 'browser-image-compression';
   import { swalFire } from '$lib/util/swal.js';
-  import { isNicknameAllowed } from '$lib/util/nickname.js';
+  import { getNicknameError } from '$lib/util/nickname.js';
   import TurnstileWidget from '$lib/components/TurnstileWidget.svelte';
 
   const PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY = publicEnv.PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY ?? '';
@@ -160,7 +160,7 @@
   const changeHandler = async (target) => {
     switch (target.id) {
       case 'nickname':
-        invalids.nickname = !/^.{2,15}$/.test(target.value) || !isNicknameAllowed(target.value);
+        invalids.nickname = getNicknameError(target.value) !== null;
 
         if (!invalids.nickname) {
           fetch(`/auth/register/${target.value}`).then(async (res) => {
@@ -236,7 +236,7 @@
                 changeHandler(evt.currentTarget)}
               bind:value={nickname}
               bind:invalid={invalids.nickname}
-              feedback="2~15글자 사이 닉네임을 써주세요"
+              feedback={getNicknameError(nickname) ?? '2~15글자 사이 닉네임을 써주세요'}
               class="form-control needs-validation"
               autofocus
               maxlength="15"

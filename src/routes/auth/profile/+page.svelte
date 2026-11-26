@@ -29,7 +29,7 @@
   import { browser } from '$app/environment';
   import imageCompression from 'browser-image-compression';
   import { swalFire } from '$lib/util/swal.js';
-  import { isNicknameAllowed } from '$lib/util/nickname.js';
+  import { getNicknameError } from '$lib/util/nickname.js';
   import { getProfileSaveErrorMessage } from '$lib/util/profileSubmit.js';
   import { getProfileValidationMessage } from '$lib/util/profileValidation.js';
   import TurnstileWidget from '$lib/components/TurnstileWidget.svelte';
@@ -318,7 +318,7 @@
     switch (target.id) {
       case 'nickname':
         invalids.nicknameTaken = false;
-        invalids.nickname = !/^.{2,15}$/.test(target.value) || !isNicknameAllowed(target.value);
+        invalids.nickname = getNicknameError(target.value) !== null;
 
         if (!invalids.nickname) {
           return fetch(`/auth/register/${target.value}`).then(async (res) => {
@@ -390,7 +390,7 @@
                 changeHandler(evt.currentTarget)}
               bind:value={nickname}
               bind:invalid={invalids.nickname}
-              feedback="2~15글자 사이 닉네임을 써주세요"
+              feedback={getNicknameError(nickname) ?? '2~15글자 사이 닉네임을 써주세요'}
               class="form-control needs-validation"
               autofocus
               maxlength="15"

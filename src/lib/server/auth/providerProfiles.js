@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import { stripForbiddenNicknameChars } from '../../util/nickname.js';
 
 /** @param {string} value */
 const hash = (value) => crypto.createHash('sha512').update(value).digest('base64url');
@@ -10,7 +11,8 @@ export function mapGoogleAuthProfile(profile) {
   return {
     id: profile.sub,
     email: hash(profile.email),
-    nickname: profile.name ?? '',
+    // 첫 가입 닉네임은 소셜 이름을 쓰므로 봇 전용 이모지를 걸러낸다.
+    nickname: stripForbiddenNicknameChars(profile.name),
     introduction: '우리 자기',
     photo: null,
     state: 'registered',
@@ -35,7 +37,10 @@ export function mapKakaoAuthProfile(profile) {
   return {
     id: kakaoId,
     email: kakaoAccount.email ? hash(kakaoAccount.email) : hash(`kakao:${kakaoId}`),
-    nickname: kakaoAccount.profile?.nickname || kakaoAccount.name || `카카오${kakaoId.slice(-4)}`,
+    nickname:
+      stripForbiddenNicknameChars(kakaoAccount.profile?.nickname) ||
+      stripForbiddenNicknameChars(kakaoAccount.name) ||
+      `카카오${kakaoId.slice(-4)}`,
     introduction: '우리 자기',
     photo: null,
     state: 'registered',

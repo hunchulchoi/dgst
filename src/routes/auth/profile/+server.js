@@ -3,7 +3,7 @@ import { getPrisma } from '$lib/database/prisma.js';
 import { verifyTurnstileToken } from '$lib/server/turnstile.js';
 import { write } from '$lib/util/fileUpload.js';
 import { invalidateUser } from '$lib/server/auth/userCache.js';
-import { isNicknameAllowed } from '$lib/util/nickname.js';
+import { isNicknameAllowed, NICKNAME_BOT_ONLY_MESSAGE } from '$lib/util/nickname.js';
 import logger from '$lib/util/logger.js';
 import { serializeError } from '$lib/util/formatErrorTrace.js';
 
@@ -193,7 +193,7 @@ export async function PATCH(event) {
     const nicknameRaw = String(formData.get('nickname') || '');
     nicknameLength = nicknameRaw.length;
     if (!isNicknameAllowed(nicknameRaw)) {
-      throw error(400, { message: '닉네임에 사용할 수 없는 문자가 포함되어 있습니다.' });
+      throw error(400, { message: NICKNAME_BOT_ONLY_MESSAGE });
     }
 
     introductionLength = String(formData.get('introduction') || '').length;

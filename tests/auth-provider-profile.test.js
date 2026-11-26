@@ -84,4 +84,25 @@ describe('OAuth provider profile mapping', () => {
     expect(google?.options?.profile).toBe(mapGoogleAuthProfile);
     expect(kakao?.options?.profile).toBe(mapKakaoAuthProfile);
   });
+
+  it('strips the bot-only emoji from first-login social nicknames', () => {
+    expect(
+      mapGoogleAuthProfile({ sub: 'g-1', email: 'a@example.com', name: '🤖구글유저🤖' }).nickname
+    ).toBe('구글유저');
+    expect(
+      mapKakaoAuthProfile({
+        id: 987654321,
+        kakao_account: { email: 'k@example.com', profile: { nickname: '카톡🤖' } }
+      }).nickname
+    ).toBe('카톡');
+  });
+
+  it('falls back when a Kakao nickname is only the bot-only emoji', () => {
+    expect(
+      mapKakaoAuthProfile({
+        id: 987654321,
+        kakao_account: { email: 'k@example.com', profile: { nickname: '🤖' } }
+      }).nickname
+    ).toBe('카카오4321');
+  });
 });
