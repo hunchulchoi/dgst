@@ -1,7 +1,8 @@
 import { json } from '@sveltejs/kit';
 import { error } from '@sveltejs/kit';
 
-import { write } from '#lib/util/fileUpload.js';
+import { requireBoardUploadUser } from '#lib/server/boardUploadAuth.js';
+import { writeBoardUpload } from '#lib/server/boardUploadWrite.js';
 import logger from '#lib/util/logger.js';
 import { BOARD_UPLOAD_MAX_MB } from '#lib/util/uploadLimits.js';
 
@@ -19,28 +20,8 @@ function isBodySizeLimitError(err) {
   );
 }
 
-/** @param {FormDataEntryValue | null} value */
-function parseOptionalJsonField(value) {
-  if (typeof value !== 'string' || !value) return undefined;
-  try {
-    return JSON.parse(value);
-  } catch {
-    return { parseError: true, raw: value.slice(0, 500) };
-  }
-}
-
 export async function POST({ request, locals }) {
-  const session = await locals.auth();
-  const email = typeof session?.user?.email === 'string' ? session.user.email : '';
-
-  if (!session?.user?.nickname || !email) {
-    logger.warn({
-      message: 'Image upload failed - unauthorized',
-      pathname: request.url,
-      user: email || 'anonymous'
-    });
-    throw error(401, '로그인 해 주세요');
-  }
+  const email = await requireBoardUploadUser({ request, locals });
 
   /** @type {File | null} */
   let uploadFile = null;
@@ -51,75 +32,12 @@ export async function POST({ request, locals }) {
       throw error(400, '업로드할 파일이 없습니다.');
     }
     uploadFile = upload;
-    const serverCompressVideo = data.get('serverCompressVideo') === 'true';
-    const removeVideoAudio = data.get('removeVideoAudio') === 'true';
-    const extractVideoAudio = data.get('extractVideoAudio') === 'true';
-    const serverCompressVideoReason = String(data.get('serverCompressVideoReason') || '');
-    const serverCompressVideoClient = parseOptionalJsonField(data.get('serverCompressVideoClient'));
-    const serverCompressVideoWebCodecs = parseOptionalJsonField(
-      data.get('serverCompressVideoWebCodecs')
-    );
-    const serverCompressVideoContext = serverCompressVideo
-      ? {
-          reason: serverCompressVideoReason || 'unknown',
-          removeVideoAudio,
-          extractVideoAudio,
-          client: serverCompressVideoClient,
-          webCodecs: serverCompressVideoWebCodecs,
-          requestUserAgent: request.headers.get('user-agent'),
-          requestReferer: request.headers.get('referer'),
-          requestUrl: request.url
-        }
-      : undefined;
-
-    logger.info({
-      message: 'Image upload request',
-      fileName: uploadFile?.name,
-      fileSize: uploadFile?.size,
-      fileType: uploadFile?.type,
-      serverCompressVideo,
-      removeVideoAudio,
-      extractVideoAudio,
-      serverCompressVideoContext,
-      user: email
+    const responseBody = await writeBoardUpload({
+      file: uploadFile,
+      email,
+      getField: (name) => data.get(name),
+      request
     });
-
-    if (serverCompressVideo) {
-      logger.warn({
-        message: 'Server video compression upload requested',
-        fileName: uploadFile?.name,
-        fileSize: uploadFile?.size,
-        fileType: uploadFile?.type,
-        removeVideoAudio,
-        extractVideoAudio,
-        serverCompressVideoContext,
-        user: email
-      });
-    }
-
-    const res = await write(uploadFile, email, 'jjal', {
-      compressVideo: serverCompressVideo,
-      removeVideoAudio,
-      extractVideoAudio,
-      serverCompressVideoContext,
-      returnMetadata: true
-    });
-    const responseBody =
-      typeof res === 'string'
-        ? { url: res }
-        : {
-            url: res.url,
-            previewUrl: res.previewUrl,
-            pageCount: res.pageCount
-          };
-
-    logger.info({
-      message: 'Image upload success',
-      fileName: uploadFile?.name,
-      url: responseBody.url,
-      user: email
-    });
-
     return json(responseBody);
   } catch (err) {
     const errorMessage = getErrorMessage(err);

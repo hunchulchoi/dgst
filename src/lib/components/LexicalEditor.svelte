@@ -49,6 +49,8 @@
   import { reportClientError } from '#lib/util/reportClientPageError.js';
   import { createLexicalEditorFailureDetails } from '#lib/util/lexicalErrorDetails.js';
   import {
+    BOARD_UPLOAD_CHUNK_BYTES,
+    BOARD_UPLOAD_CHUNK_THRESHOLD_BYTES,
     BOARD_UPLOAD_MAX_BYTES,
     BOARD_UPLOAD_MAX_MB,
     BOARD_UPLOAD_SOURCE_MAX_BYTES,
@@ -1474,16 +1476,17 @@
   }
 
   /**
-   * Safari can omit FormData's boundary. Encode body and header together.
-   * @param {FormData} formData
+   * @param {string} url
+   * @param {Blob | string} body
+   * @param {string} contentType
+   * @returns {Promise<{ ok: boolean, status: number, text: () => Promise<string>, json: () => Promise<any> }>}
    */
-  function postUploadFormData(formData) {
+  function sendUploadRequest(url, body, contentType) {
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
-      const multipart = encodeMultipartFormData(formData);
-      xhr.open('POST', '/board/upload');
+      xhr.open('POST', url);
       xhr.withCredentials = true;
-      xhr.setRequestHeader('Content-Type', multipart.contentType);
+      xhr.setRequestHeader('Content-Type', contentType);
       xhr.addEventListener('load', () => {
         const responseText = xhr.responseText;
         resolve({
@@ -1495,8 +1498,84 @@
       });
       xhr.addEventListener('error', () => reject(new Error('Upload network request failed')));
       xhr.addEventListener('abort', () => reject(new Error('Upload request was aborted')));
-      xhr.send(multipart.body);
+      xhr.send(body);
     });
+  }
+
+  function createUploadId() {
+    return (
+      globalThis.crypto?.randomUUID?.() ??
+      `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`
+    );
+  }
+
+  /**
+   * Cloudflare drops request bodies over 100MB, so large files go up in chunks
+   * and the server joins them before the normal upload processing.
+   * @param {File} file
+   * @param {FormData} formData
+   */
+  async function postChunkedUpload(file, formData) {
+    const uploadId = createUploadId();
+    const totalChunks = Math.ceil(file.size / BOARD_UPLOAD_CHUNK_BYTES);
+    const kind = getUploadKind(file);
+
+    for (let index = 0; index < totalChunks; index++) {
+      setUploadStatus(`${kind} 업로드 중... ${Math.round((index / totalChunks) * 100)}%`);
+      const start = index * BOARD_UPLOAD_CHUNK_BYTES;
+      const chunk = file.slice(start, Math.min(start + BOARD_UPLOAD_CHUNK_BYTES, file.size));
+      const params = new URLSearchParams({
+        uploadId,
+        index: String(index),
+        totalChunks: String(totalChunks),
+        totalSize: String(file.size),
+        name: file.name,
+        type: file.type
+      });
+
+      let response = null;
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          response = await sendUploadRequest(
+            `/board/upload/chunk?${params}`,
+            chunk,
+            'application/octet-stream'
+          );
+          // Retry only network errors and server-side failures.
+          if (response.ok || response.status < 500) break;
+        } catch (error) {
+          if (attempt === 3) throw error;
+        }
+        await new Promise((resolve) => setTimeout(resolve, attempt * 1000));
+      }
+      if (!response) throw new Error('Chunk upload failed');
+      if (!response.ok) return response;
+    }
+
+    setUploadStatus(`${kind} 처리 중...`);
+    /** @type {Record<string, string>} */
+    const fields = {};
+    for (const [name, value] of formData.entries()) {
+      if (typeof value === 'string') fields[name] = value;
+    }
+    return sendUploadRequest(
+      '/board/upload/complete',
+      JSON.stringify({ uploadId, fields }),
+      'application/json'
+    );
+  }
+
+  /**
+   * Safari can omit FormData's boundary. Encode body and header together.
+   * @param {FormData} formData
+   */
+  function postUploadFormData(formData) {
+    const upload = formData.get('upload');
+    if (upload instanceof File && upload.size > BOARD_UPLOAD_CHUNK_THRESHOLD_BYTES) {
+      return postChunkedUpload(upload, formData);
+    }
+    const multipart = encodeMultipartFormData(formData);
+    return sendUploadRequest('/board/upload', multipart.body, multipart.contentType);
   }
 
   /** @param {File[]} files */
@@ -1520,7 +1599,10 @@
         try {
           setUploadStatus(`${getUploadKind(file)} 준비 중...`);
           const preparedFile = await prepareUploadFile(file);
-          if (preparedFile.size > BOARD_UPLOAD_MAX_BYTES) {
+          const willServerCompressVideo =
+            file.type.startsWith('video/') && preparedFile === file && !disableVideoCompression;
+          // 서버 압축용 원본은 300MB까지 보내고, 압축 뒤 100MB 제한은 서버가 확인한다.
+          if (!willServerCompressVideo && preparedFile.size > BOARD_UPLOAD_MAX_BYTES) {
             throw createUploadTooLargeError(preparedFile);
           }
 
@@ -1529,8 +1611,7 @@
             (file.type.startsWith('video/') && extractVideoAudio);
           const preparedUploadKind = insertAsAudio ? '음성' : getUploadKind(preparedFile);
           setUploadStatus(`${preparedUploadKind} 업로드 중...`);
-          const shouldAskServerToCompressVideo =
-            file.type.startsWith('video/') && preparedFile === file && !disableVideoCompression;
+          const shouldAskServerToCompressVideo = willServerCompressVideo;
           const formData = new FormData();
           formData.append('upload', preparedFile);
           if (shouldAskServerToCompressVideo) {

@@ -24,7 +24,7 @@ import logger from '#lib/util/logger.js';
 import { serializeError, traceFromUnknown } from '#lib/util/formatErrorTrace.js';
 import { warmupConnections } from '#lib/server/warmup.js';
 import { isBoardHtmlPath } from '#lib/util/boardPaths.js';
-import { BOARD_UPLOAD_SOURCE_MAX_BYTES } from '#lib/util/uploadLimits.js';
+import { BOARD_UPLOAD_CHUNK_BYTES, BOARD_UPLOAD_SOURCE_MAX_BYTES } from '#lib/util/uploadLimits.js';
 import { applyHostnameFavicon, faviconRedirectTarget } from '#lib/server/favicon.js';
 
 warmupConnections();
@@ -222,12 +222,18 @@ export async function handle({ event, resolve }) {
 
   // 본문 크기: 업로드 원본 300MB(압축 전), 글쓰기·댓글 POST 10MB.
   // adapter-node의 BODY_SIZE_LIMIT 전역 제한도 이 값 이상이어야 여기까지 도달한다.
-  const maxBodySize = pathname.includes('/board/upload')
-    ? BOARD_UPLOAD_SOURCE_MAX_BYTES
-    : event.request.method === 'POST' &&
-        (pathname.includes('/write') || pathname.endsWith('/comment'))
-      ? 10 * 1024 * 1024
-      : undefined;
+  // 청크 업로드는 조각 하나(32MB), 완료 요청은 작은 JSON만 받는다.
+  const maxBodySize =
+    pathname === '/board/upload/chunk'
+      ? BOARD_UPLOAD_CHUNK_BYTES
+      : pathname === '/board/upload/complete'
+        ? 64 * 1024
+        : pathname.includes('/board/upload')
+          ? BOARD_UPLOAD_SOURCE_MAX_BYTES
+          : event.request.method === 'POST' &&
+              (pathname.includes('/write') || pathname.endsWith('/comment'))
+            ? 10 * 1024 * 1024
+            : undefined;
 
   // 커스텀 resolve 함수 생성
   /** @type {Parameters<import('@sveltejs/kit/hooks').Handle>[0]['resolve']} */

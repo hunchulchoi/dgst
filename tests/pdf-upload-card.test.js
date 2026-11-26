@@ -4,7 +4,8 @@ import { sanitizeArticleContent } from '../src/lib/server/sanitizeArticleContent
 
 const editor = readFileSync('src/lib/components/LexicalEditor.svelte', 'utf8');
 const fileUpload = readFileSync('src/lib/util/fileUpload.js', 'utf8');
-const uploadRoute = readFileSync('src/routes/board/upload/+server.js', 'utf8');
+// Response shaping lives in the write helper shared by both upload routes.
+const uploadRoute = readFileSync('src/lib/server/boardUploadWrite.js', 'utf8');
 const sanitizer = readFileSync('src/lib/server/sanitizeArticleContent.js', 'utf8');
 const appCss = readFileSync('src/app.css', 'utf8');
 const dockerfile = readFileSync('Dockerfile', 'utf8');

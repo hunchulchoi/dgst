@@ -5,3 +5,7 @@ export const BOARD_UPLOAD_MAX_MB = BOARD_UPLOAD_MAX_BYTES / (1024 * 1024);
 export const BOARD_UPLOAD_SOURCE_MAX_BYTES = 300 * 1024 * 1024;
 export const BOARD_UPLOAD_SOURCE_MAX_MB = BOARD_UPLOAD_SOURCE_MAX_BYTES / (1024 * 1024);
 export const BOARD_UPLOAD_BODY_SIZE_LIMIT = `${BOARD_UPLOAD_SOURCE_MAX_MB}M`;
+// Cloudflare 무료 플랜은 요청 본문을 100MB에서 끊는다. 이보다 큰 파일은
+// 청크로 잘라 /board/upload/chunk 로 보내고 /board/upload/complete 에서 합친다.
+export const BOARD_UPLOAD_CHUNK_BYTES = 32 * 1024 * 1024;
+export const BOARD_UPLOAD_CHUNK_THRESHOLD_BYTES = 64 * 1024 * 1024;

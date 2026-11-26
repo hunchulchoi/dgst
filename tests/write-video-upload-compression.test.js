@@ -7,6 +7,8 @@ const writePage = readFileSync(
 );
 const lexicalEditor = readFileSync('src/lib/components/LexicalEditor.svelte', 'utf8');
 const uploadRoute = readFileSync('src/routes/board/upload/+server.js', 'utf8');
+// Form-field handling shared by the single-request and chunked upload routes.
+const uploadWrite = readFileSync('src/lib/server/boardUploadWrite.js', 'utf8');
 const uploadLimits = readFileSync('src/lib/util/uploadLimits.js', 'utf8');
 const apiLogRoute = readFileSync('src/routes/api/log/+server.js', 'utf8');
 const dockerfile = readFileSync('Dockerfile', 'utf8');
@@ -92,8 +94,8 @@ describe('write page video upload', () => {
   });
 
   it('asks the server to compress videos only when client compression did not produce a new file', () => {
-    expect(uploadRoute).toContain('serverCompressVideo');
-    expect(uploadRoute).toContain('compressVideo');
+    expect(uploadWrite).toContain('serverCompressVideo');
+    expect(uploadWrite).toContain('compressVideo');
   });
 
   it('passes server compression context so server logs explain device and fallback reason', () => {
@@ -102,12 +104,12 @@ describe('write page video upload', () => {
     expect(lexicalEditor).toMatch(/formData\.set\(\s*'serverCompressVideoClient'/);
     expect(lexicalEditor).toMatch(/formData\.set\(\s*'serverCompressVideoWebCodecs'/);
     expect(lexicalEditor).toContain('userAgent: nav?.userAgent');
-    expect(uploadRoute).toContain('serverCompressVideoReason');
-    expect(uploadRoute).toContain('serverCompressVideoClient');
-    expect(uploadRoute).toContain('serverCompressVideoWebCodecs');
-    expect(uploadRoute).toContain('serverCompressVideoContext');
-    expect(uploadRoute).toContain('Server video compression upload requested');
-    expect(uploadRoute).toContain("request.headers.get('user-agent')");
+    expect(uploadWrite).toContain('serverCompressVideoReason');
+    expect(uploadWrite).toContain('serverCompressVideoClient');
+    expect(uploadWrite).toContain('serverCompressVideoWebCodecs');
+    expect(uploadWrite).toContain('serverCompressVideoContext');
+    expect(uploadWrite).toContain('Server video compression upload requested');
+    expect(uploadWrite).toContain("request.headers.get('user-agent')");
     const fileUpload = readFileSync('src/lib/util/fileUpload.js', 'utf8');
     expect(fileUpload).toContain('serverCompressVideoContext');
     expect(fileUpload).toContain('logger.warn({');
@@ -140,7 +142,7 @@ describe('write page video upload', () => {
     expect(lexicalEditor).toContain("mute: '음성제거'");
     expect(lexicalEditor).toContain('audio: removeVideoAudio');
     expect(lexicalEditor).toContain("formData.set('removeVideoAudio', 'true')");
-    expect(uploadRoute).toContain('removeVideoAudio');
+    expect(uploadWrite).toContain('removeVideoAudio');
     const fileUpload = readFileSync('src/lib/util/fileUpload.js', 'utf8');
     expect(fileUpload).toContain('removeVideoAudio');
     expect(fileUpload).toContain("'-an'");
@@ -169,7 +171,7 @@ describe('write page video upload', () => {
       "const preparedUploadKind = insertAsAudio ? '음성' : getUploadKind(preparedFile)"
     );
     expect(lexicalEditor).toContain('<audio src="${escapeHtml(url)}" controls');
-    expect(uploadRoute).toContain('extractVideoAudio');
+    expect(uploadWrite).toContain('extractVideoAudio');
     const fileUpload = readFileSync('src/lib/util/fileUpload.js', 'utf8');
     expect(fileUpload).toContain('extractVideoAudio');
     expect(fileUpload).toContain("'.m4a'");
