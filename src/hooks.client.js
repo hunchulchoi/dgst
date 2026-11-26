@@ -13,7 +13,7 @@ import {
 
 installClientNavigationDiagnostics();
 
-/** @type {import('@sveltejs/kit').HandleClientError} */
+/** @type {import('@sveltejs/kit/hooks').HandleClientError} */
 export function handleError({ error, event, status, message }) {
   const routeId = event.route?.id ?? undefined;
   const navigation = getClientNavigationContext({

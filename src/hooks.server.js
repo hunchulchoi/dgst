@@ -170,7 +170,7 @@ const getRequestMeta = (event) => {
 };
 
 // 우리의 handle 함수 (Auth 핸들러와 함께 사용)
-/** @type {import('@sveltejs/kit').Handle} */
+/** @type {import('@sveltejs/kit/hooks').Handle} */
 export async function handle({ event, resolve }) {
   const startTime = Date.now();
   const { pathname } = event.url;
@@ -230,7 +230,7 @@ export async function handle({ event, resolve }) {
       : undefined;
 
   // 커스텀 resolve 함수 생성
-  /** @type {Parameters<import('@sveltejs/kit').Handle>[0]['resolve']} */
+  /** @type {Parameters<import('@sveltejs/kit/hooks').Handle>[0]['resolve']} */
   const customResolve = async (resolveEvent, opts = {}) => {
     const upstreamTransform = opts.transformPageChunk;
 
@@ -429,7 +429,7 @@ export async function handle({ event, resolve }) {
 }
 
 // 전역 에러 로깅
-/** @type {import('@sveltejs/kit').HandleServerError} */
+/** @type {import('@sveltejs/kit/hooks').HandleServerError} */
 export function handleError({ event, error }) {
   /** @type {{ status?: number; message?: string; name?: string; cause?: unknown; body?: { message?: string; errorId?: string } }} */
   const serverError =
